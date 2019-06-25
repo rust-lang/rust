@@ -110,7 +110,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         let is_impl = if let Some(hir::Node::Item(item)) = cx
             .tcx
             .hir()
-            .find_by_hir_id(cx.tcx.hir().get_parent_node(hir_id))
+            .find(cx.tcx.hir().get_parent_node(hir_id))
         {
             matches!(item.node, hir::ItemKind::Impl(_, _, _, _, Some(_), _, _))
         } else {

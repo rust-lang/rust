@@ -182,7 +182,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         if let Some(Node::Item(item)) = cx
             .tcx
             .hir()
-            .find_by_hir_id(cx.tcx.hir().get_parent_node(hir_id))
+            .find(cx.tcx.hir().get_parent_node(hir_id))
         {
             if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
                 ItemKind::Trait(..))

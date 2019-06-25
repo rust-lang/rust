@@ -106,7 +106,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, body_id) = item.node {
             let parent_item = cx.tcx.hir().get_parent_item(item.hir_id);
-            if let Some(Node::Item(it)) = cx.tcx.hir().find_by_hir_id(parent_item) {
+            if let Some(Node::Item(it)) = cx.tcx.hir().find(parent_item) {
                 if let ItemKind::Impl(_, _, _, _, Some(_), _, _) = it.node {
                     return; // ignore trait impls
                 }

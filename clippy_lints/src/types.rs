@@ -168,7 +168,7 @@ declare_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROW
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: HirId) {
         // Skip trait implementations; see issue #605.
-        if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_hir_id(cx.tcx.hir().get_parent_item(id)) {
+        if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
                 return;
             }
@@ -585,7 +585,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
         }
         if_chain! {
             let map = &cx.tcx.hir();
-            let opt_parent_node = map.find_by_hir_id(map.get_parent_node(expr.hir_id));
+            let opt_parent_node = map.find(map.get_parent_node(expr.hir_id));
             if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
             if is_questionmark_desugar_marked_call(parent_expr);
             then {

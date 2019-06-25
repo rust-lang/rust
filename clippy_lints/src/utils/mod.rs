@@ -404,7 +404,7 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
-    match cx.tcx.hir().find_by_hir_id(parent_id) {
+    match cx.tcx.hir().find(parent_id) {
         Some(Node::Item(&Item { ref ident, .. })) => Some(ident.name),
         Some(Node::TraitItem(&TraitItem { ident, .. })) | Some(Node::ImplItem(&ImplItem { ident, .. })) => {
             Some(ident.name)
@@ -596,7 +596,7 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c 
     if hir_id == parent_id {
         return None;
     }
-    map.find_by_hir_id(parent_id).and_then(|node| {
+    map.find(parent_id).and_then(|node| {
         if let Node::Expr(parent) = node {
             Some(parent)
         } else {
@@ -609,7 +609,7 @@ pub fn get_enclosing_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, hir_id: HirId) 
     let map = &cx.tcx.hir();
     let enclosing_node = map
         .get_enclosing_scope(hir_id)
-        .and_then(|enclosing_id| map.find_by_hir_id(enclosing_id));
+        .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
             Node::Block(block) => Some(block),

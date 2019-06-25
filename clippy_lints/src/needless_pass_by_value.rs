@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         if let Some(Node::Item(item)) = cx
             .tcx
             .hir()
-            .find_by_hir_id(cx.tcx.hir().get_parent_node(hir_id))
+            .find(cx.tcx.hir().get_parent_node(hir_id))
         {
             if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
                 ItemKind::Trait(..))
@@ -364,7 +364,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                 }
                 id = parent;
 
-                if let Some(node) = self.cx.tcx.hir().find_by_hir_id(id) {
+                if let Some(node) = self.cx.tcx.hir().find(id) {
                     match node {
                         Node::Expr(e) => {
                             // `match` and `if let`
