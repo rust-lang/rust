@@ -94,6 +94,24 @@ fn does_not_work_on_miri() {
 }
 ```
 
+### Running Miri on CI
+
+To run Miri on CI, make sure that you handle the case where the latest nightly
+does not ship the Miri component because it currently does not build.  For
+example, you can use the following snippet to always test with the latest
+nightly that *does* come with Miri:
+
+```sh
+MIRI_NIGHTLY=nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)
+echo "Installing latest nightly with Miri: $MIRI_NIGHTLY"
+rustup default "$MIRI_NIGHTLY"
+
+rustup component add miri
+cargo miri setup
+
+cargo miri test -- -- -Zunstable-options --exclude-should-panic
+```
+
 ### Common Problems
 
 When using the above instructions, you may encounter a number of confusing compiler
