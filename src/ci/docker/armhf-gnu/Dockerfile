@@ -13,8 +13,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
       git \
       libc6-dev \
       libc6-dev-armhf-cross \
-      libssl-dev \
-      pkg-config \
       make \
       python2.7 \
       qemu-system-arm \

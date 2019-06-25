@@ -14,10 +14,12 @@ use mdbook::MDBook;
 use mdbook::errors::{Result as Result3};
 use mdbook::renderer::RenderContext;
 
-use mdbook_linkcheck;
-use mdbook_linkcheck::errors::BrokenLinks;
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+use mdbook_linkcheck::{self, errors::BrokenLinks};
 use failure::Error;
 
+#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
+use failure::bail;
 
 fn main() {
     let d_message = "-d, --dest-dir=[dest-dir]
@@ -90,6 +92,7 @@ fn main() {
     };
 }
 
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
     let book_dir = get_book_dir(args);
     let book = MDBook::load(&book_dir).unwrap();
@@ -97,6 +100,11 @@ pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
     let render_ctx = RenderContext::new(&book_dir, book.book, cfg, &book_dir);
 
     mdbook_linkcheck::check_links(&render_ctx)
+}
+
+#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
+pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
+    bail!("mdbook-linkcheck only works on x86_64 linux targets.");
 }
 
 // Build command implementation
