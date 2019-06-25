@@ -71,15 +71,16 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 })
             });
 
-            if let Ok(result) = result {
+            if let Ok((_, res)) = result {
+                let res = res.map_id(|_| panic!("unexpected node_id"));
                 // In case this is a trait item, skip the
                 // early return and try looking for the trait.
-                let value = match result.res {
+                let value = match res {
                     Res::Def(DefKind::Method, _) | Res::Def(DefKind::AssocConst, _) => true,
                     Res::Def(DefKind::AssocTy, _) => false,
-                    Res::Def(DefKind::Variant, _) => return handle_variant(cx, result.res),
+                    Res::Def(DefKind::Variant, _) => return handle_variant(cx, res),
                     // Not a trait item; just return what we found.
-                    _ => return Ok((result.res, None))
+                    _ => return Ok((res, None))
                 };
 
                 if value != (ns == ValueNS) {
@@ -129,10 +130,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
             // FIXME: `with_scope` requires the `NodeId` of a module.
             let node_id = cx.tcx.hir().hir_to_node_id(id);
-            let ty = cx.enter_resolver(|resolver| resolver.with_scope(node_id, |resolver| {
+            let (_, ty_res) = cx.enter_resolver(|resolver| resolver.with_scope(node_id, |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP, &path, false)
             }))?;
-            match ty.res {
+            let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
+            match ty_res {
                 Res::Def(DefKind::Struct, did)
                 | Res::Def(DefKind::Union, did)
                 | Res::Def(DefKind::Enum, did)
@@ -147,7 +149,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             ty::AssocKind::Const if ns == ValueNS => "associatedconstant",
                             _ => return Err(())
                         };
-                        Ok((ty.res, Some(format!("{}.{}", out, item_name))))
+                        Ok((ty_res, Some(format!("{}.{}", out, item_name))))
                     } else {
                         match cx.tcx.type_of(did).sty {
                             ty::Adt(def, _) => {
@@ -159,7 +161,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                        .iter()
                                        .find(|item| item.ident.name == item_name)
                                 } {
-                                    Ok((ty.res,
+                                    Ok((ty_res,
                                         Some(format!("{}.{}",
                                                      if def.is_enum() {
                                                          "variant"
@@ -193,7 +195,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             _ => return Err(())
                         };
 
-                        Ok((ty.res, Some(format!("{}.{}", kind, item_name))))
+                        Ok((ty_res, Some(format!("{}.{}", kind, item_name))))
                     } else {
                         Err(())
                     }
