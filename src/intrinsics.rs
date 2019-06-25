@@ -586,6 +586,73 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         _ if intrinsic.starts_with("atomic_umin"), <T> (v ptr, v src) {
             atomic_minmax!(fx, IntCC::UnsignedLessThan, <T> (ptr, src) -> ret);
         };
+
+        expf32, (c flt) {
+            let res = fx.easy_call("expf", &[flt], fx.tcx.types.f32);
+            ret.write_cvalue(fx, res);
+        };
+        expf64, (c flt) {
+            let res = fx.easy_call("exp", &[flt], fx.tcx.types.f64);
+            ret.write_cvalue(fx, res);
+        };
+        exp2f32, (c flt) {
+            let res = fx.easy_call("exp2f", &[flt], fx.tcx.types.f32);
+            ret.write_cvalue(fx, res);
+        };
+        exp2f64, (c flt) {
+            let res = fx.easy_call("exp2", &[flt], fx.tcx.types.f64);
+            ret.write_cvalue(fx, res);
+        };
+        fabsf32, (c flt) {
+            let res = fx.easy_call("fabsf", &[flt], fx.tcx.types.f32);
+            ret.write_cvalue(fx, res);
+        };
+        fabsf64, (c flt) {
+            let res = fx.easy_call("fabs", &[flt], fx.tcx.types.f64);
+            ret.write_cvalue(fx, res);
+        };
+        sqrtf32, (c flt) {
+            let res = fx.easy_call("sqrtf", &[flt], fx.tcx.types.f32);
+            ret.write_cvalue(fx, res);
+        };
+        sqrtf64, (c flt) {
+            let res = fx.easy_call("sqrt", &[flt], fx.tcx.types.f64);
+            ret.write_cvalue(fx, res);
+        };
+        floorf32, (c flt) {
+            let res = fx.easy_call("floorf", &[flt], fx.tcx.types.f32);
+            ret.write_cvalue(fx, res);
+        };
+        floorf64, (c flt) {
+            let res = fx.easy_call("floor", &[flt], fx.tcx.types.f64);
+            ret.write_cvalue(fx, res);
+        };
+        ceilf32, (c flt) {
+            let res = fx.easy_call("ceilf", &[flt], fx.tcx.types.f32);
+            ret.write_cvalue(fx, res);
+        };
+        ceilf64, (c flt) {
+            let res = fx.easy_call("ceil", &[flt], fx.tcx.types.f64);
+            ret.write_cvalue(fx, res);
+        };
+
+        minnumf32, (c a, c b) {
+            let res = fx.easy_call("fminf", &[a, b], fx.tcx.types.f32);
+            ret.write_cvalue(fx, res);
+        };
+        minnumf64, (c a, c b) {
+            let res = fx.easy_call("fmin", &[a, b], fx.tcx.types.f64);
+            ret.write_cvalue(fx, res);
+        };
+        maxnumf32, (c a, c b) {
+            let res = fx.easy_call("fmaxf", &[a, b], fx.tcx.types.f32);
+            ret.write_cvalue(fx, res);
+        };
+        maxnumf64, (c a, c b) {
+            let res = fx.easy_call("fmax", &[a, b], fx.tcx.types.f64);
+            ret.write_cvalue(fx, res);
+        };
+
     }
 
     if let Some((_, dest)) = destination {

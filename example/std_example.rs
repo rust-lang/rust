@@ -20,6 +20,15 @@ fn main() {
 
     // Make sure ByValPair values with differently sized components are correctly passed
     map(None::<(u8, Box<Instruction>)>);
+
+    println!("{}", 2.3f32.exp());
+    println!("{}", 2.3f32.exp2());
+    println!("{}", 2.3f32.abs());
+    println!("{}", 2.3f32.sqrt());
+    println!("{}", 2.3f32.floor());
+    println!("{}", 2.3f32.ceil());
+    println!("{}", 2.3f32.min(1.0));
+    println!("{}", 2.3f32.max(1.0));
 }
 
 #[derive(PartialEq)]
