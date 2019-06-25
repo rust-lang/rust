@@ -77,7 +77,7 @@ fn main() {
                 update_lints(&UpdateMode::Change);
             }
         },
-        _ => unreachable!(),
+        _ => {},
     }
 }
 
