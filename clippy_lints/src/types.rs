@@ -585,7 +585,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
         }
         if_chain! {
             let map = &cx.tcx.hir();
-            let opt_parent_node = map.find_by_hir_id(map.get_parent_node_by_hir_id(expr.hir_id));
+            let opt_parent_node = map.find_by_hir_id(map.get_parent_node(expr.hir_id));
             if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
             if is_questionmark_desugar_marked_call(parent_expr);
             then {

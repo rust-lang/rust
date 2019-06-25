@@ -115,7 +115,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         let map = &self.cx.tcx.hir();
         if map.is_argument(map.hir_to_node_id(consume_pat.hir_id)) {
             // Skip closure arguments
-            if let Some(Node::Expr(..)) = map.find_by_hir_id(map.get_parent_node_by_hir_id(consume_pat.hir_id)) {
+            if let Some(Node::Expr(..)) = map.find_by_hir_id(map.get_parent_node(consume_pat.hir_id)) {
                 return;
             }
             if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
@@ -124,7 +124,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             return;
         }
         if let Categorization::Rvalue(..) = cmt.cat {
-            if let Some(Node::Stmt(st)) = map.find_by_hir_id(map.get_parent_node_by_hir_id(cmt.hir_id)) {
+            if let Some(Node::Stmt(st)) = map.find_by_hir_id(map.get_parent_node(cmt.hir_id)) {
                 if let StmtKind::Local(ref loc) = st.node {
                     if let Some(ref ex) = loc.init {
                         if let ExprKind::Box(..) = ex.node {

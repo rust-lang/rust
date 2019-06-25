@@ -592,7 +592,7 @@ fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, ch: char) -> Cow<'_
 pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c Expr> {
     let map = &cx.tcx.hir();
     let hir_id = e.hir_id;
-    let parent_id = map.get_parent_node_by_hir_id(hir_id);
+    let parent_id = map.get_parent_node(hir_id);
     if hir_id == parent_id {
         return None;
     }

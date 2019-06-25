@@ -2218,7 +2218,7 @@ fn is_conditional(expr: &Expr) -> bool {
 fn is_nested(cx: &LateContext<'_, '_>, match_expr: &Expr, iter_expr: &Expr) -> bool {
     if_chain! {
         if let Some(loop_block) = get_enclosing_block(cx, match_expr.hir_id);
-        let parent_node = cx.tcx.hir().get_parent_node_by_hir_id(loop_block.hir_id);
+        let parent_node = cx.tcx.hir().get_parent_node(loop_block.hir_id);
         if let Some(Node::Expr(loop_expr)) = cx.tcx.hir().find_by_hir_id(parent_node);
         then {
             return is_loop_nested(cx, loop_expr, iter_expr)
@@ -2235,7 +2235,7 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) 
         return true;
     };
     loop {
-        let parent = cx.tcx.hir().get_parent_node_by_hir_id(id);
+        let parent = cx.tcx.hir().get_parent_node(id);
         if parent == id {
             return false;
         }
