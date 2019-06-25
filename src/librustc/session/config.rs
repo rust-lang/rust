@@ -1816,7 +1816,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         ),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
-        opt::opt_s(
+        opt::multi_s(
             "",
             "error-format",
             "How errors and other messages are produced",
@@ -1985,7 +1985,8 @@ pub fn build_session_options_and_crate_config(
     // is unstable, it will not be present. We have to use opts_present not
     // opt_present because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
-        match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
+        // Last argument takes precedence
+        match matches.opt_strs("error-format").last().map(|s| &s[..]) {
             None |
             Some("human") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
             Some("human-annotate-rs") => {
