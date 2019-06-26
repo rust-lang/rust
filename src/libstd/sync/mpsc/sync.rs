@@ -160,20 +160,20 @@ fn wakeup<T>(token: SignalToken, guard: MutexGuard<'_, State<T>>) {
 }
 
 impl<T> Packet<T> {
-    pub fn new(cap: usize) -> Packet<T> {
+    pub fn new(capacity: usize) -> Packet<T> {
         Packet {
             channels: AtomicUsize::new(1),
             lock: Mutex::new(State {
                 disconnected: false,
                 blocker: NoneBlocked,
-                cap,
+                cap: capacity,
                 canceled: None,
                 queue: Queue {
                     head: ptr::null_mut(),
                     tail: ptr::null_mut(),
                 },
                 buf: Buffer {
-                    buf: (0..cap + if cap == 0 {1} else {0}).map(|_| None).collect(),
+                    buf: (0..capacity + if capacity == 0 {1} else {0}).map(|_| None).collect(),
                     start: 0,
                     size: 0,
                 },
@@ -188,7 +188,7 @@ impl<T> Packet<T> {
         loop {
             let mut guard = self.lock.lock().unwrap();
             // are we ready to go?
-            if guard.disconnected || guard.buf.size() < guard.buf.cap() {
+            if guard.disconnected || guard.buf.size() < guard.buf.capacity() {
                 return guard;
             }
             // no room; actually block
@@ -230,7 +230,7 @@ impl<T> Packet<T> {
         let mut guard = self.lock.lock().unwrap();
         if guard.disconnected {
             Err(super::TrySendError::Disconnected(t))
-        } else if guard.buf.size() == guard.buf.cap() {
+        } else if guard.buf.size() == guard.buf.capacity() {
             Err(super::TrySendError::Full(t))
         } else if guard.cap == 0 {
             // With capacity 0, even though we have buffer space we can't
@@ -248,7 +248,7 @@ impl<T> Packet<T> {
             // If the buffer has some space and the capacity isn't 0, then we
             // just enqueue the data for later retrieval, ensuring to wake up
             // any blocked receiver if there is one.
-            assert!(guard.buf.size() < guard.buf.cap());
+            assert!(guard.buf.size() < guard.buf.capacity());
             guard.buf.enqueue(t);
             match mem::replace(&mut guard.blocker, NoneBlocked) {
                 BlockedReceiver(token) => wakeup(token, guard),
@@ -438,7 +438,7 @@ impl<T> Buffer<T> {
     }
 
     fn size(&self) -> usize { self.size }
-    fn cap(&self) -> usize { self.buf.len() }
+    fn capacity(&self) -> usize { self.buf.len() }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
