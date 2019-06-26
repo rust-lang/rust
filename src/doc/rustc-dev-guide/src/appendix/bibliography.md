@@ -6,7 +6,7 @@ Rust, as well as publications about Rust.
 
 ## Type system
 
-* [Region based memory management in Cyclone](http://209.68.42.137/ucsd-pages/Courses/cse227.w03/handouts/cyclone-regions.pdf)
+* [Region based memory management in Cyclone](https://www.cs.umd.edu/projects/cyclone/papers/cyclone-regions.pdf)
 * [Safe manual memory management in Cyclone](http://www.cs.umd.edu/projects/PL/cyclone/scp.pdf)
 * [Typeclasses: making ad-hoc polymorphism less ad hoc](http://www.ps.uni-sb.de/courses/typen-ws99/class.ps.gz)
 * [Macros that work together](https://www.cs.utah.edu/plt/publications/jfp12-draft-fcdf.pdf)
@@ -31,7 +31,7 @@ Rust, as well as publications about Rust.
 * [Balanced work stealing for time-sharing multicores](http://www.cse.ohio-state.edu/hpcs/WWW/HTML/publications/papers/TR-12-1.pdf)
 * [Three layer cake for shared-memory programming](http://dl.acm.org/citation.cfm?id=1953616&dl=ACM&coll=DL&CFID=524387192&CFTOKEN=44362705)
 * [Non-blocking steal-half work queues](http://www.cs.bgu.ac.il/%7Ehendlerd/papers/p280-hendler.pdf)
-* [Reagents: expressing and composing fine-grained concurrency](http://www.mpi-sws.org/~turon/reagents.pdf)
+* [Reagents: expressing and composing fine-grained concurrency](http://aturon.github.io/academic/reagents.pdf)
 * [Algorithms for scalable synchronization of shared-memory multiprocessors](https://www.cs.rochester.edu/u/scott/papers/1991_TOCS_synch.pdf)
 * [Epoch-based reclamation](https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-579.pdf).
 
@@ -43,9 +43,10 @@ Rust, as well as publications about Rust.
 
 ## Papers *about* Rust
 
-* [GPU Programming in Rust: Implementing High Level Abstractions in a
-Systems Level
-Language](http://www.cs.indiana.edu/~eholk/papers/hips2013.pdf). Early GPU work by Eric Holk.
+* [GPU Programming in Rust: Implementing High Level Abstractions in a Systems
+  Level
+  Language](https://www.cs.indiana.edu/~achauhan/Publications/Pubs/2013-hips-holk-rust.pdf).
+  Early GPU work by Eric Holk.
 * [Parallel closures: a new twist on an old
   idea](https://www.usenix.org/conference/hotpar12/parallel-closures-new-twist-old-idea)
   - not exactly about Rust, but by nmatsakis
