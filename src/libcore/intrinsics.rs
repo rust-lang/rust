@@ -700,16 +700,8 @@ extern "rust-intrinsic" {
     /// which is unsafe unless `T` is `Copy`. Also, even if T is
     /// `Copy`, an all-zero value may not correspond to any legitimate
     /// state for the type in question.
+    // FIXME: deprecate once clippy's tests are fixed
     pub fn init<T>() -> T;
-
-    /// Creates an uninitialized value.
-    ///
-    /// `uninit` is unsafe because there is no guarantee of what its
-    /// contents are. In particular its drop-flag may be set to any
-    /// state, which means it may claim either dropped or
-    /// undropped. In the general case one must use `ptr::write` to
-    /// initialize memory previous set to the result of `uninit`.
-    pub fn uninit<T>() -> T;
 
     /// Moves a value out of scope without running drop glue.
     pub fn forget<T: ?Sized>(_: T);
