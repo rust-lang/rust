@@ -466,11 +466,11 @@ mod tests {
             // Test to make sure that a signal mask does not get inherited.
             let mut cmd = Command::new(OsStr::new("cat"));
 
-            let mut set: libc::sigset_t = mem::uninitialized();
-            let mut old_set: libc::sigset_t = mem::uninitialized();
-            t!(cvt(sigemptyset(&mut set)));
-            t!(cvt(sigaddset(&mut set, libc::SIGINT)));
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set, &mut old_set)));
+            let mut set = mem::MaybeUninit::<libc::sigset_t>::uninit();
+            let mut old_set = mem::MaybeUninit::<libc::sigset_t>::uninit();
+            t!(cvt(sigemptyset(set.as_mut_ptr())));
+            t!(cvt(sigaddset(set.as_mut_ptr(), libc::SIGINT)));
+            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), old_set.as_mut_ptr())));
 
             cmd.stdin(Stdio::MakePipe);
             cmd.stdout(Stdio::MakePipe);
@@ -479,7 +479,7 @@ mod tests {
             let stdin_write = pipes.stdin.take().unwrap();
             let stdout_read = pipes.stdout.take().unwrap();
 
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &old_set,
+            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, old_set.as_ptr(),
                                          ptr::null_mut())));
 
             t!(cvt(libc::kill(cat.id() as libc::pid_t, libc::SIGINT)));
