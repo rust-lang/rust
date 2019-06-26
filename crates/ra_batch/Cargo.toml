@@ -15,5 +15,9 @@ ra_ide_api = { path = "../ra_ide_api" }
 ra_hir = { path = "../ra_hir" }
 ra_project_model = { path = "../ra_project_model" }
 
+[dependencies.ra_prof]
+path = "../ra_prof"
+# features = [ "cpuprofiler" ]
+
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
