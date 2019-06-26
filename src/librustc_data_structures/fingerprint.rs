@@ -39,8 +39,8 @@ impl Fingerprint {
     // you want.
     #[inline]
     pub fn combine_commutative(self, other: Fingerprint) -> Fingerprint {
-        let a = (self.1 as u128) << 64 | self.0 as u128;
-        let b = (other.1 as u128) << 64 | other.0 as u128;
+        let a = u128::from(self.1) << 64 | u128::from(self.0);
+        let b = u128::from(other.1) << 64 | u128::from(other.0);
 
         let c = a.wrapping_add(b);
 
