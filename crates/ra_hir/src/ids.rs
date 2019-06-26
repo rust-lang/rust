@@ -9,7 +9,7 @@ use ra_prof::profile;
 use mbe::MacroRules;
 
 use crate::{
-    Module, DefDatabase, AstId, FileAstId, AstDatabase, Source,
+    Module, DefDatabase, AstId, FileAstId, AstDatabase, Source, InternDatabase,
 };
 
 /// hir makes heavy use of ids: integer (u32) handlers to various things. You
@@ -37,7 +37,7 @@ pub struct HirFileId(HirFileIdRepr);
 impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
     /// expansion originated from.
-    pub fn original_file(self, db: &impl AstDatabase) -> FileId {
+    pub fn original_file(self, db: &impl InternDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
             HirFileIdRepr::Macro(macro_file) => {
@@ -187,7 +187,7 @@ pub struct MacroCallLoc {
 }
 
 impl MacroCallId {
-    pub(crate) fn loc(self, db: &impl AstDatabase) -> MacroCallLoc {
+    pub(crate) fn loc(self, db: &impl InternDatabase) -> MacroCallLoc {
         db.lookup_intern_macro(self)
     }
 
@@ -198,7 +198,7 @@ impl MacroCallId {
 }
 
 impl MacroCallLoc {
-    pub(crate) fn id(self, db: &impl AstDatabase) -> MacroCallId {
+    pub(crate) fn id(self, db: &impl InternDatabase) -> MacroCallId {
         db.intern_macro(self)
     }
 }
@@ -235,10 +235,13 @@ pub(crate) struct LocationCtx<DB> {
     file_id: HirFileId,
 }
 
-impl<'a, DB: DefDatabase + AstDatabase> LocationCtx<&'a DB> {
+impl<'a, DB: DefDatabase> LocationCtx<&'a DB> {
     pub(crate) fn new(db: &'a DB, module: Module, file_id: HirFileId) -> LocationCtx<&'a DB> {
         LocationCtx { db, module, file_id }
     }
+}
+
+impl<'a, DB: DefDatabase + AstDatabase> LocationCtx<&'a DB> {
     pub(crate) fn to_def<N, DEF>(self, ast: &N) -> DEF
     where
         N: AstNode,
@@ -257,10 +260,7 @@ pub(crate) trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
         let item_id = items.ast_id(ast);
         Self::from_ast_id(ctx, item_id)
     }
-    fn from_ast_id(
-        ctx: LocationCtx<&(impl AstDatabase + DefDatabase)>,
-        ast_id: FileAstId<N>,
-    ) -> Self {
+    fn from_ast_id(ctx: LocationCtx<&impl DefDatabase>, ast_id: FileAstId<N>) -> Self {
         let loc = ItemLoc { module: ctx.module, ast_id: ast_id.with_file_id(ctx.file_id) };
         Self::intern(ctx.db, loc)
     }
