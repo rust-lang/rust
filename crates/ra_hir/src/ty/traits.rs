@@ -12,7 +12,7 @@ use super::{TraitRef, Ty, Canonical, ProjectionTy};
 
 use self::chalk::{ToChalk, from_chalk};
 
-mod chalk;
+pub(crate) mod chalk;
 
 pub(crate) type Solver = chalk_solve::Solver;
 

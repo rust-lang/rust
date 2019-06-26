@@ -181,6 +181,26 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     #[salsa::volatile]
     fn solver(&self, krate: Crate) -> Arc<Mutex<crate::ty::traits::Solver>>;
 
+    #[salsa::invoke(crate::ty::traits::chalk::associated_ty_data_query)]
+    fn associated_ty_data(&self, id: chalk_ir::TypeId) -> Arc<chalk_rust_ir::AssociatedTyDatum>;
+
+    #[salsa::invoke(crate::ty::traits::chalk::trait_datum_query)]
+    fn trait_datum(
+        &self,
+        krate: Crate,
+        trait_id: chalk_ir::TraitId,
+    ) -> Arc<chalk_rust_ir::TraitDatum>;
+
+    #[salsa::invoke(crate::ty::traits::chalk::struct_datum_query)]
+    fn struct_datum(
+        &self,
+        krate: Crate,
+        struct_id: chalk_ir::StructId,
+    ) -> Arc<chalk_rust_ir::StructDatum>;
+
+    #[salsa::invoke(crate::ty::traits::chalk::impl_datum_query)]
+    fn impl_datum(&self, krate: Crate, impl_id: chalk_ir::ImplId) -> Arc<chalk_rust_ir::ImplDatum>;
+
     #[salsa::invoke(crate::ty::traits::implements_query)]
     fn implements(
         &self,
