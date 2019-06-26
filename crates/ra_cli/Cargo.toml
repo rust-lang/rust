@@ -16,4 +16,7 @@ ra_ide_api = { path = "../ra_ide_api" }
 ra_batch = { path = "../ra_batch" }
 ra_hir = { path = "../ra_hir" }
 ra_db = { path = "../ra_db" }
-ra_prof = { path = "../ra_prof" }
+
+[dependencies.ra_prof]
+path = "../ra_prof"
+# features = [ "cpuprofiler" ]
