@@ -7,6 +7,8 @@
 #include <inttypes.h>
 #include <string.h>
 
+extern int diffe_const;
+
 float tdiff(struct timeval *start, struct timeval *end) {
   return (end->tv_sec-start->tv_sec) + 1e-6*(end->tv_usec-start->tv_usec);
 }
@@ -236,7 +238,8 @@ static void my_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
   for(int i=0; i<ITERS; i++) {
   for(int i=0; i<N*M; i++) { Mout[i] = 0; }
   //for(int i=0; i<M; i++) { Vout[i] = 0; }
-  res2 = __builtin_autodiff(matvec_real, Min, Mout, Vin, Vout);
+  res2 = __builtin_autodiff(matvec_real, Min, Mout, diffe_const, Vin);
+  //res2 = __builtin_autodiff(matvec_real, Min, Mout, Vin, Vout);
   for(int i=0; i<N*M; i++) { Min[i] -= Mout[i] * RATE; }
   }
 
