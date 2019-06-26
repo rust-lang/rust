@@ -1346,22 +1346,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         succ: LiveNode
     ) -> LiveNode {
         /*
-        FIXME: clean up this description.
-
         We model control flow like this:
 
-              (cond) <--+
-                |       |
-                v       |
-          +-- (expr)    |
-          |     |       |
-          |     v       |
-          |   (body) ---+
-          |
-          |
-          v
-        (succ)
+              (expr) <-+
+                |      |
+                v      |
+              (body) --+
 
+        Note that a `continue` expression targeting the `loop` will have a successor of `expr`.
+        Meanwhile, a `break` expression will have a successor of `succ`.
         */
 
         // first iteration:
