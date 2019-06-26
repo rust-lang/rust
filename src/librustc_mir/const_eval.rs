@@ -636,7 +636,8 @@ pub fn const_eval_raw_provider<'tcx>(
         tcx.at(span),
         key.param_env,
         CompileTimeInterpreter::new(),
-        Default::default());
+        Default::default()
+    );
 
     let res = ecx.load_mir(cid.instance.def);
     res.map(|body| {
