@@ -97,6 +97,25 @@ To work on the VS Code extension, launch code inside `editors/code` and use `F5`
 to launch/debug. To automatically apply formatter and linter suggestions, use
 `npm run fix`.
 
+Tests are located inside `src/test` and are named `*.test.ts`. They use the
+[Mocha](https://mochajs.org) test framework and the builtin Node
+[assert](https://nodejs.org/api/assert.html) module. Unlike normal Node tests
+they must be hosted inside a VS Code instance. This can be done in one of two
+ways:
+
+1. When `F5` debugging in VS Code select the `Extension Tests` configuration
+   from the drop-down at the top of the Debug View. This will launch a temporary
+   instance of VS Code. The test results will appear in the "Debug Console" tab
+   of the primary VS Code instance.
+
+2. Run `npm test` from the command line. Although this is initiated from the
+   command line it is not headless; it will also launch a temporary instance of
+   VS Code. 
+
+Due to the requirements of running the tests inside VS Code they are **not run
+on CI**. When making changes to the extension please ensure the tests are not
+broken locally before opening a Pull Request.
+
 # Logging
 
 Logging is done by both rust-analyzer and VS Code, so it might be tricky to

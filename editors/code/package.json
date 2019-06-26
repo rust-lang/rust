@@ -23,6 +23,7 @@
         "postinstall": "node ./node_modules/vscode/bin/install",
         "fix": "prettier **/*.{json,ts} --write && tslint --project . --fix",
         "lint": "tslint --project .",
+        "test": "node node_modules/vscode/bin/test",
         "prettier": "prettier **/*.{json,ts}",
         "travis": "npm run compile && npm run lint && npm run prettier -- --list-different"
     },

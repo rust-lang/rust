@@ -2,12 +2,17 @@ import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+
 import { Server } from '../server';
 import { terminate } from '../utils/processes';
 import {
     mapRustDiagnosticToVsCode,
     RustDiagnostic
 } from '../utils/rust_diagnostics';
+import {
+    areCodeActionsEqual,
+    areDiagnosticsEqual
+} from '../utils/vscode_diagnostics';
 import { LineBuffer } from './line_buffer';
 import { StatusDisplay } from './watch_status';
 
@@ -182,67 +187,6 @@ export class CargoWatchProvider
 
         if (line.startsWith('[Finished running')) {
             this.statusDisplay.hide();
-        }
-
-        function areDiagnosticsEqual(
-            left: vscode.Diagnostic,
-            right: vscode.Diagnostic
-        ): boolean {
-            return (
-                left.source === right.source &&
-                left.severity === right.severity &&
-                left.range.isEqual(right.range) &&
-                left.message === right.message
-            );
-        }
-
-        function areCodeActionsEqual(
-            left: vscode.CodeAction,
-            right: vscode.CodeAction
-        ): boolean {
-            if (
-                left.kind !== right.kind ||
-                left.title !== right.title ||
-                !left.edit ||
-                !right.edit
-            ) {
-                return false;
-            }
-
-            const leftEditEntries = left.edit.entries();
-            const rightEditEntries = right.edit.entries();
-
-            if (leftEditEntries.length !== rightEditEntries.length) {
-                return false;
-            }
-
-            for (let i = 0; i < leftEditEntries.length; i++) {
-                const [leftUri, leftEdits] = leftEditEntries[i];
-                const [rightUri, rightEdits] = rightEditEntries[i];
-
-                if (leftUri.toString() !== rightUri.toString()) {
-                    return false;
-                }
-
-                if (leftEdits.length !== rightEdits.length) {
-                    return false;
-                }
-
-                for (let j = 0; j < leftEdits.length; j++) {
-                    const leftEdit = leftEdits[j];
-                    const rightEdit = rightEdits[j];
-
-                    if (!leftEdit.range.isEqual(rightEdit.range)) {
-                        return false;
-                    }
-
-                    if (leftEdit.newText !== rightEdit.newText) {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
         }
 
         interface CargoArtifact {
