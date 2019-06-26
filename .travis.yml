@@ -229,16 +229,6 @@ matrix:
       name: mingw-check
       if: type = pull_request OR branch = auto
 
-    - stage: publish toolstate
-      if: branch = master AND type = push
-      before_install: []
-      install: []
-      sudo: false
-      script:
-        MESSAGE_FILE=$(mktemp -t msg.XXXXXX);
-        . src/ci/docker/x86_64-gnu-tools/repo.sh;
-        commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN";
-
 before_install:
   # We'll use the AWS cli to download/upload cached docker layers as well as
   # push our deployments, so download that here.
