@@ -376,15 +376,13 @@ impl<'tcx> TyCtxt<'tcx> {
             return self.force_query_with_job::<Q>(key, job, null_dep_node).0;
         }
 
-        let dep_node = Q::to_dep_node(self, &key);
-
-        if dep_node.kind.is_anon() {
+        if Q::ANON {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
             self.sess.profiler(|p| p.start_query(Q::NAME));
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
                 self.start_query(job.job.clone(), diagnostics, |tcx| {
-                    tcx.dep_graph.with_anon_task(dep_node.kind, || {
+                    tcx.dep_graph.with_anon_task(Q::dep_kind(), || {
                         Q::compute(tcx.global_tcx(), key)
                     })
                 })
@@ -405,7 +403,9 @@ impl<'tcx> TyCtxt<'tcx> {
             return result;
         }
 
-        if !dep_node.kind.is_eval_always() {
+        let dep_node = Q::to_dep_node(self, &key);
+
+        if !Q::EVAL_ALWAYS {
             // The diagnostics for this query will be
             // promoted to the current session during
             // try_mark_green(), so we can ignore them here.
@@ -546,7 +546,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
             self.start_query(job.job.clone(), diagnostics, |tcx| {
-                if dep_node.kind.is_eval_always() {
+                if Q::EVAL_ALWAYS {
                     tcx.dep_graph.with_eval_always_task(dep_node,
                                                         tcx,
                                                         key,
@@ -569,8 +569,8 @@ impl<'tcx> TyCtxt<'tcx> {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, false);
         }
 
-        if dep_node.kind != crate::dep_graph::DepKind::Null {
-            if unlikely!(!diagnostics.is_empty()) {
+        if unlikely!(!diagnostics.is_empty()) {
+            if dep_node.kind != crate::dep_graph::DepKind::Null {
                 self.queries.on_disk_cache
                     .store_diagnostics(dep_node_index, diagnostics);
             }
@@ -589,15 +589,16 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// Note: The optimization is only available during incr. comp.
     pub(super) fn ensure_query<Q: QueryDescription<'tcx>>(self, key: Q::Key) -> () {
-        let dep_node = Q::to_dep_node(self, &key);
-
-        if dep_node.kind.is_eval_always() {
+        if Q::EVAL_ALWAYS {
             let _ = self.get_query::<Q>(DUMMY_SP, key);
             return;
         }
 
         // Ensuring an anonymous query makes no sense
-        assert!(!dep_node.kind.is_anon());
+        assert!(!Q::ANON);
+
+        let dep_node = Q::to_dep_node(self, &key);
+
         if self.dep_graph.try_mark_green_and_read(self, &dep_node).is_none() {
             // A None return from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -650,6 +651,30 @@ macro_rules! handle_cycle_error {
     }};
     ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
         handle_cycle_error!([$($modifiers),*][$($args)*])
+    };
+}
+
+macro_rules! is_anon {
+    ([]) => {{
+        false
+    }};
+    ([anon$(, $modifiers:ident)*]) => {{
+        true
+    }};
+    ([$other:ident$(, $modifiers:ident)*]) => {
+        is_anon!([$($modifiers),*])
+    };
+}
+
+macro_rules! is_eval_always {
+    ([]) => {{
+        false
+    }};
+    ([eval_always$(, $modifiers:ident)*]) => {{
+        true
+    }};
+    ([$other:ident$(, $modifiers:ident)*]) => {
+        is_eval_always!([$($modifiers),*])
     };
 }
 
@@ -933,6 +958,9 @@ macro_rules! define_queries_inner {
         }
 
         impl<$tcx> QueryAccessors<$tcx> for queries::$name<$tcx> {
+            const ANON: bool = is_anon!([$($modifiers)*]);
+            const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
+
             #[inline(always)]
             fn query(key: Self::Key) -> Query<'tcx> {
                 Query::$name(key)
@@ -949,6 +977,11 @@ macro_rules! define_queries_inner {
                 use crate::dep_graph::DepConstructor::*;
 
                 DepNode::new(tcx, $node(*key))
+            }
+
+            #[inline(always)]
+            fn dep_kind() -> dep_graph::DepKind {
+                dep_graph::DepKind::$node
             }
 
             #[inline]
