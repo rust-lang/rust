@@ -13,7 +13,7 @@
 	../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -simplifycfg -inline -adce -aggressive-instcombine -O2 -S -o $@
 
 %-raw.ll: %-unopt.ll
-	../build/bin/opt $^ -indvars -lower-autodiff -S -o $@
+	../build/bin/opt $^ -indvars -autodiff_inline=true -lower-autodiff -S -o $@
 
 %-raw2.ll: %-unopt.ll
 	#../build/bin/opt $^ -indvars -lower-autodiff -simplifycfg -mem2reg -sroa -S -o $@
