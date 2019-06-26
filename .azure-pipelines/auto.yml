@@ -251,10 +251,12 @@ jobs:
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
         VCVARS_BAT: vcvars64.bat
       # MSVC tools tests
-      x86_64-msvc-tools:
-        MSYS_BITS: 64
-        SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json --enable-test-miri
+      # FIXME: broken on azure right now, need to figure out a cause and
+      # reenable
+      # x86_64-msvc-tools:
+      #   MSYS_BITS: 64
+      #   SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
+      #   RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json --enable-test-miri
 
       # 32/64-bit MinGW builds.
       #
