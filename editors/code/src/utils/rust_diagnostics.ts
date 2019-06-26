@@ -187,8 +187,18 @@ export function mapRustDiagnosticToVsCode(
 
     const vd = new vscode.Diagnostic(location.range, rd.message, severity);
 
-    vd.source = 'rustc';
-    vd.code = rd.code ? rd.code.code : undefined;
+    let source = 'rustc';
+    let code = rd.code && rd.code.code;
+    if (code) {
+        // See if this is an RFC #2103 scoped lint (e.g. from Clippy)
+        const scopedCode = code.split('::');
+        if (scopedCode.length === 2) {
+            [source, code] = scopedCode;
+        }
+    }
+
+    vd.source = source;
+    vd.code = code;
     vd.relatedInformation = [];
 
     for (const secondarySpan of secondarySpans) {
