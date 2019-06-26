@@ -260,7 +260,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         env::var_os("PYTHONPATH").hash(&mut hash);
     }
 
-    if let Ui | RunPass | Incremental = config.mode {
+    if let Ui | RunPass | Incremental | Pretty = config.mode {
         config.force_pass_mode.hash(&mut hash);
     }
 
