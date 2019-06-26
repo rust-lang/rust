@@ -202,7 +202,7 @@ impl Command {
         // emscripten has no signal support.
         #[cfg(not(any(target_os = "emscripten")))]
         {
-            use crate::mem::{self, MaybeUninit};
+            use crate::mem::MaybeUninit;
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored
@@ -215,9 +215,7 @@ impl Command {
                 // Implementing sigemptyset allow us to support older Android
                 // versions. See the comment about Android and sig* functions in
                 // process_common.rs
-                libc::memset(set.as_mut_ptr() as *mut _,
-                             0,
-                             mem::size_of::<libc::sigset_t>());
+                set.as_mut_ptr().write_bytes(0u8, 1);
             } else {
                 cvt(libc::sigemptyset(set.as_mut_ptr()))?;
             }

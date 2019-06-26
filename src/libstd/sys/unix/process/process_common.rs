@@ -437,7 +437,7 @@ mod tests {
 
     #[cfg(target_os = "android")]
     unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
-        libc::memset(set as *mut _, 0, mem::size_of::<libc::sigset_t>());
+        set.write_bytes(0u8, 1);
         return 0;
     }
 
