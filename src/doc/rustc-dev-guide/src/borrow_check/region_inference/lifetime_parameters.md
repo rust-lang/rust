@@ -7,7 +7,7 @@ derives from the fact that such lifetimes are "universally quantified"
 lifetimes). It is worth spending a bit of discussing how lifetime
 parameters are handled during region inference. Consider this example:
 
-```rust
+```rust,ignore
 fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
   x
 }
@@ -92,7 +92,7 @@ itself). In the code, these liveness constraints are setup in
 
 So, consider the first example of this section:
 
-```rust
+```rust,ignore
 fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
   x
 }
@@ -102,7 +102,7 @@ Here, returning `x` requires that `&'a u32 <: &'b u32`, which gives
 rise to an outlives constraint `'a: 'b`. Combined with our default liveness
 constraints we get:
 
-```
+```txt
 'a live at {B, end('a)} // B represents the "function body"
 'b live at {B, end('b)}
 'a: 'b

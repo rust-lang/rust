@@ -6,7 +6,7 @@ some `i`). These constraints cannot be expressed by users, but they
 arise from `impl Trait` due to its lifetime capture rules. Consider a
 function such as the following:
 
-```rust
+```rust,ignore
 fn make(a: &'a u32, b: &'b u32) -> impl Trait<'a, 'b> { .. }
 ```
 
@@ -15,7 +15,7 @@ permitted to capture the lifetimes `'a` or `'b`. You can kind of see
 this more clearly by desugaring that `impl Trait` return type into its
 more explicit form:
 
-```rust
+```rust,ignore
 type MakeReturn<'x, 'y> = impl Trait<'x, 'y>;
 fn make(a: &'a u32, b: &'b u32) -> MakeReturn<'a, 'b> { .. }
 ```
@@ -34,14 +34,14 @@ To help us explain member constraints in more detail, let's spell out
 the `make` example in a bit more detail. First off, let's assume that
 you have some dummy trait:
 
-```rust
+```rust,ignore
 trait Trait<'a, 'b> { }
 impl<T> Trait<'_, '_> for T { }
 ```
 
 and this is the `make` function (in desugared form):
 
-```rust
+```rust,ignore
 type MakeReturn<'x, 'y> = impl Trait<'x, 'y>;
 fn make(a: &'a u32, b: &'b u32) -> MakeReturn<'a, 'b> {
   (a, b)
@@ -52,7 +52,7 @@ What happens in this case is that the return type will be `(&'0 u32, &'1 u32)`,
 where `'0` and `'1` are fresh region variables. We will have the following
 region constraints:
 
-```
+```txt
 '0 live at {L}
 '1 live at {L}
 'a: '0
@@ -73,7 +73,7 @@ u32)` -- the region variables reflect that the lifetimes of these
 references could be made smaller. For this value to be created from
 `a` and `b`, however, we do require that:
 
-```
+```txt
 (&'a u32, &'b u32) <: (&'0 u32, &'1 u32)
 ```
 

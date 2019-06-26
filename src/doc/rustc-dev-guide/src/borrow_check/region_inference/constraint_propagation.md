@@ -88,7 +88,7 @@ have to compute `Values(R1) = Values(R1) union Values(R2)`.
 One observation that follows from this is that if you have `R1: R2`
 and `R2: R1`, then `R1 = R2` must be true. Similarly, if you have:
 
-```
+```txt
 R1: R2
 R2: R3
 R3: R4
@@ -119,7 +119,7 @@ context.
 When using a graph representation, we can detect regions that must be equal
 by looking for cycles. That is, if you have a constraint like
 
-```
+```txt
 'a: 'b
 'b: 'c
 'c: 'd
@@ -153,7 +153,7 @@ When we compute SCCs, we not only figure out which regions are a
 member of each SCC, we also figure out the edges between them. So for example
 consider this set of outlives constraints:
 
-```
+```txt
 'a: 'b
 'b: 'a
 
@@ -178,7 +178,7 @@ expressed in terms of regions -- that is, we have a map like
 in terms of SCCs -- we can integrate these liveness constraints very
 easily just by taking the union:
 
-```
+```txt
 for each region R:
   let S be the SCC that contains R
   Values(S) = Values(S) union Liveness(R)
@@ -195,7 +195,7 @@ the value of `S1`, we first compute the values of each successor `S2`.
 Then we simply union all of those values together. To use a
 quasi-iterator-like notation:
 
-```
+```txt
 Values(S1) =
   s1.successors()
     .map(|s2| Values(s2))
