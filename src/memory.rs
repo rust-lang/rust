@@ -15,6 +15,16 @@ pub struct MemoryExtra {
     pub(crate) rng: Option<StdRng>
 }
 
+impl MemoryExtra {
+    pub fn with_rng(rng: Option<StdRng>) -> Self {
+        MemoryExtra {
+            stacked_borrows: Default::default(),
+            intptrcast: Default::default(),
+            rng,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AllocExtra {
     pub stacked_borrows: stacked_borrows::AllocExtra,

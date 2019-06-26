@@ -50,7 +50,7 @@ use crate::range_map::RangeMap;
 pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
 use crate::mono_hash_map::MonoHashMap;
 pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
-use crate::memory::AllocExtra;
+use crate::memory::{MemoryExtra, AllocExtra};
 
 // Used by priroda.
 pub use crate::stacked_borrows::{Tag, Permission, Stack, Stacks, Item};
@@ -83,10 +83,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(config.validate),
+        MemoryExtra::with_rng(config.seed.map(StdRng::seed_from_u64)),
     );
-
-    // FIXME: InterpretCx::new should take an initial MemoryExtra
-    ecx.memory_mut().extra.rng = config.seed.map(StdRng::seed_from_u64);
     
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
