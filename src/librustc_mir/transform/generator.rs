@@ -446,8 +446,9 @@ fn locals_live_across_suspend_points(
     // for.
     let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
     let requires_storage =
-        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis.clone(),
+        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());

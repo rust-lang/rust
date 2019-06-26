@@ -76,7 +76,6 @@ impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
 /// In the case of a movable generator, borrowed_locals can be `None` and we
 /// will not consider borrows in this pass. This relies on the fact that we only
 /// use this pass at yield points for these generators.
-#[derive(Clone)]
 pub struct RequiresStorage<'mir, 'tcx, 'b> {
     body: &'mir Body<'tcx>,
     borrowed_locals:

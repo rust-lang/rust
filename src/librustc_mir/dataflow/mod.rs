@@ -345,8 +345,7 @@ pub(crate) trait DataflowResultsConsumer<'a, 'tcx: 'a> {
 }
 
 /// Allows iterating dataflow results in a flexible and reasonably fast way.
-#[derive(Clone)]
-pub struct DataflowResultsCursor<'mir, 'tcx, BD, DR>
+pub struct DataflowResultsCursor<'mir, 'tcx, BD, DR = DataflowResults<'tcx, BD>>
 where
     BD: BitDenotation<'tcx>,
     DR: Borrow<DataflowResults<'tcx, BD>>,
