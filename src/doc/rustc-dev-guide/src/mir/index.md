@@ -138,7 +138,7 @@ than one successor – that is, control may flow to different
 places. Function calls like the call to `Vec::new` are always
 terminators because of the possibility of unwinding, although in the
 case of `Vec::new` we are able to see that indeed unwinding is not
-possible, and hence we list only one succssor block, `bb2`.
+possible, and hence we list only one successor block, `bb2`.
 
 If we look ahead to `bb2`, we will see it looks like this:
 
