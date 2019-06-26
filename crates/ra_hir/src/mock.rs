@@ -15,6 +15,7 @@ pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
 #[salsa::database(
     ra_db::SourceDatabaseStorage,
+    db::InternDatabaseStorage,
     db::AstDatabaseStorage,
     db::DefDatabaseStorage,
     db::HirDatabaseStorage

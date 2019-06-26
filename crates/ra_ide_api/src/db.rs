@@ -14,6 +14,7 @@ use crate::{LineIndex, symbol_index::{self, SymbolsDatabase}};
     ra_db::SourceDatabaseStorage,
     LineIndexDatabaseStorage,
     symbol_index::SymbolsDatabaseStorage,
+    hir::db::InternDatabaseStorage,
     hir::db::AstDatabaseStorage,
     hir::db::DefDatabaseStorage,
     hir::db::HirDatabaseStorage

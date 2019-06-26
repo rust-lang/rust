@@ -7,7 +7,7 @@ use ra_syntax::ast;
 
 use crate::{
     Function, Module, Struct, Union, Enum, Const, Static, Trait, TypeAlias, MacroDef,
-    DefDatabase, HirFileId, Name, Path, AstDatabase,
+    DefDatabase, HirFileId, Name, Path,
     KnownName, AstId,
     nameres::{
         Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode,
@@ -19,10 +19,7 @@ use crate::{
     either::Either,
 };
 
-pub(super) fn collect_defs(
-    db: &(impl DefDatabase + AstDatabase),
-    mut def_map: CrateDefMap,
-) -> CrateDefMap {
+pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
     // populate external prelude
     for dep in def_map.krate.dependencies(db) {
         log::debug!("crate dep {:?} -> {:?}", dep.name, dep.krate);
@@ -95,7 +92,7 @@ struct DefCollector<DB> {
 
 impl<'a, DB> DefCollector<&'a DB>
 where
-    DB: DefDatabase + AstDatabase,
+    DB: DefDatabase,
 {
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
@@ -465,7 +462,7 @@ where
             ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
                 .collect(raw_items.items());
         } else {
-            log::error!("Too deep macro expansion: {}", macro_call_id.debug_dump(self.db));
+            log::error!("Too deep macro expansion: {:?}", macro_call_id);
             self.def_map.poison_macros.insert(macro_def_id);
         }
 
@@ -487,7 +484,7 @@ struct ModCollector<'a, D> {
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
 where
-    DB: DefDatabase + AstDatabase,
+    DB: DefDatabase,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
         for item in items {
@@ -632,7 +629,7 @@ fn is_macro_rules(path: &Path) -> bool {
 }
 
 fn resolve_submodule(
-    db: &(impl DefDatabase + AstDatabase),
+    db: &impl DefDatabase,
     file_id: HirFileId,
     name: &Name,
     is_root: bool,
@@ -675,7 +672,7 @@ mod tests {
     use rustc_hash::FxHashSet;
 
     fn do_collect_defs(
-        db: &(impl DefDatabase + AstDatabase),
+        db: &impl DefDatabase,
         def_map: CrateDefMap,
         monitor: MacroStackMonitor,
     ) -> CrateDefMap {

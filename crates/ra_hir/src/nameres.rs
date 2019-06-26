@@ -231,7 +231,9 @@ fn or(left: ItemOrMacro, right: ItemOrMacro) -> ItemOrMacro {
 
 impl CrateDefMap {
     pub(crate) fn crate_def_map_query(
-        db: &(impl DefDatabase + AstDatabase),
+        // Note that this doesn't have `+ AstDatabase`!
+        // This gurantess that `CrateDefMap` is stable across reparses.
+        db: &impl DefDatabase,
         krate: Crate,
     ) -> Arc<CrateDefMap> {
         let _p = profile("crate_def_map_query");
