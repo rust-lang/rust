@@ -5795,7 +5795,6 @@ impl<'a> LoweringContext<'a> {
                     err.span_label(item_sp, "this is not `async`");
                 }
                 err.emit();
-                return hir::ExprKind::Err;
             }
         }
         let span = self.mark_span_with_reason(

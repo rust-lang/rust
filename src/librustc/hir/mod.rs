@@ -1713,7 +1713,7 @@ pub enum GeneratorMovability {
 }
 
 /// The yield kind that caused an `ExprKind::Yield`.
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum YieldSource {
     /// An `<expr>.await`.
     Await,
