@@ -426,10 +426,6 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
     to_string(|s| s.print_attribute(attr))
 }
 
-pub fn lit_to_string(l: &ast::Lit) -> String {
-    to_string(|s| s.print_literal(l))
-}
-
 pub fn variant_to_string(var: &ast::Variant) -> String {
     to_string(|s| s.print_variant(var))
 }
@@ -597,7 +593,7 @@ pub trait PrintState<'a> {
 
     fn print_literal(&mut self, lit: &ast::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.writer().word(literal_to_string(lit.token))
+        self.writer().word(lit.token.to_string())
     }
 
     fn print_string(&mut self, st: &str,

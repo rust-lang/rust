@@ -5,7 +5,7 @@ use syntax::parse::ParseSess;
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pprust::{self, PrintState};
+use syntax::print::pprust::PrintState;
 use syntax::symbol::kw;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
@@ -1226,7 +1226,7 @@ impl<'a> State<'a> {
 
     fn print_literal(&mut self, lit: &hir::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.writer().word(pprust::literal_to_string(lit.node.to_lit_token()))
+        self.writer().word(lit.node.to_lit_token().to_string())
     }
 
     pub fn print_expr(&mut self, expr: &hir::Expr) {
