@@ -79,7 +79,7 @@
             - [Constraint propagation](./borrow_check/region_inference/constraint_propagation.md)
             - [Lifetime parameters](./borrow_check/region_inference/lifetime_parameters.md)
             - [Member constraints](./borrow_check/region_inference/member_constraints.md)
-            - [Placeholders and universes](./borrow_check/region_inference/placeholders_and_universes.md)
+            - [Placeholders and universes][pau]
             - [Closure constraints](./borrow_check/region_inference/closure_constraints.md)
             - [Errror reporting](./borrow_check/region_inference/error_reporting.md)
         - [Two-phase-borrows](./borrow_check/two_phase_borrows.md)
@@ -100,3 +100,5 @@
 [Appendix D: Code Index](./appendix/code-index.md)
 [Appendix E: Bibliography](./appendix/bibliography.md)
 [](./important-links.md)
+
+[pau]: ./borrow_check/region_inference/placeholders_and_universes.md
