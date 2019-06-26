@@ -56,13 +56,13 @@
 #[allow_internal_unstable(__rust_unstable_column, libstd_sys_internals)]
 macro_rules! panic {
     () => ({
-        panic!("explicit panic")
+        $crate::panic!("explicit panic")
     });
     ($msg:expr) => ({
         $crate::rt::begin_panic($msg, &(file!(), line!(), __rust_unstable_column!()))
     });
     ($msg:expr,) => ({
-        panic!($msg)
+        $crate::panic!($msg)
     });
     ($fmt:expr, $($arg:tt)+) => ({
         $crate::rt::begin_panic_fmt(&format_args!($fmt, $($arg)+),
@@ -145,7 +145,7 @@ macro_rules! print {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! println {
-    () => (print!("\n"));
+    () => ($crate::print!("\n"));
     ($($arg:tt)*) => ({
         $crate::io::_print(format_args_nl!($($arg)*));
     })
@@ -204,7 +204,7 @@ macro_rules! eprint {
 #[stable(feature = "eprint", since = "1.19.0")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! eprintln {
-    () => (eprint!("\n"));
+    () => ($crate::eprint!("\n"));
     ($($arg:tt)*) => ({
         $crate::io::_eprint(format_args_nl!($($arg)*));
     })
@@ -337,23 +337,23 @@ macro_rules! eprintln {
 #[stable(feature = "dbg_macro", since = "1.32.0")]
 macro_rules! dbg {
     () => {
-        eprintln!("[{}:{}]", file!(), line!());
+        $crate::eprintln!("[{}:{}]", file!(), line!());
     };
     ($val:expr) => {
         // Use of `match` here is intentional because it affects the lifetimes
         // of temporaries - https://stackoverflow.com/a/48732525/1063961
         match $val {
             tmp => {
-                eprintln!("[{}:{}] {} = {:#?}",
+                $crate::eprintln!("[{}:{}] {} = {:#?}",
                     file!(), line!(), stringify!($val), &tmp);
                 tmp
             }
         }
     };
     // Trailing comma with single argument is ignored
-    ($val:expr,) => { dbg!($val) };
+    ($val:expr,) => { $crate::dbg!($val) };
     ($($val:expr),+ $(,)?) => {
-        ($(dbg!($val)),+,)
+        ($($crate::dbg!($val)),+,)
     };
 }
 

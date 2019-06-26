@@ -1,0 +1,12 @@
+error[E0658]: generic associated types are unstable
+  --> $DIR/gat-dont-ice-on-absent-feature.rs:7:5
+   |
+LL |     type Item<'b> = &'b Foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = help: add #![feature(generic_associated_types)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

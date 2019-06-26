@@ -64,7 +64,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             Err(OverflowError) => {
                 let mut selcx =
                     SelectionContext::with_query_mode(&self, TraitQueryMode::Standard);
-                selcx.evaluate_obligation_recursively(obligation)
+                selcx.evaluate_root_obligation(obligation)
                     .unwrap_or_else(|r| {
                         span_bug!(
                             obligation.cause.span,

@@ -29,7 +29,7 @@ fn evaluate_obligation<'tcx>(
             let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
             let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
 
-            selcx.evaluate_obligation_recursively(&obligation)
+            selcx.evaluate_root_obligation(&obligation)
         },
     )
 }

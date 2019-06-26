@@ -479,21 +479,22 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
         // the specialized routine `ty::replace_late_regions()`.
         match *r {
             ty::ReEarlyBound(data) => {
-                let r = self.substs.get(data.index as usize).map(|k| k.unpack());
-                match r {
+                let rk = self.substs.get(data.index as usize).map(|k| k.unpack());
+                match rk {
                     Some(UnpackedKind::Lifetime(lt)) => {
                         self.shift_region_through_binders(lt)
                     }
                     _ => {
                         let span = self.span.unwrap_or(DUMMY_SP);
-                        span_bug!(
-                            span,
+                        let msg = format!(
                             "Region parameter out of range \
                              when substituting in region {} (root type={:?}) \
                              (index={})",
                             data.name,
                             self.root_ty,
                             data.index);
+                        self.tcx.sess.delay_span_bug(span, &msg);
+                        r
                     }
                 }
             }
