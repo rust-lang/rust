@@ -980,7 +980,7 @@ fn gen_random<'mir, 'tcx>(
     }
     let ptr = dest.to_ptr()?;
 
-    let data = match &mut this.machine.rng {
+    let data = match &mut this.memory_mut().extra.rng {
         Some(rng) => {
             let mut data = vec![0; len];
             rng.fill_bytes(&mut data);

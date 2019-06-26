@@ -20,6 +20,8 @@ mod tls;
 mod range_map;
 mod mono_hash_map;
 mod stacked_borrows;
+mod intptrcast;
+mod memory;
 
 use std::collections::HashMap;
 use std::borrow::Cow;
@@ -48,6 +50,7 @@ use crate::range_map::RangeMap;
 pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
 use crate::mono_hash_map::MonoHashMap;
 pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
+use crate::memory::AllocExtra;
 
 // Used by priroda.
 pub use crate::stacked_borrows::{Tag, Permission, Stack, Stacks, Item};
@@ -79,9 +82,12 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let mut ecx = InterpretCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
-        Evaluator::new(config.validate, config.seed),
+        Evaluator::new(config.validate),
     );
 
+    // FIXME: InterpretCx::new should take an initial MemoryExtra
+    ecx.memory_mut().extra.rng = config.seed.map(StdRng::seed_from_u64);
+    
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
 
@@ -205,7 +211,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             cur_ptr = cur_ptr.offset(char_size, tcx)?;
         }
     }
-
+ 
     assert!(args.next().is_none(), "start lang item has more arguments than expected");
 
     Ok(ecx)
@@ -341,14 +347,10 @@ pub struct Evaluator<'tcx> {
 
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
-
-    /// The random number generator to use if Miri
-    /// is running in non-deterministic mode
-    pub(crate) rng: Option<StdRng>
 }
 
 impl<'tcx> Evaluator<'tcx> {
-    fn new(validate: bool, seed: Option<u64>) -> Self {
+    fn new(validate: bool) -> Self {
         Evaluator {
             env_vars: HashMap::default(),
             argc: None,
@@ -357,7 +359,6 @@ impl<'tcx> Evaluator<'tcx> {
             last_error: 0,
             tls: TlsData::default(),
             validate,
-            rng: seed.map(|s| StdRng::seed_from_u64(s))
         }
     }
 }
@@ -386,8 +387,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
 
     type FrameExtra = stacked_borrows::CallId;
-    type MemoryExtra = stacked_borrows::MemoryState;
-    type AllocExtra = stacked_borrows::Stacks;
+    type MemoryExtra = memory::MemoryExtra;
+    type AllocExtra = memory::AllocExtra;
     type PointerTag = Tag;
 
     type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Tag, Self::AllocExtra>)>;
@@ -512,17 +513,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (extra, base_tag) = Stacks::new_allocation(
+        let (stacks, base_tag) = Stacks::new_allocation(
             id,
             Size::from_bytes(alloc.bytes.len() as u64),
-            Rc::clone(&memory.extra),
+            Rc::clone(&memory.extra.stacked_borrows),
             kind,
         );
         if kind != MiriMemoryKind::Static.into() {
             assert!(alloc.relocations.is_empty(), "Only statics can come initialized with inner pointers");
             // Now we can rely on the inner pointers being static, too.
         }
-        let mut memory_extra = memory.extra.borrow_mut();
+        let mut memory_extra = memory.extra.stacked_borrows.borrow_mut();
         let alloc: Allocation<Tag, Self::AllocExtra> = Allocation {
             bytes: alloc.bytes,
             relocations: Relocations::from_presorted(
@@ -535,7 +536,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             undef_mask: alloc.undef_mask,
             align: alloc.align,
             mutability: alloc.mutability,
-            extra,
+            extra: AllocExtra {
+                stacked_borrows: stacks,
+                intptrcast: Default::default(),
+            },
         };
         (Cow::Owned(alloc), base_tag)
     }
@@ -545,7 +549,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         id: AllocId,
         memory: &Memory<'mir, 'tcx, Self>,
     ) -> Self::PointerTag {
-        memory.extra.borrow_mut().static_base_ptr(id)
+        memory.extra.stacked_borrows.borrow_mut().static_base_ptr(id)
     }
 
     #[inline(always)]
@@ -570,7 +574,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     fn stack_push(
         ecx: &mut InterpretCx<'mir, 'tcx, Self>,
     ) -> InterpResult<'tcx, stacked_borrows::CallId> {
-        Ok(ecx.memory().extra.borrow_mut().new_call())
+        Ok(ecx.memory().extra.stacked_borrows.borrow_mut().new_call())
     }
 
     #[inline(always)]
@@ -578,6 +582,30 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         extra: stacked_borrows::CallId,
     ) -> InterpResult<'tcx> {
-        Ok(ecx.memory().extra.borrow_mut().end_call(extra))
+        Ok(ecx.memory().extra.stacked_borrows.borrow_mut().end_call(extra))
+    }
+
+    fn int_to_ptr(
+        int: u64,
+        memory: &Memory<'mir, 'tcx, Self>,
+    ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
+        if int == 0 {
+            err!(InvalidNullPointerUsage)
+        } else if memory.extra.rng.is_none() {
+            err!(ReadBytesAsPointer)
+        } else {
+           intptrcast::GlobalState::int_to_ptr(int, memory)
+        }
+    }
+ 
+    fn ptr_to_int(
+        ptr: Pointer<Self::PointerTag>,
+        memory: &Memory<'mir, 'tcx, Self>,
+    ) -> InterpResult<'tcx, u64> {
+        if memory.extra.rng.is_none() {
+            err!(ReadPointerAsBytes)
+        } else {
+            intptrcast::GlobalState::ptr_to_int(ptr, memory)
+        }
     }
 }

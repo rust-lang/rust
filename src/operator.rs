@@ -56,6 +56,19 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 
+        // If intptrcast is enabled and the operation is not an offset
+        // we can force the cast from pointers to integer addresses and
+        // then dispatch to rustc binary operation method
+        if self.memory().extra.rng.is_some() && bin_op != Offset {
+            let l_bits = self.force_bits(left.imm.to_scalar()?, left.layout.size)?;
+            let r_bits = self.force_bits(right.imm.to_scalar()?, right.layout.size)?;
+            
+            let left = ImmTy::from_scalar(Scalar::from_uint(l_bits, left.layout.size), left.layout);
+            let right = ImmTy::from_scalar(Scalar::from_uint(r_bits, left.layout.size), right.layout);
+
+            return self.binary_op(bin_op, left, right);
+        } 
+
         // Operations that support fat pointers
         match bin_op {
             Eq | Ne => {
