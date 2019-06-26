@@ -6,7 +6,7 @@ use rustc_target::abi::Size;
 use crate::{stacked_borrows, intptrcast};
 use crate::stacked_borrows::Tag;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct MemoryExtra {
     pub stacked_borrows: stacked_borrows::MemoryExtra,
     pub intptrcast: intptrcast::MemoryExtra,
