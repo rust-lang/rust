@@ -16,5 +16,8 @@ fn fmt() {
     println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
     println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "Formatting check failed. Run `./util/dev fmt` to update formatting."
+    );
 }
