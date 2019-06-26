@@ -496,6 +496,7 @@ rustc_queries! {
         query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName {
             no_force
             desc { "computing the symbol for `{}`", key }
+            cache_on_disk_if { true }
         }
 
         query def_kind(_: DefId) -> Option<DefKind> {}
@@ -562,6 +563,7 @@ rustc_queries! {
             key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
         ) -> Vtable<'tcx, ()> {
             no_force
+            cache_on_disk_if { true }
             desc { |tcx|
                 "checking if `{}` fulfills its obligations",
                 tcx.def_path_str(key.1.def_id())
