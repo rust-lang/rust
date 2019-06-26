@@ -61,12 +61,14 @@ fn main() {
 // END rustc.foo.CopyPropagation.after.mir
 // START rustc.bar.CopyPropagation.before.mir
 // bb0: {
+//     StorageLive(_2);
 //     StorageLive(_3);
 //     _3 = _1;
 //     _2 = const dummy(move _3) -> bb1;
 // }
 // bb1: {
 //     StorageDead(_3);
+//     StorageDead(_2);
 //     _1 = const 5u8;
 //     ...
 //     return;

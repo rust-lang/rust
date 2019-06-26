@@ -71,12 +71,12 @@ fn main() {
 //      _7 = const guard() -> [return: bb7, unwind: bb1];
 //  }
 //  bb7: { // end of guard
-//      FakeRead(ForMatchGuard, _4);
-//      FakeRead(ForGuardBinding, _6);
 //      switchInt(move _7) -> [false: bb9, otherwise: bb8];
 //  }
 //  bb8: { // arm1
 //      StorageDead(_7);
+//      FakeRead(ForMatchGuard, _4);
+//      FakeRead(ForGuardBinding, _6);
 //      StorageLive(_5);
 //      _5 = ((_2 as Some).0: i32);
 //      StorageLive(_8);
@@ -138,12 +138,12 @@ fn main() {
 //      _7 = const guard() -> [return: bb6, unwind: bb1];
 //  }
 //  bb6: { // end of guard
-//      FakeRead(ForMatchGuard, _4);
-//      FakeRead(ForGuardBinding, _6);
 //      switchInt(move _7) -> [false: bb8, otherwise: bb7];
 //  }
 //  bb7: {
 //      StorageDead(_7);
+//      FakeRead(ForMatchGuard, _4);
+//      FakeRead(ForGuardBinding, _6);
 //      StorageLive(_5);
 //      _5 = ((_2 as Some).0: i32);
 //      StorageLive(_8);
@@ -209,12 +209,12 @@ fn main() {
 //      _8 = const guard() -> [return: bb6, unwind: bb1];
 //  }
 //  bb6: { //end of guard1
-//      FakeRead(ForMatchGuard, _5);
-//      FakeRead(ForGuardBinding, _7);
 //      switchInt(move _8) -> [false: bb8, otherwise: bb7];
 //  }
 //  bb7: {
 //      StorageDead(_8);
+//      FakeRead(ForMatchGuard, _5);
+//      FakeRead(ForGuardBinding, _7);
 //      StorageLive(_6);
 //      _6 = ((_2 as Some).0: i32);
 //      _1 = const 1i32;
@@ -245,12 +245,12 @@ fn main() {
 //  }
 //  bb11: { // end of guard2
 //      StorageDead(_13);
-//      FakeRead(ForMatchGuard, _5);
-//      FakeRead(ForGuardBinding, _11);
 //      switchInt(move _12) -> [false: bb13, otherwise: bb12];
 //  }
 //  bb12: { // binding4 & arm4
 //      StorageDead(_12);
+//      FakeRead(ForMatchGuard, _5);
+//      FakeRead(ForGuardBinding, _11);
 //      StorageLive(_10);
 //      _10 = ((_2 as Some).0: i32);
 //      _1 = const 3i32;

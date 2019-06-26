@@ -1,6 +1,7 @@
-use crate::build::scope::BreakableScope;
+use crate::build::scope::BreakableTarget;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
+use rustc::middle::region;
 use rustc::mir::*;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -8,14 +9,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// If the original expression was an AST statement,
     /// (e.g., `some().code(&here());`) then `opt_stmt_span` is the
     /// span of that statement (including its semicolon, if any).
-    /// Diagnostics use this span (which may be larger than that of
-    /// `expr`) to identify when statement temporaries are dropped.
-    pub fn stmt_expr(&mut self,
-                     mut block: BasicBlock,
-                     expr: Expr<'tcx>,
-                     opt_stmt_span: Option<StatementSpan>)
-                     -> BlockAnd<()>
-    {
+    /// The scope is used if a statement temporary must be dropped.
+    pub fn stmt_expr(
+        &mut self,
+        mut block: BasicBlock,
+        expr: Expr<'tcx>,
+        statement_scope: Option<region::Scope>,
+    ) -> BlockAnd<()> {
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr.span);
@@ -30,7 +30,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             } => {
                 let value = this.hir.mirror(value);
                 this.in_scope((region_scope, source_info), lint_level, |this| {
-                    this.stmt_expr(block, value, opt_stmt_span)
+                    this.stmt_expr(block, value, statement_scope)
                 })
             }
             ExprKind::Assign { lhs, rhs } => {
@@ -98,70 +98,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::Continue { label } => {
-                let BreakableScope {
-                    continue_block,
-                    region_scope,
-                    ..
-                } = *this.find_breakable_scope(expr_span, label);
-                let continue_block = continue_block
-                    .expect("Attempted to continue in non-continuable breakable block");
-                this.exit_scope(
-                    expr_span,
-                    (region_scope, source_info),
-                    block,
-                    continue_block,
-                );
-                this.cfg.start_new_block().unit()
+                this.break_scope(block, None, BreakableTarget::Continue(label), source_info)
             }
             ExprKind::Break { label, value } => {
-                let (break_block, region_scope, destination) = {
-                    let BreakableScope {
-                        break_block,
-                        region_scope,
-                        ref break_destination,
-                        ..
-                    } = *this.find_breakable_scope(expr_span, label);
-                    (break_block, region_scope, break_destination.clone())
-                };
-                if let Some(value) = value {
-                    debug!("stmt_expr Break val block_context.push(SubExpr) : {:?}", expr2);
-                    this.block_context.push(BlockFrame::SubExpr);
-                    unpack!(block = this.into(&destination, block, value));
-                    this.block_context.pop();
-                } else {
-                    this.cfg.push_assign_unit(block, source_info, &destination)
-                }
-                this.exit_scope(expr_span, (region_scope, source_info), block, break_block);
-                this.cfg.start_new_block().unit()
+                this.break_scope(block, value, BreakableTarget::Break(label), source_info)
             }
             ExprKind::Return { value } => {
-                block = match value {
-                    Some(value) => {
-                        debug!("stmt_expr Return val block_context.push(SubExpr) : {:?}", expr2);
-                        this.block_context.push(BlockFrame::SubExpr);
-                        let result = unpack!(
-                            this.into(
-                                &Place::RETURN_PLACE,
-                                block,
-                                value
-                            )
-                        );
-                        this.block_context.pop();
-                        result
-                    }
-                    None => {
-                        this.cfg.push_assign_unit(
-                            block,
-                            source_info,
-                            &Place::RETURN_PLACE,
-                        );
-                        block
-                    }
-                };
-                let region_scope = this.region_scope_of_return_scope();
-                let return_block = this.return_block();
-                this.exit_scope(expr_span, (region_scope, source_info), block, return_block);
-                this.cfg.start_new_block().unit()
+                this.break_scope(block, value, BreakableTarget::Return, source_info)
             }
             ExprKind::InlineAsm {
                 asm,
@@ -199,7 +142,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             _ => {
-                let expr_ty = expr.ty;
+                assert!(
+                    statement_scope.is_some(),
+                    "Should not be calling `stmt_expr` on a general expression \
+                     without a statement scope",
+                );
 
                 // Issue #54382: When creating temp for the value of
                 // expression like:
@@ -208,48 +155,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // it is usually better to focus on `the_value` rather
                 // than the entirety of block(s) surrounding it.
-                let mut temp_span = expr_span;
-                let mut temp_in_tail_of_block = false;
-                if let ExprKind::Block { body } = expr.kind {
-                    if let Some(tail_expr) = &body.expr {
-                        let mut expr = tail_expr;
-                        while let rustc::hir::ExprKind::Block(subblock, _label) = &expr.node {
-                            if let Some(subtail_expr) = &subblock.expr {
-                                expr = subtail_expr
-                            } else {
-                                break;
+                let adjusted_span = (|| {
+                    if let ExprKind::Block { body } = expr.kind {
+                        if let Some(tail_expr) = &body.expr {
+                            let mut expr = tail_expr;
+                            while let rustc::hir::ExprKind::Block(subblock, _label) = &expr.node {
+                                if let Some(subtail_expr) = &subblock.expr {
+                                    expr = subtail_expr
+                                } else {
+                                    break;
+                                }
                             }
-                        }
-                        temp_span = expr.span;
-                        temp_in_tail_of_block = true;
-                    }
-                }
-
-                let temp = {
-                    let mut local_decl = LocalDecl::new_temp(expr.ty.clone(), temp_span);
-                    if temp_in_tail_of_block {
-                        if this.block_context.currently_ignores_tail_results() {
-                            local_decl = local_decl.block_tail(BlockTailInfo {
+                            this.block_context.push(BlockFrame::TailExpr {
                                 tail_result_is_ignored: true
                             });
+                            return Some(expr.span);
                         }
                     }
-                    let temp = this.local_decls.push(local_decl);
-                    let place = Place::from(temp);
-                    debug!("created temp {:?} for expr {:?} in block_context: {:?}",
-                           temp, expr, this.block_context);
-                    place
-                };
-                unpack!(block = this.into(&temp, block, expr));
+                    None
+                })();
 
-                // Attribute drops of the statement's temps to the
-                // semicolon at the statement's end.
-                let drop_point = this.hir.tcx().sess.source_map().end_point(match opt_stmt_span {
-                    None => expr_span,
-                    Some(StatementSpan(span)) => span,
-                });
+                let temp = unpack!(block =
+                    this.as_temp(block, statement_scope, expr, Mutability::Not));
 
-                unpack!(block = this.build_drop(block, drop_point, temp, expr_ty));
+                if let Some(span) = adjusted_span {
+                    this.local_decls[temp].source_info.span = span;
+                    this.block_context.pop();
+                }
+
                 block.unit()
             }
         }

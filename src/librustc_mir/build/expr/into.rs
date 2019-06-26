@@ -179,20 +179,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // conduct the test, if necessary
                         let body_block;
                         if let Some(cond_expr) = opt_cond_expr {
-                            let loop_block_end;
-                            let cond = unpack!(
-                                loop_block_end = this.as_local_operand(loop_block, cond_expr)
-                            );
-                            body_block = this.cfg.start_new_block();
-                            let term =
-                                TerminatorKind::if_(this.hir.tcx(), cond, body_block, exit_block);
-                            this.cfg.terminate(loop_block_end, source_info, term);
+                            let cond_expr = this.hir.mirror(cond_expr);
+                            let (true_block, false_block)
+                                = this.test_bool(loop_block, cond_expr, source_info);
+                            body_block = true_block;
 
                             // if the test is false, there's no `break` to assign `destination`, so
-                            // we have to do it; this overwrites any `break`-assigned value but it's
-                            // always `()` anyway
-                            this.cfg
-                                .push_assign_unit(exit_block, source_info, destination);
+                            // we have to do it
+                            this.cfg.push_assign_unit(false_block, source_info, destination);
+                            this.cfg.terminate(
+                                false_block,
+                                source_info,
+                                TerminatorKind::Goto { target: exit_block },
+                            );
                         } else {
                             body_block = this.cfg.start_new_block();
                             let diverge_cleanup = this.diverge_cleanup();

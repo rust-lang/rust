@@ -54,11 +54,11 @@ fn main() {
 //        _8 = &shallow _1;
 //        StorageLive(_9);
 //        _9 = _2;
-//        FakeRead(ForMatchGuard, _8);
 //        switchInt(move _9) -> [false: bb11, otherwise: bb10];
 //    }
 //    bb10: {
 //        StorageDead(_9);
+//        FakeRead(ForMatchGuard, _8);
 //        _3 = const 0i32;
 //        goto -> bb14;
 //    }
@@ -75,6 +75,7 @@ fn main() {
 //        goto -> bb14;
 //    }
 //    bb14: {
+//        StorageDead(_3);
 //        _0 = ();
 //        StorageDead(_2);
 //        StorageDead(_1);

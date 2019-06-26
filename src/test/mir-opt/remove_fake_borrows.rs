@@ -38,14 +38,14 @@ fn main() {
 //     _7 = &shallow (*(*((_1 as Some).0: &'<empty> &'<empty> i32)));
 //     StorageLive(_8);
 //     _8 = _2;
-//     FakeRead(ForMatchGuard, _4);
-//     FakeRead(ForMatchGuard, _5);
-//     FakeRead(ForMatchGuard, _6);
-//     FakeRead(ForMatchGuard, _7);
 //     switchInt(move _8) -> [false: bb6, otherwise: bb5];
 // }
 // bb5: {
 //     StorageDead(_8);
+//     FakeRead(ForMatchGuard, _4);
+//     FakeRead(ForMatchGuard, _5);
+//     FakeRead(ForMatchGuard, _6);
+//     FakeRead(ForMatchGuard, _7);
 //     _0 = const 0i32;
 //     goto -> bb7;
 // }
@@ -84,14 +84,14 @@ fn main() {
 //     nop;
 //     StorageLive(_8);
 //     _8 = _2;
-//     nop;
-//     nop;
-//     nop;
-//     nop;
 //     switchInt(move _8) -> [false: bb6, otherwise: bb5];
 // }
 // bb5: {
 //     StorageDead(_8);
+//     nop;
+//     nop;
+//     nop;
+//     nop;
 //     _0 = const 0i32;
 //     goto -> bb7;
 // }

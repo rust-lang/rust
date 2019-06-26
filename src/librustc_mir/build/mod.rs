@@ -251,7 +251,7 @@ struct Builder<'a, 'tcx> {
 
     /// The current set of scopes, updated as we traverse;
     /// see the `scope` module for more details.
-    scopes: Vec<scope::Scope<'tcx>>,
+    scopes: scope::Scopes<'tcx>,
 
     /// The block-context: each time we build the code within an hair::Block,
     /// we push a frame here tracking whether we are building a statement or
@@ -273,10 +273,6 @@ struct Builder<'a, 'tcx> {
 
     /// The number of `push_unsafe_block` levels in scope.
     push_unsafe_count: usize,
-
-    /// The current set of breakables; see the `scope` module for more
-    /// details.
-    breakable_scopes: Vec<scope::BreakableScope<'tcx>>,
 
     /// The vector of all scopes that we have created thus far;
     /// we track this for debuginfo later.
@@ -714,7 +710,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             fn_span: span,
             arg_count,
             is_generator,
-            scopes: vec![],
+            scopes: Default::default(),
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
@@ -722,7 +718,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             guard_context: vec![],
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
-            breakable_scopes: vec![],
             local_decls: IndexVec::from_elem_n(
                 LocalDecl::new_return_place(return_ty, return_span),
                 1,
@@ -814,7 +809,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
                 pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                argument_scope, &place, ty, DropKind::Value,
+                argument_scope, local, ty, DropKind::Value,
             );
 
             if let Some(pattern) = pattern {
@@ -865,7 +860,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Place::RETURN_PLACE, block, body)
+        // `return_block` is called when we evaluate a `return` expression, so
+        // we just use `START_BLOCK` here.
+        self.in_breakable_scope(None, START_BLOCK, Place::RETURN_PLACE, |this| {
+            this.into(&Place::RETURN_PLACE, block, body)
+        })
     }
 
     fn get_unit_temp(&mut self) -> Place<'tcx> {

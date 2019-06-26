@@ -21,7 +21,7 @@ fn main() {
 //     let _2: i32;
 //     let mut _3: bool;
 //     let mut _4: !;
-//     let mut _5: ();
+//     let _5: ();
 //     let mut _6: &i32;
 //     scope 1 {
 //     }
@@ -73,12 +73,14 @@ fn main() {
 //     bb12: {
 //         FakeRead(ForLet, _2);
 //         StorageDead(_3);
+//         StorageLive(_5);
 //         StorageLive(_6);
 //         _6 = &_2;
 //         _5 = const std::mem::drop::<&i32>(move _6) -> [return: bb13, unwind: bb4];
 //     }
 //     bb13: {
 //         StorageDead(_6);
+//         StorageDead(_5);
 //         _1 = ();
 //         StorageDead(_2);
 //         goto -> bb1;
