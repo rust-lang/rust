@@ -38,7 +38,15 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
     let m = p.start();
     attributes::outer_attributes(p);
     let m = match maybe_item(p, m, flavor) {
-        Ok(()) => return,
+        Ok(()) => {
+            if p.at(T![;]) {
+                p.err_and_bump(
+                    "expected item, found `;`\n\
+                     consider removing this semicolon",
+                );
+            }
+            return;
+        }
         Err(m) => m,
     };
     if paths::is_path_start(p) {
@@ -263,12 +271,6 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         }
         _ => return Err(m),
     };
-    if p.at(T![;]) {
-        p.err_and_bump(
-            "expected item, found `;`\n\
-             consider removing this semicolon",
-        );
-    }
     Ok(())
 }
 

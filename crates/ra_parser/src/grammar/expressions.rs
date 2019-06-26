@@ -181,6 +181,17 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
         // fn foo(){
         //     ;;;some_expr();;;;{;;;};;;;Ok(())
         // }
+
+        // test nocontentexpr_after_item
+        // fn simple_function() {
+        //     enum LocalEnum {
+        //         One,
+        //         Two,
+        //     };
+        //     fn f() {};
+        //     struct S {};
+        // }
+
         if p.current() == T![;] {
             p.bump();
             continue;
