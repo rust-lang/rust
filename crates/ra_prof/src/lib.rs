@@ -255,6 +255,39 @@ impl Drop for Scope {
     }
 }
 
+/// A wrapper around https://github.com/AtheMathmo/cpuprofiler
+///
+/// It can be used to capture sampling profiles of sections of code.
+/// It is not exactly out-of-the-box, as it relies on gperftools.
+/// See the docs for the crate for more!
+#[derive(Debug)]
+pub struct CpuProfiler {
+    _private: (),
+}
+
+pub fn cpu_profiler() -> CpuProfiler {
+    #[cfg(feature = "cpuprofiler")]
+    {
+        cpuprofiler::PROFILER.lock().unwrap().start("./out.profile").unwrap();
+    }
+
+    #[cfg(not(feature = "cpuprofiler"))]
+    {
+        eprintln!("cpuprofiler feature is disabled")
+    }
+
+    CpuProfiler { _private: () }
+}
+
+impl Drop for CpuProfiler {
+    fn drop(&mut self) {
+        #[cfg(feature = "cpuprofiler")]
+        {
+            cpuprofiler::PROFILER.lock().unwrap().stop().unwrap();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
