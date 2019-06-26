@@ -5,7 +5,7 @@ version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
 [dependencies]
-salsa = "0.12.3"
+salsa = "0.13.0"
 relative-path = "0.4.0"
 rustc-hash = "1.0"
 

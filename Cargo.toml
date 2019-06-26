@@ -6,3 +6,4 @@ incremental = true
 debug = 1 # only line info
 
 [patch.'crates-io']
+salsa = { git = "https://github.com/nikomatsakis/salsa", branch = "durability" }

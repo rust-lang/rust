@@ -1,7 +1,7 @@
 use std::{sync::Arc, time};
 
 use ra_db::{
-    salsa::{self, Database},
+    salsa::{self, Database, Durability},
     Canceled, CheckCanceled, FileId, SourceDatabase,
 };
 
@@ -57,9 +57,9 @@ impl RootDatabase {
             last_gc: time::Instant::now(),
             last_gc_check: time::Instant::now(),
         };
-        db.set_crate_graph(Default::default());
-        db.set_local_roots(Default::default());
-        db.set_library_roots(Default::default());
+        db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
+        db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
+        db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
         let lru_capacity = lru_capacity.unwrap_or(ra_db::DEFAULT_LRU_CAP);
         db.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_capacity);
         db.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(lru_capacity);

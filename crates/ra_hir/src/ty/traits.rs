@@ -38,7 +38,7 @@ impl TraitSolver {
     ) -> Option<chalk_solve::Solution> {
         let context = ChalkContext { db, krate: self.krate };
         debug!("solve goal: {:?}", goal);
-        let solution = self.inner.lock().solve_with_fuel(&context, goal, Some(1000));
+        let solution = self.inner.lock().solve(&context, goal);
         debug!("solve({:?}) => {:?}", goal, solution);
         solution
     }
