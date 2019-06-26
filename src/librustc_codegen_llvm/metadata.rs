@@ -8,7 +8,6 @@ use rustc_data_structures::owning_ref::OwningRef;
 use rustc_codegen_ssa::METADATA_FILENAME;
 
 use std::path::Path;
-use std::ptr;
 use std::slice;
 use rustc_fs_util::path_to_c_string;
 
@@ -67,10 +66,16 @@ fn search_meta_section<'a>(of: &'a ObjectFile,
     unsafe {
         let si = mk_section_iter(of.llof);
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
-            let mut name_buf = ptr::null();
+            let mut name_buf = None;
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
-            let name = slice::from_raw_parts(name_buf as *const u8, name_len as usize).to_vec();
-            let name = String::from_utf8(name).unwrap();
+            let name = name_buf.map_or(
+                String::new(), // We got a NULL ptr, ignore `name_len`.
+                |buf| String::from_utf8(
+                    slice::from_raw_parts(buf.as_ptr() as *const u8,
+                                          name_len as usize)
+                    .to_vec()
+                ).unwrap()
+            );
             debug!("get_metadata_section: name {}", name);
             if read_metadata_section_name(target) == name {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
