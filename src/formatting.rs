@@ -313,7 +313,8 @@ impl FormattingError {
             | ErrorKind::DeprecatedAttr
             | ErrorKind::BadIssue(_)
             | ErrorKind::BadAttr
-            | ErrorKind::LostComment => {
+            | ErrorKind::LostComment
+            | ErrorKind::LicenseCheck => {
                 let trailing_ws_start = self
                     .line_buffer
                     .rfind(|c: char| !c.is_whitespace())
