@@ -22,7 +22,7 @@ matrix:
     # Images used in testing PR and try-build should be run first.
     - env: IMAGE=x86_64-gnu-llvm-6.0 RUST_BACKTRACE=1
       name: x86_64-gnu-llvm-6.0
-      if: type = pull_request OR branch = auto
+      if: branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
       name: dist-x86_64-linux
@@ -227,7 +227,7 @@ matrix:
       if: branch = auto
     - env: IMAGE=mingw-check
       name: mingw-check
-      if: type = pull_request OR branch = auto
+      if: branch = auto
 
     - stage: publish toolstate
       if: branch = master AND type = push
