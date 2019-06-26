@@ -51,8 +51,8 @@ Rust, as well as publications about Rust.
   idea](https://www.usenix.org/conference/hotpar12/parallel-closures-new-twist-old-idea)
   - not exactly about Rust, but by nmatsakis
 * [Patina: A Formalization of the Rust Programming
-  Language](ftp://ftp.cs.washington.edu/tr/2015/03/UW-CSE-15-03-02.pdf). Early
-  formalization of a subset of the type system, by Eric Reed.
+  Language](http://dada.cs.washington.edu/research/tr/2015/03/UW-CSE-15-03-02.pdf).
+  Early formalization of a subset of the type system, by Eric Reed.
 * [Experience Report: Developing the Servo Web Browser Engine using
   Rust](http://arxiv.org/abs/1505.07383). By Lars Bergstrom.
 * [Implementing a Generic Radix Trie in
