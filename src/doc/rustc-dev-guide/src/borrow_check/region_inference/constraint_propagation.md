@@ -11,7 +11,7 @@ on one at a time (each of them is fairly independent from the others):
 - [member constraints][m_c] (`member R_m of [R_c...]`), which arise from impl Trait.
 
 [`propagate_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.propagate_constraints
-[m_c]: ./member_constraints.html
+[m_c]: ./member_constraints.md
 
 In this chapter, we'll explain the "heart" of constraint propagation,
 covering both liveness and outlives constraints.
@@ -29,7 +29,7 @@ given some set of constraints `{C}` and it computes a set of values
   - For each constraint C:
     - Update `Values` as needed to satisfy the constraint
 
-[riv]: ../region-inference.html#region-variables
+[riv]: ../region_inference.md#region-variables
 
 As a simple example, if we have a liveness constraint `R live at E`,
 then we can apply `Values(R) = Values(R) union {E}` to make the
@@ -55,7 +55,7 @@ includes a region R is live at some [point] P. This simply means that
 the value of R must include the point P. Liveness constraints are
 computed by the MIR type checker.
 
-[point]: ../../appendix/glossary.html
+[point]: ../../appendix/glossary.md
 
 A liveness constraint `R live at E` is satisfied if `E` is a member of
 `Values(R)`. So to "apply" such a constraint to `Values`, we just have

@@ -36,7 +36,7 @@ the type of `foo`   the type `bar` expects
 
 We handle this sort of subtyping by taking the variables that are
 bound in the supertype and replacing them with
-[universally quantified](../appendix/background.html#quantified)
+[universally quantified](../../appendix/background.md#quantified)
 representatives, denoted like `!1` here. We call these regions "placeholder
 regions" – they represent, basically, "some unknown region".
 
@@ -53,7 +53,7 @@ what we wanted.
 
 So let's work through what happens next. To check if two functions are
 subtypes, we check if their arguments have the desired relationship
-(fn arguments are [contravariant](../appendix/background.html#variance), so
+(fn arguments are [contravariant](../../appendix/background.md#variance), so
 we swap the left and right here):
 
 ```text
@@ -92,7 +92,7 @@ Here, the root universe would consist of the lifetimes `'static` and
 the same concept to types, in which case the types `Foo` and `T` would
 be in the root universe (along with other global types, like `i32`).
 Basically, the root universe contains all the names that
-[appear free](../appendix/background.html#free-vs-bound) in the body of `bar`.
+[appear free](../../appendix/background.md#free-vs-bound) in the body of `bar`.
 
 Now let's extend `bar` a bit by adding a variable `x`:
 
