@@ -26,14 +26,14 @@ matrix:
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
       name: dist-x86_64-linux
-      if: branch = try OR branch = auto
+      if: branch = auto
 
     # "alternate" deployments, these are "nightlies" but have LLVM assertions
     # turned on, they're deployed to a different location primarily for
     # additional testing.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
       name: dist-x86_64-linux-alt
-      if: branch = try OR branch = auto
+      if: branch = auto
 
     - env: >
         SCRIPT="./x.py dist"
