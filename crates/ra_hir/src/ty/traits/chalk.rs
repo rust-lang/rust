@@ -10,7 +10,7 @@ use test_utils::tested_by;
 use ra_db::salsa::{InternId, InternKey};
 
 use crate::{
-    Trait, HasGenericParams, ImplBlock,
+    Trait, HasGenericParams, ImplBlock, Crate,
     db::HirDatabase,
     ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate, CallableDef, ProjectionTy},
     ty::display::HirDisplay,
@@ -256,204 +256,16 @@ where
     DB: HirDatabase,
 {
     fn associated_ty_data(&self, id: TypeId) -> Arc<AssociatedTyDatum> {
-        debug!("associated_ty_data {:?}", id);
-        let type_alias: TypeAlias = from_chalk(self.db, id);
-        let trait_ = match type_alias.container(self.db) {
-            Some(crate::Container::Trait(t)) => t,
-            _ => panic!("associated type not in trait"),
-        };
-        let generic_params = type_alias.generic_params(self.db);
-        let parameter_kinds = generic_params
-            .params_including_parent()
-            .into_iter()
-            .map(|p| chalk_ir::ParameterKind::Ty(lalrpop_intern::intern(&p.name.to_string())))
-            .collect();
-        let datum = AssociatedTyDatum {
-            trait_id: trait_.to_chalk(self.db),
-            id,
-            name: lalrpop_intern::intern(&type_alias.name(self.db).to_string()),
-            parameter_kinds,
-            // FIXME add bounds and where clauses
-            bounds: vec![],
-            where_clauses: vec![],
-        };
-        Arc::new(datum)
+        self.db.associated_ty_data(id)
     }
     fn trait_datum(&self, trait_id: chalk_ir::TraitId) -> Arc<TraitDatum> {
-        debug!("trait_datum {:?}", trait_id);
-        if trait_id == UNKNOWN_TRAIT {
-            let trait_datum_bound = chalk_rust_ir::TraitDatumBound {
-                trait_ref: chalk_ir::TraitRef {
-                    trait_id: UNKNOWN_TRAIT,
-                    parameters: vec![chalk_ir::Ty::BoundVar(0).cast()],
-                },
-                associated_ty_ids: Vec::new(),
-                where_clauses: Vec::new(),
-                flags: chalk_rust_ir::TraitFlags {
-                    auto: false,
-                    marker: false,
-                    upstream: true,
-                    fundamental: false,
-                },
-            };
-            return Arc::new(TraitDatum { binders: make_binders(trait_datum_bound, 1) });
-        }
-        let trait_: Trait = from_chalk(self.db, trait_id);
-        debug!("trait {:?} = {:?}", trait_id, trait_.name(self.db));
-        let generic_params = trait_.generic_params(self.db);
-        let bound_vars = Substs::bound_vars(&generic_params);
-        let trait_ref = trait_.trait_ref(self.db).subst(&bound_vars).to_chalk(self.db);
-        let flags = chalk_rust_ir::TraitFlags {
-            auto: trait_.is_auto(self.db),
-            upstream: trait_.module(self.db).krate(self.db) != Some(self.krate),
-            // FIXME set these flags correctly
-            marker: false,
-            fundamental: false,
-        };
-        let where_clauses = convert_where_clauses(self.db, trait_.into(), &bound_vars);
-        let associated_ty_ids = trait_
-            .items(self.db)
-            .into_iter()
-            .filter_map(|trait_item| match trait_item {
-                crate::traits::TraitItem::TypeAlias(type_alias) => Some(type_alias),
-                _ => None,
-            })
-            .map(|type_alias| type_alias.to_chalk(self.db))
-            .collect();
-        let trait_datum_bound =
-            chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, flags, associated_ty_ids };
-        let trait_datum = TraitDatum { binders: make_binders(trait_datum_bound, bound_vars.len()) };
-        Arc::new(trait_datum)
+        self.db.trait_datum(self.krate, trait_id)
     }
     fn struct_datum(&self, struct_id: chalk_ir::StructId) -> Arc<StructDatum> {
-        debug!("struct_datum {:?}", struct_id);
-        let type_ctor = from_chalk(self.db, struct_id);
-        debug!("struct {:?} = {:?}", struct_id, type_ctor);
-        // FIXME might be nicer if we can create a fake GenericParams for the TypeCtor
-        // FIXME extract this to a method on Ty
-        let (num_params, where_clauses, upstream) = match type_ctor {
-            TypeCtor::Bool
-            | TypeCtor::Char
-            | TypeCtor::Int(_)
-            | TypeCtor::Float(_)
-            | TypeCtor::Never
-            | TypeCtor::Str => (0, vec![], true),
-            TypeCtor::Slice | TypeCtor::Array | TypeCtor::RawPtr(_) | TypeCtor::Ref(_) => {
-                (1, vec![], true)
-            }
-            TypeCtor::FnPtr { num_args } => (num_args as usize + 1, vec![], true),
-            TypeCtor::Tuple { cardinality } => (cardinality as usize, vec![], true),
-            TypeCtor::FnDef(callable) => {
-                tested_by!(trait_resolution_on_fn_type);
-                let krate = match callable {
-                    CallableDef::Function(f) => f.module(self.db).krate(self.db),
-                    CallableDef::Struct(s) => s.module(self.db).krate(self.db),
-                    CallableDef::EnumVariant(v) => {
-                        v.parent_enum(self.db).module(self.db).krate(self.db)
-                    }
-                };
-                let generic_def: GenericDef = match callable {
-                    CallableDef::Function(f) => f.into(),
-                    CallableDef::Struct(s) => s.into(),
-                    CallableDef::EnumVariant(v) => v.parent_enum(self.db).into(),
-                };
-                let generic_params = generic_def.generic_params(self.db);
-                let bound_vars = Substs::bound_vars(&generic_params);
-                let where_clauses = convert_where_clauses(self.db, generic_def, &bound_vars);
-                (
-                    generic_params.count_params_including_parent(),
-                    where_clauses,
-                    krate != Some(self.krate),
-                )
-            }
-            TypeCtor::Adt(adt) => {
-                let generic_params = adt.generic_params(self.db);
-                let bound_vars = Substs::bound_vars(&generic_params);
-                let where_clauses = convert_where_clauses(self.db, adt.into(), &bound_vars);
-                (
-                    generic_params.count_params_including_parent(),
-                    where_clauses,
-                    adt.krate(self.db) != Some(self.krate),
-                )
-            }
-        };
-        let flags = chalk_rust_ir::StructFlags {
-            upstream,
-            // FIXME set fundamental flag correctly
-            fundamental: false,
-        };
-        let self_ty = chalk_ir::ApplicationTy {
-            name: TypeName::TypeKindId(type_ctor.to_chalk(self.db).into()),
-            parameters: (0..num_params).map(|i| chalk_ir::Ty::BoundVar(i).cast()).collect(),
-        };
-        let struct_datum_bound = chalk_rust_ir::StructDatumBound {
-            self_ty,
-            fields: Vec::new(), // FIXME add fields (only relevant for auto traits)
-            where_clauses,
-            flags,
-        };
-        let struct_datum = StructDatum { binders: make_binders(struct_datum_bound, num_params) };
-        Arc::new(struct_datum)
+        self.db.struct_datum(self.krate, struct_id)
     }
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
-        debug!("impl_datum {:?}", impl_id);
-        let impl_block: ImplBlock = from_chalk(self.db, impl_id);
-        let generic_params = impl_block.generic_params(self.db);
-        let bound_vars = Substs::bound_vars(&generic_params);
-        let trait_ref = impl_block
-            .target_trait_ref(self.db)
-            .expect("FIXME handle unresolved impl block trait ref")
-            .subst(&bound_vars);
-        let impl_type = if impl_block.module().krate(self.db) == Some(self.krate) {
-            chalk_rust_ir::ImplType::Local
-        } else {
-            chalk_rust_ir::ImplType::External
-        };
-        let where_clauses = convert_where_clauses(self.db, impl_block.into(), &bound_vars);
-        let negative = impl_block.is_negative(self.db);
-        debug!(
-            "impl {:?}: {}{} where {:?}",
-            impl_id,
-            if negative { "!" } else { "" },
-            trait_ref.display(self.db),
-            where_clauses
-        );
-        let trait_ = trait_ref.trait_;
-        let trait_ref = trait_ref.to_chalk(self.db);
-        let associated_ty_values = impl_block
-            .items(self.db)
-            .into_iter()
-            .filter_map(|item| match item {
-                ImplItem::TypeAlias(t) => Some(t),
-                _ => None,
-            })
-            .filter_map(|t| {
-                let assoc_ty = trait_.associated_type_by_name(self.db, t.name(self.db))?;
-                let ty = self.db.type_for_def(t.into(), crate::Namespace::Types).subst(&bound_vars);
-                Some(chalk_rust_ir::AssociatedTyValue {
-                    impl_id,
-                    associated_ty_id: assoc_ty.to_chalk(self.db),
-                    value: chalk_ir::Binders {
-                        value: chalk_rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(self.db) },
-                        binders: vec![], // we don't support GATs yet
-                    },
-                })
-            })
-            .collect();
-
-        let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
-            trait_ref: if negative {
-                chalk_rust_ir::PolarizedTraitRef::Negative(trait_ref)
-            } else {
-                chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref)
-            },
-            where_clauses,
-            associated_ty_values,
-            impl_type,
-        };
-        debug!("impl_datum: {:?}", impl_datum_bound);
-        let impl_datum = ImplDatum { binders: make_binders(impl_datum_bound, bound_vars.len()) };
-        Arc::new(impl_datum)
+        self.db.impl_datum(self.krate, impl_id)
     }
     fn impls_for_trait(&self, trait_id: chalk_ir::TraitId) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
@@ -501,6 +313,220 @@ where
         // FIXME
         vec![]
     }
+}
+
+pub(crate) fn associated_ty_data_query(
+    db: &impl HirDatabase,
+    id: TypeId,
+) -> Arc<AssociatedTyDatum> {
+    debug!("associated_ty_data {:?}", id);
+    let type_alias: TypeAlias = from_chalk(db, id);
+    let trait_ = match type_alias.container(db) {
+        Some(crate::Container::Trait(t)) => t,
+        _ => panic!("associated type not in trait"),
+    };
+    let generic_params = type_alias.generic_params(db);
+    let parameter_kinds = generic_params
+        .params_including_parent()
+        .into_iter()
+        .map(|p| chalk_ir::ParameterKind::Ty(lalrpop_intern::intern(&p.name.to_string())))
+        .collect();
+    let datum = AssociatedTyDatum {
+        trait_id: trait_.to_chalk(db),
+        id,
+        name: lalrpop_intern::intern(&type_alias.name(db).to_string()),
+        parameter_kinds,
+        // FIXME add bounds and where clauses
+        bounds: vec![],
+        where_clauses: vec![],
+    };
+    Arc::new(datum)
+}
+
+pub(crate) fn trait_datum_query(
+    db: &impl HirDatabase,
+    krate: Crate,
+    trait_id: chalk_ir::TraitId,
+) -> Arc<TraitDatum> {
+    debug!("trait_datum {:?}", trait_id);
+    if trait_id == UNKNOWN_TRAIT {
+        let trait_datum_bound = chalk_rust_ir::TraitDatumBound {
+            trait_ref: chalk_ir::TraitRef {
+                trait_id: UNKNOWN_TRAIT,
+                parameters: vec![chalk_ir::Ty::BoundVar(0).cast()],
+            },
+            associated_ty_ids: Vec::new(),
+            where_clauses: Vec::new(),
+            flags: chalk_rust_ir::TraitFlags {
+                auto: false,
+                marker: false,
+                upstream: true,
+                fundamental: false,
+            },
+        };
+        return Arc::new(TraitDatum { binders: make_binders(trait_datum_bound, 1) });
+    }
+    let trait_: Trait = from_chalk(db, trait_id);
+    debug!("trait {:?} = {:?}", trait_id, trait_.name(db));
+    let generic_params = trait_.generic_params(db);
+    let bound_vars = Substs::bound_vars(&generic_params);
+    let trait_ref = trait_.trait_ref(db).subst(&bound_vars).to_chalk(db);
+    let flags = chalk_rust_ir::TraitFlags {
+        auto: trait_.is_auto(db),
+        upstream: trait_.module(db).krate(db) != Some(krate),
+        // FIXME set these flags correctly
+        marker: false,
+        fundamental: false,
+    };
+    let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
+    let associated_ty_ids = trait_
+        .items(db)
+        .into_iter()
+        .filter_map(|trait_item| match trait_item {
+            crate::traits::TraitItem::TypeAlias(type_alias) => Some(type_alias),
+            _ => None,
+        })
+        .map(|type_alias| type_alias.to_chalk(db))
+        .collect();
+    let trait_datum_bound =
+        chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, flags, associated_ty_ids };
+    let trait_datum = TraitDatum { binders: make_binders(trait_datum_bound, bound_vars.len()) };
+    Arc::new(trait_datum)
+}
+
+pub(crate) fn struct_datum_query(
+    db: &impl HirDatabase,
+    krate: Crate,
+    struct_id: chalk_ir::StructId,
+) -> Arc<StructDatum> {
+    debug!("struct_datum {:?}", struct_id);
+    let type_ctor = from_chalk(db, struct_id);
+    debug!("struct {:?} = {:?}", struct_id, type_ctor);
+    // FIXME might be nicer if we can create a fake GenericParams for the TypeCtor
+    // FIXME extract this to a method on Ty
+    let (num_params, where_clauses, upstream) = match type_ctor {
+        TypeCtor::Bool
+        | TypeCtor::Char
+        | TypeCtor::Int(_)
+        | TypeCtor::Float(_)
+        | TypeCtor::Never
+        | TypeCtor::Str => (0, vec![], true),
+        TypeCtor::Slice | TypeCtor::Array | TypeCtor::RawPtr(_) | TypeCtor::Ref(_) => {
+            (1, vec![], true)
+        }
+        TypeCtor::FnPtr { num_args } => (num_args as usize + 1, vec![], true),
+        TypeCtor::Tuple { cardinality } => (cardinality as usize, vec![], true),
+        TypeCtor::FnDef(callable) => {
+            tested_by!(trait_resolution_on_fn_type);
+            let upstream = match callable {
+                CallableDef::Function(f) => f.module(db).krate(db),
+                CallableDef::Struct(s) => s.module(db).krate(db),
+                CallableDef::EnumVariant(v) => v.parent_enum(db).module(db).krate(db),
+            } != Some(krate);
+            let generic_def: GenericDef = match callable {
+                CallableDef::Function(f) => f.into(),
+                CallableDef::Struct(s) => s.into(),
+                CallableDef::EnumVariant(v) => v.parent_enum(db).into(),
+            };
+            let generic_params = generic_def.generic_params(db);
+            let bound_vars = Substs::bound_vars(&generic_params);
+            let where_clauses = convert_where_clauses(db, generic_def, &bound_vars);
+            (generic_params.count_params_including_parent(), where_clauses, upstream)
+        }
+        TypeCtor::Adt(adt) => {
+            let generic_params = adt.generic_params(db);
+            let bound_vars = Substs::bound_vars(&generic_params);
+            let where_clauses = convert_where_clauses(db, adt.into(), &bound_vars);
+            (
+                generic_params.count_params_including_parent(),
+                where_clauses,
+                adt.krate(db) != Some(krate),
+            )
+        }
+    };
+    let flags = chalk_rust_ir::StructFlags {
+        upstream,
+        // FIXME set fundamental flag correctly
+        fundamental: false,
+    };
+    let self_ty = chalk_ir::ApplicationTy {
+        name: TypeName::TypeKindId(type_ctor.to_chalk(db).into()),
+        parameters: (0..num_params).map(|i| chalk_ir::Ty::BoundVar(i).cast()).collect(),
+    };
+    let struct_datum_bound = chalk_rust_ir::StructDatumBound {
+        self_ty,
+        fields: Vec::new(), // FIXME add fields (only relevant for auto traits)
+        where_clauses,
+        flags,
+    };
+    let struct_datum = StructDatum { binders: make_binders(struct_datum_bound, num_params) };
+    Arc::new(struct_datum)
+}
+
+pub(crate) fn impl_datum_query(
+    db: &impl HirDatabase,
+    krate: Crate,
+    impl_id: ImplId,
+) -> Arc<ImplDatum> {
+    let _p = ra_prof::profile("impl_datum");
+    debug!("impl_datum {:?}", impl_id);
+    let impl_block: ImplBlock = from_chalk(db, impl_id);
+    let generic_params = impl_block.generic_params(db);
+    let bound_vars = Substs::bound_vars(&generic_params);
+    let trait_ref = impl_block
+        .target_trait_ref(db)
+        .expect("FIXME handle unresolved impl block trait ref")
+        .subst(&bound_vars);
+    let impl_type = if impl_block.module().krate(db) == Some(krate) {
+        chalk_rust_ir::ImplType::Local
+    } else {
+        chalk_rust_ir::ImplType::External
+    };
+    let where_clauses = convert_where_clauses(db, impl_block.into(), &bound_vars);
+    let negative = impl_block.is_negative(db);
+    debug!(
+        "impl {:?}: {}{} where {:?}",
+        impl_id,
+        if negative { "!" } else { "" },
+        trait_ref.display(db),
+        where_clauses
+    );
+    let trait_ = trait_ref.trait_;
+    let trait_ref = trait_ref.to_chalk(db);
+    let associated_ty_values = impl_block
+        .items(db)
+        .into_iter()
+        .filter_map(|item| match item {
+            ImplItem::TypeAlias(t) => Some(t),
+            _ => None,
+        })
+        .filter_map(|t| {
+            let assoc_ty = trait_.associated_type_by_name(db, t.name(db))?;
+            let ty = db.type_for_def(t.into(), crate::Namespace::Types).subst(&bound_vars);
+            Some(chalk_rust_ir::AssociatedTyValue {
+                impl_id,
+                associated_ty_id: assoc_ty.to_chalk(db),
+                value: chalk_ir::Binders {
+                    value: chalk_rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(db) },
+                    binders: vec![], // we don't support GATs yet
+                },
+            })
+        })
+        .collect();
+
+    let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
+        trait_ref: if negative {
+            chalk_rust_ir::PolarizedTraitRef::Negative(trait_ref)
+        } else {
+            chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref)
+        },
+        where_clauses,
+        associated_ty_values,
+        impl_type,
+    };
+    debug!("impl_datum: {:?}", impl_datum_bound);
+    let impl_datum = ImplDatum { binders: make_binders(impl_datum_bound, bound_vars.len()) };
+    Arc::new(impl_datum)
 }
 
 fn id_from_chalk<T: InternKey>(chalk_id: chalk_ir::RawId) -> T {
