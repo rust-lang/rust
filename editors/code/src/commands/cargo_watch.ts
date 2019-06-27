@@ -5,16 +5,15 @@ import * as vscode from 'vscode';
 
 import { Server } from '../server';
 import { terminate } from '../utils/processes';
+import { LineBuffer } from './line_buffer';
+import { StatusDisplay } from './watch_status';
+
 import {
     mapRustDiagnosticToVsCode,
     RustDiagnostic
-} from '../utils/rust_diagnostics';
-import {
-    areCodeActionsEqual,
-    areDiagnosticsEqual
-} from '../utils/vscode_diagnostics';
-import { LineBuffer } from './line_buffer';
-import { StatusDisplay } from './watch_status';
+} from '../utils/diagnostics/rust';
+import SuggestedFixCollection from '../utils/diagnostics/SuggestedFixCollection';
+import { areDiagnosticsEqual } from '../utils/diagnostics/vscode';
 
 export function registerCargoWatchProvider(
     subscriptions: vscode.Disposable[]
@@ -42,16 +41,13 @@ export function registerCargoWatchProvider(
     return provider;
 }
 
-export class CargoWatchProvider
-    implements vscode.Disposable, vscode.CodeActionProvider {
+export class CargoWatchProvider implements vscode.Disposable {
     private readonly diagnosticCollection: vscode.DiagnosticCollection;
     private readonly statusDisplay: StatusDisplay;
     private readonly outputChannel: vscode.OutputChannel;
 
-    private codeActions: {
-        [fileUri: string]: vscode.CodeAction[];
-    };
-    private readonly codeActionDispose: vscode.Disposable;
+    private suggestedFixCollection: SuggestedFixCollection;
+    private codeActionDispose: vscode.Disposable;
 
     private cargoProcess?: child_process.ChildProcess;
 
@@ -66,13 +62,14 @@ export class CargoWatchProvider
             'Cargo Watch Trace'
         );
 
-        // Register code actions for rustc's suggested fixes
-        this.codeActions = {};
+        // Track `rustc`'s suggested fixes so we can convert them to code actions
+        this.suggestedFixCollection = new SuggestedFixCollection();
         this.codeActionDispose = vscode.languages.registerCodeActionsProvider(
             [{ scheme: 'file', language: 'rust' }],
-            this,
+            this.suggestedFixCollection,
             {
-                providedCodeActionKinds: [vscode.CodeActionKind.QuickFix]
+                providedCodeActionKinds:
+                    SuggestedFixCollection.PROVIDED_CODE_ACTION_KINDS
             }
         );
     }
@@ -156,13 +153,6 @@ export class CargoWatchProvider
         this.codeActionDispose.dispose();
     }
 
-    public provideCodeActions(
-        document: vscode.TextDocument
-    ): vscode.ProviderResult<Array<vscode.Command | vscode.CodeAction>> {
-        const documentActions = this.codeActions[document.uri.toString()];
-        return documentActions || [];
-    }
-
     private logInfo(line: string) {
         if (Server.config.cargoWatchOptions.trace === 'verbose') {
             this.outputChannel.append(line);
@@ -181,7 +171,7 @@ export class CargoWatchProvider
     private parseLine(line: string) {
         if (line.startsWith('[Running')) {
             this.diagnosticCollection.clear();
-            this.codeActions = {};
+            this.suggestedFixCollection.clear();
             this.statusDisplay.show();
         }
 
@@ -225,7 +215,7 @@ export class CargoWatchProvider
                 return;
             }
 
-            const { location, diagnostic, codeActions } = mapResult;
+            const { location, diagnostic, suggestedFixes } = mapResult;
             const fileUri = location.uri;
 
             const diagnostics: vscode.Diagnostic[] = [
@@ -236,7 +226,6 @@ export class CargoWatchProvider
             const isDuplicate = diagnostics.some(d =>
                 areDiagnosticsEqual(d, diagnostic)
             );
-
             if (isDuplicate) {
                 return;
             }
@@ -244,29 +233,15 @@ export class CargoWatchProvider
             diagnostics.push(diagnostic);
             this.diagnosticCollection!.set(fileUri, diagnostics);
 
-            if (codeActions.length) {
-                const fileUriString = fileUri.toString();
-                const existingActions = this.codeActions[fileUriString] || [];
-
-                for (const newAction of codeActions) {
-                    const existingAction = existingActions.find(existing =>
-                        areCodeActionsEqual(existing, newAction)
+            if (suggestedFixes.length) {
+                for (const suggestedFix of suggestedFixes) {
+                    this.suggestedFixCollection.addSuggestedFixForDiagnostic(
+                        suggestedFix,
+                        diagnostic
                     );
-
-                    if (existingAction) {
-                        if (!existingAction.diagnostics) {
-                            existingAction.diagnostics = [];
-                        }
-                        // This action also applies to this diagnostic
-                        existingAction.diagnostics.push(diagnostic);
-                    } else {
-                        newAction.diagnostics = [diagnostic];
-                        existingActions.push(newAction);
-                    }
                 }
 
                 // Have VsCode query us for the code actions
-                this.codeActions[fileUriString] = existingActions;
                 vscode.commands.executeCommand(
                     'vscode.executeCodeActionProvider',
                     fileUri,
