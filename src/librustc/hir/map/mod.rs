@@ -239,7 +239,6 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     #[inline]
     pub fn local_def_id_from_hir_id(&self, hir_id: HirId) -> DefId {
         self.opt_local_def_id_from_hir_id(hir_id).unwrap_or_else(|| {
@@ -248,7 +247,6 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     #[inline]
     pub fn opt_local_def_id_from_hir_id(&self, hir_id: HirId) -> Option<DefId> {
         let node_id = self.hir_to_node_id(hir_id);
@@ -265,7 +263,6 @@ impl<'hir> Map<'hir> {
         self.definitions.as_local_node_id(def_id)
     }
 
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     #[inline]
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
         self.definitions.as_local_hir_id(def_id)
