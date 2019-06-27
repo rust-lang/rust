@@ -290,10 +290,10 @@ crate enum LastToken {
 }
 
 impl TokenCursorFrame {
-    fn new(sp: DelimSpan, delim: DelimToken, tts: &TokenStream) -> Self {
+    fn new(span: DelimSpan, delim: DelimToken, tts: &TokenStream) -> Self {
         TokenCursorFrame {
-            delim: delim,
-            span: sp,
+            delim,
+            span,
             open_delim: delim == token::NoDelim,
             tree_cursor: tts.clone().into_trees(),
             close_delim: delim == token::NoDelim,
@@ -1449,7 +1449,7 @@ impl<'a> Parser<'a> {
         let opt_lifetime = if self.check_lifetime() { Some(self.expect_lifetime()) } else { None };
         let mutbl = self.parse_mutability();
         let ty = self.parse_ty_no_plus()?;
-        return Ok(TyKind::Rptr(opt_lifetime, MutTy { ty: ty, mutbl: mutbl }));
+        return Ok(TyKind::Rptr(opt_lifetime, MutTy { ty, mutbl }));
     }
 
     fn parse_ptr(&mut self) -> PResult<'a, MutTy> {
@@ -1467,7 +1467,7 @@ impl<'a> Parser<'a> {
             Mutability::Immutable
         };
         let t = self.parse_ty_no_plus()?;
-        Ok(MutTy { ty: t, mutbl: mutbl })
+        Ok(MutTy { ty: t, mutbl })
     }
 
     fn is_named_argument(&self) -> bool {
@@ -4366,7 +4366,7 @@ impl<'a> Parser<'a> {
                     self.report_invalid_macro_expansion_item();
                 }
 
-                (ident, ast::MacroDef { tokens: tokens, legacy: true })
+                (ident, ast::MacroDef { tokens, legacy: true })
             }
             _ => return Ok(None),
         };
@@ -6789,12 +6789,12 @@ impl<'a> Parser<'a> {
         let hi = self.token.span;
         self.expect(&token::Semi)?;
         Ok(ast::ForeignItem {
-            ident: ident,
-            attrs: attrs,
+            ident,
+            attrs,
             node: ForeignItemKind::Ty,
             id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
-            vis: vis
+            vis
         })
     }
 
