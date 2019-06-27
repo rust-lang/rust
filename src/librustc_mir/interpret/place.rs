@@ -13,7 +13,7 @@ use rustc::ty::TypeFoldable;
 
 use super::{
     GlobalId, AllocId, Allocation, Scalar, InterpResult, Pointer, PointerArithmetic,
-    InterpretCx, Machine, AllocMap, AllocationExtra,
+    InterpCx, Machine, AllocMap, AllocationExtra,
     RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind, LocalValue
 };
 
@@ -290,7 +290,7 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
 }
 
 // separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385
-impl<'mir, 'tcx, Tag, M> InterpretCx<'mir, 'tcx, M>
+impl<'mir, 'tcx, Tag, M> InterpCx<'mir, 'tcx, M>
 where
     // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
     Tag: ::std::fmt::Debug + Copy + Eq + Hash + 'static,
@@ -583,7 +583,7 @@ where
                 // global table but not in its local memory: It calls back into tcx through
                 // a query, triggering the CTFE machinery to actually turn this lazy reference
                 // into a bunch of bytes.  IOW, statics are evaluated with CTFE even when
-                // this InterpretCx uses another Machine (e.g., in miri).  This is what we
+                // this InterpCx uses another Machine (e.g., in miri).  This is what we
                 // want!  This way, computing statics works consistently between codegen
                 // and miri: They use the same query to eventually obtain a `ty::Const`
                 // and use that for further computation.

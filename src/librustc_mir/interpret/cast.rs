@@ -11,9 +11,9 @@ use rustc::mir::interpret::{
 };
 use rustc::mir::CastKind;
 
-use super::{InterpretCx, Machine, PlaceTy, OpTy, Immediate};
+use super::{InterpCx, Machine, PlaceTy, OpTy, Immediate};
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
             ty::RawPtr(ty::TypeAndMut { ty, .. }) |

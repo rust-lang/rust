@@ -26,7 +26,7 @@ use super::{
     Memory, Machine
 };
 
-pub struct InterpretCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
     pub machine: M,
 
@@ -158,14 +158,14 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpretCx<'mir, 'tcx, M>
+impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'mir, 'tcx, M>
 where
     M: Machine<'mir, 'tcx>,
 {
@@ -175,7 +175,7 @@ where
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpretCx<'mir, 'tcx, M>
+impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'mir, 'tcx, M>
 where
     M: Machine<'mir, 'tcx>,
 {
@@ -184,7 +184,7 @@ where
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyLayout = InterpResult<'tcx, TyLayout<'tcx>>;
 
@@ -195,9 +195,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpretCx<'mir, 'tcx, M>
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>, machine: M) -> Self {
-        InterpretCx {
+        InterpCx {
             machine,
             tcx,
             param_env,
