@@ -251,10 +251,12 @@ jobs:
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
         VCVARS_BAT: vcvars64.bat
       # MSVC tools tests
-      x86_64-msvc-tools:
-        MSYS_BITS: 64
-        SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json --enable-test-miri
+      # FIXME: broken on azure right now, need to figure out a cause and
+      # reenable
+      # x86_64-msvc-tools:
+      #   MSYS_BITS: 64
+      #   SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
+      #   RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json --enable-test-miri
 
       # 32/64-bit MinGW builds.
       #
@@ -325,7 +327,7 @@ jobs:
         DEPLOY: 1
       dist-i686-mingw:
         MSYS_BITS: 32
-        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools
+        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
         SCRIPT: python x.py dist
         MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
         MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
@@ -335,7 +337,7 @@ jobs:
       dist-x86_64-mingw:
         MSYS_BITS: 64
         SCRIPT: python x.py dist
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
         MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
         MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
         MINGW_DIR: mingw64

@@ -22,18 +22,18 @@ matrix:
     # Images used in testing PR and try-build should be run first.
     - env: IMAGE=x86_64-gnu-llvm-6.0 RUST_BACKTRACE=1
       name: x86_64-gnu-llvm-6.0
-      if: type = pull_request OR branch = auto
+      if: branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
       name: dist-x86_64-linux
-      if: branch = try OR branch = auto
+      if: branch = auto
 
     # "alternate" deployments, these are "nightlies" but have LLVM assertions
     # turned on, they're deployed to a different location primarily for
     # additional testing.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
       name: dist-x86_64-linux-alt
-      if: branch = try OR branch = auto
+      if: branch = auto
 
     - env: >
         SCRIPT="./x.py dist"
@@ -227,17 +227,7 @@ matrix:
       if: branch = auto
     - env: IMAGE=mingw-check
       name: mingw-check
-      if: type = pull_request OR branch = auto
-
-    - stage: publish toolstate
-      if: branch = master AND type = push
-      before_install: []
-      install: []
-      sudo: false
-      script:
-        MESSAGE_FILE=$(mktemp -t msg.XXXXXX);
-        . src/ci/docker/x86_64-gnu-tools/repo.sh;
-        commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN";
+      if: branch = auto
 
 before_install:
   # We'll use the AWS cli to download/upload cached docker layers as well as
