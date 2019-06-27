@@ -35,6 +35,24 @@ describe('areDiagnosticsEqual', () => {
         assert(areDiagnosticsEqual(diagnostic1, diagnostic2));
     });
 
+    it('should treat diagnostics with different sources as inequal', () => {
+        const diagnostic1 = new vscode.Diagnostic(
+            range1,
+            'Hello, world!',
+            vscode.DiagnosticSeverity.Error
+        );
+        diagnostic1.source = 'rustc';
+
+        const diagnostic2 = new vscode.Diagnostic(
+            range1,
+            'Hello, world!',
+            vscode.DiagnosticSeverity.Error
+        );
+        diagnostic2.source = 'clippy';
+
+        assert(!areDiagnosticsEqual(diagnostic1, diagnostic2));
+    });
+
     it('should treat diagnostics with different ranges as inequal', () => {
         const diagnostic1 = new vscode.Diagnostic(
             range1,

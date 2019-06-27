@@ -37,6 +37,7 @@ describe('mapRustDiagnosticToVsCode', () => {
             diagnostic.severity,
             vscode.DiagnosticSeverity.Error
         );
+        assert.strictEqual(diagnostic.source, 'rustc');
         assert.strictEqual(
             diagnostic.message,
             [
@@ -72,6 +73,7 @@ describe('mapRustDiagnosticToVsCode', () => {
             ].join('\n')
         );
         assert.strictEqual(diagnostic.code, 'unused_variables');
+        assert.strictEqual(diagnostic.source, 'rustc');
         assert.deepStrictEqual(diagnostic.tags, [
             vscode.DiagnosticTag.Unnecessary
         ]);
@@ -101,6 +103,7 @@ describe('mapRustDiagnosticToVsCode', () => {
             'this function takes 2 parameters but 3 parameters were supplied'
         );
         assert.strictEqual(diagnostic.code, 'E0061');
+        assert.strictEqual(diagnostic.source, 'rustc');
         assert.strictEqual(diagnostic.tags, undefined);
 
         // One related information for the original definition
@@ -125,6 +128,7 @@ describe('mapRustDiagnosticToVsCode', () => {
             diagnostic.severity,
             vscode.DiagnosticSeverity.Warning
         );
+        assert.strictEqual(diagnostic.source, 'clippy');
         assert.strictEqual(
             diagnostic.message,
             [
@@ -133,10 +137,7 @@ describe('mapRustDiagnosticToVsCode', () => {
                 'for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref'
             ].join('\n')
         );
-        assert.strictEqual(
-            diagnostic.code,
-            'clippy::trivially_copy_pass_by_ref'
-        );
+        assert.strictEqual(diagnostic.code, 'trivially_copy_pass_by_ref');
         assert.strictEqual(diagnostic.tags, undefined);
 
         // One related information for the lint definition
