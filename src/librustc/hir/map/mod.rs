@@ -231,10 +231,10 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn local_def_id(&self, node: NodeId) -> DefId {
+    pub fn local_def_id_from_node_id(&self, node: NodeId) -> DefId {
         self.opt_local_def_id(node).unwrap_or_else(|| {
             let hir_id = self.node_to_hir_id(node);
-            bug!("local_def_id: no entry for `{}`, which has a map of `{:?}`",
+            bug!("local_def_id_from_node_id: no entry for `{}`, which has a map of `{:?}`",
                  node, self.find_entry(hir_id))
         })
     }

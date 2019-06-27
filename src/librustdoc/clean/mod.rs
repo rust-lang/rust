@@ -654,7 +654,7 @@ impl Clean<Item> for doctree::Module<'_> {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
-            def_id: cx.tcx.hir().local_def_id(self.id),
+            def_id: cx.tcx.hir().local_def_id_from_node_id(self.id),
             inner: ModuleItem(Module {
                is_crate: self.is_crate,
                items,
@@ -2982,10 +2982,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::FnPtr(_) => {
                 let ty = cx.tcx.lift(self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
+                let local_def_id = cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID);
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),
-                    decl: (cx.tcx.hir().local_def_id(ast::CRATE_NODE_ID), sig).clean(cx),
+                    decl: (local_def_id, sig).clean(cx),
                     abi: sig.abi(),
                 })
             }
@@ -3991,7 +3992,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.hir().local_def_id(ast::CRATE_NODE_ID),
+            def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID),
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,

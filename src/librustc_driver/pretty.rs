@@ -887,7 +887,7 @@ fn print_with_analysis(
     let mut print = || match ppm {
         PpmMir | PpmMirCFG => {
             if let Some(nodeid) = nodeid {
-                let def_id = tcx.hir().local_def_id(nodeid);
+                let def_id = tcx.hir().local_def_id_from_node_id(nodeid);
                 match ppm {
                     PpmMir => write_mir_pretty(tcx, Some(def_id), &mut out),
                     PpmMirCFG => write_mir_graphviz(tcx, Some(def_id), &mut out),

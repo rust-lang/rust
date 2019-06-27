@@ -140,7 +140,7 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                     // region at the right depth with the same index
                     (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id, _)) => {
                         debug!(
-                            "EarlyBound self.infcx.tcx.hir().local_def_id(id)={:?} \
+                            "EarlyBound self.infcx.tcx.hir().local_def_id_from_node_id(id)={:?} \
                              def_id={:?}",
                             id,
                             def_id
@@ -162,7 +162,7 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                             "FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
                             debruijn_index
                         );
-                        debug!("self.infcx.tcx.hir().local_def_id(id)={:?}", id);
+                        debug!("self.infcx.tcx.hir().local_def_id_from_node_id(id)={:?}", id);
                         debug!("def_id={:?}", def_id);
                         if debruijn_index == self.current_index && id == def_id {
                             self.found_type = Some(arg);
@@ -232,7 +232,7 @@ impl Visitor<'tcx> for TyPathVisitor<'tcx> {
 
             (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id, _)) => {
                 debug!(
-                    "EarlyBound self.infcx.tcx.hir().local_def_id(id)={:?} \
+                    "EarlyBound self.infcx.tcx.hir().local_def_id_from_node_id(id)={:?} \
                      def_id={:?}",
                     id,
                     def_id

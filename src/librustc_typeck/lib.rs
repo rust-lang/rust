@@ -310,7 +310,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         time(tcx.sess, "type collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
-                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
+                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id_from_node_id(module));
             }
         });
     })?;
@@ -345,7 +345,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     time(tcx.sess, "item-types checking", || {
         for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id_from_node_id(module));
         }
     });
 
