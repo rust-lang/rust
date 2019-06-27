@@ -262,7 +262,6 @@
 #![feature(exhaustive_patterns)]
 #![feature(external_doc)]
 #![feature(fn_traits)]
-#![feature(fnbox)]
 #![feature(generator_trait)]
 #![feature(hash_raw_entry)]
 #![feature(hashmap_internals)]
