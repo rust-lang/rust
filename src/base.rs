@@ -826,14 +826,16 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
     }
 
     if lhs.layout().ty == fx.tcx.types.u128 || lhs.layout().ty == fx.tcx.types.i128 {
-        return match (bin_op, signed) {
-            _ => {
-                let layout = fx.layout_of(out_ty);
-                let a = fx.bcx.ins().iconst(types::I64, 42);
-                let b = fx.bcx.ins().iconst(types::I64, 0);
-                let val = fx.bcx.ins().iconcat(a, b);
-                CValue::by_val(val, layout)
-            }
+        if out_ty == fx.tcx.types.bool {
+            let layout = fx.layout_of(fx.tcx.types.bool);
+            let val = fx.bcx.ins().iconst(types::I8, 0);
+            return CValue::by_val(val, layout);
+        } else {
+            let layout = fx.layout_of(out_ty);
+            let a = fx.bcx.ins().iconst(types::I64, 42);
+            let b = fx.bcx.ins().iconst(types::I64, 0);
+            let val = fx.bcx.ins().iconcat(a, b);
+            return CValue::by_val(val, layout);
         }
     }
 
