@@ -11,83 +11,6 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
 
     let mir = tcx.instance_mir(instance.def);
 
-    // Check fn sig for u128 and i128 and replace those functions with a trap.
-    {
-        // FIXME implement u128 and i128 support
-
-        // Check sig for u128 and i128
-        let fn_sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &instance.fn_sig(tcx));
-
-        struct UI128Visitor<'tcx>(TyCtxt<'tcx>, bool);
-
-        impl<'tcx> rustc::ty::fold::TypeVisitor<'tcx> for UI128Visitor<'tcx> {
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                if t.sty == self.0.types.u128.sty || t.sty == self.0.types.i128.sty {
-                    self.1 = true;
-                    return false; // stop visiting
-                }
-
-                t.super_visit_with(self)
-            }
-        }
-
-        let mut visitor = UI128Visitor(tcx, false);
-        fn_sig.visit_with(&mut visitor);
-
-        //If found replace function with a trap.
-        if visitor.1 {
-            tcx.sess.warn("u128 and i128 are not yet supported. \
-            Functions using these as args will be replaced with a trap.");
-
-            // Declare function with fake signature
-            let sig = Signature {
-                params: vec![AbiParam::new(types::INVALID)],
-                returns: vec![],
-                call_conv: CallConv::Fast,
-            };
-            let name = tcx.symbol_name(instance).as_str();
-            let func_id = cx.module.declare_function(&*name, linkage, &sig).unwrap();
-
-            // Create trapping function
-            let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
-            let mut func_ctx = FunctionBuilderContext::new();
-            let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
-            let start_ebb = bcx.create_ebb();
-            bcx.append_ebb_params_for_function_params(start_ebb);
-            bcx.switch_to_block(start_ebb);
-
-            let mut fx = FunctionCx {
-                tcx,
-                module: cx.module,
-                pointer_type: pointer_ty(tcx),
-
-                instance,
-                mir,
-
-                bcx,
-                ebb_map: HashMap::new(),
-                local_map: HashMap::new(),
-
-                clif_comments: crate::pretty_clif::CommentWriter::new(tcx, instance),
-                constants: &mut cx.ccx,
-                caches: &mut cx.caches,
-                source_info_set: indexmap::IndexSet::new(),
-            };
-
-            crate::trap::trap_unreachable(&mut fx, "[unimplemented] Called function with u128 or i128 as argument.");
-            fx.bcx.seal_all_blocks();
-            fx.bcx.finalize();
-
-            // Define function
-            cx.caches.context.func = func;
-            cx.module
-                .define_function(func_id, &mut cx.caches.context)
-                .unwrap();
-            cx.caches.context.clear();
-            return;
-        }
-    }
-
     // Declare function
     let (name, sig) = get_function_name_and_sig(tcx, instance, false);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
@@ -391,7 +314,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let rhs = trans_operand(fx, rhs);
 
                     let res = match ty.sty {
-                        ty::Bool => trans_bool_binop(fx, *bin_op, lhs, rhs, lval.layout().ty),
+                        ty::Bool => trans_bool_binop(fx, *bin_op, lhs, rhs),
                         ty::Uint(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
                         }
@@ -666,7 +589,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 clobbers, // Vec<Name>
                 volatile, // bool
                 alignstack, // bool
-                dialect, // syntax::ast::AsmDialect
+                dialect: _, // syntax::ast::AsmDialect
                 asm_str_style: _,
                 ctxt: _,
             } = asm;
@@ -704,6 +627,9 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     assert!(!alignstack);
 
                     crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
+                }
+                _ if fx.tcx.symbol_name(fx.instance).as_str() == "__rust_probestack" => {
+                    crate::trap::trap_unimplemented(fx, "__rust_probestack is not supported");
                 }
                 _ => unimpl!("Inline assembly is not supported"),
             }
@@ -856,10 +782,9 @@ fn trans_bool_binop<'a, 'tcx: 'a>(
     bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
-    ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     let res = binop_match! {
-        fx, bin_op, false, lhs, rhs, ty, "bool";
+        fx, bin_op, false, lhs, rhs, fx.tcx.types.bool, "bool";
         Add (_) bug;
         Sub (_) bug;
         Mul (_) bug;
@@ -900,7 +825,7 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
         );
     }
 
-    if out_ty == fx.tcx.types.u128 || out_ty == fx.tcx.types.i128 {
+    if lhs.layout().ty == fx.tcx.types.u128 || lhs.layout().ty == fx.tcx.types.i128 {
         return match (bin_op, signed) {
             _ => {
                 let layout = fx.layout_of(out_ty);

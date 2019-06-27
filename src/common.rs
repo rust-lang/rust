@@ -82,6 +82,15 @@ pub fn clif_intcast<'a, 'tcx: 'a>(
     if from == to {
         return val;
     }
+    if to == types::I128 {
+        let wider = if signed {
+            fx.bcx.ins().sextend(types::I64, val)
+        } else {
+            fx.bcx.ins().uextend(types::I64, val)
+        };
+        let zero = fx.bcx.ins().iconst(types::I64, 0);
+        return fx.bcx.ins().iconcat(wider, zero);
+    }
     if to.wider_or_equal(from) {
         if signed {
             fx.bcx.ins().sextend(to, val)
@@ -89,7 +98,7 @@ pub fn clif_intcast<'a, 'tcx: 'a>(
             fx.bcx.ins().uextend(to, val)
         }
     } else if from == types::I128 {
-        let (lsb, msb) = fx.bcx.ins().isplit(val);
+        let (lsb, _msb) = fx.bcx.ins().isplit(val);
         fx.bcx.ins().ireduce(to, lsb)
     } else {
         fx.bcx.ins().ireduce(to, val)

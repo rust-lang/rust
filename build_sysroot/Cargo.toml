@@ -14,7 +14,7 @@ alloc_system = { path = "./alloc_system" }
 [patch.crates-io]
 rustc-std-workspace-core = { path = "./sysroot_src/src/tools/rustc-std-workspace-core" }
 rustc-std-workspace-alloc = { path = "./rustc-std-workspace-alloc" }
-compiler_builtins = { path = "./compiler_builtins" }
+#compiler_builtins = { path = "./compiler_builtins" }
 
 [profile.release]
 debug = true

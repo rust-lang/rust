@@ -118,5 +118,5 @@ fn take_f32(_f: f32) {}
 fn take_unique(_u: Unique<()>) {}
 
 fn main() {
-    assert_eq!((1u128 + 2) as u16, 3);
+
 }
