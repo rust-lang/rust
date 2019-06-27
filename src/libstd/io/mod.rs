@@ -506,8 +506,17 @@ pub trait Read {
     ///
     /// No guarantees are provided about the contents of `buf` when this
     /// function is called, implementations cannot rely on any property of the
-    /// contents of `buf` being true. It is recommended that implementations
+    /// contents of `buf` being true. It is recommended that *implementations*
     /// only write data to `buf` instead of reading its contents.
+    ///
+    /// Correspondingly, however, *callers* of this method may not assume any guarantees
+    /// about how the implementation uses `buf`. The trait is safe to implement,
+    //  so it is possible that the code that's supposed to write to the buffer might also read
+    //  from it. It is your responsibility to make sure that `buf` is initialized
+    /// before calling `read`. Calling `read` with an uninitialized `buf` (of the kind one
+    /// obtains via [`MaybeUninit<T>`]) is not safe, and can lead to undefined behavior.
+    ///
+    /// [`MaybeUninit<T>`]: ../mem/union.MaybeUninit.html
     ///
     /// # Errors
     ///
