@@ -621,17 +621,32 @@ pub fn handle_formatting(
 
     let output = rustfmt.wait_with_output()?;
     let captured_stdout = String::from_utf8(output.stdout)?;
+
     if !output.status.success() {
-        return Err(LspError::new(
-            -32900,
-            format!(
-                r#"rustfmt exited with:
-            Status: {}
-            stdout: {}"#,
-                output.status, captured_stdout,
-            ),
-        )
-        .into());
+        match output.status.code() {
+            Some(1) => {
+                // While `rustfmt` doesn't have a specific exit code for parse errors this is the
+                // likely cause exiting with 1. Most Language Servers swallow parse errors on
+                // formatting because otherwise an error is surfaced to the user on top of the
+                // syntax error diagnostics they're already receiving. This is especially jarring
+                // if they have format on save enabled.
+                log::info!("rustfmt exited with status 1, assuming parse error and ignoring");
+                return Ok(None);
+            }
+            _ => {
+                // Something else happened - e.g. `rustfmt` is missing or caught a signal
+                return Err(LspError::new(
+                    -32900,
+                    format!(
+                        r#"rustfmt exited with:
+                           Status: {}
+                           stdout: {}"#,
+                        output.status, captured_stdout,
+                    ),
+                )
+                .into());
+            }
+        }
     }
 
     Ok(Some(vec![TextEdit {
