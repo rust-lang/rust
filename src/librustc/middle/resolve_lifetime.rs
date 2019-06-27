@@ -2136,7 +2136,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         | Res::Def(DefKind::Union, _)
                         | Res::Def(DefKind::Enum, _)
                         | Res::PrimTy(_) => {
-                            return res == path.res
+                            // HACK(eddyb) temporarily disable non-syntactic elision.
+                            return res == path.res && false;
                         }
                         _ => {}
                     }
