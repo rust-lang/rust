@@ -221,8 +221,8 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<check_match<'_>, _>(tcx, enc, qri)?;
                 encode_query_results::<codegen_fn_attrs<'_>, _>(tcx, enc, qri)?;
                 encode_query_results::<specialization_graph_of<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<const_eval_raw<'_>, _>(tcx, enc, qri)?;
                 encode_query_results::<const_eval<'_>, _>(tcx, enc, qri)?;
-                // FIXME: Include const_eval_raw?
 
                 Ok(())
             })?;
