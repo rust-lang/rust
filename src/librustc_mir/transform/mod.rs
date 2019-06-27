@@ -78,7 +78,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
                               _: hir::HirId,
                               _: Span) {
             if let hir::VariantData::Tuple(_, hir_id) = *v {
-                self.set.insert(self.tcx.hir().local_def_id_from_hir_id(hir_id));
+                self.set.insert(self.tcx.hir().local_def_id(hir_id));
             }
             intravisit::walk_struct_def(self, v)
         }

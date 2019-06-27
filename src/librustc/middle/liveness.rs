@@ -363,7 +363,7 @@ fn visit_fn<'tcx>(
     debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:
-    let def_id = ir.tcx.hir().local_def_id_from_hir_id(id);
+    let def_id = ir.tcx.hir().local_def_id(id);
     let mut fn_maps = IrMaps::new(ir.tcx, def_id);
 
     // Don't run unused pass for #[derive()]
@@ -494,7 +494,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        let closure_def_id = ir.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
+        let closure_def_id = ir.tcx.hir().local_def_id(expr.hir_id);
         if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
             let parent_upvars = ir.tcx.upvars(ir.body_owner);
             call_caps.extend(upvars.iter().filter_map(|(&var_id, upvar)| {

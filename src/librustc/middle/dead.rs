@@ -161,7 +161,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Node::Item(item) => {
                 match item.node {
                     hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                        let def_id = self.tcx.hir().local_def_id(item.hir_id);
                         let def = self.tcx.adt_def(def_id);
                         self.repr_has_repr_c = def.repr.c();
 
@@ -325,7 +325,7 @@ fn has_allow_dead_code_or_lang_attr(
         return true;
     }
 
-    let def_id = tcx.hir().local_def_id_from_hir_id(id);
+    let def_id = tcx.hir().local_def_id(id);
     let cg_attrs = tcx.codegen_fn_attrs(def_id);
 
     // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
@@ -494,7 +494,7 @@ impl DeadVisitor<'tcx> {
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
-        let field_type = self.tcx.type_of(self.tcx.hir().local_def_id_from_hir_id(field.hir_id));
+        let field_type = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
         !field.is_positional()
             && !self.symbol_is_live(field.hir_id)
             && !field_type.is_phantom_data()
@@ -525,7 +525,7 @@ impl DeadVisitor<'tcx> {
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(id);
+        let def_id = self.tcx.hir().local_def_id(id);
         let inherent_impls = self.tcx.inherent_impls(def_id);
         for &impl_did in inherent_impls.iter() {
             for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {

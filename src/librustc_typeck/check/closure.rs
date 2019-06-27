@@ -72,7 +72,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             opt_kind, expected_sig
         );
 
-        let expr_def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
+        let expr_def_id = self.tcx.hir().local_def_id(expr.hir_id);
 
         let ClosureSignatures {
             bound_sig,

@@ -797,7 +797,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
             match i.node {
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::TraitAlias(..) => {
-                    let def_id = self.map.local_def_id_from_hir_id(i.hir_id);
+                    let def_id = self.map.local_def_id(i.hir_id);
                     self.traits.push(def_id);
                 }
                 _ => ()

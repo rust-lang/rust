@@ -2816,7 +2816,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                            parent_vis: &hir::Visibility,
                                            trait_item_ref: &hir::TraitItemRef)
                                            -> AssocItem {
-        let def_id = self.hir().local_def_id_from_hir_id(trait_item_ref.id.hir_id);
+        let def_id = self.hir().local_def_id(trait_item_ref.id.hir_id);
         let (kind, has_self) = match trait_item_ref.kind {
             hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
             hir::AssocItemKind::Method { has_self } => {
@@ -2842,7 +2842,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                           parent_def_id: DefId,
                                           impl_item_ref: &hir::ImplItemRef)
                                           -> AssocItem {
-        let def_id = self.hir().local_def_id_from_hir_id(impl_item_ref.id.hir_id);
+        let def_id = self.hir().local_def_id(impl_item_ref.id.hir_id);
         let (kind, has_self) = match impl_item_ref.kind {
             hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
             hir::AssocItemKind::Method { has_self } => {
@@ -3114,7 +3114,7 @@ impl Iterator for AssocItemsIterator<'_> {
 fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> AssocItem {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let parent_id = tcx.hir().get_parent_item(id);
-    let parent_def_id = tcx.hir().local_def_id_from_hir_id(parent_id);
+    let parent_def_id = tcx.hir().local_def_id(parent_id);
     let parent_item = tcx.hir().expect_item(parent_id);
     match parent_item.node {
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
@@ -3178,14 +3178,14 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
             tcx.arena.alloc_from_iter(
                 trait_item_refs.iter()
                                .map(|trait_item_ref| trait_item_ref.id)
-                               .map(|id| tcx.hir().local_def_id_from_hir_id(id.hir_id))
+                               .map(|id| tcx.hir().local_def_id(id.hir_id))
             )
         }
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
             tcx.arena.alloc_from_iter(
                 impl_item_refs.iter()
                               .map(|impl_item_ref| impl_item_ref.id)
-                              .map(|id| tcx.hir().local_def_id_from_hir_id(id.hir_id))
+                              .map(|id| tcx.hir().local_def_id(id.hir_id))
             )
         }
         hir::ItemKind::TraitAlias(..) => &[],

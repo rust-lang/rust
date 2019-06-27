@@ -500,7 +500,7 @@ impl DirtyCleanVisitor<'tcx> {
     }
 
     fn check_item(&mut self, item_id: hir::HirId, item_span: Span) {
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
+        let def_id = self.tcx.hir().local_def_id(item_id);
         for attr in self.tcx.get_attrs(def_id).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {
                 Some(a) => a,

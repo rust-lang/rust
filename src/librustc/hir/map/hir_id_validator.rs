@@ -80,7 +80,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
                                                        hir_id: HirId,
                                                        walk: F) {
         assert!(self.owner_def_index.is_none());
-        let owner_def_index = self.hir_map.local_def_id_from_hir_id(hir_id).index;
+        let owner_def_index = self.hir_map.local_def_id(hir_id).index;
         self.owner_def_index = Some(owner_def_index);
         walk(self);
 

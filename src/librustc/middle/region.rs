@@ -675,7 +675,7 @@ impl<'tcx> ScopeTree {
                     &format!("free_scope: {:?} not recognized by the \
                               region scope tree for {:?} / {:?}",
                              param_owner,
-                             self.root_parent.map(|id| tcx.hir().local_def_id_from_hir_id(id)),
+                             self.root_parent.map(|id| tcx.hir().local_def_id(id)),
                              self.root_body.map(|hir_id| DefId::local(hir_id.owner))));
             }
 

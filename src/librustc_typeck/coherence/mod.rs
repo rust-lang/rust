@@ -19,7 +19,7 @@ mod orphan;
 mod unsafety;
 
 fn check_impl(tcx: TyCtxt<'_>, hir_id: HirId) {
-    let impl_def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+    let impl_def_id = tcx.hir().local_def_id(hir_id);
 
     // If there are no traits, then this implementation must have a
     // base type.
@@ -151,8 +151,8 @@ pub fn check_coherence(tcx: TyCtxt<'_>) {
 /// Overlap: no two impls for the same trait are implemented for the
 /// same type. Likewise, no two inherent impls for a given type
 /// constructor provide a method with the same name.
-fn check_impl_overlap(tcx: TyCtxt<'_>, hir_id: HirId) {
-    let impl_def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+fn check_impl_overlap<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId) {
+    let impl_def_id = tcx.hir().local_def_id(hir_id);
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
     let trait_def_id = trait_ref.def_id;
 

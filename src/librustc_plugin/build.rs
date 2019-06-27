@@ -44,7 +44,7 @@ fn plugin_registrar_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
         0 => None,
         1 => {
             let (hir_id, _) = finder.registrars.pop().unwrap();
-            Some(tcx.hir().local_def_id_from_hir_id(hir_id))
+            Some(tcx.hir().local_def_id(hir_id))
         },
         _ => {
             let diagnostic = tcx.sess.diagnostic();

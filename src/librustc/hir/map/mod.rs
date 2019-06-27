@@ -240,9 +240,9 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn local_def_id_from_hir_id(&self, hir_id: HirId) -> DefId {
-        self.opt_local_def_id_from_hir_id(hir_id).unwrap_or_else(|| {
-            bug!("local_def_id_from_hir_id: no entry for `{:?}`, which has a map of `{:?}`",
+    pub fn local_def_id(&self, hir_id: HirId) -> DefId {
+        self.opt_local_def_id(hir_id).unwrap_or_else(|| {
+            bug!("local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
                  hir_id, self.find_entry(hir_id))
         })
     }
@@ -427,7 +427,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body_owner_def_id(&self, id: BodyId) -> DefId {
-        self.local_def_id_from_hir_id(self.body_owner(id))
+        self.local_def_id(self.body_owner(id))
     }
 
     /// Given a `HirId`, returns the `BodyId` associated with it,
@@ -763,7 +763,7 @@ impl<'hir> Map<'hir> {
     /// Returns the `DefId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
     pub fn get_module_parent(&self, id: HirId) -> DefId {
-        self.local_def_id_from_hir_id(self.get_module_parent_node(id))
+        self.local_def_id(self.get_module_parent_node(id))
     }
 
     /// Returns the `HirId` of `id`'s nearest module parent, or `id` itself if no
@@ -839,7 +839,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_parent_did(&self, id: HirId) -> DefId {
-        self.local_def_id_from_hir_id(self.get_parent_item(id))
+        self.local_def_id(self.get_parent_item(id))
     }
 
     pub fn get_foreign_abi(&self, hir_id: HirId) -> Abi {
@@ -1245,7 +1245,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
         // the user-friendly path, otherwise fall back to stringifying DefPath.
         crate::ty::tls::with_opt(|tcx| {
             if let Some(tcx) = tcx {
-                let def_id = map.local_def_id_from_hir_id(id);
+                let def_id = map.local_def_id(id);
                 tcx.def_path_str(def_id)
             } else if let Some(path) = map.def_path_from_hir_id(id) {
                 path.data.into_iter().map(|elem| {

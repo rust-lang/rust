@@ -542,7 +542,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
-            let def_id = cx.tcx.hir().local_def_id_from_hir_id(count.hir_id);
+            let def_id = cx.tcx.hir().local_def_id(count.hir_id);
             let substs = InternalSubsts::identity_for_item(cx.tcx.global_tcx(), def_id);
             let instance = ty::Instance::resolve(
                 cx.tcx.global_tcx(),
@@ -910,9 +910,9 @@ fn convert_path_expr<'a, 'tcx>(
         Res::Def(DefKind::ConstParam, def_id) => {
             let hir_id = cx.tcx.hir().as_local_hir_id(def_id).unwrap();
             let item_id = cx.tcx.hir().get_parent_node(hir_id);
-            let item_def_id = cx.tcx.hir().local_def_id_from_hir_id(item_id);
+            let item_def_id = cx.tcx.hir().local_def_id(item_id);
             let generics = cx.tcx.generics_of(item_def_id);
-            let local_def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
+            let local_def_id = cx.tcx.hir().local_def_id(hir_id);
             let index = generics.param_def_id_to_index[&local_def_id];
             let name = cx.tcx.hir().name(hir_id).as_interned_str();
             let val = ConstValue::Param(ty::ParamConst::new(index, name));
@@ -1191,7 +1191,7 @@ fn capture_upvar<'tcx>(
 ) -> ExprRef<'tcx> {
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
+        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
