@@ -7,7 +7,7 @@ trigger:
   - auto
 
 variables:
-- group: prod-credentials
+- group: real-prod-credentials
 
 jobs:
 - job: Linux
@@ -138,8 +138,9 @@ jobs:
         IMAGE: x86_64-gnu-full-bootstrap
       x86_64-gnu-aux:
         IMAGE: x86_64-gnu-aux
-      x86_64-gnu-tools:
-        IMAGE: x86_64-gnu-tools
+        # FIXME: needs reenabling here rather than Travis
+      # x86_64-gnu-tools:
+      #   IMAGE: x86_64-gnu-tools
       x86_64-gnu-debug:
         IMAGE: x86_64-gnu-debug
       x86_64-gnu-nopt:
