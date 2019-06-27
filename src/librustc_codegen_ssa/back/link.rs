@@ -29,7 +29,7 @@ use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Output, Stdio};
+use std::process::{Output, Stdio, ExitStatus};
 use std::str;
 use std::env;
 
@@ -510,21 +510,6 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
     sess.abort_if_errors();
 
     // Invoke the system linker
-    //
-    // Note that there's a terribly awful hack that really shouldn't be present
-    // in any compiler. Here an environment variable is supported to
-    // automatically retry the linker invocation if the linker looks like it
-    // segfaulted.
-    //
-    // Gee that seems odd, normally segfaults are things we want to know about!
-    // Unfortunately though in rust-lang/rust#38878 we're experiencing the
-    // linker segfaulting on Travis quite a bit which is causing quite a bit of
-    // pain to land PRs when they spuriously fail due to a segfault.
-    //
-    // The issue #38878 has some more debugging information on it as well, but
-    // this unfortunately looks like it's just a race condition in macOS's linker
-    // with some thread pool working in the background. It seems that no one
-    // currently knows a fix for this so in the meantime we're left with this...
     info!("{:?}", &cmd);
     let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
     let mut prog;
@@ -567,21 +552,59 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
             info!("{:?}", &cmd);
             continue;
         }
+
+        // Here's a terribly awful hack that really shouldn't be present in any
+        // compiler. Here an environment variable is supported to automatically
+        // retry the linker invocation if the linker looks like it segfaulted.
+        //
+        // Gee that seems odd, normally segfaults are things we want to know
+        // about!  Unfortunately though in rust-lang/rust#38878 we're
+        // experiencing the linker segfaulting on Travis quite a bit which is
+        // causing quite a bit of pain to land PRs when they spuriously fail
+        // due to a segfault.
+        //
+        // The issue #38878 has some more debugging information on it as well,
+        // but this unfortunately looks like it's just a race condition in
+        // macOS's linker with some thread pool working in the background. It
+        // seems that no one currently knows a fix for this so in the meantime
+        // we're left with this...
         if !retry_on_segfault || i > 3 {
             break
         }
         let msg_segv = "clang: error: unable to execute command: Segmentation fault: 11";
         let msg_bus  = "clang: error: unable to execute command: Bus error: 10";
-        if !(out.contains(msg_segv) || out.contains(msg_bus)) {
-            break
+        if out.contains(msg_segv) || out.contains(msg_bus) {
+            warn!(
+                "looks like the linker segfaulted when we tried to call it, \
+                 automatically retrying again. cmd = {:?}, out = {}.",
+                cmd,
+                out,
+            );
+            continue;
         }
 
-        warn!(
-            "looks like the linker segfaulted when we tried to call it, \
-             automatically retrying again. cmd = {:?}, out = {}.",
-            cmd,
-            out,
-        );
+        if is_illegal_instruction(&output.status) {
+            warn!(
+                "looks like the linker hit an illegal instruction when we \
+                 tried to call it, automatically retrying again. cmd = {:?}, ]\
+                 out = {}, status = {}.",
+                cmd,
+                out,
+                output.status,
+            );
+            continue;
+        }
+
+        #[cfg(unix)]
+        fn is_illegal_instruction(status: &ExitStatus) -> bool {
+            use std::os::unix::prelude::*;
+            status.signal() == Some(libc::SIGILL)
+        }
+
+        #[cfg(windows)]
+        fn is_illegal_instruction(_status: &ExitStatus) -> bool {
+            false
+        }
     }
 
     match prog {
