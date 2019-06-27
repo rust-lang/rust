@@ -201,28 +201,22 @@ impl<'sess> OnDiskCache<'sess> {
             let mut query_result_index = EncodedQueryResultIndex::new();
 
             time(tcx.sess, "encode query results", || {
-                use crate::ty::query::queries::*;
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
 
-                encode_query_results::<type_of<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<generics_of<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<predicates_of<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<used_trait_imports<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<typeck_tables_of<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<codegen_fulfill_obligation<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<optimized_mir<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<unsafety_check_result<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<borrowck<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<mir_borrowck<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<mir_const_qualif<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<const_is_rvalue_promotable_to_static<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<symbol_name<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<check_match<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<codegen_fn_attrs<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<specialization_graph_of<'_>, _>(tcx, enc, qri)?;
-                encode_query_results::<const_eval<'_>, _>(tcx, enc, qri)?;
-                // FIXME: Include const_eval_raw?
+                macro_rules! encode_queries {
+                    ($($query:ident,)*) => {
+                        $(
+                            encode_query_results::<ty::query::queries::$query<'_>, _>(
+                                tcx,
+                                enc,
+                                qri
+                            )?;
+                        )*
+                    }
+                }
+
+                rustc_cached_queries!(encode_queries!);
 
                 Ok(())
             })?;
