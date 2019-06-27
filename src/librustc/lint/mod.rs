@@ -27,7 +27,7 @@ use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
 use crate::hir;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::lint::builtin::parser::{QUESTION_MARK_MACRO_SEP, ILL_FORMED_ATTRIBUTE_INPUT};
+use crate::lint::builtin::parser::ILL_FORMED_ATTRIBUTE_INPUT;
 use crate::session::{Session, DiagnosticMessageId};
 use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
@@ -80,7 +80,6 @@ impl Lint {
     /// Returns the `rust::lint::Lint` for a `syntax::early_buffered_lints::BufferedEarlyLintId`.
     pub fn from_parser_lint_id(lint_id: BufferedEarlyLintId) -> &'static Self {
         match lint_id {
-            BufferedEarlyLintId::QuestionMarkMacroSep => QUESTION_MARK_MACRO_SEP,
             BufferedEarlyLintId::IllFormedAttributeInput => ILL_FORMED_ATTRIBUTE_INPUT,
         }
     }
