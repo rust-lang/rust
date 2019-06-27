@@ -942,7 +942,7 @@ impl<'a> Parser<'a> {
                 //  {foo(bar {}}
                 //      -      ^
                 //      |      |
-                //      |      help: `)` may belong here (FIXME: #58270)
+                //      |      help: `)` may belong here
                 //      |
                 //      unclosed delimiter
                 if let Some(sp) = unmatched.unclosed_span {
