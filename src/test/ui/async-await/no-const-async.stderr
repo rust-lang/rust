@@ -1,0 +1,18 @@
+error: expected identifier, found reserved keyword `async`
+  --> $DIR/no-const-async.rs:7:11
+   |
+LL | pub const async fn x() {}
+   |           ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL | pub const r#async fn x() {}
+   |           ^^^^^^^
+
+error: expected `:`, found keyword `fn`
+  --> $DIR/no-const-async.rs:7:17
+   |
+LL | pub const async fn x() {}
+   |                 ^^ expected `:`
+
+error: aborting due to 2 previous errors
+
