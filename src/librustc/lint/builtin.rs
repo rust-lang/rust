@@ -349,12 +349,6 @@ declare_lint! {
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
-        pub QUESTION_MARK_MACRO_SEP,
-        Allow,
-        "detects the use of `?` as a macro separator"
-    }
-
-    declare_lint! {
         pub ILL_FORMED_ATTRIBUTE_INPUT,
         Warn,
         "ill-formed attribute inputs that were previously accepted and used in practice"
@@ -444,7 +438,6 @@ declare_lint_pass! {
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-        parser::QUESTION_MARK_MACRO_SEP,
         parser::ILL_FORMED_ATTRIBUTE_INPUT,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
