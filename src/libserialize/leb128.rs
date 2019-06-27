@@ -123,7 +123,7 @@ pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i128, usize) {
     loop {
         byte = data[position];
         position += 1;
-        result |= ((byte & 0x7F) as i128) << shift;
+        result |= i128::from(byte & 0x7F) << shift;
         shift += 7;
 
         if (byte & 0x80) == 0 {

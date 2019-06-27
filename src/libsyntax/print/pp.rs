@@ -497,7 +497,7 @@ impl<'a> Printer<'a> {
 
     pub fn print_newline(&mut self, amount: isize) -> io::Result<()> {
         debug!("NEWLINE {}", amount);
-        let ret = write!(self.out, "\n");
+        let ret = writeln!(self.out);
         self.pending_indentation = 0;
         self.indent(amount);
         ret
