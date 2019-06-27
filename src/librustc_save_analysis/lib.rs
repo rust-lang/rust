@@ -29,6 +29,7 @@ use std::cell::Cell;
 use std::default::Default;
 use std::env;
 use std::fs::File;
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, Attribute, DUMMY_NODE_ID, NodeId, PatKind};
@@ -1025,7 +1026,7 @@ impl<'a> DumpHandler<'a> {
         }
     }
 
-    fn output_file(&self, ctx: &SaveContext<'_, '_>) -> (File, PathBuf) {
+    fn output_file(&self, ctx: &SaveContext<'_, '_>) -> (BufWriter<File>, PathBuf) {
         let sess = &ctx.tcx.sess;
         let file_name = match ctx.config.output_file {
             Some(ref s) => PathBuf::from(s),
@@ -1059,9 +1060,9 @@ impl<'a> DumpHandler<'a> {
 
         info!("Writing output to {}", file_name.display());
 
-        let output_file = File::create(&file_name).unwrap_or_else(
+        let output_file = BufWriter::new(File::create(&file_name).unwrap_or_else(
             |e| sess.fatal(&format!("Could not open {}: {}", file_name.display(), e)),
-        );
+        ));
 
         (output_file, file_name)
     }
