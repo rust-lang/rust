@@ -1217,7 +1217,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let access = access_from!(self.save_ctxt, root_item, hir_id);
 
         // The parent `DefId` of a given use tree is always the enclosing item.
-        let parent = self.save_ctxt.tcx.hir().opt_local_def_id(id)
+        let parent = self.save_ctxt.tcx.hir().opt_local_def_id_from_node_id(id)
             .and_then(|id| self.save_ctxt.tcx.parent(id))
             .map(id_from_def_id);
 
@@ -1367,7 +1367,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
                 let name_span = item.ident.span;
                 if !self.span.filter_generated(name_span) {
                     let span = self.span_from_span(name_span);
-                    let parent = self.save_ctxt.tcx.hir().opt_local_def_id(item.id)
+                    let parent = self.save_ctxt.tcx.hir().opt_local_def_id_from_node_id(item.id)
                         .and_then(|id| self.save_ctxt.tcx.parent(id))
                         .map(id_from_def_id);
                     self.dumper.import(

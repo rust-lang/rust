@@ -66,12 +66,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     fn stability(&self, id: hir::HirId) -> Option<attr::Stability> {
-        self.cx.tcx.hir().opt_local_def_id_from_hir_id(id)
+        self.cx.tcx.hir().opt_local_def_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_stability(def_id)).cloned()
     }
 
     fn deprecation(&self, id: hir::HirId) -> Option<attr::Deprecation> {
-        self.cx.tcx.hir().opt_local_def_id_from_hir_id(id)
+        self.cx.tcx.hir().opt_local_def_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_deprecation(def_id))
     }
 

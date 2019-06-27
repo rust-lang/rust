@@ -220,7 +220,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
-        self.opt_local_def_id_from_hir_id(id).map(|def_id| {
+        self.opt_local_def_id(id).map(|def_id| {
             self.def_path(def_id)
         })
     }
@@ -232,7 +232,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn local_def_id_from_node_id(&self, node: NodeId) -> DefId {
-        self.opt_local_def_id(node).unwrap_or_else(|| {
+        self.opt_local_def_id_from_node_id(node).unwrap_or_else(|| {
             let hir_id = self.node_to_hir_id(node);
             bug!("local_def_id_from_node_id: no entry for `{}`, which has a map of `{:?}`",
                  node, self.find_entry(hir_id))
@@ -248,13 +248,13 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn opt_local_def_id_from_hir_id(&self, hir_id: HirId) -> Option<DefId> {
+    pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<DefId> {
         let node_id = self.hir_to_node_id(hir_id);
         self.definitions.opt_local_def_id(node_id)
     }
 
     #[inline]
-    pub fn opt_local_def_id(&self, node: NodeId) -> Option<DefId> {
+    pub fn opt_local_def_id_from_node_id(&self, node: NodeId) -> Option<DefId> {
         self.definitions.opt_local_def_id(node)
     }
 

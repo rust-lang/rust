@@ -1193,7 +1193,7 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
 }
 
 fn id_from_node_id(id: NodeId, scx: &SaveContext<'_, '_>) -> rls_data::Id {
-    let def_id = scx.tcx.hir().opt_local_def_id(id);
+    let def_id = scx.tcx.hir().opt_local_def_id_from_node_id(id);
     def_id.map(|id| id_from_def_id(id)).unwrap_or_else(|| {
         // Create a *fake* `DefId` out of a `NodeId` by subtracting the `NodeId`
         // out of the maximum u32 value. This will work unless you have *billions*
