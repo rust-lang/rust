@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-missing-await.rs:16:18
+   |
+LL |         take_u32(x)
+   |                  ^ expected u32, found opaque type
+   |
+   = note: expected type `u32`
+              found type `impl std::future::Future`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
