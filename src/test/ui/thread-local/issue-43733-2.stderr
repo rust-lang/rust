@@ -1,0 +1,24 @@
+error[E0277]: `std::cell::Cell<std::thread::local::fast::DtorState>` cannot be shared between threads safely
+  --> $DIR/issue-43733-2.rs:24:1
+   |
+LL | static __KEY: Key<()> = Key::new();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::Cell<std::thread::local::fast::DtorState>` cannot be shared between threads safely
+   |
+   = help: within `std::thread::__FastLocalKeyInner<()>`, the trait `std::marker::Sync` is not implemented for `std::cell::Cell<std::thread::local::fast::DtorState>`
+   = note: required because it appears within the type `std::thread::__FastLocalKeyInner<()>`
+   = note: shared static variables must have a type that implements `Sync`
+
+error[E0277]: `std::cell::UnsafeCell<std::option::Option<()>>` cannot be shared between threads safely
+  --> $DIR/issue-43733-2.rs:24:1
+   |
+LL | static __KEY: Key<()> = Key::new();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::UnsafeCell<std::option::Option<()>>` cannot be shared between threads safely
+   |
+   = help: within `std::thread::__FastLocalKeyInner<()>`, the trait `std::marker::Sync` is not implemented for `std::cell::UnsafeCell<std::option::Option<()>>`
+   = note: required because it appears within the type `std::thread::local::lazy::LazyKeyInner<()>`
+   = note: required because it appears within the type `std::thread::__FastLocalKeyInner<()>`
+   = note: shared static variables must have a type that implements `Sync`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
