@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/init-unsafe.rs:7:17
+  --> $DIR/init-unsafe.rs:8:17
    |
 LL |     let stuff = init::<isize>();
    |                 ^^^^^^^^^^^^^^^ call to unsafe function
