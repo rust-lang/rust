@@ -16,7 +16,7 @@ use syntax_pos::Span;
 
 use crate::html::escape::Escape;
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Cfg {
     /// Accepts all configurations.
     True,
