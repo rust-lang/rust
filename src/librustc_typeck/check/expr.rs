@@ -295,8 +295,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Index(ref base, ref idx) => {
                 self.check_expr_index(base, idx, needs, expr)
             }
-            ExprKind::Yield(ref value, _) => {
-                self.check_expr_yield(value, expr)
+            ExprKind::Yield(ref value, ref src) => {
+                self.check_expr_yield(value, expr, src)
             }
             hir::ExprKind::Err => {
                 tcx.types.err
@@ -1541,12 +1541,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_yield(&self, value: &'tcx hir::Expr, expr: &'tcx hir::Expr) -> Ty<'tcx> {
+    fn check_expr_yield(
+        &self,
+        value: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr,
+        src: &'tcx hir::YieldSource
+    ) -> Ty<'tcx> {
         match self.yield_ty {
             Some(ty) => {
                 self.check_expr_coercable_to_type(&value, ty);
             }
-            None => {
+            // Given that this `yield` expression was generated as a result of lowering a `.await`,
+            // we know that the yield type must be `()`; however, the context won't contain this
+            // information. Hence, we check the source of the yield expression here and check its
+            // value's type against `()` (this check should always hold).
+            None if src == &hir::YieldSource::Await => {
+                self.check_expr_coercable_to_type(&value, self.tcx.mk_unit());
+            }
+            _ => {
                 struct_span_err!(self.tcx.sess, expr.span, E0627,
                                     "yield statement outside of generator literal").emit();
             }
