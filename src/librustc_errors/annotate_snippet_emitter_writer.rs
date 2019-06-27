@@ -94,7 +94,7 @@ impl<'a>  DiagnosticConverter<'a> {
                     annotation_type: Self::annotation_type_for_level(self.level),
                 }),
                 footer: vec![],
-                slices: slices,
+                slices,
             })
         } else {
             // FIXME(#59346): Is it ok to return None if there's no source_map?

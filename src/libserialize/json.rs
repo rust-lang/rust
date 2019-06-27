@@ -461,7 +461,7 @@ impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
     pub fn new(writer: &'a mut dyn fmt::Write) -> Encoder<'a> {
-        Encoder { writer: writer, is_emitting_map_key: false, }
+        Encoder { writer, is_emitting_map_key: false, }
     }
 }
 
@@ -513,7 +513,7 @@ impl<'a> crate::Encoder for Encoder<'a> {
         emit_enquoted_if_mapkey!(self, fmt_number_or_null(v))
     }
     fn emit_f32(&mut self, v: f32) -> EncodeResult {
-        self.emit_f64(v as f64)
+        self.emit_f64(f64::from(v))
     }
 
     fn emit_char(&mut self, v: char) -> EncodeResult {
@@ -763,7 +763,7 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         emit_enquoted_if_mapkey!(self, fmt_number_or_null(v))
     }
     fn emit_f32(&mut self, v: f32) -> EncodeResult {
-        self.emit_f64(v as f64)
+        self.emit_f64(f64::from(v))
     }
 
     fn emit_char(&mut self, v: char) -> EncodeResult {
@@ -1698,12 +1698,12 @@ impl<T: Iterator<Item=char>> Parser<T> {
                             if n2 < 0xDC00 || n2 > 0xDFFF {
                                 return self.error(LoneLeadingSurrogateInHexEscape)
                             }
-                            let c = (((n1 - 0xD800) as u32) << 10 |
-                                     (n2 - 0xDC00) as u32) + 0x1_0000;
+                            let c = (u32::from(n1 - 0xD800) << 10 |
+                                     u32::from(n2 - 0xDC00)) + 0x1_0000;
                             res.push(char::from_u32(c).unwrap());
                         }
 
-                        n => match char::from_u32(n as u32) {
+                        n => match char::from_u32(u32::from(n)) {
                             Some(c) => res.push(c),
                             None => return self.error(InvalidUnicodeCodePoint),
                         },
@@ -2405,7 +2405,7 @@ impl ToJson for Json {
 }
 
 impl ToJson for f32 {
-    fn to_json(&self) -> Json { (*self as f64).to_json() }
+    fn to_json(&self) -> Json { f64::from(*self).to_json() }
 }
 
 impl ToJson for f64 {
