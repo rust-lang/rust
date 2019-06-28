@@ -1,5 +1,5 @@
 use crate::dep_graph::SerializedDepNodeIndex;
-use crate::dep_graph::DepNode;
+use crate::dep_graph::{DepKind, DepNode};
 use crate::hir::def_id::{CrateNum, DefId};
 use crate::ty::TyCtxt;
 use crate::ty::query::queries;
@@ -28,12 +28,17 @@ pub trait QueryConfig<'tcx> {
 }
 
 pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
+    const ANON: bool;
+    const EVAL_ALWAYS: bool;
+
     fn query(key: Self::Key) -> Query<'tcx>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_cache<'a>(tcx: TyCtxt<'tcx>) -> &'a Lock<QueryCache<'tcx, Self>>;
 
     fn to_dep_node(tcx: TyCtxt<'tcx>, key: &Self::Key) -> DepNode;
+
+    fn dep_kind() -> DepKind;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value;

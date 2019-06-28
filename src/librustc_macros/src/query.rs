@@ -423,20 +423,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             if modifiers.no_hash {
                 attributes.push(quote! { no_hash });
             };
-
-            let mut attribute_stream = quote! {};
-
-            for e in attributes.into_iter().intersperse(quote! {,}) {
-                attribute_stream.extend(e);
-            }
-
-            // Add the query to the group
-            group_stream.extend(quote! {
-                [#attribute_stream] fn #name: #name(#arg) #result,
-            });
-
-            let mut attributes = Vec::new();
-
             // Pass on the anon modifier
             if modifiers.anon {
                 attributes.push(quote! { anon });
@@ -450,6 +436,12 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             for e in attributes.into_iter().intersperse(quote! {,}) {
                 attribute_stream.extend(e);
             }
+
+            // Add the query to the group
+            group_stream.extend(quote! {
+                [#attribute_stream] fn #name: #name(#arg) #result,
+            });
+
             // Create a dep node for the query
             dep_node_def_stream.extend(quote! {
                 [#attribute_stream] #name(#arg),
