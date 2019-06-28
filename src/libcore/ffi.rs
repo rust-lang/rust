@@ -268,35 +268,73 @@ mod sealed_trait {
                reason = "the `c_variadic` feature has not been properly tested on \
                          all supported platforms",
                issue = "44930")]
-    pub trait VaArgSafe {}
+    pub trait VaArgSafe {
+        #[doc(hidden)]
+        unsafe fn va_arg(ap: &mut super::VaListImpl<'_>) -> Self;
+    }
 }
 
-macro_rules! impl_va_arg_safe {
+macro_rules! impl_va_arg_safe_integer {
     ($($t:ty),+) => {
         $(
             #[unstable(feature = "c_variadic",
                        reason = "the `c_variadic` feature has not been properly tested on \
                                  all supported platforms",
                        issue = "44930")]
-            impl sealed_trait::VaArgSafe for $t {}
+            impl sealed_trait::VaArgSafe for $t {
+                unsafe fn va_arg(ap: &mut VaListImpl<'_>) -> Self {
+                    #[cfg(not(all(target_arch = "aarch64", not(target_os = "ios"), not(windows))))]
+                    return va_arg(ap);
+                    #[cfg(all(target_arch = "aarch64", not(target_os = "ios"), not(windows)))]
+                    return ap.va_arg_gr();
+                }
+            }
         )+
     }
 }
 
-impl_va_arg_safe!{i8, i16, i32, i64, usize}
-impl_va_arg_safe!{u8, u16, u32, u64, isize}
-impl_va_arg_safe!{f64}
+macro_rules! impl_va_arg_safe_float {
+    ($($t:ty),+) => {
+        $(
+            #[unstable(feature = "c_variadic",
+                       reason = "the `c_variadic` feature has not been properly tested on \
+                                 all supported platforms",
+                       issue = "44930")]
+            impl sealed_trait::VaArgSafe for $t {
+                unsafe fn va_arg(ap: &mut VaListImpl<'_>) -> Self {
+                    #[cfg(not(all(target_arch = "aarch64", not(target_os = "ios"), not(windows))))]
+                    return va_arg(ap);
+                    #[cfg(all(target_arch = "aarch64", not(target_os = "ios"), not(windows)))]
+                    return ap.va_arg_vr();
+                }
+            }
+        )+
+    }
+}
 
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
-impl<T> sealed_trait::VaArgSafe for *mut T {}
-#[unstable(feature = "c_variadic",
-           reason = "the `c_variadic` feature has not been properly tested on \
-                     all supported platforms",
-           issue = "44930")]
-impl<T> sealed_trait::VaArgSafe for *const T {}
+macro_rules! impl_va_arg_safe_pointer {
+    ($($t:ident),+) => {
+        $(
+            #[unstable(feature = "c_variadic",
+                       reason = "the `c_variadic` feature has not been properly tested on \
+                                 all supported platforms",
+                       issue = "44930")]
+            impl<T> sealed_trait::VaArgSafe for *$t T {
+                unsafe fn va_arg(ap: &mut VaListImpl<'_>) -> Self {
+                    #[cfg(not(all(target_arch = "aarch64", not(target_os = "ios"), not(windows))))]
+                    return va_arg(ap);
+                    #[cfg(all(target_arch = "aarch64", not(target_os = "ios"), not(windows)))]
+                    return ap.va_arg_gr();
+                }
+            }
+        )+
+    }
+}
+
+impl_va_arg_safe_integer! {i8, i16, i32, i64, usize}
+impl_va_arg_safe_integer! {u8, u16, u32, u64, isize}
+impl_va_arg_safe_float! {f64}
+impl_va_arg_safe_pointer! {mut, const}
 
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
@@ -306,7 +344,7 @@ impl<'f> VaListImpl<'f> {
     /// Advance to the next arg.
     #[inline]
     pub unsafe fn arg<T: sealed_trait::VaArgSafe>(&mut self) -> T {
-        va_arg(self)
+        T::va_arg(self)
     }
 
     /// Copies the `va_list` at the current location.
@@ -363,5 +401,64 @@ extern "rust-intrinsic" {
 
     /// Loads an argument of type `T` from the `va_list` `ap` and increment the
     /// argument `ap` points to.
+    #[cfg(not(all(target_arch = "aarch64", not(target_os = "ios"), not(windows))))]
     fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
+}
+
+#[cfg(all(target_arch = "aarch64", not(target_os = "ios"), not(windows)))]
+use crate::{mem, ptr};
+
+// Implemenation for AArch64 linux (and others that follow the standard PCS)
+// based on https://developer.arm.com/docs/ihi0055/d/procedure-call-standard-for-the-arm-64-bit-architecture
+// APPENDIX Variable argument Lists -> The va_start() macro
+#[cfg(all(target_arch = "aarch64", not(target_os = "ios"), not(windows)))]
+impl<'f> VaListImpl<'f> {
+    unsafe fn get_begin_and_end<T>(current_pos: usize, reg_size: usize) -> (usize, usize) {
+        let mut begin = current_pos;
+        if mem::align_of::<T>() > 8 && reg_size == 8 {
+            begin = begin.wrapping_add(15) & !15; // round up
+        }
+        let nreg = (mem::size_of::<T>() + reg_size - 1) / reg_size;
+        let end = begin.wrapping_add(nreg * reg_size);
+        #[cfg(target_endian = "big")]
+        {
+            if
+            /* classof(type) != "aggregate" && */
+            mem::size_of::<T>() < reg_size {
+                begin = begin.wrapping_add(reg_size - mem::size_of::<T>());
+            }
+        }
+        (begin, end)
+    }
+
+    unsafe fn va_arg_on_stack<T: sealed_trait::VaArgSafe>(stack: &mut *mut c_void) -> T {
+        let (begin, end) = Self::get_begin_and_end::<T>(*stack as usize, 8);
+        *stack = end as *mut c_void;
+        ptr::read(begin as *const T)
+    }
+
+    unsafe fn va_arg_gr_or_vr<T: sealed_trait::VaArgSafe>(
+        r_top: *mut c_void,
+        r_offs: &mut i32,
+        stack: &mut *mut c_void,
+        reg_size: usize,
+    ) -> T {
+        if *r_offs >= 0 {
+            return Self::va_arg_on_stack(stack); // reg save area empty
+        }
+        let (begin, end) = Self::get_begin_and_end::<T>(*r_offs as usize, reg_size);
+        *r_offs = end as i32;
+        if *r_offs > 0 {
+            return Self::va_arg_on_stack(stack); // overflowed reg save area
+        }
+        ptr::read((r_top as usize).wrapping_add(begin) as *const T)
+    }
+
+    unsafe fn va_arg_gr<T: sealed_trait::VaArgSafe>(&mut self) -> T {
+        Self::va_arg_gr_or_vr(self.gr_top, &mut self.gr_offs, &mut self.stack, 8)
+    }
+
+    unsafe fn va_arg_vr<T: sealed_trait::VaArgSafe>(&mut self) -> T {
+        Self::va_arg_gr_or_vr(self.vr_top, &mut self.vr_offs, &mut self.stack, 16)
+    }
 }
