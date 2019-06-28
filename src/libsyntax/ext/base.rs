@@ -680,9 +680,6 @@ pub trait Resolver {
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
-    fn resolve_macro_path(&mut self, path: &ast::Path, kind: MacroKind, invoc_id: Mark,
-                          derives_in_scope: Vec<ast::Path>, force: bool)
-                          -> Result<Lrc<SyntaxExtension>, Determinacy>;
 
     fn check_unused_macros(&self);
 }

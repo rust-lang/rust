@@ -242,13 +242,6 @@ impl<'a> base::Resolver for Resolver<'a> {
         Ok(Some(ext))
     }
 
-    fn resolve_macro_path(&mut self, path: &ast::Path, kind: MacroKind, invoc_id: Mark,
-                          derives_in_scope: Vec<ast::Path>, force: bool)
-                          -> Result<Lrc<SyntaxExtension>, Determinacy> {
-        let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
-        Ok(self.resolve_macro_to_res(path, kind, &parent_scope, false, force)?.1)
-    }
-
     fn check_unused_macros(&self) {
         for (&node_id, &span) in self.unused_macros.iter() {
             self.session.buffer_lint(

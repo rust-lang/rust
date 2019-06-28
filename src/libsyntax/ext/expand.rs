@@ -208,6 +208,7 @@ pub enum InvocationKind {
     Derive {
         path: Path,
         item: Annotatable,
+        item_with_markers: Annotatable,
     },
 }
 
@@ -362,19 +363,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                     derives.reserve(traits.len());
                     invocations.reserve(traits.len());
-                    for path in &traits {
+                    for path in traits {
                         let mark = Mark::fresh(self.cx.current_expansion.mark);
                         derives.push(mark);
-                        let item = match self.cx.resolver.resolve_macro_path(
-                                path, MacroKind::Derive, Mark::root(), Vec::new(), false) {
-                            Ok(ext) => match ext.kind {
-                                SyntaxExtensionKind::LegacyDerive(..) => item_with_markers.clone(),
-                                _ => item.clone(),
-                            },
-                            _ => item.clone(),
-                        };
                         invocations.push(Invocation {
-                            kind: InvocationKind::Derive { path: path.clone(), item },
+                            kind: InvocationKind::Derive {
+                                path,
+                                item: item.clone(),
+                                item_with_markers: item_with_markers.clone(),
+                            },
                             fragment_kind: invoc.fragment_kind,
                             expansion_data: ExpansionData {
                                 mark,
@@ -737,7 +734,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                            ext: &SyntaxExtension)
                            -> Option<AstFragment> {
         let (path, item) = match invoc.kind {
-            InvocationKind::Derive { path, item } => (path, item),
+            InvocationKind::Derive { path, item, item_with_markers } => match ext.kind {
+                SyntaxExtensionKind::LegacyDerive(..) => (path, item_with_markers),
+                _ => (path, item),
+            }
             _ => unreachable!(),
         };
         if !item.derive_allowed() {
