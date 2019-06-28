@@ -2447,9 +2447,12 @@ impl RandomState {
         // every corresponding HashMap a different iteration order.
         thread_local!(static KEYS: Cell<[u64; 2]> = {
             let mut buf = [0u8; 16];
-            // in case of `Error::UNAVAILABLE` we use a constant value
+            // In case of `Error::UNAVAILABLE` we use a constant value
+            // for the following whitelisted targets
+            let whitelisted = cfg!(target="wasm32-unknown-unknown");
             match getrandom::getrandom(&mut buf) {
-                Ok(()) | Err(Error::UNAVAILABLE) => (),
+                Ok(()) => (),
+                Err(Error::UNAVAILABLE) if whitelisted => (),
                 Err(err) => panic!("getrandom failure: {:?}", err),
             }
             let n = u128::from_ne_bytes(buf);
