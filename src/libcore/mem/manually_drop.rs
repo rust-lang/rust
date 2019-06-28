@@ -108,7 +108,7 @@ impl<T> ManuallyDrop<T> {
     #[unstable(feature = "manually_drop_take", issue = "55422")]
     #[inline]
     pub unsafe fn read(slot: &mut ManuallyDrop<T>) -> T {
-        ptr::read(&mut slot.value)
+        ptr::read(&slot.value)
     }
 }
 
