@@ -2557,10 +2557,40 @@ pub trait Iterator {
     /// assert_eq!([1, 2].iter().cmp([1].iter()), Ordering::Greater);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn cmp<I>(mut self, other: I) -> Ordering where
+    fn cmp<I>(self, other: I) -> Ordering
+    where
         I: IntoIterator<Item = Self::Item>,
         Self::Item: Ord,
         Self: Sized,
+    {
+        self.cmp_by(other, |x, y| x.cmp(&y))
+    }
+
+    /// Lexicographically compares the elements of this `Iterator` with those
+    /// of another with respect to the specified comparison function.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_order_by)]
+    ///
+    /// use std::cmp::Ordering;
+    ///
+    /// let xs = [1, 2, 3, 4];
+    /// let ys = [1, 4, 9, 16];
+    ///
+    /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| x.cmp(&y)), Ordering::Less);
+    /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (x * x).cmp(&y)), Ordering::Equal);
+    /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (2 * x).cmp(&y)), Ordering::Greater);
+    /// ```
+    #[unstable(feature = "iter_order_by", issue = "0")]
+    fn cmp_by<I, F>(mut self, other: I, mut cmp: F) -> Ordering
+    where
+        Self: Sized,
+        I: IntoIterator,
+        F: FnMut(Self::Item, I::Item) -> Ordering,
     {
         let mut other = other.into_iter();
 
@@ -2579,7 +2609,7 @@ pub trait Iterator {
                 Some(val) => val,
             };
 
-            match x.cmp(&y) {
+            match cmp(x, y) {
                 Ordering::Equal => (),
                 non_eq => return non_eq,
             }
@@ -2601,10 +2631,49 @@ pub trait Iterator {
     /// assert_eq!([std::f64::NAN].iter().partial_cmp([1.].iter()), None);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn partial_cmp<I>(mut self, other: I) -> Option<Ordering> where
+    fn partial_cmp<I>(self, other: I) -> Option<Ordering>
+    where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
+    {
+        self.partial_cmp_by(other, |x, y| x.partial_cmp(&y))
+    }
+
+    /// Lexicographically compares the elements of this `Iterator` with those
+    /// of another with respect to the specified comparison function.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_order_by)]
+    ///
+    /// use std::cmp::Ordering;
+    ///
+    /// let xs = [1.0, 2.0, 3.0, 4.0];
+    /// let ys = [1.0, 4.0, 9.0, 16.0];
+    ///
+    /// assert_eq!(
+    ///     xs.iter().partial_cmp_by(&ys, |&x, &y| x.partial_cmp(&y)),
+    ///     Some(Ordering::Less)
+    /// );
+    /// assert_eq!(
+    ///     xs.iter().partial_cmp_by(&ys, |&x, &y| (x * x).partial_cmp(&y)),
+    ///     Some(Ordering::Equal)
+    /// );
+    /// assert_eq!(
+    ///     xs.iter().partial_cmp_by(&ys, |&x, &y| (2.0 * x).partial_cmp(&y)),
+    ///     Some(Ordering::Greater)
+    /// );
+    /// ```
+    #[unstable(feature = "iter_order_by", issue = "0")]
+    fn partial_cmp_by<I, F>(mut self, other: I, mut partial_cmp: F) -> Option<Ordering>
+    where
+        Self: Sized,
+        I: IntoIterator,
+        F: FnMut(Self::Item, I::Item) -> Option<Ordering>,
     {
         let mut other = other.into_iter();
 
@@ -2623,7 +2692,7 @@ pub trait Iterator {
                 Some(val) => val,
             };
 
-            match x.partial_cmp(&y) {
+            match partial_cmp(x, y) {
                 Some(Ordering::Equal) => (),
                 non_eq => return non_eq,
             }
@@ -2640,10 +2709,36 @@ pub trait Iterator {
     /// assert_eq!([1].iter().eq([1, 2].iter()), false);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn eq<I>(mut self, other: I) -> bool where
+    fn eq<I>(self, other: I) -> bool
+    where
         I: IntoIterator,
         Self::Item: PartialEq<I::Item>,
         Self: Sized,
+    {
+        self.eq_by(other, |x, y| x == y)
+    }
+
+    /// Determines if the elements of this `Iterator` are equal to those of
+    /// another with respect to the specified equality function.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_order_by)]
+    ///
+    /// let xs = [1, 2, 3, 4];
+    /// let ys = [1, 4, 9, 16];
+    ///
+    /// assert!(xs.iter().eq_by(&ys, |&x, &y| x * x == y));
+    /// ```
+    #[unstable(feature = "iter_order_by", issue = "0")]
+    fn eq_by<I, F>(mut self, other: I, mut eq: F) -> bool
+    where
+        Self: Sized,
+        I: IntoIterator,
+        F: FnMut(Self::Item, I::Item) -> bool,
     {
         let mut other = other.into_iter();
 
@@ -2658,7 +2753,9 @@ pub trait Iterator {
                 Some(val) => val,
             };
 
-            if x != y { return false }
+            if !eq(x, y) {
+                return false;
+            }
         }
     }
 
