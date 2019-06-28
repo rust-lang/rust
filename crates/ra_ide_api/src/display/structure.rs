@@ -142,6 +142,13 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             };
             Some(node)
         })
+        .visit(|mc: &ast::MacroCall| {
+            let first_token = mc.syntax().first_token().unwrap();
+            if first_token.text().as_str() != "macro_rules" {
+                return None;
+            }
+            decl(mc)
+        })
         .accept(node)?
 }
 
@@ -176,6 +183,10 @@ const C: i32 = 92;
 impl E {}
 
 impl fmt::Debug for E {}
+
+macro_rules! mc {
+    () => {}
+}
 
 #[deprecated]
 fn obsolete() {}
