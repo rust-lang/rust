@@ -19,7 +19,7 @@ pub fn opts() -> TargetOptions {
         is_like_fuchsia: true,
         linker_is_gnu: true,
         has_rpath: false,
-        pre_link_args: pre_link_args,
+        pre_link_args,
         pre_link_objects_exe: vec![
             "Scrt1.o".to_string()
         ],

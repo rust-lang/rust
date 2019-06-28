@@ -42,7 +42,6 @@ use rustc::lint::builtin::{
     INTRA_DOC_LINK_RESOLUTION_FAILURE,
     MISSING_DOC_CODE_EXAMPLES,
     PRIVATE_DOC_TESTS,
-    parser::QUESTION_MARK_MACRO_SEP,
     parser::ILL_FORMED_ATTRIBUTE_INPUT,
 };
 use rustc::session;
@@ -403,11 +402,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(PROC_MACRO_DERIVE_RESOLUTION_FALLBACK),
             reference: "issue #50504 <https://github.com/rust-lang/rust/issues/50504>",
             edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(QUESTION_MARK_MACRO_SEP),
-            reference: "issue #48075 <https://github.com/rust-lang/rust/issues/48075>",
-            edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {
             id: LintId::of(MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS),

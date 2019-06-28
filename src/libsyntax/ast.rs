@@ -1832,7 +1832,7 @@ impl Arg {
                         lt,
                         MutTy {
                             ty: infer_ty,
-                            mutbl: mutbl,
+                            mutbl,
                         },
                     ),
                     span,
@@ -2120,7 +2120,7 @@ impl PolyTraitRef {
         PolyTraitRef {
             bound_generic_params: generic_params,
             trait_ref: TraitRef {
-                path: path,
+                path,
                 ref_id: DUMMY_NODE_ID,
             },
             span,

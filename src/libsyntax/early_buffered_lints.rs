@@ -9,8 +9,6 @@ use syntax_pos::MultiSpan;
 /// Since we cannot import `LintId`s from `rustc::lint`, we define some Ids here which can later be
 /// passed to `rustc::lint::Lint::from_parser_lint_id` to get a `rustc::lint::Lint`.
 pub enum BufferedEarlyLintId {
-    /// Usage of `?` as a macro separator is deprecated.
-    QuestionMarkMacroSep,
     IllFormedAttributeInput,
 }
 

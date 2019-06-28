@@ -70,15 +70,15 @@ unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
     let mut i = 0; // current byte index (from LSB) in the output u64
     let mut out = 0;
     if i + 3 < len {
-        out = load_int_le!(buf, start + i, u32) as u64;
+        out = u64::from(load_int_le!(buf, start + i, u32));
         i += 4;
     }
     if i + 1 < len {
-        out |= (load_int_le!(buf, start + i, u16) as u64) << (i * 8);
+        out |= u64::from(load_int_le!(buf, start + i, u16)) << (i * 8);
         i += 2
     }
     if i < len {
-        out |= (*buf.get_unchecked(start + i) as u64) << (i * 8);
+        out |= u64::from(*buf.get_unchecked(start + i)) << (i * 8);
         i += 1;
     }
     debug_assert_eq!(i, len);
@@ -237,7 +237,7 @@ impl Hasher for SipHasher128 {
 
         if self.ntail != 0 {
             needed = 8 - self.ntail;
-            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << 8 * self.ntail;
+            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << (8 * self.ntail);
             if length < needed {
                 self.ntail += length;
                 return

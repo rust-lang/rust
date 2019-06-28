@@ -23,8 +23,8 @@ enum Frame {
 impl Frame {
     /// Construct a new frame around the delimited set of tokens.
     fn new(tts: Vec<quoted::TokenTree>) -> Frame {
-        let forest = Lrc::new(quoted::Delimited { delim: token::NoDelim, tts: tts });
-        Frame::Delimited { forest: forest, idx: 0, span: DelimSpan::dummy() }
+        let forest = Lrc::new(quoted::Delimited { delim: token::NoDelim, tts });
+        Frame::Delimited { forest, idx: 0, span: DelimSpan::dummy() }
     }
 }
 
@@ -248,7 +248,7 @@ pub fn transcribe(
             // the previous results (from outside the Delimited).
             quoted::TokenTree::Delimited(mut span, delimited) => {
                 span = span.apply_mark(cx.current_expansion.mark);
-                stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
+                stack.push(Frame::Delimited { forest: delimited, idx: 0, span });
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
 

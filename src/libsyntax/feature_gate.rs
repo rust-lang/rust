@@ -1665,7 +1665,7 @@ impl<'a> Context<'a> {
 }
 
 pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
-    let cx = Context { features: features, parse_sess: parse_sess, plugin_attributes: &[] };
+    let cx = Context { features, parse_sess, plugin_attributes: &[] };
     cx.check_attribute(
         attr,
         attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name).map(|a| *a)),
