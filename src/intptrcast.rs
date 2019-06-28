@@ -108,10 +108,9 @@ impl<'mir, 'tcx> GlobalState {
     /// Shifts `addr` to make it aligned with `align` by rounding `addr` to the smallest multiple
     /// of `align` that is larger or equal to `addr`
     fn align_addr(addr: u64, align: u64) -> u64 {
-        if addr % align == 0 {
-            addr
-        } else {
-            addr + align - addr % align
+        match addr % align {
+            0 => addr,
+            rem => addr + align - rem
         }
     }
 }
