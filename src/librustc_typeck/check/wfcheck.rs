@@ -270,12 +270,7 @@ fn check_type_defn<'tcx, F>(
                     let ty = variant.fields.last().unwrap().ty;
                     fcx.tcx.erase_regions(&ty).lift_to_tcx(fcx_tcx)
                         .map(|ty| ty.needs_drop(fcx_tcx, fcx_tcx.param_env(def_id)))
-                        .unwrap_or_else(|| {
-                            fcx_tcx.sess.delay_span_bug(
-                                item.span, &format!("inference variables in {:?}", ty));
-                            // Just treat unresolved type expression as if it needs drop.
-                            true
-                        })
+                        .unwrap_or(true) // #61402 treat unresolved type expression as needs-drop
                 }
             };
             let all_sized =
