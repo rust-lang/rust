@@ -1,6 +1,6 @@
 // ignore-tidy-filelength
 
-use crate::common::CompareMode;
+use crate::common::{CompareMode, PassMode};
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, Rustdoc};
@@ -10,7 +10,7 @@ use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
 use crate::errors::{self, Error, ErrorKind};
-use crate::header::{TestProps, PassMode};
+use crate::header::TestProps;
 use crate::json;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
@@ -260,6 +260,10 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         env::var_os("PYTHONPATH").hash(&mut hash);
     }
 
+    if let Ui | RunPass | Incremental | Pretty = config.mode {
+        config.force_pass_mode.hash(&mut hash);
+    }
+
     format!("{:x}", hash.finish())
 }
 
@@ -309,10 +313,13 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn pass_mode(&self) -> Option<PassMode> {
+        self.props.pass_mode(self.config)
+    }
+
     fn should_run_successfully(&self) -> bool {
         match self.config.mode {
-            RunPass => true,
-            Ui => self.props.pass_mode == Some(PassMode::Run),
+            RunPass | Ui => self.pass_mode() == Some(PassMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
@@ -322,7 +329,7 @@ impl<'test> TestCx<'test> {
             CompileFail => false,
             RunPass => true,
             JsDocTest => true,
-            Ui => self.props.pass_mode.is_some(),
+            Ui => self.pass_mode().is_some(),
             Incremental => {
                 let revision = self.revision
                     .expect("incremental tests require a list of revisions");
@@ -330,7 +337,7 @@ impl<'test> TestCx<'test> {
                     true
                 } else if revision.starts_with("cfail") {
                     // FIXME: would be nice if incremental revs could start with "cpass"
-                    self.props.pass_mode.is_some()
+                    self.pass_mode().is_some()
                 } else {
                     panic!("revision name must begin with rpass, rfail, or cfail");
                 }
@@ -1341,7 +1348,7 @@ impl<'test> TestCx<'test> {
     fn check_error_patterns(&self, output_to_check: &str, proc_res: &ProcRes) {
         debug!("check_error_patterns");
         if self.props.error_patterns.is_empty() {
-            if self.props.pass_mode.is_some() {
+            if self.pass_mode().is_some() {
                 return;
             } else {
                 self.fatal(&format!(
@@ -1871,7 +1878,11 @@ impl<'test> TestCx<'test> {
         result
     }
 
-    fn make_compile_args(&self, input_file: &Path, output_file: TargetLocation) -> Command {
+    fn make_compile_args(
+        &self,
+        input_file: &Path,
+        output_file: TargetLocation,
+    ) -> Command {
         let is_rustdoc = self.config.src_base.ends_with("rustdoc-ui") ||
                          self.config.src_base.ends_with("rustdoc-js");
         let mut rustc = if !is_rustdoc {
@@ -1968,14 +1979,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        if self.props.pass_mode == Some(PassMode::Check) {
-            assert!(
-                !self
-                    .props
-                    .compile_flags
-                    .iter()
-                    .any(|s| s.starts_with("--emit"))
-            );
+        if let Some(PassMode::Check) = self.pass_mode() {
             rustc.args(&["--emit", "metadata"]);
         }
 

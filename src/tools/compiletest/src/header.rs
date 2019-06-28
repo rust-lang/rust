@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use log::*;
 
-use crate::common::{self, CompareMode, Config, Mode};
+use crate::common::{self, CompareMode, Config, Mode, PassMode};
 use crate::util;
 
 use crate::extract_gdb_version;
@@ -290,13 +290,6 @@ impl EarlyProps {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum PassMode {
-    Check,
-    Build,
-    Run,
-}
-
 #[derive(Clone, Debug)]
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
@@ -357,7 +350,9 @@ pub struct TestProps {
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
     // How far should the test proceed while still passing.
-    pub pass_mode: Option<PassMode>,
+    pass_mode: Option<PassMode>,
+    // Ignore `--pass` overrides from the command line for this test.
+    ignore_pass: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
     // Do not pass `-Z ui-testing` to UI tests
@@ -400,6 +395,7 @@ impl TestProps {
             forbid_output: vec![],
             incremental_dir: None,
             pass_mode: None,
+            ignore_pass: false,
             check_test_line_numbers_match: false,
             disable_ui_testing_normalization: false,
             normalize_stdout: vec![],
@@ -528,6 +524,10 @@ impl TestProps {
 
             self.update_pass_mode(ln, cfg, config);
 
+            if !self.ignore_pass {
+                self.ignore_pass = config.parse_ignore_pass(ln);
+            }
+
             if !self.disable_ui_testing_normalization {
                 self.disable_ui_testing_normalization =
                     config.parse_disable_ui_testing_normalization(ln);
@@ -607,6 +607,15 @@ impl TestProps {
             (Some(_), Some(_)) => panic!("multiple `*-pass` headers in a single test"),
             (_, None) => {}
         }
+    }
+
+    pub fn pass_mode(&self, config: &Config) -> Option<PassMode> {
+        if !self.ignore_pass {
+            if let (mode @ Some(_), Some(_)) = (config.force_pass_mode, self.pass_mode) {
+                return mode;
+            }
+        }
+        self.pass_mode
     }
 }
 
@@ -741,6 +750,10 @@ impl Config {
 
     fn parse_check_test_line_numbers_match(&self, line: &str) -> bool {
         self.parse_name_directive(line, "check-test-line-numbers-match")
+    }
+
+    fn parse_ignore_pass(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "ignore-pass")
     }
 
     fn parse_assembly_output(&self, line: &str) -> Option<String> {
