@@ -1,0 +1,93 @@
+error[E0277]: the trait bound `Self: std::marker::Copy` is not satisfied
+  --> $DIR/defaults-unsound-62211-2.rs:20:18
+   |
+LL |     type Output: Copy
+   |                  ^^^^ the trait `std::marker::Copy` is not implemented for `Self`
+   |
+   = help: consider adding a `where Self: std::marker::Copy` bound
+note: required by `UncheckedCopy`
+  --> $DIR/defaults-unsound-62211-2.rs:17:1
+   |
+LL | trait UncheckedCopy: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: cannot add-assign `&'static str` to `Self`
+  --> $DIR/defaults-unsound-62211-2.rs:24:7
+   |
+LL |     + AddAssign<&'static str>
+   |       ^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `Self += &'static str`
+   |
+   = help: the trait `std::ops::AddAssign<&'static str>` is not implemented for `Self`
+   = help: consider adding a `where Self: std::ops::AddAssign<&'static str>` bound
+note: required by `UncheckedCopy`
+  --> $DIR/defaults-unsound-62211-2.rs:17:1
+   |
+LL | trait UncheckedCopy: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `Self: std::ops::Deref` is not satisfied
+  --> $DIR/defaults-unsound-62211-2.rs:22:7
+   |
+LL |     + Deref<Target = str>
+   |       ^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `Self`
+   |
+   = help: consider adding a `where Self: std::ops::Deref` bound
+note: required by `UncheckedCopy`
+  --> $DIR/defaults-unsound-62211-2.rs:17:1
+   |
+LL | trait UncheckedCopy: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `Self` doesn't implement `std::fmt::Display`
+  --> $DIR/defaults-unsound-62211-2.rs:27:7
+   |
+LL |     + Display = Self;
+   |       ^^^^^^^ `Self` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `Self`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = help: consider adding a `where Self: std::fmt::Display` bound
+note: required by `UncheckedCopy`
+  --> $DIR/defaults-unsound-62211-2.rs:17:1
+   |
+LL | trait UncheckedCopy: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `T` doesn't implement `std::fmt::Display`
+  --> $DIR/defaults-unsound-62211-2.rs:40:9
+   |
+LL | impl<T> UncheckedCopy for T {}
+   |         ^^^^^^^^^^^^^ `T` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `T`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = help: consider adding a `where T: std::fmt::Display` bound
+
+error[E0277]: the trait bound `T: std::ops::Deref` is not satisfied
+  --> $DIR/defaults-unsound-62211-2.rs:40:9
+   |
+LL | impl<T> UncheckedCopy for T {}
+   |         ^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `T`
+   |
+   = help: consider adding a `where T: std::ops::Deref` bound
+
+error[E0277]: cannot add-assign `&'static str` to `T`
+  --> $DIR/defaults-unsound-62211-2.rs:40:9
+   |
+LL | impl<T> UncheckedCopy for T {}
+   |         ^^^^^^^^^^^^^ no implementation for `T += &'static str`
+   |
+   = help: the trait `std::ops::AddAssign<&'static str>` is not implemented for `T`
+   = help: consider adding a `where T: std::ops::AddAssign<&'static str>` bound
+
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/defaults-unsound-62211-2.rs:40:9
+   |
+LL | impl<T> UncheckedCopy for T {}
+   |         ^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+   = help: consider adding a `where T: std::marker::Copy` bound
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
