@@ -84,7 +84,8 @@ impl<'mir, 'tcx> GlobalState {
                 // Leave some space to the previous allocation, to give it some chance to be less aligned.
                 let slack = {
                     let mut rng = memory.extra.rng.as_ref().unwrap().borrow_mut();
-                    rng.gen_range(0, align)
+                    // This means that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
+                    rng.gen_range(0, 16)
                 };
                 // From next_base_addr + slack, round up to adjust for alignment.
                 let base_addr = Self::align_addr(global_state.next_base_addr + slack, align);
