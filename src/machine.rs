@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::cell::RefCell;
 
 use rand::rngs::StdRng;
 
@@ -46,7 +47,7 @@ pub struct MemoryExtra {
     pub intptrcast: intptrcast::MemoryExtra,
     /// The random number generator to use if Miri is running in non-deterministic mode and to
     /// enable intptrcast
-    pub(crate) rng: Option<StdRng>
+    pub(crate) rng: Option<RefCell<StdRng>>
 }
 
 impl MemoryExtra {
@@ -54,7 +55,7 @@ impl MemoryExtra {
         MemoryExtra {
             stacked_borrows: Default::default(),
             intptrcast: Default::default(),
-            rng,
+            rng: rng.map(RefCell::new),
         }
     }
 }
