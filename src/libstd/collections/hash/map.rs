@@ -2451,9 +2451,9 @@ impl RandomState {
             // for the following whitelisted targets
             let whitelisted = cfg!(target="wasm32-unknown-unknown");
             match getrandom::getrandom(&mut buf) {
-                Ok(()) => (),
-                Err(Error::UNAVAILABLE) if whitelisted => (),
-                Err(err) => panic!("getrandom failure: {:?}", err),
+                Ok(()) => {}
+                Err(Error::UNAVAILABLE) if whitelisted => {}
+                Err(err) => panic!("getrandom failure: {:?}", err)
             }
             let n = u128::from_ne_bytes(buf);
             Cell::new([n as u64, (n >> 64) as u64])
