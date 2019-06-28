@@ -168,14 +168,22 @@ impl<'a> Rewrite for SegmentParam<'a> {
             SegmentParam::LifeTime(lt) => lt.rewrite(context, shape),
             SegmentParam::Type(ty) => ty.rewrite(context, shape),
             SegmentParam::Binding(assoc_ty_constraint) => {
-                let mut result = match context.config.type_punctuation_density() {
-                    TypeDensity::Wide => {
-                        format!("{} = ", rewrite_ident(context, assoc_ty_constraint.ident))
+                let mut result = match assoc_ty_constraint.kind {
+                    ast::AssocTyConstraintKind::Bound { .. } => {
+                        format!("{}: ", rewrite_ident(context, assoc_ty_constraint.ident))
                     }
-                    TypeDensity::Compressed => {
-                        format!("{}=", rewrite_ident(context, assoc_ty_constraint.ident))
+                    ast::AssocTyConstraintKind::Equality { .. } => {
+                        match context.config.type_punctuation_density() {
+                            TypeDensity::Wide => {
+                                format!("{} = ", rewrite_ident(context, assoc_ty_constraint.ident))
+                            }
+                            TypeDensity::Compressed => {
+                                format!("{}=", rewrite_ident(context, assoc_ty_constraint.ident))
+                            }
+                        }
                     }
                 };
+
                 let budget = shape.width.checked_sub(result.len())?;
                 let rewrite = assoc_ty_constraint
                     .kind
