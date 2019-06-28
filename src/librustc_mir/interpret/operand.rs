@@ -116,9 +116,10 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Operand<Tag=(), Id=AllocId> {
+pub enum Operand<Tag=(), Id=AllocId, Sym=!> {
     Immediate(Immediate<Tag, Id>),
     Indirect(MemPlace<Tag, Id>),
+    Symbolic(Sym),
 }
 
 impl<Tag> Operand<Tag> {
@@ -146,20 +147,20 @@ impl<Tag> Operand<Tag> {
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct OpTy<'tcx, Tag=()> {
-    op: Operand<Tag>,
+pub struct OpTy<'tcx, Tag=(), Sym=!> {
+    op: Operand<Tag, AllocId, Sym>,
     pub layout: TyLayout<'tcx>,
 }
 
-impl<'tcx, Tag> ::std::ops::Deref for OpTy<'tcx, Tag> {
-    type Target = Operand<Tag>;
+impl<'tcx, Tag, Sym> ::std::ops::Deref for OpTy<'tcx, Tag, Sym> {
+    type Target = Operand<Tag, AllocId, Sym>;
     #[inline(always)]
-    fn deref(&self) -> &Operand<Tag> {
+    fn deref(&self) -> &Self::Target {
         &self.op
     }
 }
 
-impl<'tcx, Tag: Copy> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+impl<'tcx, Tag: Copy, Sym> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag, Sym> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
         OpTy {
@@ -169,7 +170,7 @@ impl<'tcx, Tag: Copy> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+impl<'tcx, Tag, Sym> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag, Sym> {
     #[inline(always)]
     fn from(val: ImmTy<'tcx, Tag>) -> Self {
         OpTy {
