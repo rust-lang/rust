@@ -151,7 +151,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     "Unexpected cast from type {:?}", src_layout.ty
                 );
                 match val.to_bits_or_ptr(src_layout.size, self) {
-                    Err(ptr) => self.cast_from_ptr(ptr, dest_layout.ty),
+                    Err(ptr) => self.cast_from_ptr(ptr, src_layout, dest_layout),
                     Ok(data) => self.cast_from_int(data, src_layout, dest_layout),
                 }
             }
@@ -239,34 +239,43 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     fn cast_from_ptr(
         &self,
         ptr: Pointer<M::PointerTag>,
-        ty: Ty<'tcx>
+        src_layout: TyLayout<'tcx>,
+        dest_layout: TyLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::ty::TyKind::*;
 
-        let size = match ty.sty {
+        fn int_size<'tcx>(layout: TyLayout<'tcx>) -> Option<usize> {
+            match layout.ty.sty {
+                Int(i) => i.bit_width(),
+                Uint(i) => i.bit_width(),
+                _ => bug!("Not an integer"),
+            }
+        }
+
+        match dest_layout.ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc,
             // no need to support it here.
-            RawPtr(_) => return Ok(ptr.into()),
+            RawPtr(_) => Ok(ptr.into()),
             Int(IntTy::Isize) | Uint(UintTy::Usize) => {
                 let size = self.memory.pointer_size();
+                
                 if let Ok(bits) = self.force_bits(Scalar::Ptr(ptr), size) {
-                    return Ok(Scalar::from_uint(bits, size));
-                } 
-                return Ok(ptr.into());
+                    self.cast_from_int(bits, src_layout, dest_layout)
+                } else {
+                    Ok(ptr.into())
+                }
             }
-            // If the target type is a sized integer, we need the its size to perform the pointer cast
-            Int(i) => i.bit_width().unwrap(),
-            Uint(i) => i.bit_width().unwrap(),
+            Int(_) | Uint(_) => {
+                let size = Size::from_bits(int_size(dest_layout).unwrap() as u64);
+                
+                if let Ok(bits) = self.force_bits(Scalar::Ptr(ptr), size) {
+                    self.cast_from_int(bits, src_layout, dest_layout)
+                } else {
+                    err!(ReadPointerAsBytes)
+                }
+            },
             // Casting to any other type is not implemented
-            _ => return err!(Unimplemented(format!("ptr to {:?} cast", ty))),
-        };
-
-        let size = Size::from_bits(size as u64);
-
-        if let Ok(bits) = self.force_bits(Scalar::Ptr(ptr), size) {
-            Ok(Scalar::from_uint(bits, size))
-        } else {
-            err!(ReadPointerAsBytes)
+            _ => return err!(Unimplemented(format!("ptr to {:?} cast", dest_layout.ty))),
         }
     }
 
