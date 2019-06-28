@@ -5,7 +5,7 @@
 
 extern crate test;
 
-use crate::common::CompareMode;
+use crate::common::{CompareMode, PassMode};
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{Config, TestPaths};
 use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
@@ -127,6 +127,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "which sort of compile tests to run",
             "(compile-fail|run-fail|run-pass|\
              run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+        )
+        .optopt(
+            "",
+            "pass",
+            "force {check,build,run}-pass tests to this mode.",
+            "check | build | run"
         )
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "exact", "filters match exactly")
@@ -320,6 +326,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_ignored,
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
+        force_pass_mode: matches.opt_str("pass").map(|mode|
+            mode.parse::<PassMode>()
+                .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
+        ),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
@@ -382,6 +392,10 @@ pub fn log_config(config: &Config) {
         ),
     );
     logv(c, format!("filter_exact: {}", config.filter_exact));
+    logv(c, format!(
+        "force_pass_mode: {}",
+        opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),
+    ));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(
         c,
