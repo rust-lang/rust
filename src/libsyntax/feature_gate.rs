@@ -577,6 +577,9 @@ declare_features! (
     // Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
 
+    // Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests
+    (active, cfg_doctest, "1.37.0", Some(62210), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -1592,6 +1595,7 @@ const GATED_CFGS: &[(Symbol, Symbol, fn(&Features) -> bool)] = &[
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::rustdoc, sym::doc_cfg, cfg_fn!(doc_cfg)),
+    (sym::doctest, sym::cfg_doctest, cfg_fn!(cfg_doctest)),
 ];
 
 #[derive(Debug)]
