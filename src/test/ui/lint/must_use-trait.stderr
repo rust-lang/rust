@@ -1,5 +1,5 @@
 error: unused implementer of `Critical` that must be used
-  --> $DIR/must_use-trait.rs:21:5
+  --> $DIR/must_use-trait.rs:25:5
    |
 LL |     get_critical();
    |     ^^^^^^^^^^^^^^^
@@ -10,5 +10,11 @@ note: lint level defined here
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: unused boxed `Critical` trait object that must be used
+  --> $DIR/must_use-trait.rs:26:5
+   |
+LL |     get_boxed_critical();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
