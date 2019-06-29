@@ -18,17 +18,10 @@ touch "$TOOLSTATE_FILE"
 # Try to test all the tools and store the build/test success in the TOOLSTATE_FILE
 
 set +e
+export RUST_TEST_NOCAPTURE=1
+export RUST_TEST_THREADS=1
 python2.7 "$X_PY" test --no-fail-fast \
-    src/doc/book \
-    src/doc/nomicon \
-    src/doc/reference \
-    src/doc/rust-by-example \
-    src/doc/embedded-book \
-    src/doc/edition-guide \
-    src/tools/clippy \
-    src/tools/rls \
-    src/tools/rustfmt \
-    src/tools/miri \
+    src/tools/rls
 
 set -e
 
