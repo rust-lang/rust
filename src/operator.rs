@@ -1,4 +1,4 @@
-use rustc::ty::Ty;
+use rustc::ty::{Ty, layout::{Size, LayoutOf}};
 use rustc::mir;
 
 use crate::*;
