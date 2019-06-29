@@ -1,4 +1,7 @@
 // compile-flags: -Zmiri-seed=0000000000000000
+fn transmute_ptr_to_int<T>(x: *const T) -> usize { 
+    unsafe { std::mem::transmute::<*const T, usize>(x) * 1 }
+}
 
 fn main() {
     // Some casting-to-int with arithmetic.
@@ -11,4 +14,11 @@ fn main() {
     // Pointer string formatting! We can't check the output as it changes when libstd changes,
     // but we can make sure Miri does not error.
     format!("{:?}", &mut 13 as *mut _);
+
+    // Check that intptrcast is triggered for explicit casts and that it is consistent with
+    // transmuting.
+    let a: *const i32 = &42;
+    let b = transmute_ptr_to_int(a) as u8;
+    let c = a as usize as u8;
+    assert_eq!(b, c);
 }
