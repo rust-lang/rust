@@ -72,10 +72,6 @@ impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
 
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
-///
-/// In the case of a movable generator, borrowed_locals can be `None` and we
-/// will not consider borrows in this pass. This relies on the fact that we only
-/// use this pass at yield points for these generators.
 pub struct RequiresStorage<'mir, 'tcx, 'b> {
     body: &'mir Body<'tcx>,
     borrowed_locals:

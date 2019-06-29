@@ -62,6 +62,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::bit_set::{BitSet, BitMatrix};
 use std::borrow::Cow;
 use std::iter;
+use std::marker::PhantomData;
 use std::mem;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
@@ -539,8 +540,8 @@ fn locals_live_across_suspend_points(
         body,
         &live_locals,
         &ignored,
-        storage_live,
-        storage_live_analysis);
+        requires_storage,
+        requires_storage_analysis);
 
     LivenessInfo {
         live_locals,
@@ -577,8 +578,8 @@ fn compute_storage_conflicts(
     body: &'mir Body<'tcx>,
     stored_locals: &liveness::LiveVarSet,
     ignored: &StorageIgnored,
-    storage_live: DataflowResults<'tcx, MaybeStorageLive<'mir, 'tcx>>,
-    _storage_live_analysis: MaybeStorageLive<'mir, 'tcx>,
+    requires_storage: DataflowResults<'tcx, RequiresStorage<'mir, 'tcx, '_>>,
+    _requires_storage_analysis: RequiresStorage<'mir, 'tcx, '_>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), ignored.0.domain_size());
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
@@ -594,9 +595,10 @@ fn compute_storage_conflicts(
     let mut visitor = StorageConflictVisitor {
         body,
         stored_locals: &stored_locals,
-        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len())
+        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
+        _phantom: PhantomData::default(),
     };
-    let mut state = FlowAtLocation::new(storage_live);
+    let mut state = FlowAtLocation::new(requires_storage);
     visitor.analyze_results(&mut state);
     let local_conflicts = visitor.local_conflicts;
 
@@ -626,18 +628,19 @@ fn compute_storage_conflicts(
     storage_conflicts
 }
 
-struct StorageConflictVisitor<'body, 'tcx, 's> {
+struct StorageConflictVisitor<'body: 'b, 'tcx, 's, 'b> {
     body: &'body Body<'tcx>,
     stored_locals: &'s liveness::LiveVarSet,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for generators.
     local_conflicts: BitMatrix<Local, Local>,
+    _phantom: PhantomData<&'b ()>,
 }
 
-impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
-    for StorageConflictVisitor<'body, 'tcx, 's>
+impl<'body, 'tcx, 's, 'b> DataflowResultsConsumer<'body, 'tcx>
+    for StorageConflictVisitor<'body, 'tcx, 's, 'b>
 {
-    type FlowState = FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>;
+    type FlowState = FlowAtLocation<'tcx, RequiresStorage<'body, 'tcx, 'b>>;
 
     fn body(&self) -> &'body Body<'tcx> {
         self.body
@@ -665,9 +668,9 @@ impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
     }
 }
 
-impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
+impl<'body, 'tcx, 's, 'b> StorageConflictVisitor<'body, 'tcx, 's, 'b> {
     fn apply_state(&mut self,
-                   flow_state: &FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>,
+                   flow_state: &FlowAtLocation<'tcx, RequiresStorage<'body, 'tcx, 'b>>,
                    loc: Location) {
         // Ignore unreachable blocks.
         match self.body.basic_blocks()[loc.block].terminator().kind {

@@ -21,7 +21,7 @@ impl Drop for Foo {
     fn drop(&mut self) {}
 }
 
-fn simple() -> impl Generator<Yield = (), Return = ()> {
+fn move_before_yield() -> impl Generator<Yield = (), Return = ()> {
     static || {
         let first = Foo([0; FOO_SIZE]);
         let _second = first;
@@ -32,7 +32,7 @@ fn simple() -> impl Generator<Yield = (), Return = ()> {
 
 fn noop() {}
 
-fn complex() -> impl Generator<Yield = (), Return = ()> {
+fn move_before_yield_with_noop() -> impl Generator<Yield = (), Return = ()> {
     static || {
         let first = Foo([0; FOO_SIZE]);
         noop();
@@ -42,7 +42,21 @@ fn complex() -> impl Generator<Yield = (), Return = ()> {
     }
 }
 
+// Today we don't have NRVO (we allocate space for both `first` and `second`,)
+// but we can overlap `first` with `_third`.
+fn overlap_move_points() -> impl Generator<Yield = (), Return = ()> {
+    static || {
+        let first = Foo([0; FOO_SIZE]);
+        yield;
+        let second = first;
+        yield;
+        let _third = second;
+        yield;
+    }
+}
+
 fn main() {
-    assert_eq!(1028, std::mem::size_of_val(&simple()));
-    assert_eq!(1032, std::mem::size_of_val(&complex()));
+    assert_eq!(1028, std::mem::size_of_val(&move_before_yield()));
+    assert_eq!(1032, std::mem::size_of_val(&move_before_yield_with_noop()));
+    assert_eq!(2056, std::mem::size_of_val(&overlap_move_points()));
 }
