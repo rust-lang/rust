@@ -19,7 +19,7 @@ syntax_pos = { path = "../libsyntax_pos" }
 serialize = { path = "../libserialize" }
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
-rustc_borrowck = { path = "../librustc_borrowck" }
+rustc_ast_borrowck = { path = "../librustc_ast_borrowck" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_traits = { path = "../librustc_traits" }
 rustc_data_structures = { path = "../librustc_data_structures" }

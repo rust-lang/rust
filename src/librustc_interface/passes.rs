@@ -19,7 +19,7 @@ use rustc::session::{CompileResult, CrateDisambiguator, Session};
 use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc_allocator as allocator;
-use rustc_borrowck as borrowck;
+use rustc_ast_borrowck as borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
