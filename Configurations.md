@@ -2326,7 +2326,7 @@ Copyright 2018 The Rust Project Developers.`, etc.:
 ## `ignore`
 
 Skip formatting files and directories that match the specified pattern.
-The pattern format is the same as [.gitignore](https://git-scm.com/docs/gitignore#_pattern_format).
+The pattern format is the same as [.gitignore](https://git-scm.com/docs/gitignore#_pattern_format). Be sure to use Unix/forwardslash `/` style  paths. This path style will work on all platforms. Windows style paths with backslashes `\` are not supported. 
 
 - **Default value**: format every file
 - **Possible values**: See an example below
