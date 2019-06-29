@@ -72,11 +72,13 @@ fn solve(
 /// fn foo<T: Default>(t: T) {}
 /// ```
 /// we assume that `T: Default`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Environment;
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Environment {
+    pub predicates: Vec<GenericPredicate>,
+}
 
 /// Something (usually a goal), along with an environment.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InEnvironment<T> {
     pub environment: Arc<Environment>,
     pub value: T,

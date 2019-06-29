@@ -27,10 +27,10 @@ use ra_prof::profile;
 use test_utils::tested_by;
 
 use super::{
-    autoderef, method_resolution, op, primitive,
+    autoderef, lower, method_resolution, op, primitive,
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, CallableDef, InEnvironment, ProjectionTy, Substs, TraitRef, Ty, TypableDef,
-    TypeCtor,
+    ApplicationTy, CallableDef, Environment, InEnvironment, ProjectionTy, Substs, TraitRef, Ty,
+    TypableDef, TypeCtor,
 };
 use crate::{
     adt::VariantDef,
@@ -166,6 +166,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     body: Arc<Body>,
     resolver: Resolver,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
+    trait_env: Arc<Environment>,
     obligations: Vec<Obligation>,
     method_resolutions: FxHashMap<ExprId, Function>,
     field_resolutions: FxHashMap<ExprId, StructField>,
@@ -189,6 +190,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             var_unification_table: InPlaceUnificationTable::new(),
             obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
+            trait_env: lower::trait_env(db, &resolver),
             db,
             body,
             resolver,
@@ -331,8 +333,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for obligation in obligations {
             match &obligation {
                 Obligation::Trait(tr) => {
-                    let env = Arc::new(super::Environment); // FIXME add environment
-                    let in_env = InEnvironment::new(env, tr.clone());
+                    let in_env = InEnvironment::new(self.trait_env.clone(), tr.clone());
                     let canonicalized = self.canonicalizer().canonicalize_trait_ref(in_env);
                     let solution = self
                         .db

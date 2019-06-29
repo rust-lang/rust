@@ -7,7 +7,7 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
 
-use super::{autoderef, Canonical, Environment, InEnvironment, TraitRef};
+use super::{autoderef, lower, Canonical, Environment, InEnvironment, TraitRef};
 use crate::{
     generics::HasGenericParams,
     impl_block::{ImplBlock, ImplId, ImplItem},
@@ -198,6 +198,8 @@ fn iterate_trait_method_candidates<T>(
     mut callback: impl FnMut(&Ty, Function) -> Option<T>,
 ) -> Option<T> {
     let krate = resolver.krate()?;
+    // FIXME: maybe put the trait_env behind a query (need to figure out good input parameters for that)
+    let env = lower::trait_env(db, resolver);
     'traits: for t in resolver.traits_in_scope(db) {
         let data = t.trait_data(db);
         // we'll be lazy about checking whether the type implements the
@@ -209,8 +211,7 @@ fn iterate_trait_method_candidates<T>(
                 let data = m.data(db);
                 if name.map_or(true, |name| data.name() == name) && data.has_self_param() {
                     if !known_implemented {
-                        let env = Arc::new(super::Environment); // FIXME add environment
-                        let trait_ref = canonical_trait_ref(db, env, t, ty.clone());
+                        let trait_ref = canonical_trait_ref(db, env.clone(), t, ty.clone());
                         if db.implements(krate, trait_ref).is_none() {
                             continue 'traits;
                         }

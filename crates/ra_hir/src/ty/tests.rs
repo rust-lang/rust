@@ -2950,6 +2950,66 @@ fn test(o: O<S>) {
     assert_eq!(t, "&str");
 }
 
+#[test]
+fn generic_param_env_1() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Clone {}
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl Clone for S {}
+impl<T> Trait for T where T: Clone {}
+fn test<T: Clone>(t: T) { t.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "u128");
+}
+
+#[test]
+fn generic_param_env_1_not_met() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Clone {}
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl Clone for S {}
+impl<T> Trait for T where T: Clone {}
+fn test<T>(t: T) { t.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn generic_param_env_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl Trait for S {}
+fn test<T: Trait>(t: T) { t.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "u128");
+}
+
+#[test]
+fn generic_param_env_2_not_met() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl Trait for S {}
+fn test<T>(t: T) { t.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

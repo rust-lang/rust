@@ -239,15 +239,28 @@ where
 impl ToChalk for Arc<super::Environment> {
     type Chalk = Arc<chalk_ir::Environment>;
 
-    fn to_chalk(self, _db: &impl HirDatabase) -> Arc<chalk_ir::Environment> {
-        chalk_ir::Environment::new()
+    fn to_chalk(self, db: &impl HirDatabase) -> Arc<chalk_ir::Environment> {
+        let mut clauses = Vec::new();
+        for pred in &self.predicates {
+            if pred.is_error() {
+                // for env, we just ignore errors
+                continue;
+            }
+            if let GenericPredicate::Implemented(trait_ref) = pred {
+                if blacklisted_trait(db, trait_ref.trait_) {
+                    continue;
+                }
+            }
+            clauses.push(pred.clone().to_chalk(db).cast());
+        }
+        chalk_ir::Environment::new().add_clauses(clauses)
     }
 
     fn from_chalk(
         _db: &impl HirDatabase,
         _env: Arc<chalk_ir::Environment>,
     ) -> Arc<super::Environment> {
-        Arc::new(super::Environment)
+        unimplemented!()
     }
 }
 
