@@ -6,7 +6,8 @@ before_cache:
 
 matrix:
     include:
-        - os: linux
+        - name: "Rust Tests"
+          os: linux
           dist: xenial
           language: rust
           rust: stable
@@ -18,7 +19,8 @@ matrix:
           env:
               - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
 
-        - os: linux
+        - name: "Rust Docs"
+          os: linux
           if: branch = master AND type = push
           before_script:
               - DEPLOY_DOCS=1
@@ -29,11 +31,22 @@ matrix:
           env:
               - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
 
-        - language: node_js
+        - name: "VS Code Tests"
+          os: linux
+          language: node_js
+          dist: xenial
           node_js: node
-          before_script: false
+          services:
+            - xvfb
+          before_install: cd editors/code
+          install:
+            - npm install
+            - npm run vscode:prepublish
           script:
-              - cd editors/code && npm ci && npm run travis
+            - npm ci
+            - npm run travis
+          env:
+            - CXX="g++-4.9", CC="gcc-4.9"
 
 branches:
     only:
