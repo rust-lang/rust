@@ -12,6 +12,11 @@ use rustc::mir;
 
 use crate::*;
 
+// Some global facts about the emulated machine.
+pub const PAGE_SIZE: u64 = 4*1024; // FIXME: adjust to target architecture
+pub const STACK_ADDR: u64 = 16*PAGE_SIZE; // not really about the "stack", but where we start assigning integer addresses to allocations
+pub const NUM_CPUS: u64 = 1;
+
 /// Extra memory kinds
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MiriMemoryKind {
