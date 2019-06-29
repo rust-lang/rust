@@ -1,5 +1,5 @@
 error: unused implementer of `Critical` that must be used
-  --> $DIR/must_use-trait.rs:21:5
+  --> $DIR/must_use-trait.rs:33:5
    |
 LL |     get_critical();
    |     ^^^^^^^^^^^^^^^
@@ -10,5 +10,29 @@ note: lint level defined here
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: unused boxed `Critical` trait object that must be used
+  --> $DIR/must_use-trait.rs:34:5
+   |
+LL |     get_boxed_critical();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: unused boxed boxed `Critical` trait object that must be used
+  --> $DIR/must_use-trait.rs:35:5
+   |
+LL |     get_nested_boxed_critical();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused boxed `Critical` trait object in tuple element 1 that must be used
+  --> $DIR/must_use-trait.rs:37:5
+   |
+LL |     get_critical_tuple();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: unused implementer of `Critical` in tuple element 2 that must be used
+  --> $DIR/must_use-trait.rs:37:5
+   |
+LL |     get_critical_tuple();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
