@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         let ty = cx.tables.expr_ty(&expr);
-        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "");
+        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", false);
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -133,8 +133,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             ty: Ty<'tcx>,
             expr: &hir::Expr,
             span: Span,
-            descr_pre_path: &str,
-            descr_post_path: &str,
+            descr_pre: &str,
+            descr_post: &str,
+            plural: bool,
         ) -> bool {
             if ty.is_unit() || cx.tcx.is_ty_uninhabited_from(
                 cx.tcx.hir().get_module_parent(expr.hir_id), ty)
@@ -142,14 +143,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 return true;
             }
 
+            let plural_suffix = if plural { "s" } else { "" };
+
             match ty.sty {
                 ty::Adt(..) if ty.is_box() => {
                     let boxed_ty = ty.boxed_ty();
-                    let descr_pre_path = &format!("{}boxed ", descr_pre_path);
-                    check_must_use_ty(cx, boxed_ty, expr, span, descr_pre_path, descr_post_path)
+                    let descr_pre = &format!("{}boxed ", descr_pre);
+                    check_must_use_ty(cx, boxed_ty, expr, span, descr_pre, descr_post, plural)
                 }
                 ty::Adt(def, _) => {
-                    check_must_use_def(cx, def.did, span, descr_pre_path, descr_post_path)
+                    check_must_use_def(cx, def.did, span, descr_pre, descr_post)
                 }
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
@@ -157,8 +160,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                         if let ty::Predicate::Trait(ref poly_trait_predicate) = predicate {
                             let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
                             let def_id = trait_ref.def_id;
-                            let descr_pre = &format!("{}implementer of ", descr_pre_path);
-                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post_path) {
+                            let descr_pre = &format!(
+                                "{}implementer{} of ",
+                                descr_pre,
+                                plural_suffix,
+                            );
+                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post) {
                                 has_emitted = true;
                                 break;
                             }
@@ -171,8 +178,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     for predicate in binder.skip_binder().iter() {
                         if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
                             let def_id = trait_ref.def_id;
-                            let descr_post = &format!(" trait object{}", descr_post_path);
-                            if check_must_use_def(cx, def_id, span, descr_pre_path, descr_post) {
+                            let descr_post = &format!(
+                                " trait object{}{}",
+                                plural_suffix,
+                                descr_post,
+                            );
+                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post) {
                                 has_emitted = true;
                                 break;
                             }
@@ -189,13 +200,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                         vec![]
                     };
                     for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
-                        let descr_post_path = &format!(" in tuple element {}", i);
+                        let descr_post = &format!(" in tuple element {}", i);
                         let span = *spans.get(i).unwrap_or(&span);
-                        if check_must_use_ty(cx, ty, expr, span, descr_pre_path, descr_post_path) {
+                        if check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, plural) {
                             has_emitted = true;
                         }
                     }
                     has_emitted
+                }
+                ty::Array(ty, len) => match len.assert_usize(cx.tcx) {
+                    // If the array is definitely non-empty, we can do `#[must_use]` checking.
+                    Some(n) if n != 0 => {
+                        let descr_pre = &format!(
+                            "{}array{} of ",
+                            descr_pre,
+                            plural_suffix,
+                        );
+                        check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, true)
+                    }
+                    // Otherwise, we don't lint, to avoid false positives.
+                    _ => false,
                 }
                 _ => false,
             }
