@@ -1,3 +1,6 @@
+//! Global machine state as well as implementation of the interpreter engine
+//! `Machine` trait.
+
 use std::rc::Rc;
 use std::borrow::Cow;
 use std::collections::HashMap;

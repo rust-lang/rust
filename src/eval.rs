@@ -1,3 +1,5 @@
+//! Main evaluator loop and setting up the initial stack frame.
+
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 

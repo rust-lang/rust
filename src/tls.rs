@@ -1,3 +1,5 @@
+//! Implement thread-local storage.
+
 use std::collections::BTreeMap;
 
 use rustc_target::abi::LayoutOf;
