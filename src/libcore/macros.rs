@@ -653,7 +653,7 @@ mod builtin {
     ///
     /// [`std::compile_error!`]: ../std/macro.compile_error.html
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! compile_error {
         ($msg:expr) => ({ /* compiler built-in */ });
         ($msg:expr,) => ({ /* compiler built-in */ });
@@ -665,7 +665,7 @@ mod builtin {
     ///
     /// [`std::format_args!`]: ../std/macro.format_args.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! format_args {
         ($fmt:expr) => ({ /* compiler built-in */ });
         ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
@@ -677,7 +677,7 @@ mod builtin {
     ///
     /// [`std::env!`]: ../std/macro.env.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! env {
         ($name:expr) => ({ /* compiler built-in */ });
         ($name:expr,) => ({ /* compiler built-in */ });
@@ -689,7 +689,7 @@ mod builtin {
     ///
     /// [`std::option_env!`]: ../std/macro.option_env.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! option_env {
         ($name:expr) => ({ /* compiler built-in */ });
         ($name:expr,) => ({ /* compiler built-in */ });
@@ -701,7 +701,7 @@ mod builtin {
     ///
     /// [`std::concat_idents!`]: ../std/macro.concat_idents.html
     #[unstable(feature = "concat_idents_macro", issue = "29599")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! concat_idents {
         ($($e:ident),+) => ({ /* compiler built-in */ });
         ($($e:ident,)+) => ({ /* compiler built-in */ });
@@ -713,7 +713,7 @@ mod builtin {
     ///
     /// [`std::concat!`]: ../std/macro.concat.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! concat {
         ($($e:expr),*) => ({ /* compiler built-in */ });
         ($($e:expr,)*) => ({ /* compiler built-in */ });
@@ -725,7 +725,7 @@ mod builtin {
     ///
     /// [`std::line!`]: ../std/macro.line.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! line { () => ({ /* compiler built-in */ }) }
 
     /// Expands to the column number on which it was invoked.
@@ -734,7 +734,7 @@ mod builtin {
     ///
     /// [`std::column!`]: ../std/macro.column.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! column { () => ({ /* compiler built-in */ }) }
 
     /// Expands to the file name from which it was invoked.
@@ -743,7 +743,7 @@ mod builtin {
     ///
     /// [`std::file!`]: ../std/macro.file.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! file { () => ({ /* compiler built-in */ }) }
 
     /// Stringifies its arguments.
@@ -752,7 +752,7 @@ mod builtin {
     ///
     /// [`std::stringify!`]: ../std/macro.stringify.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! stringify { ($($t:tt)*) => ({ /* compiler built-in */ }) }
 
     /// Includes a utf8-encoded file as a string.
@@ -761,7 +761,7 @@ mod builtin {
     ///
     /// [`std::include_str!`]: ../std/macro.include_str.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! include_str {
         ($file:expr) => ({ /* compiler built-in */ });
         ($file:expr,) => ({ /* compiler built-in */ });
@@ -773,7 +773,7 @@ mod builtin {
     ///
     /// [`std::include_bytes!`]: ../std/macro.include_bytes.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! include_bytes {
         ($file:expr) => ({ /* compiler built-in */ });
         ($file:expr,) => ({ /* compiler built-in */ });
@@ -785,7 +785,7 @@ mod builtin {
     ///
     /// [`std::module_path!`]: ../std/macro.module_path.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
     /// Evaluates boolean combinations of configuration flags, at compile-time.
@@ -794,7 +794,7 @@ mod builtin {
     ///
     /// [`std::cfg!`]: ../std/macro.cfg.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! cfg { ($($cfg:tt)*) => ({ /* compiler built-in */ }) }
 
     /// Parses a file as an expression or an item according to the context.
@@ -803,7 +803,7 @@ mod builtin {
     ///
     /// [`std::include!`]: ../std/macro.include.html
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     macro_rules! include {
         ($file:expr) => ({ /* compiler built-in */ });
         ($file:expr,) => ({ /* compiler built-in */ });
@@ -814,7 +814,7 @@ mod builtin {
     /// For more information, see the documentation for [`std::assert!`].
     ///
     /// [`std::assert!`]: ../std/macro.assert.html
-    #[rustc_doc_only_macro]
+    #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]
     macro_rules! assert {
         ($cond:expr) => ({ /* compiler built-in */ });
