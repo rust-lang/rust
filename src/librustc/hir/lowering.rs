@@ -4010,7 +4010,7 @@ impl<'a> LoweringContext<'a> {
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
             if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) ||
-                              attr::contains_name(&i.attrs, sym::rustc_doc_only_macro) {
+                              attr::contains_name(&i.attrs, sym::rustc_builtin_macro) {
                 let body = self.lower_token_stream(def.stream());
                 let hir_id = self.lower_node_id(i.id);
                 self.exported_macros.push(hir::MacroDef {

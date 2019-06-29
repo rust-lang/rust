@@ -1374,7 +1374,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                                 "internal implementation detail",
                                                 cfg_fn!(rustc_attrs))),
 
-    (sym::rustc_doc_only_macro, Whitelisted, template!(Word), Gated(Stability::Unstable,
+    (sym::rustc_builtin_macro, Whitelisted, template!(Word), Gated(Stability::Unstable,
                                                 sym::rustc_attrs,
                                                 "internal implementation detail",
                                                 cfg_fn!(rustc_attrs))),

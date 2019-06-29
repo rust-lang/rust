@@ -1142,7 +1142,7 @@ impl<'a> Resolver<'a> {
                 self.define(module, ident, MacroNS,
                             (res, vis, item.span, expansion, IsMacroExport));
             } else {
-                if !attr::contains_name(&item.attrs, sym::rustc_doc_only_macro) {
+                if !attr::contains_name(&item.attrs, sym::rustc_builtin_macro) {
                     self.check_reserved_macro_name(ident, MacroNS);
                 }
                 self.unused_macros.insert(def_id);
