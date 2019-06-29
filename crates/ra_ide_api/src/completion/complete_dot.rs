@@ -1,6 +1,7 @@
 use hir::{Ty, AdtDef, TypeCtor};
 
 use crate::completion::{CompletionContext, Completions};
+use rustc_hash::FxHashSet;
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -36,9 +37,10 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
 }
 
 fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
+    let mut seen_methods = FxHashSet::default();
     ctx.analyzer.iterate_method_candidates(ctx.db, receiver, None, |_ty, func| {
         let data = func.data(ctx.db);
-        if data.has_self_param() {
+        if data.has_self_param() && seen_methods.insert(data.name().clone()) {
             acc.add_function(ctx, func);
         }
         None::<()>
@@ -221,6 +223,34 @@ mod tests {
        ⋮        label: "the_method",
        ⋮        source_range: [151; 151),
        ⋮        delete: [151; 151),
+       ⋮        insert: "the_method()$0",
+       ⋮        kind: Method,
+       ⋮        detail: "fn the_method(&self)",
+       ⋮    },
+       ⋮]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_trait_method_completion_deduplicated() {
+        assert_debug_snapshot_matches!(
+            do_ref_completion(
+                r"
+            struct A {}
+            trait Trait { fn the_method(&self); }
+            impl<T> Trait for T {}
+            fn foo(a: &A) {
+               a.<|>
+            }
+            ",
+            ),
+            @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "the_method",
+       ⋮        source_range: [155; 155),
+       ⋮        delete: [155; 155),
        ⋮        insert: "the_method()$0",
        ⋮        kind: Method,
        ⋮        detail: "fn the_method(&self)",
