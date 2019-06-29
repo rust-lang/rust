@@ -11,6 +11,9 @@ export default class SuggestedFixCollection
     implements vscode.CodeActionProvider {
     public static PROVIDED_CODE_ACTION_KINDS = [vscode.CodeActionKind.QuickFix];
 
+    /**
+     * Map of document URI strings to suggested fixes
+     */
     private suggestedFixes: Map<string, SuggestedFix[]>;
 
     constructor() {
