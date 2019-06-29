@@ -78,7 +78,7 @@ impl Module<'hir> {
     }
 }
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum StructType {
     /// A braced struct
     Plain,
