@@ -1,8 +1,8 @@
-#![allow(unused)]
+#![allow(deprecated, unused)]
 #![feature(core_intrinsics)]
 
 extern crate core;
-use std::intrinsics::{init, uninit};
+use std::intrinsics::init;
 
 fn main() {
     let x = 1;
@@ -12,7 +12,6 @@ fn main() {
         ref_to_zeroed_intr(&x);
         ref_to_uninit_std(&x);
         ref_to_uninit_core(&x);
-        ref_to_uninit_intr(&x);
         some_ref();
         std_zeroed_no_ref();
         core_zeroed_no_ref();
@@ -38,10 +37,6 @@ unsafe fn ref_to_uninit_std<T: ?Sized>(t: &T) {
 
 unsafe fn ref_to_uninit_core<T: ?Sized>(t: &T) {
     let ref_uninit: &T = core::mem::uninitialized(); // warning
-}
-
-unsafe fn ref_to_uninit_intr<T: ?Sized>(t: &T) {
-    let ref_uninit: &T = std::intrinsics::uninit(); // warning
 }
 
 fn some_ref() {
