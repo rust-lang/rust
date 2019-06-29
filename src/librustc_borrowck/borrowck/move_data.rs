@@ -1,8 +1,6 @@
 //! Data structures used for tracking moves. Please see the extensive
 //! comments in the section "Moves and initialization" in `README.md`.
 
-pub use MoveKind::*;
-
 use crate::dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
 
 use crate::borrowck::*;
@@ -101,13 +99,6 @@ pub struct MovePath<'tcx> {
     pub next_sibling: MovePathIndex,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum MoveKind {
-    Declared,   // When declared, variables start out "moved".
-    MoveExpr,   // Expression or binding that moves a variable
-    MovePat,    // By-move binding
-    Captured    // Closure creation that moves a value
-}
 
 #[derive(Copy, Clone)]
 pub struct Move {
@@ -116,9 +107,6 @@ pub struct Move {
 
     /// ID of node that is doing the move.
     pub id: hir::ItemLocalId,
-
-    /// Kind of move, for error messages.
-    pub kind: MoveKind,
 
     /// Next node in linked list of moves from `path`, or `InvalidMoveIndex`
     pub next_move: MoveIndex
@@ -315,7 +303,6 @@ impl MoveData<'tcx> {
         tcx: TyCtxt<'tcx>,
         orig_lp: Rc<LoanPath<'tcx>>,
         id: hir::ItemLocalId,
-        kind: MoveKind,
     ) {
         // Moving one union field automatically moves all its fields. Also move siblings of
         // all parent union fields, moves do not propagate upwards automatically.
@@ -331,7 +318,7 @@ impl MoveData<'tcx> {
                             let sibling_lp_kind =
                                 LpExtend(base_lp.clone(), mutbl, LpInterior(opt_variant_id, field));
                             let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, tcx.types.err));
-                            self.add_move_helper(tcx, sibling_lp, id, kind);
+                            self.add_move_helper(tcx, sibling_lp, id);
                         }
                     }
                 }
@@ -339,7 +326,7 @@ impl MoveData<'tcx> {
             lp = base_lp.clone();
         }
 
-        self.add_move_helper(tcx, orig_lp, id, kind);
+        self.add_move_helper(tcx, orig_lp, id);
     }
 
     fn add_move_helper(
@@ -347,12 +334,8 @@ impl MoveData<'tcx> {
         tcx: TyCtxt<'tcx>,
         lp: Rc<LoanPath<'tcx>>,
         id: hir::ItemLocalId,
-        kind: MoveKind,
     ) {
-        debug!("add_move(lp={:?}, id={:?}, kind={:?})",
-               lp,
-               id,
-               kind);
+        debug!("add_move(lp={:?}, id={:?})", lp, id);
 
         let path_index = self.move_path(tcx, lp);
         let move_index = MoveIndex(self.moves.borrow().len());
@@ -363,7 +346,6 @@ impl MoveData<'tcx> {
         self.moves.borrow_mut().push(Move {
             path: path_index,
             id,
-            kind,
             next_move,
         });
     }
@@ -611,19 +593,16 @@ impl<'tcx> FlowedMoveData<'tcx> {
         }
     }
 
-    pub fn kind_of_move_of_path(&self,
-                                id: hir::ItemLocalId,
-                                loan_path: &Rc<LoanPath<'tcx>>)
-                                -> Option<MoveKind> {
+    pub fn is_move_path(&self, id: hir::ItemLocalId, loan_path: &Rc<LoanPath<'tcx>>) -> bool {
         //! Returns the kind of a move of `loan_path` by `id`, if one exists.
 
-        let mut ret = None;
+        let mut ret = false;
         if let Some(loan_path_index) = self.move_data.path_map.borrow().get(&*loan_path) {
             self.dfcx_moves.each_gen_bit(id, |move_index| {
                 let the_move = self.move_data.moves.borrow();
                 let the_move = (*the_move)[move_index];
                 if the_move.path == *loan_path_index {
-                    ret = Some(the_move.kind);
+                    ret = true;
                     false
                 } else {
                     true

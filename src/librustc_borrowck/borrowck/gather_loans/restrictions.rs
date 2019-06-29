@@ -1,11 +1,9 @@
 //! Computes the restrictions that result from a borrow.
 
 use crate::borrowck::*;
-use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty;
-use syntax_pos::Span;
 use log::debug;
 
 use crate::borrowck::ToInteriorKind;
@@ -19,17 +17,10 @@ pub enum RestrictionResult<'tcx> {
 }
 
 pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                      span: Span,
-                                      cause: euv::LoanCause,
                                       cmt: &mc::cmt_<'tcx>,
                                       loan_region: ty::Region<'tcx>)
                                       -> RestrictionResult<'tcx> {
-    let ctxt = RestrictionsContext {
-        bccx,
-        span,
-        cause,
-        loan_region,
-    };
+    let ctxt = RestrictionsContext { bccx, loan_region };
 
     ctxt.restrict(cmt)
 }
@@ -39,9 +30,7 @@ pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
 struct RestrictionsContext<'a, 'tcx> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
-    span: Span,
     loan_region: ty::Region<'tcx>,
-    cause: euv::LoanCause,
 }
 
 impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
@@ -149,13 +138,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                     mc::BorrowedPtr(bk, lt) => {
                         // R-Deref-[Mut-]Borrowed
                         if !self.bccx.is_subregion_of(self.loan_region, lt) {
-                            self.bccx.report(
-                                BckError {
-                                    span: self.span,
-                                    cause: BorrowViolation(self.cause),
-                                    cmt: &cmt_base,
-                                    code: err_borrowed_pointer_too_short(
-                                        self.loan_region, lt)});
+                            self.bccx.signal_error();
                             return RestrictionResult::Safe;
                         }
 

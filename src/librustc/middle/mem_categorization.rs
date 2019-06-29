@@ -66,7 +66,6 @@ use crate::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use crate::ty::adjustment;
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::fold::TypeFoldable;
-use crate::ty::layout::VariantIdx;
 
 use crate::hir::{MutImmutable, MutMutable, PatKind};
 use crate::hir::pat_util::EnumerateAndAdjustIterator;
@@ -79,7 +78,6 @@ use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::indexed_vec::Idx;
 use std::rc::Rc;
 use crate::util::nodemap::ItemLocalSet;
 
@@ -197,79 +195,6 @@ pub struct cmt_<'tcx> {
 }
 
 pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
-
-pub enum ImmutabilityBlame<'tcx> {
-    ImmLocal(hir::HirId),
-    ClosureEnv(LocalDefId),
-    LocalDeref(hir::HirId),
-    AdtFieldDeref(&'tcx ty::AdtDef, &'tcx ty::FieldDef)
-}
-
-impl<'tcx> cmt_<'tcx> {
-    fn resolve_field(&self, field_index: usize) -> Option<(&'tcx ty::AdtDef, &'tcx ty::FieldDef)>
-    {
-        let adt_def = match self.ty.sty {
-            ty::Adt(def, _) => def,
-            ty::Tuple(..) => return None,
-            // closures get `Categorization::Upvar` rather than `Categorization::Interior`
-            _ =>  bug!("interior cmt {:?} is not an ADT", self)
-        };
-        let variant_def = match self.cat {
-            Categorization::Downcast(_, variant_did) => {
-                adt_def.variant_with_id(variant_did)
-            }
-            _ => {
-                assert_eq!(adt_def.variants.len(), 1);
-                &adt_def.variants[VariantIdx::new(0)]
-            }
-        };
-        Some((adt_def, &variant_def.fields[field_index]))
-    }
-
-    pub fn immutability_blame(&self) -> Option<ImmutabilityBlame<'tcx>> {
-        match self.cat {
-            Categorization::Deref(ref base_cmt, BorrowedPtr(ty::ImmBorrow, _)) => {
-                // try to figure out where the immutable reference came from
-                match base_cmt.cat {
-                    Categorization::Local(hir_id) =>
-                        Some(ImmutabilityBlame::LocalDeref(hir_id)),
-                    Categorization::Interior(ref base_cmt, InteriorField(field_index)) => {
-                        base_cmt.resolve_field(field_index.0).map(|(adt_def, field_def)| {
-                            ImmutabilityBlame::AdtFieldDeref(adt_def, field_def)
-                        })
-                    }
-                    Categorization::Upvar(Upvar { id, .. }) => {
-                        if let NoteClosureEnv(..) = self.note {
-                            Some(ImmutabilityBlame::ClosureEnv(id.closure_expr_id))
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None
-                }
-            }
-            Categorization::Local(hir_id) => {
-                Some(ImmutabilityBlame::ImmLocal(hir_id))
-            }
-            Categorization::Rvalue(..) |
-            Categorization::Upvar(..) |
-            Categorization::Deref(_, UnsafePtr(..)) => {
-                // This should not be reachable up to inference limitations.
-                None
-            }
-            Categorization::Interior(ref base_cmt, _) |
-            Categorization::Downcast(ref base_cmt, _) |
-            Categorization::Deref(ref base_cmt, _) => {
-                base_cmt.immutability_blame()
-            }
-            Categorization::ThreadLocal(..) |
-            Categorization::StaticItem => {
-                // Do we want to do something here?
-                None
-            }
-        }
-    }
-}
 
 pub trait HirNode {
     fn hir_id(&self) -> hir::HirId;
