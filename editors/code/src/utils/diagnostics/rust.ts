@@ -1,6 +1,15 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import SuggestedFix from './SuggestedFix';
+
+export enum SuggestionApplicability {
+    MachineApplicable = 'MachineApplicable',
+    HasPlaceholders = 'HasPlaceholders',
+    MaybeIncorrect = 'MaybeIncorrect',
+    Unspecified = 'Unspecified'
+}
+
 // Reference:
 // https://github.com/rust-lang/rust/blob/master/src/libsyntax/json.rs
 export interface RustDiagnosticSpan {
@@ -12,11 +21,7 @@ export interface RustDiagnosticSpan {
     file_name: string;
     label?: string;
     suggested_replacement?: string;
-    suggestion_applicability?:
-        | 'MachineApplicable'
-        | 'HasPlaceholders'
-        | 'MaybeIncorrect'
-        | 'Unspecified';
+    suggestion_applicability?: SuggestionApplicability;
 }
 
 export interface RustDiagnostic {
@@ -33,12 +38,12 @@ export interface RustDiagnostic {
 export interface MappedRustDiagnostic {
     location: vscode.Location;
     diagnostic: vscode.Diagnostic;
-    codeActions: vscode.CodeAction[];
+    suggestedFixes: SuggestedFix[];
 }
 
 interface MappedRustChildDiagnostic {
     related?: vscode.DiagnosticRelatedInformation;
-    codeAction?: vscode.CodeAction;
+    suggestedFix?: SuggestedFix;
     messageLine?: string;
 }
 
@@ -130,24 +135,19 @@ function mapRustChildDiagnostic(rd: RustDiagnostic): MappedRustChildDiagnostic {
 
     // We need to distinguish `null` from an empty string
     if (span && typeof span.suggested_replacement === 'string') {
-        const edit = new vscode.WorkspaceEdit();
-        edit.replace(location.uri, location.range, span.suggested_replacement);
-
-        // Include our replacement in the label unless it's empty
+        // Include our replacement in the title unless it's empty
         const title = span.suggested_replacement
             ? `${rd.message}: \`${span.suggested_replacement}\``
             : rd.message;
 
-        const codeAction = new vscode.CodeAction(
-            title,
-            vscode.CodeActionKind.QuickFix
-        );
-
-        codeAction.edit = edit;
-        codeAction.isPreferred =
-            span.suggestion_applicability === 'MachineApplicable';
-
-        return { codeAction };
+        return {
+            suggestedFix: new SuggestedFix(
+                title,
+                location,
+                span.suggested_replacement,
+                span.suggestion_applicability
+            )
+        };
     } else {
         const related = new vscode.DiagnosticRelatedInformation(
             location,
@@ -165,7 +165,7 @@ function mapRustChildDiagnostic(rd: RustDiagnostic): MappedRustChildDiagnostic {
  *
  * 1. Creating a `vscode.Diagnostic` with the root message and primary span.
  * 2. Adding any labelled secondary spans to `relatedInformation`
- * 3. Categorising child diagnostics as either Quick Fix actions,
+ * 3. Categorising child diagnostics as either `SuggestedFix`es,
  *    `relatedInformation` or additional message lines.
  *
  * If the diagnostic has no primary span this will return `undefined`
@@ -173,8 +173,6 @@ function mapRustChildDiagnostic(rd: RustDiagnostic): MappedRustChildDiagnostic {
 export function mapRustDiagnosticToVsCode(
     rd: RustDiagnostic
 ): MappedRustDiagnostic | undefined {
-    const codeActions = [];
-
     const primarySpan = rd.spans.find(s => s.is_primary);
     if (!primarySpan) {
         return;
@@ -208,16 +206,17 @@ export function mapRustDiagnosticToVsCode(
         }
     }
 
+    const suggestedFixes = [];
     for (const child of rd.children) {
-        const { related, codeAction, messageLine } = mapRustChildDiagnostic(
+        const { related, suggestedFix, messageLine } = mapRustChildDiagnostic(
             child
         );
 
         if (related) {
             vd.relatedInformation.push(related);
         }
-        if (codeAction) {
-            codeActions.push(codeAction);
+        if (suggestedFix) {
+            suggestedFixes.push(suggestedFix);
         }
         if (messageLine) {
             vd.message += `\n${messageLine}`;
@@ -231,6 +230,6 @@ export function mapRustDiagnosticToVsCode(
     return {
         location,
         diagnostic: vd,
-        codeActions
+        suggestedFixes
     };
 }

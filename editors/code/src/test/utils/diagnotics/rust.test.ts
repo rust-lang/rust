@@ -5,14 +5,15 @@ import * as vscode from 'vscode';
 import {
     MappedRustDiagnostic,
     mapRustDiagnosticToVsCode,
-    RustDiagnostic
-} from '../utils/rust_diagnostics';
+    RustDiagnostic,
+    SuggestionApplicability
+} from '../../../utils/diagnostics/rust';
 
 function loadDiagnosticFixture(name: string): RustDiagnostic {
     const jsonText = fs
         .readFileSync(
             // We're actually in our JavaScript output directory, climb out
-            `${__dirname}/../../src/test/fixtures/rust-diagnostics/${name}.json`
+            `${__dirname}/../../../../src/test/fixtures/rust-diagnostics/${name}.json`
         )
         .toString();
 
@@ -31,7 +32,9 @@ function mapFixtureToVsCode(name: string): MappedRustDiagnostic {
 
 describe('mapRustDiagnosticToVsCode', () => {
     it('should map an incompatible type for trait error', () => {
-        const { diagnostic, codeActions } = mapFixtureToVsCode('error/E0053');
+        const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
+            'error/E0053'
+        );
 
         assert.strictEqual(
             diagnostic.severity,
@@ -52,12 +55,12 @@ describe('mapRustDiagnosticToVsCode', () => {
         // No related information
         assert.deepStrictEqual(diagnostic.relatedInformation, []);
 
-        // There are no code actions available
-        assert.strictEqual(codeActions.length, 0);
+        // There are no suggested fixes
+        assert.strictEqual(suggestedFixes.length, 0);
     });
 
     it('should map an unused variable warning', () => {
-        const { diagnostic, codeActions } = mapFixtureToVsCode(
+        const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
             'warning/unused_variables'
         );
 
@@ -81,18 +84,23 @@ describe('mapRustDiagnosticToVsCode', () => {
         // No related information
         assert.deepStrictEqual(diagnostic.relatedInformation, []);
 
-        // One code action available to prefix the variable
-        assert.strictEqual(codeActions.length, 1);
-        const [codeAction] = codeActions;
+        // One suggested fix available to prefix the variable
+        assert.strictEqual(suggestedFixes.length, 1);
+        const [suggestedFix] = suggestedFixes;
         assert.strictEqual(
-            codeAction.title,
+            suggestedFix.title,
             'consider prefixing with an underscore: `_foo`'
         );
-        assert(codeAction.isPreferred);
+        assert.strictEqual(
+            suggestedFix.applicability,
+            SuggestionApplicability.MachineApplicable
+        );
     });
 
     it('should map a wrong number of parameters error', () => {
-        const { diagnostic, codeActions } = mapFixtureToVsCode('error/E0061');
+        const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
+            'error/E0061'
+        );
 
         assert.strictEqual(
             diagnostic.severity,
@@ -115,12 +123,12 @@ describe('mapRustDiagnosticToVsCode', () => {
         const [related] = relatedInformation;
         assert.strictEqual(related.message, 'defined here');
 
-        // There are no actions available
-        assert.strictEqual(codeActions.length, 0);
+        // There are no suggested fixes
+        assert.strictEqual(suggestedFixes.length, 0);
     });
 
     it('should map a Clippy copy pass by ref warning', () => {
-        const { diagnostic, codeActions } = mapFixtureToVsCode(
+        const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
             'clippy/trivially_copy_pass_by_ref'
         );
 
@@ -149,14 +157,17 @@ describe('mapRustDiagnosticToVsCode', () => {
         const [related] = relatedInformation;
         assert.strictEqual(related.message, 'lint level defined here');
 
-        // One code action available to pass by value
-        assert.strictEqual(codeActions.length, 1);
-        const [codeAction] = codeActions;
+        // One suggested fix to pass by value
+        assert.strictEqual(suggestedFixes.length, 1);
+        const [suggestedFix] = suggestedFixes;
         assert.strictEqual(
-            codeAction.title,
+            suggestedFix.title,
             'consider passing by value instead: `self`'
         );
-        // Clippy does not mark this as machine applicable
-        assert.strictEqual(codeAction.isPreferred, false);
+        // Clippy does not mark this with any applicability
+        assert.strictEqual(
+            suggestedFix.applicability,
+            SuggestionApplicability.Unspecified
+        );
     });
 });

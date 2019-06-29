@@ -1,12 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-import {
-    areCodeActionsEqual,
-    areDiagnosticsEqual
-} from '../utils/vscode_diagnostics';
-
-const uri = vscode.Uri.file('/file/1');
+import { areDiagnosticsEqual } from '../../../utils/diagnostics/vscode';
 
 const range1 = new vscode.Range(
     new vscode.Position(1, 2),
@@ -99,84 +94,5 @@ describe('areDiagnosticsEqual', () => {
         );
 
         assert(!areDiagnosticsEqual(diagnostic1, diagnostic2));
-    });
-});
-
-describe('areCodeActionsEqual', () => {
-    it('should treat identical actions as equal', () => {
-        const codeAction1 = new vscode.CodeAction(
-            'Fix me!',
-            vscode.CodeActionKind.QuickFix
-        );
-
-        const codeAction2 = new vscode.CodeAction(
-            'Fix me!',
-            vscode.CodeActionKind.QuickFix
-        );
-
-        const edit = new vscode.WorkspaceEdit();
-        edit.replace(uri, range1, 'Replace with this');
-        codeAction1.edit = edit;
-        codeAction2.edit = edit;
-
-        assert(areCodeActionsEqual(codeAction1, codeAction2));
-    });
-
-    it('should treat actions with different types as inequal', () => {
-        const codeAction1 = new vscode.CodeAction(
-            'Fix me!',
-            vscode.CodeActionKind.Refactor
-        );
-
-        const codeAction2 = new vscode.CodeAction(
-            'Fix me!',
-            vscode.CodeActionKind.QuickFix
-        );
-
-        const edit = new vscode.WorkspaceEdit();
-        edit.replace(uri, range1, 'Replace with this');
-        codeAction1.edit = edit;
-        codeAction2.edit = edit;
-
-        assert(!areCodeActionsEqual(codeAction1, codeAction2));
-    });
-
-    it('should treat actions with different titles as inequal', () => {
-        const codeAction1 = new vscode.CodeAction(
-            'Fix me!',
-            vscode.CodeActionKind.Refactor
-        );
-
-        const codeAction2 = new vscode.CodeAction(
-            'Do something different!',
-            vscode.CodeActionKind.Refactor
-        );
-
-        const edit = new vscode.WorkspaceEdit();
-        edit.replace(uri, range1, 'Replace with this');
-        codeAction1.edit = edit;
-        codeAction2.edit = edit;
-
-        assert(!areCodeActionsEqual(codeAction1, codeAction2));
-    });
-
-    it('should treat actions with different edits as inequal', () => {
-        const codeAction1 = new vscode.CodeAction(
-            'Fix me!',
-            vscode.CodeActionKind.Refactor
-        );
-        const edit1 = new vscode.WorkspaceEdit();
-        edit1.replace(uri, range1, 'Replace with this');
-        codeAction1.edit = edit1;
-
-        const codeAction2 = new vscode.CodeAction(
-            'Fix me!',
-            vscode.CodeActionKind.Refactor
-        );
-        const edit2 = new vscode.WorkspaceEdit();
-        edit2.replace(uri, range1, 'Replace with this other thing');
-        codeAction2.edit = edit2;
-
-        assert(!areCodeActionsEqual(codeAction1, codeAction2));
     });
 });
