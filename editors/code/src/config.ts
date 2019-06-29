@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 
-import { strict } from 'assert';
 import { Server } from './server';
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
