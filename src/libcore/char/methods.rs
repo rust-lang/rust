@@ -337,7 +337,7 @@ impl char {
     /// ```
     /// // as chars
     /// let eastern = '東';
-    /// let capitol = '京';
+    /// let capital = '京';
     ///
     /// // both can be represented as three bytes
     /// assert_eq!(3, eastern.len_utf8());
