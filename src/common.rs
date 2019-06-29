@@ -79,9 +79,6 @@ pub fn clif_intcast<'a, 'tcx: 'a>(
     signed: bool,
 ) -> Value {
     let from = fx.bcx.func.dfg.value_type(val);
-    if from == to {
-        return val;
-    }
     match (from, to) {
         // equal
         (_, _) if from == to => val,
