@@ -2,7 +2,9 @@
 
 use super::InferenceContext;
 use crate::db::HirDatabase;
-use crate::ty::{Canonical, InferTy, ProjectionPredicate, ProjectionTy, TraitRef, Ty};
+use crate::ty::{
+    Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, TraitRef, Ty,
+};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b, D>
@@ -105,14 +107,24 @@ where
         ProjectionPredicate { ty, projection_ty }
     }
 
+    // FIXME: add some point, we need to introduce a `Fold` trait that abstracts
+    // over all the things that can be canonicalized (like Chalk and rustc have)
+
     pub fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
         let result = self.do_canonicalize_ty(ty);
         self.into_canonicalized(result)
     }
 
-    pub fn canonicalize_trait_ref(mut self, trait_ref: TraitRef) -> Canonicalized<TraitRef> {
-        let result = self.do_canonicalize_trait_ref(trait_ref);
-        self.into_canonicalized(result)
+    pub fn canonicalize_trait_ref(
+        mut self,
+        trait_ref_in_env: InEnvironment<TraitRef>,
+    ) -> Canonicalized<InEnvironment<TraitRef>> {
+        let result = self.do_canonicalize_trait_ref(trait_ref_in_env.value);
+        // FIXME canonicalize env
+        self.into_canonicalized(InEnvironment {
+            value: result,
+            environment: trait_ref_in_env.environment,
+        })
     }
 
     pub fn canonicalize_projection(

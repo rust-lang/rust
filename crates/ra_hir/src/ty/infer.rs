@@ -29,7 +29,8 @@ use test_utils::tested_by;
 use super::{
     autoderef, method_resolution, op, primitive,
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, CallableDef, ProjectionTy, Substs, TraitRef, Ty, TypableDef, TypeCtor,
+    ApplicationTy, CallableDef, InEnvironment, ProjectionTy, Substs, TraitRef, Ty, TypableDef,
+    TypeCtor,
 };
 use crate::{
     adt::VariantDef,
@@ -330,7 +331,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for obligation in obligations {
             match &obligation {
                 Obligation::Trait(tr) => {
-                    let canonicalized = self.canonicalizer().canonicalize_trait_ref(tr.clone());
+                    let env = Arc::new(super::Environment); // FIXME add environment
+                    let in_env = InEnvironment::new(env, tr.clone());
+                    let canonicalized = self.canonicalizer().canonicalize_trait_ref(in_env);
                     let solution = self
                         .db
                         .implements(self.resolver.krate().unwrap(), canonicalized.value.clone());

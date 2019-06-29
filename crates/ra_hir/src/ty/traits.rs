@@ -67,6 +67,27 @@ fn solve(
     solution
 }
 
+/// A set of clauses that we assume to be true. E.g. if we are inside this function:
+/// ```rust
+/// fn foo<T: Default>(t: T) {}
+/// ```
+/// we assume that `T: Default`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Environment;
+
+/// Something (usually a goal), along with an environment.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct InEnvironment<T> {
+    pub environment: Arc<Environment>,
+    pub value: T,
+}
+
+impl<T> InEnvironment<T> {
+    pub fn new(environment: Arc<Environment>, value: T) -> InEnvironment<T> {
+        InEnvironment { environment, value }
+    }
+}
+
 /// Something that needs to be proven (by Chalk) during type checking, e.g. that
 /// a certain type implements a certain trait. Proving the Obligation might
 /// result in additional information about inference variables.
@@ -97,16 +118,10 @@ pub struct ProjectionPredicate {
 pub(crate) fn implements_query(
     db: &impl HirDatabase,
     krate: Crate,
-    trait_ref: Canonical<TraitRef>,
+    trait_ref: Canonical<InEnvironment<TraitRef>>,
 ) -> Option<Solution> {
     let _p = profile("implements_query");
-    let goal: chalk_ir::Goal = trait_ref.value.to_chalk(db).cast();
-    debug!("goal: {:?}", goal);
-    let env = chalk_ir::Environment::new();
-    let in_env = chalk_ir::InEnvironment::new(&env, goal);
-    let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
-    let canonical =
-        chalk_ir::Canonical { value: in_env, binders: vec![parameter; trait_ref.num_vars] };
+    let canonical = trait_ref.to_chalk(db).cast();
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };

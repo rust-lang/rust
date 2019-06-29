@@ -26,7 +26,7 @@ pub(crate) use lower::{
     callable_item_sig, generic_defaults_query, generic_predicates_query, type_for_def,
     type_for_field, TypableDef,
 };
-pub(crate) use traits::ProjectionPredicate;
+pub(crate) use traits::{Environment, InEnvironment, ProjectionPredicate};
 
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or

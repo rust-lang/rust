@@ -217,7 +217,7 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     fn implements(
         &self,
         krate: Crate,
-        goal: crate::ty::Canonical<crate::ty::TraitRef>,
+        goal: crate::ty::Canonical<crate::ty::InEnvironment<crate::ty::TraitRef>>,
     ) -> Option<crate::ty::traits::Solution>;
 
     #[salsa::invoke(crate::ty::traits::normalize_query)]
