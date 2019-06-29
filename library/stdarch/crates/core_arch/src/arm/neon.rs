@@ -536,6 +536,144 @@ pub unsafe fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
     frsqrte_v2f32(a)
 }
 
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvn_s8(a: int8x8_t) -> int8x8_t {
+    let b = int8x8_t(-1, -1, -1, -1, -1, -1, -1, -1);
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvnq_s8(a: int8x16_t) -> int8x16_t {
+    let b = int8x16_t(
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    );
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvn_s16(a: int16x4_t) -> int16x4_t {
+    let b = int16x4_t(-1, -1, -1, -1);
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvnq_s16(a: int16x8_t) -> int16x8_t {
+    let b = int16x8_t(-1, -1, -1, -1, -1, -1, -1, -1);
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvn_s32(a: int32x2_t) -> int32x2_t {
+    let b = int32x2_t(-1, -1);
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvnq_s32(a: int32x4_t) -> int32x4_t {
+    let b = int32x4_t(-1, -1, -1, -1);
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvn_u8(a: uint8x8_t) -> uint8x8_t {
+    let b = uint8x8_t(255, 255, 255, 255, 255, 255, 255, 255);
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvnq_u8(a: uint8x16_t) -> uint8x16_t {
+    let b = uint8x16_t(
+        255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    );
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvn_u16(a: uint16x4_t) -> uint16x4_t {
+    let b = uint16x4_t(65_535, 65_535, 65_535, 65_535);
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvnq_u16(a: uint16x8_t) -> uint16x8_t {
+    let b = uint16x8_t(
+        65_535, 65_535, 65_535, 65_535, 65_535, 65_535, 65_535, 65_535,
+    );
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvn_u32(a: uint32x2_t) -> uint32x2_t {
+    let b = uint32x2_t(4_294_967_295, 4_294_967_295);
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvnq_u32(a: uint32x4_t) -> uint32x4_t {
+    let b = uint32x4_t(4_294_967_295, 4_294_967_295, 4_294_967_295, 4_294_967_295);
+    simd_xor(a, b)
+}
+
 /// Folding minimum of adjacent pairs
 #[inline]
 #[target_feature(enable = "neon")]
@@ -1163,6 +1301,108 @@ mod tests {
         let v = 2 * (v as u64);
         let e = u64x2::new(v, v);
         let r: u64x2 = transmute(vaddl_u32(transmute(a), transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvn_s8() {
+        let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let e = i8x8::new(-1, -2, -3, -4, -5, -6, -7, -8);
+        let r: i8x8 = transmute(vmvn_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvnq_s8() {
+        let a = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e = i8x16::new(
+            -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16,
+        );
+        let r: i8x16 = transmute(vmvnq_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvn_s16() {
+        let a = i16x4::new(0, 1, 2, 3);
+        let e = i16x4::new(-1, -2, -3, -4);
+        let r: i16x4 = transmute(vmvn_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvnq_s16() {
+        let a = i16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let e = i16x8::new(-1, -2, -3, -4, -5, -6, -7, -8);
+        let r: i16x8 = transmute(vmvnq_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvn_s32() {
+        let a = i32x2::new(0, 1);
+        let e = i32x2::new(-1, -2);
+        let r: i32x2 = transmute(vmvn_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvnq_s32() {
+        let a = i32x4::new(0, 1, 2, 3);
+        let e = i32x4::new(-1, -2, -3, -4);
+        let r: i32x4 = transmute(vmvnq_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvn_u8() {
+        let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let e = u8x8::new(255, 254, 253, 252, 251, 250, 249, 248);
+        let r: u8x8 = transmute(vmvn_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvnq_u8() {
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e = u8x16::new(
+            255, 254, 253, 252, 251, 250, 249, 248, 247, 246, 245, 244, 243, 242, 241, 240,
+        );
+        let r: u8x16 = transmute(vmvnq_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvn_u16() {
+        let a = u16x4::new(0, 1, 2, 3);
+        let e = u16x4::new(65_535, 65_534, 65_533, 65_532);
+        let r: u16x4 = transmute(vmvn_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvnq_u16() {
+        let a = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let e = u16x8::new(
+            65_535, 65_534, 65_533, 65_532, 65_531, 65_530, 65_529, 65_528,
+        );
+        let r: u16x8 = transmute(vmvnq_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvn_u32() {
+        let a = u32x2::new(0, 1);
+        let e = u32x2::new(4_294_967_295, 4_294_967_294);
+        let r: u32x2 = transmute(vmvn_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvnq_u32() {
+        let a = u32x4::new(0, 1, 2, 3);
+        let e = u32x4::new(4_294_967_295, 4_294_967_294, 4_294_967_293, 4_294_967_292);
+        let r: u32x4 = transmute(vmvnq_u32(transmute(a)));
         assert_eq!(r, e);
     }
 
