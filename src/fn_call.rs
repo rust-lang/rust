@@ -622,11 +622,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let name = this.read_scalar(args[0])?.to_i32()?;
 
                 trace!("sysconf() called with name {}", name);
-                // Cache the sysconf integers via Miri's global cache.
+                // TODO: Cache the sysconf integers via Miri's global cache.
                 let paths = &[
-                    (&["libc", "_SC_PAGESIZE"], Scalar::from_int(4096, dest.layout.size)),
+                    (&["libc", "_SC_PAGESIZE"], Scalar::from_int(PAGE_SIZE, dest.layout.size)),
                     (&["libc", "_SC_GETPW_R_SIZE_MAX"], Scalar::from_int(-1, dest.layout.size)),
-                    (&["libc", "_SC_NPROCESSORS_ONLN"], Scalar::from_int(1, dest.layout.size)),
+                    (&["libc", "_SC_NPROCESSORS_ONLN"], Scalar::from_int(NUM_CPUS, dest.layout.size)),
                 ];
                 let mut result = None;
                 for &(path, path_value) in paths {
@@ -646,6 +646,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         format!("Unimplemented sysconf name: {}", name),
                     ));
                 }
+            }
+
+            "sched_getaffinity" => {
+                // Return an error; `num_cpus` then falls back to `sysconf`.
+                this.write_scalar(Scalar::from_int(-1, dest.layout.size), dest)?;
             }
 
             "isatty" => {
@@ -722,14 +727,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Second argument is where we are supposed to write the stack size.
                 let ptr = this.deref_operand(args[1])?;
                 // Just any address.
-                let stack_addr = Scalar::from_int(0x80000, args[1].layout.size);
+                let stack_addr = Scalar::from_uint(STACK_ADDR, args[1].layout.size);
                 this.write_scalar(stack_addr, ptr.into())?;
                 // Return success (`0`).
                 this.write_null(dest)?;
             }
             "pthread_get_stackaddr_np" => {
                 // Just any address.
-                let stack_addr = Scalar::from_int(0x80000, dest.layout.size);
+                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
                 this.write_scalar(stack_addr, dest)?;
             }
 
@@ -838,14 +843,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Initialize with `0`.
                 this.memory_mut().get_mut(system_info_ptr.alloc_id)?
                     .write_repeat(tcx, system_info_ptr, 0, system_info.layout.size)?;
-                // Set number of processors to `1`.
+                // Set number of processors.
                 let dword_size = Size::from_bytes(4);
                 let offset = 2*dword_size + 3*tcx.pointer_size();
                 this.memory_mut().get_mut(system_info_ptr.alloc_id)?
                     .write_scalar(
                         tcx,
                         system_info_ptr.offset(offset, tcx)?,
-                        Scalar::from_int(1, dword_size).into(),
+                        Scalar::from_int(NUM_CPUS, dword_size).into(),
                         dword_size,
                     )?;
             }

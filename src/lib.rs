@@ -40,6 +40,11 @@ pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt, Tag
 pub use crate::machine::{MemoryExtra, AllocExtra, MiriMemoryKind, Evaluator, MiriEvalContext, MiriEvalContextExt};
 pub use crate::eval::{eval_main, create_ecx, MiriConfig};
 
+// Some global facts about the emulated machine.
+pub const PAGE_SIZE: u64 = 4*1024;
+pub const STACK_ADDR: u64 = 16*PAGE_SIZE;
+pub const NUM_CPUS: u64 = 1;
+
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
 pub fn miri_default_args() -> &'static [&'static str] {

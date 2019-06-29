@@ -4,8 +4,7 @@ use rustc::mir::interpret::{AllocId, Pointer, InterpResult};
 use rustc_mir::interpret::Memory;
 use rustc_target::abi::Size;
 
-use crate::stacked_borrows::Tag;
-use crate::Evaluator;
+use crate::{Evaluator, Tag, STACK_ADDR};
 
 pub type MemoryExtra = RefCell<GlobalState>;
 
@@ -25,11 +24,10 @@ pub struct GlobalState {
 }
 
 impl Default for GlobalState {
-    // FIXME: Query the page size in the future
     fn default() -> Self {
         GlobalState {
             int_to_ptr_map: Vec::default(),
-            next_base_addr: 2u64.pow(16)
+            next_base_addr: STACK_ADDR,
         }
     }
 }
