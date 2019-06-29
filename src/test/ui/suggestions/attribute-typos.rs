@@ -1,13 +1,8 @@
-#[deprcated]    //~ ERROR E0658
-fn foo() {}     //~| HELP a built-in attribute with a similar name exists
-                //~| SUGGESTION deprecated
-                //~| HELP add #![feature(custom_attribute)] to the crate attributes to enable
+#[deprcated] //~ ERROR attribute `deprcated` is currently unknown
+fn foo() {}
 
-#[tests]        //~ ERROR E0658
-fn bar() {}     //~| HELP a built-in attribute with a similar name exists
-                //~| SUGGESTION test
-                //~| HELP add #![feature(custom_attribute)] to the crate attributes to enable
+#[tests] //~ ERROR attribute `tests` is currently unknown to the compiler
+fn bar() {}
 
-#[rustc_err]    //~ ERROR E0658
-fn main() {}    //~| HELP add #![feature(rustc_attrs)] to the crate attributes to enable
-                // don't suggest rustc attributes
+#[rustc_err] //~ ERROR attribute `rustc_err` is currently unknown
+fn main() {}

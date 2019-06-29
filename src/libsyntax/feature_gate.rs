@@ -1290,6 +1290,18 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                                     attribute is just used for rustc unit \
                                                     tests and will never be stable",
                                                     cfg_fn!(rustc_attrs))),
+    (sym::rustc_dump_env_program_clauses, Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                    sym::rustc_attrs,
+                                                    "the `#[rustc_dump_env_program_clauses]` \
+                                                    attribute is just used for rustc unit \
+                                                    tests and will never be stable",
+                                                    cfg_fn!(rustc_attrs))),
+    (sym::rustc_object_lifetime_default, Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                    sym::rustc_attrs,
+                                                    "the `#[rustc_object_lifetime_default]` \
+                                                    attribute is just used for rustc unit \
+                                                    tests and will never be stable",
+                                                    cfg_fn!(rustc_attrs))),
     (sym::rustc_test_marker, Normal, template!(Word), Gated(Stability::Unstable,
                                     sym::rustc_attrs,
                                     "the `#[rustc_test_marker]` attribute \
@@ -1347,6 +1359,26 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                                 cfg_fn!(rustc_attrs))),
 
     (sym::rustc_allocator, Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                sym::rustc_attrs,
+                                                "internal implementation detail",
+                                                cfg_fn!(rustc_attrs))),
+
+    (sym::rustc_allocator_nounwind, Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                sym::rustc_attrs,
+                                                "internal implementation detail",
+                                                cfg_fn!(rustc_attrs))),
+
+    (sym::rustc_doc_only_macro, Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                sym::rustc_attrs,
+                                                "internal implementation detail",
+                                                cfg_fn!(rustc_attrs))),
+
+    (sym::rustc_promotable, Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                sym::rustc_attrs,
+                                                "internal implementation detail",
+                                                cfg_fn!(rustc_attrs))),
+
+    (sym::rustc_allow_const_fn_ptr, Whitelisted, template!(Word), Gated(Stability::Unstable,
                                                 sym::rustc_attrs,
                                                 "internal implementation detail",
                                                 cfg_fn!(rustc_attrs))),
@@ -1647,19 +1679,13 @@ impl<'a> Context<'a> {
                 return;
             }
         }
-        if !attr::is_known(attr) {
-            if attr.name_or_empty().as_str().starts_with("rustc_") {
-                let msg = "unless otherwise specified, attributes with the prefix `rustc_` \
-                           are reserved for internal compiler diagnostics";
-                gate_feature!(self, rustc_attrs, attr.span, msg);
-            } else if !is_macro {
-                // Only run the custom attribute lint during regular feature gate
-                // checking. Macro gating runs before the plugin attributes are
-                // registered, so we skip this in that case.
-                let msg = format!("The attribute `{}` is currently unknown to the compiler and \
-                                   may have meaning added to it in the future", attr.path);
-                gate_feature!(self, custom_attribute, attr.span, &msg);
-            }
+        if !is_macro && !attr::is_known(attr) {
+            // Only run the custom attribute lint during regular feature gate
+            // checking. Macro gating runs before the plugin attributes are
+            // registered, so we skip this in that case.
+            let msg = format!("The attribute `{}` is currently unknown to the compiler and \
+                                may have meaning added to it in the future", attr.path);
+            gate_feature!(self, custom_attribute, attr.span, &msg);
         }
     }
 }

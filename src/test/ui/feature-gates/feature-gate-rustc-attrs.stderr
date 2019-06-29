@@ -1,8 +1,8 @@
-error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics
-  --> $DIR/feature-gate-rustc-attrs.rs:3:3
+error[E0658]: used by the test suite
+  --> $DIR/feature-gate-rustc-attrs.rs:3:1
    |
-LL | #[rustc_foo]
-   |   ^^^^^^^^^
+LL | #[rustc_dummy]
+   | ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable

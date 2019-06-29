@@ -1,5 +1,5 @@
 #[rustc_attribute_should_be_reserved]
-//~^ ERROR unless otherwise specified, attributes with the prefix `rustc_` are reserved
+//~^ ERROR attribute `rustc_attribute_should_be_reserved` is currently unknown
 macro_rules! foo {
     () => (());
 }

@@ -323,21 +323,13 @@ impl<'a> Resolver<'a> {
                     let features = self.session.features_untracked();
                     if attr_kind == NonMacroAttrKind::Custom {
                         assert!(path.segments.len() == 1);
-                        let name = path.segments[0].ident.as_str();
-                        if name.starts_with("rustc_") {
-                            if !features.rustc_attrs {
-                                let msg = "unless otherwise specified, attributes with the prefix \
-                                           `rustc_` are reserved for internal compiler diagnostics";
-                                self.report_unknown_attribute(path.span, &name, msg,
-                                                              sym::rustc_attrs);
-                            }
-                        } else if !features.custom_attribute {
+                        if !features.custom_attribute {
                             let msg = format!("The attribute `{}` is currently unknown to the \
                                                compiler and may have meaning added to it in the \
                                                future", path);
                             self.report_unknown_attribute(
                                 path.span,
-                                &name,
+                                &path.segments[0].ident.as_str(),
                                 &msg,
                                 sym::custom_attribute,
                             );
