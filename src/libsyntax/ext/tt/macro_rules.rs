@@ -2,7 +2,6 @@ use crate::edition::Edition;
 use crate::ext::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
 use crate::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::ext::expand::{AstFragment, AstFragmentKind};
-use crate::ext::hygiene::Transparency;
 use crate::ext::tt::macro_parser::{parse, parse_failure_msg};
 use crate::ext::tt::macro_parser::{Error, Failure, Success};
 use crate::ext::tt::macro_parser::{MatchedNonterminal, MatchedSeq};
@@ -15,7 +14,7 @@ use crate::parse::token::{self, NtTT, Token};
 use crate::parse::{Directory, ParseSess};
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
-use crate::{ast, attr};
+use crate::{ast, attr, attr::TransparencyError};
 
 use errors::FatalError;
 use log::debug;
@@ -380,17 +379,19 @@ pub fn compile(
     let expander: Box<_> =
         Box::new(MacroRulesMacroExpander { name: def.ident, lhses, rhses, valid });
 
-    let value_str = attr::first_attr_value_str_by_name(&def.attrs, sym::rustc_macro_transparency);
-    let default_transparency = value_str.and_then(|s| Some(match &*s.as_str() {
-        "transparent" => Transparency::Transparent,
-        "semitransparent" => Transparency::SemiTransparent,
-        "opaque" => Transparency::Opaque,
-        _ => {
-            let msg = format!("unknown macro transparency: `{}`", s);
-            sess.span_diagnostic.span_err(def.span, &msg);
-            return None;
-        }
-    })).unwrap_or(if body.legacy { Transparency::SemiTransparent } else { Transparency::Opaque });
+    let (default_transparency, transparency_error) =
+        attr::find_transparency(&def.attrs, body.legacy);
+    match transparency_error {
+        Some(TransparencyError::UnknownTransparency(value, span)) =>
+            sess.span_diagnostic.span_err(
+                span, &format!("unknown macro transparency: `{}`", value)
+            ),
+        Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) =>
+            sess.span_diagnostic.span_err(
+                vec![old_span, new_span], "multiple macro transparency attributes"
+            ),
+        None => {}
+    }
 
     let allow_internal_unstable =
         attr::find_by_name(&def.attrs, sym::allow_internal_unstable).map(|attr| {
