@@ -390,6 +390,10 @@ impl Union {
         self.id.module(db)
     }
 
+    pub fn ty(self, db: &impl HirDatabase) -> Ty {
+        db.type_for_def(self.into(), Namespace::Types)
+    }
+
     // FIXME move to a more general type
     /// Builds a resolver for type references inside this union.
     pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {

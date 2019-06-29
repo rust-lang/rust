@@ -37,13 +37,18 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 acc.add_resolution(ctx, name.to_string(), &res.def.map(hir::Resolution::Def));
             }
         }
-        hir::ModuleDef::Enum(e) => {
-            for variant in e.variants(ctx.db) {
-                acc.add_enum_variant(ctx, variant);
+        hir::ModuleDef::Enum(_) | hir::ModuleDef::Struct(_) | hir::ModuleDef::Union(_) => {
+            if let hir::ModuleDef::Enum(e) = def {
+                for variant in e.variants(ctx.db) {
+                    acc.add_enum_variant(ctx, variant);
+                }
             }
-        }
-        hir::ModuleDef::Struct(s) => {
-            let ty = s.ty(ctx.db);
+            let ty = match def {
+                hir::ModuleDef::Enum(e) => e.ty(ctx.db),
+                hir::ModuleDef::Struct(s) => s.ty(ctx.db),
+                hir::ModuleDef::Union(u) => u.ty(ctx.db),
+                _ => unreachable!(),
+            };
             let krate = ctx.module.and_then(|m| m.krate(ctx.db));
             if let Some(krate) = krate {
                 ty.iterate_impl_items(ctx.db, krate, |item| {
@@ -276,6 +281,44 @@ mod tests {
             }
 
             fn foo() { let _ = S::<|> }
+            ",
+        );
+    }
+
+    #[test]
+    fn completes_enum_associated_method() {
+        check_reference_completion(
+            "enum_associated_method",
+            "
+            //- /lib.rs
+            /// An enum
+            enum S {};
+
+            impl S {
+                /// An associated method
+                fn m() { }
+            }
+
+            fn foo() { let _ = S::<|> }
+            ",
+        );
+    }
+
+    #[test]
+    fn completes_union_associated_method() {
+        check_reference_completion(
+            "union_associated_method",
+            "
+            //- /lib.rs
+            /// A union
+            union U {};
+
+            impl U {
+                /// An associated method
+                fn m() { }
+            }
+
+            fn foo() { let _ = U::<|> }
             ",
         );
     }

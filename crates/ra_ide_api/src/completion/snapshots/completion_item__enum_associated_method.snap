@@ -1,0 +1,19 @@
+---
+created: "2019-06-29T10:30:34.110468474Z"
+creator: insta@0.8.1
+source: crates/ra_ide_api/src/completion/completion_item.rs
+expression: kind_completions
+---
+[
+    CompletionItem {
+        label: "m",
+        source_range: [100; 100),
+        delete: [100; 100),
+        insert: "m()$0",
+        kind: Function,
+        detail: "fn m()",
+        documentation: Documentation(
+            "An associated method",
+        ),
+    },
+]
