@@ -358,14 +358,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                                     fx.bcx.ins().bint(types::I8, res)
                                 }
                                 ty::Uint(_) | ty::Int(_) => {
-                                    if fx.bcx.func.dfg.value_type(val) == types::I128 {
-                                        let (a, b) = fx.bcx.ins().isplit(val);
-                                        let a = fx.bcx.ins().bnot(a);
-                                        let b = fx.bcx.ins().bnot(b);
-                                        fx.bcx.ins().iconcat(a, b)
-                                    } else {
-                                        fx.bcx.ins().bnot(val)
-                                    }
+                                    fx.bcx.ins().bnot(val)
                                 }
                                 _ => unimplemented!("un op Not for {:?}", layout.ty),
                             }
