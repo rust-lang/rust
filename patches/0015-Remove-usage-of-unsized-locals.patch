@@ -41,9 +41,9 @@ index f6dee7c..0c6a8c0 100644
 -    }
 -}
 -
- /// `FnBox` is deprecated and will be removed.
- /// `Box<dyn FnOnce()>` can be called directly, since Rust 1.35.0.
- ///
+ #[unstable(feature = "coerce_unsized", issue = "27732")]
+ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+ 
 diff --git a/src/libstd/sys_common/at_exit_imp.rs b/src/libstd/sys_common/at_exit_imp.rs
 index 1181b86..20f9251 100644
 --- a/src/libstd/sys_common/at_exit_imp.rs
@@ -96,4 +96,3 @@ index b2142e7..718bb1c 100644
  pub fn min_stack() -> usize {
 -- 
 2.20.1 (Apple Git-117)
-
