@@ -21,8 +21,8 @@ using adept::aVector;
 
 using adept::Vector;
 
-#define N 200
-#define M 200
+#define N 2000
+#define M 2000
 #define ITERS 1000
 #define RATE 0.00000001
 
