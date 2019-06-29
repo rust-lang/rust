@@ -982,6 +982,7 @@ fn gen_random<'mir, 'tcx>(
 
     let data = match &mut this.memory_mut().extra.rng {
         Some(rng) => {
+            let mut rng = rng.borrow_mut();
             let mut data = vec![0; len];
             rng.fill_bytes(&mut data);
             data
