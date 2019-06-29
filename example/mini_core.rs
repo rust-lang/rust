@@ -44,10 +44,12 @@ unsafe impl Copy for u8 {}
 unsafe impl Copy for u16 {}
 unsafe impl Copy for u32 {}
 unsafe impl Copy for u64 {}
+unsafe impl Copy for u128 {}
 unsafe impl Copy for usize {}
 unsafe impl Copy for i8 {}
 unsafe impl Copy for i16 {}
 unsafe impl Copy for i32 {}
+unsafe impl Copy for i128 {}
 unsafe impl Copy for isize {}
 unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
@@ -145,6 +147,14 @@ impl Add for usize {
 }
 
 impl Add for u128 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
+impl Add for i128 {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -276,6 +286,15 @@ impl PartialEq for i32 {
     }
 }
 
+impl PartialEq for i128 {
+    fn eq(&self, other: &i128) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &i128) -> bool {
+        (*self) != (*other)
+    }
+}
+
 impl PartialEq for isize {
     fn eq(&self, other: &isize) -> bool {
         (*self) == (*other)
@@ -322,6 +341,14 @@ impl Neg for i16 {
     type Output = i16;
 
     fn neg(self) -> i16 {
+        self
+    }
+}
+
+impl Neg for i128 {
+    type Output = i128;
+
+    fn neg(self) -> i128 {
         -self
     }
 }
@@ -446,6 +473,7 @@ pub mod intrinsics {
         pub fn needs_drop<T>() -> bool;
         pub fn bitreverse<T>(x: T) -> T;
         pub fn bswap<T>(x: T) -> T;
+        pub fn unchecked_div<T>(lhs: T, rhs: T) -> T;
     }
 }
 

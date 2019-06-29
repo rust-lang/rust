@@ -82,26 +82,42 @@ pub fn clif_intcast<'a, 'tcx: 'a>(
     if from == to {
         return val;
     }
-    if to == types::I128 {
-        let wider = if signed {
-            fx.bcx.ins().sextend(types::I64, val)
-        } else {
-            fx.bcx.ins().uextend(types::I64, val)
-        };
-        let zero = fx.bcx.ins().iconst(types::I64, 0);
-        return fx.bcx.ins().iconcat(wider, zero);
-    }
-    if to.wider_or_equal(from) {
-        if signed {
-            fx.bcx.ins().sextend(to, val)
-        } else {
-            fx.bcx.ins().uextend(to, val)
+    match (from, to) {
+        // equal
+        (_, _) if from == to => val,
+
+        // extend
+        (_, types::I128) => {
+            let wider = if from == types::I64 {
+                val
+            } else if signed {
+                fx.bcx.ins().sextend(types::I64, val)
+            } else {
+                fx.bcx.ins().uextend(types::I64, val)
+            };
+            let zero = fx.bcx.ins().iconst(types::I64, 0);
+            fx.bcx.ins().iconcat(wider, zero)
         }
-    } else if from == types::I128 {
-        let (lsb, _msb) = fx.bcx.ins().isplit(val);
-        fx.bcx.ins().ireduce(to, lsb)
-    } else {
-        fx.bcx.ins().ireduce(to, val)
+        (_, _) if to.wider_or_equal(from) => {
+            if signed {
+                fx.bcx.ins().sextend(to, val)
+            } else {
+                fx.bcx.ins().uextend(to, val)
+            }
+        }
+
+        // reduce
+        (types::I128, _) => {
+            let (lsb, _msb) = fx.bcx.ins().isplit(val);
+            if to == types::I64 {
+                lsb
+            } else {
+                fx.bcx.ins().ireduce(to, lsb)
+            }
+        }
+        (_, _) => {
+            fx.bcx.ins().ireduce(to, val)
+        }
     }
 }
 

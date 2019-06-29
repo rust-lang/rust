@@ -357,15 +357,28 @@ fn trans_stmt<'a, 'tcx: 'a>(
                                     let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
                                     fx.bcx.ins().bint(types::I8, res)
                                 }
-                                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().bnot(val),
+                                ty::Uint(_) | ty::Int(_) => {
+                                    if fx.bcx.func.dfg.value_type(val) == types::I128 {
+                                        let (a, b) = fx.bcx.ins().isplit(val);
+                                        let a = fx.bcx.ins().bnot(a);
+                                        let b = fx.bcx.ins().bnot(b);
+                                        fx.bcx.ins().iconcat(a, b)
+                                    } else {
+                                        fx.bcx.ins().bnot(val)
+                                    }
+                                }
                                 _ => unimplemented!("un op Not for {:?}", layout.ty),
                             }
                         }
                         UnOp::Neg => match layout.ty.sty {
                             ty::Int(_) => {
                                 let clif_ty = fx.clif_type(layout.ty).unwrap();
-                                let zero = fx.bcx.ins().iconst(clif_ty, 0);
-                                fx.bcx.ins().isub(zero, val)
+                                if clif_ty == types::I128 {
+                                    crate::trap::trap_unreachable_ret_value(fx, layout, "i128 neg is not yet supported").load_scalar(fx)
+                                } else {
+                                    let zero = fx.bcx.ins().iconst(clif_ty, 0);
+                                    fx.bcx.ins().isub(zero, val)
+                                }
                             }
                             ty::Float(_) => fx.bcx.ins().fneg(val),
                             _ => unimplemented!("un op Neg for {:?}", layout.ty),

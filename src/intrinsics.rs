@@ -390,11 +390,33 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             fx.bcx.call_memset(fx.module.target_config(), dst_ptr, val, count);
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
-            let res = CValue::by_val(fx.bcx.ins().clz(arg), fx.layout_of(T));
+            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
+                // FIXME verify this algorithm is correct
+                let (lsb, msb) = fx.bcx.ins().isplit(arg);
+                let lsb_lz = fx.bcx.ins().clz(lsb);
+                let msb_lz = fx.bcx.ins().clz(msb);
+                let msb_lz_is_64 = fx.bcx.ins().icmp_imm(IntCC::Equal, msb_lz, 64);
+                let lsb_lz_plus_64 = fx.bcx.ins().iadd_imm(lsb_lz, 64);
+                fx.bcx.ins().select(msb_lz_is_64, lsb_lz_plus_64, msb_lz)
+            } else {
+                fx.bcx.ins().clz(arg)
+            };
+            let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         cttz | cttz_nonzero, <T> (v arg) {
-            let res = CValue::by_val(fx.bcx.ins().ctz(arg), fx.layout_of(T));
+            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
+                // FIXME verify this algorithm is correct
+                let (lsb, msb) = fx.bcx.ins().isplit(arg);
+                let lsb_tz = fx.bcx.ins().ctz(lsb);
+                let msb_tz = fx.bcx.ins().ctz(msb);
+                let lsb_tz_is_64 = fx.bcx.ins().icmp_imm(IntCC::Equal, lsb_tz, 64);
+                let msb_lz_plus_64 = fx.bcx.ins().iadd_imm(msb_tz, 64);
+                fx.bcx.ins().select(lsb_tz_is_64, msb_lz_plus_64, lsb_tz)
+            } else {
+                fx.bcx.ins().ctz(arg)
+            };
+            let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         ctpop, <T> (v arg) {
