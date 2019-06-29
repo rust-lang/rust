@@ -494,7 +494,13 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                         let or_tmp6 = bcx.ins().bor(or_tmp3, or_tmp4);
                         bcx.ins().bor(or_tmp5, or_tmp6)
                     }
-                    ty => unimplemented!("bwap {}", ty),
+                    types::I128 => {
+                        let (lo, hi) = bcx.ins().isplit(v);
+                        let lo = swap(bcx, lo);
+                        let hi = swap(bcx, hi);
+                        bcx.ins().iconcat(hi, lo)
+                    }
+                    ty => unimplemented!("bswap {}", ty),
                 }
             };
             let res = CValue::by_val(swap(&mut fx.bcx, arg), fx.layout_of(T));
