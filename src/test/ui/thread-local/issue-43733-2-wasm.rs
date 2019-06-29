@@ -1,4 +1,4 @@
-// ignore-wasm32
+// only-wasm32
 
 #![feature(cfg_target_thread_local, thread_local_internals)]
 

@@ -1,0 +1,23 @@
+error[E0277]: `std::cell::UnsafeCell<std::option::Option<()>>` cannot be shared between threads safely
+  --> $DIR/issue-43733-2-wasm.rs:26:1
+   |
+LL | static __KEY: Key<()> = Key::new();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::UnsafeCell<std::option::Option<()>>` cannot be shared between threads safely
+   |
+   = help: within `Key<()>`, the trait `std::marker::Sync` is not implemented for `std::cell::UnsafeCell<std::option::Option<()>>`
+   = note: required because it appears within the type `Key<()>`
+   = note: shared static variables must have a type that implements `Sync`
+
+error[E0277]: `std::cell::Cell<()>` cannot be shared between threads safely
+  --> $DIR/issue-43733-2-wasm.rs:26:1
+   |
+LL | static __KEY: Key<()> = Key::new();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::Cell<()>` cannot be shared between threads safely
+   |
+   = help: within `Key<()>`, the trait `std::marker::Sync` is not implemented for `std::cell::Cell<()>`
+   = note: required because it appears within the type `Key<()>`
+   = note: shared static variables must have a type that implements `Sync`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

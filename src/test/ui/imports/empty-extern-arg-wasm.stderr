@@ -1,0 +1,9 @@
+error: extern location for std does not exist: 
+
+error[E0463]: can't find crate for `std`
+   |
+   = note: the `wasm32-unknown-unknown` target may not be installed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0463`.
