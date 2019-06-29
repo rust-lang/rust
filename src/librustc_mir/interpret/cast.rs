@@ -244,37 +244,24 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::ty::TyKind::*;
 
-        fn int_size<'tcx>(layout: TyLayout<'tcx>) -> Option<usize> {
-            match layout.ty.sty {
-                Int(i) => i.bit_width(),
-                Uint(i) => i.bit_width(),
-                _ => bug!("Not an integer"),
-            }
-        }
-
         match dest_layout.ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc,
             // no need to support it here.
             RawPtr(_) => Ok(ptr.into()),
             Int(IntTy::Isize) | Uint(UintTy::Usize) => {
-                let size = self.memory.pointer_size();
-                
-                if let Ok(bits) = self.force_bits(Scalar::Ptr(ptr), size) {
+                if let Ok(bits) = self.force_bits(Scalar::Ptr(ptr), self.memory.pointer_size()) {
                     self.cast_from_int(bits, src_layout, dest_layout)
                 } else {
                     Ok(ptr.into())
                 }
             }
             Int(_) | Uint(_) => {
-                let size = Size::from_bits(int_size(dest_layout).unwrap() as u64);
-                
-                if let Ok(bits) = self.force_bits(Scalar::Ptr(ptr), size) {
+                if let Ok(bits) = self.force_bits(Scalar::Ptr(ptr), self.memory.pointer_size()) {
                     self.cast_from_int(bits, src_layout, dest_layout)
                 } else {
                     err!(ReadPointerAsBytes)
                 }
-            },
-            // Casting to any other type is not implemented
+            }
             _ => return err!(Unimplemented(format!("ptr to {:?} cast", dest_layout.ty))),
         }
     }
