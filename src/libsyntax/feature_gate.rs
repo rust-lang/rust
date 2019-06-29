@@ -245,7 +245,7 @@ declare_features! (
     (active, allocator_internals, "1.20.0", None, None),
 
     // Allows using the `format_args_nl` macro.
-    (active, format_args_nl, "1.29.0", None, None),
+    (active, format_args_nl, "1.29.0", Some(0), None),
 
     // no-tracking-issue-end
 
