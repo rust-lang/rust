@@ -1,5 +1,7 @@
 // run-pass
+
 #![allow(stable_features)]
+#![allow(unused_must_use)]
 
 // ignore-emscripten no threads support
 

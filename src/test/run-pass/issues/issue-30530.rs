@@ -12,7 +12,9 @@ pub enum Handler {
 }
 
 fn main() {
-    take(Handler::Default, Box::new(main));
+    #[allow(unused_must_use)] {
+        take(Handler::Default, Box::new(main));
+    }
 }
 
 #[inline(never)]
