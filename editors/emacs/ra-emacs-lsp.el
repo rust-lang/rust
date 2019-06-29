@@ -204,5 +204,31 @@
                                    "rust-analyzer/analyzerStatus")))))))
 
 
+(defun rust-analyzer--syntax-tree-params ()
+  "Syntax tree params."
+  (list :textDocument (lsp--text-document-identifier)
+        :range (if (use-region-p)
+                   (lsp--region-to-range (region-beginning) (region-end))
+                 (lsp--region-to-range (point-min) (point-max)))))
+
+(defun rust-analyzer-syntax-tree ()
+  "Displays syntax tree for current buffer."
+  (interactive)
+  (when (eq 'rust-mode major-mode)
+    (let* ((workspace (lsp-find-workspace 'rust-analyzer (buffer-file-name)))
+           (buf (get-buffer-create (concat "*rust-analyzer syntax tree " (with-lsp-workspace workspace (lsp-workspace-root)) "*"))))
+      (when workspace
+        (let ((parse-result (with-lsp-workspace workspace
+                              (lsp-send-request (lsp-make-request
+                                                 "rust-analyzer/syntaxTree"
+                                                 (rust-analyzer--syntax-tree-params))))))
+          (with-current-buffer buf
+            (let ((inhibit-read-only t))
+              (erase-buffer)
+              (insert parse-result)) 
+            )
+          (pop-to-buffer buf))))))
+
+
 (provide 'ra-emacs-lsp)
 ;;; ra-emacs-lsp.el ends here
