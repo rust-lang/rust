@@ -267,13 +267,8 @@ impl Stdio {
 
             Stdio::MakePipe => {
                 let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
-                let pipes = pipe::anon_pipe(ours_readable)?;
+                let pipes = pipe::anon_pipe(ours_readable, true)?;
                 *pipe = Some(pipes.ours);
-                cvt(unsafe {
-                    c::SetHandleInformation(pipes.theirs.handle().raw(),
-                                            c::HANDLE_FLAG_INHERIT,
-                                            c::HANDLE_FLAG_INHERIT)
-                })?;
                 Ok(pipes.theirs.into_handle())
             }
 

@@ -13,7 +13,6 @@ use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::slice;
 use crate::sys::{c, cvt};
-use crate::sys::handle::Handle;
 
 use super::to_u16s;
 
@@ -284,10 +283,11 @@ pub fn temp_dir() -> PathBuf {
     }, super::os2path).unwrap()
 }
 
-pub fn home_dir() -> Option<PathBuf> {
-    crate::env::var_os("HOME").or_else(|| {
-        crate::env::var_os("USERPROFILE")
-    }).map(PathBuf::from).or_else(|| unsafe {
+#[cfg(not(target_vendor = "uwp"))]
+fn home_dir_crt() -> Option<PathBuf> {
+    unsafe {
+        use crate::sys::handle::Handle;
+
         let me = c::GetCurrentProcess();
         let mut token = ptr::null_mut();
         if c::OpenProcessToken(me, c::TOKEN_READ, &mut token) == 0 {
@@ -301,7 +301,18 @@ pub fn home_dir() -> Option<PathBuf> {
                 _ => sz - 1, // sz includes the null terminator
             }
         }, super::os2path).ok()
-    })
+    }
+}
+
+#[cfg(target_vendor = "uwp")]
+fn home_dir_crt() -> Option<PathBuf> {
+    None
+}
+
+pub fn home_dir() -> Option<PathBuf> {
+    crate::env::var_os("HOME").or_else(|| {
+        crate::env::var_os("USERPROFILE")
+    }).map(PathBuf::from).or_else(|| home_dir_crt())
 }
 
 pub fn exit(code: i32) -> ! {
