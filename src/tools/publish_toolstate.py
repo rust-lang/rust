@@ -72,32 +72,33 @@ def issue(
 ):
     # Open an issue about the toolstate failure.
     assignees = [x.strip() for x in maintainers.split('@') if x != '']
-    assignees.append(relevant_pr_user)
     if status == 'test-fail':
         status_description = 'has failing tests'
     else:
         status_description = 'no longer builds'
+    request = json.dumps({
+        'body': maybe_delink(textwrap.dedent('''\
+        Hello, this is your friendly neighborhood mergebot.
+        After merging PR {}, I observed that the tool {} {}.
+        A follow-up PR to the repository {} is needed to fix the fallout.
+
+        cc @{}, do you think you would have time to do the follow-up work?
+        If so, that would be great!
+
+        cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
+
+        ''').format(
+            relevant_pr_number, tool, status_description,
+            REPOS.get(tool), relevant_pr_user, pr_reviewer
+        )),
+        'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
+        'assignees': assignees,
+        'labels': ['T-compiler', 'I-nominated'],
+    })
+    print("Creating issue:\n{}".format(request))
     response = urllib2.urlopen(urllib2.Request(
         gh_url(),
-        json.dumps({
-            'body': maybe_delink(textwrap.dedent('''\
-            Hello, this is your friendly neighborhood mergebot.
-            After merging PR {}, I observed that the tool {} {}.
-            A follow-up PR to the repository {} is needed to fix the fallout.
-
-            cc @{}, do you think you would have time to do the follow-up work?
-            If so, that would be great!
-
-            cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
-
-            ''').format(
-                relevant_pr_number, tool, status_description,
-                REPOS.get(tool), relevant_pr_user, pr_reviewer
-            )),
-            'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
-            'assignees': assignees,
-            'labels': ['T-compiler', 'I-nominated'],
-        }),
+        request,
         {
             'Authorization': 'token ' + github_token,
             'Content-Type': 'application/json',
@@ -135,13 +136,13 @@ def update_latest(
         for status in latest:
             tool = status['tool']
             changed = False
-            create_issue = False
+            create_issue_for_status = None # set to the status that caused the issue
 
             for os, s in current_status.items():
                 old = status[os]
                 new = s.get(tool, old)
                 status[os] = new
-                if new > old:
+                if new > old: # comparing the strings, but they are ordered appropriately!
                     # things got fixed or at least the status quo improved
                     changed = True
                     message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
@@ -156,20 +157,24 @@ def update_latest(
                     # Most tools only create issues for build failures.
                     # Other failures can be spurious.
                     if new == 'build-fail' or (tool == 'miri' and new == 'test-fail'):
-                        create_issue = True
+                        create_issue_for_status = new
 
-            if create_issue:
+            if create_issue_for_status is not None:
                 try:
                     issue(
-                        tool, new, MAINTAINERS.get(tool, ''),
+                        tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
                         relevant_pr_number, relevant_pr_user, pr_reviewer,
                     )
-                except IOError as e:
+                except urllib2.HTTPError as e:
                     # network errors will simply end up not creating an issue, but that's better
                     # than failing the entire build job
-                    print("I/O error: {0}".format(e))
+                    print("HTTPError when creating issue for status regression: {0}\n{1}"
+                          .format(e, e.read()))
+                except IOError as e:
+                    print("I/O error when creating issue for status regression: {0}".format(e))
                 except:
-                    print("Unexpected error: {0}".format(sys.exc_info()[0]))
+                    print("Unexpected error when creating issue for status regression: {0}"
+                          .format(sys.exc_info()[0]))
                     raise
 
             if changed:

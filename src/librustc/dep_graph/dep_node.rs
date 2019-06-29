@@ -142,9 +142,6 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            // FIXME: Make `is_anon`, `is_eval_always` and `has_params` properties
-            // of queries
-            #[inline(always)]
             pub fn is_anon(&self) -> bool {
                 match *self {
                     $(
@@ -163,7 +160,6 @@ macro_rules! define_dep_nodes {
             }
 
             #[allow(unreachable_code)]
-            #[inline(always)]
             pub fn has_params(&self) -> bool {
                 match *self {
                     $(

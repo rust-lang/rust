@@ -40,10 +40,9 @@ use libc::MSG_NOSIGNAL;
               target_os = "haiku")))]
 const MSG_NOSIGNAL: libc::c_int = 0x0;
 
-fn sun_path_offset() -> usize {
+fn sun_path_offset(addr: &libc::sockaddr_un) -> usize {
     // Work with an actual instance of the type since using a null pointer is UB
-    let addr: libc::sockaddr_un = unsafe { mem::uninitialized() };
-    let base = &addr as *const _ as usize;
+    let base = addr as *const _ as usize;
     let path = &addr.sun_path as *const _ as usize;
     path - base
 }
@@ -69,7 +68,7 @@ unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::sockl
     // null byte for pathname addresses is already there because we zeroed the
     // struct
 
-    let mut len = sun_path_offset() + bytes.len();
+    let mut len = sun_path_offset(&addr) + bytes.len();
     match bytes.get(0) {
         Some(&0) | None => {}
         Some(_) => len += 1,
@@ -122,7 +121,7 @@ impl SocketAddr {
         if len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address
-            len = sun_path_offset() as libc::socklen_t;  // i.e., zero-length address
+            len = sun_path_offset(&addr) as libc::socklen_t;  // i.e., zero-length address
         } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
             return Err(io::Error::new(io::ErrorKind::InvalidInput,
                                       "file descriptor did not correspond to a Unix socket"));
@@ -200,7 +199,7 @@ impl SocketAddr {
     }
 
     fn address<'a>(&'a self) -> AddressKind<'a> {
-        let len = self.len as usize - sun_path_offset();
+        let len = self.len as usize - sun_path_offset(&self.addr);
         let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
 
         // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
