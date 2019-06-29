@@ -89,7 +89,7 @@ find_sysroot() {
 
 # Determine command.
 COMMAND="$1"
-shift
+[ $# -gt 0 ] && shift
 
 # Determine flags passed to all cargo invocations.
 # This is a bit more annoying that one would hope due to

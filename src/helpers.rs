@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc::ty::{self, layout};
+use rustc::ty::{self, layout::{self, Size}};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 
 use crate::*;

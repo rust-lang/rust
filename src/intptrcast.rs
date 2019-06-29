@@ -89,6 +89,7 @@ impl<'mir, 'tcx> GlobalState {
             }
         };
 
+        debug_assert_eq!(base_addr % alloc.align.bytes(), 0); // sanity check
         Ok(base_addr + ptr.offset.bytes())
     }
 
