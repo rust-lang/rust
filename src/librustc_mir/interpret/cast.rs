@@ -1,7 +1,7 @@
 use rustc::ty::{self, Ty, TypeAndMut};
 use rustc::ty::layout::{self, TyLayout, Size};
 use rustc::ty::adjustment::{PointerCast};
-use syntax::ast::{FloatTy, IntTy, UintTy};
+use syntax::ast::FloatTy;
 use syntax::symbol::sym;
 
 use rustc_apfloat::ieee::{Single, Double};
@@ -248,18 +248,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             // Casting to a reference or fn pointer is not permitted by rustc,
             // no need to support it here.
             RawPtr(_) => Ok(ptr.into()),
-            Int(IntTy::Isize) | Uint(UintTy::Usize) => {
-                if let Ok(bits) = self.force_bits(Scalar::Ptr(ptr), self.memory.pointer_size()) {
-                    self.cast_from_int(bits, src_layout, dest_layout)
-                } else {
-                    Ok(ptr.into())
-                }
-            }
             Int(_) | Uint(_) => {
-                if let Ok(bits) = self.force_bits(Scalar::Ptr(ptr), self.memory.pointer_size()) {
-                    self.cast_from_int(bits, src_layout, dest_layout)
-                } else {
-                    err!(ReadPointerAsBytes)
+                let size = self.memory.pointer_size();
+
+                match self.force_bits(Scalar::Ptr(ptr), size) {
+                    Ok(bits) => self.cast_from_int(bits, src_layout, dest_layout),
+                    Err(_) if dest_layout.size == size => Ok(ptr.into()),
+                    Err(e) => Err(e),
                 }
             }
             _ => return err!(Unimplemented(format!("ptr to {:?} cast", dest_layout.ty))),
