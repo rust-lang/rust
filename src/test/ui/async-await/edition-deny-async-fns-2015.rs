@@ -28,6 +28,12 @@ fn main() {
         async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
     }
 
+    accept_item! {
+        impl Foo {
+            async fn bar() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+        }
+    }
+
     let inside_closure = || {
         async fn bar() {} //~ ERROR `async fn` is not permitted in the 2015 edition
     };

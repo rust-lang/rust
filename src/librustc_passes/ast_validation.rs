@@ -837,13 +837,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                  the relevant `fold_*()` method in `PlaceholderExpander`?");
     }
 
-    fn visit_fn_header(&mut self, header: &'a FnHeader) {
-        if header.asyncness.node.is_async() && self.session.rust_2015() {
-            struct_span_err!(self.session, header.asyncness.span, E0670,
-                             "`async fn` is not permitted in the 2015 edition").emit();
-        }
-    }
-
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         match ii.node {
             ImplItemKind::Method(ref sig, _) => {
