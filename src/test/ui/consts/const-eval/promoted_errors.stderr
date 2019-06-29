@@ -1,72 +1,74 @@
-warning: this expression will panic at runtime
+error: this expression will panic at runtime
   --> $DIR/promoted_errors.rs:7:14
    |
 LL |     let _x = 0u32 - 1;
    |              ^^^^^^^^ attempt to subtract with overflow
    |
 note: lint level defined here
-  --> $DIR/promoted_errors.rs:1:9
+  --> $DIR/promoted_errors.rs:3:9
    |
-LL | #![warn(const_err)]
+LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
-warning: attempt to divide by zero
+error: attempt to divide by zero
   --> $DIR/promoted_errors.rs:9:20
    |
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^
 
-warning: this expression will panic at runtime
+error: this expression will panic at runtime
   --> $DIR/promoted_errors.rs:9:20
    |
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^ attempt to divide by zero
 
-warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:11:14
+error: attempt to divide by zero
+  --> $DIR/promoted_errors.rs:13:14
    |
 LL |     let _x = 1/(1-1);
    |              ^^^^^^^
 
-warning: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:11:14
+error: this expression will panic at runtime
+  --> $DIR/promoted_errors.rs:13:14
    |
 LL |     let _x = 1/(1-1);
    |              ^^^^^^^ attempt to divide by zero
 
-warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:14:20
+error: attempt to divide by zero
+  --> $DIR/promoted_errors.rs:16:20
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^
 
-warning: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:14:20
+error: this expression will panic at runtime
+  --> $DIR/promoted_errors.rs:16:20
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^ attempt to divide by zero
 
-warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:16:14
+error: attempt to divide by zero
+  --> $DIR/promoted_errors.rs:20:14
    |
 LL |     let _x = 1/(false as u32);
    |              ^^^^^^^^^^^^^^^^
 
-warning: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:16:14
+error: this expression will panic at runtime
+  --> $DIR/promoted_errors.rs:20:14
    |
 LL |     let _x = 1/(false as u32);
    |              ^^^^^^^^^^^^^^^^ attempt to divide by zero
 
-warning: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:14:20
+error: reaching this expression at runtime will panic or abort
+  --> $DIR/promoted_errors.rs:16:20
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^ attempt to divide by zero
 
-warning: reaching this expression at runtime will panic or abort
+error: reaching this expression at runtime will panic or abort
   --> $DIR/promoted_errors.rs:9:20
    |
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^ attempt to divide by zero
+
+error: aborting due to 11 previous errors
 
