@@ -1,9 +1,9 @@
 // edition:2018
-// aux-build:arc_wake.rs
 
 #![feature(async_await, await_macro)]
 
-extern crate arc_wake;
+#[path = "../auxiliary/arc_wake.rs"]
+mod arc_wake;
 
 use std::pin::Pin;
 use std::future::Future;
