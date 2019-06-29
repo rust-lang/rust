@@ -10,7 +10,7 @@ use rustc::mir;
 use crate::{
     InterpResult, InterpError, InterpretCx, StackPopCleanup, struct_error,
     Scalar, Tag, Pointer,
-    MiriMemoryKind, Evaluator, TlsEvalContextExt,
+    MemoryExtra, MiriMemoryKind, Evaluator, TlsEvalContextExt,
 };
 
 /// Configuration needed to spawn a Miri instance.
@@ -36,7 +36,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     );
 
     // FIXME: InterpretCx::new should take an initial MemoryExtra
-    ecx.memory_mut().extra.rng = config.seed.map(StdRng::seed_from_u64);
+    ecx.memory_mut().extra = MemoryExtra::with_rng(config.seed.map(StdRng::seed_from_u64));
     
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;

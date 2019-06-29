@@ -1,5 +1,7 @@
 use std::cell::{Cell, RefCell};
 
+use rand::Rng;
+
 use rustc::mir::interpret::{AllocId, Pointer, InterpResult};
 use rustc_mir::interpret::Memory;
 use rustc_target::abi::Size;
@@ -73,14 +75,24 @@ impl<'mir, 'tcx> GlobalState {
         let mut global_state = memory.extra.intptrcast.borrow_mut();
 
         let alloc = memory.get(ptr.alloc_id)?;
+        let align = alloc.align.bytes();
 
         let base_addr = match alloc.extra.intptrcast.base_addr.get() { 
             Some(base_addr) => base_addr,
             None => {
                 // This allocation does not have a base address yet, pick one.
-                let base_addr = Self::align_addr(global_state.next_base_addr, alloc.align.bytes());
-                global_state.next_base_addr = base_addr + alloc.bytes.len() as u64;
+                // Leave some space to the previous allocation, to give it some chance to be less aligned.
+                let slack = {
+                    let mut rng = memory.extra.rng.as_ref().unwrap().borrow_mut();
+                    // This means that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
+                    rng.gen_range(0, 16)
+                };
+                // From next_base_addr + slack, round up to adjust for alignment.
+                let base_addr = Self::align_addr(global_state.next_base_addr + slack, align);
                 alloc.extra.intptrcast.base_addr.set(Some(base_addr));
+
+                // Remember next base address.
+                global_state.next_base_addr = base_addr + alloc.bytes.len() as u64;
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
                 global_state.int_to_ptr_map.push((base_addr, ptr.alloc_id)); 
@@ -89,13 +101,27 @@ impl<'mir, 'tcx> GlobalState {
             }
         };
 
-        debug_assert_eq!(base_addr % alloc.align.bytes(), 0); // sanity check
+        debug_assert_eq!(base_addr % align, 0); // sanity check
         Ok(base_addr + ptr.offset.bytes())
     }
 
     /// Shifts `addr` to make it aligned with `align` by rounding `addr` to the smallest multiple
-    /// of `align` that is strictly larger to `addr`
+    /// of `align` that is larger or equal to `addr`
     fn align_addr(addr: u64, align: u64) -> u64 {
-        addr + align - addr % align
+        match addr % align {
+            0 => addr,
+            rem => addr + align - rem
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_align_addr() {
+        assert_eq!(GlobalState::align_addr(37, 4), 40);
+        assert_eq!(GlobalState::align_addr(44, 4), 44);
     }
 }
