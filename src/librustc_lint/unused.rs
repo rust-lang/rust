@@ -145,8 +145,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             match ty.sty {
                 ty::Adt(..) if ty.is_box() => {
                     let boxed_ty = ty.boxed_ty();
-                    let descr_pre_path = format!("{}boxed ", descr_pre_path);
-                    check_must_use_ty(cx, boxed_ty, expr, span, &descr_pre_path, descr_post_path)
+                    let descr_pre_path = &format!("{}boxed ", descr_pre_path);
+                    check_must_use_ty(cx, boxed_ty, expr, span, descr_pre_path, descr_post_path)
                 }
                 ty::Adt(def, _) => {
                     check_must_use_def(cx, def.did, span, descr_pre_path, descr_post_path)
@@ -157,8 +157,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                         if let ty::Predicate::Trait(ref poly_trait_predicate) = predicate {
                             let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
                             let def_id = trait_ref.def_id;
-                            let descr_pre = format!("{}implementer of ", descr_pre_path);
-                            if check_must_use_def(cx, def_id, span, &descr_pre, descr_post_path) {
+                            let descr_pre = &format!("{}implementer of ", descr_pre_path);
+                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post_path) {
                                 has_emitted = true;
                                 break;
                             }
@@ -171,7 +171,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     for predicate in binder.skip_binder().iter() {
                         if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
                             let def_id = trait_ref.def_id;
-                            let descr_post = " trait object";
+                            let descr_post = &format!(" trait object{}", descr_post_path);
                             if check_must_use_def(cx, def_id, span, descr_pre_path, descr_post) {
                                 has_emitted = true;
                                 break;
