@@ -257,7 +257,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     Err(e) => Err(e),
                 }
             }
-            _ => return err!(Unimplemented(format!("ptr to {:?} cast", dest_layout.ty))),
+            _ => bug!("invalid MIR: ptr to {:?} cast", dest_layout.ty)
         }
     }
 
