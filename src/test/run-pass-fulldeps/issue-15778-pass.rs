@@ -2,7 +2,7 @@
 // ignore-stage1
 // compile-flags: -D crate-not-okay
 
-#![feature(plugin, custom_attribute, custom_inner_attributes)]
+#![feature(plugin, custom_attribute, custom_inner_attributes, rustc_attrs)]
 
 #![plugin(lint_for_crate)]
 #![rustc_crate_okay]

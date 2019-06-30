@@ -1669,6 +1669,14 @@ impl<'a> Context<'a> {
             }
             debug!("check_attribute: {:?} is builtin, {:?}, {:?}", attr.path, ty, gateage);
             return;
+        } else {
+            for segment in &attr.path.segments {
+                if segment.ident.as_str().starts_with("rustc") {
+                    let msg = "attributes starting with `rustc` are \
+                               reserved for use by the `rustc` compiler";
+                    gate_feature!(self, rustc_attrs, segment.ident.span, msg);
+                }
+            }
         }
         for &(n, ty) in self.plugin_attributes {
             if attr.path == n {

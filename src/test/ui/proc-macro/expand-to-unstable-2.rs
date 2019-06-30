@@ -4,7 +4,9 @@
 extern crate derive_unstable_2;
 
 #[derive(Unstable)]
-//~^ ERROR attribute `rustc_foo` is currently unknown
+//~^ ERROR attributes starting with `rustc` are reserved for use by the `rustc` compiler
+//~| ERROR attribute `rustc_foo` is currently unknown to the compiler
+
 struct A;
 
 fn main() {
