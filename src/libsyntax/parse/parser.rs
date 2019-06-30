@@ -7699,7 +7699,7 @@ impl<'a> Parser<'a> {
         let mut tokens = Vec::new();
         let prev_collecting = match self.token_cursor.frame.last_token {
             LastToken::Collecting(ref mut list) => {
-                Some(mem::replace(list, Vec::new()))
+                Some(mem::take(list))
             }
             LastToken::Was(ref mut last) => {
                 tokens.extend(last.take());
@@ -7717,7 +7717,7 @@ impl<'a> Parser<'a> {
 
         // Pull out the tokens that we've collected from the call to `f` above.
         let mut collected_tokens = match *last_token {
-            LastToken::Collecting(ref mut v) => mem::replace(v, Vec::new()),
+            LastToken::Collecting(ref mut v) => mem::take(v),
             LastToken::Was(_) => panic!("our vector went away?"),
         };
 

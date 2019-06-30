@@ -46,7 +46,7 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
     let mut docs = vec![];
     let mut last_frag: Option<DocFragment> = None;
 
-    for frag in replace(doc_strings, vec![]) {
+    for frag in take(doc_strings) {
         if let Some(mut curr_frag) = last_frag.take() {
             let curr_kind = curr_frag.kind();
             let new_kind = frag.kind();

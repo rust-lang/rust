@@ -1345,12 +1345,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!started_lto);
                     started_lto = true;
 
-                    let needs_fat_lto =
-                        mem::replace(&mut needs_fat_lto, Vec::new());
-                    let needs_thin_lto =
-                        mem::replace(&mut needs_thin_lto, Vec::new());
-                    let import_only_modules =
-                        mem::replace(&mut lto_import_only_modules, Vec::new());
+                    let needs_fat_lto = mem::take(&mut needs_fat_lto);
+                    let needs_thin_lto = mem::take(&mut needs_thin_lto);
+                    let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                     for (work, cost) in generate_lto_work(&cgcx, needs_fat_lto,
                                                           needs_thin_lto, import_only_modules) {

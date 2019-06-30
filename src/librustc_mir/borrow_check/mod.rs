@@ -275,7 +275,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
 
     // Convert any reservation warnings into lints.
-    let reservation_warnings = mem::replace(&mut mbcx.reservation_warnings, Default::default());
+    let reservation_warnings = mem::take(&mut mbcx.reservation_warnings);
     for (_, (place, span, location, bk, borrow)) in reservation_warnings {
         let mut initial_diag =
             mbcx.report_conflicting_borrow(location, (&place, span), bk, &borrow);

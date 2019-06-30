@@ -770,8 +770,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
 
         // First, we merge `self` and `other` into a sorted sequence in linear time.
-        let self_iter = mem::replace(self, BTreeMap::new()).into_iter();
-        let other_iter = mem::replace(other, BTreeMap::new()).into_iter();
+        let self_iter = mem::take(self).into_iter();
+        let other_iter = mem::take(other).into_iter();
         let iter = MergeIter {
             left: self_iter.peekable(),
             right: other_iter.peekable(),

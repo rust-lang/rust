@@ -660,7 +660,7 @@ pub fn run(mut krate: clean::Crate,
         deref_trait_did,
         deref_mut_trait_did,
         owned_box_did,
-        masked_crates: mem::replace(&mut krate.masked_crates, Default::default()),
+        masked_crates: mem::take(&mut krate.masked_crates),
         param_names: external_param_names,
         aliases: Default::default(),
     };

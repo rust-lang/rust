@@ -110,7 +110,7 @@ impl Command {
     }
 
     pub fn take_args(&mut self) -> Vec<OsString> {
-        mem::replace(&mut self.args, Vec::new())
+        mem::take(&mut self.args)
     }
 
     /// Returns a `true` if we're pretty sure that this'll blow OS spawn limits,
