@@ -842,31 +842,20 @@ impl DepGraph {
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
     pub fn exec_cache_promotions<'tcx>(&self, tcx: TyCtxt<'tcx>) {
-        let green_nodes: Vec<DepNode> = {
-            let data = self.data.as_ref().unwrap();
-            data.colors.values.indices().filter_map(|prev_index| {
-                match data.colors.get(prev_index) {
-                    Some(DepNodeColor::Green(_)) => {
-                        let dep_node = data.previous.index_to_node(prev_index);
-                        if dep_node.cache_on_disk(tcx) {
-                            Some(dep_node)
-                        } else {
-                            None
-                        }
-                    }
-                    None |
-                    Some(DepNodeColor::Red) => {
-                        // We can skip red nodes because a node can only be marked
-                        // as red if the query result was recomputed and thus is
-                        // already in memory.
-                        None
-                    }
+        let data = self.data.as_ref().unwrap();
+        for prev_index in data.colors.values.indices() {
+            match data.colors.get(prev_index) {
+                Some(DepNodeColor::Green(_)) => {
+                    let dep_node = data.previous.index_to_node(prev_index);
+                    dep_node.try_load_from_on_disk_cache(tcx);
                 }
-            }).collect()
-        };
-
-        for dep_node in green_nodes {
-            dep_node.load_from_on_disk_cache(tcx);
+                None |
+                Some(DepNodeColor::Red) => {
+                    // We can skip red nodes because a node can only be marked
+                    // as red if the query result was recomputed and thus is
+                    // already in memory.
+                }
+            }
         }
     }
 

@@ -18,7 +18,7 @@ use errors::DiagnosticBuilder;
 use syntax_pos::{Pos, Span};
 use syntax::symbol::Symbol;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
     /// Already reported a lint or an error for this evaluation.
     Reported,

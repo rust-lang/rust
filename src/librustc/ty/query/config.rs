@@ -55,7 +55,7 @@ pub(crate) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
     fn describe(tcx: TyCtxt<'_>, key: Self::Key) -> Cow<'static, str>;
 
     #[inline]
-    fn cache_on_disk(_: TyCtxt<'tcx>, _: Self::Key) -> bool {
+    fn cache_on_disk(_: TyCtxt<'tcx>, _: Self::Key, _: Option<&Self::Value>) -> bool {
         false
     }
 
@@ -80,33 +80,3 @@ impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {
         "running analysis passes on this crate".into()
     }
 }
-
-macro_rules! impl_disk_cacheable_query(
-    ($query_name:ident, |$tcx:tt, $key:tt| $cond:expr) => {
-        impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {
-            #[inline]
-            fn cache_on_disk($tcx: TyCtxt<'tcx>, $key: Self::Key) -> bool {
-                $cond
-            }
-
-            #[inline]
-            fn try_load_from_disk(tcx: TyCtxt<'tcx>,
-                                      id: SerializedDepNodeIndex)
-                                      -> Option<Self::Value> {
-                tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
-            }
-        }
-    }
-);
-
-impl_disk_cacheable_query!(mir_borrowck, |tcx, def_id| {
-    def_id.is_local() && tcx.is_closure(def_id)
-});
-
-impl_disk_cacheable_query!(unsafety_check_result, |_, def_id| def_id.is_local());
-impl_disk_cacheable_query!(borrowck, |_, def_id| def_id.is_local());
-impl_disk_cacheable_query!(check_match, |_, def_id| def_id.is_local());
-impl_disk_cacheable_query!(predicates_of, |_, def_id| def_id.is_local());
-impl_disk_cacheable_query!(used_trait_imports, |_, def_id| def_id.is_local());
-impl_disk_cacheable_query!(codegen_fn_attrs, |_, _| true);
-impl_disk_cacheable_query!(specialization_graph_of, |_, _| true);
