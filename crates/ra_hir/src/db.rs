@@ -95,26 +95,26 @@ pub trait DefDatabase: InternDatabase {
     #[salsa::invoke(crate::traits::TraitItemsIndex::trait_items_index)]
     fn trait_items_index(&self, module: Module) -> crate::traits::TraitItemsIndex;
 
-    #[salsa::invoke(RawItems::raw_items_query)]
-    fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
-
     #[salsa::invoke(RawItems::raw_items_with_source_map_query)]
     fn raw_items_with_source_map(
         &self,
         file_id: HirFileId,
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>);
 
+    #[salsa::invoke(RawItems::raw_items_query)]
+    fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
+
     #[salsa::invoke(CrateDefMap::crate_def_map_query)]
     fn crate_def_map(&self, krate: Crate) -> Arc<CrateDefMap>;
-
-    #[salsa::invoke(crate::impl_block::impls_in_module)]
-    fn impls_in_module(&self, module: Module) -> Arc<ModuleImplBlocks>;
 
     #[salsa::invoke(crate::impl_block::impls_in_module_with_source_map_query)]
     fn impls_in_module_with_source_map(
         &self,
         module: Module,
     ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>);
+
+    #[salsa::invoke(crate::impl_block::impls_in_module)]
+    fn impls_in_module(&self, module: Module) -> Arc<ModuleImplBlocks>;
 
     #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
     fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;

@@ -269,11 +269,11 @@ impl RootDatabase {
             hir::db::EnumDataQuery
             hir::db::TraitDataQuery
             hir::db::TraitItemsIndexQuery
-            hir::db::RawItemsQuery
             hir::db::RawItemsWithSourceMapQuery
+            hir::db::RawItemsQuery
             hir::db::CrateDefMapQuery
-            hir::db::ImplsInModuleQuery
             hir::db::ImplsInModuleWithSourceMapQuery
+            hir::db::ImplsInModuleQuery
             hir::db::GenericParamsQuery
             hir::db::FnDataQuery
             hir::db::TypeAliasDataQuery
