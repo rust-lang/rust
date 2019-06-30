@@ -36,10 +36,10 @@ use rustc_data_structures::sync::Lrc;
 use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
-#[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxContext(u32);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 struct SyntaxContextData {
     outer_mark: Mark,
     transparency: Transparency,
@@ -53,10 +53,10 @@ struct SyntaxContextData {
 }
 
 /// A mark is a unique ID associated with a macro expansion.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Mark(u32);
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct MarkData {
     parent: Mark,
     expn_info: Option<ExpnInfo>,
@@ -614,7 +614,7 @@ impl fmt::Debug for SyntaxContext {
 }
 
 /// Extra information for tracking spans of macro and syntax sugar expansion
-#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
     // --- The part unique to each expansion.
     /// The location of the actual macro invocation or syntax sugar , e.g.
@@ -676,7 +676,7 @@ impl ExpnInfo {
 }
 
 /// The source of expansion.
-#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum ExpnKind {
     /// e.g., #[derive(...)] <item>
     MacroAttribute(Symbol),
@@ -724,7 +724,7 @@ impl MacroKind {
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum DesugaringKind {
     /// We desugar `if c { i } else { e }` to `match $ExprKind::Use(c) { true => i, _ => e }`.
     /// However, we do not want to blame `c` for unreachability but rather say that `i`
