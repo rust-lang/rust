@@ -170,6 +170,15 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
     if p.eat(T![']']) {
         return m.complete(p, ARRAY_EXPR);
     }
+
+    // test first_array_member_attributes
+    // pub const A: &[i64] = &[
+    //    #[cfg(test)]
+    //    1,
+    //    2,
+    // ];
+    attributes::outer_attributes(p);
+
     expr(p);
     if p.eat(T![;]) {
         expr(p);
@@ -181,6 +190,14 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
         if p.at(T![']']) {
             break;
         }
+
+        // test subsequent_array_member_attributes
+        // pub const A: &[i64] = &[
+        //    1,
+        //    #[cfg(test)]
+        //    2,
+        // ];
+        attributes::outer_attributes(p);
         if !p.at_ts(EXPR_FIRST) {
             p.error("expected expression");
             break;
