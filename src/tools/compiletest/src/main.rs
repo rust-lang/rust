@@ -1,5 +1,4 @@
 #![crate_name = "compiletest"]
-#![feature(mem_take)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![deny(warnings, rust_2018_idioms)]
