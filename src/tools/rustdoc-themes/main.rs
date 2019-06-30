@@ -39,7 +39,7 @@ fn main() {
         exit(1);
     }
     let status = Command::new(rustdoc_bin)
-                        .args(&["-Z", "unstable-options", "--theme-checker"])
+                        .args(&["-Z", "unstable-options", "--check-theme"])
                         .args(&themes)
                         .status()
                         .expect("failed to execute child");
