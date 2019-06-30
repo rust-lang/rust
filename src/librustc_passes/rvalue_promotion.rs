@@ -338,14 +338,14 @@ fn check_expr_kind<'a, 'tcx>(
                     if v.in_static {
                         for attr in &v.tcx.get_attrs(did)[..] {
                             if attr.check_name(sym::thread_local) {
-                                debug!("Reference to Static(id={:?}) is unpromotable \
-                                       due to a #[thread_local] attribute", did);
+                                debug!("reference to `Static(id={:?})` is unpromotable \
+                                       due to a `#[thread_local]` attribute", did);
                                 return NotPromotable;
                             }
                         }
                         Promotable
                     } else {
-                        debug!("Reference to Static(id={:?}) is unpromotable as it is not \
+                        debug!("reference to `Static(id={:?})` is unpromotable as it is not \
                                referenced from a static", did);
                         NotPromotable
                     }

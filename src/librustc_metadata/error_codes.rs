@@ -7,7 +7,8 @@ E0454: r##"
 A link name was given with an empty name. Erroneous code example:
 
 ```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
-#[link(name = "")] extern {} // error: #[link(name = "")] given with empty name
+#[link(name = "")] extern {}
+// error: `#[link(name = "")]` given with empty name
 ```
 
 The rust compiler cannot link to an external library if you don't give it its
@@ -61,7 +62,7 @@ A link was used without a name parameter. Erroneous code example:
 
 ```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
 #[link(kind = "dylib")] extern {}
-// error: #[link(...)] specified without `name = "foo"`
+// error: `#[link(...)]` specified without `name = "foo"`
 ```
 
 Please add the name parameter to allow the rust compiler to find the library

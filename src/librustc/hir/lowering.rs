@@ -1693,8 +1693,8 @@ impl<'a> LoweringContext<'a> {
                         if pos == ImplTraitPosition::Binding &&
                             nightly_options::is_nightly_build() {
                             help!(err,
-                                  "add #![feature(impl_trait_in_bindings)] to the crate attributes \
-                                   to enable");
+                                  "add `#![feature(impl_trait_in_bindings)]` to the crate \
+                                   attributes to enable");
                         }
                         err.emit();
                         hir::TyKind::Err

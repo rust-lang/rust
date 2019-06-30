@@ -1230,7 +1230,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if nightly_options::is_nightly_build() {
             for (candidate, feature) in unstable_candidates {
                 diag.help(&format!(
-                    "add #![feature({})] to the crate attributes to enable `{}`",
+                    "add `#![feature({})]` to the crate attributes to enable `{}`",
                     feature,
                     self.tcx.def_path_str(candidate.item.def_id),
                 ));

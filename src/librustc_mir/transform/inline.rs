@@ -247,7 +247,7 @@ impl Inliner<'tcx> {
             // need to check for first.
             attr::InlineAttr::Always => true,
             attr::InlineAttr::Never => {
-                debug!("#[inline(never)] present - not inlining");
+                debug!("`#[inline(never)]` present - not inlining");
                 return false
             }
             attr::InlineAttr::Hint => true,

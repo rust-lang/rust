@@ -22,7 +22,7 @@ pub fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) ->
                 .span_suggestion(
                     attr.span,
                     "missing traits to be derived",
-                    "#[derive(Trait1, Trait2, ...)]".to_owned(),
+                    "`#[derive(Trait1, Trait2, ...)]`".to_owned(),
                     Applicability::HasPlaceholders,
                 ).emit();
             return false;

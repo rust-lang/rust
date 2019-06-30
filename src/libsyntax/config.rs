@@ -102,7 +102,7 @@ impl<'a> StripUnconfigured<'a> {
                 ).span_suggestion(
                     attr.span,
                     "missing condition and attribute",
-                    "#[cfg_attr(condition, attribute, other_attribute, ...)]".to_owned(),
+                    "`#[cfg_attr(condition, attribute, other_attribute, ...)]`".to_owned(),
                     Applicability::HasPlaceholders,
                 ).note("for more information, visit \
                        <https://doc.rust-lang.org/reference/conditional-compilation.html\

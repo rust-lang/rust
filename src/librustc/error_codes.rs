@@ -485,7 +485,7 @@ Erroneous code example:
 fn foo() {}
 
 #[main]
-fn f() {} // error: multiple functions with a #[main] attribute
+fn f() {} // error: multiple functions with a `#[main]` attribute
 ```
 
 This error indicates that the compiler found multiple functions with the
