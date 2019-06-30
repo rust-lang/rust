@@ -177,21 +177,10 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
     //    1,
     //    2,
     // ];
-    let first_member_has_attrs = p.at(T![#]);
     attributes::outer_attributes(p);
 
     expr(p);
     if p.eat(T![;]) {
-        if first_member_has_attrs {
-            // test_err array_length_attributes
-            // pub const A: &[i64] = &[
-            //   #[cfg(test)]
-            //   1;
-            //   2,
-            // ];
-            p.error("removing an expression is not supported in this position");
-        }
-
         expr(p);
         p.expect(T![']']);
         return m.complete(p, ARRAY_EXPR);
