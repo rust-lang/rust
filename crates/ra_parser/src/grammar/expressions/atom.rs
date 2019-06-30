@@ -170,8 +170,28 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
     if p.eat(T![']']) {
         return m.complete(p, ARRAY_EXPR);
     }
+
+    // test first_array_member_attributes
+    // pub const A: &[i64] = &[
+    //    #[cfg(test)]
+    //    1,
+    //    2,
+    // ];
+    let first_member_has_attrs = p.at(T![#]);
+    attributes::outer_attributes(p);
+
     expr(p);
     if p.eat(T![;]) {
+        if first_member_has_attrs {
+            // test_err array_length_attributes
+            // pub const A: &[i64] = &[
+            //   #[cfg(test)]
+            //   1;
+            //   2,
+            // ];
+            p.error("removing an expression is not supported in this position");
+        }
+
         expr(p);
         p.expect(T![']']);
         return m.complete(p, ARRAY_EXPR);
@@ -181,6 +201,14 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
         if p.at(T![']']) {
             break;
         }
+
+        // test subsequent_array_member_attributes
+        // pub const A: &[i64] = &[
+        //    1,
+        //    #[cfg(test)]
+        //    2,
+        // ];
+        attributes::outer_attributes(p);
         if !p.at_ts(EXPR_FIRST) {
             p.error("expected expression");
             break;
