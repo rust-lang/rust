@@ -841,7 +841,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let callsite = span.source_callsite();
         let callsite_span = self.span_from_span(callsite);
         let callee = span.source_callee()?;
-        let callee_span = callee.def_site?;
 
         // Ignore attribute macros, their spans are usually mangled
         if let ExpnKind::MacroAttribute(_) = callee.kind {
@@ -855,7 +854,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             .sess
             .imported_macro_spans
             .borrow()
-            .get(&callee_span)
+            .get(&callee.def_site)
         {
             let &(ref mac_name, mac_span) = mac;
             let mac_span = self.span_from_span(mac_span);
@@ -866,7 +865,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             });
         }
 
-        let callee_span = self.span_from_span(callee_span);
+        let callee_span = self.span_from_span(callee.def_site);
         Some(MacroRef {
             span: callsite_span,
             qualname: callee.kind.descr().to_string(), // FIXME: generate the real qualname

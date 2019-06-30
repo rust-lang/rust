@@ -219,7 +219,6 @@ pub trait TTMacroExpander {
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
-        def_span: Option<Span>,
     ) -> Box<dyn MacResult+'cx>;
 }
 
@@ -236,7 +235,6 @@ impl<F> TTMacroExpander for F
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
-        _def_span: Option<Span>,
     ) -> Box<dyn MacResult+'cx> {
         struct AvoidInterpolatedIdents;
 
@@ -654,7 +652,7 @@ impl SyntaxExtension {
         ExpnInfo {
             call_site,
             kind: self.expn_kind(Symbol::intern(descr)),
-            def_site: Some(self.span),
+            def_site: self.span,
             default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
             allow_internal_unsafe: self.allow_internal_unsafe,

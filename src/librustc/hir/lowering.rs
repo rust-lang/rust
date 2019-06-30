@@ -877,7 +877,7 @@ impl<'a> LoweringContext<'a> {
     ) -> Span {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(ExpnInfo {
-            def_site: Some(span),
+            def_site: span,
             allow_internal_unstable,
             ..ExpnInfo::default(ExpnKind::Desugaring(reason), span, self.sess.edition())
         });

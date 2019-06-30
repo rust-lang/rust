@@ -88,6 +88,7 @@ impl<'a> ParserAnyMacro<'a> {
 
 struct MacroRulesMacroExpander {
     name: ast::Ident,
+    span: Span,
     lhses: Vec<quoted::TokenTree>,
     rhses: Vec<quoted::TokenTree>,
     valid: bool,
@@ -99,12 +100,11 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         cx: &'cx mut ExtCtxt<'_>,
         sp: Span,
         input: TokenStream,
-        def_span: Option<Span>,
     ) -> Box<dyn MacResult + 'cx> {
         if !self.valid {
             return DummyResult::any(sp);
         }
-        generic_extension(cx, sp, def_span, self.name, input, &self.lhses, &self.rhses)
+        generic_extension(cx, sp, self.span, self.name, input, &self.lhses, &self.rhses)
     }
 }
 
@@ -117,7 +117,7 @@ fn trace_macros_note(cx: &mut ExtCtxt<'_>, sp: Span, message: String) {
 fn generic_extension<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    def_span: Option<Span>,
+    def_span: Span,
     name: ast::Ident,
     arg: TokenStream,
     lhses: &[quoted::TokenTree],
@@ -199,10 +199,8 @@ fn generic_extension<'cx>(
     let span = token.span.substitute_dummy(sp);
     let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
     err.span_label(span, label);
-    if let Some(sp) = def_span {
-        if cx.source_map().span_to_filename(sp).is_real() && !sp.is_dummy() {
-            err.span_label(cx.source_map().def_span(sp), "when calling this macro");
-        }
+    if !def_span.is_dummy() && cx.source_map().span_to_filename(def_span).is_real() {
+        err.span_label(cx.source_map().def_span(def_span), "when calling this macro");
     }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
@@ -377,7 +375,7 @@ pub fn compile(
     }
 
     let expander: Box<_> =
-        Box::new(MacroRulesMacroExpander { name: def.ident, lhses, rhses, valid });
+        Box::new(MacroRulesMacroExpander { name: def.ident, span: def.span, lhses, rhses, valid });
 
     let (default_transparency, transparency_error) =
         attr::find_transparency(&def.attrs, body.legacy);

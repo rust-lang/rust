@@ -888,13 +888,11 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
         ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
         ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::MacroBang(..) => {
-            let def_site = match info.def_site {
-                Some(span) => span,
-                // no span for the def_site means it's an external macro
-                None => return true,
-            };
-
-            match sess.source_map().span_to_snippet(def_site) {
+            if info.def_site.is_dummy() {
+                // dummy span for the def_site means it's an external macro
+                return true;
+            }
+            match sess.source_map().span_to_snippet(info.def_site) {
                 Ok(code) => !code.starts_with("macro_rules"),
                 // no snippet = external macro or compiler-builtin expansion
                 Err(_) => true,

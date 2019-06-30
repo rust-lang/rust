@@ -1363,8 +1363,8 @@ pub struct MacroBacktrace {
     /// name of macro that was applied (e.g., "foo!" or "#[derive(Eq)]")
     pub macro_decl_name: String,
 
-    /// span where macro was defined (if known)
-    pub def_site_span: Option<Span>,
+    /// span where macro was defined (possibly dummy)
+    pub def_site_span: Span,
 }
 
 // _____________________________________________________________________________

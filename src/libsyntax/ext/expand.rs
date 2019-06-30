@@ -673,7 +673,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 result
             }
             SyntaxExtensionKind::LegacyBang(expander) => {
-                let tok_result = expander.expand(self.cx, span, mac.node.stream(), Some(ext.span));
+                let tok_result = expander.expand(self.cx, span, mac.node.stream());
                 kind.make_from(tok_result)
             }
 

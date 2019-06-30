@@ -26,7 +26,7 @@
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
 use crate::GLOBALS;
-use crate::Span;
+use crate::{Span, DUMMY_SP};
 use crate::edition::Edition;
 use crate::symbol::{kw, Symbol};
 
@@ -632,11 +632,9 @@ pub struct ExpnInfo {
 
     // --- The part specific to the macro/desugaring definition.
     // --- FIXME: Share it between expansions with the same definition.
-    /// The span of the macro definition itself. The macro may not
-    /// have a sensible definition span (e.g., something defined
-    /// completely inside libsyntax) in which case this is None.
+    /// The span of the macro definition (possibly dummy).
     /// This span serves only informational purpose and is not used for resolution.
-    pub def_site: Option<Span>,
+    pub def_site: Span,
     /// Transparency used by `apply_mark` for mark with this expansion info by default.
     pub default_transparency: Transparency,
     /// List of #[unstable]/feature-gated features that the macro is allowed to use
@@ -659,7 +657,7 @@ impl ExpnInfo {
         ExpnInfo {
             call_site,
             kind,
-            def_site: None,
+            def_site: DUMMY_SP,
             default_transparency: Transparency::SemiTransparent,
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
