@@ -6,9 +6,9 @@ use ra_syntax::AstNode;
 
 use crate::Result;
 
-pub fn run(verbose: bool, path: &Path, only: Option<&str>) -> Result<()> {
+pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -> Result<()> {
     let db_load_time = Instant::now();
-    let (host, roots) = ra_batch::load_cargo(path)?;
+    let (mut host, roots) = ra_batch::load_cargo(path)?;
     let db = host.raw_database();
     println!("Database loaded, {} roots, {:?}", roots.len(), db_load_time.elapsed());
     let analysis_time = Instant::now();
@@ -113,5 +113,12 @@ pub fn run(verbose: bool, path: &Path, only: Option<&str>) -> Result<()> {
         (num_exprs_partially_unknown * 100 / num_exprs)
     );
     println!("Analysis: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
+
+    if memory_usage {
+        for (name, bytes) in host.per_query_memory_usage() {
+            println!("{:>8} {}", bytes, name)
+        }
+    }
+
     Ok(())
 }

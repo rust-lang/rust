@@ -20,3 +20,4 @@ ra_db = { path = "../ra_db" }
 [dependencies.ra_prof]
 path = "../ra_prof"
 # features = [ "cpuprofiler" ]
+# features = [ "jemalloc" ]
