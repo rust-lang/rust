@@ -11,7 +11,7 @@ use rustc::mir;
 
 use crate::{
     InterpResult, InterpError, InterpCx, StackPopCleanup, struct_error,
-    Scalar, Tag, Pointer,
+    Scalar, Tag, Pointer, FnVal,
     MemoryExtra, MiriMemoryKind, Evaluator, TlsEvalContextExt,
 };
 
@@ -93,7 +93,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let mut args = ecx.frame().body.args_iter();
 
     // First argument: pointer to `main()`.
-    let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
+    let main_ptr = ecx.memory_mut().create_fn_alloc(FnVal::Instance(main_instance));
     let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
     ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 

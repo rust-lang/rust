@@ -135,6 +135,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryExtra = MemoryExtra;
     type AllocExtra = AllocExtra;
     type PointerTag = Tag;
+    type ExtraFnVal = Dlsym;
 
     type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Tag, Self::AllocExtra>)>;
 
@@ -145,7 +146,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.memory().extra.validate
     }
 
-    /// Returns `Ok()` when the function was handled; fail otherwise.
     #[inline(always)]
     fn find_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -155,6 +155,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         ecx.find_fn(instance, args, dest, ret)
+    }
+
+    #[inline(always)]
+    fn call_extra_fn(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: Dlsym,
+        args: &[OpTy<'tcx, Tag>],
+        dest: Option<PlaceTy<'tcx, Tag>>,
+        ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        ecx.call_dlsym(fn_val, args, dest, ret)
     }
 
     #[inline(always)]
