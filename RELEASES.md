@@ -309,9 +309,9 @@ Misc
 
 Compatibility Notes
 -------------------
-- [`Command::before_exec` is now deprecated in favor of the
-  unsafe method `Command::pre_exec`.][58059]
-- [Use of `ATOMIC_{BOOL, ISIZE, USIZE}_INIT` is now deprecated.][57425] As you
+- [`Command::before_exec` is being replaced by the unsafe method
+  `Command::pre_exec`][58059] and will be deprecated with Rust 1.37.0.
+- [Use of `ATOMIC_{BOOL, ISIZE, USIZE}_INIT` is now deprecated][57425] as you
   can now use `const` functions in `static` variables.
 
 [58370]: https://github.com/rust-lang/rust/pull/58370/
