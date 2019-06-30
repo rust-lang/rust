@@ -7,7 +7,7 @@ pub mod config {
 #[allow(dead_code)]
 #[allow(unused_imports)]
 mod tests {
-    use config_proc_macro::config_type;
+    use rustfmt_config_proc_macro::config_type;
 
     #[config_type]
     enum Bar {

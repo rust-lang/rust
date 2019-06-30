@@ -18,7 +18,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-config_proc_macro"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "proc-macro2 0.4.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.11 (registry+https://github.com/rust-lang/crates.io-index)",
