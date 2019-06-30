@@ -3,6 +3,8 @@ use std::mem;
 use rustc::ty::{self, layout::{self, Size}};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 
+use rand::RngCore;
+
 use crate::*;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -63,6 +65,40 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             Some(val)
         })
+    }
+
+    /// Generate some random bytes, and write them to `dest`.
+    fn gen_random(
+        &mut self,
+        len: usize,
+        dest: Scalar<Tag>,
+    ) -> InterpResult<'tcx>  {
+        if len == 0 {
+            // Nothing to do
+            return Ok(());
+        }
+        let this = self.eval_context_mut();
+        let ptr = dest.to_ptr()?;
+
+        let data = match &mut this.memory_mut().extra.rng {
+            Some(rng) => {
+                let mut rng = rng.borrow_mut();
+                let mut data = vec![0; len];
+                rng.fill_bytes(&mut data);
+                data
+            }
+            None => {
+                return err!(Unimplemented(
+                    "miri does not support gathering system entropy in deterministic mode!
+                    Use '-Zmiri-seed=<seed>' to enable random number generation.
+                    WARNING: Miri does *not* generate cryptographically secure entropy -
+                    do not use Miri to run any program that needs secure random number generation".to_owned(),
+                ));
+            }
+        };
+        let tcx = &{this.tcx.tcx};
+        this.memory_mut().get_mut(ptr.alloc_id)?
+            .write_bytes(tcx, ptr, &data)
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter
