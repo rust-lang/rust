@@ -1,4 +1,4 @@
-// compile-flag: -Zmiri-seed=
+// compile-flags: -Zmiri-seed=
 #![feature(allocator_api)]
 
 use std::ptr::NonNull;
