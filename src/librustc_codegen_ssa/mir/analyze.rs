@@ -183,7 +183,14 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
                         // which would trigger `not_ssa` on locals.
-                        self.visit_place(&proj.base, context, location);
+                        match &proj.base {
+                            mir::Place::Base(place_base) => {
+                                self.visit_place_base(place_base, context, location);
+                            }
+                            mir::Place::Projection(proj_base) => {
+                                self.visit_projection(proj_base, context, location);
+                            }
+                        }
                         return;
                     }
                 }
@@ -191,11 +198,23 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             // A deref projection only reads the pointer, never needs the place.
             if let mir::ProjectionElem::Deref = proj.elem {
-                return self.visit_place(
-                    &proj.base,
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                    location
-                );
+                match &proj.base {
+                    mir::Place::Base(place_base) => {
+                        self.visit_place_base(
+                            place_base,
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                            location,
+                        );
+                    }
+                    mir::Place::Projection(proj_base) => {
+                        self.visit_projection(
+                            proj_base,
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                            location,
+                        );
+                    }
+                }
+                return;
             }
         }
 
