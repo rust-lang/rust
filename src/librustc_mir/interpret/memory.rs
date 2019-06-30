@@ -10,7 +10,7 @@ use std::collections::VecDeque;
 use std::ptr;
 use std::borrow::Cow;
 
-use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
+use rustc::ty::{self, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{Align, TargetDataLayout, Size, HasDataLayout};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
@@ -54,6 +54,26 @@ pub enum AllocCheck {
     MaybeDead,
 }
 
+/// The value of a function pointer.
+#[derive(Debug, Copy, Clone)]
+pub enum FnVal<'tcx, Other> {
+    Instance(Instance<'tcx>),
+    Other(Other),
+}
+
+impl<'tcx, Other> FnVal<'tcx, Other> {
+    pub fn as_instance(self) -> InterpResult<'tcx, Instance<'tcx>> {
+        match self {
+            FnVal::Instance(instance) =>
+                Ok(instance),
+            FnVal::Other(_) =>
+                err!(MachineError(
+                    format!("Expected instance function pointer, got 'other' pointer")
+                )),
+        }
+    }
+}
+
 // `Memory` has to depend on the `Machine` because some of its operations
 // (e.g., `get`) call a `Machine` hook.
 pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -69,16 +89,20 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     // FIXME: this should not be public, but interning currently needs access to it
     pub(super) alloc_map: M::MemoryMap,
 
+    /// Map for "extra" function pointers.
+    extra_fn_ptr_map: FxHashMap<AllocId, M::ExtraFnVal>,
+
     /// To be able to compare pointers with NULL, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
     /// that do not exist any more.
+    // FIXME: this should not be public, but interning currently needs access to it
     pub(super) dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
 
     /// Extra data added by the machine.
     pub extra: M::MemoryExtra,
 
     /// Lets us implement `HasDataLayout`, which is awfully convenient.
-    pub(super) tcx: TyCtxtAt<'tcx>,
+    pub tcx: TyCtxtAt<'tcx>,
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M> {
@@ -98,6 +122,7 @@ where
     fn clone(&self) -> Self {
         Memory {
             alloc_map: self.alloc_map.clone(),
+            extra_fn_ptr_map: self.extra_fn_ptr_map.clone(),
             dead_alloc_map: self.dead_alloc_map.clone(),
             extra: (),
             tcx: self.tcx,
@@ -109,6 +134,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'tcx>) -> Self {
         Memory {
             alloc_map: M::MemoryMap::default(),
+            extra_fn_ptr_map: FxHashMap::default(),
             dead_alloc_map: FxHashMap::default(),
             extra: M::MemoryExtra::default(),
             tcx,
@@ -120,8 +146,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         ptr.with_tag(M::tag_static_base_pointer(ptr.alloc_id, &self))
     }
 
-    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer<M::PointerTag> {
-        let id = self.tcx.alloc_map.lock().create_fn_alloc(instance);
+    pub fn create_fn_alloc(
+        &mut self,
+        fn_val: FnVal<'tcx, M::ExtraFnVal>,
+    ) -> Pointer<M::PointerTag>
+    {
+        let id = match fn_val {
+            FnVal::Instance(instance) => self.tcx.alloc_map.lock().create_fn_alloc(instance),
+            FnVal::Other(extra) => {
+                // TODO: Should we have a cache here?
+                let id = self.tcx.alloc_map.lock().reserve();
+                let old = self.extra_fn_ptr_map.insert(id, extra);
+                assert!(old.is_none());
+                id
+            }
+        };
         self.tag_static_base_pointer(Pointer::from(id))
     }
 
@@ -495,56 +534,50 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
+        // Regular allocations.
         if let Ok(alloc) = self.get(id) {
-            return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
+            Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align))
         }
-        // can't do this in the match argument, we may get cycle errors since the lock would get
-        // dropped after the match.
-        let alloc = self.tcx.alloc_map.lock().get(id);
-        // Could also be a fn ptr or extern static
-        match alloc {
-            Some(GlobalAlloc::Function(..)) => {
-                if let AllocCheck::Dereferencable = liveness {
-                    // The caller requested no function pointers.
-                    err!(DerefFunctionPointer)
-                } else {
-                    Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
-                }
+        // Function pointers.
+        else if let Ok(_) = self.get_fn_alloc(id) {
+            if let AllocCheck::Dereferencable = liveness {
+                // The caller requested no function pointers.
+                err!(DerefFunctionPointer)
+            } else {
+                Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
             }
-            // `self.get` would also work, but can cause cycles if a static refers to itself
-            Some(GlobalAlloc::Static(did)) => {
-                // The only way `get` couldn't have worked here is if this is an extern static
-                assert!(self.tcx.is_foreign_item(did));
-                // Use size and align of the type
-                let ty = self.tcx.type_of(did);
-                let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                Ok((layout.size, layout.align.abi))
-            }
-            _ => {
-                if let Ok(alloc) = self.get(id) {
-                    Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align))
-                }
-                else if let AllocCheck::MaybeDead = liveness {
-                    // Deallocated pointers are allowed, we should be able to find
-                    // them in the map.
-                    Ok(*self.dead_alloc_map.get(&id)
-                        .expect("deallocated pointers should all be recorded in `dead_alloc_map`"))
-                } else {
-                    err!(DanglingPointerDeref)
-                }
-            },
+        }
+        // The rest must be dead.
+        else if let AllocCheck::MaybeDead = liveness {
+            // Deallocated pointers are allowed, we should be able to find
+            // them in the map.
+            Ok(*self.dead_alloc_map.get(&id)
+                .expect("deallocated pointers should all be recorded in `dead_alloc_map`"))
+        } else {
+            err!(DanglingPointerDeref)
         }
     }
 
-    pub fn get_fn(&self, ptr: Pointer<M::PointerTag>) -> InterpResult<'tcx, Instance<'tcx>> {
+    fn get_fn_alloc(&self, id: AllocId) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
+        trace!("reading fn ptr: {}", id);
+        if let Some(extra) = self.extra_fn_ptr_map.get(&id) {
+            Ok(FnVal::Other(*extra))
+        } else {
+            match self.tcx.alloc_map.lock().get(id) {
+                Some(GlobalAlloc::Function(instance)) => Ok(FnVal::Instance(instance)),
+                _ => Err(InterpError::ExecuteMemory.into()),
+            }
+        }
+    }
+
+    pub fn get_fn(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+    ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         if ptr.offset.bytes() != 0 {
             return err!(InvalidFunctionPointer);
         }
-        trace!("reading fn ptr: {}", ptr.alloc_id);
-        match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
-            Some(GlobalAlloc::Function(instance)) => Ok(instance),
-            _ => Err(InterpError::ExecuteMemory.into()),
-        }
+        self.get_fn_alloc(ptr.alloc_id)
     }
 
     pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {

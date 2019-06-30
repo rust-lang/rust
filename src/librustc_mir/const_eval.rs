@@ -316,6 +316,7 @@ impl interpret::MayLeak for ! {
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     type MemoryKinds = !;
     type PointerTag = ();
+    type ExtraFnVal = !;
 
     type FrameExtra = ();
     type MemoryExtra = ();
