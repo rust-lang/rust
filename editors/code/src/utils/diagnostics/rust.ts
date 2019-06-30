@@ -183,6 +183,7 @@ export function mapRustDiagnosticToVsCode(
     const secondarySpans = rd.spans.filter(s => !s.is_primary);
 
     const severity = mapLevelToSeverity(rd.level);
+    let primarySpanLabel = primarySpan.label;
 
     const vd = new vscode.Diagnostic(location.range, rd.message, severity);
 
@@ -221,7 +222,15 @@ export function mapRustDiagnosticToVsCode(
         }
         if (messageLine) {
             vd.message += `\n${messageLine}`;
+
+            // These secondary messages usually duplicate the content of the
+            // primary span label.
+            primarySpanLabel = undefined;
         }
+    }
+
+    if (primarySpanLabel) {
+        vd.message += `\n${primarySpanLabel}`;
     }
 
     if (isUnusedOrUnnecessary(rd)) {
