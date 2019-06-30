@@ -42,23 +42,23 @@ fn check_alloc<T: Alloc>(mut allocator: T) { unsafe {
 } }
 
 fn check_overalign_requests<T: Alloc>(mut allocator: T) {
-    let size = 8;
-    // Greater than `size`, and also greater than `MIN_ALIGN`.
-    let align = 32;
+    for &size in &[2, 8, 64] { // size less than and bigger than alignment
+        for &align in &[4, 8, 16, 32] { // Be sure to cover less than and bigger than `MIN_ALIGN` for all architectures
+            let iterations = 32;
+            unsafe {
+                let pointers: Vec<_> = (0..iterations).map(|_| {
+                    allocator.alloc(Layout::from_size_align(size, align).unwrap()).unwrap()
+                }).collect();
+                for &ptr in &pointers {
+                    assert_eq!((ptr.as_ptr() as usize) % align, 0,
+                            "Got a pointer less aligned than requested")
+                }
 
-    let iterations = 32;
-    unsafe {
-        let pointers: Vec<_> = (0..iterations).map(|_| {
-            allocator.alloc(Layout::from_size_align(size, align).unwrap()).unwrap()
-        }).collect();
-        for &ptr in &pointers {
-            assert_eq!((ptr.as_ptr() as usize) % align, 0,
-                       "Got a pointer less aligned than requested")
-        }
-
-        // Clean up.
-        for &ptr in &pointers {
-            allocator.dealloc(ptr, Layout::from_size_align(size, align).unwrap())
+                // Clean up.
+                for &ptr in &pointers {
+                    allocator.dealloc(ptr, Layout::from_size_align(size, align).unwrap())
+                }
+            }
         }
     }
 }
