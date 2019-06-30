@@ -8,11 +8,17 @@ pub enum Dlsym {
 }
 
 impl Dlsym {
-    pub fn from_str(name: &str) -> Option<Dlsym> {
+    // Returns an error for unsupported symbols, and None if this symbol
+    // should become a NULL pointer (pretend it does not exist).
+    pub fn from_str(name: &str) -> InterpResult<'static, Option<Dlsym>> {
         use self::Dlsym::*;
-        Some(match name {
-            "getentropy" => GetEntropy,
-            _ => return None,
+        Ok(match name {
+            "getentropy" => Some(GetEntropy),
+            "__pthread_get_minstack" => None,
+            _ =>
+                return err!(Unimplemented(format!(
+                    "Unsupported dlsym: {}", name
+                ))),
         })
     }
 }
@@ -32,7 +38,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let dest = dest.expect("we don't support any diverging dlsym");
         let ret = ret.expect("dest is `Some` but ret is `None`");
-        
+
         match dlsym {
             GetEntropy => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;

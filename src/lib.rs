@@ -38,7 +38,7 @@ pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt, Tag, Permission, Stack, Stacks, Item};
 pub use crate::machine::{
-    PAGE_SIZE, STACK_ADDR, NUM_CPUS,
+    PAGE_SIZE, STACK_ADDR, STACK_SIZE, NUM_CPUS,
     MemoryExtra, AllocExtra, MiriMemoryKind, Evaluator, MiriEvalContext, MiriEvalContextExt,
 };
 pub use crate::eval::{eval_main, create_ecx, MiriConfig};

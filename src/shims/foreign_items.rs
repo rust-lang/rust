@@ -324,13 +324,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let symbol_name = this.memory().get(symbol.alloc_id)?.read_c_str(tcx, symbol)?;
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
                 let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
-                if let Some(dlsym) = Dlsym::from_str(symbol_name) {
+                if let Some(dlsym) = Dlsym::from_str(symbol_name)? {
                     let ptr = this.memory_mut().create_fn_alloc(FnVal::Other(dlsym));
                     this.write_scalar(Scalar::from(ptr), dest)?;
                 } else {
-                    return err!(Unimplemented(format!(
-                        "Unsupported dlsym: {}", symbol_name
-                    )));
+                    this.write_null(dest)?;
                 }
             }
 
@@ -713,24 +711,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
-            // Determine stack base address.
-            "pthread_attr_init" | "pthread_attr_destroy" | "pthread_attr_get_np" |
-            "pthread_getattr_np" | "pthread_self" | "pthread_get_stacksize_np" => {
+            // Stack size/address stuff.
+            "pthread_attr_init" | "pthread_attr_destroy" | "pthread_self" |
+            "pthread_attr_setstacksize" => {
                 this.write_null(dest)?;
             }
             "pthread_attr_getstack" => {
-                // Second argument is where we are supposed to write the stack size.
-                let ptr = this.deref_operand(args[1])?;
-                // Just any address.
-                let stack_addr = Scalar::from_uint(STACK_ADDR, args[1].layout.size);
-                this.write_scalar(stack_addr, ptr.into())?;
+                let addr_place = this.deref_operand(args[1])?;
+                let size_place = this.deref_operand(args[2])?;
+
+                this.write_scalar(
+                    Scalar::from_uint(STACK_ADDR, addr_place.layout.size),
+                    addr_place.into(),
+                )?;
+                this.write_scalar(
+                    Scalar::from_uint(STACK_SIZE, size_place.layout.size),
+                    size_place.into(),
+                )?;
+
                 // Return success (`0`).
                 this.write_null(dest)?;
             }
-            "pthread_get_stackaddr_np" => {
-                // Just any address.
-                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
-                this.write_scalar(stack_addr, dest)?;
+
+            // We don't support threading.
+            "pthread_create" => {
+                return err!(Unimplemented(format!("Miri does not support threading")));
             }
 
             // Stub out calls for condvar, mutex and rwlock, to just return `0`.
@@ -758,6 +763,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // macOS API stubs.
+            "pthread_attr_get_np" | "pthread_getattr_np" => {
+                this.write_null(dest)?;
+            }
+            "pthread_get_stackaddr_np" => {
+                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
+                this.write_scalar(stack_addr, dest)?;
+            }
+            "pthread_get_stacksize_np" => {
+                let stack_size = Scalar::from_uint(STACK_SIZE, dest.layout.size);
+                this.write_scalar(stack_size, dest)?;
+            }
             "_tlv_atexit" => {
                 // FIXME: register the destructor.
             },
