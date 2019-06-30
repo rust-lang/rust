@@ -51,6 +51,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(Some(this.load_mir(instance.def)?))
     }
 
+    /// Returns the minimum alignment for the target architecture.
+    fn min_align(&self) -> Align {
+        let this = self.eval_context_ref();
+        // List taken from `libstd/sys_common/alloc.rs`.
+        let min_align = match this.tcx.tcx.sess.target.target.arch.as_str() {
+            "x86" | "arm" | "mips" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
+            "x86_64" | "aarch64" | "mips64" | "s390x" | "sparc64" => 16,
+            arch => bug!("Unsupported target architecture: {}", arch),
+        };
+        Align::from_bytes(min_align).unwrap()
+    }
+
     fn malloc(
         &mut self,
         size: u64,
@@ -61,7 +73,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if size == 0 {
             Scalar::from_int(0, this.pointer_size())
         } else {
-            let align = this.tcx.data_layout.pointer_align.abi;
+            let align = this.min_align();
             let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into());
             if zero_init {
                 // We just allocated this, the access cannot fail
@@ -94,7 +106,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         new_size: u64,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
-        let align = this.tcx.data_layout.pointer_align.abi;
+        let align = this.min_align();
         if old_ptr.is_null_ptr(this) {
             if new_size == 0 {
                 Ok(Scalar::from_int(0, this.pointer_size()))
@@ -191,12 +203,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
+                /*
+                FIXME: This check is disabled because rustc violates it.
+                See <https://github.com/rust-lang/rust/issues/62251>.
                 if align < this.pointer_size().bytes() {
                     return err!(MachineError(format!(
                         "posix_memalign: alignment must be at least the size of a pointer, but is {}",
                         align,
                     )));
                 }
+                */
                 if size == 0 {
                     this.write_null(ret.into())?;
                 } else {
