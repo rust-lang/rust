@@ -11,7 +11,7 @@ use syntax::{
         respan, ExpnInfo, ExpnKind,
     },
     ext::{
-        base::{ExtCtxt, Resolver},
+        base::{ExtCtxt, MacroKind, Resolver},
         build::AstBuilder,
         expand::ExpansionConfig,
         hygiene::{Mark, SyntaxContext},
@@ -87,7 +87,7 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
         // Create a fresh Mark for the new macro expansion we are about to do
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(ExpnInfo::with_unstable(
-            ExpnKind::MacroAttribute(sym::global_allocator), item.span, self.sess.edition,
+            ExpnKind::Macro(MacroKind::Attr, sym::global_allocator), item.span, self.sess.edition,
             &[sym::rustc_attrs],
         ));
 

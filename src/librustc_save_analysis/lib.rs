@@ -843,7 +843,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let callee = span.source_callee()?;
 
         // Ignore attribute macros, their spans are usually mangled
-        if let ExpnKind::MacroAttribute(_) = callee.kind {
+        if let ExpnKind::Macro(MacroKind::Attr, _) |
+               ExpnKind::Macro(MacroKind::Derive, _) = callee.kind {
             return None;
         }
 

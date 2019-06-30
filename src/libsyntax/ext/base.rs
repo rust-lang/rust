@@ -640,18 +640,10 @@ impl SyntaxExtension {
         }
     }
 
-    fn expn_kind(&self, descr: Symbol) -> ExpnKind {
-        match self.kind {
-            SyntaxExtensionKind::Bang(..) |
-            SyntaxExtensionKind::LegacyBang(..) => ExpnKind::MacroBang(descr),
-            _ => ExpnKind::MacroAttribute(descr),
-        }
-    }
-
-    pub fn expn_info(&self, call_site: Span, descr: &str) -> ExpnInfo {
+    pub fn expn_info(&self, call_site: Span, descr: Symbol) -> ExpnInfo {
         ExpnInfo {
             call_site,
-            kind: self.expn_kind(Symbol::intern(descr)),
+            kind: ExpnKind::Macro(self.macro_kind(), descr),
             def_site: self.span,
             default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),

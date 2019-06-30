@@ -114,17 +114,21 @@ fn sub_namespace_match(candidate: Option<MacroKind>, requirement: Option<MacroKi
 // We don't want to format a path using pretty-printing,
 // `format!("{}", path)`, because that tries to insert
 // line-breaks and is slow.
-fn fast_print_path(path: &ast::Path) -> String {
-    let mut path_str = String::with_capacity(64);
-    for (i, segment) in path.segments.iter().enumerate() {
-        if i != 0 {
-            path_str.push_str("::");
+fn fast_print_path(path: &ast::Path) -> Symbol {
+    if path.segments.len() == 1 {
+        return path.segments[0].ident.name
+    } else {
+        let mut path_str = String::with_capacity(64);
+        for (i, segment) in path.segments.iter().enumerate() {
+            if i != 0 {
+                path_str.push_str("::");
+            }
+            if segment.ident.name != kw::PathRoot {
+                path_str.push_str(&segment.ident.as_str())
+            }
         }
-        if segment.ident.name != kw::PathRoot {
-            path_str.push_str(&segment.ident.as_str())
-        }
+        Symbol::intern(&path_str)
     }
-    path_str
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
@@ -219,14 +223,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
 
         let span = invoc.span();
-        let path = fast_print_path(path);
-        let format = match kind {
-            MacroKind::Derive => format!("derive({})", path),
-            _ => path.clone(),
-        };
-        invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, &format));
+        let descr = fast_print_path(path);
+        invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, descr));
 
-        self.check_stability_and_deprecation(&ext, &path, span);
+        self.check_stability_and_deprecation(&ext, descr, span);
 
         if let Res::Def(_, def_id) = res {
             if after_derive {
@@ -991,7 +991,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, path: &str, span: Span) {
+    fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, descr: Symbol, span: Span) {
         if let Some(stability) = &ext.stability {
             if let StabilityLevel::Unstable { reason, issue } = stability.level {
                 let feature = stability.feature;
@@ -1000,14 +1000,14 @@ impl<'a> Resolver<'a> {
                 }
             }
             if let Some(depr) = &stability.rustc_depr {
-                let (message, lint) = stability::rustc_deprecation_message(depr, path);
+                let (message, lint) = stability::rustc_deprecation_message(depr, &descr.as_str());
                 stability::early_report_deprecation(
                     self.session, &message, depr.suggestion, lint, span
                 );
             }
         }
         if let Some(depr) = &ext.deprecation {
-            let (message, lint) = stability::deprecation_message(depr, path);
+            let (message, lint) = stability::deprecation_message(depr, &descr.as_str());
             stability::early_report_deprecation(self.session, &message, None, lint, span);
         }
     }

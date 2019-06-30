@@ -21,7 +21,7 @@ use crate::entry::{self, EntryPointType};
 use crate::ext::base::{ExtCtxt, Resolver};
 use crate::ext::build::AstBuilder;
 use crate::ext::expand::ExpansionConfig;
-use crate::ext::hygiene::{self, Mark, SyntaxContext};
+use crate::ext::hygiene::{self, Mark, SyntaxContext, MacroKind};
 use crate::mut_visit::{*, ExpectOne};
 use crate::feature_gate::Features;
 use crate::util::map_in_place::MapInPlace;
@@ -280,7 +280,7 @@ fn generate_test_harness(sess: &ParseSess,
     };
 
     mark.set_expn_info(ExpnInfo::with_unstable(
-        ExpnKind::MacroAttribute(sym::test_case), DUMMY_SP, sess.edition,
+        ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, sess.edition,
         &[sym::main, sym::test, sym::rustc_attrs],
     ));
 

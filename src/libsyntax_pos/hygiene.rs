@@ -135,11 +135,9 @@ impl Mark {
     pub fn looks_like_proc_macro_derive(self) -> bool {
         HygieneData::with(|data| {
             if data.default_transparency(self) == Transparency::Opaque {
-                if let Some(expn_info) = &data.marks[self.0 as usize].expn_info {
-                    if let ExpnKind::MacroAttribute(name) = expn_info.kind {
-                        if name.as_str().starts_with("derive(") {
-                            return true;
-                        }
+                if let Some(expn_info) = data.expn_info(self) {
+                    if let ExpnKind::Macro(MacroKind::Derive, _) = expn_info.kind {
+                        return true;
                     }
                 }
             }
@@ -193,7 +191,7 @@ impl HygieneData {
     }
 
     fn default_transparency(&self, mark: Mark) -> Transparency {
-        self.marks[mark.0 as usize].expn_info.as_ref().map_or(
+        self.expn_info(mark).map_or(
             Transparency::SemiTransparent, |einfo| einfo.default_transparency
         )
     }
@@ -613,7 +611,8 @@ impl fmt::Debug for SyntaxContext {
     }
 }
 
-/// Extra information for tracking spans of macro and syntax sugar expansion
+/// A subset of properties from both macro definition and macro call available through global data.
+/// Avoid using this if you have access to the original definition or call structures.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
     // --- The part unique to each expansion.
@@ -627,7 +626,7 @@ pub struct ExpnInfo {
     /// call_site span would have its own ExpnInfo, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
-    /// The format with which the macro was invoked.
+    /// The kind of this expansion - macro or compiler desugaring.
     pub kind: ExpnKind,
 
     // --- The part specific to the macro/desugaring definition.
@@ -675,13 +674,12 @@ impl ExpnInfo {
     }
 }
 
-/// The source of expansion.
+/// Expansion kind.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum ExpnKind {
-    /// e.g., #[derive(...)] <item>
-    MacroAttribute(Symbol),
-    /// e.g., `format!()`
-    MacroBang(Symbol),
+    /// Expansion produced by a macro.
+    /// FIXME: Some code injected by the compiler before HIR lowering also gets this kind.
+    Macro(MacroKind, Symbol),
     /// Desugaring done by the compiler during HIR lowering.
     Desugaring(DesugaringKind)
 }
@@ -689,8 +687,8 @@ pub enum ExpnKind {
 impl ExpnKind {
     pub fn descr(&self) -> Symbol {
         match *self {
-            ExpnKind::MacroBang(name) | ExpnKind::MacroAttribute(name) => name,
-            ExpnKind::Desugaring(kind) => kind.descr(),
+            ExpnKind::Macro(_, descr) => descr,
+            ExpnKind::Desugaring(kind) => Symbol::intern(kind.descr()),
         }
     }
 }
@@ -743,8 +741,8 @@ pub enum DesugaringKind {
 }
 
 impl DesugaringKind {
-    pub fn descr(self) -> Symbol {
-        Symbol::intern(match self {
+    pub fn descr(self) -> &'static str {
+        match self {
             DesugaringKind::CondTemporary => "if and while condition",
             DesugaringKind::Async => "async",
             DesugaringKind::Await => "await",
@@ -752,7 +750,7 @@ impl DesugaringKind {
             DesugaringKind::TryBlock => "try block",
             DesugaringKind::ExistentialType => "existential type",
             DesugaringKind::ForLoop => "for loop",
-        })
+        }
     }
 }
 

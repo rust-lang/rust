@@ -408,8 +408,7 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
 });
 
 impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnKind {
-    MacroAttribute(sym),
-    MacroBang(sym),
+    Macro(kind, descr),
     Desugaring(kind)
 });
 

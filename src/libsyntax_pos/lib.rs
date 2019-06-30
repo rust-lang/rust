@@ -27,7 +27,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;
-pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnKind, DesugaringKind};
+pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnKind, MacroKind, DesugaringKind};
 
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -442,9 +442,12 @@ impl Span {
             // Don't print recursive invocations.
             if !info.call_site.source_equal(&prev_span) {
                 let (pre, post) = match info.kind {
-                    ExpnKind::MacroAttribute(..) => ("#[", "]"),
-                    ExpnKind::MacroBang(..) => ("", "!"),
                     ExpnKind::Desugaring(..) => ("desugaring of `", "`"),
+                    ExpnKind::Macro(macro_kind, _) => match macro_kind {
+                        MacroKind::Bang => ("", "!"),
+                        MacroKind::Attr => ("#[", "]"),
+                        MacroKind::Derive => ("#[derive(", ")]"),
+                    }
                 };
                 result.push(MacroBacktrace {
                     call_site: info.call_site,

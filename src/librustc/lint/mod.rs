@@ -38,6 +38,7 @@ use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnKind, DesugaringKind};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
+use syntax::ext::base::MacroKind;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 
@@ -884,10 +885,9 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     };
 
     match info.kind {
-        ExpnKind::MacroAttribute(..) => true, // definitely a plugin
         ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
         ExpnKind::Desugaring(_) => true, // well, it's "external"
-        ExpnKind::MacroBang(..) => {
+        ExpnKind::Macro(MacroKind::Bang, _) => {
             if info.def_site.is_dummy() {
                 // dummy span for the def_site means it's an external macro
                 return true;
@@ -898,19 +898,16 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
                 Err(_) => true,
             }
         }
+        ExpnKind::Macro(..) => true, // definitely a plugin
     }
 }
 
 /// Returns whether `span` originates in a derive macro's expansion
 pub fn in_derive_expansion(span: Span) -> bool {
-    let info = match span.ctxt().outer_expn_info() {
-        Some(info) => info,
-        // no ExpnInfo means this span doesn't come from a macro
-        None => return false,
-    };
-
-    match info.kind {
-        ExpnKind::MacroAttribute(symbol) => symbol.as_str().starts_with("derive("),
-        _ => false,
+    if let Some(info) = span.ctxt().outer_expn_info() {
+        if let ExpnKind::Macro(MacroKind::Derive, _) = info.kind {
+            return true;
+        }
     }
+    false
 }
