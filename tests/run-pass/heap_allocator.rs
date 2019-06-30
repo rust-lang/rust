@@ -33,8 +33,8 @@ fn check_overalign_requests<T: Alloc>(mut allocator: T) {
     let size = 8;
     // Greater than `size`.
     let align = 16;
-    // Miri is deterministic; no need to try many times.
-    let iterations = 1;
+
+    let iterations = 5;
     unsafe {
         let pointers: Vec<_> = (0..iterations).map(|_| {
             allocator.alloc(Layout::from_size_align(size, align).unwrap()).unwrap()
