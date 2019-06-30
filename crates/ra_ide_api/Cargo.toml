@@ -16,9 +16,6 @@ unicase = "2.2.0"
 superslice = "1.0.0"
 rand = "0.6.5"
 
-jemallocator = { version = "0.1.9", optional = true }
-jemalloc-ctl = { version = "0.2.0", optional = true }
-
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_db = { path = "../ra_db" }
@@ -36,6 +33,3 @@ version = "0.9.0"
 # Disable `fork` feature to allow compiling on webassembly
 default-features = false
 features = ["std", "bit-set", "break-dead-code"]
-
-[features]
-jemalloc = [ "jemallocator", "jemalloc-ctl" ]
