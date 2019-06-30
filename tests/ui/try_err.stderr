@@ -1,5 +1,5 @@
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:10:9
+  --> $DIR/try_err.rs:11:9
    |
 LL |         Err(err)?;
    |         ^^^^^^^^^ help: try this: `return Err(err)`
@@ -11,19 +11,19 @@ LL | #![deny(clippy::try_err)]
    |         ^^^^^^^^^^^^^^^
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:19:9
+  --> $DIR/try_err.rs:21:9
    |
 LL |         Err(err)?;
    |         ^^^^^^^^^ help: try this: `return Err(err.into())`
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:38:17
+  --> $DIR/try_err.rs:41:17
    |
 LL |                 Err(err)?;
    |                 ^^^^^^^^^ help: try this: `return Err(err)`
 
 error: returning an `Err(_)` with the `?` operator
-  --> $DIR/try_err.rs:55:17
+  --> $DIR/try_err.rs:60:17
    |
 LL |                 Err(err)?;
    |                 ^^^^^^^^^ help: try this: `return Err(err.into())`

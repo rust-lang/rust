@@ -6,7 +6,8 @@
 // Should flag `Err(err)?`
 pub fn basic_test() -> Result<i32, i32> {
     let err: i32 = 1;
-    if true { // To avoid warnings during rustfix
+    // To avoid warnings during rustfix
+    if true {
         Err(err)?;
     }
     Ok(0)
@@ -15,7 +16,8 @@ pub fn basic_test() -> Result<i32, i32> {
 // Tests that `.into()` is added when appropriate
 pub fn into_test() -> Result<i32, i32> {
     let err: u8 = 1;
-    if true { // To avoid warnings during rustfix
+    // To avoid warnings during rustfix
+    if true {
         Err(err)?;
     }
     Ok(0)
@@ -26,15 +28,16 @@ pub fn negative_test() -> Result<i32, i32> {
     Ok(nested_error()? + 1)
 }
 
-
 // Tests that `.into()` isn't added when the error type
 // matches the surrounding closure's return type, even
 // when it doesn't match the surrounding function's.
 pub fn closure_matches_test() -> Result<i32, i32> {
-    let res: Result<i32, i8> = Some(1).into_iter()
+    let res: Result<i32, i8> = Some(1)
+        .into_iter()
         .map(|i| {
             let err: i8 = 1;
-            if true { // To avoid warnings during rustfix
+            // To avoid warnings during rustfix
+            if true {
                 Err(err)?;
             }
             Ok(i)
@@ -48,10 +51,12 @@ pub fn closure_matches_test() -> Result<i32, i32> {
 // Tests that `.into()` isn't added when the error type
 // doesn't match the surrounding closure's return type.
 pub fn closure_into_test() -> Result<i32, i32> {
-    let res: Result<i32, i16> = Some(1).into_iter()
+    let res: Result<i32, i16> = Some(1)
+        .into_iter()
         .map(|i| {
             let err: i8 = 1;
-            if true { // To avoid warnings during rustfix
+            // To avoid warnings during rustfix
+            if true {
                 Err(err)?;
             }
             Ok(i)
