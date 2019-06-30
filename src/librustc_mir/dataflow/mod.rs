@@ -228,9 +228,25 @@ where
     BD: BitDenotation<'tcx>,
 {
     fn walk_cfg(&mut self, in_out: &mut BitSet<BD::Idx>) {
-        let mut dirty_queue: WorkQueue<mir::BasicBlock> =
-            WorkQueue::with_all(self.builder.body.basic_blocks().len());
         let body = self.builder.body;
+
+        // Initialize the dirty queue in reverse post-order. This makes it more likely that the
+        // entry state for each basic block will have the effects of its predecessors applied
+        // before it is processed. In fact, for CFGs without back edges, this guarantees that
+        // dataflow will converge in exactly `N` iterations, where `N` is the number of basic
+        // blocks.
+        let mut dirty_queue: WorkQueue<mir::BasicBlock> =
+            WorkQueue::with_none(body.basic_blocks().len());
+        for (bb, _) in traversal::reverse_postorder(body) {
+            dirty_queue.insert(bb);
+        }
+
+        // Add blocks which are not reachable from START_BLOCK to the work queue. These blocks will
+        // be processed after the ones added above.
+        for bb in body.basic_blocks().indices() {
+            dirty_queue.insert(bb);
+        }
+
         while let Some(bb) = dirty_queue.pop() {
             let (on_entry, trans) = self.builder.flow_state.sets.get_mut(bb.index());
             debug_assert!(in_out.words().len() == on_entry.words().len());
