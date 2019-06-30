@@ -41,11 +41,11 @@ macro_rules! fake_lint_pass {
     }
 }
 
-declare_lint!(CRATE_NOT_OKAY, Warn, "crate not marked with #![crate_okay]");
-declare_lint!(CRATE_NOT_RED, Warn, "crate not marked with #![crate_red]");
-declare_lint!(CRATE_NOT_BLUE, Warn, "crate not marked with #![crate_blue]");
-declare_lint!(CRATE_NOT_GREY, Warn, "crate not marked with #![crate_grey]");
-declare_lint!(CRATE_NOT_GREEN, Warn, "crate not marked with #![crate_green]");
+declare_lint!(CRATE_NOT_OKAY, Warn, "crate not marked with `#![crate_okay]`");
+declare_lint!(CRATE_NOT_RED, Warn, "crate not marked with `#![crate_red]`");
+declare_lint!(CRATE_NOT_BLUE, Warn, "crate not marked with `#![crate_blue]`");
+declare_lint!(CRATE_NOT_GREY, Warn, "crate not marked with `#![crate_grey]`");
+declare_lint!(CRATE_NOT_GREEN, Warn, "crate not marked with `#![crate_green]`");
 
 fake_lint_pass! {
     PassOkay,

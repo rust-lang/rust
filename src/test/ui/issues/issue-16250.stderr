@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![deny(warnings)]
    |         ^^^^^^^^
-   = note: #[deny(improper_ctypes)] implied by #[deny(warnings)]
+   = note: `#[deny(improper_ctypes)]` implied by `#[deny(warnings)]`
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 note: type defined here
   --> $DIR/issue-16250.rs:3:1

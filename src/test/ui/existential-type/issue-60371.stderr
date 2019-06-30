@@ -5,7 +5,7 @@ LL |     existential type Item: Bug;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/34511
-   = help: add #![feature(existential_type)] to the crate attributes to enable
+   = help: add `#![feature(existential_type)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `(): Bug` is not satisfied
   --> $DIR/issue-60371.rs:8:5

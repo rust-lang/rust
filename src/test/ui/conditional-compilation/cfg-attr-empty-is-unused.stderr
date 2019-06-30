@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![deny(unused)]
    |         ^^^^^^
-   = note: #[deny(unused_attributes)] implied by #[deny(unused)]
+   = note: `#[deny(unused_attributes)]` implied by `#[deny(unused)]`
 
 error: unused attribute
   --> $DIR/cfg-attr-empty-is-unused.rs:10:1

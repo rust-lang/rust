@@ -1,10 +1,10 @@
-error[E0459]: #[link(...)] specified without `name = "foo"`
+error[E0459]: `#[link(...)]` specified without `name = "foo"`
   --> $DIR/bad-extern-link-attrs.rs:1:1
    |
 LL | #[link()]
    | ^^^^^^^^^ missing `name` argument
 
-error[E0454]: #[link(name = "")] given with empty name
+error[E0454]: `#[link(name = "")]` given with empty name
   --> $DIR/bad-extern-link-attrs.rs:2:1
    |
 LL | #[link(name = "")]

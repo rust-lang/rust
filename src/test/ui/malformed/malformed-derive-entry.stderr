@@ -14,7 +14,7 @@ error: malformed `derive` attribute input
   --> $DIR/malformed-derive-entry.rs:7:1
    |
 LL | #[derive]
-   | ^^^^^^^^^ help: missing traits to be derived: `#[derive(Trait1, Trait2, ...)]`
+   | ^^^^^^^^^ help: missing traits to be derived: ``#[derive(Trait1, Trait2, ...)]``
 
 error: aborting due to 3 previous errors
 

@@ -5,7 +5,7 @@ LL |     default fn foo(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/31844
-   = help: add #![feature(specialization)] to the crate attributes to enable
+   = help: add `#![feature(specialization)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

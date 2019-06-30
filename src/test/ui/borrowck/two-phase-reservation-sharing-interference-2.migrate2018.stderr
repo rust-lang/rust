@@ -31,7 +31,7 @@ LL |     v.push(shared.len());
    |     |
    |     mutable borrow occurs here
    |
-   = note: #[warn(mutable_borrow_reservation_conflict)] on by default
+   = note: `#[warn(mutable_borrow_reservation_conflict)]` on by default
    = warning: this borrowing pattern was not meant to be accepted, and may become a hard error in the future
    = note: for more information, see issue #59159 <https://github.com/rust-lang/rust/issues/59159>
 

@@ -5,7 +5,7 @@ LL | #![identity_attr]
    |    ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error: inconsistent resolution for a macro: first custom attribute, then attribute macro
   --> $DIR/issue-41211.rs:8:4

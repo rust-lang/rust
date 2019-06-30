@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'unstable_test_feature'
 LL | extern crate lint_output_format;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
   --> $DIR/lint-output-format.rs:7:31
@@ -12,7 +12,7 @@ error[E0658]: use of unstable library feature 'unstable_test_feature'
 LL | use lint_output_format::{foo, bar};
    |                               ^^^
    |
-   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
   --> $DIR/lint-output-format.rs:11:14
@@ -20,7 +20,7 @@ error[E0658]: use of unstable library feature 'unstable_test_feature'
 LL |     let _y = bar();
    |              ^^^
    |
-   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

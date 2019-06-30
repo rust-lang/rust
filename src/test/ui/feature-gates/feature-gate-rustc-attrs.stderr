@@ -5,7 +5,7 @@ LL | #[rustc::unknown]
    |   ^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: macro `rustc::unknown` may not be used in attributes
   --> $DIR/feature-gate-rustc-attrs.rs:8:1

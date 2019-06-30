@@ -16,7 +16,7 @@ use syntax::symbol::Symbol;
 declare_lint! {
     CRATE_NOT_OKAY,
     Warn,
-    "crate not marked with #![crate_okay]"
+    "crate not marked with `#![crate_okay]`"
 }
 
 declare_lint_pass!(Pass => [CRATE_NOT_OKAY]);
@@ -25,7 +25,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
         if !attr::contains_name(&krate.attrs, Symbol::intern("crate_okay")) {
             cx.span_lint(CRATE_NOT_OKAY, krate.span,
-                         "crate is not marked with #![crate_okay]");
+                         "crate is not marked with `#![crate_okay]`");
         }
     }
 }

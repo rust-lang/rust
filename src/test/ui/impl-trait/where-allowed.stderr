@@ -232,7 +232,7 @@ error[E0562]: `impl Trait` not allowed outside of function and inherent method r
 LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
    |
-   = help: add #![feature(impl_trait_in_bindings)] to the crate attributes to enable
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/where-allowed.rs:222:46

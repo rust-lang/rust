@@ -5,7 +5,7 @@ LL |         [1, 2, ..] => {}
    |                ^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/62254
-   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+   = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized
   --> $DIR/feature-gate-slice-patterns.rs:7:13
@@ -14,7 +14,7 @@ LL |         [1, .., 5] => {}
    |             ^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/62254
-   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+   = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized
   --> $DIR/feature-gate-slice-patterns.rs:8:10
@@ -23,7 +23,7 @@ LL |         [.., 4, 5] => {}
    |          ^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/62254
-   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+   = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized
   --> $DIR/feature-gate-slice-patterns.rs:13:11
@@ -32,7 +32,7 @@ LL |         [ xs.., 4, 5 ] => {}
    |           ^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/62254
-   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+   = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized
   --> $DIR/feature-gate-slice-patterns.rs:14:14
@@ -41,7 +41,7 @@ LL |         [ 1, xs.., 5 ] => {}
    |              ^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/62254
-   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+   = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized
   --> $DIR/feature-gate-slice-patterns.rs:15:17
@@ -50,7 +50,7 @@ LL |         [ 1, 2, xs.. ] => {}
    |                 ^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/62254
-   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+   = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error: aborting due to 6 previous errors
 

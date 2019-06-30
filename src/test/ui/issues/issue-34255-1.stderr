@@ -4,7 +4,7 @@ error: expected type, found `42`
 LL |     Test::Drill(field: 42);
    |                        ^^ expecting a type here because of type ascription
    |
-   = note: #![feature(type_ascription)] lets you annotate an expression with a type: `<expr>: <type>`
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
 note: this expression expects an ascribed type after the colon
   --> $DIR/issue-34255-1.rs:8:17
    |

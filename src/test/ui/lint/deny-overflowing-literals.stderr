@@ -4,7 +4,7 @@ error: literal out of range for `u8`
 LL |     let x: u8 = 256;
    |                 ^^^
    |
-   = note: #[deny(overflowing_literals)] on by default
+   = note: `#[deny(overflowing_literals)]` on by default
 
 error: range endpoint is out of range for `u8`
   --> $DIR/deny-overflowing-literals.rs:5:14

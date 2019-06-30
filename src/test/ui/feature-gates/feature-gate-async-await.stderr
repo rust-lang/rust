@@ -11,7 +11,7 @@ LL |     async fn foo() {}
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/50547
-   = help: add #![feature(async_await)] to the crate attributes to enable
+   = help: add `#![feature(async_await)]` to the crate attributes to enable
 
 error[E0658]: async fn is unstable
   --> $DIR/feature-gate-async-await.rs:10:5
@@ -20,7 +20,7 @@ LL |     async fn foo();
    |     ^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/50547
-   = help: add #![feature(async_await)] to the crate attributes to enable
+   = help: add `#![feature(async_await)]` to the crate attributes to enable
 
 error[E0658]: async fn is unstable
   --> $DIR/feature-gate-async-await.rs:14:1
@@ -29,7 +29,7 @@ LL | async fn foo() {}
    | ^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/50547
-   = help: add #![feature(async_await)] to the crate attributes to enable
+   = help: add `#![feature(async_await)]` to the crate attributes to enable
 
 error[E0658]: async blocks are unstable
   --> $DIR/feature-gate-async-await.rs:17:13
@@ -38,7 +38,7 @@ LL |     let _ = async {};
    |             ^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/50547
-   = help: add #![feature(async_await)] to the crate attributes to enable
+   = help: add `#![feature(async_await)]` to the crate attributes to enable
 
 error: aborting due to 5 previous errors
 

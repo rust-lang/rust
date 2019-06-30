@@ -5,7 +5,7 @@ LL | #[repr(simd)]
    | ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/27731
-   = help: add #![feature(repr_simd)] to the crate attributes to enable
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
