@@ -206,7 +206,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     // on read hardware this can easily happen. Thus for comparisons we require
                     // both pointers to be live.
                     if self.pointer_inbounds(left).is_ok() && self.pointer_inbounds(right).is_ok() {
-                        // Two in-bounds pointers in different allocations are different.
+                        // Two in-bounds (and hence live) pointers in different allocations are different.
                         false
                     } else {
                         return err!(InvalidPointerMath);
@@ -303,7 +303,9 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 map_to_primval(left.overflowing_offset(Size::from_bytes(right as u64), self)),
 
             BitAnd if !signed => {
-                let ptr_base_align = self.memory().get(left.alloc_id)?.align.bytes();
+                let ptr_base_align = self.memory().get_size_and_align(left.alloc_id, AllocCheck::MaybeDead)
+                    .expect("alloc info with MaybeDead cannot fail")
+                    .1.bytes();
                 let base_mask = {
                     // FIXME: use `interpret::truncate`, once that takes a `Size` instead of a `Layout`.
                     let shift = 128 - self.memory().pointer_size().bits();
@@ -337,7 +339,9 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             Rem if !signed => {
                 // Doing modulo a divisor of the alignment is allowed.
                 // (Intuition: modulo a divisor leaks less information.)
-                let ptr_base_align = self.memory().get(left.alloc_id)?.align.bytes();
+                let ptr_base_align = self.memory().get_size_and_align(left.alloc_id, AllocCheck::MaybeDead)
+                    .expect("alloc info with MaybeDead cannot fail")
+                    .1.bytes();
                 let right = right as u64;
                 let ptr_size = self.memory().pointer_size();
                 if right == 1 {
