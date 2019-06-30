@@ -57,17 +57,21 @@ pub trait InternDatabase: SourceDatabase {
 pub trait AstDatabase: InternDatabase {
     #[salsa::invoke(crate::source_id::AstIdMap::ast_id_map_query)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
+
     #[salsa::transparent]
     #[salsa::invoke(crate::source_id::AstIdMap::file_item_query)]
     fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> TreeArc<SyntaxNode>;
+
     #[salsa::transparent]
     #[salsa::invoke(crate::ids::HirFileId::parse_or_expand_query)]
     fn parse_or_expand(&self, file_id: HirFileId) -> Option<TreeArc<SyntaxNode>>;
+
     #[salsa::invoke(crate::ids::HirFileId::parse_macro_query)]
     fn parse_macro(&self, macro_file: ids::MacroFile) -> Option<TreeArc<SyntaxNode>>;
 
     #[salsa::invoke(crate::ids::macro_def_query)]
     fn macro_def(&self, macro_id: MacroDefId) -> Option<Arc<mbe::MacroRules>>;
+
     #[salsa::invoke(crate::ids::macro_arg_query)]
     fn macro_arg(&self, macro_call: ids::MacroCallId) -> Option<Arc<tt::Subtree>>;
 

@@ -270,6 +270,10 @@ impl AnalysisHost {
     pub fn collect_garbage(&mut self) {
         self.db.collect_garbage();
     }
+    /// NB: this clears the database
+    pub fn per_query_memory_usage(&mut self) -> Vec<(String, ra_prof::Bytes)> {
+        self.db.per_query_memory_usage()
+    }
     pub fn raw_database(&self) -> &(impl hir::db::HirDatabase + salsa::Database) {
         &self.db
     }

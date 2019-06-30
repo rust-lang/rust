@@ -24,6 +24,7 @@ fn main() -> Result<()> {
         .subcommand(
             SubCommand::with_name("analysis-stats")
                 .arg(Arg::with_name("verbose").short("v").long("verbose"))
+                .arg(Arg::with_name("memory-usage").long("memory-usage"))
                 .arg(Arg::with_name("only").short("o").takes_value(true))
                 .arg(Arg::with_name("path")),
         )
@@ -71,9 +72,10 @@ fn main() -> Result<()> {
         }
         ("analysis-stats", Some(matches)) => {
             let verbose = matches.is_present("verbose");
+            let memory_usage = matches.is_present("memory-usage");
             let path = matches.value_of("path").unwrap_or("");
             let only = matches.value_of("only");
-            analysis_stats::run(verbose, path.as_ref(), only)?;
+            analysis_stats::run(verbose, memory_usage, path.as_ref(), only)?;
         }
         ("analysis-bench", Some(matches)) => {
             let verbose = matches.is_present("verbose");

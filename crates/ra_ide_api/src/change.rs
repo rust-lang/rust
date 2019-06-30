@@ -9,7 +9,7 @@ use ra_db::{
     salsa::{Database, SweepStrategy},
 };
 use ra_syntax::SourceFile;
-use ra_prof::profile;
+use ra_prof::{profile, Bytes, memory_usage};
 use relative_path::RelativePathBuf;
 use rayon::prelude::*;
 
@@ -242,5 +242,66 @@ impl RootDatabase {
         self.query(hir::db::ExprScopesQuery).sweep(sweep);
         self.query(hir::db::InferQuery).sweep(sweep);
         self.query(hir::db::BodyHirQuery).sweep(sweep);
+    }
+
+    pub(crate) fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
+        let mut acc: Vec<(String, Bytes)> = vec![];
+        let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
+        macro_rules! sweep_each_query {
+            ($($q:path)*) => {$(
+                let before = memory_usage().allocated;
+                self.query($q).sweep(sweep);
+                let after = memory_usage().allocated;
+                let q: $q = Default::default();
+                let name = format!("{:?}", q);
+                acc.push((name, before - after));
+            )*}
+        }
+        sweep_each_query![
+            ra_db::ParseQuery
+            ra_db::SourceRootCratesQuery
+            hir::db::AstIdMapQuery
+            hir::db::ParseMacroQuery
+            hir::db::MacroDefQuery
+            hir::db::MacroArgQuery
+            hir::db::MacroExpandQuery
+            hir::db::StructDataQuery
+            hir::db::EnumDataQuery
+            hir::db::TraitDataQuery
+            hir::db::TraitItemsIndexQuery
+            hir::db::RawItemsQuery
+            hir::db::RawItemsWithSourceMapQuery
+            hir::db::CrateDefMapQuery
+            hir::db::ImplsInModuleQuery
+            hir::db::ImplsInModuleWithSourceMapQuery
+            hir::db::GenericParamsQuery
+            hir::db::FnDataQuery
+            hir::db::TypeAliasDataQuery
+            hir::db::ConstDataQuery
+            hir::db::StaticDataQuery
+            hir::db::ModuleLangItemsQuery
+            hir::db::LangItemsQuery
+            hir::db::LangItemQuery
+            hir::db::DocumentationQuery
+            hir::db::ExprScopesQuery
+            hir::db::InferQuery
+            hir::db::TypeForDefQuery
+            hir::db::TypeForFieldQuery
+            hir::db::CallableItemSignatureQuery
+            hir::db::GenericPredicatesQuery
+            hir::db::GenericDefaultsQuery
+            hir::db::BodyWithSourceMapQuery
+            hir::db::BodyHirQuery
+            hir::db::ImplsInCrateQuery
+            hir::db::ImplsForTraitQuery
+            hir::db::AssociatedTyDataQuery
+            hir::db::TraitDatumQuery
+            hir::db::StructDatumQuery
+            hir::db::ImplDatumQuery
+            hir::db::ImplementsQuery
+            hir::db::NormalizeQuery
+        ];
+        acc.sort_by_key(|it| std::cmp::Reverse(it.1));
+        acc
     }
 }

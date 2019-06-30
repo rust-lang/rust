@@ -27,26 +27,35 @@ impl fmt::Display for MemoryUsage {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct Bytes(usize);
 
 impl fmt::Display for Bytes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let bytes = self.0;
-        if bytes < 4096 {
-            return write!(f, "{} bytes", bytes);
+        let mut value = bytes;
+        let mut suffix = "b";
+        if value > 4096 {
+            value /= 1024;
+            suffix = "kb";
+            if value > 4096 {
+                value /= 1024;
+                suffix = "mb";
+            }
         }
-        let kb = bytes / 1024;
-        if kb < 4096 {
-            return write!(f, "{}kb", kb);
-        }
-        let mb = kb / 1024;
-        write!(f, "{}mb", mb)
+        f.pad(&format!("{}{}", value, suffix))
     }
 }
 
 impl std::ops::AddAssign<usize> for Bytes {
     fn add_assign(&mut self, x: usize) {
         self.0 += x;
+    }
+}
+
+impl std::ops::Sub for Bytes {
+    type Output = Bytes;
+    fn sub(self, rhs: Bytes) -> Bytes {
+        Bytes(self.0 - rhs.0)
     }
 }
