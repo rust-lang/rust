@@ -859,7 +859,9 @@ pub(crate) fn rewrite_missing_comment(
 ) -> Option<String> {
     let missing_snippet = context.snippet(span);
     let trimmed_snippet = missing_snippet.trim();
-    if !trimmed_snippet.is_empty() {
+    // check the span starts with a comment
+    let pos = trimmed_snippet.find('/');
+    if !trimmed_snippet.is_empty() && pos.is_some() {
         rewrite_comment(trimmed_snippet, false, shape, context.config)
     } else {
         Some(String::new())
@@ -880,7 +882,7 @@ pub(crate) fn recover_missing_comment_in_span(
         Some(String::new())
     } else {
         let missing_snippet = context.snippet(span);
-        let pos = missing_snippet.find('/').unwrap_or(0);
+        let pos = missing_snippet.find('/')?;
         // 1 = ` `
         let total_width = missing_comment.len() + used_width + 1;
         let force_new_line_before_comment =
