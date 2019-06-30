@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc::ty::{self, layout::{self, Size}};
+use rustc::ty::{self, layout::{self, Size, Align}};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 
 use rand::RngCore;
@@ -71,14 +71,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn gen_random(
         &mut self,
         len: usize,
-        dest: Scalar<Tag>,
+        ptr: Scalar<Tag>,
     ) -> InterpResult<'tcx>  {
-        if len == 0 {
-            // Nothing to do
-            return Ok(());
-        }
         let this = self.eval_context_mut();
-        let ptr = dest.to_ptr()?;
+
+        let ptr = match this.memory().check_ptr_access(ptr, Size::from_bytes(len as u64), Align::from_bytes(1).unwrap())? {
+            Some(ptr) => ptr,
+            None => return Ok(()), // zero-sized access
+        };
 
         let data = match &mut this.memory_mut().extra.rng {
             Some(rng) => {
