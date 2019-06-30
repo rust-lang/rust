@@ -75,9 +75,24 @@ pub fn liveness_of_locals<'tcx>(
 
     let mut bits = LiveVarSet::new_empty(num_live_vars);
 
-    // queue of things that need to be re-processed, and a set containing
-    // the things currently in the queue
-    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_all(body.basic_blocks().len());
+    // The dirty queue contains the set of basic blocks whose entry sets have changed since they
+    // were last processed. At the start of the analysis, we initialize the queue in post-order to
+    // make it more likely that the entry set for a given basic block will have the effects of all
+    // its successors in the CFG applied before it is processed.
+    //
+    // FIXME(ecstaticmorse): Reverse post-order on the reverse CFG may generate a better iteration
+    // order when cycles are present, but the overhead of computing the reverse CFG may outweigh
+    // any benefits. Benchmark this and find out.
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks().len());
+    for (bb, _) in traversal::postorder(body) {
+        dirty_queue.insert(bb);
+    }
+
+    // Add blocks which are not reachable from START_BLOCK to the work queue. These blocks will
+    // be processed after the ones added above.
+    for bb in body.basic_blocks().indices() {
+        dirty_queue.insert(bb);
+    }
 
     let predecessors = body.predecessors();
 
