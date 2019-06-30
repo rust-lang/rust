@@ -90,6 +90,10 @@ impl<'mir, 'tcx> GlobalState {
                 // From next_base_addr + slack, round up to adjust for alignment.
                 let base_addr = Self::align_addr(global_state.next_base_addr + slack, align.bytes());
                 entry.insert(base_addr);
+                trace!(
+                    "Assigning base address {:#x} to allocation {:?} (slack: {}, align: {})",
+                    base_addr, ptr.alloc_id, slack, align.bytes(),
+                );
 
                 // Remember next base address.  If this allocation is zero-sized, leave a gap
                 // of at least 1 to avoid two allocations having the same base address.
