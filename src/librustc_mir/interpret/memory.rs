@@ -154,7 +154,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let id = match fn_val {
             FnVal::Instance(instance) => self.tcx.alloc_map.lock().create_fn_alloc(instance),
             FnVal::Other(extra) => {
-                // TODO: Should we have a cache here?
+                // FIXME(RalfJung): Should we have a cache here?
                 let id = self.tcx.alloc_map.lock().reserve();
                 let old = self.extra_fn_ptr_map.insert(id, extra);
                 assert!(old.is_none());
