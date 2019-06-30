@@ -237,7 +237,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
 
-        let instance = fn_val.as_instance()?;
+        let instance = match fn_val {
+            FnVal::Instance(instance) => instance,
+            FnVal::Other(extra) => {
+                return M::call_extra_fn(self, extra, args, dest, ret);
+            }
+        };
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {

@@ -124,6 +124,16 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
+    /// Execute `fn_val`.  it is the hook's responsibility to advance the instruction
+    /// pointer as appropriate.
+    fn call_extra_fn(
+        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        fn_val: Self::ExtraFnVal,
+        args: &[OpTy<'tcx, Self::PointerTag>],
+        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
+        ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx>;
+
     /// Directly process an intrinsic without pushing a stack frame.
     /// If this returns successfully, the engine will take care of jumping to the next block.
     fn call_intrinsic(
