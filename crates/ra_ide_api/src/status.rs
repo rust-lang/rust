@@ -9,6 +9,7 @@ use ra_db::{
     FileTextQuery, SourceRootId,
     salsa::{Database, debug::{DebugQueryTable, TableEntry}},
 };
+use ra_prof::{Bytes, memory_usage};
 use hir::MacroFile;
 
 use crate::{
@@ -34,7 +35,7 @@ pub(crate) fn status(db: &RootDatabase) -> String {
         symbols_stats,
         syntax_tree_stats,
         macro_syntax_tree_stats,
-        MemoryStats::current(),
+        memory_usage(),
         db.last_gc.elapsed().as_secs(),
     )
 }
@@ -136,56 +137,5 @@ impl FromIterator<TableEntry<SourceRootId, Arc<SymbolIndex>>> for LibrarySymbols
             res.size += value.memory_size();
         }
         res
-    }
-}
-
-struct MemoryStats {
-    allocated: Bytes,
-    resident: Bytes,
-}
-
-impl MemoryStats {
-    #[cfg(feature = "jemalloc")]
-    fn current() -> MemoryStats {
-        jemalloc_ctl::epoch().unwrap();
-        MemoryStats {
-            allocated: Bytes(jemalloc_ctl::stats::allocated().unwrap()),
-            resident: Bytes(jemalloc_ctl::stats::resident().unwrap()),
-        }
-    }
-
-    #[cfg(not(feature = "jemalloc"))]
-    fn current() -> MemoryStats {
-        MemoryStats { allocated: Bytes(0), resident: Bytes(0) }
-    }
-}
-
-impl fmt::Display for MemoryStats {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} allocated {} resident", self.allocated, self.resident,)
-    }
-}
-
-#[derive(Default)]
-struct Bytes(usize);
-
-impl fmt::Display for Bytes {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let bytes = self.0;
-        if bytes < 4096 {
-            return write!(f, "{} bytes", bytes);
-        }
-        let kb = bytes / 1024;
-        if kb < 4096 {
-            return write!(f, "{}kb", kb);
-        }
-        let mb = kb / 1024;
-        write!(f, "{}mb", mb)
-    }
-}
-
-impl std::ops::AddAssign<usize> for Bytes {
-    fn add_assign(&mut self, x: usize) {
-        self.0 += x;
     }
 }

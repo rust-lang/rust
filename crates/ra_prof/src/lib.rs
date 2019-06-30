@@ -1,3 +1,5 @@
+mod memory_usage;
+
 use std::{
     cell::RefCell,
     time::{Duration, Instant},
@@ -10,6 +12,14 @@ use std::{
 
 use once_cell::sync::Lazy;
 use itertools::Itertools;
+
+pub use crate::memory_usage::{MemoryUsage, Bytes};
+
+// We use jemalloc mainly to get heap usage statistics, actual performance
+// difference is not measures.
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 /// Set profiling filter. It specifies descriptions allowed to profile.
 /// This is helpful when call stack has too many nested profiling scopes.
@@ -286,6 +296,10 @@ impl Drop for CpuProfiler {
             cpuprofiler::PROFILER.lock().unwrap().stop().unwrap();
         }
     }
+}
+
+pub fn memory_usage() -> MemoryUsage {
+    MemoryUsage::current()
 }
 
 #[cfg(test)]

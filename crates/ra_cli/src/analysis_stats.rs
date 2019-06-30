@@ -112,6 +112,6 @@ pub fn run(verbose: bool, path: &Path, only: Option<&str>) -> Result<()> {
         num_exprs_partially_unknown,
         (num_exprs_partially_unknown * 100 / num_exprs)
     );
-    println!("Analysis: {:?}", analysis_time.elapsed());
+    println!("Analysis: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
     Ok(())
 }
