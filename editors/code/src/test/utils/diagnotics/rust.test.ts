@@ -108,7 +108,10 @@ describe('mapRustDiagnosticToVsCode', () => {
         );
         assert.strictEqual(
             diagnostic.message,
-            'this function takes 2 parameters but 3 parameters were supplied'
+            [
+                'this function takes 2 parameters but 3 parameters were supplied',
+                'expected 2 parameters'
+            ].join('\n')
         );
         assert.strictEqual(diagnostic.code, 'E0061');
         assert.strictEqual(diagnostic.source, 'rustc');
@@ -169,5 +172,29 @@ describe('mapRustDiagnosticToVsCode', () => {
             suggestedFix.applicability,
             SuggestionApplicability.Unspecified
         );
+    });
+
+    it('should map a mismatched type error', () => {
+        const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
+            'error/E0308'
+        );
+
+        assert.strictEqual(
+            diagnostic.severity,
+            vscode.DiagnosticSeverity.Error
+        );
+        assert.strictEqual(
+            diagnostic.message,
+            ['mismatched types', 'expected usize, found u32'].join('\n')
+        );
+        assert.strictEqual(diagnostic.code, 'E0308');
+        assert.strictEqual(diagnostic.source, 'rustc');
+        assert.strictEqual(diagnostic.tags, undefined);
+
+        // No related information
+        assert.deepStrictEqual(diagnostic.relatedInformation, []);
+
+        // There are no suggested fixes
+        assert.strictEqual(suggestedFixes.length, 0);
     });
 });
