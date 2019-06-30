@@ -63,6 +63,7 @@ impl RootDatabase {
         let lru_capacity = lru_capacity.unwrap_or(ra_db::DEFAULT_LRU_CAP);
         db.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_capacity);
         db.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(lru_capacity);
+        db.query_mut(hir::db::MacroExpandQuery).set_lru_capacity(lru_capacity);
         db
     }
 }
