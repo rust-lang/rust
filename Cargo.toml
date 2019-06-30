@@ -1,7 +1,7 @@
 [package]
 
 name = "rustfmt-nightly"
-version = "1.3.0"
+version = "1.3.1"
 authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang/rustfmt"
@@ -47,7 +47,7 @@ log = "0.4"
 env_logger = "0.6"
 getopts = "0.2"
 derive-new = "0.5"
-cargo_metadata = "0.7"
+cargo_metadata = "0.8"
 rustc-ap-rustc_target = "491.0.0"
 rustc-ap-syntax = "491.0.0"
 rustc-ap-syntax_pos = "491.0.0"
@@ -55,10 +55,10 @@ failure = "0.1.3"
 bytecount = "0.5"
 unicode-width = "0.1.5"
 unicode_categories = "0.1.1"
-dirs = "1.0.4"
+dirs = "2.0.1"
 ignore = "0.4.6"
 annotate-snippets = { version = "0.5.0", features = ["ansi_term"] }
-structopt = "0.2.15"
+structopt = "0.2.18"
 
 rustfmt-config_proc_macro = { version = "0.1", path = "config_proc_macro" }
 

@@ -2,12 +2,27 @@
 
 ## [Unreleased]
 
+## [1.3.1] 2019-06-30
+
+### Added
+
+- Implement the `Display` trait on the types of `Config`.
+
+### Changed
+
+- `ignore` configuration option now only supports paths separated by `/`. Windows-style paths are not supported.
+- Running `cargo fmt` in a sub-directory of a project is now supported.
+
+### Fixed
+
+- Fix bugs that may cause rustfmt to crash.
+
 ## [1.3.0] 2019-06-09
 
 ### Added
 
 - Format modules defined inside `cfg_if` macro calls #3600
--
+
 ### Changed
 
 - Change option `format_doc_comment` to `format_code_in_doc_comment`.
