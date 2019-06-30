@@ -8,8 +8,7 @@ fn main() {
     drop(m.lock());
     drop(m);
 
-    // We don't provide RwLock on Windows
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(target_os = "windows"))] // TODO: implement RwLock on Windows
     {
         let rw = sync::RwLock::new(0);
         drop(rw.read());
