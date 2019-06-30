@@ -6,7 +6,7 @@ use rustc::util::nodemap::FxHashMap;
 
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind, NamedSyntaxExtension};
 use syntax::ext::base::MacroExpanderFn;
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::Symbol;
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
 use syntax_pos::Span;
@@ -85,9 +85,6 @@ impl<'a> Registry<'a> {
     ///
     /// This is the most general hook into `libsyntax`'s expansion behavior.
     pub fn register_syntax_extension(&mut self, name: ast::Name, mut extension: SyntaxExtension) {
-        if name == sym::macro_rules {
-            panic!("user-defined macros may not be named `macro_rules`");
-        }
         if extension.def_info.is_none() {
             extension.def_info = Some((ast::CRATE_NODE_ID, self.krate_span));
         }

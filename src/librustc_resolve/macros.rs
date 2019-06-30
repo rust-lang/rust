@@ -1109,9 +1109,6 @@ impl<'a> Resolver<'a> {
                         current_legacy_scope: &mut LegacyScope<'a>) {
         self.local_macro_def_scopes.insert(item.id, self.current_module);
         let ident = item.ident;
-        if ident.name == sym::macro_rules {
-            self.session.span_err(item.span, "user-defined macros may not be named `macro_rules`");
-        }
 
         let def_id = self.definitions.local_def_id(item.id);
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
