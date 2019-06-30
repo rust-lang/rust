@@ -1,3 +1,4 @@
+// compile-flag: -Zmiri-seed=
 #![feature(allocator_api)]
 
 use std::ptr::NonNull;
@@ -75,7 +76,6 @@ fn box_to_global() {
 fn main() {
     check_alloc(System);
     check_alloc(Global);
-    #[cfg(not(target_os = "windows"))] // TODO: Inspects allocation base address on Windows; needs intptrcast model
     check_overalign_requests(System);
     check_overalign_requests(Global);
     global_to_box();
