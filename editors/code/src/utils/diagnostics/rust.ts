@@ -103,6 +103,7 @@ function isUnusedOrUnnecessary(rd: RustDiagnostic): boolean {
     return [
         'dead_code',
         'unknown_lints',
+        'unreachable_code',
         'unused_attributes',
         'unused_imports',
         'unused_macros',
