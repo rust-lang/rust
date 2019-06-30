@@ -42,7 +42,6 @@ impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
 #[derive(Debug, Clone)]
 pub struct AllocExtra {
     pub stacked_borrows: stacked_borrows::AllocExtra,
-    pub intptrcast: intptrcast::AllocExtra,
 }
 
 /// Extra global memory data
@@ -277,7 +276,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             mutability: alloc.mutability,
             extra: AllocExtra {
                 stacked_borrows: stacks,
-                intptrcast: Default::default(),
             },
         };
         (Cow::Owned(alloc), base_tag)
