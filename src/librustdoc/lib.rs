@@ -256,8 +256,8 @@ fn opts() -> Vec<RustcOptGroup> {
                        "additional themes which will be added to the generated docs",
                        "FILES")
         }),
-        stable("theme-checker", |o| {
-            o.optmulti("", "theme-checker",
+        stable("check-theme", |o| {
+            o.optmulti("", "check-theme",
                        "check if given theme is valid",
                        "FILES")
         }),

@@ -304,14 +304,14 @@ $ rustdoc src/lib.rs -Z unstable-options --themes theme.css
 
 Giving this flag to `rustdoc` will make it copy your theme into the generated crate docs and enable
 it in the theme selector. Note that `rustdoc` will reject your theme file if it doesn't style
-everything the "light" theme does. See `--theme-checker` below for details.
+everything the "light" theme does. See `--check-theme` below for details.
 
-### `--theme-checker`: verify theme CSS for validity
+### `--check-theme`: verify theme CSS for validity
 
 Using this flag looks like this:
 
 ```bash
-$ rustdoc -Z unstable-options --theme-checker theme.css
+$ rustdoc -Z unstable-options --check-theme theme.css
 ```
 
 Before including your theme in crate docs, `rustdoc` will compare all the CSS rules it contains
