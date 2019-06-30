@@ -112,6 +112,7 @@
 #![feature(maybe_uninit_extra, maybe_uninit_slice, maybe_uninit_array)]
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
+#![feature(mem_take)]
 
 // Allow testing this library
 

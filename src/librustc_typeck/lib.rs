@@ -69,6 +69,7 @@ This API is completely unstable and subject to change.
 #![feature(slice_patterns)]
 #![feature(never_type)]
 #![feature(inner_deref)]
+#![feature(mem_take)]
 
 #![recursion_limit="256"]
 

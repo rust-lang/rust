@@ -21,6 +21,7 @@
 #![feature(link_args)]
 #![feature(static_nobundle)]
 #![feature(trusted_len)]
+#![feature(mem_take)]
 #![deny(rust_2018_idioms)]
 #![deny(internal)]
 #![deny(unused_lifetimes)]

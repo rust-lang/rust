@@ -21,6 +21,7 @@
 #![feature(drain_filter)]
 #![feature(inner_deref)]
 #![feature(never_type)]
+#![feature(mem_take)]
 
 #![recursion_limit="256"]
 
