@@ -28,6 +28,7 @@ pub use rustc_mir::interpret::*;
 // Resolve ambiguity.
 pub use rustc_mir::interpret::{self, AllocMap, PlaceTy};
 
+pub use crate::shims::{EvalContextExt as ShimsEvalContextExt};
 pub use crate::shims::foreign_items::EvalContextExt as ForeignItemsEvalContextExt;
 pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
