@@ -5734,9 +5734,12 @@ impl<'a> Parser<'a> {
     {
         let is_const_fn = self.eat_keyword(kw::Const);
         let const_span = self.prev_span;
-        let unsafety = self.parse_unsafety();
         let asyncness = self.parse_asyncness();
+        if let IsAsync::Async { .. } = asyncness {
+            self.ban_async_in_2015(self.prev_span);
+        }
         let asyncness = respan(self.prev_span, asyncness);
+        let unsafety = self.parse_unsafety();
         let (constness, unsafety, abi) = if is_const_fn {
             (respan(const_span, Constness::Const), unsafety, Abi::Rust)
         } else {
@@ -7254,13 +7257,7 @@ impl<'a> Parser<'a> {
                                         item_,
                                         visibility,
                                         maybe_append(attrs, extra_attrs));
-                if self.token.span.rust_2015() {
-                    self.diagnostic().struct_span_err_with_code(
-                        async_span,
-                        "`async fn` is not permitted in the 2015 edition",
-                        DiagnosticId::Error("E0670".into())
-                    ).emit();
-                }
+                self.ban_async_in_2015(async_span);
                 return Ok(Some(item));
             }
         }
@@ -7532,6 +7529,19 @@ impl<'a> Parser<'a> {
             }
         }
         self.parse_macro_use_or_failure(attrs, macros_allowed, attributes_allowed, lo, visibility)
+    }
+
+    /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
+    fn ban_async_in_2015(&self, async_span: Span) {
+        if async_span.rust_2015() {
+            self.diagnostic()
+                .struct_span_err_with_code(
+                    async_span,
+                    "`async fn` is not permitted in the 2015 edition",
+                    DiagnosticId::Error("E0670".into())
+                )
+                .emit();
+        }
     }
 
     /// Parses a foreign item.
