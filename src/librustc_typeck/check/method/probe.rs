@@ -1432,7 +1432,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// candidate method where the method name may have been misspelt. Similarly to other
     /// Levenshtein based suggestions, we provide at most one such suggestion.
     fn probe_for_lev_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
-        debug!("Probing for method names similar to {:?}",
+        debug!("probing for method names similar to {:?}",
                self.method_name);
 
         let steps = self.steps.clone();

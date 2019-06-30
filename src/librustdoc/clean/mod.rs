@@ -1319,7 +1319,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
             ty::ReEmpty |
             ty::ReClosureBound(_) |
             ty::ReErased => {
-                debug!("Cannot clean region {:?}", self);
+                debug!("cannot clean region {:?}", self);
                 None
             }
         }
@@ -4082,7 +4082,7 @@ impl ToSource for syntax_pos::Span {
 
 fn name_from_pat(p: &hir::Pat) -> String {
     use rustc::hir::*;
-    debug!("Trying to get a name from pattern: {:?}", p);
+    debug!("trying to get a name from pattern: {:?}", p);
 
     match p.node {
         PatKind::Wild => "_".to_string(),

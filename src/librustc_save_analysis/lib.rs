@@ -112,7 +112,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             let span = match self.tcx.extern_crate(n.as_def_id()) {
                 Some(&ExternCrate { span, .. }) => span,
                 None => {
-                    debug!("Skipping crate {}, no data", n);
+                    debug!("skipping crate {}, no data", n);
                     continue;
                 }
             };
@@ -470,7 +470,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                         )
                     }
                     None => {
-                        debug!("Could not find container for method {} at {:?}", id, span);
+                        debug!("could not find container for method {} at {:?}", id, span);
                         // This is not necessarily a bug, if there was a compilation error,
                         // the tables we need might not exist.
                         return None;
@@ -551,7 +551,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     }
                     ty::Tuple(..) => None,
                     _ => {
-                        debug!("Expected struct or union type, found {:?}", ty);
+                        debug!("expected struct or union type, found {:?}", ty);
                         None
                     }
                 }
@@ -581,7 +581,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 let method_id = match self.tables.type_dependent_def_id(expr_hir_id) {
                     Some(id) => id,
                     None => {
-                        debug!("Could not resolve method id for {:?}", expr);
+                        debug!("could not resolve method id for {:?}", expr);
                         return None;
                     }
                 };

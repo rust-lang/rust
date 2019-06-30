@@ -316,7 +316,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
 
         let name = attr.name_or_empty();
         if !attr::is_used(attr) {
-            debug!("Emitting warning for: {:?}", attr);
+            debug!("emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
             let known_crate = attr_info.map(|&&(_, ty, ..)| {

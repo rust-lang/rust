@@ -215,7 +215,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         funclet: Option<&Funclet<'ll>>,
     ) -> &'ll Value {
 
-        debug!("Invoke {:?} with args ({:?})",
+        debug!("invoke {:?} with args ({:?})",
                llfn,
                args);
 
@@ -1035,7 +1035,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         funclet: Option<&Funclet<'ll>>,
     ) -> &'ll Value {
 
-        debug!("Call {:?} with args ({:?})",
+        debug!("call {:?} with args ({:?})",
                llfn,
                args);
 
@@ -1238,7 +1238,7 @@ impl Builder<'a, 'll, 'tcx> {
         if dest_ptr_ty == stored_ptr_ty {
             ptr
         } else {
-            debug!("Type mismatch in store. \
+            debug!("type mismatch in store. \
                     Expected {:?}, got {:?}; inserting bitcast",
                    dest_ptr_ty, stored_ptr_ty);
             self.bitcast(ptr, stored_ptr_ty)
@@ -1274,7 +1274,7 @@ impl Builder<'a, 'll, 'tcx> {
             .map(|(i, (expected_ty, &actual_val))| {
                 let actual_ty = self.val_ty(actual_val);
                 if expected_ty != actual_ty {
-                    debug!("Type mismatch in function call of {:?}. \
+                    debug!("type mismatch in function call of {:?}. \
                             Expected {:?} for param {}, got {:?}; injecting bitcast",
                            llfn, expected_ty, i, actual_ty);
                     self.bitcast(actual_val, expected_ty)

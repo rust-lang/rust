@@ -175,7 +175,7 @@ pub fn expand_test_or_bench(
         ast::ItemKind::ExternCrate(Some(sym::test))
     );
 
-    log::debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+    log::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
         // Access to libtest under a gensymed name
