@@ -11,7 +11,7 @@ use std::hash::Hash;
 
 use super::{
     GlobalAlloc, InterpResult, InterpError,
-    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy, AllocCheck,
+    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
 };
 
 macro_rules! validation_failure {
@@ -502,17 +502,14 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 if lo == 1 && hi == max_hi {
                     // Only NULL is the niche.  So make sure the ptr is NOT NULL.
                     if self.ecx.memory.ptr_may_be_null(ptr) {
-                        // These conditions are just here to improve the diagnostics so we can
-                        // differentiate between null pointers and dangling pointers.
-                        if self.ref_tracking_for_consts.is_some() &&
-                            self.ecx.memory.get_size_and_align(ptr.alloc_id, AllocCheck::Live)
-                                .is_err()
-                        {
-                            return validation_failure!(
-                                "a dangling pointer", self.path
-                            );
-                        }
-                        return validation_failure!("a potentially NULL pointer", self.path);
+                        return validation_failure!(
+                            "a potentially NULL pointer",
+                            self.path,
+                            format!(
+                                "something that cannot possibly fail to be {}",
+                                wrapping_range_format(&layout.valid_range, max_hi)
+                            )
+                        );
                     }
                     return Ok(());
                 } else {
