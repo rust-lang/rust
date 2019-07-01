@@ -1472,10 +1472,10 @@ pub trait Iterator {
     /// `partition()` returns a pair, all of the elements for which it returned
     /// `true`, and all of the elements for which it returned `false`.
     ///
-    /// See also [`is_partitioned()`] and [`partition_mut()`].
+    /// See also [`is_partitioned()`] and [`partition_in_place()`].
     ///
     /// [`is_partitioned()`]: #method.is_partitioned
-    /// [`partition_mut()`]: #method.partition_mut
+    /// [`partition_in_place()`]: #method.partition_in_place
     ///
     /// # Examples
     ///
@@ -1524,18 +1524,18 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(iter_partition_mut)]
+    /// #![feature(iter_partition_in_place)]
     ///
     /// let mut a = [1, 2, 3, 4, 5, 6, 7];
     ///
     /// // Partition in-place between evens and odds
-    /// a.iter_mut().partition_mut(|&n| n % 2 == 0);
+    /// a.iter_mut().partition_in_place(|&n| n % 2 == 0);
     ///
     /// assert!(a[..3].iter().all(|&n| n % 2 == 0)); // evens
     /// assert!(a[3..].iter().all(|&n| n % 2 == 1)); // odds
     /// ```
-    #[unstable(feature = "iter_partition_mut", reason = "new API", issue = "0")]
-    fn partition_mut<'a, T: 'a, P>(mut self, mut predicate: P)
+    #[unstable(feature = "iter_partition_in_place", reason = "new API", issue = "0")]
+    fn partition_in_place<'a, T: 'a, P>(mut self, mut predicate: P)
     where
         Self: Sized + DoubleEndedIterator<Item = &'a mut T>,
         P: FnMut(&T) -> bool,
@@ -1553,10 +1553,10 @@ pub trait Iterator {
     /// Checks if the elements of this iterator are partitioned according to the given predicate,
     /// such that all those that return `true` precede all those that return `false`.
     ///
-    /// See also [`partition()`] and [`partition_mut()`].
+    /// See also [`partition()`] and [`partition_in_place()`].
     ///
     /// [`partition()`]: #method.partition
-    /// [`partition_mut()`]: #method.partition_mut
+    /// [`partition_in_place()`]: #method.partition_in_place
     ///
     /// # Examples
     ///
