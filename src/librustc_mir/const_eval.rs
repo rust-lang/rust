@@ -372,7 +372,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn call_extra_fn(
-        _ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: !,
         _args: &[OpTy<'tcx>],
         _dest: Option<PlaceTy<'tcx>>,

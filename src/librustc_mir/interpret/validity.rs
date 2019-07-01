@@ -6,14 +6,12 @@ use rustc::hir;
 use rustc::ty::layout::{self, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
-use rustc::mir::interpret::{
-    GlobalAlloc, InterpResult, InterpError,
-};
 
 use std::hash::Hash;
 
 use super::{
-    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
+    GlobalAlloc, InterpResult, InterpError,
+    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy, AllocCheck,
 };
 
 macro_rules! validation_failure {
@@ -505,19 +503,20 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // Only NULL is the niche.  So make sure the ptr is NOT NULL.
                     if self.ecx.memory.ptr_may_be_null(ptr) {
                         // These conditions are just here to improve the diagnostics so we can
-                        // differentiate between null pointers and dangling pointers
+                        // differentiate between null pointers and dangling pointers.
                         if self.ref_tracking_for_consts.is_some() &&
-                            self.ecx.memory.get(ptr.alloc_id).is_err() &&
-                            self.ecx.memory.get_fn(ptr.into()).is_err() {
+                            self.ecx.memory.get_size_and_align(ptr.alloc_id, AllocCheck::Live)
+                                .is_err()
+                        {
                             return validation_failure!(
-                                "encountered dangling pointer", self.path
+                                "a dangling pointer", self.path
                             );
                         }
                         return validation_failure!("a potentially NULL pointer", self.path);
                     }
                     return Ok(());
                 } else {
-                    // Conservatively, we reject, because the pointer *could* have this
+                    // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
                     return validation_failure!(
                         "a pointer",
