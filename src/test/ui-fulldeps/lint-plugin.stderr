@@ -4,5 +4,5 @@ warning: item is named 'lintme'
 LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^
    |
-   = note: #[warn(test_lint)] on by default
+   = note: `#[warn(test_lint)]` on by default
 

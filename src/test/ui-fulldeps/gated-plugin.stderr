@@ -5,7 +5,7 @@ LL | #![plugin(attr_plugin_test)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29597
-   = help: add #![feature(plugin)] to the crate attributes to enable
+   = help: add `#![feature(plugin)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
