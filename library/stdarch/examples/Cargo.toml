@@ -12,7 +12,7 @@ description = "Examples of the stdsimd crate."
 core_arch = { path = "../crates/core_arch" }
 std_detect = { path = "../crates/std_detect" }
 quickcheck = "0.8"
-rand = "0.6"
+rand = "0.7"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 rand = { version = "0.6", features = ["wasm-bindgen"] }
