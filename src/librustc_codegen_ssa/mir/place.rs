@@ -228,8 +228,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             }
         };
 
-        let discr = self.project_field(bx, discr_index);
-        let lldiscr = bx.load_operand(discr).immediate();
+        // Read the tag/niche-encoded discriminant from memory.
+        let encoded_discr = self.project_field(bx, discr_index);
+        let encoded_discr = bx.load_operand(encoded_discr);
+
+        // Decode the discriminant (specifically if it's niche-encoded).
         match *discr_kind {
             layout::DiscriminantKind::Tag => {
                 let signed = match discr_scalar.value {
@@ -240,38 +243,49 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     layout::Int(_, signed) => !discr_scalar.is_bool() && signed,
                     _ => false
                 };
-                bx.intcast(lldiscr, cast_to, signed)
+                bx.intcast(encoded_discr.immediate(), cast_to, signed)
             }
             layout::DiscriminantKind::Niche {
                 dataful_variant,
                 ref niche_variants,
                 niche_start,
             } => {
-                let niche_llty = bx.cx().immediate_backend_type(discr.layout);
-                if niche_variants.start() == niche_variants.end() {
+                let niche_llty = bx.cx().immediate_backend_type(encoded_discr.layout);
+                let encoded_discr = encoded_discr.immediate();
+                let (is_niche, niche_discr) = if niche_variants.start() == niche_variants.end() {
+                    // Special case for when we can use a simple equality check,
+                    // which covers null pointers, and needs simpler codegen.
                     // FIXME(eddyb): check the actual primitive type here.
-                    let niche_llval = if niche_start == 0 {
+                    let encoded_niche = if niche_start == 0 {
                         // HACK(eddyb): using `c_null` as it works on all types.
                         bx.cx().const_null(niche_llty)
                     } else {
                         bx.cx().const_uint_big(niche_llty, niche_start)
                     };
-                    let select_arg = bx.icmp(IntPredicate::IntEQ, lldiscr, niche_llval);
-                    bx.select(select_arg,
+                    (
+                        bx.icmp(IntPredicate::IntEQ, encoded_discr, encoded_niche),
                         bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64),
-                        bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64))
+                    )
                 } else {
-                    // Rebase from niche values to discriminant values.
+                    // Rebase from niche values to discriminants, and check
+                    // whether the result is in range for the niche variants.
+                    // FIXME(#61696) the range check is sometimes incorrect.
                     let delta = niche_start.wrapping_sub(niche_variants.start().as_u32() as u128);
-                    let lldiscr = bx.sub(lldiscr, bx.cx().const_uint_big(niche_llty, delta));
-                    let lldiscr_max =
+                    let niche_discr =
+                        bx.sub(encoded_discr, bx.cx().const_uint_big(niche_llty, delta));
+                    let niche_discr_max =
                         bx.cx().const_uint(niche_llty, niche_variants.end().as_u32() as u64);
-                    let select_arg = bx.icmp(IntPredicate::IntULE, lldiscr, lldiscr_max);
-                    let cast = bx.intcast(lldiscr, cast_to, false);
-                    bx.select(select_arg,
-                        cast,
-                        bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64))
-                }
+                    (
+                        bx.icmp(IntPredicate::IntULE, niche_discr, niche_discr_max),
+                        niche_discr,
+                    )
+                };
+                let niche_discr = bx.intcast(niche_discr, cast_to, false);
+                bx.select(
+                    is_niche,
+                    niche_discr,
+                    bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64),
+                )
             }
         }
     }
