@@ -1528,7 +1528,7 @@ pub trait Iterator {
     ///
     /// let mut a = [1, 2, 3, 4, 5, 6, 7];
     ///
-    /// // partition in-place between evens and odds
+    /// // Partition in-place between evens and odds
     /// a.iter_mut().partition_mut(|&n| n % 2 == 0);
     ///
     /// assert!(a[..3].iter().all(|&n| n % 2 == 0)); // evens
