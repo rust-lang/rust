@@ -25,7 +25,7 @@ fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
     // ```
     // 'a: '0
     // 'b: '1
-    // '0 in ['d, 'e]
+    // '0 in ['a, 'b]
     // ```
     //
     // but we don't have it.
