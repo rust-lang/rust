@@ -497,8 +497,8 @@ pub struct Target {
     pub target_env: String,
     /// Vendor name to use for conditional compilation.
     pub target_vendor: String,
-    /// Architecture to use for ABI considerations. Valid options: "x86",
-    /// "x86_64", "arm", "aarch64", "mips", "powerpc", and "powerpc64".
+    /// Architecture to use for ABI considerations. Valid options include: "x86",
+    /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
     pub arch: String,
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,
