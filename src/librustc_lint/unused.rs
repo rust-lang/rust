@@ -1,7 +1,9 @@
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
+use rustc::hir::HirVec;
 use rustc::lint;
 use rustc::ty::{self, Ty};
+use rustc::ty::subst::Subst;
 use rustc::ty::adjustment;
 use rustc_data_structures::fx::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
@@ -151,8 +153,40 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     let descr_pre = &format!("{}boxed ", descr_pre);
                     check_must_use_ty(cx, boxed_ty, expr, span, descr_pre, descr_post, plural_len)
                 }
-                ty::Adt(def, _) => {
-                    check_must_use_def(cx, def.did, span, descr_pre, descr_post)
+                ty::Adt(def, subst) => {
+                    // Check the type itself for `#[must_use]` annotations.
+                    let mut has_emitted = check_must_use_def(
+                        cx, def.did, span, descr_pre, descr_post);
+                    // Check any fields of the type for `#[must_use]` annotations.
+                    // We ignore ADTs with more than one variant for simplicity and to avoid
+                    // false positives.
+                    // Unions are also ignored (though in theory, we could lint if every field of
+                    // a union was `#[must_use]`).
+                    if def.variants.len() == 1 && !def.is_union() {
+                        let fields = match &expr.node {
+                            hir::ExprKind::Struct(_, fields, _) => {
+                                fields.iter().map(|f| &*f.expr).collect()
+                            }
+                            hir::ExprKind::Call(_, args) => args.iter().collect(),
+                            _ => HirVec::new(),
+                        };
+
+                        for variant in &def.variants {
+                            for (i, field) in variant.fields.iter().enumerate() {
+                                let descr_post
+                                    = &format!(" in field `{}`", field.ident.as_str());
+                                let ty = cx.tcx.type_of(field.did).subst(cx.tcx, subst);
+                                let (expr, span) = if let Some(&field) = fields.get(i) {
+                                    (field, field.span)
+                                } else {
+                                    (expr, span)
+                                };
+                                has_emitted |= check_must_use_ty(
+                                    cx, ty, expr, span, descr_pre, descr_post, plural);
+                            }
+                        }
+                    }
+                    has_emitted
                 }
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
@@ -202,17 +236,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
                         let descr_post = &format!(" in tuple element {}", i);
                         let span = *spans.get(i).unwrap_or(&span);
-                        if check_must_use_ty(
-                            cx,
-                            ty,
-                            expr,
-                            span,
-                            descr_pre,
-                            descr_post,
-                            plural_len
-                        ) {
-                            has_emitted = true;
-                        }
+                        has_emitted |= check_must_use_ty(
+                            cx, ty, expr, span, descr_pre, descr_post, plural_len);
                     }
                     has_emitted
                 }

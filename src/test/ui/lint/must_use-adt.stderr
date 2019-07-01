@@ -1,0 +1,92 @@
+error: unused `S` that must be used
+  --> $DIR/must_use-adt.rs:54:5
+   |
+LL |     S;
+   |     ^^
+   |
+note: lint level defined here
+  --> $DIR/must_use-adt.rs:1:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+error: unused `S` in field `0` that must be used
+  --> $DIR/must_use-adt.rs:55:7
+   |
+LL |     T(S);
+   |       ^
+
+error: unused `S` in field `0` that must be used
+  --> $DIR/must_use-adt.rs:56:21
+   |
+LL |     U { x: (), y: T(S) };
+   |                     ^
+
+error: unused `S` in field `a` that must be used
+  --> $DIR/must_use-adt.rs:57:5
+   |
+LL |     get_v();
+   |     ^^^^^^^^
+
+error: unused `S` in field `a` that must be used
+  --> $DIR/must_use-adt.rs:58:12
+   |
+LL |     V { a: S };
+   |            ^
+
+error: unused array of boxed `A` trait objects in tuple element 1 that must be used
+  --> $DIR/must_use-adt.rs:60:12
+   |
+LL |         w: [(0, Box::new(B)), (0, Box::new(B))],
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused `S` in tuple element 0 that must be used
+  --> $DIR/must_use-adt.rs:64:13
+   |
+LL |         z: (S, S),
+   |             ^
+
+error: unused `S` in tuple element 1 that must be used
+  --> $DIR/must_use-adt.rs:64:16
+   |
+LL |         z: (S, S),
+   |                ^
+
+error: unused array of boxed `A` trait objects in tuple element 1 that must be used
+  --> $DIR/must_use-adt.rs:67:12
+   |
+LL |         e: [(0, Box::new(B)), (0, Box::new(B))],
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused `S` in field `f` that must be used
+  --> $DIR/must_use-adt.rs:69:12
+   |
+LL |         f: S,
+   |            ^
+
+error: unused array of boxed `A` trait objects in tuple element 1 that must be used
+  --> $DIR/must_use-adt.rs:71:5
+   |
+LL |     get_wrapped_arr();
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: unused array of boxed `A` trait objects in tuple element 1 that must be used
+  --> $DIR/must_use-adt.rs:73:5
+   |
+LL |     get_tuple_arr();
+   |     ^^^^^^^^^^^^^^^^
+
+error: unused `S` in field `r` that must be used
+  --> $DIR/must_use-adt.rs:75:12
+   |
+LL |     R { r: S };
+   |            ^
+
+error: unused `S` in field `0` that must be used
+  --> $DIR/must_use-adt.rs:76:10
+   |
+LL |     List(S, Some(Box::new(List(S, None))));
+   |          ^
+
+error: aborting due to 14 previous errors
+
