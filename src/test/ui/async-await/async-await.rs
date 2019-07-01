@@ -134,10 +134,14 @@ trait Bar {
 }
 
 impl Foo {
-    async fn async_method(x: u8) -> u8 {
+    async fn async_assoc_item(x: u8) -> u8 {
         unsafe {
             unsafe_async_fn(x).await
         }
+    }
+
+    async unsafe fn async_unsafe_assoc_item(x: u8) -> u8 {
+        unsafe_async_fn(x).await
     }
 }
 
@@ -180,10 +184,15 @@ fn main() {
         async_fn,
         generic_async_fn,
         async_fn_with_internal_borrow,
-        Foo::async_method,
+        Foo::async_assoc_item,
         |x| {
             async move {
                 unsafe { unsafe_async_fn(x).await }
+            }
+        },
+        |x| {
+            async move {
+                unsafe { Foo::async_unsafe_assoc_item(x).await }
             }
         },
     }
