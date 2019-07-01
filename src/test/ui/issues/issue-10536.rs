@@ -11,13 +11,9 @@ macro_rules! foo{
 pub fn main() {
     foo!();
 
-    assert!({one! two()});
-    //~^ ERROR macros that expand to items
-    //~| ERROR cannot find macro `one!` in this scope
-    //~| ERROR mismatched types
+    assert!({one! two()}); //~ ERROR expected open delimiter
 
     // regardless of whether nested macro_rules works, the following should at
     // least throw a conventional error.
-    assert!({one! two});
-    //~^ ERROR expected `(` or `{`, found `}`
+    assert!({one! two}); //~ ERROR expected open delimiter
 }
