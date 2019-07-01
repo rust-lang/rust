@@ -1,0 +1,32 @@
+error: returning an `Err(_)` with the `?` operator
+  --> $DIR/try_err.rs:11:9
+   |
+LL |         Err(err)?;
+   |         ^^^^^^^^^ help: try this: `return Err(err)`
+   |
+note: lint level defined here
+  --> $DIR/try_err.rs:3:9
+   |
+LL | #![deny(clippy::try_err)]
+   |         ^^^^^^^^^^^^^^^
+
+error: returning an `Err(_)` with the `?` operator
+  --> $DIR/try_err.rs:21:9
+   |
+LL |         Err(err)?;
+   |         ^^^^^^^^^ help: try this: `return Err(err.into())`
+
+error: returning an `Err(_)` with the `?` operator
+  --> $DIR/try_err.rs:41:17
+   |
+LL |                 Err(err)?;
+   |                 ^^^^^^^^^ help: try this: `return Err(err)`
+
+error: returning an `Err(_)` with the `?` operator
+  --> $DIR/try_err.rs:60:17
+   |
+LL |                 Err(err)?;
+   |                 ^^^^^^^^^ help: try this: `return Err(err.into())`
+
+error: aborting due to 4 previous errors
+

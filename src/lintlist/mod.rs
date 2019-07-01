@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 305] = [
+pub const ALL_LINTS: [Lint; 306] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1819,6 +1819,13 @@ pub const ALL_LINTS: [Lint; 305] = [
         desc: "functions taking small copyable arguments by reference",
         deprecation: None,
         module: "trivially_copy_pass_by_ref",
+    },
+    Lint {
+        name: "try_err",
+        group: "style",
+        desc: "return errors explicitly rather than hiding them behind a `?`",
+        deprecation: None,
+        module: "try_err",
     },
     Lint {
         name: "type_complexity",
