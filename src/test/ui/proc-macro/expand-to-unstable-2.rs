@@ -1,12 +1,12 @@
 // aux-build:derive-unstable-2.rs
 
-#![allow(warnings)]
-
 #[macro_use]
 extern crate derive_unstable_2;
 
 #[derive(Unstable)]
-//~^ ERROR: reserved for internal compiler
+//~^ ERROR attributes starting with `rustc` are reserved for use by the `rustc` compiler
+//~| ERROR attribute `rustc_foo` is currently unknown to the compiler
+
 struct A;
 
 fn main() {

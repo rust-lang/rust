@@ -1525,9 +1525,7 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 
     fn enable_custom_inner_attributes(&self) -> bool {
-        self.features.map_or(false, |features| {
-            features.custom_inner_attributes || features.custom_attribute || features.rustc_attrs
-        })
+        self.features.map_or(false, |features| features.custom_inner_attributes)
     }
 }
 
