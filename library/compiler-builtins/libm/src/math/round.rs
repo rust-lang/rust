@@ -36,7 +36,12 @@ pub fn round(mut x: f64) -> f64 {
     }
 }
 
-#[test]
-fn negative_zero() {
-    assert_eq!(round(-0.0_f64).to_bits(), (-0.0_f64).to_bits());
+#[cfg(test)]
+mod tests {
+    use super::round;
+
+    #[test]
+    fn negative_zero() {
+        assert_eq!(round(-0.0_f64).to_bits(), (-0.0_f64).to_bits());
+    }
 }
