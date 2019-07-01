@@ -175,6 +175,17 @@ pub fn test15() {
     }
 }
 
+// Issue #4058: `continue` in `break` expression
+pub fn test16() {
+    let mut n = 1;
+    loop {
+        break if n != 5 {
+            n += 1;
+            continue;
+        };
+    }
+}
+
 fn main() {
     test1();
     test2();
