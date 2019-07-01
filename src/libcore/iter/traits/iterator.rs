@@ -1472,6 +1472,11 @@ pub trait Iterator {
     /// `partition()` returns a pair, all of the elements for which it returned
     /// `true`, and all of the elements for which it returned `false`.
     ///
+    /// See also [`is_partitioned()`] and [`partition_mut()`].
+    ///
+    /// [`is_partitioned()`]: #method.is_partitioned
+    /// [`partition_mut()`]: #method.partition_mut
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1504,6 +1509,72 @@ pub trait Iterator {
         });
 
         (left, right)
+    }
+
+    /// Reorder the elements of this iterator *in-place* according to the given predicate,
+    /// such that all those that return `true` precede all those that return `false`.
+    ///
+    /// The relative order of partitioned items is not maintained.
+    ///
+    /// See also [`is_partitioned()`] and [`partition()`].
+    ///
+    /// [`is_partitioned()`]: #method.is_partitioned
+    /// [`partition()`]: #method.partition
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iter_partition_mut)]
+    ///
+    /// let mut a = [1, 2, 3, 4, 5, 6, 7];
+    ///
+    /// // partition in-place between evens and odds
+    /// a.iter_mut().partition_mut(|&n| n % 2 == 0);
+    ///
+    /// assert!(a[..3].iter().all(|&n| n % 2 == 0)); // evens
+    /// assert!(a[3..].iter().all(|&n| n % 2 == 1)); // odds
+    /// ```
+    #[unstable(feature = "iter_partition_mut", reason = "new API", issue = "0")]
+    fn partition_mut<'a, T: 'a, P>(mut self, mut predicate: P)
+    where
+        Self: Sized + DoubleEndedIterator<Item = &'a mut T>,
+        P: FnMut(&T) -> bool,
+    {
+        // Repeatedly find the first `false` and swap it with the last `true`.
+        while let Some(head) = self.find(|x| !predicate(x)) {
+            if let Some(tail) = self.rfind(|x| predicate(x)) {
+                crate::mem::swap(head, tail);
+            } else {
+                break;
+            }
+        }
+    }
+
+    /// Checks if the elements of this iterator are partitioned according to the given predicate,
+    /// such that all those that return `true` precede all those that return `false`.
+    ///
+    /// See also [`partition()`] and [`partition_mut()`].
+    ///
+    /// [`partition()`]: #method.partition
+    /// [`partition_mut()`]: #method.partition_mut
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iter_is_partitioned)]
+    ///
+    /// assert!("Iterator".chars().is_partitioned(char::is_uppercase));
+    /// assert!(!"IntoIterator".chars().is_partitioned(char::is_uppercase));
+    /// ```
+    #[unstable(feature = "iter_is_partitioned", reason = "new API", issue = "0")]
+    fn is_partitioned<P>(mut self, mut predicate: P) -> bool
+    where
+        Self: Sized,
+        P: FnMut(Self::Item) -> bool,
+    {
+        // Either all items test `true`, or the first clause stops at `false`
+        // and we check that there are no more `true` items after that.
+        self.all(&mut predicate) || !self.any(predicate)
     }
 
     /// An iterator method that applies a function as long as it returns
