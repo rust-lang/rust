@@ -92,6 +92,86 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             self.first_assignment[local] = location;
         }
     }
+
+    fn process_place(&mut self,
+                     place_ref: &mir::PlaceRef<'_, 'tcx>,
+                     context: PlaceContext,
+                     location: Location) {
+        let cx = self.fx.cx;
+
+        if let Some(proj) = place_ref.projection {
+            // Allow uses of projections that are ZSTs or from scalar fields.
+            let is_consume = match context {
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => true,
+                _ => false
+            };
+            if is_consume {
+                let base_ty =
+                    mir::Place::ty_from(place_ref.base, &proj.base, self.fx.mir, cx.tcx());
+                let base_ty = self.fx.monomorphize(&base_ty);
+
+                // ZSTs don't require any actual memory access.
+                let elem_ty = base_ty
+                    .projection_ty(cx.tcx(), &proj.elem)
+                    .ty;
+                let elem_ty = self.fx.monomorphize(&elem_ty);
+                if cx.layout_of(elem_ty).is_zst() {
+                    return;
+                }
+
+                if let mir::ProjectionElem::Field(..) = proj.elem {
+                    let layout = cx.layout_of(base_ty.ty);
+                    if cx.is_backend_immediate(layout) || cx.is_backend_scalar_pair(layout) {
+                        // Recurse with the same context, instead of `Projection`,
+                        // potentially stopping at non-operand projections,
+                        // which would trigger `not_ssa` on locals.
+                        self.process_place(
+                            &mir::PlaceRef {
+                                base: place_ref.base,
+                                projection: &proj.base,
+                            },
+                            context,
+                            location,
+                        );
+                        return;
+                    }
+                }
+            }
+
+            // A deref projection only reads the pointer, never needs the place.
+            if let mir::ProjectionElem::Deref = proj.elem {
+                self.process_place(
+                    &mir::PlaceRef {
+                        base: place_ref.base,
+                        projection: &proj.base,
+                    },
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                    location
+                );
+                return;
+            }
+        }
+
+        // FIXME this is super_place code, is repeated here to avoid cloning place or changing
+        // visit_place API
+        let mut context = context;
+
+        if place_ref.projection.is_some() {
+            context = if context.is_mutating_use() {
+                PlaceContext::MutatingUse(MutatingUseContext::Projection)
+            } else {
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
+            };
+        }
+
+        self.visit_place_base(place_ref.base, context, location);
+
+        if let Some(box proj) = place_ref.projection {
+            self.visit_projection(place_ref.base, proj, context, location);
+        }
+    }
+
 }
 
 impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
@@ -158,63 +238,12 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                    context: PlaceContext,
                    location: Location) {
         debug!("visit_place(place={:?}, context={:?})", place, context);
-        let cx = self.fx.cx;
 
-        if let Some(proj) = &place.projection {
-            // Allow uses of projections that are ZSTs or from scalar fields.
-            let is_consume = match context {
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => true,
-                _ => false
-            };
-            if is_consume {
-                let base_ty = mir::Place::ty_from(&place.base, &proj.base, self.fx.mir, cx.tcx());
-                let base_ty = self.fx.monomorphize(&base_ty);
-
-                // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty
-                    .projection_ty(cx.tcx(), &proj.elem)
-                    .ty;
-                let elem_ty = self.fx.monomorphize(&elem_ty);
-                if cx.layout_of(elem_ty).is_zst() {
-                    return;
-                }
-
-                if let mir::ProjectionElem::Field(..) = proj.elem {
-                    let layout = cx.layout_of(base_ty.ty);
-                    if cx.is_backend_immediate(layout) || cx.is_backend_scalar_pair(layout) {
-                        // Recurse with the same context, instead of `Projection`,
-                        // potentially stopping at non-operand projections,
-                        // which would trigger `not_ssa` on locals.
-                        self.visit_place(
-                            // FIXME do not clone
-                            &mir::Place {
-                                base: place.base.clone(),
-                                projection: proj.base.clone(),
-                            },
-                            context,
-                            location,
-                        );
-                        return;
-                    }
-                }
-            }
-
-            // A deref projection only reads the pointer, never needs the place.
-            if let mir::ProjectionElem::Deref = proj.elem {
-                return self.visit_place(
-                    // FIXME do not clone
-                    &mir::Place {
-                        base: place.base.clone(),
-                        projection: proj.base.clone(),
-                    },
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                    location
-                );
-            }
-        }
-
-        self.super_place(place, context, location);
+        let place_ref = mir::PlaceRef {
+            base: &place.base,
+            projection: &place.projection,
+        };
+        self.process_place(&place_ref, context, location);
     }
 
     fn visit_local(&mut self,

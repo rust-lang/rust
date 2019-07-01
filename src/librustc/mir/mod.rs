@@ -1826,6 +1826,12 @@ newtype_index! {
     }
 }
 
+#[derive(Debug)]
+pub struct PlaceRef<'a, 'tcx> {
+    pub base: &'a PlaceBase<'tcx>,
+    pub projection: &'a Option<Box<Projection<'tcx>>>,
+}
+
 impl<'tcx> Place<'tcx> {
     pub const RETURN_PLACE: Place<'tcx> = Place {
         base: PlaceBase::Local(RETURN_PLACE),
