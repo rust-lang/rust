@@ -338,7 +338,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 //     vtable_ptr: *mut usize,
                 // ) -> u32
                 // We abort on panic, so not much is going on here, but we still have to call the closure.
-                let f = this.read_scalar(args[0])?.to_ptr()?;
+                let f = this.read_scalar(args[0])?.not_undef()?;
                 let data = this.read_scalar(args[1])?.not_undef()?;
                 let f_instance = this.memory().get_fn(f)?.as_instance()?;
                 this.write_null(dest)?;
