@@ -4324,52 +4324,49 @@ impl<'a> Parser<'a> {
     fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility, lo: Span)
                      -> PResult<'a, Option<P<Item>>> {
         let token_lo = self.token.span;
-        let (ident, def) = match self.token.kind {
-            token::Ident(name, false) if name == kw::Macro => {
-                self.bump();
-                let ident = self.parse_ident()?;
-                let tokens = if self.check(&token::OpenDelim(token::Brace)) {
-                    match self.parse_token_tree() {
-                        TokenTree::Delimited(_, _, tts) => tts,
-                        _ => unreachable!(),
-                    }
-                } else if self.check(&token::OpenDelim(token::Paren)) {
-                    let args = self.parse_token_tree();
-                    let body = if self.check(&token::OpenDelim(token::Brace)) {
-                        self.parse_token_tree()
-                    } else {
-                        self.unexpected()?;
-                        unreachable!()
-                    };
-                    TokenStream::new(vec![
-                        args.into(),
-                        TokenTree::token(token::FatArrow, token_lo.to(self.prev_span)).into(),
-                        body.into(),
-                    ])
+        let (ident, def) = if self.eat_keyword(kw::Macro) {
+            let ident = self.parse_ident()?;
+            let tokens = if self.check(&token::OpenDelim(token::Brace)) {
+                match self.parse_token_tree() {
+                    TokenTree::Delimited(_, _, tts) => tts,
+                    _ => unreachable!(),
+                }
+            } else if self.check(&token::OpenDelim(token::Paren)) {
+                let args = self.parse_token_tree();
+                let body = if self.check(&token::OpenDelim(token::Brace)) {
+                    self.parse_token_tree()
                 } else {
                     self.unexpected()?;
                     unreachable!()
                 };
+                TokenStream::new(vec![
+                    args.into(),
+                    TokenTree::token(token::FatArrow, token_lo.to(self.prev_span)).into(),
+                    body.into(),
+                ])
+            } else {
+                self.unexpected()?;
+                unreachable!()
+            };
 
-                (ident, ast::MacroDef { tokens: tokens.into(), legacy: false })
+            (ident, ast::MacroDef { tokens: tokens.into(), legacy: false })
+        } else if self.check_keyword(sym::macro_rules) &&
+                  self.look_ahead(1, |t| *t == token::Not) &&
+                  self.look_ahead(2, |t| t.is_ident()) {
+            let prev_span = self.prev_span;
+            self.complain_if_pub_macro(&vis.node, prev_span);
+            self.bump();
+            self.bump();
+
+            let ident = self.parse_ident()?;
+            let (delim, tokens) = self.expect_delimited_token_tree()?;
+            if delim != MacDelimiter::Brace && !self.eat(&token::Semi) {
+                self.report_invalid_macro_expansion_item();
             }
-            token::Ident(name, false) if name == sym::macro_rules &&
-                                         self.look_ahead(1, |t| *t == token::Not) &&
-                                         self.look_ahead(2, |t| t.is_ident()) => {
-                let prev_span = self.prev_span;
-                self.complain_if_pub_macro(&vis.node, prev_span);
-                self.bump();
-                self.bump();
 
-                let ident = self.parse_ident()?;
-                let (delim, tokens) = self.expect_delimited_token_tree()?;
-                if delim != MacDelimiter::Brace && !self.eat(&token::Semi) {
-                    self.report_invalid_macro_expansion_item();
-                }
-
-                (ident, ast::MacroDef { tokens, legacy: true })
-            }
-            _ => return Ok(None),
+            (ident, ast::MacroDef { tokens, legacy: true })
+        } else {
+            return Ok(None);
         };
 
         let span = lo.to(self.prev_span);
@@ -4413,14 +4410,14 @@ impl<'a> Parser<'a> {
                   !self.is_existential_type_decl() &&
                   !self.is_auto_trait_item() &&
                   !self.is_async_fn() {
-            let pth = self.parse_path(PathStyle::Expr)?;
+            let path = self.parse_path(PathStyle::Expr)?;
 
             if !self.eat(&token::Not) {
                 let expr = if self.check(&token::OpenDelim(token::Brace)) {
-                    self.parse_struct_expr(lo, pth, ThinVec::new())?
+                    self.parse_struct_expr(lo, path, ThinVec::new())?
                 } else {
                     let hi = self.prev_span;
-                    self.mk_expr(lo.to(hi), ExprKind::Path(None, pth), ThinVec::new())
+                    self.mk_expr(lo.to(hi), ExprKind::Path(None, path), ThinVec::new())
                 };
 
                 let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
@@ -4444,7 +4441,7 @@ impl<'a> Parser<'a> {
                 MacStmtStyle::NoBraces
             };
 
-            let mac = respan(lo.to(hi), Mac_ { path: pth, tts, delim });
+            let mac = respan(lo.to(hi), Mac_ { path, tts, delim });
             let node = if delim == MacDelimiter::Brace ||
                           self.token == token::Semi || self.token == token::Eof {
                 StmtKind::Mac(P((mac, style, attrs.into())))
@@ -7561,7 +7558,7 @@ impl<'a> Parser<'a> {
             let mac_lo = self.token.span;
 
             // item macro.
-            let pth = self.parse_path(PathStyle::Mod)?;
+            let path = self.parse_path(PathStyle::Mod)?;
             self.expect(&token::Not)?;
             let (delim, tts) = self.expect_delimited_token_tree()?;
             if delim != MacDelimiter::Brace && !self.eat(&token::Semi) {
@@ -7569,7 +7566,7 @@ impl<'a> Parser<'a> {
             }
 
             let hi = self.prev_span;
-            let mac = respan(mac_lo.to(hi), Mac_ { path: pth, tts, delim });
+            let mac = respan(mac_lo.to(hi), Mac_ { path, tts, delim });
             let item =
                 self.mk_item(lo.to(hi), Ident::invalid(), ItemKind::Mac(mac), visibility, attrs);
             return Ok(Some(item));
@@ -7597,9 +7594,9 @@ impl<'a> Parser<'a> {
                 !(self.is_async_fn() && self.token.span.rust_2015()) {
             let prev_span = self.prev_span;
             let lo = self.token.span;
-            let pth = self.parse_path(PathStyle::Mod)?;
+            let path = self.parse_path(PathStyle::Mod)?;
 
-            if pth.segments.len() == 1 {
+            if path.segments.len() == 1 {
                 if !self.eat(&token::Not) {
                     return Err(self.missing_assoc_item_kind_err(item_kind, prev_span));
                 }
@@ -7619,7 +7616,7 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Semi)?;
             }
 
-            Ok(Some(respan(lo.to(self.prev_span), Mac_ { path: pth, tts, delim })))
+            Ok(Some(respan(lo.to(self.prev_span), Mac_ { path, tts, delim })))
         } else {
             Ok(None)
         }
