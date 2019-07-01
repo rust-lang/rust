@@ -1,10 +1,13 @@
 use byteorder::{BigEndian, ByteOrder};
 
 fn main() {
+    // Exercise external crate, printing to stdout.
     let buf = &[1,2,3,4];
     let n = <BigEndian as ByteOrder>::read_u32(buf);
     assert_eq!(n, 0x01020304);
     println!("{:#010x}", n);
+
+    // Access program arguments, printing to stderr.
     for arg in std::env::args() {
         eprintln!("{}", arg);
     }

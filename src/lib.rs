@@ -12,9 +12,8 @@ extern crate rustc_data_structures;
 extern crate rustc_mir;
 extern crate rustc_target;
 
-mod fn_call;
+mod shims;
 mod operator;
-mod intrinsic;
 mod helpers;
 mod tls;
 mod range_map;
@@ -29,15 +28,18 @@ pub use rustc_mir::interpret::*;
 // Resolve ambiguity.
 pub use rustc_mir::interpret::{self, AllocMap, PlaceTy};
 
-pub use crate::fn_call::EvalContextExt as MissingFnsEvalContextExt;
+pub use crate::shims::foreign_items::EvalContextExt as ForeignItemsEvalContextExt;
+pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
-pub use crate::intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 pub use crate::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 pub use crate::range_map::RangeMap;
 pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt, Tag, Permission, Stack, Stacks, Item};
-pub use crate::machine::{MemoryExtra, AllocExtra, MiriMemoryKind, Evaluator, MiriEvalContext, MiriEvalContextExt};
+pub use crate::machine::{
+    PAGE_SIZE, STACK_ADDR, NUM_CPUS,
+    MemoryExtra, AllocExtra, MiriMemoryKind, Evaluator, MiriEvalContext, MiriEvalContextExt,
+};
 pub use crate::eval::{eval_main, create_ecx, MiriConfig};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be

@@ -1,37 +1,37 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
+use std::collections::{HashMap, hash_map::Entry};
+use std::cmp::max;
 
 use rand::Rng;
 
-use rustc::mir::interpret::{AllocId, Pointer, InterpResult};
-use rustc_mir::interpret::Memory;
+use rustc_mir::interpret::{AllocId, Pointer, InterpResult, Memory, AllocCheck};
 use rustc_target::abi::Size;
 
-use crate::stacked_borrows::Tag;
-use crate::Evaluator;
+use crate::{Evaluator, Tag, STACK_ADDR};
 
 pub type MemoryExtra = RefCell<GlobalState>;
-
-#[derive(Clone, Debug, Default)]
-pub struct AllocExtra {
-    base_addr: Cell<Option<u64>>
-}
 
 #[derive(Clone, Debug)]
 pub struct GlobalState {
     /// This is used as a map between the address of each allocation and its `AllocId`.
     /// It is always sorted
     pub int_to_ptr_map: Vec<(u64, AllocId)>,
+    /// The base address for each allocation.  We cannot put that into
+    /// `AllocExtra` because function pointers also have a base address, and
+    /// they do not have an `AllocExtra`.
+    /// This is the inverse of `int_to_ptr_map`.
+    pub base_addr: HashMap<AllocId, u64>,
     /// This is used as a memory address when a new pointer is casted to an integer. It
     /// is always larger than any address that was previously made part of a block.
     pub next_base_addr: u64,
 }
 
 impl Default for GlobalState {
-    // FIXME: Query the page size in the future
     fn default() -> Self {
         GlobalState {
             int_to_ptr_map: Vec::default(),
-            next_base_addr: 2u64.pow(16)
+            base_addr: HashMap::default(),
+            next_base_addr: STACK_ADDR,
         }
     }
 }
@@ -73,13 +73,13 @@ impl<'mir, 'tcx> GlobalState {
         memory: &Memory<'mir, 'tcx, Evaluator<'tcx>>,
     ) -> InterpResult<'tcx, u64> {
         let mut global_state = memory.extra.intptrcast.borrow_mut();
+        let global_state = &mut *global_state;
 
-        let alloc = memory.get(ptr.alloc_id)?;
-        let align = alloc.align.bytes();
+        let (size, align) = memory.get_size_and_align(ptr.alloc_id, AllocCheck::Live)?;
 
-        let base_addr = match alloc.extra.intptrcast.base_addr.get() { 
-            Some(base_addr) => base_addr,
-            None => {
+        let base_addr = match global_state.base_addr.entry(ptr.alloc_id) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
                 // This allocation does not have a base address yet, pick one.
                 // Leave some space to the previous allocation, to give it some chance to be less aligned.
                 let slack = {
@@ -88,11 +88,16 @@ impl<'mir, 'tcx> GlobalState {
                     rng.gen_range(0, 16)
                 };
                 // From next_base_addr + slack, round up to adjust for alignment.
-                let base_addr = Self::align_addr(global_state.next_base_addr + slack, align);
-                alloc.extra.intptrcast.base_addr.set(Some(base_addr));
+                let base_addr = Self::align_addr(global_state.next_base_addr + slack, align.bytes());
+                entry.insert(base_addr);
+                trace!(
+                    "Assigning base address {:#x} to allocation {:?} (slack: {}, align: {})",
+                    base_addr, ptr.alloc_id, slack, align.bytes(),
+                );
 
-                // Remember next base address.
-                global_state.next_base_addr = base_addr + alloc.bytes.len() as u64;
+                // Remember next base address.  If this allocation is zero-sized, leave a gap
+                // of at least 1 to avoid two allocations having the same base address.
+                global_state.next_base_addr = base_addr + max(size.bytes(), 1);
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
                 global_state.int_to_ptr_map.push((base_addr, ptr.alloc_id)); 
@@ -101,7 +106,7 @@ impl<'mir, 'tcx> GlobalState {
             }
         };
 
-        debug_assert_eq!(base_addr % align, 0); // sanity check
+        debug_assert_eq!(base_addr % align.bytes(), 0); // sanity check
         Ok(base_addr + ptr.offset.bytes())
     }
 

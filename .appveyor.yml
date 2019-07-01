@@ -29,8 +29,6 @@ install:
     - rustc --version
 
 build_script:
-    - set RUST_TEST_NOCAPTURE=1
-    - set RUST_BACKTRACE=1
     - set RUSTFLAGS=-C debug-assertions
     # Build and install miri
     - cargo build --release --all-features --all-targets
@@ -40,6 +38,8 @@ build_script:
     - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\rust-lang\miri\cache\HOST
 
 test_script:
+    - set RUST_TEST_NOCAPTURE=1
+    - set RUST_BACKTRACE=1
     # Test miri
     - cargo test --release --all-features
     # Test cargo integration

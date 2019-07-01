@@ -8,7 +8,7 @@ and the working directory to contain the cargo-miri-test project.
 import sys, subprocess, os
 
 def fail(msg):
-    print("TEST FAIL: {}".format(msg))
+    print("\nTEST FAIL: {}".format(msg))
     sys.exit(1)
 
 def cargo_miri(cmd):
@@ -57,7 +57,7 @@ def test_cargo_miri_test():
         "test.stdout.ref", "test.stderr.ref"
     )
     test("cargo miri test (with filter)",
-        cargo_miri("test") + ["--", "--", "impl"],
+        cargo_miri("test") + ["--", "--", "le1"],
         "test.stdout.ref2", "test.stderr.ref"
     )
 
@@ -66,5 +66,5 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 test_cargo_miri_run()
 test_cargo_miri_test()
 
-print("TEST SUCCESSFUL!")
+print("\nTEST SUCCESSFUL!")
 sys.exit(0)
