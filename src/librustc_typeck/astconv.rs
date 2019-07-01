@@ -34,7 +34,6 @@ use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
 
-use super::{check_type_alias_enum_variants_enabled};
 use rustc_data_structures::fx::FxHashSet;
 
 #[derive(Debug)]
@@ -1595,7 +1594,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 });
                 if let Some(variant_def) = variant_def {
                     if permit_variants {
-                        check_type_alias_enum_variants_enabled(tcx, span);
                         tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span);
                         return Ok((qself_ty, DefKind::Variant, variant_def.def_id));
                     } else {

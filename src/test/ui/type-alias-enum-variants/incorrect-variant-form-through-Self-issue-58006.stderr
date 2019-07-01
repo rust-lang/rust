@@ -1,5 +1,5 @@
 error[E0533]: expected unit struct/variant or constant, found tuple variant `<Self>::A`
-  --> $DIR/issue-58006.rs:9:13
+  --> $DIR/incorrect-variant-form-through-Self-issue-58006.rs:8:13
    |
 LL |             Self::A => (),
    |             ^^^^^^^

@@ -1,4 +1,3 @@
-#![feature(type_alias_enum_variants)]
 pub enum Enum {
     A(usize),
 }

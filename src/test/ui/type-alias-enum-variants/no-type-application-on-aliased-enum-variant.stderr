@@ -1,7 +1,7 @@
 error[E0109]: type arguments are not allowed for this type
-  --> $DIR/type-alias-enum-variants.rs:9:27
+  --> $DIR/no-type-application-on-aliased-enum-variant.rs:13:27
    |
-LL |     let _ = Alias::None::<u8>; // Error
+LL |     let _ = Alias::None::<u8>;
    |                           ^^ type argument not allowed
 
 error: aborting due to previous error

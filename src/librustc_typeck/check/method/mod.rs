@@ -26,7 +26,6 @@ use rustc::infer::{self, InferOk};
 use syntax::ast;
 use syntax_pos::Span;
 
-use crate::{check_type_alias_enum_variants_enabled};
 use self::probe::{IsSuggestion, ProbeScope};
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
@@ -417,8 +416,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.hygienic_eq(method_name, vd.ident, adt_def.did)
                 });
                 if let Some(variant_def) = variant_def {
-                    check_type_alias_enum_variants_enabled(tcx, span);
-
                     // Braced variants generate unusable names in value namespace (reserved for
                     // possible future use), so variants resolved as associated items may refer to
                     // them as well. It's ok to use the variant's id as a ctor id since an
