@@ -227,9 +227,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into()
                     );
+                // We just allocated this, the access cannot fail
                 this.memory_mut()
-                    .get_mut(ptr.alloc_id)?
-                    .write_repeat(tcx, ptr, 0, Size::from_bytes(size))?;
+                    .get_mut(ptr.alloc_id).unwrap()
+                    .write_repeat(tcx, ptr, 0, Size::from_bytes(size)).unwrap();
                 this.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             "__rust_dealloc" => {
@@ -469,15 +470,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Align::from_bytes(1).unwrap(),
                         MiriMemoryKind::Env.into(),
                     );
-                    {
-                        let alloc = this.memory_mut().get_mut(value_copy.alloc_id)?;
-                        alloc.write_bytes(tcx, value_copy, &value)?;
-                        let trailing_zero_ptr = value_copy.offset(
-                            Size::from_bytes(value.len() as u64),
-                            tcx,
-                        )?;
-                        alloc.write_bytes(tcx, trailing_zero_ptr, &[0])?;
-                    }
+                    // We just allocated these, so the write cannot fail.
+                    let alloc = this.memory_mut().get_mut(value_copy.alloc_id).unwrap();
+                    alloc.write_bytes(tcx, value_copy, &value).unwrap();
+                    let trailing_zero_ptr = value_copy.offset(
+                        Size::from_bytes(value.len() as u64),
+                        tcx,
+                    ).unwrap();
+                    alloc.write_bytes(tcx, trailing_zero_ptr, &[0]).unwrap();
+
                     if let Some(var) = this.machine.env_vars.insert(
                         name.to_owned(),
                         value_copy,
@@ -814,7 +815,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             },
             "GetSystemInfo" => {
                 let system_info = this.deref_operand(args[0])?;
-                let system_info_ptr = system_info.ptr.to_ptr()?;
+                let (system_info_ptr, align) = system_info.to_scalar_ptr_align();
+                let system_info_ptr = this.memory()
+                    .check_ptr_access(
+                        system_info_ptr,
+                        system_info.layout.size,
+                        align,
+                    )?
+                    .expect("cannot be a ZST");
                 // Initialize with `0`.
                 this.memory_mut().get_mut(system_info_ptr.alloc_id)?
                     .write_repeat(tcx, system_info_ptr, 0, system_info.layout.size)?;
