@@ -18,7 +18,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:28:1
    |
 LL | const BAD_ENUM_WRAPPED: Wrap<Enum> = unsafe { TransmuteEnum { in1: &1 }.out2 };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected something that cannot possibly fail to be less or equal to 0
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected something that cannot possibly fail to be equal to 0
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
@@ -42,7 +42,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:50:1
    |
 LL | const BAD_ENUM2_WRAPPED: Wrap<Enum2> = unsafe { TransmuteEnum2 { in2: &0 }.out2 };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected something that cannot possibly fail to be in the range 2..=2
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected something that cannot possibly fail to be equal to 2
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
