@@ -79,7 +79,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (fn_val, abi) = match func.layout.ty.sty {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
-                        let fn_ptr = self.force_ptr(self.read_scalar(func)?.not_undef()?)?;
+                        let fn_ptr = self.read_scalar(func)?.not_undef()?;
                         let fn_val = self.memory.get_fn(fn_ptr)?;
                         (fn_val, caller_abi)
                     }
@@ -438,7 +438,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.tcx.data_layout.pointer_align.abi,
                 )?.expect("cannot be a ZST");
                 let fn_ptr = self.memory.get(vtable_slot.alloc_id)?
-                    .read_ptr_sized(self, vtable_slot)?.to_ptr()?;
+                    .read_ptr_sized(self, vtable_slot)?.not_undef()?;
                 let drop_fn = self.memory.get_fn(fn_ptr)?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we

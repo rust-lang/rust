@@ -112,7 +112,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let drop_fn = self.memory
             .get(vtable.alloc_id)?
             .read_ptr_sized(self, vtable)?
-            .to_ptr()?;
+            .not_undef()?;
         // We *need* an instance here, no other kind of function value, to be able
         // to determine the type.
         let drop_instance = self.memory.get_fn(drop_fn)?.as_instance()?;

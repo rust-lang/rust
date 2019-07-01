@@ -457,10 +457,10 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             }
             ty::FnPtr(_sig) => {
                 let value = value.to_scalar_or_undef();
-                let ptr = try_validation!(value.to_ptr(),
-                    value, self.path, "a pointer");
-                let _fn = try_validation!(self.ecx.memory.get_fn(ptr),
-                    value, self.path, "a function pointer");
+                let _fn = try_validation!(
+                    value.not_undef().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
+                    value, self.path, "a function pointer"
+                );
                 // FIXME: Check if the signature matches
             }
             // This should be all the primitive types
@@ -508,7 +508,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         // differentiate between null pointers and dangling pointers
                         if self.ref_tracking_for_consts.is_some() &&
                             self.ecx.memory.get(ptr.alloc_id).is_err() &&
-                            self.ecx.memory.get_fn(ptr).is_err() {
+                            self.ecx.memory.get_fn(ptr.into()).is_err() {
                             return validation_failure!(
                                 "encountered dangling pointer", self.path
                             );

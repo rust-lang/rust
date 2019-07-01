@@ -586,8 +586,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     pub fn get_fn(
         &self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Scalar<M::PointerTag>,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
+        let ptr = self.force_ptr(ptr)?; // We definitely need a pointer value.
         if ptr.offset.bytes() != 0 {
             return err!(InvalidFunctionPointer);
         }
