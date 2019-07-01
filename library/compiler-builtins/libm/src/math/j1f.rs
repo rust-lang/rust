@@ -49,7 +49,7 @@ fn common(ix: u32, x: f32, y1: bool, sign: bool) -> f32 {
     if sign {
         cc = -cc;
     }
-    return INVSQRTPI * (cc as f32) / sqrtf(x);
+    return (((INVSQRTPI as f64) * cc) / (sqrtf(x) as f64)) as f32;
 }
 
 /* R0/S0 on [0,2] */
@@ -355,4 +355,18 @@ fn qonef(x: f32) -> f32 {
     r = p[0] + z * (p[1] + z * (p[2] + z * (p[3] + z * (p[4] + z * p[5]))));
     s = 1.0 + z * (q[0] + z * (q[1] + z * (q[2] + z * (q[3] + z * (q[4] + z * q[5])))));
     return (0.375 + r / s) / x;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{j1f, y1f};
+    #[test]
+    fn test_j1f_2488() {
+        // 0x401F3E49
+        assert_eq!(j1f(2.4881766_f32), 0.49999475_f32);
+    }
+    #[test]
+    fn test_y1f_2002() {
+        assert_eq!(y1f(2.0000002_f32), -0.10703229_f32);
+    }
 }
