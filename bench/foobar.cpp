@@ -11,7 +11,8 @@ float tdiff(struct timeval *start, struct timeval *end) {
   return (end->tv_sec-start->tv_sec) + 1e-6*(end->tv_usec-start->tv_usec);
 }
 
-#include "adept.h"
+#include <adept_source.h>
+#include <adept.h>
 using adept::adouble;
 
 #define SINCOSN 10000000
@@ -22,6 +23,16 @@ double sincos_real(double x) {
     sum += pow(x, i) / i;
   }
   return sum;
+}
+
+static void sincos_real_tapenade(double x, double *xb, double sincos_realb) {
+    double sum = 0;
+    double sumb = 0.0;
+    double sincos_real;
+    sumb = sincos_realb;
+    for (int i = SINCOSN; i > 0; --i)
+        if (!(x<=0.0&&(i==0.0||i!=(int)i)))
+            *xb = *xb + pow(x, (i-1))*sumb;
 }
 
 #if 1
@@ -83,6 +94,39 @@ static void adept_sincos(double inp) {
 }
 #endif
 
+static void tapenade_sincos(double inp) {
+
+  {
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+
+  double res = sincos_real(inp);
+
+  gettimeofday(&end, NULL);
+  printf("tapenade %0.6f res=%f\n", tdiff(&start, &end), res);
+  }
+
+  {
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+
+  double res = sincos_real(inp);
+
+  gettimeofday(&end, NULL);
+  printf("tapenade %0.6f res=%f\n", tdiff(&start, &end), res);
+  }
+
+  {
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+  double res2 = 0;
+
+  sincos_real_tapenade(inp, &res2, 1.0);
+
+  gettimeofday(&end, NULL);
+  printf("tapendade %0.6f res'=%f\n", tdiff(&start, &end), res2);
+  }
+}
 static void my_sincos(double inp) {
 
   {
@@ -119,8 +163,9 @@ static void my_sincos(double inp) {
 
 int main(int argc, char** argv) {
 
-  double inp = atof(argv[1]) * 1 + 0.5;
+  double inp = atof(argv[1]) ;
   adept_sincos(inp);
+  tapenade_sincos(inp);
   my_sincos(inp);
 }
 

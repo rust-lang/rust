@@ -44,6 +44,35 @@ double matvec_real(double* mat, double* vec) {
   return sum;
 }
 
+void matvec_real_b(double *mat, double *vec, double *vecb, double matvec_realb) {
+    double *out;
+    double *outb;
+    int ii1;
+    double matvec_real;
+    outb = (double *)malloc(sizeof(double)*N);
+    for (ii1 = 0; ii1 < N; ++ii1)
+        outb[ii1] = 0.0;
+    out = (double *)malloc(sizeof(double)*N);
+    //double *out = new double[N];
+    for (int i = 0; i < N; ++i) {
+        out[i] = 0;
+        for (int j = 0; j < M; ++j)
+            out[i] = out[i] + mat[i*M+j]*vec[j];
+    }
+    double sum = 0;
+    double sumb = 0.0;
+    sumb = matvec_realb;
+    for (int i = N-1; i > -1; --i)
+        outb[i] = outb[i] + 2*out[i]*sumb;
+    for (int i = N-1; i > -1; --i) {
+        for (int j = M-1; j > -1; --j)
+            vecb[j] = vecb[j] + mat[i*M+j]*outb[i];
+        outb[i] = 0.0;
+    }
+    free(out);
+    free(outb);
+}
+
 #if 1
 #include <vector>
 
@@ -108,24 +137,13 @@ void sincos_and_gradient(double *Min, double *Mout, double *vecin, double *vecou
 #endif
 
 static void adept_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
-  {
-  struct timeval start, end;
-  gettimeofday(&start, NULL);
-
-  double res = matvec_real(Min, Vin);
-
-  gettimeofday(&end, NULL);
-  printf("%0.6f res=%f\n", tdiff(&start, &end), res);
-  }
 
   {
   struct timeval start, end;
-  gettimeofday(&start, NULL);
-  double res;
-  {
+
+  double res2 = 0;
   adept::Stack stack;
-  stack.new_recording();
-    
+ 
     aMatrix mat(N,M);
     for(int i=0; i<N; i++) {
     for(int j=0; j<M; j++) {
@@ -135,13 +153,29 @@ static void adept_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
     Vector vec(M);
     for(int i=0; i<M; i++) vec(i) = Vin[i];
 
+
+  gettimeofday(&start, NULL);
+  for (int iter = 0; iter < ITERS; iter++) {
+    stack.new_recording();
     adouble resa = matvec(mat, vec);
-    res = resa.value();
+    resa.set_gradient(1.0);
+    stack.continue_recording();
+  }
+    //stack.reverse();
+    //stack.pause_recording();
+    /*
+    for (int i = 0; i < N; i++) {
+      for (int j = 0; j < M; j++) {
+        mat(i,j) -= mat(i,j).get_gradient()*RATE;
+      }
+    }*/
+  gettimeofday(&end, NULL);
+  //gettimeofday(&end, NULL);
+  printf("%0.6f res'=%f %f %f\n", tdiff(&start, &end), Mout[1], Mout[2], Mout[3]);
+    
   }
 
-  gettimeofday(&end, NULL);
-  printf("%0.6f res=%f\n", tdiff(&start, &end), res);
-  }
+
 
   {
   struct timeval start, end;
@@ -208,6 +242,51 @@ static void adept_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
 }
 #endif
 
+static void tapenade_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
+
+  {
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+
+  double res = matvec_real(Min, Vin);
+
+  gettimeofday(&end, NULL);
+  printf("tapenade %0.6f res=%f\n", tdiff(&start, &end), res);
+  }
+
+  {
+  struct timeval start, end;
+  double tmp = Min[0];
+  gettimeofday(&start, NULL);
+
+  double sum = 0;
+  for(int i=0; i<ITERS; i++) {
+      Min[0] = tmp + i/100000000.;
+        sum += matvec_real(Min, Vin);
+  }
+
+  gettimeofday(&end, NULL);
+  printf("tapenade mv %0.6f res=%f\n", tdiff(&start, &end), sum);
+  Min[0] = tmp;
+  }
+
+  {
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+  double res2;
+
+  for(int i=0; i<ITERS; i++) {
+  for(int i=0; i<N*M; i++) { Mout[i] = 0; }
+  //for(int i=0; i<M; i++) { Vout[i] = 0; }
+    matvec_real_b(Min, Mout, Vin, 1.0);
+  //res2 = __builtin_autodiff(matvec_real, Min, Mout, Vin, Vout);
+  for(int i=0; i<N*M; i++) { Min[i] -= Mout[i] * RATE; }
+  }
+
+  gettimeofday(&end, NULL);
+  printf("tapenade %0.6f res'=%f %f %f\n", tdiff(&start, &end), Mout[1], Mout[2], Mout[3]);
+  }
+}
 static void my_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
 
   {
@@ -222,12 +301,18 @@ static void my_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
 
   {
   struct timeval start, end;
+  double tmp = Min[0];
   gettimeofday(&start, NULL);
 
-  double res = matvec_real(Min, Vin);
+  double sum = 0;
+  for(int i=0; i<ITERS; i++) {
+      Min[0] = tmp + i/100000000.;
+        sum += matvec_real(Min, Vin);
+  }
 
   gettimeofday(&end, NULL);
-  printf("%0.6f res=%f\n", tdiff(&start, &end), res);
+  printf("mv %0.6f res=%f\n", tdiff(&start, &end), sum);
+  Min[0] = tmp;
   }
 
   {
@@ -261,6 +346,10 @@ int main(int argc, char** argv) {
   memset(Mout, 0, sizeof(double)*N*M);
   memset(Vout, 0, sizeof(double)*M);
   adept_sincos(Min, Mout, Vin, Vout);
+
+  memset(Mout, 0, sizeof(double)*N*M);
+  memset(Vout, 0, sizeof(double)*M);
+  tapenade_sincos(Min, Mout, Vin, Vout);
 
   memset(Mout, 0, sizeof(double)*N*M);
   memset(Vout, 0, sizeof(double)*M);

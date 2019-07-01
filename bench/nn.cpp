@@ -429,7 +429,7 @@ static void neural_network_softmax_v2(const float * activations, float* outp, in
  * Use the weights and bias vector to forward propogate through the neural
  * network and calculate the activations.
  */
-void neural_network_hypothesis(mnist_image_t * image, neural_network_t * network, float activations[MNIST_LABELS])
+void neural_network_hypothesis(const mnist_image_t * image, const neural_network_t * network, float activations[MNIST_LABELS])
 {
     int i, j;
 
@@ -448,7 +448,7 @@ void neural_network_hypothesis(mnist_image_t * image, neural_network_t * network
  * Use the weights and bias vector to forward propogate through the neural
  * network and calculate the activations.
  */
-static float neural_network_hypothesis_v2(mnist_image_t * image, neural_network_t * network, uint8_t label)
+static float neural_network_hypothesis_v2(const mnist_image_t * image, const neural_network_t * network, uint8_t label)
 {
     float activations[MNIST_LABELS] = {0};
     int i, j;
@@ -467,7 +467,7 @@ static float neural_network_hypothesis_v2(mnist_image_t * image, neural_network_
 }
 
 
-static aReal neural_network_hypothesis_adept(mnist_image_t * image, aneural_network_t * network, uint8_t label)
+static aReal neural_network_hypothesis_adept(const mnist_image_t * image, const aneural_network_t * network, uint8_t label)
 {
     adept::FixedArray<float,true,MNIST_LABELS> activations = network->b;
     int i, j;
@@ -483,42 +483,148 @@ static aReal neural_network_hypothesis_adept(mnist_image_t * image, aneural_netw
 }
 
 
-static void calculateDerivatives_adept(mnist_image_t * image, neural_network_t * network, neural_network_t* gradient, uint8_t label) {
-    static bool run = false;
+static void calculateDerivatives_adept(mnist_image_t * image, bool run, adept::Stack& stack, const aneural_network_t * anetwork, neural_network_t* gradient, uint8_t label) {
 
-    adept::Stack stack;
-    aneural_network_t anetwork;
-  
-    for (int i = 0; i < MNIST_LABELS; i++) {
-        anetwork.b[i] = network->b[i];
-        for (int j = 0; j < MNIST_IMAGE_SIZE; j++) {
-            anetwork.W[i][j] = network->W[i][j];
-        }
-    }
-
-    //if (!run)
+    if (!run) {
         stack.new_recording();
-    //else
-    //    stack.continue_recording();
-    auto resa = neural_network_hypothesis_adept(image, &anetwork, label);
+    //    run = true;
+    } else
+        stack.continue_recording();
+    auto resa = neural_network_hypothesis_adept(image, anetwork, label);
     resa.set_gradient(1.0);
     stack.reverse();
     stack.pause_recording();
 
     for (int i = 0; i < MNIST_LABELS; i++) {
-        network->b[i] = anetwork.b[i].get_gradient();
+        gradient->b[i] = anetwork->b(i).get_gradient();
         for (int j = 0; j < MNIST_IMAGE_SIZE; j++) {
-            network->W[i][j] = anetwork.W[i][j].get_gradient();
+            gradient->W[i][j] = anetwork->W(i,j).get_gradient();
         }
     }
 }
+
+#include <adBuffer.h>
+
+
+void neural_network_softmax_b(float *activations, float *activationsb, int 
+        length) {
+    float sum, max;
+    float sumb, maxb;
+    int branch;
+    max = activations[0];
+    for (int i = 1; i < length; ++i)
+        if (activations[i] > max) {
+            max = activations[i];
+            pushControl1b(1);
+        } else
+            pushControl1b(0);
+    sum = 0;
+    for (int i = 0; i < length; ++i) {
+        pushReal4(activations[i]);
+        activations[i] = (float)exp(activations[i] - max);
+        sum = sum + activations[i];
+    }
+    for (int i = 0; i < length; ++i) {
+        pushReal4(activations[i]);
+        activations[i] = activations[i]/sum;
+    }
+    sumb = 0.0;
+    for (int i = length-1; i > -1; --i) {
+        popReal4(&(activations[i]));
+        sumb = sumb - activations[i]*activationsb[i]/(sum*sum);
+        activationsb[i] = activationsb[i]/sum;
+    }
+    {
+      float tempb;
+      maxb = 0.0;
+      for (int i = length-1; i > -1; --i) {
+          activationsb[i] = activationsb[i] + sumb;
+          popReal4(&(activations[i]));
+          tempb = exp(activations[i]-max)*activationsb[i];
+          maxb = maxb - tempb;
+          activationsb[i] = tempb;
+      }
+    }
+    for (int i = length-1; i > 0; --i) {
+        popControl1b(&branch);
+        if (branch != 0) {
+            activationsb[i] = activationsb[i] + maxb;
+            maxb = 0.0;
+        }
+    }
+    activationsb[0] = activationsb[0] + maxb;
+}
+
+/**
+ * Calculate the softmax vector from the activations. This uses a more
+ * numerically stable algorithm that normalises the activations to prevent
+ * large exponents.
+ */
+// Convert a pixel value from 0-255 to one from 0 to 1
+// Returns a random value between 0 and 1
+void neural_network_softmax_c(float *activations, int length) {
+    float sum, max;
+    max = activations[0];
+	int i;
+    for (i = 1; i < length; ++i)
+        if (activations[i] > max)
+            max = activations[i];
+    sum = 0;
+    for (i = 0; i < length; ++i) {
+        activations[i] = (float)exp(activations[i] - max);
+        sum += activations[i];
+    }
+    for (i = 0; i < length; ++i)
+        activations[i] /= sum;
+}
+
+/*
+  Differentiation of neural_network_hypothesis_tapenadesource in reverse (adjoint) mode:
+   gradient     of useful results: neural_network_hypothesis_tapenadesource
+                *network.b[0:10-1] *network.W[0:10-1][0:28*28-1]
+   with respect to varying inputs: *network.b[0:10-1] *network.W[0:10-1][0:28*28-1]
+   RW status of diff variables: neural_network_hypothesis_tapenadesource:in-killed
+                *network.b[0:10-1]:incr *network.W[0:10-1][0:28*28-1]:incr
+   Plus diff mem management of: network:in *network.b:in *network.W:in
+                *network.W[0:10-1]:in
+*/
+static void neural_network_hypothesis_tapenadesource_b(const mnist_image_t *
+        image, const neural_network_t *network, neural_network_t *networkb, 
+        uint8_t label, float neural_network_hypothesis_tapenadesourceb) {
+    float activations[10];
+    float activationsb[10];
+    int ii1;
+    float neural_network_hypothesis_tapenadesource;
+    for (int i = 0; i < 10; ++i) {
+        activations[i] = network->b[i];
+        for (int j = 0; j < 784; ++j)
+            activations[i] = activations[i] + network->W[i][j]*((float)image->
+                pixels[j]/255.0f);
+    }
+    pushReal4Array(activations, 10);
+    neural_network_softmax_c(activations, 10);
+    for (ii1 = 0; ii1 < 10; ++ii1)
+        activationsb[ii1] = 0.0;
+    activationsb[(int)label] = activationsb[(int)label] - 
+        neural_network_hypothesis_tapenadesourceb/activations[(int)label];
+    popReal4Array(activations, 10);
+    neural_network_softmax_b(activations, activationsb, 10);
+    for (int i = 9; i > -1; --i) {
+        for (int j = 783; j > -1; --j)
+            networkb->W[i][j] = networkb->W[i][j] + (float)image->pixels[j]*
+                activationsb[i]/255.0f;
+        networkb->b[i] = networkb->b[i] + activationsb[i];
+        activationsb[i] = 0.0;
+    }
+}
+
 /**
  * Update the gradients for this step of gradient descent using the gradient
  * contributions from a single training example (image).
  * 
  * This function returns the loss ontribution from this training example.
  */
-float neural_network_gradient_update(mnist_image_t * image, neural_network_t * network, neural_network_gradient_t * gradient, uint8_t label)
+float neural_network_gradient_update(mnist_image_t * image, const neural_network_t * network, neural_network_gradient_t * gradient, uint8_t label)
 {
     float activations[MNIST_LABELS];
     float b_grad, W_grad;
@@ -549,7 +655,7 @@ float neural_network_gradient_update(mnist_image_t * image, neural_network_t * n
 
 extern int diffe_const;
 
-static void calculateDerivatives(mnist_image_t * image, neural_network_t * network, neural_network_t* gradient, uint8_t label) {
+static void calculateDerivatives(mnist_image_t * image, const neural_network_t * network, neural_network_t* gradient, uint8_t label) {
     __builtin_autodiff(neural_network_hypothesis_v2, diffe_const, image, network, gradient, diffe_const, label);
 }
 /**
@@ -559,11 +665,20 @@ float neural_network_training_step(mnist_dataset_t * dataset, neural_network_t *
 {
     neural_network_t gradient = {0};
     neural_network_t gradient2 = {0};
+
+    /*
+    adept::Stack stack;
+    aneural_network_t anetwork;
+  
+    for (int i = 0; i < MNIST_LABELS; i++) {
+        anetwork.b[i] = network->b[i];
+        for (int j = 0; j < MNIST_IMAGE_SIZE; j++) {
+            anetwork.W[i][j] = network->W[i][j];
+        }
+    }*/
+
     float total_loss;
     int i, j;
-
-    // Zero initialise gradient for weights and bias vector
-    memset(&gradient, 0, sizeof(neural_network_gradient_t));
 
     // Calculate the gradient and the loss by looping through the training set
     for (i = 0, total_loss = 0; i < dataset->size; i++) {
@@ -573,8 +688,10 @@ float neural_network_training_step(mnist_dataset_t * dataset, neural_network_t *
     	// First forward propagate through the network to calculate activations
 
         //calculateDerivatives(image, network, &gradient, label);
-        calculateDerivatives_adept(image, network, &gradient, label);
-        //total_loss +=neural_network_gradient_update(image, network, (neural_network_gradient_t*)&gradient, label);
+        //calculateDerivatives_adept(image, i != 0, stack, &anetwork, &gradient, label);
+		//neural_network_hypothesis_tapenadesource_b(image, network, &gradient, label, 1.0);
+
+        total_loss +=neural_network_gradient_update(image, network, (neural_network_gradient_t*)&gradient, label);
         
         //total_loss +=neural_network_gradient_update(image, network, (neural_network_gradient_t*)&gradient2, label);
 
@@ -586,7 +703,7 @@ float neural_network_training_step(mnist_dataset_t * dataset, neural_network_t *
 
     // Apply gradient descent to the network
     for (i = 0; i < MNIST_LABELS; i++) {
-        printf("b'[i] %f %f\n", gradient.b[i], gradient2.b[i]);
+        //printf("b'[i] %f %f\n", gradient.b[i], gradient2.b[i]);
         network->b[i] -= learning_rate * gradient.b[i] / ((float) dataset->size);
 
         for (j = 0; j < MNIST_IMAGE_SIZE + 1; j++) {

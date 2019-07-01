@@ -6,8 +6,8 @@
 	../build/bin/clang -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math | ../build/bin/opt -early-cse-memssa - -S -o $@ -simplifycfg -simplifycfg
 
 %-unopt.ll: %.cpp
-	../build/bin/clang++ -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I ../../adept-2.0.5/include
-	#../build/bin/clang++ -fno-exceptions -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I../../adept-2.0.5/include
+	../build/bin/clang++ -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I ../../adept-2.0.5/include -I../../tapenade/ADFirstAidKit
+	#../build/bin/clang++ -fno-exceptions -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I../../adept-2.0.5/include -I../../tapenade/ADFirstAidKit
 
 %-preopt.ll: %-unopt.ll
 	../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -simplifycfg -inline -adce -aggressive-instcombine -O2 -S -o $@
@@ -44,7 +44,7 @@
 	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -O3 -S -o $@
 
 %.o: %-lower.ll
-	../build/bin/clang $^ -o $@ -lm -lstdc++ -g -ggdb -lblas
+	../build/bin/clang $^ -o $@ -lm -lstdc++ -g -ggdb -lblas ../../tapenade/ADFirstAidKit/*.o
 	#../build/bin/clang $^ -o $@ -lm -ladept -lstdc++ -g -ggdb -lblas
 
 clean:

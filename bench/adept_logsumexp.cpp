@@ -65,7 +65,55 @@ static adouble alogsumexp(const aVector &x, size_t n) {
   return log(sema) + A;
 }
 
-static adouble alogsumexp2(const aVector &x, size_t n) {
+
+
+#include <adBuffer.h>
+
+/*
+  Differentiation of logsumexp in reverse (adjoint) mode:
+   gradient     of useful results: *x logsumexp
+   with respect to varying inputs: *x
+   RW status of diff variables: *x:incr logsumexp:in-killed
+   Plus diff mem management of: x:in
+*/
+static void logsumexp_b(const double *__restrict x, double *xb, size_t n, double logsumexpb) {
+    double A = x[0];
+    double Ab = 0.0;
+    int branch;
+    double logsumexp;
+    for (int i = 0; i < n; ++i)
+        if (A < x[i]) {
+            A = x[i];
+            pushControl1b(0);
+        } else {
+            pushControl1b(1);
+            A = A;
+        }
+    double sema = 0;
+    double semab = 0.0;
+    for (int i = 0; i < n; ++i)
+        sema = sema + exp(x[i] - A);
+    semab = logsumexpb/sema;
+    Ab = logsumexpb;
+    {
+      double tempb;
+      for (int i = n-1; i > -1; --i) {
+          tempb = exp(x[i]-A)*semab;
+          xb[i] = xb[i] + tempb;
+          Ab = Ab - tempb;
+      }
+    }
+    for (int i = n-1; i > -1; --i) {
+        popControl1b(&branch);
+        if (branch == 0) {
+            xb[i] = xb[i] + Ab;
+            Ab = 0.0;
+        }
+    }
+    xb[0] = xb[0] + Ab;
+}
+
+adouble alogsumexp2(const aVector &x, size_t n) {
   adouble A = x[0];
   for(int i=0; i<n; i++) {
     A = amax(A, x[i]);
@@ -213,6 +261,35 @@ static void my_sincos(double *input, double *inputp, unsigned long n, unsigned l
   printf("enzyme forward and reverse %0.6f res'=%f\n", tdiff(&start, &end), sum(inputp, n));
   }
 }
+static void tapenade_sincos(double *input, double *inputp, unsigned long n, unsigned long repeat) {
+    double realinput = input[0];
+  {
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+  double total = 0;
+  for(int i=0; i<repeat; i++) {
+    input[0] = realinput + (double)i/10000000;
+    total += logsumexp(input, n);
+  }
+
+  gettimeofday(&end, NULL);
+  printf("tapenade forward %0.6f res'=%f\n", tdiff(&start, &end), total);
+  }
+  {
+      input[0] = realinput;
+  struct timeval start, end;
+  memset(inputp, 0, sizeof(double)*n);
+
+  gettimeofday(&start, NULL);
+
+  for(int i=0; i<repeat; i++) {
+    logsumexp_b(input, inputp, n, 1.0);
+  }
+
+  gettimeofday(&end, NULL);
+  printf("tapenade forward and reverse %0.6f res'=%f\n", tdiff(&start, &end), sum(inputp, n));
+  }
+}
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -231,6 +308,8 @@ int main(int argc, char** argv) {
   //adept_sincos(input, inputp, n, repeat);
   
   adept2_sincos(input, inputp, n, repeat);
+
+  tapenade_sincos(input, inputp, n, repeat);
 
   my_sincos(input, inputp, n, repeat);
 }
