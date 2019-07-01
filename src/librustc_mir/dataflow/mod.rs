@@ -359,8 +359,8 @@ where
     body: &'mir Body<'tcx>,
 }
 
-pub type DataflowResultsRefCursor<'mir, 'tcx, 'flow, BD> =
-    DataflowResultsCursor<'mir, 'tcx, BD, &'flow DataflowResults<'tcx, BD>>;
+pub type DataflowResultsRefCursor<'mir, 'tcx, BD> =
+    DataflowResultsCursor<'mir, 'tcx, BD, &'mir DataflowResults<'tcx, BD>>;
 
 impl<'mir, 'tcx, BD, DR> DataflowResultsCursor<'mir, 'tcx, BD, DR>
 where
