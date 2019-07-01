@@ -357,12 +357,16 @@ fn qonef(x: f32) -> f32 {
     return (0.375 + r / s) / x;
 }
 
-#[test]
-fn test_j1f_2488() {
-    // 0x401F3E49
-    assert_eq!(j1f(2.4881766_f32), 0.49999475_f32);
-}
-#[test]
-fn test_y1f_2002() {
-    assert_eq!(y1f(2.0000002_f32), -0.10703229_f32);
+#[cfg(test)]
+mod tests {
+    use super::{j1f, y1f};
+    #[test]
+    fn test_j1f_2488() {
+        // 0x401F3E49
+        assert_eq!(j1f(2.4881766_f32), 0.49999475_f32);
+    }
+    #[test]
+    fn test_y1f_2002() {
+        assert_eq!(y1f(2.0000002_f32), -0.10703229_f32);
+    }
 }
