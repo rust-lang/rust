@@ -8,6 +8,13 @@
 
 steps:
 
+# Disable automatic line ending conversion, which is enabled by default on
+# Azure's Windows image. Having the conversion enabled caused regressions both
+# in our test suite (it broke miri tests) and in the ecosystem, since we
+# started shipping install scripts with CRLF endings instead of the old LF.
+- bash: git config --global core.autocrlf false
+  displayName: "Disable git automatic line ending conversion"
+
 - checkout: self
   fetchDepth: 2
 
