@@ -117,7 +117,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     #[inline]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
-        ptr.with_tag(M::tag_static_base_pointer(ptr.alloc_id, &self))
+        ptr.with_tag(M::tag_static_base_pointer(&self, ptr.alloc_id))
     }
 
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer<M::PointerTag> {
@@ -150,7 +150,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
         let id = self.tcx.alloc_map.lock().reserve();
-        let (alloc, tag) = M::tag_allocation(id, Cow::Owned(alloc), Some(kind), &self);
+        let (alloc, tag) = M::tag_allocation(&self, id, Cow::Owned(alloc), Some(kind));
         self.alloc_map.insert(id, (kind, alloc.into_owned()));
         Pointer::from(id).with_tag(tag)
     }
@@ -384,7 +384,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // We got a "lazy" static that has not been computed yet.
                 if tcx.is_foreign_item(def_id) {
                     trace!("static_alloc: foreign item {:?}", def_id);
-                    M::find_foreign_static(def_id, tcx)?
+                    M::find_foreign_static(tcx.tcx, def_id)?
                 } else {
                     trace!("static_alloc: Need to compute {:?}", def_id);
                     let instance = Instance::mono(tcx.tcx, def_id);
@@ -414,10 +414,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // We got tcx memory. Let the machine figure out whether and how to
         // turn that into memory with the right pointer tag.
         Ok(M::tag_allocation(
+            memory,
             id, // always use the ID we got as input, not the "hidden" one.
             alloc,
             M::STATIC_KIND.map(MemoryKind::Machine),
-            memory
         ).0)
     }
 
@@ -890,7 +890,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         match scalar {
             Scalar::Ptr(ptr) => Ok(ptr),
-            _ => M::int_to_ptr(scalar.to_usize(self)?, self)
+            _ => M::int_to_ptr(&self, scalar.to_usize(self)?)
         }
     }
 
@@ -901,7 +901,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, u128> {
         match scalar.to_bits_or_ptr(size, self) {
             Ok(bits) => Ok(bits),
-            Err(ptr) => Ok(M::ptr_to_int(ptr, self)? as u128)
+            Err(ptr) => Ok(M::ptr_to_int(&self, ptr)? as u128)
         }
     }
 }

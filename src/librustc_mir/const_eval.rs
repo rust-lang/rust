@@ -11,7 +11,7 @@ use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
-use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
@@ -398,18 +398,18 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn find_foreign_static(
+        _tcx: TyCtxt<'tcx>,
         _def_id: DefId,
-        _tcx: TyCtxtAt<'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
     }
 
     #[inline(always)]
     fn tag_allocation<'b>(
+        _memory: &Memory<'mir, 'tcx, Self>,
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<!>>,
-        _memory: &Memory<'mir, 'tcx, Self>,
     ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
         // We do not use a tag so we can just cheaply forward the allocation
         (alloc, ())
@@ -417,8 +417,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     #[inline(always)]
     fn tag_static_base_pointer(
-        _id: AllocId,
         _memory: &Memory<'mir, 'tcx, Self>,
+        _id: AllocId,
     ) -> Self::PointerTag {
         ()
     }
