@@ -39,7 +39,6 @@ pub struct StringReader<'a> {
     /// Stop reading src at this index.
     crate end_src_index: usize,
     // cached:
-    peek_token: Token,
     peek_span_src_raw: Span,
     fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
@@ -78,9 +77,7 @@ impl<'a> StringReader<'a> {
     /// Returns the next token. EFFECT: advances the string_reader.
     pub fn try_next_token(&mut self) -> Result<Token, ()> {
         assert!(self.fatal_errs.is_empty());
-        let ret_val = self.peek_token.take();
-        self.advance_token()?;
-        Ok(ret_val)
+        self.advance_token()
     }
 
     fn try_real_token(&mut self) -> Result<Token, ()> {
@@ -118,10 +115,6 @@ impl<'a> StringReader<'a> {
 
         err.emit();
         FatalError.raise();
-    }
-
-    fn fatal(&self, m: &str) -> FatalError {
-        self.fatal_span(self.peek_token.span, m)
     }
 
     crate fn emit_fatal_errors(&mut self) {
@@ -169,7 +162,6 @@ impl<'a> StringReader<'a> {
             ch: Some('\n'),
             source_file,
             end_src_index: src.len(),
-            peek_token: Token::dummy(),
             peek_span_src_raw: syntax_pos::DUMMY_SP,
             src,
             fatal_errs: Vec::new(),
@@ -267,11 +259,11 @@ impl<'a> StringReader<'a> {
 
     /// Advance peek_token to refer to the next token, and
     /// possibly update the interner.
-    fn advance_token(&mut self) -> Result<(), ()> {
+    fn advance_token(&mut self) -> Result<Token, ()> {
         match self.scan_whitespace_or_comment() {
             Some(comment) => {
                 self.peek_span_src_raw = comment.span;
-                self.peek_token = comment;
+                Ok(comment)
             }
             None => {
                 let (kind, start_pos, end_pos) = if self.is_eof() {
@@ -281,12 +273,10 @@ impl<'a> StringReader<'a> {
                     (self.next_token_inner()?, start_pos, self.pos)
                 };
                 let (real, raw) = self.mk_sp_and_raw(start_pos, end_pos);
-                self.peek_token = Token::new(kind, real);
                 self.peek_span_src_raw = raw;
+                Ok(Token::new(kind, real))
             }
         }
-
-        Ok(())
     }
 
     #[inline]
@@ -1484,17 +1474,17 @@ mod tests {
             assert_eq!(tok1.kind, tok2.kind);
             assert_eq!(tok1.span, tok2.span);
             assert_eq!(string_reader.next_token(), token::Whitespace);
-            // the 'main' id is already read:
-            assert_eq!(string_reader.pos.clone(), BytePos(28));
             // read another token:
             let tok3 = string_reader.next_token();
+            assert_eq!(string_reader.pos.clone(), BytePos(28));
             let tok4 = Token::new(
                 mk_ident("main"),
                 Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
             );
             assert_eq!(tok3.kind, tok4.kind);
             assert_eq!(tok3.span, tok4.span);
-            // the lparen is already read:
+
+            assert_eq!(string_reader.next_token(), token::OpenDelim(token::Paren));
             assert_eq!(string_reader.pos.clone(), BytePos(29))
         })
     }
