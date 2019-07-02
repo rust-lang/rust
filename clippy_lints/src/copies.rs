@@ -1,4 +1,6 @@
-use crate::utils::{get_parent_expr, higher, in_macro_or_desugar, snippet, span_lint_and_then, span_note_and_lint};
+use crate::utils::{
+    get_parent_expr, higher, in_macro_or_desugar, same_tys, snippet, span_lint_and_then, span_note_and_lint,
+};
 use crate::utils::{SpanlessEq, SpanlessHash};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -165,7 +167,18 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr]) {
 }
 
 /// Implementation of `MATCH_SAME_ARMS`.
-fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
+fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
+    fn same_bindings<'tcx>(
+        cx: &LateContext<'_, 'tcx>,
+        lhs: &FxHashMap<LocalInternedString, Ty<'tcx>>,
+        rhs: &FxHashMap<LocalInternedString, Ty<'tcx>>,
+    ) -> bool {
+        lhs.len() == rhs.len()
+            && lhs
+                .iter()
+                .all(|(name, l_ty)| rhs.get(name).map_or(false, |r_ty| same_tys(cx, l_ty, r_ty)))
+    }
+
     if let ExprKind::Match(_, ref arms, MatchSource::Normal) = expr.node {
         let hash = |&(_, arm): &(usize, &Arm)| -> u64 {
             let mut h = SpanlessHash::new(cx, cx.tables);
@@ -176,12 +189,13 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
         let eq = |&(lindex, lhs): &(usize, &Arm), &(rindex, rhs): &(usize, &Arm)| -> bool {
             let min_index = usize::min(lindex, rindex);
             let max_index = usize::max(lindex, rindex);
+
             // Arms with a guard are ignored, those can’t always be merged together
             // This is also the case for arms in-between each there is an arm with a guard
             (min_index..=max_index).all(|index| arms[index].guard.is_none()) &&
                 SpanlessEq::new(cx).eq_expr(&lhs.body, &rhs.body) &&
                 // all patterns should have the same bindings
-                bindings(cx, &lhs.pats[0]) == bindings(cx, &rhs.pats[0])
+                same_bindings(cx, &bindings(cx, &lhs.pats[0]), &bindings(cx, &rhs.pats[0]))
         };
 
         let indexed_arms: Vec<(usize, &Arm)> = arms.iter().enumerate().collect();
