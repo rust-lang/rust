@@ -39,7 +39,7 @@ Stabilized APIs
 - [`mem::MaybeUninit`]
 - [`pointer::align_offset`]
 - [`future::Future`]
-- [`task::Context`] 
+- [`task::Context`]
 - [`task::RawWaker`]
 - [`task::RawWakerVTable`]
 - [`task::Waker`]
@@ -61,6 +61,8 @@ Misc
 
 Compatibility Notes
 -------------------
+- [`std::arch::x86::_rdtsc` returns `u64` instead of `i64`][stdsimd/559]
+- [`std::arch::x86_64::_mm_shuffle_ps` takes an `i32` instead of `u32` for `mask`][stdsimd/522]
 - With the stabilisation of `mem::MaybeUninit`, `mem::uninitialized` use is no
   longer recommended, and will be deprecated in 1.38.0.
 
@@ -97,7 +99,8 @@ Compatibility Notes
 [`task::Poll`]: https://doc.rust-lang.org/beta/std/task/enum.Poll.html
 [clippy-1-36-0]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md#rust-136
 [cargo-1-36-0]: https://github.com/rust-lang/cargo/blob/master/CHANGELOG.md#cargo-136-2019-07-04
-
+[stdsimd/522]: https://github.com/rust-lang-nursery/stdsimd/issues/522
+[stdsimd/559]: https://github.com/rust-lang-nursery/stdsimd/issues/559
 
 Version 1.35.0 (2019-05-23)
 ==========================
