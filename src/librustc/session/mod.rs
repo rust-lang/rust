@@ -1295,9 +1295,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Make sure that any given profiling data actually exists so LLVM can't
     // decide to silently skip PGO.
-    if let Some(ref path) = sess.opts.debugging_opts.pgo_use {
+    if let Some(ref path) = sess.opts.cg.profile_use {
         if !path.exists() {
-            sess.err(&format!("File `{}` passed to `-Zpgo-use` does not exist.",
+            sess.err(&format!("File `{}` passed to `-C profile-use` does not exist.",
                               path.display()));
         }
     }
@@ -1306,7 +1306,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // an error to combine the two for now. It always runs into an assertions
     // if LLVM is built with assertions, but without assertions it sometimes
     // does not crash and will probably generate a corrupted binary.
-    if sess.opts.debugging_opts.pgo_gen.enabled() &&
+    if sess.opts.cg.profile_generate.enabled() &&
        sess.target.target.options.is_like_msvc &&
        sess.panic_strategy() == PanicStrategy::Unwind {
         sess.err("Profile-guided optimization does not yet work in conjunction \

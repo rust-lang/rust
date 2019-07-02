@@ -1207,7 +1207,11 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     linker_plugin_lto: LinkerPluginLto = (LinkerPluginLto::Disabled,
         parse_linker_plugin_lto, [TRACKED],
         "generate build artifacts that are compatible with linker-based LTO."),
-
+    profile_generate: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
+        parse_switch_with_opt_path, [TRACKED],
+        "compile the program with profiling instrumentation"),
+    profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+        "use the given `.profdata` file for profile-guided optimization"),
 }
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
@@ -1379,11 +1383,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "extra arguments to prepend to the linker invocation (space separated)"),
     profile: bool = (false, parse_bool, [TRACKED],
                      "insert profiling code"),
-    pgo_gen: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
-        parse_switch_with_opt_path, [TRACKED],
-        "Generate PGO profile data, to a given file, or to the default location if it's empty."),
-    pgo_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
-        "Use PGO profile data from the given profile file."),
     disable_instrumentation_preinliner: bool = (false, parse_bool, [TRACKED],
         "Disable the instrumentation pre-inliner, useful for profiling / PGO."),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
@@ -2036,13 +2035,6 @@ pub fn build_session_options_and_crate_config(
         }
     }
 
-    if debugging_opts.pgo_gen.enabled() && debugging_opts.pgo_use.is_some() {
-        early_error(
-            error_format,
-            "options `-Z pgo-gen` and `-Z pgo-use` are exclusive",
-        );
-    }
-
     let mut output_types = BTreeMap::new();
     if !debugging_opts.parse_only {
         for list in matches.opt_strs("emit") {
@@ -2151,6 +2143,13 @@ pub fn build_session_options_and_crate_config(
         early_error(
             error_format,
             "can't instrument with gcov profiling when compiling incrementally",
+        );
+    }
+
+    if cg.profile_generate.enabled() && cg.profile_use.is_some() {
+        early_error(
+            error_format,
+            "options `-C profile-generate` and `-C profile-use` are exclusive",
         );
     }
 

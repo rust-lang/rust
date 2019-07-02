@@ -1179,7 +1179,7 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
         cmd.build_static_executable();
     }
 
-    if sess.opts.debugging_opts.pgo_gen.enabled() {
+    if sess.opts.cg.profile_generate.enabled() {
         cmd.pgo_gen();
     }
 

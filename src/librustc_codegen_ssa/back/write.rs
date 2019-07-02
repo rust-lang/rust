@@ -423,8 +423,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
 
-    modules_config.pgo_gen = sess.opts.debugging_opts.pgo_gen.clone();
-    modules_config.pgo_use = sess.opts.debugging_opts.pgo_use.clone();
+    modules_config.pgo_gen = sess.opts.cg.profile_generate.clone();
+    modules_config.pgo_use = sess.opts.cg.profile_use.clone();
 
     modules_config.opt_level = Some(sess.opts.optimize);
     modules_config.opt_size = Some(sess.opts.optimize);

@@ -203,7 +203,7 @@ fn exported_symbols_provider_local<'tcx>(
         }
     }
 
-    if tcx.sess.opts.debugging_opts.pgo_gen.enabled() {
+    if tcx.sess.opts.cg.profile_generate.enabled() {
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.
