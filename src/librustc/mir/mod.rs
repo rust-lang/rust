@@ -1930,6 +1930,13 @@ impl<'tcx> Place<'tcx> {
 
         iterate_over2(place_base, place_projection, &Projections::Empty, op)
     }
+
+    pub fn as_place_ref(&self) -> PlaceRef<'_, 'tcx> {
+        PlaceRef {
+            base: &self.base,
+            projection: &self.projection,
+        }
+    }
 }
 
 impl From<Local> for Place<'_> {
