@@ -3,7 +3,7 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 
 use crate::hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
-use rustc::ty::{self, Lift, Ty, TyCtxt, GenericParamDefKind, TypeFoldable, ToPredicate};
+use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable, ToPredicate};
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::ConstValue;
@@ -261,14 +261,15 @@ fn check_type_defn<'tcx, F>(
             let needs_drop_copy = || {
                 packed && {
                     let ty = variant.fields.last().unwrap().ty;
-                    fcx.tcx.erase_regions(&ty).lift_to_tcx(fcx_tcx)
-                        .map(|ty| ty.needs_drop(fcx_tcx, fcx_tcx.param_env(def_id)))
-                        .unwrap_or_else(|| {
+                    let ty = fcx.tcx.erase_regions(&ty);
+                    if ty.has_local_value() {
                             fcx_tcx.sess.delay_span_bug(
                                 item.span, &format!("inference variables in {:?}", ty));
                             // Just treat unresolved type expression as if it needs drop.
                             true
-                        })
+                    } else {
+                        ty.needs_drop(fcx_tcx, fcx_tcx.param_env(def_id))
+                    }
                 }
             };
             let all_sized =

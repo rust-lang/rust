@@ -821,6 +821,13 @@ EnumTypeFoldableImpl! {
     } where T: TypeFoldable<'tcx>
 }
 
+EnumTypeFoldableImpl! {
+    impl<'tcx, T, E> TypeFoldable<'tcx> for Result<T, E> {
+        (Ok)(a),
+        (Err)(a),
+    } where T: TypeFoldable<'tcx>, E: TypeFoldable<'tcx>,
+}
+
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Rc<T> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         Rc::new((**self).fold_with(folder))
