@@ -1139,7 +1139,7 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
             vis.visit_id(node_id);
             vis.visit_block(body);
         }
-        ExprKind::Await(_origin, expr) => vis.visit_expr(expr),
+        ExprKind::Await(expr) => vis.visit_expr(expr),
         ExprKind::Assign(el, er) => {
             vis.visit_expr(el);
             vis.visit_expr(er);

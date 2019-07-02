@@ -2120,17 +2120,9 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Await(origin, ref expr) => {
-                match origin {
-                    ast::AwaitOrigin::MacroLike => {
-                        self.s.word("await!");
-                        self.print_expr_maybe_paren(expr, parser::PREC_FORCE_PAREN);
-                    }
-                    ast::AwaitOrigin::FieldLike => {
-                        self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
-                        self.s.word(".await");
-                    }
-                }
+            ast::ExprKind::Await(ref expr) => {
+                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
+                self.s.word(".await");
             }
             ast::ExprKind::Assign(ref lhs, ref rhs) => {
                 let prec = AssocOp::Assign.precedence() as i8;
