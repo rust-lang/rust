@@ -224,5 +224,22 @@ help: consider refactoring into `2 | 3`
 LL |         2 => 2, //~ ERROR 2nd matched arms have same body
    |         ^
 
-error: aborting due to 12 previous errors
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms.rs:140:55
+   |
+LL |                 CommandInfo::External { name, .. } => name.to_string(),
+   |                                                       ^^^^^^^^^^^^^^^^
+   |
+note: same as this
+  --> $DIR/match_same_arms.rs:139:54
+   |
+LL |                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
+   |                                                      ^^^^^^^^^^^^^^^^
+help: consider refactoring into `CommandInfo::BuiltIn { name, .. } | CommandInfo::External { name, .. }`
+  --> $DIR/match_same_arms.rs:139:17
+   |
+LL |                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
 
