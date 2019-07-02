@@ -479,7 +479,7 @@ mod tests {
             .for_each(|s| s.iter().for_each(|val| pow_test(base, *val, expected)));
     }
 
-    fn test_sets(sets: &[&[f64]], computed: &Fn(f64) -> f64, expected: &Fn(f64) -> f64) {
+    fn test_sets(sets: &[&[f64]], computed: &dyn Fn(f64) -> f64, expected: &dyn Fn(f64) -> f64) {
         sets.iter().for_each(|s| {
             s.iter().for_each(|val| {
                 let exp = expected(*val);
