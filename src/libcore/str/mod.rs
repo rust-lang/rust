@@ -1333,6 +1333,11 @@ impl<'a> Iterator for Lines<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
     }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a str> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4241,6 +4246,11 @@ impl<'a> Iterator for SplitWhitespace<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a str> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "split_whitespace", since = "1.1.0")]
@@ -4266,6 +4276,11 @@ impl<'a> Iterator for SplitAsciiWhitespace<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a str> {
+        self.next_back()
     }
 }
 

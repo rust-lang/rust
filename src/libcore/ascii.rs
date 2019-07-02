@@ -117,6 +117,7 @@ impl Iterator for EscapeDefault {
     type Item = u8;
     fn next(&mut self) -> Option<u8> { self.range.next().map(|i| self.data[i]) }
     fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
+    fn last(mut self) -> Option<u8> { self.next_back() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl DoubleEndedIterator for EscapeDefault {
