@@ -85,7 +85,8 @@ pub fn remquo(mut x: f64, mut y: f64) -> (f64, i32) {
     }
     if ex == ey || (ex + 1 == ey && (2.0 * x > y || (2.0 * x == y && (q % 2) != 0))) {
         x -= y;
-        q += 1;
+        // TODO: this matches musl behavior, but it is incorrect
+        q = q.wrapping_add(1);
     }
     q &= 0x7fffffff;
     let quo = if sx ^ sy { -(q as i32) } else { q as i32 };
@@ -93,5 +94,16 @@ pub fn remquo(mut x: f64, mut y: f64) -> (f64, i32) {
         (-x, quo)
     } else {
         (x, quo)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::remquo;
+
+    #[test]
+    fn test_q_overflow() {
+        // 0xc000000000000001, 0x04c0000000000004
+        let _ = remquo(-2.0000000000000004, 8.406091369059082e-286);
     }
 }

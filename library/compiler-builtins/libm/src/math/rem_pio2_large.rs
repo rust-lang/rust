@@ -256,7 +256,7 @@ pub(crate) fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> 
     let jv = jv as usize;
 
     /* set up f[0] to f[jx+jk] where f[jx+jk] = ipio2[jv+jk] */
-    let mut j = (jv - jx) as i32;
+    let mut j = (jv as i32) - (jx as i32);
     let m = jx + jk;
     for i in 0..=m {
         i!(f, i, =, if j < 0 {
