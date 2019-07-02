@@ -1,12 +1,12 @@
 // compile-pass
 // edition:2018
 
-#![feature(async_await)]
+#![feature(async_await, async_closure)]
 
 macro_rules! match_expr {
     ($x:expr) => {}
 }
 
 fn main() {
-    match_expr!(async {});
+    match_expr!(async || {});
 }

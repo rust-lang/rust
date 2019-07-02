@@ -40,15 +40,6 @@ LL |     let _ = async {};
    = note: for more information, see https://github.com/rust-lang/rust/issues/50547
    = help: add #![feature(async_await)] to the crate attributes to enable
 
-error[E0658]: async closures are unstable
-  --> $DIR/feature-gate-async-await.rs:18:13
-   |
-LL |     let _ = async || {};
-   |             ^^^^^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
-   = help: add #![feature(async_await)] to the crate attributes to enable
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
