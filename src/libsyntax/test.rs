@@ -26,7 +26,6 @@ use crate::mut_visit::{*, ExpectOne};
 use crate::feature_gate::Features;
 use crate::util::map_in_place::MapInPlace;
 use crate::parse::{token, ParseSess};
-use crate::print::pprust;
 use crate::ast::{self, Ident};
 use crate::ptr::P;
 use crate::symbol::{self, Symbol, kw, sym};

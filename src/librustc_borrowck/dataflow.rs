@@ -6,7 +6,6 @@
 use rustc::cfg;
 use rustc::cfg::CFGIndex;
 use rustc::ty::TyCtxt;
-use std::io;
 use std::mem;
 use std::usize;
 use syntax::print::pprust::PrintState;
@@ -98,23 +97,23 @@ impl<'tcx, O: DataFlowOperator> DataFlowContext<'tcx, O> {
 }
 
 impl<'tcx, O: DataFlowOperator> pprust::PpAnn for DataFlowContext<'tcx, O> {
-    fn nested(&self, state: &mut pprust::State<'_>, nested: pprust::Nested) -> io::Result<()> {
+    fn nested(&self, state: &mut pprust::State<'_>, nested: pprust::Nested) {
         pprust::PpAnn::nested(self.tcx.hir(), state, nested)
     }
     fn pre(&self,
            ps: &mut pprust::State<'_>,
-           node: pprust::AnnNode<'_>) -> io::Result<()> {
+           node: pprust::AnnNode<'_>) {
         let id = match node {
-            pprust::AnnNode::Name(_) => return Ok(()),
+            pprust::AnnNode::Name(_) => return,
             pprust::AnnNode::Expr(expr) => expr.hir_id.local_id,
             pprust::AnnNode::Block(blk) => blk.hir_id.local_id,
             pprust::AnnNode::Item(_) |
-            pprust::AnnNode::SubItem(_) => return Ok(()),
+            pprust::AnnNode::SubItem(_) => return,
             pprust::AnnNode::Pat(pat) => pat.hir_id.local_id
         };
 
         if !self.has_bitset_for_local_id(id) {
-            return Ok(());
+            return;
         }
 
         assert!(self.bits_per_id > 0);
@@ -147,10 +146,9 @@ impl<'tcx, O: DataFlowOperator> pprust::PpAnn for DataFlowContext<'tcx, O> {
 
             ps.synth_comment(
                 format!("id {}: {}{}{}{}", id.as_usize(), entry_str,
-                        gens_str, action_kills_str, scope_kills_str))?;
-            ps.s.space()?;
+                        gens_str, action_kills_str, scope_kills_str));
+            ps.s.space();
         }
-        Ok(())
     }
 }
 
@@ -531,8 +529,8 @@ impl<'tcx, O: DataFlowOperator + Clone + 'static> DataFlowContext<'tcx, O> {
 
         debug!("Dataflow result for {}:", self.analysis_name);
         debug!("{}", pprust::to_string(self, |s| {
-            s.cbox(pprust::indent_unit)?;
-            s.ibox(0)?;
+            s.cbox(pprust::indent_unit);
+            s.ibox(0);
             s.print_expr(&body.value)
         }));
     }
