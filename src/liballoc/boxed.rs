@@ -1,6 +1,6 @@
 //! A pointer type for heap allocation.
 //!
-//! `Box<T>`, casually referred to as a 'box', provides the simplest form of
+//! [`Box<T>`], casually referred to as a 'box', provides the simplest form of
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
 //! drop their contents when they go out of scope.
 //!
@@ -48,7 +48,7 @@
 //!
 //! It wouldn't work. This is because the size of a `List` depends on how many
 //! elements are in the list, and so we don't know how much memory to allocate
-//! for a `Cons`. By introducing a `Box`, which has a defined size, we know how
+//! for a `Cons`. By introducing a [`Box<T>`], which has a defined size, we know how
 //! big `Cons` needs to be.
 //!
 //! # Memory layout
@@ -59,15 +59,19 @@
 //! [`Layout`] used with the allocator is correct for the type. More precisely,
 //! a `value: *mut T` that has been allocated with the [`Global`] allocator
 //! with `Layout::for_value(&*value)` may be converted into a box using
-//! `Box::<T>::from_raw(value)`. Conversely, the memory backing a `value: *mut
-//! T` obtained from `Box::<T>::into_raw` may be deallocated using the
-//! [`Global`] allocator with `Layout::for_value(&*value)`.
+//! [`Box::<T>::from_raw(value)`]. Conversely, the memory backing a `value: *mut
+//! T` obtained from [`Box::<T>::into_raw`] may be deallocated using the
+//! [`Global`] allocator with [`Layout::for_value(&*value)`].
 //!
 //!
 //! [dereferencing]: ../../std/ops/trait.Deref.html
 //! [`Box`]: struct.Box.html
+//! [`Box<T>`]: struct.Box.html
+//! [`Box::<T>::from_raw(value)`]: struct.Box.html#method.from_raw
+//! [`Box::<T>::into_raw`]: struct.Box.html#method.into_raw
 //! [`Global`]: ../alloc/struct.Global.html
 //! [`Layout`]: ../alloc/struct.Layout.html
+//! [`Layout::for_value(&*value)`]: ../alloc/struct.Layout.html#method.for_value
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
