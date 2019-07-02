@@ -46,10 +46,10 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType]) -> SymbolExpor
     }
 }
 
-fn reachable_non_generics_provider<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn reachable_non_generics_provider(
+    tcx: TyCtxt<'_>,
     cnum: CrateNum,
-) -> &'tcx DefIdMap<SymbolExportLevel> {
+) -> &DefIdMap<SymbolExportLevel> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
@@ -157,7 +157,7 @@ fn reachable_non_generics_provider<'tcx>(
     tcx.arena.alloc(reachable_non_generics)
 }
 
-fn is_reachable_non_generic_provider_local<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+fn is_reachable_non_generic_provider_local(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let export_threshold = threshold(tcx);
 
     if let Some(&level) = tcx.reachable_non_generics(def_id.krate).get(&def_id) {
@@ -167,14 +167,14 @@ fn is_reachable_non_generic_provider_local<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefI
     }
 }
 
-fn is_reachable_non_generic_provider_extern<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
 }
 
-fn exported_symbols_provider_local<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn exported_symbols_provider_local(
+    tcx: TyCtxt<'_>,
     cnum: CrateNum,
-) -> Arc<Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)>> {
+) -> Arc<Vec<(ExportedSymbol<'_>, SymbolExportLevel)>> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
@@ -273,10 +273,10 @@ fn exported_symbols_provider_local<'tcx>(
     Arc::new(symbols)
 }
 
-fn upstream_monomorphizations_provider<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn upstream_monomorphizations_provider(
+    tcx: TyCtxt<'_>,
     cnum: CrateNum,
-) -> &'tcx DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
+) -> &DefIdMap<FxHashMap<SubstsRef<'_>, CrateNum>> {
     debug_assert!(cnum == LOCAL_CRATE);
 
     let cnums = tcx.all_crate_nums(LOCAL_CRATE);
@@ -322,10 +322,10 @@ fn upstream_monomorphizations_provider<'tcx>(
     tcx.arena.alloc(instances)
 }
 
-fn upstream_monomorphizations_for_provider<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn upstream_monomorphizations_for_provider(
+    tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>> {
+) -> Option<&FxHashMap<SubstsRef<'_>, CrateNum>> {
     debug_assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(LOCAL_CRATE).get(&def_id)
 }

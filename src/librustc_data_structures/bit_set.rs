@@ -168,7 +168,7 @@ impl<T: Idx> BitSet<T> {
 
     /// Iterates over the indices of set bits in a sorted order.
     #[inline]
-    pub fn iter<'a>(&'a self) -> BitIter<'a, T> {
+    pub fn iter(&self) -> BitIter<'_, T> {
         BitIter {
             cur: None,
             iter: self.words.iter().enumerate(),
@@ -849,7 +849,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
-    pub fn iter<'a>(&'a self, row: R) -> BitIter<'a, C> {
+    pub fn iter(&self, row: R) -> BitIter<'_, C> {
         assert!(row.index() < self.num_rows);
         let (start, end) = self.range(row);
         BitIter {

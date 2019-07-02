@@ -21,7 +21,7 @@ pub use self::graphviz::{graphviz_safe_def_name, write_mir_graphviz};
 pub use self::graphviz::write_node_label as write_graphviz_node_label;
 
 /// If possible, suggest replacing `ref` with `ref mut`.
-pub fn suggest_ref_mut<'tcx>(tcx: TyCtxt<'tcx>, binding_span: Span) -> Option<(String)> {
+pub fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<(String)> {
     let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).unwrap();
     if hi_src.starts_with("ref")
         && hi_src["ref".len()..].starts_with(Pattern_White_Space)

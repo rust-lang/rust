@@ -700,7 +700,7 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
     }
 }
 
-fn assert_and_save_dep_graph<'tcx>(tcx: TyCtxt<'tcx>) {
+fn assert_and_save_dep_graph(tcx: TyCtxt<'_>) {
     time(tcx.sess,
          "assert dep graph",
          || ::rustc_incremental::assert_dep_graph(tcx));

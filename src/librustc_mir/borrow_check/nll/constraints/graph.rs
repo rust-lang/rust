@@ -234,10 +234,10 @@ impl<'s, D: ConstraintGraphDirecton> graph::WithNumNodes for RegionGraph<'s, D> 
 }
 
 impl<'s, D: ConstraintGraphDirecton> graph::WithSuccessors for RegionGraph<'s, D> {
-    fn successors<'graph>(
-        &'graph self,
+    fn successors(
+        &self,
         node: Self::Node,
-    ) -> <Self as graph::GraphSuccessors<'graph>>::Iter {
+    ) -> <Self as graph::GraphSuccessors<'_>>::Iter {
         self.outgoing_regions(node)
     }
 }

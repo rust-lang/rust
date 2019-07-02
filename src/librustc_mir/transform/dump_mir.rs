@@ -14,7 +14,7 @@ use crate::util as mir_util;
 pub struct Marker(pub &'static str);
 
 impl MirPass for Marker {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
+    fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed(self.0)
     }
 
@@ -52,7 +52,7 @@ pub fn on_mir_pass<'tcx>(
     }
 }
 
-pub fn emit_mir<'tcx>(tcx: TyCtxt<'tcx>, outputs: &OutputFilenames) -> io::Result<()> {
+pub fn emit_mir(tcx: TyCtxt<'_>, outputs: &OutputFilenames) -> io::Result<()> {
     let path = outputs.path(OutputType::Mir);
     let mut f = File::create(&path)?;
     mir_util::write_mir_pretty(tcx, None, &mut f)?;

@@ -11,7 +11,7 @@ use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::{Symbol, sym};
 use syntax::{span_err, struct_span_err};
 
-pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<NativeLibrary> {
+pub fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
         tcx,
         libs: Vec::new(),
