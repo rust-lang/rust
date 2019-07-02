@@ -73,8 +73,7 @@ pub trait F32Ext: private::Sealed + Sized {
 
     fn abs(self) -> Self;
 
-    // NOTE depends on unstable intrinsics::copysignf32
-    // fn signum(self) -> Self;
+    fn signum(self) -> Self;
 
     fn mul_add(self, a: Self, b: Self) -> Self;
 
@@ -176,6 +175,15 @@ impl F32Ext for f32 {
     #[inline]
     fn abs(self) -> Self {
         fabsf(self)
+    }
+
+    #[inline]
+    fn signum(self) -> Self {
+        if self.is_nan() {
+            f32::NAN
+        } else {
+            copysignf(1., self)
+        }
     }
 
     #[inline]
@@ -361,8 +369,7 @@ pub trait F64Ext: private::Sealed + Sized {
 
     fn abs(self) -> Self;
 
-    // NOTE depends on unstable intrinsics::copysignf64
-    // fn signum(self) -> Self;
+    fn signum(self) -> Self;
 
     fn mul_add(self, a: Self, b: Self) -> Self;
 
@@ -464,6 +471,15 @@ impl F64Ext for f64 {
     #[inline]
     fn abs(self) -> Self {
         fabs(self)
+    }
+
+    #[inline]
+    fn signum(self) -> Self {
+        if self.is_nan() {
+            f64::NAN
+        } else {
+            copysign(1., self)
+        }
     }
 
     #[inline]
