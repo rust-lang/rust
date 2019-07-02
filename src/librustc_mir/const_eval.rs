@@ -23,7 +23,7 @@ use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar,
     RawConst, ConstValue,
     InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpCx, StackPopCleanup,
-    Allocation, AllocId, MemoryKind, Memory,
+    Allocation, AllocId, MemoryKind,
     snapshot, RefTracking, intern_const_alloc_recursive,
 };
 
@@ -406,7 +406,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     #[inline(always)]
     fn tag_allocation<'b>(
-        _memory: &Memory<'mir, 'tcx, Self>,
+        _memory_extra: &(),
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<!>>,
@@ -417,7 +417,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     #[inline(always)]
     fn tag_static_base_pointer(
-        _memory: &Memory<'mir, 'tcx, Self>,
+        _memory_extra: &(),
         _id: AllocId,
     ) -> Self::PointerTag {
         ()

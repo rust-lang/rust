@@ -174,7 +174,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// For static allocations, the tag returned must be the same as the one returned by
     /// `tag_static_base_pointer`.
     fn tag_allocation<'b>(
-        memory: &Memory<'mir, 'tcx, Self>,
+        memory_extra: &Self::MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
@@ -186,7 +186,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Be aware that requesting the `Allocation` for that `id` will lead to cycles
     /// for cyclic statics!
     fn tag_static_base_pointer(
-        memory: &Memory<'mir, 'tcx, Self>,
+        memory_extra: &Self::MemoryExtra,
         id: AllocId,
     ) -> Self::PointerTag;
 
