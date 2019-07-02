@@ -764,12 +764,28 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         size = cmp::max(size, field.size);
                     }
 
+                    size = size.align_to(align.abi);
+
+                    if let Abi::ScalarPair(a, b) = &abi {
+                        // Only use `ScalarPair` if there is no padding between
+                        // `a` and `b`, or after `b`, to ensure that every byte
+                        // of a `#[repr(transparent)]` `union` is covered by
+                        // either a byte of `a` or one of `b`.
+                        let a_size = a.value.size(dl);
+                        let b_offset = a_size.align_to(b.value.align(dl).abi);
+                        let has_inner_padding = a_size < b_offset;
+                        let has_trailing_padding = b_offset + b.value.size(dl) < size;
+                        if has_inner_padding || has_trailing_padding {
+                            abi = Abi::Aggregate { sized: true };
+                        }
+                    }
+
                     return Ok(tcx.intern_layout(LayoutDetails {
                         variants: Variants::Single { index },
                         fields: FieldPlacement::Union(variants[index].len()),
                         abi,
                         align,
-                        size: size.align_to(align.abi)
+                        size,
                     }));
                 }
 
