@@ -1,0 +1,11 @@
+[package]
+name = "libm-bench"
+version = "0.1.0"
+authors = ["Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+libm = { path = "../.." }
+rand = "0.6.5"
+paste = "0.1.5"

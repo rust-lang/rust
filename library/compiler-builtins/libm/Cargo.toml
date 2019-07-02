@@ -26,12 +26,11 @@ checked = []
 [workspace]
 members = [
   "crates/compiler-builtins-smoke-test",
+  "crates/libm-bench",
 ]
 
 [dev-dependencies]
 no-panic = "0.1.8"
-rand = "0.6.5"
-paste = "0.1.5"
 
 [build-dependencies]
 rand = { version = "0.6.5", optional = true }
