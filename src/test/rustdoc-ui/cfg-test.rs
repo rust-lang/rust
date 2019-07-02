@@ -1,5 +1,5 @@
 // build-pass (FIXME(62277): could be check-pass?)
-// compile-flags:--test
+// compile-flags:--test --test-args --test-threads=1
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
 
 // Crates like core have doctests gated on `cfg(not(test))` so we need to make
