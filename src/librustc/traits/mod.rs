@@ -457,6 +457,16 @@ pub enum SelectionError<'tcx> {
     Overflow,
 }
 
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for SelectionError<'tcx> {
+        (SelectionError::Unimplemented),
+        (SelectionError::OutputTypeParameterMismatch)(a, b, c),
+        (SelectionError::TraitNotObjectSafe)(a),
+        (SelectionError::ConstEvalFailure)(a),
+        (SelectionError::Overflow),
+    }
+}
+
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>
@@ -782,13 +792,11 @@ fn do_normalize_predicates<'tcx>(
                 return Err(ErrorReported)
             }
         };
-
-        match tcx.lift_to_global(&predicates) {
-            Some(predicates) => Ok(predicates),
-            None => {
-                // FIXME: shouldn't we, you know, actually report an error here? or an ICE?
-                Err(ErrorReported)
-            }
+        if predicates.has_local_value() {
+            // FIXME: shouldn't we, you know, actually report an error here? or an ICE?
+            Err(ErrorReported)
+        } else {
+            Ok(predicates)
         }
     })
 }

@@ -37,6 +37,10 @@ impl ErrorHandled {
     }
 }
 
+CloneTypeFoldableImpls! {
+    ErrorHandled,
+}
+
 pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
 pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 
