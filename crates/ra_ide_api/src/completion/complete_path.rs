@@ -74,10 +74,11 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
 mod tests {
     use test_utils::covers;
 
-    use crate::completion::{CompletionKind, check_completion, do_completion};
+    use crate::completion::{CompletionKind, do_completion, CompletionItem};
+    use insta::assert_debug_snapshot_matches;
 
-    fn check_reference_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Reference);
+    fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
+        do_completion(code, CompletionKind::Reference)
     }
 
     #[test]
@@ -115,227 +116,435 @@ mod tests {
 
     #[test]
     fn completes_mod_with_docs() {
-        check_reference_completion(
-            "mod_with_docs",
-            r"
-            use self::my<|>;
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                r"
+                use self::my<|>;
 
-            /// Some simple
-            /// docs describing `mod my`.
-            mod my {
-                struct Bar;
-            }
-            ",
+                /// Some simple
+                /// docs describing `mod my`.
+                mod my {
+                    struct Bar;
+                }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "my",
+        source_range: [27; 29),
+        delete: [27; 29),
+        insert: "my",
+        kind: Module,
+        documentation: Documentation(
+            "Some simple\ndocs describing `mod my`.",
+        ),
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_use_item_starting_with_self() {
-        check_reference_completion(
-            "use_item_starting_with_self",
-            r"
-            use self::m::<|>;
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                r"
+                use self::m::<|>;
 
-            mod m {
-                struct Bar;
-            }
-            ",
+                mod m {
+                    struct Bar;
+                }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Bar",
+        source_range: [30; 30),
+        delete: [30; 30),
+        insert: "Bar",
+        kind: Struct,
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_use_item_starting_with_crate() {
-        check_reference_completion(
-            "use_item_starting_with_crate",
-            "
-            //- /lib.rs
-            mod foo;
-            struct Spam;
-            //- /foo.rs
-            use crate::Sp<|>
-            ",
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                mod foo;
+                struct Spam;
+                //- /foo.rs
+                use crate::Sp<|>
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Spam",
+        source_range: [11; 13),
+        delete: [11; 13),
+        insert: "Spam",
+        kind: Struct,
+    },
+    CompletionItem {
+        label: "foo",
+        source_range: [11; 13),
+        delete: [11; 13),
+        insert: "foo",
+        kind: Module,
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_nested_use_tree() {
-        check_reference_completion(
-            "nested_use_tree",
-            "
-            //- /lib.rs
-            mod foo;
-            struct Spam;
-            //- /foo.rs
-            use crate::{Sp<|>};
-            ",
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                mod foo;
+                struct Spam;
+                //- /foo.rs
+                use crate::{Sp<|>};
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Spam",
+        source_range: [12; 14),
+        delete: [12; 14),
+        insert: "Spam",
+        kind: Struct,
+    },
+    CompletionItem {
+        label: "foo",
+        source_range: [12; 14),
+        delete: [12; 14),
+        insert: "foo",
+        kind: Module,
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_deeply_nested_use_tree() {
-        check_reference_completion(
-            "deeply_nested_use_tree",
-            "
-            //- /lib.rs
-            mod foo;
-            pub mod bar {
-                pub mod baz {
-                    pub struct Spam;
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                mod foo;
+                pub mod bar {
+                    pub mod baz {
+                        pub struct Spam;
+                    }
                 }
-            }
-            //- /foo.rs
-            use crate::{bar::{baz::Sp<|>}};
-            ",
+                //- /foo.rs
+                use crate::{bar::{baz::Sp<|>}};
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Spam",
+        source_range: [23; 25),
+        delete: [23; 25),
+        insert: "Spam",
+        kind: Struct,
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_enum_variant() {
-        check_reference_completion(
-            "enum_variant",
-            "
-            //- /lib.rs
-            /// An enum
-            enum E {
-                /// Foo Variant
-                Foo,
-                /// Bar Variant with i32
-                Bar(i32)
-            }
-            fn foo() { let _ = E::<|> }
-            ",
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                /// An enum
+                enum E {
+                    /// Foo Variant
+                    Foo,
+                    /// Bar Variant with i32
+                    Bar(i32)
+                }
+                fn foo() { let _ = E::<|> }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Bar",
+        source_range: [116; 116),
+        delete: [116; 116),
+        insert: "Bar",
+        kind: EnumVariant,
+        detail: "(i32)",
+        documentation: Documentation(
+            "Bar Variant with i32",
+        ),
+    },
+    CompletionItem {
+        label: "Foo",
+        source_range: [116; 116),
+        delete: [116; 116),
+        insert: "Foo",
+        kind: EnumVariant,
+        detail: "()",
+        documentation: Documentation(
+            "Foo Variant",
+        ),
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_enum_variant_with_details() {
-        check_reference_completion(
-            "enum_variant_with_details",
-            "
-            //- /lib.rs
-            struct S { field: u32 }
-            /// An enum
-            enum E {
-                /// Foo Variant (empty)
-                Foo,
-                /// Bar Variant with i32 and u32
-                Bar(i32, u32),
-                ///
-                S(S),
-            }
-            fn foo() { let _ = E::<|> }
-            ",
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                struct S { field: u32 }
+                /// An enum
+                enum E {
+                    /// Foo Variant (empty)
+                    Foo,
+                    /// Bar Variant with i32 and u32
+                    Bar(i32, u32),
+                    ///
+                    S(S),
+                }
+                fn foo() { let _ = E::<|> }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Bar",
+        source_range: [180; 180),
+        delete: [180; 180),
+        insert: "Bar",
+        kind: EnumVariant,
+        detail: "(i32, u32)",
+        documentation: Documentation(
+            "Bar Variant with i32 and u32",
+        ),
+    },
+    CompletionItem {
+        label: "Foo",
+        source_range: [180; 180),
+        delete: [180; 180),
+        insert: "Foo",
+        kind: EnumVariant,
+        detail: "()",
+        documentation: Documentation(
+            "Foo Variant (empty)",
+        ),
+    },
+    CompletionItem {
+        label: "S",
+        source_range: [180; 180),
+        delete: [180; 180),
+        insert: "S",
+        kind: EnumVariant,
+        detail: "(S)",
+        documentation: Documentation(
+            "",
+        ),
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_struct_associated_method() {
-        check_reference_completion(
-            "struct_associated_method",
-            "
-            //- /lib.rs
-            /// A Struct
-            struct S;
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                /// A Struct
+                struct S;
 
-            impl S {
-                /// An associated method
-                fn m() { }
-            }
+                impl S {
+                    /// An associated method
+                    fn m() { }
+                }
 
-            fn foo() { let _ = S::<|> }
-            ",
+                fn foo() { let _ = S::<|> }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "m",
+        source_range: [100; 100),
+        delete: [100; 100),
+        insert: "m()$0",
+        kind: Function,
+        detail: "fn m()",
+        documentation: Documentation(
+            "An associated method",
+        ),
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_struct_associated_const() {
-        check_reference_completion(
-            "struct_associated_const",
-            "
-            //- /lib.rs
-            /// A Struct
-            struct S;
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                /// A Struct
+                struct S;
 
-            impl S {
-                /// An associated const
-                const C: i32 = 42;
-            }
+                impl S {
+                    /// An associated const
+                    const C: i32 = 42;
+                }
 
-            fn foo() { let _ = S::<|> }
-            ",
+                fn foo() { let _ = S::<|> }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "C",
+        source_range: [107; 107),
+        delete: [107; 107),
+        insert: "C",
+        kind: Const,
+        detail: "const C: i32 = 42;",
+        documentation: Documentation(
+            "An associated const",
+        ),
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_struct_associated_type() {
-        check_reference_completion(
-            "struct_associated_type",
-            "
-            //- /lib.rs
-            /// A Struct
-            struct S;
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                /// A Struct
+                struct S;
 
-            impl S {
-                /// An associated type
-                type T = i32;
-            }
+                impl S {
+                    /// An associated type
+                    type T = i32;
+                }
 
-            fn foo() { let _ = S::<|> }
-            ",
+                fn foo() { let _ = S::<|> }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "T",
+        source_range: [101; 101),
+        delete: [101; 101),
+        insert: "T",
+        kind: TypeAlias,
+        detail: "type T = i32;",
+        documentation: Documentation(
+            "An associated type",
+        ),
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_enum_associated_method() {
-        check_reference_completion(
-            "enum_associated_method",
-            "
-            //- /lib.rs
-            /// An enum
-            enum S {};
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                /// An enum
+                enum S {};
 
-            impl S {
-                /// An associated method
-                fn m() { }
-            }
+                impl S {
+                    /// An associated method
+                    fn m() { }
+                }
 
-            fn foo() { let _ = S::<|> }
-            ",
+                fn foo() { let _ = S::<|> }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "m",
+        source_range: [100; 100),
+        delete: [100; 100),
+        insert: "m()$0",
+        kind: Function,
+        detail: "fn m()",
+        documentation: Documentation(
+            "An associated method",
+        ),
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_union_associated_method() {
-        check_reference_completion(
-            "union_associated_method",
-            "
-            //- /lib.rs
-            /// A union
-            union U {};
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                /// A union
+                union U {};
 
-            impl U {
-                /// An associated method
-                fn m() { }
-            }
+                impl U {
+                    /// An associated method
+                    fn m() { }
+                }
 
-            fn foo() { let _ = U::<|> }
-            ",
+                fn foo() { let _ = U::<|> }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "m",
+        source_range: [101; 101),
+        delete: [101; 101),
+        insert: "m()$0",
+        kind: Function,
+        detail: "fn m()",
+        documentation: Documentation(
+            "An associated method",
+        ),
+    },
+]"###
         );
     }
 
     #[test]
     fn completes_use_paths_across_crates() {
-        check_reference_completion(
-            "completes_use_paths_across_crates",
-            "
-            //- /main.rs
-            use foo::<|>;
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /main.rs
+                use foo::<|>;
 
-            //- /foo/lib.rs
-            pub mod bar {
-                pub struct S;
-            }
-            ",
+                //- /foo/lib.rs
+                pub mod bar {
+                    pub struct S;
+                }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "bar",
+        source_range: [9; 9),
+        delete: [9; 9),
+        insert: "bar",
+        kind: Module,
+    },
+]"###
         );
     }
 }
