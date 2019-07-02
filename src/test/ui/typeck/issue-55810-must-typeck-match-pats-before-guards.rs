@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // rust-lang/rust#55810: types for a binding in a match arm can be
 // inferred from arms that come later in the match.

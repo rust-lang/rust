@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // compile-flags: -Z parse-only
 
 impl <*const u8>::AssocTy {} // OK

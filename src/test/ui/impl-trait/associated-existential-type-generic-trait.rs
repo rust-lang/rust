@@ -1,5 +1,5 @@
 #![feature(existential_type)]
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 trait Bar {}
 struct Dummy<U>(U);

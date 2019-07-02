@@ -1,5 +1,5 @@
 // compile-flags: --error-format pretty-json -Zunstable-options
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested
