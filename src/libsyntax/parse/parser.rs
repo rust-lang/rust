@@ -3221,21 +3221,24 @@ impl<'a> Parser<'a> {
                              -> PResult<'a, P<Expr>>
     {
         let lo = self.token.span;
+
         let movability = if self.eat_keyword(kw::Static) {
             Movability::Static
         } else {
             Movability::Movable
         };
+
         let asyncness = if self.token.span.rust_2018() {
             self.parse_asyncness()
         } else {
             IsAsync::NotAsync
         };
-        let capture_clause = if self.eat_keyword(kw::Move) {
-            CaptureBy::Value
-        } else {
-            CaptureBy::Ref
-        };
+        if asyncness.is_async() {
+            // Feature gate `async ||` closures.
+            self.sess.async_closure_spans.borrow_mut().push(self.prev_span);
+        }
+
+        let capture_clause = self.parse_capture_clause();
         let decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_span;
         let body = match decl.output {
@@ -3257,7 +3260,7 @@ impl<'a> Parser<'a> {
             attrs))
     }
 
-    // `else` token already eaten
+    /// `else` token already eaten
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         if self.eat_keyword(kw::If) {
             return self.parse_if_expr(ThinVec::new());
@@ -3306,7 +3309,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_label), attrs))
     }
 
-    // parse `loop {...}`, `loop` token already eaten
+    /// Parse `loop {...}`, `loop` token already eaten.
     fn parse_loop_expr(&mut self, opt_label: Option<Label>,
                            span_lo: Span,
                            mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
@@ -3316,17 +3319,20 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span, ExprKind::Loop(body, opt_label), attrs))
     }
 
-    /// Parses an `async move {...}` expression.
-    pub fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>)
-        -> PResult<'a, P<Expr>>
-    {
-        let span_lo = self.token.span;
-        self.expect_keyword(kw::Async)?;
-        let capture_clause = if self.eat_keyword(kw::Move) {
+    /// Parse an optional `move` prefix to a closure lke construct.
+    fn parse_capture_clause(&mut self) -> CaptureBy {
+        if self.eat_keyword(kw::Move) {
             CaptureBy::Value
         } else {
             CaptureBy::Ref
-        };
+        }
+    }
+
+    /// Parses an `async move? {...}` expression.
+    pub fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+        let span_lo = self.token.span;
+        self.expect_keyword(kw::Async)?;
+        let capture_clause = self.parse_capture_clause();
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         Ok(self.mk_expr(
