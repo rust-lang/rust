@@ -3608,7 +3608,7 @@ fn nocomment_mir_line(line: &str) -> &str {
 
 fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
     use crate::read2::read2;
-    use std::mem::replace;
+    use std::mem::take;
 
     const HEAD_LEN: usize = 160 * 1024;
     const TAIL_LEN: usize = 256 * 1024;
@@ -3632,7 +3632,7 @@ fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
                         return;
                     }
                     let tail = bytes.split_off(new_len - TAIL_LEN).into_boxed_slice();
-                    let head = replace(bytes, Vec::new());
+                    let head = take(bytes);
                     let skipped = new_len - HEAD_LEN - TAIL_LEN;
                     ProcOutput::Abbreviated {
                         head,
