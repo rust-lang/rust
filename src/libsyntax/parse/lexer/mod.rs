@@ -142,10 +142,6 @@ impl<'a> StringReader<'a> {
         buffer
     }
 
-    pub fn peek(&self) -> &Token {
-        &self.peek_token
-    }
-
     /// For comments.rs, which hackily pokes into next_pos and ch
     fn new_raw(sess: &'a ParseSess,
                source_file: Lrc<syntax_pos::SourceFile>,
