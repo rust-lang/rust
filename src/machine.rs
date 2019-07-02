@@ -25,6 +25,8 @@ pub enum MiriMemoryKind {
     Rust,
     /// `malloc` memory.
     C,
+    /// Windows `HeapAlloc` memory.
+    WinHeap,
     /// Part of env var emulation.
     Env,
     /// Statics.
@@ -407,7 +409,7 @@ impl MayLeak for MiriMemoryKind {
     fn may_leak(self) -> bool {
         use self::MiriMemoryKind::*;
         match self {
-            Rust | C => false,
+            Rust | C | WinHeap => false,
             Env | Static => true,
         }
     }
