@@ -81,6 +81,9 @@ fn miri_pass(path: &str, target: &str, opt: bool) {
     let mut flags = Vec::new();
     if opt {
         flags.push("-Zmir-opt-level=3".to_owned());
+    } else {
+        // Run with intptrcast.  Avoid test matrix explosion by doing either this or opt-level=3.
+        flags.push("-Zmiri-seed=".to_owned());
     }
 
     run_tests("ui", path, target, flags);
