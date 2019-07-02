@@ -104,6 +104,31 @@ fn foo25() -> Result<(), ()> {
     foo()
 }
 
+async fn foo26() -> Result<(), ()> {
+    let _ = await!(bar()); //~ ERROR incorrect use of `await`
+    Ok(())
+}
+async fn foo27() -> Result<(), ()> {
+    let _ = await!(bar())?; //~ ERROR incorrect use of `await`
+    Ok(())
+}
+fn foo28() -> Result<(), ()> {
+    fn foo() -> Result<(), ()> {
+        let _ = await!(bar())?; //~ ERROR incorrect use of `await`
+        //~^ ERROR `await` is only allowed inside `async` functions
+        Ok(())
+    }
+    foo()
+}
+fn foo29() -> Result<(), ()> {
+    let foo = || {
+        let _ = await!(bar())?; //~ ERROR incorrect use of `await`
+        //~^ ERROR `await` is only allowed inside `async` functions
+        Ok(())
+    };
+    foo()
+}
+
 fn main() {
     match await { await => () }
     //~^ ERROR expected expression, found `=>`
