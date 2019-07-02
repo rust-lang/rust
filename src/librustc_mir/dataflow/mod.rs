@@ -17,7 +17,7 @@ use std::io;
 use std::path::PathBuf;
 use std::usize;
 
-pub use self::impls::{MaybeStorageLive};
+pub use self::impls::{MaybeStorageLive, RequiresStorage};
 pub use self::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 pub use self::impls::DefinitelyInitializedPlaces;
 pub use self::impls::EverInitializedPlaces;
@@ -358,6 +358,99 @@ pub(crate) trait DataflowResultsConsumer<'a, 'tcx: 'a> {
     // Delegated Hooks: Provide access to the MIR and process the flow state.
 
     fn body(&self) -> &'a Body<'tcx>;
+}
+
+/// Allows iterating dataflow results in a flexible and reasonably fast way.
+pub struct DataflowResultsCursor<'mir, 'tcx, BD, DR = DataflowResults<'tcx, BD>>
+where
+    BD: BitDenotation<'tcx>,
+    DR: Borrow<DataflowResults<'tcx, BD>>,
+{
+    flow_state: FlowAtLocation<'tcx, BD, DR>,
+
+    // The statement (or terminator) whose effect has been reconstructed in
+    // flow_state.
+    curr_loc: Option<Location>,
+
+    body: &'mir Body<'tcx>,
+}
+
+pub type DataflowResultsRefCursor<'mir, 'tcx, BD> =
+    DataflowResultsCursor<'mir, 'tcx, BD, &'mir DataflowResults<'tcx, BD>>;
+
+impl<'mir, 'tcx, BD, DR> DataflowResultsCursor<'mir, 'tcx, BD, DR>
+where
+    BD: BitDenotation<'tcx>,
+    DR: Borrow<DataflowResults<'tcx, BD>>,
+{
+    pub fn new(result: DR, body: &'mir Body<'tcx>) -> Self {
+        DataflowResultsCursor {
+            flow_state: FlowAtLocation::new(result),
+            curr_loc: None,
+            body,
+        }
+    }
+
+    /// Seek to the given location in MIR. This method is fast if you are
+    /// traversing your MIR statements in order.
+    ///
+    /// After calling `seek`, the current state will reflect all effects up to
+    /// and including the `before_statement_effect` of the statement at location
+    /// `loc`. The `statement_effect` of the statement at `loc` will be
+    /// available as the current effect (see e.g. `each_gen_bit`).
+    ///
+    /// If `loc.statement_index` equals the number of statements in the block,
+    /// we will reconstruct the terminator effect in the same way as described
+    /// above.
+    pub fn seek(&mut self, loc: Location) {
+        if self.curr_loc.map(|cur| loc == cur).unwrap_or(false) {
+            return;
+        }
+
+        let start_index;
+        let should_reset = match self.curr_loc {
+            None => true,
+            Some(cur)
+                if loc.block != cur.block || loc.statement_index < cur.statement_index => true,
+            _ => false,
+        };
+        if should_reset {
+            self.flow_state.reset_to_entry_of(loc.block);
+            start_index = 0;
+        } else {
+            let curr_loc = self.curr_loc.unwrap();
+            start_index = curr_loc.statement_index;
+            // Apply the effect from the last seek to the current state.
+            self.flow_state.apply_local_effect(curr_loc);
+        }
+
+        for stmt in start_index..loc.statement_index {
+            let mut stmt_loc = loc;
+            stmt_loc.statement_index = stmt;
+            self.flow_state.reconstruct_statement_effect(stmt_loc);
+            self.flow_state.apply_local_effect(stmt_loc);
+        }
+
+        if loc.statement_index == self.body[loc.block].statements.len() {
+            self.flow_state.reconstruct_terminator_effect(loc);
+        } else {
+            self.flow_state.reconstruct_statement_effect(loc);
+        }
+        self.curr_loc = Some(loc);
+    }
+
+    /// Return whether the current state contains bit `x`.
+    pub fn contains(&self, x: BD::Idx) -> bool {
+        self.flow_state.contains(x)
+    }
+
+    /// Iterate over each `gen` bit in the current effect (invoke `seek` first).
+    pub fn each_gen_bit<F>(&self, f: F)
+    where
+        F: FnMut(BD::Idx),
+    {
+        self.flow_state.each_gen_bit(f)
+    }
 }
 
 pub fn state_for_location<'tcx, T: BitDenotation<'tcx>>(loc: Location,
