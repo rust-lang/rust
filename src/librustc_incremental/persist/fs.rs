@@ -538,7 +538,7 @@ fn find_source_directory_in_iter<I>(iter: I,
         if source_directories_already_tried.contains(&session_dir) ||
            !is_session_directory(&directory_name) ||
            !is_finalized(&directory_name) {
-            debug!("find_source_directory_in_iter - ignoring.");
+            debug!("find_source_directory_in_iter - ignoring");
             continue
         }
 

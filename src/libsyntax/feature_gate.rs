@@ -2064,7 +2064,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 if attr::contains_name(&i.attrs[..], sym::main) {
                     gate_feature_post!(&self, main, i.span,
-                                       "declaration of a nonstandard `#[main]` \
+                                       "declaration of a non-standard `#[main]` \
                                         function may change over time, for now \
                                         a top-level `fn main()` is required");
                 }

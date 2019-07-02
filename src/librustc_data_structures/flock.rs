@@ -276,7 +276,7 @@ cfg_if! {
                     debug!("failed acquiring file lock: {}", err);
                     Err(err)
                 } else {
-                    debug!("successfully acquired lock.");
+                    debug!("successfully acquired lock");
                     Ok(Lock { _file: file })
                 }
             }
