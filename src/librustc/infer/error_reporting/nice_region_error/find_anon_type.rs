@@ -225,12 +225,7 @@ impl Visitor<'tcx> for TyPathVisitor<'tcx> {
             }
 
             (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id, _)) => {
-                debug!(
-                    "EarlyBound self.infcx.tcx.hir().local_def_id_from_node_id(id)={:?} \
-                     def_id={:?}",
-                    id,
-                    def_id
-                );
+                debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
                 if id == def_id {
                     self.found_it = true;
                     return; // we can stop visiting now
