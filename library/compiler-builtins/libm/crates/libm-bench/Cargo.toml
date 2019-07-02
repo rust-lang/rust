@@ -6,6 +6,6 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-libm = { path = "../.." }
+libm = { path = "../..", default-features = false }
 rand = "0.6.5"
 paste = "0.1.5"
