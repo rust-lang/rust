@@ -11,7 +11,7 @@ use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::DefCollector;
 use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
-use syntax::ast::{self, Ident};
+use syntax::ast::{self, Ident, ItemKind};
 use syntax::attr::{self, StabilityLevel};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
@@ -127,6 +127,21 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
+fn proc_macro_stub(item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
+    if attr::contains_name(&item.attrs, sym::proc_macro) {
+        return Some((MacroKind::Bang, item.ident, item.span));
+    } else if attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
+        return Some((MacroKind::Attr, item.ident, item.span));
+    } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
+        if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
+            if let Some(ident) = nested_meta.ident() {
+                return Some((MacroKind::Derive, ident, ident.span));
+            }
+        }
+    }
+    None
+}
+
 impl<'a> base::Resolver for Resolver<'a> {
     fn next_node_id(&mut self) -> ast::NodeId {
         self.session.next_node_id()
@@ -216,10 +231,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
         let (res, ext) = match self.resolve_macro_to_res(path, kind, &parent_scope, true, force) {
             Ok((res, ext)) => (res, ext),
-            // Replace unresolved attributes with used inert attributes for better recovery.
-            Err(Determinacy::Determined) if kind == MacroKind::Attr =>
-                (Res::Err, self.non_macro_attr(true)),
-            Err(determinacy) => return Err(determinacy),
+            // Return dummy syntax extensions for unresolved macros for better recovery.
+            Err(Determinacy::Determined) => (Res::Err, self.dummy_ext(kind)),
+            Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
         };
 
         let span = invoc.span();
@@ -305,12 +319,13 @@ impl<'a> Resolver<'a> {
             Res::Def(DefKind::Macro(_), def_id) => {
                 if let Some(node_id) = self.definitions.as_local_node_id(def_id) {
                     self.unused_macros.remove(&node_id);
+                    if self.proc_macro_stubs.contains(&node_id) {
+                        self.session.span_err(
+                            path.span,
+                            "can't use a procedural macro from the same crate that defines it",
+                        );
+                    }
                 }
-            }
-            Res::Def(DefKind::Fn, _) => {
-                let msg = "can't use a procedural macro from the same crate that defines it";
-                self.session.span_err(path.span, msg);
-                return Err(Determinacy::Determined);
             }
             Res::NonMacroAttr(attr_kind) => {
                 if kind == MacroKind::Attr {
@@ -1100,19 +1115,32 @@ impl<'a> Resolver<'a> {
                         item: &ast::Item,
                         expansion: Mark,
                         current_legacy_scope: &mut LegacyScope<'a>) {
-        self.local_macro_def_scopes.insert(item.id, self.current_module);
-        let ident = item.ident;
+        let (ext, ident, span, is_legacy) = match &item.node {
+            ItemKind::MacroDef(def) => {
+                let ext = Lrc::new(macro_rules::compile(
+                    &self.session.parse_sess,
+                    &self.session.features_untracked(),
+                    item,
+                    self.session.edition(),
+                ));
+                (ext, item.ident, item.span, def.legacy)
+            }
+            ItemKind::Fn(..) => match proc_macro_stub(item) {
+                Some((macro_kind, ident, span)) => {
+                    self.proc_macro_stubs.insert(item.id);
+                    (self.dummy_ext(macro_kind), ident, span, false)
+                }
+                None => return,
+            }
+            _ => unreachable!(),
+        };
 
         let def_id = self.definitions.local_def_id(item.id);
-        let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
-                                               &self.session.features_untracked(),
-                                               item, self.session.edition()));
-        let macro_kind = ext.macro_kind();
-        let res = Res::Def(DefKind::Macro(macro_kind), def_id);
+        let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id);
         self.macro_map.insert(def_id, ext);
+        self.local_macro_def_scopes.insert(item.id, self.current_module);
 
-        let def = match item.node { ast::ItemKind::MacroDef(ref def) => def, _ => unreachable!() };
-        if def.legacy {
+        if is_legacy {
             let ident = ident.modern();
             self.macro_names.insert(ident);
             let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
@@ -1121,7 +1149,7 @@ impl<'a> Resolver<'a> {
             } else {
                 ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
             };
-            let binding = (res, vis, item.span, expansion).to_name_binding(self.arenas);
+            let binding = (res, vis, span, expansion).to_name_binding(self.arenas);
             self.set_binding_parent_module(binding, self.current_module);
             let legacy_binding = self.arenas.alloc_legacy_binding(LegacyBinding {
                 parent_legacy_scope: *current_legacy_scope, binding, ident
@@ -1131,18 +1159,18 @@ impl<'a> Resolver<'a> {
             if is_macro_export {
                 let module = self.graph_root;
                 self.define(module, ident, MacroNS,
-                            (res, vis, item.span, expansion, IsMacroExport));
+                            (res, vis, span, expansion, IsMacroExport));
             } else {
                 self.check_reserved_macro_name(ident, res);
-                self.unused_macros.insert(item.id, item.span);
+                self.unused_macros.insert(item.id, span);
             }
         } else {
             let module = self.current_module;
             let vis = self.resolve_visibility(&item.vis);
             if vis != ty::Visibility::Public {
-                self.unused_macros.insert(item.id, item.span);
+                self.unused_macros.insert(item.id, span);
             }
-            self.define(module, ident, MacroNS, (res, vis, item.span, expansion));
+            self.define(module, ident, MacroNS, (res, vis, span, expansion));
         }
     }
 }

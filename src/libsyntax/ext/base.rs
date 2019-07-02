@@ -10,7 +10,7 @@ use crate::parse::token;
 use crate::ptr::P;
 use crate::symbol::{kw, sym, Ident, Symbol};
 use crate::{ThinVec, MACRO_ARGUMENTS};
-use crate::tokenstream::{self, TokenStream};
+use crate::tokenstream::{self, TokenStream, TokenTree};
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
@@ -638,6 +638,26 @@ impl SyntaxExtension {
             edition,
             kind,
         }
+    }
+
+    pub fn dummy_bang(edition: Edition) -> SyntaxExtension {
+        fn expander<'cx>(_: &'cx mut ExtCtxt<'_>, span: Span, _: &[TokenTree])
+                         -> Box<dyn MacResult + 'cx> {
+            DummyResult::any(span)
+        }
+        SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Box::new(expander)), edition)
+    }
+
+    pub fn dummy_derive(edition: Edition) -> SyntaxExtension {
+        fn expander(_: &mut ExtCtxt<'_>, _: Span, _: &ast::MetaItem, _: Annotatable)
+                    -> Vec<Annotatable> {
+            Vec::new()
+        }
+        SyntaxExtension::default(SyntaxExtensionKind::Derive(Box::new(expander)), edition)
+    }
+
+    pub fn non_macro_attr(mark_used: bool, edition: Edition) -> SyntaxExtension {
+        SyntaxExtension::default(SyntaxExtensionKind::NonMacroAttr { mark_used }, edition)
     }
 
     pub fn expn_info(&self, call_site: Span, descr: Symbol) -> ExpnInfo {

@@ -46,20 +46,6 @@ use log::debug;
 
 type Res = def::Res<NodeId>;
 
-fn proc_macro_stub(item: &Item) -> Option<(Ident, Span)> {
-    if attr::contains_name(&item.attrs, sym::proc_macro) ||
-       attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
-        return Some((item.ident, item.span));
-    } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
-        if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
-            if let Some(ident) = nested_meta.ident() {
-                return Some((ident, ident.span));
-            }
-        }
-    }
-    None
-}
-
 impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
@@ -470,9 +456,7 @@ impl<'a> Resolver<'a> {
 
                 // Functions introducing procedural macros reserve a slot
                 // in the macro namespace as well (see #52225).
-                if let Some((ident, span)) = proc_macro_stub(item) {
-                    self.define(parent, ident, MacroNS, (res, vis, span, expansion));
-                }
+                self.define_macro(item, expansion, &mut LegacyScope::Empty);
             }
 
             // These items live in the type namespace.

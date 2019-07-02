@@ -5,24 +5,6 @@ LL |     my_macro!();
    |     ^^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:28:5
-   |
-LL |     my_macro_attr!();
-   |     ^^^^^^^^^^^^^
-
-error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:31:5
-   |
-LL |     MyTrait!();
-   |     ^^^^^^^
-
-error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:34:3
-   |
-LL | #[my_macro]
-   |   ^^^^^^^^
-
-error: can't use a procedural macro from the same crate that defines it
   --> $DIR/macro-namespace-reserved-2.rs:36:3
    |
 LL | #[my_macro_attr]
@@ -34,23 +16,57 @@ error: can't use a procedural macro from the same crate that defines it
 LL | #[MyTrait]
    |   ^^^^^^^
 
-error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:41:10
+error: `MyTrait` is a derive macro
+  --> $DIR/macro-namespace-reserved-2.rs:38:1
    |
-LL | #[derive(my_macro)]
-   |          ^^^^^^^^
+LL | #[MyTrait]
+   | ^^^^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:43:10
+  --> $DIR/macro-namespace-reserved-2.rs:44:10
+   |
+LL | #[derive(my_macro_attr)]
+   |          ^^^^^^^^^^^^^
+
+error: macro `my_macro_attr` may not be used for derive attributes
+  --> $DIR/macro-namespace-reserved-2.rs:44:10
    |
 LL | #[derive(my_macro_attr)]
    |          ^^^^^^^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:45:10
+  --> $DIR/macro-namespace-reserved-2.rs:47:10
    |
 LL | #[derive(MyTrait)]
    |          ^^^^^^^
 
-error: aborting due to 9 previous errors
+error[E0658]: The attribute `my_macro` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/macro-namespace-reserved-2.rs:34:3
+   |
+LL | #[my_macro]
+   |   ^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
+error: cannot find derive macro `my_macro` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:42:10
+   |
+LL | #[derive(my_macro)]
+   |          ^^^^^^^^
+
+error: cannot find macro `my_macro_attr!` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:28:5
+   |
+LL |     my_macro_attr!();
+   |     ^^^^^^^^^^^^^
+
+error: cannot find macro `MyTrait!` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:31:5
+   |
+LL |     MyTrait!();
+   |     ^^^^^^^
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
