@@ -1,3 +1,5 @@
+// ignore-wasm32
+
 #![feature(cfg_target_thread_local, thread_local_internals)]
 
 // On platforms *without* `#[thread_local]`, use
