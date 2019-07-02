@@ -1954,6 +1954,15 @@ impl From<Local> for PlaceBase<'_> {
     }
 }
 
+impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
+    pub fn iterate<R>(
+        &self,
+        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
+    ) -> R {
+        Place::iterate_over(self.base, self.projection, op)
+    }
+}
+
 /// A linked list of projections running up the stack; begins with the
 /// innermost projection and extends to the outermost (e.g., `a.b.c`
 /// would have the place `b` with a "next" pointer to `b.c`).
