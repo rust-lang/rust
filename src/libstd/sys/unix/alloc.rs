@@ -1,11 +1,15 @@
 use crate::ptr;
 use crate::sys_common::alloc::{MIN_ALIGN, realloc_fallback};
 use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::mem;
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // jemalloc provides alignment less than MIN_ALIGN for small allocations.
+        // So only rely on MIN_ALIGN if size >= align.
+        // Also see <https://github.com/rust-lang/rust/issues/45955>.
         if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
             libc::malloc(layout.size()) as *mut u8
         } else {
@@ -21,6 +25,9 @@ unsafe impl GlobalAlloc for System {
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        // jemalloc provides alignment less than MIN_ALIGN for small allocations.
+        // So only rely on MIN_ALIGN if size >= align.
+        // Also see <https://github.com/rust-lang/rust/issues/45955>.
         if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
             libc::calloc(layout.size(), 1) as *mut u8
         } else {
@@ -80,7 +87,10 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     let mut out = ptr::null_mut();
-    let ret = libc::posix_memalign(&mut out, layout.align(), layout.size());
+    // posix_memalign requires that the alignment be a multiple of `sizeof(void*)`.
+    // Since these are all powers of 2, we can just use max.
+    let align = layout.align().max(mem::size_of::<usize>());
+    let ret = libc::posix_memalign(&mut out, align, layout.size());
     if ret != 0 {
         ptr::null_mut()
     } else {
