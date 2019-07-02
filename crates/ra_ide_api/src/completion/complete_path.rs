@@ -37,7 +37,10 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 acc.add_resolution(ctx, name.to_string(), &res.def.map(hir::Resolution::Def));
             }
         }
-        hir::ModuleDef::Enum(_) | hir::ModuleDef::Struct(_) | hir::ModuleDef::Union(_) => {
+        hir::ModuleDef::Enum(_)
+        | hir::ModuleDef::Struct(_)
+        | hir::ModuleDef::Union(_)
+        | hir::ModuleDef::TypeAlias(_) => {
             if let hir::ModuleDef::Enum(e) = def {
                 for variant in e.variants(ctx.db) {
                     acc.add_enum_variant(ctx, variant);
@@ -47,6 +50,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 hir::ModuleDef::Enum(e) => e.ty(ctx.db),
                 hir::ModuleDef::Struct(s) => s.ty(ctx.db),
                 hir::ModuleDef::Union(u) => u.ty(ctx.db),
+                hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                 _ => unreachable!(),
             };
             let krate = ctx.module.and_then(|m| m.krate(ctx.db));
@@ -543,6 +547,42 @@ mod tests {
         delete: [9; 9),
         insert: "bar",
         kind: Module,
+    },
+]"###
+        );
+    }
+
+    #[test]
+    fn completes_type_alias() {
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                struct S;
+                impl S { fn foo() {} }
+                type T = S;
+                impl T { fn bar() {} }
+
+                fn main() {
+                    T::<|>;
+                }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "bar",
+        source_range: [185; 185),
+        delete: [185; 185),
+        insert: "bar()$0",
+        kind: Function,
+        detail: "fn bar()",
+    },
+    CompletionItem {
+        label: "foo",
+        source_range: [185; 185),
+        delete: [185; 185),
+        insert: "foo()$0",
+        kind: Function,
+        detail: "fn foo()",
     },
 ]"###
         );
