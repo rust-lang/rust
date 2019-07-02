@@ -12,6 +12,7 @@
 #![deny(unused_lifetimes)]
 
 #![feature(bind_by_move_pattern_guards)]
+#![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(const_transmute)]
 #![feature(crate_visibility_modifier)]

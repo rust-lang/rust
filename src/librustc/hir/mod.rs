@@ -12,6 +12,7 @@ pub use self::UnsafeSource::*;
 
 use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
+use crate::hir::ptr::P;
 use crate::util::nodemap::{NodeMap, FxHashSet};
 use crate::mir::mono::Linkage;
 
@@ -23,7 +24,6 @@ use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::ext::hygiene::SyntaxContext;
-use syntax::ptr::P;
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
@@ -63,6 +63,7 @@ pub mod lowering;
 pub mod map;
 pub mod pat_util;
 pub mod print;
+pub mod ptr;
 pub mod upvars;
 
 /// Uniquely identifies a node in the HIR of the current crate. It is
@@ -1979,13 +1980,15 @@ pub struct InlineAsmOutput {
     pub span: Span,
 }
 
+// NOTE(eddyb) This is used within MIR as well, so unlike the rest of the HIR,
+// it needs to be `Clone` and use plain `Vec<T>` instead of `HirVec<T>`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct InlineAsm {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
-    pub outputs: HirVec<InlineAsmOutput>,
-    pub inputs: HirVec<Symbol>,
-    pub clobbers: HirVec<Symbol>,
+    pub outputs: Vec<InlineAsmOutput>,
+    pub inputs: Vec<Symbol>,
+    pub clobbers: Vec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
@@ -2217,7 +2220,7 @@ pub enum UseKind {
 /// within the resolution map.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct TraitRef {
-    pub path: Path,
+    pub path: P<Path>,
     // Don't hash the ref_id. It is tracked via the thing it is used to access
     #[stable_hasher(ignore)]
     pub hir_ref_id: HirId,

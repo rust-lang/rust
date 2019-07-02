@@ -6,11 +6,11 @@ use syntax::ast;
 use syntax::ast::{Name, NodeId};
 use syntax::attr;
 use syntax::ext::base::MacroKind;
-use syntax::ptr::P;
 use syntax_pos::{self, Span};
 
 use rustc::hir;
 use rustc::hir::def_id::CrateNum;
+use rustc::hir::ptr::P;
 
 pub struct Module<'hir> {
     pub name: Option<Name>,
