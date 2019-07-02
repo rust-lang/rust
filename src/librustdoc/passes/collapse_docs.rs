@@ -4,7 +4,7 @@ use crate::fold;
 use crate::fold::{DocFolder};
 use crate::passes::Pass;
 
-use std::mem::replace;
+use std::mem::take;
 
 pub const COLLAPSE_DOCS: Pass = Pass {
     name: "collapse-docs",
