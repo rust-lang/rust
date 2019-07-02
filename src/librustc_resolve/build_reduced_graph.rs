@@ -944,12 +944,19 @@ pub struct BuildReducedGraphVisitor<'a, 'b> {
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) -> &'b InvocationData<'b> {
-        let mark = id.placeholder_to_mark();
-        self.resolver.current_module.unresolved_invocations.borrow_mut().insert(mark);
-        let invocation = self.resolver.invocations[&mark];
-        invocation.module.set(self.resolver.current_module);
-        invocation.parent_legacy_scope.set(self.current_legacy_scope);
-        invocation
+        let invoc_id = id.placeholder_to_mark();
+
+        self.resolver.current_module.unresolved_invocations.borrow_mut().insert(invoc_id);
+
+        let invocation_data = self.resolver.arenas.alloc_invocation_data(InvocationData {
+            module: self.resolver.current_module,
+            parent_legacy_scope: self.current_legacy_scope,
+            output_legacy_scope: Cell::new(None),
+        });
+        let old_invocation_data = self.resolver.invocations.insert(invoc_id, invocation_data);
+        assert!(old_invocation_data.is_none(), "invocation data is reset for an invocation");
+
+        invocation_data
     }
 }
 

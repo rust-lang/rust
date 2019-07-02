@@ -19,7 +19,7 @@ use GenericParameters::*;
 use RibKind::*;
 use smallvec::smallvec;
 
-use rustc::hir::map::{Definitions, DefCollector};
+use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
@@ -1901,8 +1901,7 @@ impl<'a> Resolver<'a> {
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
 
         let mut definitions = Definitions::default();
-        DefCollector::new(&mut definitions, Mark::root())
-            .collect_root(crate_name, session.local_crate_disambiguator());
+        definitions.create_root_def(crate_name, session.local_crate_disambiguator());
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> =
             session.opts.externs.iter().map(|kv| (Ident::from_str(kv.0), Default::default()))

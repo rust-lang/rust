@@ -1,6 +1,5 @@
 use crate::hir::map::definitions::*;
-use crate::hir::def_id::{CRATE_DEF_INDEX, DefIndex};
-use crate::session::CrateDisambiguator;
+use crate::hir::def_id::DefIndex;
 
 use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
@@ -14,31 +13,12 @@ pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
     parent_def: Option<DefIndex>,
     expansion: Mark,
-    pub visit_macro_invoc: Option<&'a mut dyn FnMut(MacroInvocationData)>,
-}
-
-pub struct MacroInvocationData {
-    pub mark: Mark,
-    pub def_index: DefIndex,
 }
 
 impl<'a> DefCollector<'a> {
     pub fn new(definitions: &'a mut Definitions, expansion: Mark) -> Self {
-        DefCollector {
-            definitions,
-            expansion,
-            parent_def: None,
-            visit_macro_invoc: None,
-        }
-    }
-
-    pub fn collect_root(&mut self,
-                        crate_name: &str,
-                        crate_disambiguator: CrateDisambiguator) {
-        let root = self.definitions.create_root_def(crate_name,
-                                                    crate_disambiguator);
-        assert_eq!(root, CRATE_DEF_INDEX);
-        self.parent_def = Some(root);
+        let parent_def = Some(definitions.invocation_parent(expansion));
+        DefCollector { definitions, parent_def, expansion }
     }
 
     fn create_def(&mut self,
@@ -97,12 +77,7 @@ impl<'a> DefCollector<'a> {
     }
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
-        if let Some(ref mut visit) = self.visit_macro_invoc {
-            visit(MacroInvocationData {
-                mark: id.placeholder_to_mark(),
-                def_index: self.parent_def.unwrap(),
-            })
-        }
+        self.definitions.set_invocation_parent(id.placeholder_to_mark(), self.parent_def.unwrap());
     }
 }
 
