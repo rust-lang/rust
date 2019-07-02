@@ -77,7 +77,7 @@ jobs:
       vmImage: ubuntu-16.04
     steps:
       - template: ci/azure-install-rust.yml
-      - bash: cargo bench
+      - bash: cargo bench --all
         displayName: "Benchmarks"
     variables:
       TOOLCHAIN: nightly
