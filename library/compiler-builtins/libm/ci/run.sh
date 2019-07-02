@@ -1,11 +1,15 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 set -ex
 TARGET=$1
 
-cargo test --target $TARGET
-cargo test --target $TARGET --release
+CMD="cargo test --all --no-default-features --target $TARGET"
 
-cargo test --features 'checked musl-reference-tests' --target $TARGET
+$CMD
+$CMD --release
 
-cargo test --features 'checked musl-reference-tests' --target $TARGET --release
+$CMD --features 'stable'
+$CMD --release --features 'stable'
+
+$CMD --features 'stable checked musl-reference-tests'
+$CMD --release --features  'stable checked musl-reference-tests'

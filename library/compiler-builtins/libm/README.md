@@ -39,9 +39,11 @@ The API documentation can be found [here](https://docs.rs/libm).
 
 ## Benchmark
 [benchmark]: #benchmark
-Run `cargo +nightly bench`
 
-NOTE: remember to have nightly installed `rustup install nightly`
+The benchmarks are located in `crates/libm-bench` and require a nightly Rust toolchain. 
+To run all benchmarks:
+
+> cargo +nightly bench --all
 
 ## Contributing
 

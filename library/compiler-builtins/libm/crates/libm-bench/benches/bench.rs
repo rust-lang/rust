@@ -1,7 +1,4 @@
 #![feature(test)]
-
-extern crate paste;
-extern crate rand;
 extern crate test;
 
 use rand::Rng;
