@@ -10,8 +10,8 @@ use rustc::mir;
 use rustc::ty::{self, TyCtxt};
 
 use super::{
-    Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
-    InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory
+    Allocation, AllocId, InterpResult, InterpError, Scalar, AllocationExtra,
+    InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -209,17 +209,19 @@ pub trait Machine<'mir, 'tcx>: Sized {
         extra: Self::FrameExtra,
     ) -> InterpResult<'tcx>;
 
+    #[inline(always)]
     fn int_to_ptr(
         _mem: &Memory<'mir, 'tcx, Self>,
         int: u64,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
-        if int == 0 {
-            err!(InvalidNullPointerUsage)
+        Err((if int == 0 {
+            InterpError::InvalidNullPointerUsage
         } else {
-            err!(ReadBytesAsPointer)
-        }
+            InterpError::ReadBytesAsPointer
+        }).into())
     }
 
+    #[inline(always)]
     fn ptr_to_int(
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
