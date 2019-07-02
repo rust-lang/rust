@@ -849,6 +849,10 @@ impl TypeAlias {
         db.type_alias_data(self).type_ref.clone()
     }
 
+    pub fn ty(self, db: &impl HirDatabase) -> Ty {
+        db.type_for_def(self.into(), Namespace::Types)
+    }
+
     pub fn name(self, db: &impl DefDatabase) -> Name {
         db.type_alias_data(self).name.clone()
     }
