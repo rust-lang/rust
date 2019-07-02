@@ -656,10 +656,13 @@ pub fn unexpected_hidden_region_diagnostic(
             // error reporting, which in turn should have prevented us
             // from getting trying to infer the hidden type
             // completely.
-            span_bug!(
+            tcx.sess.delay_span_bug(
                 span,
-                "hidden type captures unexpected lifetime `{:?}` but no region inference failure",
-                hidden_region,
+                &format!(
+                    "hidden type captures unexpected lifetime `{:?}` \
+                     but no region inference failure",
+                    hidden_region,
+                ),
             );
         }
     }
