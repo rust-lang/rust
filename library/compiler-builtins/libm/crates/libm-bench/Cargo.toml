@@ -9,3 +9,7 @@ license = "MIT OR Apache-2.0"
 libm = { path = "../..", default-features = false }
 rand = "0.6.5"
 paste = "0.1.5"
+
+[features]
+default = []
+stable = [ "libm/stable" ]
