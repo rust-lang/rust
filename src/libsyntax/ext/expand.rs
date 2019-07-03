@@ -313,9 +313,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             let scope =
                 if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
             let ext = match self.cx.resolver.resolve_macro_invocation(&invoc, scope, force) {
-                Ok(ext) => Some(ext),
-                Err(Determinacy::Determined) => None,
-                Err(Determinacy::Undetermined) => {
+                Ok(ext) => ext,
+                Err(Indeterminate) => {
                     undetermined_invocations.push(invoc);
                     continue
                 }
@@ -328,65 +327,61 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.current_expansion.mark = scope;
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
-                if let Some(ext) = ext {
-                    let (invoc_fragment_kind, invoc_span) = (invoc.fragment_kind, invoc.span());
-                    let fragment = self.expand_invoc(invoc, &*ext).unwrap_or_else(|| {
-                        invoc_fragment_kind.dummy(invoc_span).unwrap()
-                    });
-                    self.collect_invocations(fragment, &[])
-                } else if let InvocationKind::Attr { attr: None, traits, item, .. } = invoc.kind {
-                    if !item.derive_allowed() {
-                        let attr = attr::find_by_name(item.attrs(), sym::derive)
-                            .expect("`derive` attribute should exist");
-                        let span = attr.span;
-                        let mut err = self.cx.mut_span_err(span,
-                                                           "`derive` may only be applied to \
-                                                            structs, enums and unions");
-                        if let ast::AttrStyle::Inner = attr.style {
-                            let trait_list = traits.iter()
-                                .map(|t| t.to_string()).collect::<Vec<_>>();
-                            let suggestion = format!("#[derive({})]", trait_list.join(", "));
-                            err.span_suggestion(
-                                span, "try an outer attribute", suggestion,
-                                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
-                                Applicability::MaybeIncorrect
-                            );
-                        }
-                        err.emit();
+                let (invoc_fragment_kind, invoc_span) = (invoc.fragment_kind, invoc.span());
+                let fragment = self.expand_invoc(invoc, &*ext).unwrap_or_else(|| {
+                    invoc_fragment_kind.dummy(invoc_span).unwrap()
+                });
+                self.collect_invocations(fragment, &[])
+            } else if let InvocationKind::Attr { attr: None, traits, item, .. } = invoc.kind {
+                if !item.derive_allowed() {
+                    let attr = attr::find_by_name(item.attrs(), sym::derive)
+                        .expect("`derive` attribute should exist");
+                    let span = attr.span;
+                    let mut err = self.cx.mut_span_err(span,
+                                                        "`derive` may only be applied to \
+                                                        structs, enums and unions");
+                    if let ast::AttrStyle::Inner = attr.style {
+                        let trait_list = traits.iter()
+                            .map(|t| t.to_string()).collect::<Vec<_>>();
+                        let suggestion = format!("#[derive({})]", trait_list.join(", "));
+                        err.span_suggestion(
+                            span, "try an outer attribute", suggestion,
+                            // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
+                            Applicability::MaybeIncorrect
+                        );
                     }
-
-                    let mut item = self.fully_configure(item);
-                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
-                    let mut item_with_markers = item.clone();
-                    add_derived_markers(&mut self.cx, item.span(), &traits, &mut item_with_markers);
-                    let derives = derives.entry(invoc.expansion_data.mark).or_default();
-
-                    derives.reserve(traits.len());
-                    invocations.reserve(traits.len());
-                    for path in traits {
-                        let mark = Mark::fresh(self.cx.current_expansion.mark);
-                        derives.push(mark);
-                        invocations.push(Invocation {
-                            kind: InvocationKind::Derive {
-                                path,
-                                item: item.clone(),
-                                item_with_markers: item_with_markers.clone(),
-                            },
-                            fragment_kind: invoc.fragment_kind,
-                            expansion_data: ExpansionData {
-                                mark,
-                                ..invoc.expansion_data.clone()
-                            },
-                        });
-                    }
-                    let fragment = invoc.fragment_kind
-                        .expect_from_annotatables(::std::iter::once(item_with_markers));
-                    self.collect_invocations(fragment, derives)
-                } else {
-                    unreachable!()
+                    err.emit();
                 }
+
+                let mut item = self.fully_configure(item);
+                item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
+                let mut item_with_markers = item.clone();
+                add_derived_markers(&mut self.cx, item.span(), &traits, &mut item_with_markers);
+                let derives = derives.entry(invoc.expansion_data.mark).or_default();
+
+                derives.reserve(traits.len());
+                invocations.reserve(traits.len());
+                for path in traits {
+                    let mark = Mark::fresh(self.cx.current_expansion.mark);
+                    derives.push(mark);
+                    invocations.push(Invocation {
+                        kind: InvocationKind::Derive {
+                            path,
+                            item: item.clone(),
+                            item_with_markers: item_with_markers.clone(),
+                        },
+                        fragment_kind: invoc.fragment_kind,
+                        expansion_data: ExpansionData {
+                            mark,
+                            ..invoc.expansion_data.clone()
+                        },
+                    });
+                }
+                let fragment = invoc.fragment_kind
+                    .expect_from_annotatables(::std::iter::once(item_with_markers));
+                self.collect_invocations(fragment, derives)
             } else {
-                self.collect_invocations(invoc.fragment_kind.dummy(invoc.span()).unwrap(), &[])
+                unreachable!()
             };
 
             if expanded_fragments.len() < depth {

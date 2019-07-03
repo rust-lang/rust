@@ -1,4 +1,4 @@
-error: expected a macro, found built-in attribute
+error: macro `inline` may not be used for derive attributes
   --> $DIR/macro-path-prelude-fail-4.rs:1:10
    |
 LL | #[derive(inline)]

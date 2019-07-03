@@ -9,7 +9,7 @@ use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleIm
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 use crate::{ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
 use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
-use crate::{resolve_error, resolve_struct_error, ResolutionError};
+use crate::{resolve_error, resolve_struct_error, ResolutionError, Determinacy};
 
 use rustc::bug;
 use rustc::hir::def::{self, *};
@@ -30,7 +30,6 @@ use syntax::attr;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::SyntaxExtension;
-use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::is_builtin_attr;
@@ -231,9 +230,9 @@ impl<'a> Resolver<'a> {
                     source: source.ident,
                     target: ident,
                     source_bindings: PerNS {
-                        type_ns: Cell::new(Err(Undetermined)),
-                        value_ns: Cell::new(Err(Undetermined)),
-                        macro_ns: Cell::new(Err(Undetermined)),
+                        type_ns: Cell::new(Err(Determinacy::Undetermined)),
+                        value_ns: Cell::new(Err(Determinacy::Undetermined)),
+                        macro_ns: Cell::new(Err(Determinacy::Undetermined)),
                     },
                     target_bindings: PerNS {
                         type_ns: Cell::new(None),

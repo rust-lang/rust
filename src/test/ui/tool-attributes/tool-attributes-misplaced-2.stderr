@@ -1,10 +1,10 @@
-error: expected a macro, found tool attribute
+error: macro `rustfmt::skip` may not be used for derive attributes
   --> $DIR/tool-attributes-misplaced-2.rs:1:10
    |
 LL | #[derive(rustfmt::skip)]
    |          ^^^^^^^^^^^^^
 
-error: expected a macro, found tool attribute
+error: `rustfmt::skip` can only be used in attributes
   --> $DIR/tool-attributes-misplaced-2.rs:5:5
    |
 LL |     rustfmt::skip!();

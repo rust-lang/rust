@@ -1,4 +1,4 @@
-use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
+use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc, Determinacy};
 use crate::{CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
 use crate::{Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
 use crate::{is_known_tool, resolve_error};
@@ -14,7 +14,7 @@ use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, Ident, ItemKind};
 use syntax::attr::{self, StabilityLevel};
 use syntax::errors::DiagnosticBuilder;
-use syntax::ext::base::{self, Determinacy};
+use syntax::ext::base::{self, Indeterminate};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark};
@@ -216,7 +216,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
-                                -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
+                                -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate> {
         let (path, kind, derives_in_scope, after_derive) = match invoc.kind {
             InvocationKind::Attr { attr: None, .. } =>
                 return Ok(None),
@@ -229,12 +229,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
 
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
-        let (res, ext) = match self.resolve_macro_to_res(path, kind, &parent_scope, true, force) {
-            Ok((res, ext)) => (res, ext),
-            // Return dummy syntax extensions for unresolved macros for better recovery.
-            Err(Determinacy::Determined) => (Res::Err, self.dummy_ext(kind)),
-            Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
-        };
+        let (res, ext) = self.resolve_macro_to_res(path, kind, &parent_scope, true, force)?;
 
         let span = invoc.span();
         let descr = fast_print_path(path);
@@ -287,7 +282,7 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
-    ) -> Result<(Res, Lrc<SyntaxExtension>), Determinacy> {
+    ) -> Result<(Res, Lrc<SyntaxExtension>), Indeterminate> {
         let res = self.resolve_macro_to_res_inner(path, kind, parent_scope, trace, force);
 
         // Report errors and enforce feature gates for the resolved macro.
@@ -313,7 +308,14 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let res = res?;
+        let res = match res {
+            Err(Determinacy::Undetermined) => return Err(Indeterminate),
+            Ok(Res::Err) | Err(Determinacy::Determined) => {
+                // Return dummy syntax extensions for unresolved macros for better recovery.
+                return Ok((Res::Err, self.dummy_ext(kind)));
+            }
+            Ok(res) => res,
+        };
 
         match res {
             Res::Def(DefKind::Macro(_), def_id) => {
@@ -328,35 +330,23 @@ impl<'a> Resolver<'a> {
                 }
             }
             Res::NonMacroAttr(attr_kind) => {
-                if kind == MacroKind::Attr {
-                    if attr_kind == NonMacroAttrKind::Custom {
-                        assert!(path.segments.len() == 1);
-                        if !features.custom_attribute {
-                            let msg = format!("The attribute `{}` is currently unknown to the \
-                                               compiler and may have meaning added to it in the \
-                                               future", path);
-                            self.report_unknown_attribute(
-                                path.span,
-                                &path.segments[0].ident.as_str(),
-                                &msg,
-                                sym::custom_attribute,
-                            );
-                        }
+                if attr_kind == NonMacroAttrKind::Custom {
+                    assert!(path.segments.len() == 1);
+                    if !features.custom_attribute {
+                        let msg = format!("The attribute `{}` is currently unknown to the \
+                                            compiler and may have meaning added to it in the \
+                                            future", path);
+                        self.report_unknown_attribute(
+                            path.span,
+                            &path.segments[0].ident.as_str(),
+                            &msg,
+                            sym::custom_attribute,
+                        );
                     }
-                } else {
-                    // Not only attributes, but anything in macro namespace can result in
-                    // `Res::NonMacroAttr` definition (e.g., `inline!()`), so we must report
-                    // an error for those cases.
-                    let msg = format!("expected a macro, found {}", res.descr());
-                    self.session.span_err(path.span, &msg);
-                    return Err(Determinacy::Determined);
                 }
             }
-            Res::Err => {
-                return Err(Determinacy::Determined);
-            }
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
-        }
+        };
 
         Ok((res, self.get_macro(res)))
     }
@@ -608,9 +598,7 @@ impl<'a> Resolver<'a> {
                                 result = Ok((binding, Flags::empty()));
                                 break;
                             }
-                            Err(Determinacy::Determined) => {}
-                            Err(Determinacy::Undetermined) =>
-                                result = Err(Determinacy::Undetermined),
+                            Err(Indeterminate) => result = Err(Determinacy::Undetermined),
                         }
                     }
                     result

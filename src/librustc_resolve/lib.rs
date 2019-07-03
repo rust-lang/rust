@@ -15,6 +15,7 @@
 
 pub use rustc::hir::def::{Namespace, PerNS};
 
+use Determinacy::*;
 use GenericParameters::*;
 use RibKind::*;
 use smallvec::smallvec;
@@ -41,7 +42,6 @@ use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
-use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::base::MacroKind;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -91,6 +91,18 @@ fn is_known_tool(name: Name) -> bool {
 enum Weak {
     Yes,
     No,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum Determinacy {
+    Determined,
+    Undetermined,
+}
+
+impl Determinacy {
+    fn determined(determined: bool) -> Determinacy {
+        if determined { Determinacy::Determined } else { Determinacy::Undetermined }
+    }
 }
 
 enum ScopeSet {

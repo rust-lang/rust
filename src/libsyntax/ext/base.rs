@@ -676,6 +676,9 @@ impl SyntaxExtension {
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
+/// Error type that denotes indeterminacy.
+pub struct Indeterminate;
+
 pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
 
@@ -689,21 +692,9 @@ pub trait Resolver {
     fn resolve_imports(&mut self);
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
-                                -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
+                                -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate>;
 
     fn check_unused_macros(&self);
-}
-
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum Determinacy {
-    Determined,
-    Undetermined,
-}
-
-impl Determinacy {
-    pub fn determined(determined: bool) -> Determinacy {
-        if determined { Determinacy::Determined } else { Determinacy::Undetermined }
-    }
 }
 
 #[derive(Clone)]
