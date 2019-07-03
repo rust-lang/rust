@@ -46,6 +46,57 @@ pub struct StringReader<'a> {
 }
 
 impl<'a> StringReader<'a> {
+    pub fn new(sess: &'a ParseSess,
+               source_file: Lrc<syntax_pos::SourceFile>,
+               override_span: Option<Span>) -> Self {
+        let mut sr = StringReader::new_internal(sess, source_file, override_span);
+        sr.bump();
+        sr
+    }
+
+    pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
+        let begin = sess.source_map().lookup_byte_offset(span.lo());
+        let end = sess.source_map().lookup_byte_offset(span.hi());
+
+        // Make the range zero-length if the span is invalid.
+        if span.lo() > span.hi() || begin.sf.start_pos != end.sf.start_pos {
+            span = span.shrink_to_lo();
+        }
+
+        let mut sr = StringReader::new_internal(sess, begin.sf, None);
+
+        // Seek the lexer to the right byte range.
+        sr.next_pos = span.lo();
+        sr.end_src_index = sr.src_index(span.hi());
+
+        sr.bump();
+
+        sr
+    }
+
+    fn new_internal(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>,
+        override_span: Option<Span>) -> Self
+    {
+        if source_file.src.is_none() {
+            sess.span_diagnostic.bug(&format!("Cannot lex source_file without source: {}",
+                                              source_file.name));
+        }
+
+        let src = (*source_file.src.as_ref().unwrap()).clone();
+
+        StringReader {
+            sess,
+            next_pos: source_file.start_pos,
+            pos: source_file.start_pos,
+            ch: Some('\n'),
+            source_file,
+            end_src_index: src.len(),
+            src,
+            fatal_errs: Vec::new(),
+            override_span,
+        }
+    }
+
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
         self.mk_sp_and_raw(lo, hi).0
     }
@@ -147,57 +198,6 @@ impl<'a> StringReader<'a> {
         }
 
         buffer
-    }
-
-    pub fn new(sess: &'a ParseSess,
-               source_file: Lrc<syntax_pos::SourceFile>,
-               override_span: Option<Span>) -> Self {
-        let mut sr = StringReader::new_internal(sess, source_file, override_span);
-        sr.bump();
-        sr
-    }
-
-    fn new_internal(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>,
-        override_span: Option<Span>) -> Self
-    {
-        if source_file.src.is_none() {
-            sess.span_diagnostic.bug(&format!("Cannot lex source_file without source: {}",
-                                              source_file.name));
-        }
-
-        let src = (*source_file.src.as_ref().unwrap()).clone();
-
-        StringReader {
-            sess,
-            next_pos: source_file.start_pos,
-            pos: source_file.start_pos,
-            ch: Some('\n'),
-            source_file,
-            end_src_index: src.len(),
-            src,
-            fatal_errs: Vec::new(),
-            override_span,
-        }
-    }
-
-    pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
-        let begin = sess.source_map().lookup_byte_offset(span.lo());
-        let end = sess.source_map().lookup_byte_offset(span.hi());
-
-        // Make the range zero-length if the span is invalid.
-        if span.lo() > span.hi() || begin.sf.start_pos != end.sf.start_pos {
-            span = span.shrink_to_lo();
-        }
-
-        let mut sr = StringReader::new_internal(sess, begin.sf, None);
-
-        // Seek the lexer to the right byte range.
-        sr.next_pos = span.lo();
-        sr.end_src_index = sr.src_index(span.hi());
-
-        sr.bump();
-
-        sr
     }
 
     #[inline]
