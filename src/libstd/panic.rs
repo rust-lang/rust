@@ -4,6 +4,7 @@
 
 use crate::any::Any;
 use crate::cell::UnsafeCell;
+use crate::collections;
 use crate::fmt;
 use crate::future::Future;
 use crate::pin::Pin;
@@ -284,6 +285,11 @@ impl RefUnwindSafe for atomic::AtomicBool {}
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl<T> RefUnwindSafe for atomic::AtomicPtr<T> {}
+
+// https://github.com/rust-lang/rust/issues/62301
+#[stable(feature = "hashbrown", since = "1.36.0")]
+impl<K, V, S> UnwindSafe for collections::HashMap<K, V, S>
+    where K: UnwindSafe, V: UnwindSafe, S: UnwindSafe {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> Deref for AssertUnwindSafe<T> {

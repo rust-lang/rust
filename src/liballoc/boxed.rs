@@ -367,12 +367,19 @@ impl<T: Clone> Clone for Box<T> {
     /// ```
     /// let x = Box::new(5);
     /// let y = x.clone();
+    ///
+    /// // The value is the same
+    /// assert_eq!(x, y);
+    ///
+    /// // But they are unique objects
+    /// assert_ne!(&*x as *const i32, &*y as *const i32);
     /// ```
     #[rustfmt::skip]
     #[inline]
     fn clone(&self) -> Box<T> {
         box { (**self).clone() }
     }
+
     /// Copies `source`'s contents into `self` without creating a new allocation.
     ///
     /// # Examples
@@ -380,10 +387,15 @@ impl<T: Clone> Clone for Box<T> {
     /// ```
     /// let x = Box::new(5);
     /// let mut y = Box::new(10);
+    /// let yp: *const i32 = &*y;
     ///
     /// y.clone_from(&x);
     ///
-    /// assert_eq!(*y, 5);
+    /// // The value is the same
+    /// assert_eq!(x, y);
+    ///
+    /// // And no allocation occurred
+    /// assert_eq!(yp, &*y);
     /// ```
     #[inline]
     fn clone_from(&mut self, source: &Box<T>) {

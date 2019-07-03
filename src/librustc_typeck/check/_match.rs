@@ -458,7 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 match ty.sty {
                                     ty::Array(..) | ty::Slice(..) => {
                                         err.help("the semantics of slice patterns changed \
-                                                  recently; see issue #23121");
+                                                  recently; see issue #62254");
                                     }
                                     _ => {}
                                 }

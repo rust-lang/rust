@@ -1367,6 +1367,40 @@ impl<T> Vec<T> {
             self.truncate(new_len);
         }
     }
+
+    /// Consumes and leaks the `Vec`, returning a mutable reference to the contents,
+    /// `&'a mut [T]`. Note that the type `T` must outlive the chosen lifetime
+    /// `'a`. If the type has only static references, or none at all, then this
+    /// may be chosen to be `'static`.
+    ///
+    /// This function is similar to the `leak` function on `Box`.
+    ///
+    /// This function is mainly useful for data that lives for the remainder of
+    /// the program's life. Dropping the returned reference will cause a memory
+    /// leak.
+    ///
+    /// # Examples
+    ///
+    /// Simple usage:
+    ///
+    /// ```
+    /// #![feature(vec_leak)]
+    ///
+    /// fn main() {
+    ///     let x = vec![1, 2, 3];
+    ///     let static_ref: &'static mut [usize] = Vec::leak(x);
+    ///     static_ref[0] += 1;
+    ///     assert_eq!(static_ref, &[2, 2, 3]);
+    /// }
+    /// ```
+    #[unstable(feature = "vec_leak", issue = "62195")]
+    #[inline]
+    pub fn leak<'a>(vec: Vec<T>) -> &'a mut [T]
+    where
+        T: 'a // Technically not needed, but kept to be explicit.
+    {
+        Box::leak(vec.into_boxed_slice())
+    }
 }
 
 impl<T: Clone> Vec<T> {
