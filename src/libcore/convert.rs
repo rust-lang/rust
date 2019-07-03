@@ -251,12 +251,12 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// # Examples
 ///
-/// [`String`] implements `Into<Vec<u8>>`:
+/// [`String`] implements [`Into`]`<`[`Vec`]`<`[`u8`]`>>`:
 ///
 /// In order to express that we want a generic function to take all arguments that can be
 /// converted to a specified type `T`, we can use a trait bound of [`Into`]`<T>`.
 /// For example: The function `is_hello` takes all arguments that can be converted into a
-/// `Vec<u8>`.
+/// [`Vec`]`<`[`u8`]`>`.
 ///
 /// ```
 /// fn is_hello<T: Into<Vec<u8>>>(s: T) {
@@ -274,6 +274,7 @@ pub trait AsMut<T: ?Sized> {
 /// [`String`]: ../../std/string/struct.String.html
 /// [`From`]: trait.From.html
 /// [`Into`]: trait.Into.html
+/// [`Vec`]: ../../std/vec/struct.Vec.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
