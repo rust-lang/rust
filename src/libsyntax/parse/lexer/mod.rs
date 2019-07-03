@@ -123,8 +123,20 @@ impl<'a> StringReader<'a> {
     /// `Err(())` means that some errors were encountered, which can be
     /// retrieved using `buffer_fatal_errors`.
     pub fn try_next_token(&mut self) -> Result<Token, ()> {
-        let (token, _raw_span) = self.try_next_token_with_raw_span()?;
-        Ok(token)
+        assert!(self.fatal_errs.is_empty());
+        match self.scan_whitespace_or_comment() {
+            Some(comment) => Ok(comment),
+            None => {
+                let (kind, start_pos, end_pos) = if self.is_eof() {
+                    (token::Eof, self.source_file.end_pos, self.source_file.end_pos)
+                } else {
+                    let start_pos = self.pos;
+                    (self.next_token_inner()?, start_pos, self.pos)
+                };
+                let (real, _raw) = self.mk_sp_and_raw(start_pos, end_pos);
+                Ok(Token::new(kind, real))
+            }
+        }
     }
 
     /// Returns the next token, including trivia like whitespace or comments.
@@ -133,42 +145,6 @@ impl<'a> StringReader<'a> {
     pub fn next_token(&mut self) -> Token {
         let res = self.try_next_token();
         self.unwrap_or_abort(res)
-    }
-
-    /// Returns the next token, skipping over trivia.
-    /// Also returns an unoverriden span which can be used to check tokens
-    fn real_token(&mut self) -> (Token, Span) {
-        let res = try {
-            loop {
-                let t = self.try_next_token_with_raw_span()?;
-                match t.0.kind {
-                    token::Whitespace | token::Comment | token::Shebang(_) => continue,
-                    _ => break t,
-                }
-            }
-        };
-
-        self.unwrap_or_abort(res)
-    }
-
-    fn try_next_token_with_raw_span(&mut self) -> Result<(Token, Span), ()> {
-        assert!(self.fatal_errs.is_empty());
-        match self.scan_whitespace_or_comment() {
-            Some(comment) => {
-                let raw_span = comment.span;
-                Ok((comment, raw_span))
-            }
-            None => {
-                let (kind, start_pos, end_pos) = if self.is_eof() {
-                    (token::Eof, self.source_file.end_pos, self.source_file.end_pos)
-                } else {
-                    let start_pos = self.pos;
-                    (self.next_token_inner()?, start_pos, self.pos)
-                };
-                let (real, raw) = self.mk_sp_and_raw(start_pos, end_pos);
-                Ok((Token::new(kind, real), raw))
-            }
-        }
     }
 
     #[inline]
