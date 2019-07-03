@@ -552,6 +552,12 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 ///         mem::take(&mut self.buf)
 ///     }
 /// }
+///
+/// let mut buffer = Buffer { buf: vec![0, 1] };
+/// assert_eq!(buffer.buf.len(), 2);
+///
+/// assert_eq!(buffer.get_and_reset(), vec![0, 1]);
+/// assert_eq!(buffer.buf.len(), 0);
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
@@ -586,17 +592,17 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// struct Buffer<T> { buf: Vec<T> }
 ///
 /// impl<T> Buffer<T> {
-///     fn get_and_reset(&mut self) -> Vec<T> {
+///     fn replace_index(&mut self, i: usize, v: T) -> T {
 ///         // error: cannot move out of dereference of `&mut`-pointer
-///         let buf = self.buf;
-///         self.buf = Vec::new();
-///         buf
+///         let t = self.buf[i];
+///         self.buf[i] = v;
+///         t
 ///     }
 /// }
 /// ```
 ///
-/// Note that `T` does not necessarily implement [`Clone`], so it can't even clone and reset
-/// `self.buf`. But `replace` can be used to disassociate the original value of `self.buf` from
+/// Note that `T` does not necessarily implement [`Clone`], so we can't even clone `self.buf[i]` to
+/// avoid the move. But `replace` can be used to disassociate the original value at that index from
 /// `self`, allowing it to be returned:
 ///
 /// ```
@@ -605,10 +611,16 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
 /// impl<T> Buffer<T> {
-///     fn get_and_reset(&mut self) -> Vec<T> {
-///         mem::replace(&mut self.buf, Vec::new())
+///     fn replace_index(&mut self, i: usize, v: T) -> T {
+///         mem::replace(&mut self.buf[i], v)
 ///     }
 /// }
+///
+/// let mut buffer = Buffer { buf: vec![0, 1] };
+/// assert_eq!(buffer.buf[0], 0);
+///
+/// assert_eq!(buffer.replace_index(0, 2), 0);
+/// assert_eq!(buffer.buf[0], 2);
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
