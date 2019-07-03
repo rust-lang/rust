@@ -1,6 +1,8 @@
 sudo: false
 language: rust
-cache: cargo
+cache:
+  directories:
+    - $HOME/.cargo
 
 os:
   - linux
