@@ -1,3 +1,13 @@
+warning: to use a constant of type `std::cell::Cell` in a pattern, `std::cell::Cell` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/issue-55511.rs:16:9
+   |
+LL |         <() as Foo<'static>>::C => { }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(indirect_structural_match)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+
 error[E0597]: `a` does not live long enough
   --> $DIR/issue-55511.rs:13:28
    |
