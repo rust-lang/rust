@@ -1,4 +1,4 @@
-#[derive(inline)] //~ ERROR macro `inline` may not be used for derive attributes
+#[derive(inline)] //~ ERROR expected derive macro, found built-in attribute `inline`
 struct S;
 
 fn main() {}

@@ -348,7 +348,18 @@ impl<'a> Resolver<'a> {
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
         };
 
-        Ok((res, self.get_macro(res)))
+        let ext = self.get_macro(res);
+        Ok(if ext.macro_kind() != kind {
+            let expected = if kind == MacroKind::Attr { "attribute" } else  { kind.descr() };
+            let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path);
+            self.session.struct_span_err(path.span, &msg)
+                        .span_label(path.span, format!("not {} {}", kind.article(), expected))
+                        .emit();
+            // Return dummy syntax extensions for unexpected macro kinds for better recovery.
+            (Res::Err, self.dummy_ext(kind))
+        } else {
+            (res, ext)
+        })
     }
 
     fn report_unknown_attribute(&self, span: Span, name: &str, msg: &str, feature: Symbol) {

@@ -323,12 +323,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             progress = true;
             let ExpansionData { depth, mark, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
-
             self.cx.current_expansion.mark = scope;
+
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
                 let (invoc_fragment_kind, invoc_span) = (invoc.fragment_kind, invoc.span());
-                let fragment = self.expand_invoc(invoc, &*ext).unwrap_or_else(|| {
+                let fragment = self.expand_invoc(invoc, &ext).unwrap_or_else(|| {
                     invoc_fragment_kind.dummy(invoc_span).unwrap()
                 });
                 self.collect_invocations(fragment, &[])
@@ -551,17 +551,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 self.gate_proc_macro_expansion(attr.span, &res);
                 res
             }
-            SyntaxExtensionKind::Derive(..) | SyntaxExtensionKind::LegacyDerive(..) => {
-                self.cx.span_err(attr.span, &format!("`{}` is a derive macro", attr.path));
-                self.cx.trace_macros_diag();
-                invoc.fragment_kind.dummy(attr.span)
-            }
-            _ => {
-                let msg = &format!("macro `{}` may not be used in attributes", attr.path);
-                self.cx.span_err(attr.span, msg);
-                self.cx.trace_macros_diag();
-                invoc.fragment_kind.dummy(attr.span)
-            }
+            _ => unreachable!()
         }
     }
 
@@ -671,21 +661,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let tok_result = expander.expand(self.cx, span, mac.node.stream());
                 kind.make_from(tok_result)
             }
-
-            SyntaxExtensionKind::Attr(..) |
-            SyntaxExtensionKind::LegacyAttr(..) |
-            SyntaxExtensionKind::NonMacroAttr { .. } => {
-                self.cx.span_err(path.span,
-                                 &format!("`{}` can only be used in attributes", path));
-                self.cx.trace_macros_diag();
-                kind.dummy(span)
-            }
-
-            SyntaxExtensionKind::Derive(..) | SyntaxExtensionKind::LegacyDerive(..) => {
-                self.cx.span_err(path.span, &format!("`{}` is a derive macro", path));
-                self.cx.trace_macros_diag();
-                kind.dummy(span)
-            }
+            _ => unreachable!()
         };
 
         if opt_expanded.is_some() {
@@ -747,12 +723,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let items = expander.expand(self.cx, span, &meta, item);
                 Some(invoc.fragment_kind.expect_from_annotatables(items))
             }
-            _ => {
-                let msg = &format!("macro `{}` may not be used for derive attributes", path);
-                self.cx.span_err(path.span, msg);
-                self.cx.trace_macros_diag();
-                invoc.fragment_kind.dummy(path.span)
-            }
+            _ => unreachable!()
         }
     }
 

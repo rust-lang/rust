@@ -1,6 +1,6 @@
-#[derive(rustfmt::skip)] //~ ERROR macro `rustfmt::skip` may not be used for derive attributes
+#[derive(rustfmt::skip)] //~ ERROR expected derive macro, found tool attribute `rustfmt::skip`
 struct S;
 
 fn main() {
-    rustfmt::skip!(); //~ ERROR `rustfmt::skip` can only be used in attributes
+    rustfmt::skip!(); //~ ERROR expected macro, found tool attribute `rustfmt::skip`
 }
