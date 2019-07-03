@@ -18,22 +18,7 @@ term goal is to enable [math support in the `core` crate][core].
 
 ## Already usable
 
-This crate is [on crates.io] and can be used today in stable `#![no_std]` programs like this:
-
-[on crates.io]: https://crates.io/crates/libm
-
-``` rust
-#![no_std]
-
-extern crate libm;
-
-use libm::F32Ext; // adds methods to `f32`
-
-fn foo(x: f32) {
-    let y = x.sqrt();
-    let z = libm::truncf(x);
-}
-```
+This crate is [on crates.io] and can be used today in stable `#![no_std]` programs.
 
 The API documentation can be found [here](https://docs.rs/libm).
 
