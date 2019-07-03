@@ -1702,10 +1702,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// An Err result includes a tag indicated why the search failed.
     /// Currently this can only occur if the place is built off of a
     /// static variable, as we do not track those in the MoveData.
-    fn move_path_closest_to<'a>(
+    fn move_path_closest_to(
         &mut self,
-        place: &'a Place<'tcx>,
-    ) -> Result<(Place<'tcx>, MovePathIndex), NoMovePathFound> where 'cx: 'a {
+        place: &Place<'tcx>,
+    ) -> Result<(Place<'tcx>, MovePathIndex), NoMovePathFound> {
         let mut last_prefix = &place.base;
 
         for prefix in self.prefixes(&place.base, &place.projection, PrefixSet::All) {
