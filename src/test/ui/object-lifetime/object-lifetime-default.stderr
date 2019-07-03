@@ -1,32 +1,8 @@
-error: 'a,Ambiguous
-  --> $DIR/object-lifetime-default.rs:24:1
+error: BaseDefault
+  --> $DIR/object-lifetime-default.rs:6:1
    |
-LL | struct G<'a,'b,T:'a,U:'a+'b>(&'a T, &'b U);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: 'a,'b
-  --> $DIR/object-lifetime-default.rs:21:1
-   |
-LL | struct F<'a,'b,T:'a,U:'b>(&'a T, &'b U);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: 'b
-  --> $DIR/object-lifetime-default.rs:18:1
-   |
-LL | struct E<'a,'b:'a,T:'b>(&'a T, &'b T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: Ambiguous
-  --> $DIR/object-lifetime-default.rs:15:1
-   |
-LL | struct D<'a,'b,T:'a+'b>(&'a T, &'b T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: 'a
-  --> $DIR/object-lifetime-default.rs:12:1
-   |
-LL | struct C<'a,T:'a>(&'a T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct A<T>(T);
+   | ^^^^^^^^^^^^^^^
 
 error: BaseDefault
   --> $DIR/object-lifetime-default.rs:9:1
@@ -34,11 +10,35 @@ error: BaseDefault
 LL | struct B<'a,T>(&'a (), T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: BaseDefault
-  --> $DIR/object-lifetime-default.rs:6:1
+error: 'a
+  --> $DIR/object-lifetime-default.rs:12:1
    |
-LL | struct A<T>(T);
-   | ^^^^^^^^^^^^^^^
+LL | struct C<'a,T:'a>(&'a T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Ambiguous
+  --> $DIR/object-lifetime-default.rs:15:1
+   |
+LL | struct D<'a,'b,T:'a+'b>(&'a T, &'b T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: 'b
+  --> $DIR/object-lifetime-default.rs:18:1
+   |
+LL | struct E<'a,'b:'a,T:'b>(&'a T, &'b T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: 'a,'b
+  --> $DIR/object-lifetime-default.rs:21:1
+   |
+LL | struct F<'a,'b,T:'a,U:'b>(&'a T, &'b U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: 'a,Ambiguous
+  --> $DIR/object-lifetime-default.rs:24:1
+   |
+LL | struct G<'a,'b,T:'a,U:'a+'b>(&'a T, &'b U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

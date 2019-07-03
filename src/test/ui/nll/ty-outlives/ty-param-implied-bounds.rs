@@ -4,9 +4,6 @@
 // Test that we assume that universal types like `T` outlive the
 // function body.
 
-#![allow(warnings)]
-#![feature(rustc_attrs)]
-
 use std::cell::Cell;
 
 fn twice<F, T>(value: T, mut f: F)
@@ -17,7 +14,6 @@ where
     f(Cell::new(&value));
 }
 
-#[rustc_errors]
 fn generic<T>(value: T) {
     // No error here:
     twice(value, |r| invoke(r));
