@@ -269,11 +269,11 @@ impl OutputTypes {
         self.0.contains_key(key)
     }
 
-    pub fn keys<'a>(&'a self) -> BTreeMapKeysIter<'a, OutputType, Option<PathBuf>> {
+    pub fn keys(&self) -> BTreeMapKeysIter<'_, OutputType, Option<PathBuf>> {
         self.0.keys()
     }
 
-    pub fn values<'a>(&'a self) -> BTreeMapValuesIter<'a, OutputType, Option<PathBuf>> {
+    pub fn values(&self) -> BTreeMapValuesIter<'_, OutputType, Option<PathBuf>> {
         self.0.values()
     }
 
@@ -316,7 +316,7 @@ impl Externs {
         self.0.get(key)
     }
 
-    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, ExternEntry> {
+    pub fn iter(&self) -> BTreeMapIter<'_, String, ExternEntry> {
         self.0.iter()
     }
 }

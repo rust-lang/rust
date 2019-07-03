@@ -10,7 +10,7 @@ pub enum FunctionDebugContext<D> {
 }
 
 impl<D> FunctionDebugContext<D> {
-    pub fn get_ref<'a>(&'a self, span: Span) -> &'a FunctionDebugContextData<D> {
+    pub fn get_ref(&self, span: Span) -> &FunctionDebugContextData<D> {
         match *self {
             FunctionDebugContext::RegularContext(ref data) => data,
             FunctionDebugContext::DebugInfoDisabled => {

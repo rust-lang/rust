@@ -142,7 +142,7 @@ impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
     }
 }
 
-pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> LibFeatures {
+pub fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
     intravisit::walk_crate(&mut collector, tcx.hir().krate());
     collector.lib_features

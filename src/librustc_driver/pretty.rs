@@ -188,7 +188,7 @@ impl PpSourceMode {
             _ => panic!("Should use call_with_pp_support_hir"),
         }
     }
-    fn call_with_pp_support_hir<'tcx, A, F>(&self, tcx: TyCtxt<'tcx>, f: F) -> A
+    fn call_with_pp_support_hir<A, F>(&self, tcx: TyCtxt<'_>, f: F) -> A
     where
         F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate) -> A,
     {
@@ -228,7 +228,7 @@ impl PpSourceMode {
 trait PrinterSupport: pprust::PpAnn {
     /// Provides a uniform interface for re-extracting a reference to a
     /// `Session` from a value that now owns it.
-    fn sess<'a>(&'a self) -> &'a Session;
+    fn sess(&self) -> &Session;
 
     /// Produces the pretty-print annotation object.
     ///
@@ -240,7 +240,7 @@ trait PrinterSupport: pprust::PpAnn {
 trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     /// Provides a uniform interface for re-extracting a reference to a
     /// `Session` from a value that now owns it.
-    fn sess<'a>(&'a self) -> &'a Session;
+    fn sess(&self) -> &Session;
 
     /// Provides a uniform interface for re-extracting a reference to an
     /// `hir_map::Map` from a value that now owns it.
@@ -272,7 +272,7 @@ struct NoAnn<'hir> {
 }
 
 impl<'hir> PrinterSupport for NoAnn<'hir> {
-    fn sess<'a>(&'a self) -> &'a Session {
+    fn sess(&self) -> &Session {
         self.sess
     }
 
@@ -282,7 +282,7 @@ impl<'hir> PrinterSupport for NoAnn<'hir> {
 }
 
 impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
-    fn sess<'a>(&'a self) -> &'a Session {
+    fn sess(&self) -> &Session {
         self.sess
     }
 
@@ -313,7 +313,7 @@ struct IdentifiedAnnotation<'hir> {
 }
 
 impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
-    fn sess<'a>(&'a self) -> &'a Session {
+    fn sess(&self) -> &Session {
         self.sess
     }
 
@@ -360,7 +360,7 @@ impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
 }
 
 impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
-    fn sess<'a>(&'a self) -> &'a Session {
+    fn sess(&self) -> &Session {
         self.sess
     }
 
@@ -458,7 +458,7 @@ struct TypedAnnotation<'a, 'tcx> {
 }
 
 impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
-    fn sess<'a>(&'a self) -> &'a Session {
+    fn sess(&self) -> &Session {
         &self.tcx.sess
     }
 
@@ -866,8 +866,8 @@ pub fn print_after_hir_lowering<'tcx>(
 // analysis is performed. However, we want to call `phase_3_run_analysis_passes`
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
-fn print_with_analysis<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn print_with_analysis(
+    tcx: TyCtxt<'_>,
     ppm: PpMode,
     uii: Option<UserIdentifiedItem>,
     ofile: Option<&Path>,

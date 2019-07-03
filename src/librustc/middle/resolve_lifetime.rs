@@ -368,7 +368,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 /// entire crate. You should not read the result of this query
 /// directly, but rather use `named_region_map`, `is_late_bound_map`,
 /// etc.
-fn resolve_lifetimes<'tcx>(tcx: TyCtxt<'tcx>, for_krate: CrateNum) -> &'tcx ResolveLifetimes {
+fn resolve_lifetimes(tcx: TyCtxt<'_>, for_krate: CrateNum) -> &ResolveLifetimes {
     assert_eq!(for_krate, LOCAL_CRATE);
 
     let named_region_map = krate(tcx);
@@ -395,7 +395,7 @@ fn resolve_lifetimes<'tcx>(tcx: TyCtxt<'tcx>, for_krate: CrateNum) -> &'tcx Reso
     tcx.arena.alloc(rl)
 }
 
-fn krate<'tcx>(tcx: TyCtxt<'tcx>) -> NamedRegionMap {
+fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {
     let krate = tcx.hir().krate();
     let mut map = NamedRegionMap {
         defs: Default::default(),

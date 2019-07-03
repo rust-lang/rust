@@ -84,9 +84,9 @@ struct PropagationContext<'a, 'tcx, O> {
     changed: bool,
 }
 
-fn get_cfg_indices<'a>(id: hir::ItemLocalId,
-                       index: &'a FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>)
-                       -> &'a [CFGIndex] {
+fn get_cfg_indices(id: hir::ItemLocalId,
+                   index: &FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>)
+                   -> &[CFGIndex] {
     index.get(&id).map_or(&[], |v| &v[..])
 }
 

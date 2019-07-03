@@ -20,10 +20,10 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn inferred_outlives_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn inferred_outlives_of(
+    tcx: TyCtxt<'_>,
     item_def_id: DefId,
-) -> &'tcx [ty::Predicate<'tcx>] {
+) -> &[ty::Predicate<'_>] {
     let id = tcx
         .hir()
         .as_local_hir_id(item_def_id)
@@ -70,10 +70,10 @@ fn inferred_outlives_of<'tcx>(
     }
 }
 
-fn inferred_outlives_crate<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn inferred_outlives_crate(
+    tcx: TyCtxt<'_>,
     crate_num: CrateNum,
-) -> &'tcx CratePredicatesMap<'tcx> {
+) -> &CratePredicatesMap<'_> {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     // Compute a map from each struct/enum/union S to the **explicit**

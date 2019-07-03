@@ -829,7 +829,7 @@ fn build_call_shim<'tcx>(
     body
 }
 
-pub fn build_adt_ctor<'tcx>(tcx: TyCtxt<'tcx>, ctor_id: DefId) -> &'tcx Body<'tcx> {
+pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
     let span = tcx.hir().span_if_local(ctor_id)

@@ -92,7 +92,7 @@ struct BorrowedLocalsVisitor<'gk> {
     trans: &'gk mut GenKillSet<Local>,
 }
 
-fn find_local<'tcx>(place: &Place<'tcx>) -> Option<Local> {
+fn find_local(place: &Place<'_>) -> Option<Local> {
     place.iterate(|place_base, place_projection| {
         for proj in place_projection {
             if proj.elem == ProjectionElem::Deref {
