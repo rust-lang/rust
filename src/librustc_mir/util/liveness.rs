@@ -56,8 +56,8 @@ pub struct LivenessResult {
 
 /// Computes which local variables are live within the given function
 /// `mir`, including drops.
-pub fn liveness_of_locals<'tcx>(
-    body: &Body<'tcx>,
+pub fn liveness_of_locals(
+    body: &Body<'_>,
 ) -> LivenessResult {
     let num_live_vars = body.local_decls.len();
 
@@ -243,8 +243,8 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor
     }
 }
 
-fn block<'tcx>(
-    b: &BasicBlockData<'tcx>,
+fn block(
+    b: &BasicBlockData<'_>,
     locals: usize,
 ) -> DefsUses {
     let mut visitor = DefsUsesVisitor {

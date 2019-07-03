@@ -878,7 +878,7 @@ pub fn create_global_ctxt(
 
 /// Runs the resolution, type-checking, region checking and other
 /// miscellaneous analysis passes on the crate.
-fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
+fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let sess = tcx.sess;
@@ -995,8 +995,8 @@ fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
     Ok(())
 }
 
-fn encode_and_write_metadata<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn encode_and_write_metadata(
+    tcx: TyCtxt<'_>,
     outputs: &OutputFilenames,
 ) -> (middle::cstore::EncodedMetadata, bool) {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]

@@ -14,8 +14,8 @@ pub struct AddRetag;
 /// after the assignment, we can be sure to obtain the same place value.
 /// (Concurrent accesses by other threads are no problem as these are anyway non-atomic
 /// copies.  Data races are UB.)
-fn is_stable<'tcx>(
-    place: &Place<'tcx>,
+fn is_stable(
+    place: &Place<'_>,
 ) -> bool {
     use rustc::mir::Place::*;
 

@@ -331,8 +331,8 @@ pub type CombineSubstructureFunc<'a> =
 pub type EnumNonMatchCollapsedFunc<'a> =
     Box<dyn FnMut(&mut ExtCtxt<'_>, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
 
-pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
-                                -> RefCell<CombineSubstructureFunc<'a>> {
+pub fn combine_substructure(f: CombineSubstructureFunc<'_>)
+                            -> RefCell<CombineSubstructureFunc<'_>> {
     RefCell::new(f)
 }
 

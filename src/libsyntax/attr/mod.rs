@@ -440,12 +440,12 @@ pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
     })
 }
 
-pub fn find_by_name<'a>(attrs: &'a [Attribute], name: Symbol) -> Option<&'a Attribute> {
+pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
     attrs.iter().find(|attr| attr.check_name(name))
 }
 
-pub fn filter_by_name<'a>(attrs: &'a [Attribute], name: Symbol)
-    -> impl Iterator<Item = &'a Attribute> {
+pub fn filter_by_name(attrs: &[Attribute], name: Symbol)
+                      -> impl Iterator<Item=&Attribute> {
     attrs.iter().filter(move |attr| attr.check_name(name))
 }
 

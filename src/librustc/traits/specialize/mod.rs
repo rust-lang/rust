@@ -145,8 +145,8 @@ pub fn find_associated_item<'tcx>(
 /// Specialization is determined by the sets of types to which the impls apply;
 /// `impl1` specializes `impl2` if it applies to a subset of the types `impl2` applies
 /// to.
-pub(super) fn specializes<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(super) fn specializes(
+    tcx: TyCtxt<'_>,
     (impl1_def_id, impl2_def_id): (DefId, DefId),
 ) -> bool {
     debug!("specializes({:?}, {:?})", impl1_def_id, impl2_def_id);
@@ -282,10 +282,10 @@ fn fulfill_implication<'a, 'tcx>(
 }
 
 // Query provider for `specialization_graph_of`.
-pub(super) fn specialization_graph_provider<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(super) fn specialization_graph_provider(
+    tcx: TyCtxt<'_>,
     trait_id: DefId,
-) -> &'tcx specialization_graph::Graph {
+) -> &specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
 
     let mut trait_impls = tcx.all_impls(trait_id);

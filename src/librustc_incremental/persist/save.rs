@@ -15,7 +15,7 @@ use super::dirty_clean;
 use super::file_format;
 use super::work_product;
 
-pub fn save_dep_graph<'tcx>(tcx: TyCtxt<'tcx>) {
+pub fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
     tcx.dep_graph.with_ignore(|| {
         let sess = tcx.sess;

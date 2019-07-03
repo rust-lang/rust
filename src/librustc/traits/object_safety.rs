@@ -702,6 +702,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-pub(super) fn is_object_safe_provider<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) -> bool {
+pub(super) fn is_object_safe_provider(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
     tcx.object_safety_violations(trait_def_id).is_empty()
 }

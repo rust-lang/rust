@@ -4,7 +4,7 @@ use crate::hir::itemlikevisit::ItemLikeVisitor;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{Lock, ParallelIterator, par_iter};
 
-pub fn check_crate<'hir>(hir_map: &hir::map::Map<'hir>) {
+pub fn check_crate(hir_map: &hir::map::Map<'_>) {
     hir_map.dep_graph.assert_ignored();
 
     let errors = Lock::new(Vec::new());

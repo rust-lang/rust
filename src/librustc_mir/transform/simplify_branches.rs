@@ -15,7 +15,7 @@ impl SimplifyBranches {
 }
 
 impl MirPass for SimplifyBranches {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
+    fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.label)
     }
 

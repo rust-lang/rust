@@ -2867,19 +2867,19 @@ impl<'tcx> graph::WithStartNode for Body<'tcx> {
 }
 
 impl<'tcx> graph::WithPredecessors for Body<'tcx> {
-    fn predecessors<'graph>(
-        &'graph self,
+    fn predecessors(
+        &self,
         node: Self::Node,
-    ) -> <Self as GraphPredecessors<'graph>>::Iter {
+    ) -> <Self as GraphPredecessors<'_>>::Iter {
         self.predecessors_for(node).clone().into_iter()
     }
 }
 
 impl<'tcx> graph::WithSuccessors for Body<'tcx> {
-    fn successors<'graph>(
-        &'graph self,
+    fn successors(
+        &self,
         node: Self::Node,
-    ) -> <Self as GraphSuccessors<'graph>>::Iter {
+    ) -> <Self as GraphSuccessors<'_>>::Iter {
         self.basic_blocks[node].terminator().successors().cloned()
     }
 }

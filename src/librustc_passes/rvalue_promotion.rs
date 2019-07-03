@@ -39,7 +39,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn const_is_rvalue_promotable_to_static<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+fn const_is_rvalue_promotable_to_static(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     assert!(def_id.is_local());
 
     let hir_id = tcx.hir().as_local_hir_id(def_id)
@@ -48,7 +48,7 @@ fn const_is_rvalue_promotable_to_static<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) 
     tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
 
-fn rvalue_promotable_map<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ItemLocalSet {
+fn rvalue_promotable_map(tcx: TyCtxt<'_>, def_id: DefId) -> &ItemLocalSet {
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
         return tcx.rvalue_promotable_map(outer_def_id);
