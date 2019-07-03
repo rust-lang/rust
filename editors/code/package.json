@@ -44,7 +44,7 @@
         "tslint": "^5.16.0",
         "tslint-config-prettier": "^1.18.0",
         "typescript": "^3.4.4",
-        "vsce": "^1.59.0",
+        "vsce": "^1.64.0",
         "vscode": "^1.1.33"
     },
     "activationEvents": [
