@@ -1,12 +1,12 @@
 use crate::consts::{constant_context, constant_simple};
 use crate::utils::differing_macro_contexts;
+use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::LateContext;
 use rustc::ty::TypeckTables;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use syntax::ast::Name;
-use syntax::ptr::P;
 
 /// Type used to check whether two ast are the same. This is different from the
 /// operator

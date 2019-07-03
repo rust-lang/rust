@@ -1,10 +1,10 @@
 use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
+use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
-use syntax::ptr::P;
 
 declare_clippy_lint! {
     /// **What it does:** Lint for redundant pattern matching over `Result` or

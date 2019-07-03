@@ -1,10 +1,10 @@
 use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, paths, resolve_node, span_lint};
 use if_chain::if_chain;
+use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::LitKind;
-use syntax::ptr::P;
 use syntax_pos::Span;
 
 declare_clippy_lint! {
