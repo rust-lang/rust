@@ -11,7 +11,7 @@ use rustc::ty::{self, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
-    InterpretCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory
+    InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -95,11 +95,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     const STATIC_KIND: Option<Self::MemoryKinds>;
 
     /// Whether to enforce the validity invariant
-    fn enforce_validity(ecx: &InterpretCx<'mir, 'tcx, Self>) -> bool;
+    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Called before a basic block terminator is executed.
     /// You can use this to detect endlessly running programs.
-    fn before_terminator(ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>;
+    fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>;
 
     /// Entry point to all function calls.
     ///
@@ -112,7 +112,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
     /// was used.
     fn find_fn(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
@@ -122,7 +122,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Directly process an intrinsic without pushing a stack frame.
     /// If this returns successfully, the engine will take care of jumping to the next block.
     fn call_intrinsic(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: PlaceTy<'tcx, Self::PointerTag>,
@@ -145,7 +145,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
     fn ptr_op(
-        ecx: &InterpretCx<'mir, 'tcx, Self>,
+        ecx: &InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Self::PointerTag>,
         right: ImmTy<'tcx, Self::PointerTag>,
@@ -153,7 +153,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Heap allocations via the `box` keyword.
     fn box_alloc(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx>;
 
@@ -193,7 +193,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Executes a retagging operation
     #[inline]
     fn retag(
-        _ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _kind: mir::RetagKind,
         _place: PlaceTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx> {
@@ -201,11 +201,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Called immediately before a new stack frame got pushed
-    fn stack_push(ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, Self::FrameExtra>;
+    fn stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, Self::FrameExtra>;
 
     /// Called immediately after a stack frame gets popped
     fn stack_pop(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         extra: Self::FrameExtra,
     ) -> InterpResult<'tcx>;
 
