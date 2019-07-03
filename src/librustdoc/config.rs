@@ -340,7 +340,6 @@ impl Options {
 
         let test_args = matches.opt_strs("test-args");
         let test_args: Vec<String> = test_args.iter()
-                                              .flat_map(|s| s.split_whitespace())
                                               .map(|s| s.to_string())
                                               .collect();
 
