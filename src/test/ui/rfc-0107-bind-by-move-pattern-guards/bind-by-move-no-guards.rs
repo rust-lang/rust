@@ -2,7 +2,7 @@
 // rust-lang/rust#2329), that starts passing with this feature in
 // place.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(bind_by_move_pattern_guards)]
 

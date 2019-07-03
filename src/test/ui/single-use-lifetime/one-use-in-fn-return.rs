@@ -5,7 +5,7 @@
 // (Normally, using `'static` would be preferred, but there are
 // times when that is not what you want.)
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![deny(single_use_lifetimes)]
 

@@ -2,7 +2,7 @@
 // function returning always its first argument can be upcast to one
 // that returns either first or second argument.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // compile-flags:-Zno-leak-check
 
 #![feature(nll)]

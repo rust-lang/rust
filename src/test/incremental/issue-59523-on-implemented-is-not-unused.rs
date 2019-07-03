@@ -3,7 +3,7 @@
 // subsequent runs) if incremental compilation is enabled.
 
 // revisions: cfail1 cfail2
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(on_unimplemented)]
 #![deny(unused_attributes)]
