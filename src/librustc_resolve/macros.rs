@@ -867,7 +867,7 @@ impl<'a> Resolver<'a> {
                         }
                     }
                 }
-                WhereToResolve::MacroUsePrelude => WhereToResolve::BuiltinMacros,
+                WhereToResolve::MacroUsePrelude => WhereToResolve::StdLibPrelude,
                 WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
                 WhereToResolve::BuiltinAttrs => WhereToResolve::LegacyPluginHelpers,
                 WhereToResolve::LegacyPluginHelpers => break, // nowhere else to search
@@ -877,7 +877,7 @@ impl<'a> Resolver<'a> {
                 WhereToResolve::StdLibPrelude => match ns {
                     TypeNS => WhereToResolve::BuiltinTypes,
                     ValueNS => break, // nowhere else to search
-                    MacroNS => unreachable!(),
+                    MacroNS => WhereToResolve::BuiltinMacros,
                 }
                 WhereToResolve::BuiltinTypes => break, // nowhere else to search
             };
