@@ -653,10 +653,14 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
             linker_error.emit();
 
             if sess.target.target.options.is_like_msvc && linker_not_found {
-                sess.note_without_error("the msvc targets depend on the msvc linker \
-                    but `link.exe` was not found");
-                sess.note_without_error("please ensure that VS 2013, VS 2015 or VS 2017 \
-                    was installed with the Visual C++ option");
+                sess.note_without_error(
+                    "the msvc targets depend on the msvc linker \
+                     but `link.exe` was not found",
+                );
+                sess.note_without_error(
+                    "please ensure that VS 2013, VS 2015, VS 2017 or VS 2019 \
+                     was installed with the Visual C++ option",
+                );
             }
             sess.abort_if_errors();
         }
