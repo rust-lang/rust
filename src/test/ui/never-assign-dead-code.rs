@@ -1,7 +1,7 @@
 // Test that an assignment of type ! makes the rest of the block dead code.
 
 #![feature(never_type)]
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![warn(unused)]
 
 

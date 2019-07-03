@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Tests that automatic coercions from &mut T to *mut T
 // allow borrows of T to expire immediately - essentially, that

@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![deny(non_camel_case_types)]
 
 #[allow(dead_code)]

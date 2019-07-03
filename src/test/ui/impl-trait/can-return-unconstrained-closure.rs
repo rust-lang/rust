@@ -10,7 +10,7 @@
 // concrete type against the bound, which forces the return type to be
 // `&'static i32` here.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 fn make_identity() -> impl Sized {
     |x: &'static i32| x

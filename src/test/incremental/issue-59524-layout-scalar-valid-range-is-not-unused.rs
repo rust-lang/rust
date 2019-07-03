@@ -4,7 +4,7 @@
 // enabled.
 
 // revisions: cfail1 cfail2
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(rustc_attrs)]
 #![deny(unused_attributes)]

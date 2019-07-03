@@ -4,7 +4,7 @@
 use ::std::prelude::v1::*;
 #[macro_use]
 extern crate std;
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // compile-flags: -Z unpretty=expanded
 
 fn main() { if let 0 = 1 { } }
