@@ -708,7 +708,7 @@ impl<T> LinkedList<T> {
         let len = self.len();
         assert!(at <= len, "Cannot split off at a nonexistent index");
         if at == 0 {
-            return mem::replace(self, Self::new());
+            return mem::take(self);
         } else if at == len {
             return Self::new();
         }

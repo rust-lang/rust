@@ -205,8 +205,8 @@ impl<'a> LlvmArchiveBuilder<'a> {
     }
 
     fn build_with_llvm(&mut self, kind: ArchiveKind) -> io::Result<()> {
-        let removals = mem::replace(&mut self.removals, Vec::new());
-        let mut additions = mem::replace(&mut self.additions, Vec::new());
+        let removals = mem::take(&mut self.removals);
+        let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();
         let mut members = Vec::new();
 

@@ -4408,7 +4408,7 @@ pub fn enter_impl_trait<F, R>(cx: &DocContext<'_>, f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let old_bounds = mem::replace(&mut *cx.impl_trait_bounds.borrow_mut(), Default::default());
+    let old_bounds = mem::take(&mut *cx.impl_trait_bounds.borrow_mut());
     let r = f();
     assert!(cx.impl_trait_bounds.borrow().is_empty());
     *cx.impl_trait_bounds.borrow_mut() = old_bounds;
