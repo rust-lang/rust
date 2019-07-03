@@ -101,7 +101,7 @@ impl<'a> StringReader<'a> {
         self.override_span.unwrap_or_else(|| Span::new(lo, hi, NO_EXPANSION))
     }
 
-    fn unwrap_or_abort<T>(&mut self, res: Result<T, ()>) -> T {
+    fn unwrap_or_abort(&mut self, res: Result<Token, ()>) -> Token {
         match res {
             Ok(tok) => tok,
             Err(_) => {
