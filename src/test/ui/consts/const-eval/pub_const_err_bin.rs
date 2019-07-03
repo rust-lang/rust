@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![warn(const_err)]
 
 pub const Z: u32 = 0 - 1;

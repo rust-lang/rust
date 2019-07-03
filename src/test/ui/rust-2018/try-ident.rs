@@ -1,5 +1,5 @@
 // run-rustfix
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![warn(rust_2018_compatibility)]
 

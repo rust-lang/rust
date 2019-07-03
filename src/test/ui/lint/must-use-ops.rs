@@ -1,6 +1,6 @@
 // Issue #50124 - Test warning for unused operator expressions
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![warn(unused_must_use)]
 

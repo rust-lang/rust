@@ -1,6 +1,6 @@
 #![feature(bind_by_move_pattern_guards)]
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 struct A { a: Box<i32> }
 

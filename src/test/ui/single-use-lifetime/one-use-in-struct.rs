@@ -2,7 +2,7 @@
 // even when they are only used once (since to not use a named
 // lifetime is illegal!)
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![deny(single_use_lifetimes)]
 #![allow(dead_code)]
