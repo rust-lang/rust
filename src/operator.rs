@@ -397,21 +397,24 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             .checked_mul(pointee_size)
             .ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
         // Now let's see what kind of pointer this is.
-        if let Ok(ptr) = self.force_ptr(ptr) {
-            // Both old and new pointer must be in-bounds of a *live* allocation.
-            // (Of the same allocation, but that part is trivial with our representation.)
-            self.pointer_inbounds(ptr)?;
-            let ptr = ptr.signed_offset(offset, self)?;
-            self.pointer_inbounds(ptr)?;
-            Ok(Scalar::Ptr(ptr))
-        } else {
-            // A "true" integer pointer. They can only be offset by 0, and we pretend there
-            // is a little zero-sized allocation here.
-            if offset == 0 {
-                Ok(ptr)
-            } else {
-                err!(InvalidPointerMath)
+        let ptr = if offset == 0 {
+            match ptr {
+                Scalar::Ptr(ptr) => ptr,
+                Scalar::Raw { .. } => {
+                    // Offset 0 on an integer. We accept that, pretending there is
+                    // a little zero-sized allocation here.
+                    return Ok(ptr);
+                }
             }
-        }
+        } else {
+            // Offset > 0. We *require* a pointer.
+            self.force_ptr(ptr)?
+        };
+        // Both old and new pointer must be in-bounds of a *live* allocation.
+        // (Of the same allocation, but that part is trivial with our representation.)
+        self.pointer_inbounds(ptr)?;
+        let ptr = ptr.signed_offset(offset, self)?;
+        self.pointer_inbounds(ptr)?;
+        Ok(Scalar::Ptr(ptr))
     }
 }
