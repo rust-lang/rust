@@ -1065,6 +1065,7 @@ fn check_fn<'a, 'tcx>(
         &declared_ret_ty,
         decl.output.span(),
     );
+    debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
