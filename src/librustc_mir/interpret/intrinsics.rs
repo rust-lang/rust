@@ -11,7 +11,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    Machine, PlaceTy, OpTy, InterpretCx, Immediate,
+    Machine, PlaceTy, OpTy, InterpCx, Immediate,
 };
 
 mod type_name;
@@ -39,7 +39,7 @@ fn numeric_intrinsic<'tcx, Tag>(
     Ok(Scalar::from_uint(bits_out, size))
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
         &mut self,
