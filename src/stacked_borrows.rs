@@ -538,6 +538,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
         let alloc = this.memory().get(ptr.alloc_id)?;
+        let stacked_borrows = alloc.extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
         // Update the stacks.
         // Make sure that raw pointers and mutable shared references are reborrowed "weak":
         // There could be existing unique pointers reborrowed from them that should remain valid!
@@ -553,14 +554,14 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // We are only ever `SharedReadOnly` inside the frozen bits.
                     let perm = if frozen { Permission::SharedReadOnly } else { Permission::SharedReadWrite };
                     let item = Item { perm, tag: new_tag, protector };
-                    alloc.extra.stacked_borrows.for_each(cur_ptr, size, |stack, global| {
+                    stacked_borrows.for_each(cur_ptr, size, |stack, global| {
                         stack.grant(cur_ptr.tag, item, global)
                     })
                 });
             }
         };
         let item = Item { perm, tag: new_tag, protector };
-        alloc.extra.stacked_borrows.for_each(ptr, size, |stack, global| {
+        stacked_borrows.for_each(ptr, size, |stack, global| {
             stack.grant(ptr.tag, item, global)
         })
     }

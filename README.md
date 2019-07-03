@@ -279,6 +279,8 @@ Several `-Z` flags are relevant for Miri:
 * `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
   functions.  This is needed so that Miri can execute such functions, so Miri
   sets this flag per default.
+* `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
+  enables this per default because it is needed for validation.
 
 Moreover, Miri recognizes some environment variables:
 

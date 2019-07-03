@@ -1,3 +1,6 @@
+// Validation disallows this becuase the reference is never cast to a raw pointer.
+// compile-flags: -Zmiri-disable-validation
+
 fn main() {
     // If we are careful, we can exploit data layout...
     let raw = unsafe {
