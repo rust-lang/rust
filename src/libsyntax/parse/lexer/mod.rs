@@ -98,14 +98,7 @@ impl<'a> StringReader<'a> {
     }
 
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
-        self.mk_sp_and_raw(lo, hi).0
-    }
-
-    fn mk_sp_and_raw(&self, lo: BytePos, hi: BytePos) -> (Span, Span) {
-        let raw = Span::new(lo, hi, NO_EXPANSION);
-        let real = self.override_span.unwrap_or(raw);
-
-        (real, raw)
+        self.override_span.unwrap_or_else(|| Span::new(lo, hi, NO_EXPANSION))
     }
 
     fn unwrap_or_abort<T>(&mut self, res: Result<T, ()>) -> T {
@@ -133,8 +126,8 @@ impl<'a> StringReader<'a> {
                     let start_pos = self.pos;
                     (self.next_token_inner()?, start_pos, self.pos)
                 };
-                let (real, _raw) = self.mk_sp_and_raw(start_pos, end_pos);
-                Ok(Token::new(kind, real))
+                let span = self.mk_sp(start_pos, end_pos);
+                Ok(Token::new(kind, span))
             }
         }
     }
