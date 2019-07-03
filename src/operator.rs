@@ -59,6 +59,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         // If intptrcast is enabled, treat everything of integer *type* at integer *value*.
         if self.memory().extra.rng.is_some() && left.layout.ty.is_integral() {
             // This is actually an integer operation, so dispatch back to the core engine.
+            // TODO: Once intptrcast is the default, librustc_mir should never even call us
+            // for integer types.
             assert!(right.layout.ty.is_integral());
             let l_bits = self.force_bits(left.imm.to_scalar()?, left.layout.size)?;
             let r_bits = self.force_bits(right.imm.to_scalar()?, right.layout.size)?;
@@ -186,6 +188,13 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         right: Scalar<Tag>,
     ) -> InterpResult<'tcx, bool> {
         let size = self.pointer_size();
+        if self.memory().extra.rng.is_some() {
+            // Just compare the integers.
+            // TODO: Do we really want to *always* do that, even when comparing two live in-bounds pointers?
+            let left = self.force_bits(left, size)?;
+            let right = self.force_bits(right, size)?;
+            return Ok(left == right);
+        }
         Ok(match (left, right) {
             (Scalar::Raw { .. }, Scalar::Raw { .. }) =>
                 left.to_bits(size)? == right.to_bits(size)?,

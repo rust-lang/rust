@@ -75,7 +75,9 @@ impl<'mir, 'tcx> GlobalState {
         let mut global_state = memory.extra.intptrcast.borrow_mut();
         let global_state = &mut *global_state;
 
-        let (size, align) = memory.get_size_and_align(ptr.alloc_id, AllocCheck::Live)?;
+        // There is nothing wrong with a raw pointer being cast to an integer only after
+        // it became dangling.  Hence `MaybeDead`.
+        let (size, align) = memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?;
 
         let base_addr = match global_state.base_addr.entry(ptr.alloc_id) {
             Entry::Occupied(entry) => *entry.get(),
