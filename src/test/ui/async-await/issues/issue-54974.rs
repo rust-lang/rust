@@ -1,7 +1,7 @@
 // compile-pass
 // edition:2018
 
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 
 use std::sync::Arc;
 

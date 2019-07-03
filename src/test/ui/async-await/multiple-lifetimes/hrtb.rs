@@ -3,7 +3,7 @@
 
 // Test that we can use async fns with multiple arbitrary lifetimes.
 
-#![feature(arbitrary_self_types, async_await, await_macro)]
+#![feature(async_await)]
 #![allow(dead_code)]
 
 use std::ops::Add;
