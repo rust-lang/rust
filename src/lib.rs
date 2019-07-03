@@ -153,31 +153,7 @@ impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
 struct CraneliftCodegenBackend;
 
 impl CodegenBackend for CraneliftCodegenBackend {
-    fn init(&self, sess: &Session) {
-        for cty in sess.opts.crate_types.iter() {
-            match *cty {
-                CrateType::Rlib | CrateType::Dylib | CrateType::Executable => {}
-                _ => {
-                    sess.warn(&format!(
-                        "Rustc codegen cranelift doesn't support output type {}",
-                        cty
-                    ));
-                }
-            }
-        }
-        match sess.lto() {
-            Lto::Fat | Lto::Thin | Lto::ThinLocal => {
-                sess.warn("Rustc codegen cranelift doesn't support lto");
-            }
-            Lto::No => {}
-        }
-        if sess.opts.cg.rpath {
-            sess.err("rpath is not yet supported");
-        }
-        if sess.opts.debugging_opts.pgo_gen.enabled() {
-            sess.err("pgo is not supported");
-        }
-    }
+    fn init(&self, _sess: &Session) {}
 
     fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
         Box::new(crate::metadata::CraneliftMetadataLoader)
