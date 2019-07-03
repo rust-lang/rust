@@ -1,8 +1,8 @@
 # `slice_patterns`
 
-The tracking issue for this feature is: [#23121]
+The tracking issue for this feature is: [#62254]
 
-[#23121]: https://github.com/rust-lang/rust/issues/23121
+[#62254]: https://github.com/rust-lang/rust/issues/62254
 
 ------------------------
 
