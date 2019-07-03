@@ -1280,8 +1280,8 @@ impl<'a> LoweringContext<'a> {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
-        let catch_scopes = mem::replace(&mut self.catch_scopes, Vec::new());
-        let loop_scopes = mem::replace(&mut self.loop_scopes, Vec::new());
+        let catch_scopes = mem::take(&mut self.catch_scopes);
+        let loop_scopes = mem::take(&mut self.loop_scopes);
         let ret = f(self);
         self.catch_scopes = catch_scopes;
         self.loop_scopes = loop_scopes;

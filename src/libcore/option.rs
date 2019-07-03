@@ -845,7 +845,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn take(&mut self) -> Option<T> {
-        mem::replace(self, None)
+        mem::take(self)
     }
 
     /// Replaces the actual value in the option by the value given in parameter,

@@ -28,7 +28,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     candidate: &mut Candidate<'pat, 'tcx>) {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
-            let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
+            let match_pairs = mem::take(&mut candidate.match_pairs);
             let mut changed = false;
             for match_pair in match_pairs {
                 match self.simplify_match_pair(match_pair, candidate) {

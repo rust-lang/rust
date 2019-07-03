@@ -78,7 +78,7 @@ impl<T: Copy> Buffer<T> {
     }
 
     pub(super) fn take(&mut self) -> Self {
-        mem::replace(self, Self::default())
+        mem::take(self)
     }
 
     pub(super) fn extend_from_slice(&mut self, xs: &[T]) {

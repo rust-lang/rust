@@ -203,7 +203,7 @@ impl ToOwned for str {
     }
 
     fn clone_into(&self, target: &mut String) {
-        let mut b = mem::replace(target, String::new()).into_bytes();
+        let mut b = mem::take(target).into_bytes();
         self.as_bytes().clone_into(&mut b);
         *target = unsafe { String::from_utf8_unchecked(b) }
     }
