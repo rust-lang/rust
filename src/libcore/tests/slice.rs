@@ -1415,7 +1415,7 @@ pub mod memchr {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_simple() {
     let bytes = [1u8, 2, 3, 4, 5, 6, 7];
     let (prefix, aligned, suffix) = unsafe { bytes.align_to::<u16>() };
@@ -1439,7 +1439,7 @@ fn test_align_to_zst() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_non_trivial() {
     #[repr(align(8))] struct U64(u64, u64);
     #[repr(align(8))] struct U64U64U32(u64, u64, u32);

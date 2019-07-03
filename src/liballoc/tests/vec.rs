@@ -761,7 +761,6 @@ fn from_into_inner() {
     it.next().unwrap();
     let vec = it.collect::<Vec<_>>();
     assert_eq!(vec, [2, 3]);
-    #[cfg(not(miri))] // Miri does not support comparing dangling pointers
     assert!(ptr != vec.as_ptr());
 }
 

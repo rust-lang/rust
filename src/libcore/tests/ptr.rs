@@ -253,7 +253,6 @@ fn test_unsized_nonnull() {
 
 #[test]
 #[allow(warnings)]
-#[cfg(not(miri))] // Miri cannot hash pointers
 // Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
 // ABI, or even point to an actual executable code, because the function itself is never invoked.
 #[no_mangle]
@@ -293,7 +292,7 @@ fn write_unaligned_drop() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn align_offset_zst() {
     // For pointers of stride = 0, the pointer is already aligned or it cannot be aligned at
     // all, because no amount of elements will align the pointer.
@@ -308,7 +307,7 @@ fn align_offset_zst() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn align_offset_stride1() {
     // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
     // number of bytes.
