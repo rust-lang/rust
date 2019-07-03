@@ -8,6 +8,7 @@
 use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::Map;
+use crate::hir::ptr::P;
 use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
 use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
@@ -21,7 +22,6 @@ use std::cell::Cell;
 use std::mem::replace;
 use syntax::ast;
 use syntax::attr;
-use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 

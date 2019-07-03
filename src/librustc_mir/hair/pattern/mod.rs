@@ -20,13 +20,13 @@ use rustc::ty::layout::{VariantIdx, Size};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
+use rustc::hir::ptr::P;
 
 use rustc_data_structures::indexed_vec::Idx;
 
 use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
-use syntax::ptr::P;
 use syntax::symbol::sym;
 use syntax_pos::Span;
 

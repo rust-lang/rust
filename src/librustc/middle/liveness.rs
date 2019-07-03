@@ -99,6 +99,7 @@ use self::VarKind::*;
 
 use crate::hir::def::*;
 use crate::hir::Node;
+use crate::hir::ptr::P;
 use crate::ty::{self, TyCtxt};
 use crate::ty::query::Providers;
 use crate::lint;
@@ -111,7 +112,6 @@ use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 

@@ -39,6 +39,7 @@ use crate::hir::map::{DefKey, DefPathData, Definitions};
 use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::def::{Res, DefKind, PartialRes, PerNS};
 use crate::hir::{GenericArg, ConstArg};
+use crate::hir::ptr::P;
 use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
 use crate::middle::cstore::CrateStore;
@@ -61,7 +62,6 @@ use syntax::ast::*;
 use syntax::errors;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::print::pprust;
-use syntax::ptr::P;
 use syntax::source_map::{self, respan, ExpnInfo, CompilerDesugaringKind, Spanned};
 use syntax::source_map::CompilerDesugaringKind::IfTemporary;
 use syntax::std_inject;
@@ -1111,7 +1111,7 @@ impl<'a> LoweringContext<'a> {
             },
         );
 
-        lowered_generics.params = lowered_generics
+        let mut lowered_params: Vec<_> = lowered_generics
             .params
             .into_iter()
             .chain(in_band_defs)
@@ -1121,13 +1121,15 @@ impl<'a> LoweringContext<'a> {
         // unsorted generic parameters at the moment, so we make sure
         // that they're ordered correctly here for now. (When we chain
         // the `in_band_defs`, we might make the order unsorted.)
-        lowered_generics.params.sort_by_key(|param| {
+        lowered_params.sort_by_key(|param| {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => ParamKindOrd::Lifetime,
                 hir::GenericParamKind::Type { .. } => ParamKindOrd::Type,
                 hir::GenericParamKind::Const { .. } => ParamKindOrd::Const,
             }
         });
+
+        lowered_generics.params = lowered_params.into();
 
         (lowered_generics, res)
     }
@@ -1155,13 +1157,13 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         capture_clause: CaptureBy,
         closure_node_id: NodeId,
-        ret_ty: Option<&Ty>,
+        ret_ty: Option<syntax::ptr::P<Ty>>,
         span: Span,
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
         let capture_clause = self.lower_capture_clause(capture_clause);
         let output = match ret_ty {
-            Some(ty) => FunctionRetTy::Ty(P(ty.clone())),
+            Some(ty) => FunctionRetTy::Ty(ty),
             None => FunctionRetTy::Default(span),
         };
         let ast_decl = FnDecl {
@@ -2725,7 +2727,7 @@ impl<'a> LoweringContext<'a> {
 
         // ::std::future::Future<future_params>
         let future_path =
-            self.std_path(span, &[sym::future, sym::Future], Some(future_params), false);
+            P(self.std_path(span, &[sym::future, sym::Future], Some(future_params), false));
 
         hir::GenericBound::Trait(
             hir::PolyTraitRef {
@@ -3094,7 +3096,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_trait_ref(&mut self, p: &TraitRef, itctx: ImplTraitContext<'_>) -> hir::TraitRef {
         let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
-            hir::QPath::Resolved(None, path) => path.and_then(|path| path),
+            hir::QPath::Resolved(None, path) => path,
             qpath => bug!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
         };
         hir::TraitRef {
@@ -3620,7 +3622,7 @@ impl<'a> LoweringContext<'a> {
                             hir::Item {
                                 hir_id: new_id,
                                 ident,
-                                attrs: attrs.clone(),
+                                attrs: attrs.into_iter().cloned().collect(),
                                 node: item,
                                 vis,
                                 span,
@@ -3705,7 +3707,7 @@ impl<'a> LoweringContext<'a> {
                             hir::Item {
                                 hir_id: new_hir_id,
                                 ident,
-                                attrs: attrs.clone(),
+                                attrs: attrs.into_iter().cloned().collect(),
                                 node: item,
                                 vis,
                                 span: use_tree.span,
@@ -4567,7 +4569,7 @@ impl<'a> LoweringContext<'a> {
                         // `|x: u8| future_from_generator(|| -> X { ... })`.
                         let body_id = this.lower_fn_body(&outer_decl, |this| {
                             let async_ret_ty = if let FunctionRetTy::Ty(ty) = &decl.output {
-                                Some(&**ty)
+                                Some(ty.clone())
                             } else { None };
                             let async_body = this.make_async_expr(
                                 capture_clause, closure_id, async_ret_ty, body.span,
@@ -5577,7 +5579,7 @@ impl<'a> LoweringContext<'a> {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: hir::HirVec::new(),
                             trait_ref: hir::TraitRef {
-                                path: path.and_then(|path| path),
+                                path,
                                 hir_ref_id: hir_id,
                             },
                             span,
