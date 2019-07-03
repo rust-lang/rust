@@ -1635,7 +1635,7 @@ impl Destination {
         }
     }
 
-    fn writable<'a>(&'a mut self) -> WritableDst<'a> {
+    fn writable(&mut self) -> WritableDst<'_> {
         match *self {
             Destination::Terminal(ref mut t) => WritableDst::Terminal(t),
             Destination::Buffered(ref mut t) => {

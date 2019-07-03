@@ -337,7 +337,7 @@ fn item_tables<'a, 'tcx>(
     if tcx.has_typeck_tables(def_id) { tcx.typeck_tables_of(def_id) } else { empty_tables }
 }
 
-fn min<'tcx>(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'tcx>) -> ty::Visibility {
+fn min(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'_>) -> ty::Visibility {
     if vis1.is_at_least(vis2, tcx) { vis2 } else { vis1 }
 }
 
@@ -384,14 +384,14 @@ impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'tcx> for FindMin<'a, 'tcx, VL> 
 trait VisibilityLike: Sized {
     const MAX: Self;
     const SHALLOW: bool = false;
-    fn new_min<'a, 'tcx>(find: &FindMin<'a, 'tcx, Self>, def_id: DefId) -> Self;
+    fn new_min(find: &FindMin<'_, '_, Self>, def_id: DefId) -> Self;
 
     // Returns an over-approximation (`skip_assoc_tys` = true) of visibility due to
     // associated types for which we can't determine visibility precisely.
-    fn of_impl<'a, 'tcx>(
+    fn of_impl(
         hir_id: hir::HirId,
-        tcx: TyCtxt<'tcx>,
-        access_levels: &'a AccessLevels,
+        tcx: TyCtxt<'_>,
+        access_levels: &AccessLevels,
     ) -> Self {
         let mut find = FindMin { tcx, access_levels, min: Self::MAX };
         let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
@@ -404,7 +404,7 @@ trait VisibilityLike: Sized {
 }
 impl VisibilityLike for ty::Visibility {
     const MAX: Self = ty::Visibility::Public;
-    fn new_min<'a, 'tcx>(find: &FindMin<'a, 'tcx, Self>, def_id: DefId) -> Self {
+    fn new_min(find: &FindMin<'_, '_, Self>, def_id: DefId) -> Self {
         min(def_id_visibility(find.tcx, def_id).0, find.min, find.tcx)
     }
 }
@@ -420,7 +420,7 @@ impl VisibilityLike for Option<AccessLevel> {
     // both "shallow" version of its self type and "shallow" version of its trait if it exists
     // (which require reaching the `DefId`s in them).
     const SHALLOW: bool = true;
-    fn new_min<'a, 'tcx>(find: &FindMin<'a, 'tcx, Self>, def_id: DefId) -> Self {
+    fn new_min(find: &FindMin<'_, '_, Self>, def_id: DefId) -> Self {
         cmp::min(if let Some(hir_id) = find.tcx.hir().as_local_hir_id(def_id) {
             find.access_levels.map.get(&hir_id).cloned()
         } else {
@@ -1828,7 +1828,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn check_mod_privacy<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
+fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: DefId) {
     let empty_tables = ty::TypeckTables::empty(None);
 
     // Check privacy of names not checked in previous compilation stages.
@@ -1855,7 +1855,7 @@ fn check_mod_privacy<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
     intravisit::walk_mod(&mut visitor, module, hir_id);
 }
 
-fn privacy_access_levels<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum) -> &'tcx AccessLevels {
+fn privacy_access_levels(tcx: TyCtxt<'_>, krate: CrateNum) -> &AccessLevels {
     assert_eq!(krate, LOCAL_CRATE);
 
     // Build up a set of all exported items in the AST. This is a set of all
@@ -1879,7 +1879,7 @@ fn privacy_access_levels<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum) -> &'tcx Acce
     tcx.arena.alloc(visitor.access_levels)
 }
 
-fn check_private_in_public<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum) {
+fn check_private_in_public(tcx: TyCtxt<'_>, krate: CrateNum) {
     assert_eq!(krate, LOCAL_CRATE);
 
     let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);

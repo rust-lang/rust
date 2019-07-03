@@ -48,8 +48,8 @@ pub fn add_placeholder_note(err: &mut errors::DiagnosticBuilder<'_>) {
 /// If there are types that satisfy both impls, invokes `on_overlap`
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, invokes `no_overlap`.
-pub fn overlapping_impls<'tcx, F1, F2, R>(
-    tcx: TyCtxt<'tcx>,
+pub fn overlapping_impls<F1, F2, R>(
+    tcx: TyCtxt<'_>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     intercrate_mode: IntercrateMode,
@@ -247,10 +247,10 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
-pub fn orphan_check<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn orphan_check(
+    tcx: TyCtxt<'_>,
     impl_def_id: DefId,
-) -> Result<(), OrphanCheckErr<'tcx>> {
+) -> Result<(), OrphanCheckErr<'_>> {
     debug!("orphan_check({:?})", impl_def_id);
 
     // We only except this routine to be invoked on implementations

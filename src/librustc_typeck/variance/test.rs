@@ -3,7 +3,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
 use syntax::symbol::sym;
 
-pub fn test_variance<'tcx>(tcx: TyCtxt<'tcx>) {
+pub fn test_variance(tcx: TyCtxt<'_>) {
     tcx.hir().krate().visit_all_item_likes(&mut VarianceTest { tcx });
 }
 

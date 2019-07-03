@@ -1028,14 +1028,14 @@ fn create_generator_resume_function<'tcx>(
     dump_mir(tcx, None, "generator_resume", &0, source, body, |_, _| Ok(()) );
 }
 
-fn source_info<'tcx>(body: &Body<'tcx>) -> SourceInfo {
+fn source_info(body: &Body<'_>) -> SourceInfo {
     SourceInfo {
         span: body.span,
         scope: OUTERMOST_SOURCE_SCOPE,
     }
 }
 
-fn insert_clean_drop<'tcx>(body: &mut Body<'tcx>) -> BasicBlock {
+fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
