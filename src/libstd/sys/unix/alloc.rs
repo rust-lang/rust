@@ -1,7 +1,6 @@
 use crate::ptr;
 use crate::sys_common::alloc::{MIN_ALIGN, realloc_fallback};
 use crate::alloc::{GlobalAlloc, Layout, System};
-use crate::mem;
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {
@@ -88,7 +87,7 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     let mut out = ptr::null_mut();
     // posix_memalign requires that the alignment be a multiple of `sizeof(void*)`.
     // Since these are all powers of 2, we can just use max.
-    let align = layout.align().max(mem::size_of::<usize>());
+    let align = layout.align().max(crate::mem::size_of::<usize>());
     let ret = libc::posix_memalign(&mut out, align, layout.size());
     if ret != 0 {
         ptr::null_mut()
