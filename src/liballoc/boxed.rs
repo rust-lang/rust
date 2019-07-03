@@ -728,6 +728,14 @@ impl<I: Iterator + ?Sized> Iterator for Box<I> {
         (**self).nth(n)
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator + Sized> Iterator for Box<I> {
+    fn last(self) -> Option<I::Item> where I: Sized {
+        (*self).last()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
     fn next_back(&mut self) -> Option<I::Item> {
