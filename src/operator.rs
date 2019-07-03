@@ -397,7 +397,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             .checked_mul(pointee_size)
             .ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
         // Now let's see what kind of pointer this is.
-        if let Scalar::Ptr(ptr) = ptr {
+        if let Ok(ptr) = self.force_ptr(ptr) {
             // Both old and new pointer must be in-bounds of a *live* allocation.
             // (Of the same allocation, but that part is trivial with our representation.)
             self.pointer_inbounds(ptr)?;
@@ -405,7 +405,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             self.pointer_inbounds(ptr)?;
             Ok(Scalar::Ptr(ptr))
         } else {
-            // An integer pointer. They can only be offset by 0, and we pretend there
+            // A "true" integer pointer. They can only be offset by 0, and we pretend there
             // is a little zero-sized allocation here.
             if offset == 0 {
                 Ok(ptr)
