@@ -7,6 +7,8 @@
 //
 // See issue #59123 for a full explanation.
 
+// run-pass
+
 // edition:2018
 
 #![feature(async_await)]
