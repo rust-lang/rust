@@ -72,30 +72,22 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
         Self { limit }
     }
 
-    fn check_trait_method(&mut self, cx: &LateContext<'_, 'tcx>, item: &TraitItemRef) {
-        let method_def_id = cx.tcx.hir().local_def_id_from_hir_id(item.id.hir_id);
-        let method_sig = cx.tcx.fn_sig(method_def_id);
-        let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
+    fn check_poly_fn(&mut self, cx: &LateContext<'_, 'tcx>, hir_id: HirId, decl: &FnDecl, span: Option<Span>) {
+        let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
 
-        let decl = match cx.tcx.hir().fn_decl_by_hir_id(item.id.hir_id) {
-            Some(b) => b,
-            None => return,
-        };
+        let fn_sig = cx.tcx.fn_sig(fn_def_id);
+        let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
-        self.check_poly_fn(cx, &decl, &method_sig, None);
-    }
-
-    fn check_poly_fn(&mut self, cx: &LateContext<'_, 'tcx>, decl: &FnDecl, sig: &FnSig<'tcx>, span: Option<Span>) {
         // Use lifetimes to determine if we're returning a reference to the
         // argument. In that case we can't switch to pass-by-value as the
         // argument will not live long enough.
-        let output_lts = match sig.output().sty {
+        let output_lts = match fn_sig.output().sty {
             ty::Ref(output_lt, _, _) => vec![output_lt],
             ty::Adt(_, substs) => substs.regions().collect(),
             _ => vec![],
         };
 
-        for (input, &ty) in decl.inputs.iter().zip(sig.inputs()) {
+        for (input, &ty) in decl.inputs.iter().zip(fn_sig.inputs()) {
             // All spans generated from a proc-macro invocation are the same...
             match span {
                 Some(s) if s == input.span => return,
@@ -128,25 +120,18 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
             }
         }
     }
-
-    fn check_trait_items(&mut self, cx: &LateContext<'_, '_>, trait_items: &[TraitItemRef]) {
-        for item in trait_items {
-            if let AssocItemKind::Method { .. } = item.kind {
-                self.check_trait_method(cx, item);
-            }
-        }
-    }
 }
 
 impl_lint_pass!(TriviallyCopyPassByRef => [TRIVIALLY_COPY_PASS_BY_REF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
         if in_macro_or_desugar(item.span) {
             return;
         }
-        if let ItemKind::Trait(_, _, _, _, ref trait_items) = item.node {
-            self.check_trait_items(cx, trait_items);
+
+        if let hir::TraitItemKind::Method(method_sig, _) = &item.node {
+            self.check_poly_fn(cx, item.hir_id, &*method_sig.decl, None);
         }
     }
 
@@ -187,11 +172,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
             }
         }
 
-        let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
-
-        let fn_sig = cx.tcx.fn_sig(fn_def_id);
-        let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
-
-        self.check_poly_fn(cx, decl, &fn_sig, Some(span));
+        self.check_poly_fn(cx, hir_id, decl, Some(span));
     }
 }

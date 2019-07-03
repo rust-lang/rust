@@ -85,6 +85,17 @@ impl MyTrait for Foo {
     }
 }
 
+#[allow(unused_variables)]
+mod issue3992 {
+    pub trait A {
+        #[allow(clippy::trivially_copy_pass_by_ref)]
+        fn a(b: &u16) {}
+    }
+
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    pub fn c(d: &u16) {}
+}
+
 fn main() {
     let (mut foo, bar) = (Foo(0), Bar([0; 24]));
     let (mut a, b, c, x, y, z) = (0, 0, Bar([0; 24]), 0, Foo(0), 0);
