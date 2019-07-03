@@ -22,7 +22,7 @@ use syntax::source_map::{Span, DUMMY_SP};
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar,
     RawConst, ConstValue,
-    InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpretCx, StackPopCleanup,
+    InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind, Memory,
     snapshot, RefTracking, intern_const_alloc_recursive,
 };
@@ -34,7 +34,7 @@ const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 /// Should be a power of two for performance reasons.
 const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
-/// The `InterpretCx` is only meant to be used to do field and index projections into constants for
+/// The `InterpCx` is only meant to be used to do field and index projections into constants for
 /// `simd_shuffle` and const patterns in match arms.
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
@@ -47,7 +47,7 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
-    InterpretCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
+    InterpCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
 }
 
 pub(crate) fn eval_promoted<'mir, 'tcx>(
@@ -303,7 +303,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
 }
 
 crate type CompileTimeEvalContext<'mir, 'tcx> =
-    InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
+    InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
 
 impl interpret::MayLeak for ! {
     #[inline(always)]
@@ -326,12 +326,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     const STATIC_KIND: Option<!> = None; // no copying of statics allowed
 
     #[inline(always)]
-    fn enforce_validity(_ecx: &InterpretCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
     }
 
     fn find_fn(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: Option<PlaceTy<'tcx>>,
@@ -371,7 +371,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn call_intrinsic(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
@@ -387,7 +387,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn ptr_op(
-        _ecx: &InterpretCx<'mir, 'tcx, Self>,
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
@@ -424,7 +424,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn box_alloc(
-        _ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         Err(
@@ -432,7 +432,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         )
     }
 
-    fn before_terminator(ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         {
             let steps = &mut ecx.machine.steps_since_detector_enabled;
 
@@ -457,13 +457,13 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn stack_push(_ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
     /// Called immediately before a stack frame gets popped.
     #[inline(always)]
-    fn stack_pop(_ecx: &mut InterpretCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
+    fn stack_pop(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
         Ok(())
     }
 }
@@ -508,7 +508,7 @@ pub fn const_variant_index<'tcx>(
 }
 
 pub fn error_to_const_error<'mir, 'tcx>(
-    ecx: &InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
@@ -632,7 +632,7 @@ pub fn const_eval_raw_provider<'tcx>(
     }
 
     let span = tcx.def_span(cid.instance.def_id());
-    let mut ecx = InterpretCx::new(tcx.at(span), key.param_env, CompileTimeInterpreter::new());
+    let mut ecx = InterpCx::new(tcx.at(span), key.param_env, CompileTimeInterpreter::new());
 
     let res = ecx.load_mir(cid.instance.def);
     res.map(|body| {
