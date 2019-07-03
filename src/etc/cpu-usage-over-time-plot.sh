@@ -16,7 +16,7 @@
 
 set -ex
 
-bucket=rust-lang-ci-evalazure
+bucket=rust-lang-ci2
 commit=$1
 builder=$2
 
