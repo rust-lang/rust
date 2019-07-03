@@ -100,7 +100,11 @@ pub use unique::Unique;
 ///   as the compiler doesn't need to prove that it's sound to elide the
 ///   copy.
 ///
+/// Unaligned values cannot be dropped in place, they must be copied to an aligned
+/// location first using [`ptr::read_unaligned`].
+///
 /// [`ptr::read`]: ../ptr/fn.read.html
+/// [`ptr::read_unaligned`]: ../ptr/fn.read_unaligned.html
 ///
 /// # Safety
 ///
@@ -108,8 +112,7 @@ pub use unique::Unique;
 ///
 /// * `to_drop` must be [valid] for reads.
 ///
-/// * `to_drop` must be properly aligned. See the example below for how to drop
-///   an unaligned pointer.
+/// * `to_drop` must be properly aligned.
 ///
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
 /// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
@@ -151,31 +154,6 @@ pub use unique::Unique;
 ///
 /// // Ensure that the last item was dropped.
 /// assert!(weak.upgrade().is_none());
-/// ```
-///
-/// Unaligned values cannot be dropped in place, they must be copied to an aligned
-/// location first:
-/// ```
-/// use std::ptr;
-/// use std::mem::{self, MaybeUninit};
-///
-/// unsafe fn drop_after_copy<T>(to_drop: *mut T) {
-///     let mut copy: MaybeUninit<T> = MaybeUninit::uninit();
-///     ptr::copy(to_drop, copy.as_mut_ptr(), 1);
-///     drop(copy.assume_init());
-/// }
-///
-/// #[repr(packed, C)]
-/// struct Packed {
-///     _padding: u8,
-///     unaligned: Vec<i32>,
-/// }
-///
-/// let mut p = Packed { _padding: 0, unaligned: vec![42] };
-/// unsafe {
-///     drop_after_copy(&mut p.unaligned as *mut _);
-///     mem::forget(p);
-/// }
 /// ```
 ///
 /// Notice that the compiler performs this copy automatically when dropping packed structs,
