@@ -36,7 +36,7 @@ pub mod rwlock;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
         pub mod stdio;
         pub mod stack_overflow;
