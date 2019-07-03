@@ -528,7 +528,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
         // use common size calculation for non zero-sized types
         let cg_value = self.codegen_place(bx, &place.as_place_ref());
-        return cg_value.len(bx.cx());
+        cg_value.len(bx.cx())
     }
 
     pub fn codegen_scalar_binop(
