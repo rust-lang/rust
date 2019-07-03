@@ -24,7 +24,6 @@ export CARGO_TARGET_DIR=`pwd`/target/
 # Perform various checks for lint registration
 ./util/dev update_lints --check
 ./util/dev --limit-stderr-length
-cargo +nightly fmt --all -- --check
 
 # Check running clippy-driver without cargo
 (
@@ -59,16 +58,6 @@ tests_need_reformatting="false"
 rustup override set nightly
 # avoid loop spam and allow cmds with exit status != 0
 set +ex
-
-# Excluding `ice-3891.rs` because the code triggers a rustc parse error which
-# makes rustfmt fail.
-for file in `find tests -not -path "tests/ui/crashes/ice-3891.rs" | grep "\.rs$"` ; do
-  rustfmt ${file} --check
-  if [ $? -ne 0 ]; then
-    echo "${file} needs reformatting!"
-    tests_need_reformatting="true"
-  fi
-done
 
 set -ex # reset
 
