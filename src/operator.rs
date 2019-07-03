@@ -56,10 +56,10 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 
-        // If intptrcast is enabled and the operation is not an offset
-        // we can force the cast from pointers to integer addresses and
-        // then dispatch to rustc binary operation method
-        if self.memory().extra.rng.is_some() && bin_op != Offset {
+        // If intptrcast is enabled, treat everything of integer *type* at integer *value*.
+        if self.memory().extra.rng.is_some() && left.layout.ty.is_integral() {
+            // This is actually an integer operation, so dispatch back to the core engine.
+            assert!(right.layout.ty.is_integral());
             let l_bits = self.force_bits(left.imm.to_scalar()?, left.layout.size)?;
             let r_bits = self.force_bits(right.imm.to_scalar()?, right.layout.size)?;
             
