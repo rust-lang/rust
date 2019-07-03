@@ -2385,6 +2385,11 @@ impl Iterator for Drain<'_> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
+    #[inline]
+    fn last(mut self) -> Option<char> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
