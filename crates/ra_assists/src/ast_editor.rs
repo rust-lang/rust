@@ -163,11 +163,7 @@ impl AstEditor<ast::ItemList> {
         self.do_make_multiline()
     }
 
-    pub fn append_functions<'a>(&mut self, fns: impl Iterator<Item = &'a ast::FnDef>) {
-        fns.for_each(|it| self.append_function(it))
-    }
-
-    pub fn append_function(&mut self, fn_def: &ast::FnDef) {
+    pub fn append_item(&mut self, item: &ast::ImplItem) {
         let (indent, position) = match self.ast().impl_items().last() {
             Some(it) => (
                 leading_indent(it.syntax()).unwrap_or("").to_string(),
@@ -182,13 +178,29 @@ impl AstEditor<ast::ItemList> {
             },
         };
         let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
-        let to_insert: ArrayVec<[SyntaxElement; 2]> =
-            [ws.ws().into(), fn_def.syntax().into()].into();
+        let to_insert: ArrayVec<[SyntaxElement; 2]> = [ws.ws().into(), item.syntax().into()].into();
         self.ast = self.insert_children(position, to_insert.into_iter());
     }
 
     fn l_curly(&self) -> Option<SyntaxElement> {
         self.ast().syntax().children_with_tokens().find(|it| it.kind() == T!['{'])
+    }
+}
+
+impl AstEditor<ast::ImplItem> {
+    pub fn strip_attrs_and_docs(&mut self) {
+        while let Some(start) = self
+            .ast()
+            .syntax()
+            .children_with_tokens()
+            .find(|it| it.kind() == ATTR || it.kind() == COMMENT)
+        {
+            let end = match start.next_sibling_or_token() {
+                Some(el) if el.kind() == WHITESPACE => el,
+                Some(_) | None => start,
+            };
+            self.ast = self.replace_children(RangeInclusive::new(start, end), iter::empty());
+        }
     }
 }
 
@@ -209,21 +221,6 @@ impl AstEditor<ast::FnDef> {
         to_insert.push(body.syntax().into());
         let replace_range = RangeInclusive::new(old_body_or_semi, old_body_or_semi);
         self.ast = self.replace_children(replace_range, to_insert.into_iter())
-    }
-
-    pub fn strip_attrs_and_docs(&mut self) {
-        while let Some(start) = self
-            .ast()
-            .syntax()
-            .children_with_tokens()
-            .find(|it| it.kind() == ATTR || it.kind() == COMMENT)
-        {
-            let end = match start.next_sibling_or_token() {
-                Some(el) if el.kind() == WHITESPACE => el,
-                Some(_) | None => start,
-            };
-            self.ast = self.replace_children(RangeInclusive::new(start, end), iter::empty());
-        }
     }
 }
 
