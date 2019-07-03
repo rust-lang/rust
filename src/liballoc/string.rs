@@ -552,7 +552,7 @@ impl String {
     /// assert_eq!("Hello �World", output);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> Cow<'a, str> {
+    pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
         let mut iter = lossy::Utf8Lossy::from_bytes(v).chunks();
 
         let (first_valid, first_broken) = if let Some(chunk) = iter.next() {

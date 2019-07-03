@@ -140,7 +140,7 @@ fn wait_timeout_receiver<'a, 'b, T>(lock: &'a Mutex<State<T>>,
     new_guard
 }
 
-fn abort_selection<'a, T>(guard: &mut MutexGuard<'a , State<T>>) -> bool {
+fn abort_selection<T>(guard: &mut MutexGuard<'_, State<T>>) -> bool {
     match mem::replace(&mut guard.blocker, NoneBlocked) {
         NoneBlocked => true,
         BlockedSender(token) => {
