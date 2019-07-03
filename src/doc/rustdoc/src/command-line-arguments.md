@@ -216,11 +216,17 @@ See also `--test-args`.
 Using this flag looks like this:
 
 ```bash
-$ rustdoc src/lib.rs --test --test-args ignored
+$ rustdoc src/lib.rs --test --test-args "--ignored"
 ```
 
 This flag will pass options to the test runner when running documentation tests.
 For more, see [the chapter on documentation tests](documentation-tests.md).
+
+To pass multiple arguments to the test runner, pass `--test-args` multiple times:
+
+```bash
+$ rustdoc src/lib.rs --test --test-args "--nocapture" --test-args "--test-threads=1"
+```
 
 See also `--test`.
 
