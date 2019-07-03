@@ -901,7 +901,7 @@ fn may_begin_with(token: &Token, name: Name) -> bool {
 /// # Returns
 ///
 /// The parsed non-terminal.
-fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> Nonterminal {
+fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Nonterminal {
     if name == sym::tt {
         return token::NtTT(p.parse_token_tree());
     }

@@ -22,7 +22,7 @@ use syntax_pos::Span;
 use super::lints;
 
 /// Construct the MIR for a given `DefId`.
-pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
+pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
@@ -171,11 +171,11 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn liberated_closure_env_ty<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn liberated_closure_env_ty(
+    tcx: TyCtxt<'_>,
     closure_expr_id: hir::HirId,
     body_id: hir::BodyId,
-) -> Ty<'tcx> {
+) -> Ty<'_> {
     let closure_ty = tcx.body_tables(body_id).node_type(closure_expr_id);
 
     let (closure_def_id, closure_substs) = match closure_ty.sty {
@@ -485,7 +485,7 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: DefId, abi: Abi) -> bool {
+fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
     // Not callable from C, so we can safely unwind through these
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
 

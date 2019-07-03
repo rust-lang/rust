@@ -160,7 +160,7 @@ crate fn program_clauses_for_env<'tcx>(
     );
 }
 
-crate fn environment<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Environment<'tcx> {
+crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
     use super::{Lower, IntoFromEnvGoal};
     use rustc::hir::{Node, TraitItemKind, ImplItemKind, ItemKind, ForeignItemKind};
 

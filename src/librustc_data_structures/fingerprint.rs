@@ -58,7 +58,7 @@ impl Fingerprint {
         Ok(())
     }
 
-    pub fn decode_opaque<'a>(decoder: &mut Decoder<'a>) -> Result<Fingerprint, String> {
+    pub fn decode_opaque(decoder: &mut Decoder<'_>) -> Result<Fingerprint, String> {
         let mut bytes = [0; 16];
 
         decoder.read_raw_bytes(&mut bytes)?;

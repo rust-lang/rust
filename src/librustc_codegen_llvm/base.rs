@@ -123,8 +123,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'tcx>, cgu_name: InternedString) {
 
     submit_codegened_module_to_llvm(&LlvmCodegenBackend(()), tcx, module, cost);
 
-    fn module_codegen<'tcx>(
-        tcx: TyCtxt<'tcx>,
+    fn module_codegen(
+        tcx: TyCtxt<'_>,
         cgu_name: InternedString,
     ) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);

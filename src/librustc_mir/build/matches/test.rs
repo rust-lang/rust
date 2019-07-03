@@ -826,6 +826,6 @@ impl Test<'_> {
     }
 }
 
-fn is_switch_ty<'tcx>(ty: Ty<'tcx>) -> bool {
+fn is_switch_ty(ty: Ty<'_>) -> bool {
     ty.is_integral() || ty.is_char() || ty.is_bool()
 }

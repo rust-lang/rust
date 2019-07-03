@@ -1446,7 +1446,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     }
 }
 
-fn region_scope_tree<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ScopeTree {
+fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
     let closure_base_def_id = tcx.closure_base_def_id(def_id);
     if closure_base_def_id != def_id {
         return tcx.region_scope_tree(closure_base_def_id);
