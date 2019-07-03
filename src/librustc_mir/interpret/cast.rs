@@ -1,7 +1,7 @@
 use rustc::ty::{self, Ty, TypeAndMut};
 use rustc::ty::layout::{self, TyLayout, Size};
 use rustc::ty::adjustment::{PointerCast};
-use syntax::ast::{FloatTy, IntTy, UintTy};
+use syntax::ast::FloatTy;
 use syntax::symbol::sym;
 
 use rustc_apfloat::ieee::{Single, Double};
@@ -151,7 +151,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     "Unexpected cast from type {:?}", src_layout.ty
                 );
                 match val.to_bits_or_ptr(src_layout.size, self) {
-                    Err(ptr) => self.cast_from_ptr(ptr, dest_layout.ty),
+                    Err(ptr) => self.cast_from_ptr(ptr, src_layout, dest_layout),
                     Ok(data) => self.cast_from_int(data, src_layout, dest_layout),
                 }
             }
@@ -239,17 +239,25 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     fn cast_from_ptr(
         &self,
         ptr: Pointer<M::PointerTag>,
-        ty: Ty<'tcx>
+        src_layout: TyLayout<'tcx>,
+        dest_layout: TyLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::ty::TyKind::*;
-        match ty.sty {
+
+        match dest_layout.ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc,
             // no need to support it here.
-            RawPtr(_) |
-            Int(IntTy::Isize) |
-            Uint(UintTy::Usize) => Ok(ptr.into()),
-            Int(_) | Uint(_) => err!(ReadPointerAsBytes),
-            _ => err!(Unimplemented(format!("ptr to {:?} cast", ty))),
+            RawPtr(_) => Ok(ptr.into()),
+            Int(_) | Uint(_) => {
+                let size = self.memory.pointer_size();
+
+                match self.force_bits(Scalar::Ptr(ptr), size) {
+                    Ok(bits) => self.cast_from_int(bits, src_layout, dest_layout),
+                    Err(_) if dest_layout.size == size => Ok(ptr.into()),
+                    Err(e) => Err(e),
+                }
+            }
+            _ => bug!("invalid MIR: ptr to {:?} cast", dest_layout.ty)
         }
     }
 
