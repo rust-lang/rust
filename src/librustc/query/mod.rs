@@ -124,6 +124,8 @@ rustc_queries! {
                 mir.map(|x| &*tcx.arena.alloc(x))
             }
         }
+
+        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> { }
     }
 
     TypeChecking {
