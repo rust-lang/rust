@@ -323,7 +323,7 @@ declare_features! (
     (active, nll, "1.0.0", Some(43234), None),
 
     // Allows using slice patterns.
-    (active, slice_patterns, "1.0.0", Some(23121), None),
+    (active, slice_patterns, "1.0.0", Some(62254), None),
 
     // Allows the definition of `const` functions with some advanced features.
     (active, const_fn, "1.2.0", Some(57563), None),
@@ -610,7 +610,7 @@ declare_features! (
     (removed, allocator, "1.0.0", None, None, None),
     (removed, simd, "1.0.0", Some(27731), None,
      Some("removed in favor of `#[repr(simd)]`")),
-    (removed, advanced_slice_patterns, "1.0.0", Some(23121), None,
+    (removed, advanced_slice_patterns, "1.0.0", Some(62254), None,
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, macro_reexport, "1.0.0", Some(29638), None,
      Some("subsumed by `pub use`")),
