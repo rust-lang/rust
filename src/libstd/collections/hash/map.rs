@@ -2608,6 +2608,12 @@ mod test_map {
     use realstd::collections::CollectionAllocErr::*;
     use realstd::usize;
 
+    // https://github.com/rust-lang/rust/issues/62301
+    fn _assert_hashmap_is_unwind_safe() {
+        fn assert_unwind_safe<T: crate::panic::UnwindSafe>() {}
+        assert_unwind_safe::<HashMap<(), crate::cell::UnsafeCell<()>>>();
+    }
+
     #[test]
     fn test_zero_capacities() {
         type HM = HashMap<i32, i32>;
