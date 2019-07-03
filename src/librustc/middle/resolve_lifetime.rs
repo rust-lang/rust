@@ -19,7 +19,7 @@ use errors::{Applicability, DiagnosticBuilder};
 use rustc_macros::HashStable;
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::mem::replace;
+use std::mem::{replace, take};
 use syntax::ast;
 use syntax::attr;
 use syntax::symbol::{kw, sym};
@@ -441,7 +441,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         // Each body has their own set of labels, save labels.
-        let saved = replace(&mut self.labels_in_fn, vec![]);
+        let saved = take(&mut self.labels_in_fn);
         let body = self.tcx.hir().body(body);
         extract_labels(self, body);
         self.with(
@@ -1405,9 +1405,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             lifetime_uses,
             ..
         } = self;
-        let labels_in_fn = replace(&mut self.labels_in_fn, vec![]);
-        let xcrate_object_lifetime_defaults =
-            replace(&mut self.xcrate_object_lifetime_defaults, DefIdMap::default());
+        let labels_in_fn = take(&mut self.labels_in_fn);
+        let xcrate_object_lifetime_defaults = take(&mut self.xcrate_object_lifetime_defaults);
         let mut this = LifetimeContext {
             tcx: *tcx,
             map: map,

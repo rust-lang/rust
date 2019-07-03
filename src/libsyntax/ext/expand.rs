@@ -307,7 +307,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             } else {
                 self.resolve_imports();
                 if undetermined_invocations.is_empty() { break }
-                invocations = mem::replace(&mut undetermined_invocations, Vec::new());
+                invocations = mem::take(&mut undetermined_invocations);
                 force = !mem::replace(&mut progress, false);
                 continue
             };

@@ -455,7 +455,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             *any_unifications = false;
         }
 
-        mem::replace(data, RegionConstraintData::default())
+        mem::take(data)
     }
 
     pub fn data(&self) -> &RegionConstraintData<'tcx> {

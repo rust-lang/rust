@@ -67,6 +67,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(proc_macro_hygiene)]
 #![feature(log_syntax)]
+#![feature(mem_take)]
 
 #![recursion_limit="512"]
 
