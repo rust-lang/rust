@@ -5,7 +5,7 @@ use std::str::pattern::*;
 macro_rules! search_asserts {
     ($haystack:expr, $needle:expr, $testname:expr, [$($func:ident),*], $result:expr) => {
         let mut searcher = $needle.into_searcher($haystack);
-        let arr = [$( Step::from(searcher.$func()) ),+];
+        let arr = [$( Step::from(searcher.$func()) ),*];
         assert_eq!(&arr[..], &$result, $testname);
     }
 }
