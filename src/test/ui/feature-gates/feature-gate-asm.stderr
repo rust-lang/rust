@@ -2,7 +2,7 @@ error[E0658]: use of unstable library feature 'asm': inline assembly is not stab
   --> $DIR/feature-gate-asm.rs:3:9
    |
 LL |         asm!("");
-   |         ^^^^^^^^^
+   |         ^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29722
    = help: add `#![feature(asm)]` to the crate attributes to enable

@@ -2,7 +2,7 @@ error[E0658]: use of unstable library feature 'log_syntax': `log_syntax!` is not
   --> $DIR/feature-gate-log_syntax2.rs:4:22
    |
 LL |     println!("{:?}", log_syntax!());
-   |                      ^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29598
    = help: add `#![feature(log_syntax)]` to the crate attributes to enable

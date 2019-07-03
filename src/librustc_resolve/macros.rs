@@ -229,13 +229,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
 
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
-        let (res, ext) = self.resolve_macro_to_res(path, kind, &parent_scope, true, force)?;
+        let (ext, res) = self.smart_resolve_macro_path(path, kind, &parent_scope, true, force)?;
 
         let span = invoc.span();
-        let descr = fast_print_path(path);
-        invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, descr));
-
-        self.check_stability_and_deprecation(&ext, descr, span);
+        invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, fast_print_path(path)));
 
         if let Res::Def(_, def_id) = res {
             if after_derive {
@@ -275,47 +272,42 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_macro_to_res(
+    /// Resolve macro path with error reporting and recovery.
+    fn smart_resolve_macro_path(
         &mut self,
         path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
-    ) -> Result<(Res, Lrc<SyntaxExtension>), Indeterminate> {
-        let res = self.resolve_macro_to_res_inner(path, kind, parent_scope, trace, force);
+    ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
+        let (ext, res) = match self.resolve_macro_path(path, kind, parent_scope, trace, force) {
+            Ok((Some(ext), res)) => (ext, res),
+            // Use dummy syntax extensions for unresolved macros for better recovery.
+            Ok((None, res)) => (self.dummy_ext(kind), res),
+            Err(Determinacy::Determined) => (self.dummy_ext(kind), Res::Err),
+            Err(Determinacy::Undetermined) => return Err(Indeterminate),
+        };
 
         // Report errors and enforce feature gates for the resolved macro.
         let features = self.session.features_untracked();
-        if res != Err(Determinacy::Undetermined) {
-            // Do not report duplicated errors on every undetermined resolution.
-            for segment in &path.segments {
-                if let Some(args) = &segment.args {
-                    self.session.span_err(args.span(), "generic arguments in macro path");
-                }
-                if kind == MacroKind::Attr && !features.rustc_attrs &&
-                   segment.ident.as_str().starts_with("rustc") {
-                    let msg = "attributes starting with `rustc` are \
-                               reserved for use by the `rustc` compiler";
-                    emit_feature_err(
-                        &self.session.parse_sess,
-                        sym::rustc_attrs,
-                        segment.ident.span,
-                        GateIssue::Language,
-                        msg,
-                    );
-                }
+        for segment in &path.segments {
+            if let Some(args) = &segment.args {
+                self.session.span_err(args.span(), "generic arguments in macro path");
+            }
+            if kind == MacroKind::Attr && !features.rustc_attrs &&
+               segment.ident.as_str().starts_with("rustc") {
+                let msg =
+                    "attributes starting with `rustc` are reserved for use by the `rustc` compiler";
+                emit_feature_err(
+                    &self.session.parse_sess,
+                    sym::rustc_attrs,
+                    segment.ident.span,
+                    GateIssue::Language,
+                    msg,
+                );
             }
         }
-
-        let res = match res {
-            Err(Determinacy::Undetermined) => return Err(Indeterminate),
-            Ok(Res::Err) | Err(Determinacy::Determined) => {
-                // Return dummy syntax extensions for unresolved macros for better recovery.
-                return Ok((Res::Err, self.dummy_ext(kind)));
-            }
-            Ok(res) => res,
-        };
 
         match res {
             Res::Def(DefKind::Macro(_), def_id) => {
@@ -345,20 +337,22 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
+            Res::Err => {}
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
         };
 
-        let ext = self.get_macro(res);
+        self.check_stability_and_deprecation(&ext, path);
+
         Ok(if ext.macro_kind() != kind {
             let expected = if kind == MacroKind::Attr { "attribute" } else  { kind.descr() };
             let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path);
             self.session.struct_span_err(path.span, &msg)
                         .span_label(path.span, format!("not {} {}", kind.article(), expected))
                         .emit();
-            // Return dummy syntax extensions for unexpected macro kinds for better recovery.
-            (Res::Err, self.dummy_ext(kind))
+            // Use dummy syntax extensions for unexpected macro kinds for better recovery.
+            (self.dummy_ext(kind), Res::Err)
         } else {
-            (res, ext)
+            (ext, res)
         })
     }
 
@@ -416,14 +410,14 @@ impl<'a> Resolver<'a> {
         err.emit();
     }
 
-    pub fn resolve_macro_to_res_inner(
+    pub fn resolve_macro_path(
         &mut self,
         path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
-    ) -> Result<Res, Determinacy> {
+    ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
         let path_span = path.span;
         let mut path = Segment::from_path(path);
 
@@ -435,7 +429,7 @@ impl<'a> Resolver<'a> {
             path.insert(0, Segment::from_ident(root));
         }
 
-        if path.len() > 1 {
+        let res = if path.len() > 1 {
             let res = match self.resolve_path(&path, Some(MacroNS), parent_scope,
                                               false, path_span, CrateLint::No) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
@@ -471,7 +465,9 @@ impl<'a> Resolver<'a> {
             let res = binding.map(|binding| binding.res());
             self.prohibit_imported_non_macro_attrs(binding.ok(), res.ok(), path_span);
             res
-        }
+        };
+
+        res.map(|res| (self.get_macro(res), res))
     }
 
     // Resolve an identifier in lexical scope.
@@ -600,16 +596,18 @@ impl<'a> Resolver<'a> {
                     let mut result = Err(Determinacy::Determined);
                     for derive in &parent_scope.derives {
                         let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
-                        match self.resolve_macro_to_res(derive, MacroKind::Derive,
-                                                        &parent_scope, true, force) {
-                            Ok((_, ext)) => if ext.helper_attrs.contains(&ident.name) {
+                        match self.resolve_macro_path(derive, MacroKind::Derive,
+                                                      &parent_scope, true, force) {
+                            Ok((Some(ext), _)) => if ext.helper_attrs.contains(&ident.name) {
                                 let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
                                                ty::Visibility::Public, derive.span, Mark::root())
                                                .to_name_binding(self.arenas);
                                 result = Ok((binding, Flags::empty()));
                                 break;
                             }
-                            Err(Indeterminate) => result = Err(Determinacy::Undetermined),
+                            Ok(_) | Err(Determinacy::Determined) => {}
+                            Err(Determinacy::Undetermined) =>
+                                result = Err(Determinacy::Undetermined),
                         }
                     }
                     result
@@ -1004,7 +1002,8 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, descr: Symbol, span: Span) {
+    fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, path: &ast::Path) {
+        let span = path.span;
         if let Some(stability) = &ext.stability {
             if let StabilityLevel::Unstable { reason, issue } = stability.level {
                 let feature = stability.feature;
@@ -1013,14 +1012,14 @@ impl<'a> Resolver<'a> {
                 }
             }
             if let Some(depr) = &stability.rustc_depr {
-                let (message, lint) = stability::rustc_deprecation_message(depr, &descr.as_str());
+                let (message, lint) = stability::rustc_deprecation_message(depr, &path.to_string());
                 stability::early_report_deprecation(
                     self.session, &message, depr.suggestion, lint, span
                 );
             }
         }
         if let Some(depr) = &ext.deprecation {
-            let (message, lint) = stability::deprecation_message(depr, &descr.as_str());
+            let (message, lint) = stability::deprecation_message(depr, &path.to_string());
             stability::early_report_deprecation(self.session, &message, None, lint, span);
         }
     }
@@ -1101,7 +1100,7 @@ impl<'a> Resolver<'a> {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
         if ident.name == sym::cfg || ident.name == sym::cfg_attr || ident.name == sym::derive {
-            let macro_kind = self.opt_get_macro(res).map(|ext| ext.macro_kind());
+            let macro_kind = self.get_macro(res).map(|ext| ext.macro_kind());
             if macro_kind.is_some() && sub_namespace_match(macro_kind, Some(MacroKind::Attr)) {
                 self.session.span_err(
                     ident.span, &format!("name `{}` is reserved in attribute namespace", ident)

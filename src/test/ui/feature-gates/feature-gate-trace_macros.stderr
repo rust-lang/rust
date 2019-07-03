@@ -2,7 +2,7 @@ error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is 
   --> $DIR/feature-gate-trace_macros.rs:2:5
    |
 LL |     trace_macros!(true);
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29598
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable

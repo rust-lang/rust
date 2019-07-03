@@ -2,7 +2,7 @@ error[E0658]: use of unstable library feature 'format_args_nl': `format_args_nl`
   --> $DIR/feature-gate-format_args_nl.rs:2:5
    |
 LL |     format_args_nl!("");
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^
    |
    = help: add `#![feature(format_args_nl)]` to the crate attributes to enable
 

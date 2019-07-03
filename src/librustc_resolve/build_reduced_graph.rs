@@ -755,11 +755,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn get_macro(&mut self, res: Res) -> Lrc<SyntaxExtension> {
-        self.opt_get_macro(res).expect("expected `DefKind::Macro` or `Res::NonMacroAttr`")
-    }
-
-    crate fn opt_get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
+    pub fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         let def_id = match res {
             Res::Def(DefKind::Macro(..), def_id) => def_id,
             Res::NonMacroAttr(attr_kind) =>

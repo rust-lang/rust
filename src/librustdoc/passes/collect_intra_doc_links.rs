@@ -429,10 +429,10 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
     let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
     cx.enter_resolver(|resolver| {
-        if let Ok(res @ Res::Def(DefKind::Macro(_), _)) = resolver.resolve_macro_to_res_inner(
+        if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
             &path, MacroKind::Bang, &resolver.dummy_parent_scope(), false, false
         ) {
-            if let SyntaxExtensionKind::LegacyBang { .. } = resolver.get_macro(res).kind {
+            if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
                 return Some(res.map_id(|_| panic!("unexpected id")));
             }
         }
