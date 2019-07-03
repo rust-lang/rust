@@ -339,6 +339,33 @@ fn module_resolution_works_for_non_standard_filenames() {
 }
 
 #[test]
+fn module_resolution_works_for_raw_modules() {
+   let map = def_map_with_crate_graph(
+        "
+        //- /library.rs
+        mod r#async;
+        use self::r#async::Bar;
+
+        //- /async.rs
+        pub struct Bar;
+        ",
+        crate_graph! {
+            "library": ("/library.rs", []),
+        },
+    );
+
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Bar: t v
+        ⋮async: t
+        ⋮
+        ⋮crate::async
+        ⋮Bar: t v
+    "###);
+
+}
+
+#[test]
 fn name_res_works_for_broken_modules() {
     covers!(name_res_works_for_broken_modules);
     let map = def_map(

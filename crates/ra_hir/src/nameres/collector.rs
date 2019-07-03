@@ -643,7 +643,6 @@ fn resolve_submodule(
     let mod_name = path.file_stem().unwrap_or("unknown");
     let is_dir_owner = is_root || mod_name == "mod";
 
-    let name = resolve_mod_name(name.to_string());
     let file_mod = dir_path.join(format!("{}.rs", name));
     let dir_mod = dir_path.join(format!("{}/mod.rs", name));
     let file_dir_mod = dir_path.join(format!("{}/{}.rs", mod_name, name));
@@ -660,14 +659,6 @@ fn resolve_submodule(
     match points_to.next() {
         Some(file_id) => Ok(file_id),
         None => Err(if is_dir_owner { file_mod } else { file_dir_mod }),
-    }
-}
-
-fn resolve_mod_name(name: String) -> String {
-    if name.starts_with("r#") {
-        name.replace("r#", "")
-    } else {
-        name
     }
 }
 
