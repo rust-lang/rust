@@ -1,7 +1,7 @@
 // run-pass
 #![feature(decl_macro)]
 
-r#macro_rules! r#struct {
+macro_rules! r#struct {
     ($r#struct:expr) => { $r#struct }
 }
 
