@@ -1,5 +1,5 @@
 // compile-flags: --cfg something
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(param_attrs)]
 

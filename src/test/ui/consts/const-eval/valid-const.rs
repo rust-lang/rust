@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Some constants that *are* valid
 #![feature(const_transmute)]

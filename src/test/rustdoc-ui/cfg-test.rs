@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // compile-flags:--test
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
 

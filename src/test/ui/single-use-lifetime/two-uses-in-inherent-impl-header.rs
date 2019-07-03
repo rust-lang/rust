@@ -1,6 +1,6 @@
 // Test that we DO NOT warn for a lifetime used twice in an impl.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![deny(single_use_lifetimes)]
 #![allow(dead_code)]

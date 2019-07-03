@@ -112,7 +112,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
     /// Trait queries just want to pass back type obligations "as is"
     pub fn take_registered_region_obligations(&self) -> Vec<(hir::HirId, RegionObligation<'tcx>)> {
-        ::std::mem::replace(&mut *self.region_obligations.borrow_mut(), vec![])
+        ::std::mem::take(&mut *self.region_obligations.borrow_mut())
     }
 
     /// Process the region obligations that must be proven (during

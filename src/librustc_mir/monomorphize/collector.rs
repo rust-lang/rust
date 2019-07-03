@@ -281,10 +281,10 @@ impl<'tcx> InliningMap<'tcx> {
     }
 }
 
-pub fn collect_crate_mono_items<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn collect_crate_mono_items(
+    tcx: TyCtxt<'_>,
     mode: MonoItemCollectionMode,
-) -> (FxHashSet<MonoItem<'tcx>>, InliningMap<'tcx>) {
+) -> (FxHashSet<MonoItem<'_>>, InliningMap<'_>) {
     let roots = time(tcx.sess, "collecting roots", || {
         collect_roots(tcx, mode)
     });
@@ -315,7 +315,7 @@ pub fn collect_crate_mono_items<'tcx>(
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
-fn collect_roots<'tcx>(tcx: TyCtxt<'tcx>, mode: MonoItemCollectionMode) -> Vec<MonoItem<'tcx>> {
+fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<'_>> {
     debug!("Collecting roots");
     let mut roots = Vec::new();
 
@@ -912,7 +912,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
     }
 }
 
-fn create_fn_mono_item<'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
+fn create_fn_mono_item(instance: Instance<'_>) -> MonoItem<'_> {
     debug!("create_fn_mono_item(instance={})", instance);
     MonoItem::Fn(instance)
 }
@@ -1114,7 +1114,7 @@ impl RootCollector<'_, 'v> {
     }
 }
 
-fn item_requires_monomorphization<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+fn item_requires_monomorphization(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let generics = tcx.generics_of(def_id);
     generics.requires_monomorphization(tcx)
 }
@@ -1243,7 +1243,7 @@ fn collect_neighbours<'tcx>(
     }
 }
 
-fn def_id_to_string<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
+fn def_id_to_string(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     let mut output = String::new();
     let printer = DefPathBasedNames::new(tcx, false, false);
     printer.push_def_path(def_id, &mut output);

@@ -19,7 +19,7 @@ mod intern;
 pub use rustc::mir::interpret::*; // have all the `interpret` symbols in one place: here
 
 pub use self::eval_context::{
-    InterpretCx, Frame, StackPopCleanup, LocalState, LocalValue,
+    InterpCx, Frame, StackPopCleanup, LocalState, LocalValue,
 };
 
 pub use self::place::{Place, PlaceTy, MemPlace, MPlaceTy};

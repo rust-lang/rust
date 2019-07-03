@@ -8,8 +8,8 @@ use std::io::{self, Write};
 use super::pretty::dump_mir_def_ids;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<'tcx, W>(
-    tcx: TyCtxt<'tcx>,
+pub fn write_mir_graphviz<W>(
+    tcx: TyCtxt<'_>,
     single: Option<DefId>,
     w: &mut W,
 ) -> io::Result<()>

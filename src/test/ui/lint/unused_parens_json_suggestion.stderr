@@ -8,8 +8,8 @@
   "spans": [
     {
       "file_name": "$DIR/unused_parens_json_suggestion.rs",
-      "byte_start": 576,
-      "byte_end": 589,
+      "byte_start": 611,
+      "byte_end": 624,
       "line_start": 15,
       "line_end": 15,
       "column_start": 14,
@@ -36,8 +36,8 @@
       "spans": [
         {
           "file_name": "$DIR/unused_parens_json_suggestion.rs",
-          "byte_start": 422,
-          "byte_end": 435,
+          "byte_start": 457,
+          "byte_end": 470,
           "line_start": 10,
           "line_end": 10,
           "column_start": 9,
@@ -66,8 +66,8 @@
       "spans": [
         {
           "file_name": "$DIR/unused_parens_json_suggestion.rs",
-          "byte_start": 576,
-          "byte_end": 589,
+          "byte_start": 611,
+          "byte_end": 624,
           "line_start": 15,
           "line_end": 15,
           "column_start": 14,

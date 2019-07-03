@@ -68,7 +68,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
 /// We do this check as a pre-pass before checking fn bodies because if these constraints are
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
-pub fn check_item_well_formed<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
+pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let item = tcx.hir().expect_item(hir_id);
 
@@ -156,7 +156,7 @@ pub fn check_item_well_formed<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
     }
 }
 
-pub fn check_trait_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
+pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
@@ -167,7 +167,7 @@ pub fn check_trait_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
 }
 
-pub fn check_impl_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
+pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
@@ -178,8 +178,8 @@ pub fn check_impl_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
     check_associated_item(tcx, impl_item.hir_id, impl_item.span, method_sig);
 }
 
-fn check_associated_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn check_associated_item(
+    tcx: TyCtxt<'_>,
     item_id: hir::HirId,
     span: Span,
     sig_if_method: Option<&hir::MethodSig>,
@@ -231,7 +231,7 @@ fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item) -> CheckWfFcxBuilder<'tcx
     for_id(tcx, item.hir_id, item.span)
 }
 
-fn for_id<'tcx>(tcx: TyCtxt<'tcx>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'tcx> {
+fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> {
     let def_id = tcx.hir().local_def_id_from_hir_id(id);
     CheckWfFcxBuilder {
         inherited: Inherited::build(tcx, def_id),
@@ -317,7 +317,7 @@ fn check_type_defn<'tcx, F>(
     });
 }
 
-fn check_trait<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item) {
+fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item) {
     debug!("check_trait: {:?}", item.hir_id);
 
     let trait_def_id = tcx.hir().local_def_id_from_hir_id(item.hir_id);
@@ -340,7 +340,7 @@ fn check_trait<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item) {
     });
 }
 
-fn check_item_fn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item) {
+fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item) {
     for_item(tcx, item).with_fcx(|fcx, tcx| {
         let def_id = fcx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         let sig = fcx.tcx.fn_sig(def_id);
@@ -352,8 +352,8 @@ fn check_item_fn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item) {
     })
 }
 
-fn check_item_type<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn check_item_type(
+    tcx: TyCtxt<'_>,
     item_id: hir::HirId,
     ty_span: Span,
     allow_foreign_ty: bool,
@@ -980,7 +980,7 @@ fn check_variances_for_type_defn<'tcx>(
     }
 }
 
-fn report_bivariance<'tcx>(tcx: TyCtxt<'tcx>, span: Span, param_name: ast::Name) {
+fn report_bivariance(tcx: TyCtxt<'_>, span: Span, param_name: ast::Name) {
     let mut err = error_392(tcx, span, param_name);
 
     let suggested_marker_id = tcx.lang_items().phantom_data();
@@ -1023,7 +1023,7 @@ fn reject_shadowing_parameters(tcx: TyCtxt<'_>, def_id: DefId) {
 
 /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
 /// aren't true.
-fn check_false_global_bounds<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, span: Span, id: hir::HirId) {
+fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, span: Span, id: hir::HirId) {
     let empty_env = ty::ParamEnv::empty();
 
     let def_id = fcx.tcx.hir().local_def_id_from_hir_id(id);
@@ -1104,6 +1104,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let field_ty = self.tcx.type_of(self.tcx.hir().local_def_id_from_hir_id(field.hir_id));
             let field_ty = self.normalize_associated_types_in(field.span,
                                                               &field_ty);
+            let field_ty = self.resolve_vars_if_possible(&field_ty);
+            debug!("non_enum_variant: type of field {:?} is {:?}", field, field_ty);
             AdtField { ty: field_ty, span: field.span }
         })
         .collect();
@@ -1135,11 +1137,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-fn error_392<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn error_392(
+    tcx: TyCtxt<'_>,
     span: Span,
     param_name: ast::Name,
-) -> DiagnosticBuilder<'tcx> {
+) -> DiagnosticBuilder<'_> {
     let mut err = struct_span_err!(tcx.sess, span, E0392,
                   "parameter `{}` is never used", param_name);
     err.span_label(span, "unused parameter");

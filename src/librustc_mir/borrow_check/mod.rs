@@ -87,7 +87,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BorrowCheckResult<'tcx> {
+fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> BorrowCheckResult<'_> {
     let input_body = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id));
 
@@ -275,7 +275,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
 
     // Convert any reservation warnings into lints.
-    let reservation_warnings = mem::replace(&mut mbcx.reservation_warnings, Default::default());
+    let reservation_warnings = mem::take(&mut mbcx.reservation_warnings);
     for (_, (place, span, location, bk, borrow)) in reservation_warnings {
         let mut initial_diag =
             mbcx.report_conflicting_borrow(location, (&place, span), bk, &borrow);

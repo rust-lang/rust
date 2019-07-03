@@ -42,8 +42,8 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAt
     }
 }
 
-fn method_might_be_inlined<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn method_might_be_inlined(
+    tcx: TyCtxt<'_>,
     impl_item: &hir::ImplItem,
     impl_src: DefId,
 ) -> bool {
@@ -391,7 +391,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
 #[derive(Clone, HashStable)]
 pub struct ReachableSet(pub Lrc<HirIdSet>);
 
-fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> ReachableSet {
+fn reachable_set(tcx: TyCtxt<'_>, crate_num: CrateNum) -> ReachableSet {
     debug_assert!(crate_num == LOCAL_CRATE);
 
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);

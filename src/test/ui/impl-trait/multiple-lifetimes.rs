@@ -1,5 +1,5 @@
 // Test that multiple liftimes are allowed in impl trait types.
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 trait X<'x>: Sized {}
 

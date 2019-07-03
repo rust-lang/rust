@@ -249,7 +249,7 @@ pub fn transcribe(
             quoted::TokenTree::Delimited(mut span, delimited) => {
                 span = span.apply_mark(cx.current_expansion.mark);
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span });
-                result_stack.push(mem::replace(&mut result, Vec::new()));
+                result_stack.push(mem::take(&mut result));
             }
 
             // Nothing much to do here. Just push the token to the result, being careful to

@@ -946,7 +946,7 @@ impl<'a> Resolver<'a> {
         };
 
         let macro_resolutions =
-            mem::replace(&mut *module.multi_segment_macro_resolutions.borrow_mut(), Vec::new());
+            mem::take(&mut *module.multi_segment_macro_resolutions.borrow_mut());
         for (mut path, path_span, kind, parent_scope, initial_res) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path { seg.id = None; }
@@ -973,7 +973,7 @@ impl<'a> Resolver<'a> {
         }
 
         let macro_resolutions =
-            mem::replace(&mut *module.single_segment_macro_resolutions.borrow_mut(), Vec::new());
+            mem::take(&mut *module.single_segment_macro_resolutions.borrow_mut());
         for (ident, kind, parent_scope, initial_binding) in macro_resolutions {
             match self.early_resolve_ident_in_lexical_scope(ident, ScopeSet::Macro(kind),
                                                             &parent_scope, true, true, ident.span) {
@@ -998,7 +998,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let builtin_attrs = mem::replace(&mut *module.builtin_attrs.borrow_mut(), Vec::new());
+        let builtin_attrs = mem::take(&mut *module.builtin_attrs.borrow_mut());
         for (ident, parent_scope) in builtin_attrs {
             let _ = self.early_resolve_ident_in_lexical_scope(
                 ident, ScopeSet::Macro(MacroKind::Attr), &parent_scope, true, true, ident.span
@@ -1109,9 +1109,6 @@ impl<'a> Resolver<'a> {
                         current_legacy_scope: &mut LegacyScope<'a>) {
         self.local_macro_def_scopes.insert(item.id, self.current_module);
         let ident = item.ident;
-        if ident.name == sym::macro_rules {
-            self.session.span_err(item.span, "user-defined macros may not be named `macro_rules`");
-        }
 
         let def_id = self.definitions.local_def_id(item.id);
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,

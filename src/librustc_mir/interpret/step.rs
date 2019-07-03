@@ -1,4 +1,4 @@
-//! This module contains the `InterpretCx` methods for executing a single step of the interpreter.
+//! This module contains the `InterpCx` methods for executing a single step of the interpreter.
 //!
 //! The main entry point is the `step` method.
 
@@ -6,7 +6,7 @@ use rustc::mir;
 use rustc::ty::layout::LayoutOf;
 use rustc::mir::interpret::{InterpResult, Scalar, PointerArithmetic};
 
-use super::{InterpretCx, Machine};
+use super::{InterpCx, Machine};
 
 /// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
 /// same type as the result.
@@ -35,7 +35,7 @@ fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn run(&mut self) -> InterpResult<'tcx> {
         while self.step()? {}
         Ok(())

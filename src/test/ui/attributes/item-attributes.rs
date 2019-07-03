@@ -2,7 +2,7 @@
 // for completeness since .rs files linked from .rc files support this
 // notation to specify their module's attributes
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(rustc_attrs)]
 

@@ -364,7 +364,7 @@ fn continue_panic_fmt(info: &PanicInfo<'_>) -> ! {
 
     unsafe impl<'a> BoxMeUp for PanicPayload<'a> {
         fn box_me_up(&mut self) -> *mut (dyn Any + Send) {
-            let contents = mem::replace(self.fill(), String::new());
+            let contents = mem::take(self.fill());
             Box::into_raw(Box::new(contents))
         }
 

@@ -215,66 +215,66 @@ impl Session {
         *self.crate_disambiguator.get()
     }
 
-    pub fn struct_span_warn<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_warn<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
-    pub fn struct_span_warn_with_code<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
-    pub fn struct_warn<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_warn(msg)
     }
-    pub fn struct_span_err<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_err<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_err(sp, msg)
     }
-    pub fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_err_with_code<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_err_with_code(sp, msg, code)
     }
     // FIXME: This method should be removed (every error should have an associated error code).
-    pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_err(msg)
     }
-    pub fn struct_err_with_code<'a>(
-        &'a self,
+    pub fn struct_err_with_code(
+        &self,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_err_with_code(msg, code)
     }
-    pub fn struct_span_fatal<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_fatal<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
-    pub fn struct_span_fatal_with_code<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
-    pub fn struct_fatal<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_fatal(msg)
     }
 
@@ -416,7 +416,7 @@ impl Session {
     pub fn next_node_id(&self) -> NodeId {
         self.reserve_node_ids(1)
     }
-    pub fn diagnostic<'a>(&'a self) -> &'a errors::Handler {
+    pub fn diagnostic(&self) -> &errors::Handler {
         &self.parse_sess.span_diagnostic
     }
 
@@ -504,7 +504,7 @@ impl Session {
         );
     }
 
-    pub fn source_map<'a>(&'a self) -> &'a source_map::SourceMap {
+    pub fn source_map(&self) -> &source_map::SourceMap {
         self.parse_sess.source_map()
     }
     pub fn verbose(&self) -> bool {
