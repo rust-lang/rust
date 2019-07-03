@@ -38,17 +38,17 @@ pub fn render_with_highlighting(
         FileName::Custom(String::from("rustdoc-highlighting")),
         src.to_owned(),
     );
-    let highlight_result =
-        lexer::StringReader::new_or_buffered_errs(&sess, fm, None).and_then(|lexer| {
-            let mut classifier = Classifier::new(lexer, sess.source_map());
+    let highlight_result = {
+        let lexer = lexer::StringReader::new(&sess, fm, None);
+        let mut classifier = Classifier::new(lexer, sess.source_map());
 
-            let mut highlighted_source = vec![];
-            if classifier.write_source(&mut highlighted_source).is_err() {
-                Err(classifier.lexer.buffer_fatal_errors())
-            } else {
-                Ok(String::from_utf8_lossy(&highlighted_source).into_owned())
-            }
-        });
+        let mut highlighted_source = vec![];
+        if classifier.write_source(&mut highlighted_source).is_err() {
+            Err(classifier.lexer.buffer_fatal_errors())
+        } else {
+            Ok(String::from_utf8_lossy(&highlighted_source).into_owned())
+        }
+    };
 
     match highlight_result {
         Ok(highlighted_source) => {

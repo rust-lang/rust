@@ -149,16 +149,15 @@ impl<'a> StringReader<'a> {
         buffer
     }
 
-    /// For comments.rs, which hackily pokes into next_pos and ch
-    fn new_raw(sess: &'a ParseSess,
+    pub fn new(sess: &'a ParseSess,
                source_file: Lrc<syntax_pos::SourceFile>,
                override_span: Option<Span>) -> Self {
-        let mut sr = StringReader::new_raw_internal(sess, source_file, override_span);
+        let mut sr = StringReader::new_internal(sess, source_file, override_span);
         sr.bump();
         sr
     }
 
-    fn new_raw_internal(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>,
+    fn new_internal(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>,
         override_span: Option<Span>) -> Self
     {
         if source_file.src.is_none() {
@@ -181,13 +180,6 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    pub fn new_or_buffered_errs(sess: &'a ParseSess,
-                                source_file: Lrc<syntax_pos::SourceFile>,
-                                override_span: Option<Span>) -> Result<Self, Vec<Diagnostic>> {
-        let sr = StringReader::new_raw(sess, source_file, override_span);
-        Ok(sr)
-    }
-
     pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
         let begin = sess.source_map().lookup_byte_offset(span.lo());
         let end = sess.source_map().lookup_byte_offset(span.hi());
@@ -197,7 +189,7 @@ impl<'a> StringReader<'a> {
             span = span.shrink_to_lo();
         }
 
-        let mut sr = StringReader::new_raw_internal(sess, begin.sf, None);
+        let mut sr = StringReader::new_internal(sess, begin.sf, None);
 
         // Seek the lexer to the right byte range.
         sr.next_pos = span.lo();
@@ -1428,7 +1420,7 @@ mod tests {
                  teststr: String)
                  -> StringReader<'a> {
         let sf = sm.new_source_file(PathBuf::from(teststr.clone()).into(), teststr);
-        StringReader::new_raw(sess, sf, None)
+        StringReader::new(sess, sf, None)
     }
 
     #[test]
