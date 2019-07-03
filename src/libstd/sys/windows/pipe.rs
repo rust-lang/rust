@@ -342,7 +342,7 @@ impl<'a> Drop for AsyncPipe<'a> {
         // If anything here fails, there's not really much we can do, so we leak
         // the buffer/OVERLAPPED pointers to ensure we're at least memory safe.
         if self.pipe.cancel_io().is_err() || self.result().is_err() {
-            let buf = mem::replace(self.dst, Vec::new());
+            let buf = mem::take(self.dst);
             let overlapped = Box::new(unsafe { mem::zeroed() });
             let overlapped = mem::replace(&mut self.overlapped, overlapped);
             mem::forget((buf, overlapped));

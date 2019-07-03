@@ -682,7 +682,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         let mut prev_num_indeterminates = self.indeterminate_imports.len() + 1;
         while self.indeterminate_imports.len() < prev_num_indeterminates {
             prev_num_indeterminates = self.indeterminate_imports.len();
-            for import in mem::replace(&mut self.indeterminate_imports, Vec::new()) {
+            for import in mem::take(&mut self.indeterminate_imports) {
                 match self.resolve_import(&import) {
                     true => self.determined_imports.push(import),
                     false => self.indeterminate_imports.push(import),
