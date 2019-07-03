@@ -1,6 +1,6 @@
 // Test that existential types are allowed to contain late-bound regions.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // edition:2018
 
 #![feature(async_await, existential_type)]

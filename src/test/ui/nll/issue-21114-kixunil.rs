@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 fn from_stdin(min: u64) -> Vec<u64> {
     use std::io::BufRead;

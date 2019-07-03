@@ -1,5 +1,5 @@
 // aux-build:cross_crate_ice.rs
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 extern crate cross_crate_ice;
 

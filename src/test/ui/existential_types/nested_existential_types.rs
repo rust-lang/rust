@@ -1,5 +1,5 @@
 #![feature(existential_type)]
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 mod my_mod {
   use std::fmt::Debug;
 
