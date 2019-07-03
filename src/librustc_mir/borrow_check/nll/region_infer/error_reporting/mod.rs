@@ -1,4 +1,5 @@
 use crate::borrow_check::nll::constraints::OutlivesConstraint;
+use crate::borrow_check::nll::region_infer::AppliedMemberConstraint;
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use crate::borrow_check::nll::type_check::Locations;
 use crate::borrow_check::nll::universal_regions::DefiningTy;
@@ -195,6 +196,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         Trace::NotVisited => {
                             bug!("found unvisited region {:?} on path to {:?}", p, r)
                         }
+
                         Trace::FromOutlivesConstraint(c) => {
                             result.push(c);
                             p = c.sup;
@@ -211,10 +213,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Otherwise, walk over the outgoing constraints and
             // enqueue any regions we find, keeping track of how we
             // reached them.
+
+            // A constraint like `'r: 'x` can come from our constraint
+            // graph.
             let fr_static = self.universal_regions.fr_static;
-            for constraint in self.constraint_graph
-                .outgoing_edges(r, &self.constraints, fr_static)
-            {
+            let outgoing_edges_from_graph = self.constraint_graph
+                .outgoing_edges(r, &self.constraints, fr_static);
+
+
+            // But member constraints can also give rise to `'r: 'x`
+            // edges that were not part of the graph initially, so
+            // watch out for those.
+            let outgoing_edges_from_picks = self.applied_member_constraints(r)
+                .iter()
+                .map(|&AppliedMemberConstraint { min_choice, member_constraint_index, .. }| {
+                    let p_c = &self.member_constraints[member_constraint_index];
+                    OutlivesConstraint {
+                        sup: r,
+                        sub: min_choice,
+                        locations: Locations::All(p_c.definition_span),
+                        category: ConstraintCategory::OpaqueType,
+                    }
+                });
+
+            for constraint in outgoing_edges_from_graph.chain(outgoing_edges_from_picks) {
                 debug_assert_eq!(constraint.sup, r);
                 let sub_region = constraint.sub;
                 if let Trace::NotVisited = context[sub_region] {
@@ -687,7 +709,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     // Finds some region R such that `fr1: R` and `R` is live at
     // `elem`.
-    crate fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
+    crate fn find_sub_region_live_at(
+        &self,
+        fr1: RegionVid,
+        elem: Location,
+    ) -> RegionVid {
         debug!("find_sub_region_live_at(fr1={:?}, elem={:?})", fr1, elem);
         self.find_constraint_paths_between_regions(fr1, |r| {
             // First look for some `r` such that `fr1: r` and `r` is live at `elem`
@@ -729,8 +755,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr1: RegionVid,
         fr2: RegionVid,
     ) -> (ConstraintCategory, Span) {
-        let (category, _, span) =
-            self.best_blame_constraint(body, fr1, |r| self.provides_universal_region(r, fr1, fr2));
+        let (category, _, span) = self.best_blame_constraint(
+            body,
+            fr1,
+            |r| self.provides_universal_region(r, fr1, fr2),
+        );
         (category, span)
     }
 

@@ -8,11 +8,14 @@ use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
+use crate::hir::def_id::DefId;
 use crate::ty::ReStatic;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{ReLateBound, ReVar};
 use crate::ty::{Region, RegionVid};
+use syntax_pos::Span;
 
 use std::collections::BTreeMap;
 use std::{cmp, fmt, mem};
@@ -78,6 +81,11 @@ pub struct RegionConstraintData<'tcx> {
     /// be a region variable (or neither, as it happens).
     pub constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
 
+    /// Constraints of the form `R0 member of [R1, ..., Rn]`, meaning that
+    /// `R0` must be equal to one of the regions `R1..Rn`. These occur
+    /// with `impl Trait` quite frequently.
+    pub member_constraints: Vec<MemberConstraint<'tcx>>,
+
     /// A "verify" is something that we need to verify after inference
     /// is done, but which does not directly affect inference in any
     /// way.
@@ -134,6 +142,43 @@ impl Constraint<'_> {
             Constraint::VarSubReg(_, r) | Constraint::RegSubVar(r, _) => r.is_placeholder(),
             Constraint::RegSubReg(r, s) => r.is_placeholder() || s.is_placeholder(),
         }
+    }
+}
+
+/// Requires that `region` must be equal to one of the regions in `choice_regions`.
+/// We often denote this using the syntax:
+///
+/// ```
+/// R0 member of [O1..On]
+/// ```
+#[derive(Debug, Clone, HashStable)]
+pub struct MemberConstraint<'tcx> {
+    /// The `DefId` of the opaque type causing this constraint: used for error reporting.
+    pub opaque_type_def_id: DefId,
+
+    /// The span where the hidden type was instantiated.
+    pub definition_span: Span,
+
+    /// The hidden type in which `member_region` appears: used for error reporting.
+    pub hidden_ty: Ty<'tcx>,
+
+    /// The region `R0`.
+    pub member_region: Region<'tcx>,
+
+    /// The options `O1..On`.
+    pub choice_regions: Lrc<Vec<Region<'tcx>>>,
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for MemberConstraint<'tcx> {
+        opaque_type_def_id, definition_span, hidden_ty, member_region, choice_regions
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for MemberConstraint<'a> {
+        type Lifted = MemberConstraint<'tcx>;
+        opaque_type_def_id, definition_span, hidden_ty, member_region, choice_regions
     }
 }
 
@@ -643,6 +688,30 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
+    pub fn member_constraint(
+        &mut self,
+        opaque_type_def_id: DefId,
+        definition_span: Span,
+        hidden_ty: Ty<'tcx>,
+        member_region: ty::Region<'tcx>,
+        choice_regions: &Lrc<Vec<ty::Region<'tcx>>>,
+    ) {
+        debug!("member_constraint({:?} in {:#?})", member_region, choice_regions);
+
+        if choice_regions.iter().any(|&r| r == member_region) {
+            return;
+        }
+
+        self.data.member_constraints.push(MemberConstraint {
+            opaque_type_def_id,
+            definition_span,
+            hidden_ty,
+            member_region,
+            choice_regions: choice_regions.clone()
+        });
+
+    }
+
     pub fn make_subregion(
         &mut self,
         origin: SubregionOrigin<'tcx>,
@@ -906,9 +975,13 @@ impl<'tcx> RegionConstraintData<'tcx> {
     pub fn is_empty(&self) -> bool {
         let RegionConstraintData {
             constraints,
+            member_constraints,
             verifys,
             givens,
         } = self;
-        constraints.is_empty() && verifys.is_empty() && givens.is_empty()
+        constraints.is_empty() &&
+            member_constraints.is_empty() &&
+            verifys.is_empty() &&
+            givens.is_empty()
     }
 }

@@ -63,7 +63,7 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
         vids.into()
     }
     fn edges(&'this self) -> dot::Edges<'this, OutlivesConstraint> {
-        (&self.regioncx.constraints.raw[..]).into()
+        (&self.regioncx.constraints.outlives().raw[..]).into()
     }
 
     // Render `a: b` as `a -> b`, indicating the flow

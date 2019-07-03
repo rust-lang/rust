@@ -15,6 +15,7 @@ use crate::mir::interpret;
 
 use std::fmt;
 use std::rc::Rc;
+use std::sync::Arc;
 
 impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -348,7 +349,7 @@ impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>, C: Lift<'tcx>> Lift<'tcx> for (A, B, C)
         tcx.lift(&self.0).and_then(|a| {
             tcx.lift(&self.1).and_then(|b| tcx.lift(&self.2).map(|c| (a, b, c)))
         })
-    }
+   }
 }
 
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
@@ -375,6 +376,20 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Box<T> {
     type Lifted = Box<T::Lifted>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&**self).map(Box::new)
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Rc<T> {
+    type Lifted = Rc<T::Lifted>;
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&**self).map(Rc::new)
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Arc<T> {
+    type Lifted = Arc<T::Lifted>;
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&**self).map(Arc::new)
     }
 }
 
@@ -831,6 +846,16 @@ EnumTypeFoldableImpl! {
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Rc<T> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         Rc::new((**self).fold_with(folder))
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        (**self).visit_with(visitor)
+    }
+}
+
+impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Arc<T> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        Arc::new((**self).fold_with(folder))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {

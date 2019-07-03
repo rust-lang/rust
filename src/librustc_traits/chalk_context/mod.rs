@@ -17,6 +17,7 @@ use rustc::infer::canonical::{
     CanonicalVarValues,
     OriginalQueryValues,
     QueryResponse,
+    QueryRegionConstraints,
     Certainty,
 };
 use rustc::traits::{
@@ -151,14 +152,14 @@ impl context::AggregateOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
         let solution = constrained_subst.unchecked_map(|cs| match ambiguous {
             true => QueryResponse {
                 var_values: cs.subst.make_identity(self.tcx),
-                region_constraints: Vec::new(),
+                region_constraints: QueryRegionConstraints::default(),
                 certainty: Certainty::Ambiguous,
                 value: (),
             },
 
             false => QueryResponse {
                 var_values: cs.subst,
-                region_constraints: Vec::new(),
+                region_constraints: QueryRegionConstraints::default(),
 
                 // FIXME: restore this later once we get better at handling regions
                 // region_constraints: cs.constraints

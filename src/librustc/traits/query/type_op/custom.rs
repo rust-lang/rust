@@ -3,7 +3,7 @@ use std::fmt;
 use crate::traits::query::Fallible;
 
 use crate::infer::canonical::query_response;
-use crate::infer::canonical::QueryRegionConstraint;
+use crate::infer::canonical::QueryRegionConstraints;
 use std::rc::Rc;
 use syntax::source_map::DUMMY_SP;
 use crate::traits::{ObligationCause, TraitEngine, TraitEngineExt};
@@ -39,7 +39,7 @@ where
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
+    ) -> Fallible<(Self::Output, Option<Rc<QueryRegionConstraints<'tcx>>>)> {
         if cfg!(debug_assertions) {
             info!("fully_perform({:?})", self);
         }
@@ -62,7 +62,7 @@ where
 fn scrape_region_constraints<'tcx, R>(
     infcx: &InferCtxt<'_, 'tcx>,
     op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
-) -> Fallible<(R, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
+) -> Fallible<(R, Option<Rc<QueryRegionConstraints<'tcx>>>)> {
     let mut fulfill_cx = TraitEngine::new(infcx.tcx);
     let dummy_body_id = ObligationCause::dummy().body_id;
 
@@ -92,7 +92,7 @@ fn scrape_region_constraints<'tcx, R>(
 
     let region_constraint_data = infcx.take_and_reset_region_constraints();
 
-    let outlives = query_response::make_query_outlives(
+    let region_constraints = query_response::make_query_region_constraints(
         infcx.tcx,
         region_obligations
             .iter()
@@ -101,9 +101,9 @@ fn scrape_region_constraints<'tcx, R>(
         &region_constraint_data,
     );
 
-    if outlives.is_empty() {
+    if region_constraints.is_empty() {
         Ok((value, None))
     } else {
-        Ok((value, Some(Rc::new(outlives))))
+        Ok((value, Some(Rc::new(region_constraints))))
     }
 }

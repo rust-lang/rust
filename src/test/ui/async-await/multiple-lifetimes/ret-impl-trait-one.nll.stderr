@@ -1,0 +1,15 @@
+error: lifetime may not live long enough
+  --> $DIR/ret-impl-trait-one.rs:12:80
+   |
+LL |   async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
+   |  ________________________________--__--__________________________________________^
+   | |                                |   |
+   | |                                |   lifetime `'b` defined here
+   | |                                lifetime `'a` defined here
+LL | |
+LL | |     (a, b)
+LL | | }
+   | |_^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+
+error: aborting due to previous error
+

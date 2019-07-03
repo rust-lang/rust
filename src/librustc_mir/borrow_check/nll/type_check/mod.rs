@@ -4,7 +4,8 @@
 
 use crate::borrow_check::borrow_set::BorrowSet;
 use crate::borrow_check::location::LocationTable;
-use crate::borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
+use crate::borrow_check::nll::constraints::{OutlivesConstraintSet, OutlivesConstraint};
+use crate::borrow_check::nll::member_constraints::MemberConstraintSet;
 use crate::borrow_check::nll::facts::AllFacts;
 use crate::borrow_check::nll::region_infer::values::LivenessValues;
 use crate::borrow_check::nll::region_infer::values::PlaceholderIndex;
@@ -23,7 +24,7 @@ use crate::dataflow::MaybeInitializedPlaces;
 use either::Either;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -127,7 +128,8 @@ pub(crate) fn type_check<'tcx>(
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
         liveness_constraints: LivenessValues::new(elements.clone()),
-        outlives_constraints: ConstraintSet::default(),
+        outlives_constraints: OutlivesConstraintSet::default(),
+        member_constraints: MemberConstraintSet::default(),
         closure_bounds_mapping: Default::default(),
         type_tests: Vec::default(),
     };
@@ -215,7 +217,7 @@ fn translate_outlives_facts(cx: &mut BorrowCheckContext<'_, '_>) {
         let location_table = cx.location_table;
         facts
             .outlives
-            .extend(cx.constraints.outlives_constraints.iter().flat_map(
+            .extend(cx.constraints.outlives_constraints.outlives().iter().flat_map(
                 |constraint: &OutlivesConstraint| {
                     if let Some(from_location) = constraint.locations.from_location() {
                         Either::Left(iter::once((
@@ -582,7 +584,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         );
 
         let locations = location.to_locations();
-        for constraint in constraints.iter() {
+        for constraint in constraints.outlives().iter() {
             let mut constraint = *constraint;
             constraint.locations = locations;
             if let ConstraintCategory::Return
@@ -834,6 +836,7 @@ struct TypeChecker<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
+    body: &'a Body<'tcx>,
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
@@ -884,7 +887,9 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     /// hence it must report on their liveness constraints.
     crate liveness_constraints: LivenessValues<RegionVid>,
 
-    crate outlives_constraints: ConstraintSet,
+    crate outlives_constraints: OutlivesConstraintSet,
+
+    crate member_constraints: MemberConstraintSet<'tcx, RegionVid>,
 
     crate closure_bounds_mapping:
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
@@ -992,6 +997,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             infcx,
             last_span: DUMMY_SP,
             mir_def_id,
+            body,
             user_type_annotations: &body.user_type_annotations,
             param_env,
             region_bound_pairs,
@@ -1093,7 +1099,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         locations: Locations,
         category: ConstraintCategory,
-        data: &[QueryRegionConstraint<'tcx>],
+        data: &QueryRegionConstraints<'tcx>,
     ) {
         debug!(
             "push_region_constraints: constraints generated at {:?} are {:#?}",
@@ -1109,7 +1115,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations,
             category,
             &mut self.borrowck_context.constraints,
-        ).convert_all(&data);
+        ).convert_all(data);
     }
 
     /// Convenient wrapper around `relate_tys::relate_types` -- see
@@ -1229,6 +1235,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         let param_env = self.param_env;
+        let body = self.body;
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", self.mir_def_id);
         let opaque_type_map = self.fully_perform_op(
             locations,
@@ -1244,6 +1251,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             dummy_body_id,
                             param_env,
                             &anon_ty,
+                            locations.span(body),
                         ));
                     debug!(
                         "eq_opaque_type_and_type: \
@@ -2508,10 +2516,20 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
-            let closure_constraints =
-                closure_region_requirements.apply_requirements(tcx, def_id, substs);
+            let closure_constraints = QueryRegionConstraints {
+                outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs),
+
+                // Presently, closures never propagate member
+                // constraints to their parents -- they are enforced
+                // locally.  This is largely a non-issue as member
+                // constraints only come from `-> impl Trait` and
+                // friends which don't appear (thus far...) in
+                // closures.
+                member_constraints: vec![],
+            };
 
             let bounds_mapping = closure_constraints
+                .outlives
                 .iter()
                 .enumerate()
                 .filter_map(|(idx, constraint)| {

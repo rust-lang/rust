@@ -19,8 +19,11 @@ pub trait Idx: Copy + 'static + Ord + Debug + Hash {
     fn index(self) -> usize;
 
     fn increment_by(&mut self, amount: usize) {
-        let v = self.index() + amount;
-        *self = Self::new(v);
+        *self = self.plus(amount);
+    }
+
+    fn plus(self, amount: usize) -> Self {
+        Self::new(self.index() + amount)
     }
 }
 
@@ -164,6 +167,14 @@ macro_rules! newtype_index {
             #[inline]
             $v fn as_usize(self) -> usize {
                 self.as_u32() as usize
+            }
+        }
+
+        impl std::ops::Add<usize> for $type {
+            type Output = Self;
+
+            fn add(self, other: usize) -> Self {
+                Self::new(self.index() + other)
             }
         }
 

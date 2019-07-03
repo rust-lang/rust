@@ -37,6 +37,7 @@ crate mod type_check;
 mod universal_regions;
 
 mod constraints;
+mod member_constraints;
 
 use self::facts::AllFacts;
 use self::region_infer::RegionInferenceContext;
@@ -129,6 +130,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         placeholder_index_to_region: _,
         mut liveness_constraints,
         outlives_constraints,
+        member_constraints,
         closure_bounds_mapping,
         type_tests,
     } = constraints;
@@ -150,6 +152,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         universal_region_relations,
         body,
         outlives_constraints,
+        member_constraints,
         closure_bounds_mapping,
         type_tests,
         liveness_constraints,

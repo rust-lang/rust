@@ -2,7 +2,7 @@ use crate::borrow_check::nll::type_check::constraint_conversion;
 use crate::borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::borrow_check::nll::universal_regions::UniversalRegions;
 use crate::borrow_check::nll::ToRegionVid;
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;
 use rustc::infer::InferCtxt;
@@ -287,7 +287,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
             self.relations.relate_universal_regions(fr, fr_fn_body);
         }
 
-        for data in constraint_sets {
+        for data in &constraint_sets {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 &self.universal_regions,
@@ -297,7 +297,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                 Locations::All(DUMMY_SP),
                 ConstraintCategory::Internal,
                 &mut self.constraints,
-            ).convert_all(&data);
+            ).convert_all(data);
         }
 
         CreateResult {
@@ -311,7 +311,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
     /// either the return type of the MIR or one of its arguments. At
     /// the same time, compute and add any implied bounds that come
     /// from this local.
-    fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<Rc<Vec<QueryRegionConstraint<'tcx>>>> {
+    fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<Rc<QueryRegionConstraints<'tcx>>> {
         debug!("add_implied_bounds(ty={:?})", ty);
         let (bounds, constraints) =
             self.param_env

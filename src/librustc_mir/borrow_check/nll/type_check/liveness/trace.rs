@@ -6,7 +6,7 @@ use crate::borrow_check::nll::type_check::TypeChecker;
 use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, Body};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
@@ -88,7 +88,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
 
 struct DropData<'tcx> {
     dropck_result: DropckOutlivesResult<'tcx>,
-    region_constraint_data: Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>,
+    region_constraint_data: Option<Rc<QueryRegionConstraints<'tcx>>>,
 }
 
 struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {

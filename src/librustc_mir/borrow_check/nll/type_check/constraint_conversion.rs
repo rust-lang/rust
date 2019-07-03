@@ -3,7 +3,8 @@ use crate::borrow_check::nll::region_infer::TypeTest;
 use crate::borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::borrow_check::nll::universal_regions::UniversalRegions;
 use crate::borrow_check::nll::ToRegionVid;
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::QueryRegionConstraints;
+use rustc::infer::canonical::QueryOutlivesConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
@@ -49,13 +50,33 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
-    pub(super) fn convert_all(&mut self, query_constraints: &[QueryRegionConstraint<'tcx>]) {
-        for query_constraint in query_constraints {
+    pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
+        debug!("convert_all(query_constraints={:#?})", query_constraints);
+
+        let QueryRegionConstraints { outlives, member_constraints } = query_constraints;
+
+        // Annoying: to invoke `self.to_region_vid`, we need access to
+        // `self.constraints`, but we also want to be mutating
+        // `self.member_constraints`. For now, just swap out the value
+        // we want and replace at the end.
+        let mut tmp = std::mem::replace(
+            &mut self.constraints.member_constraints,
+            Default::default(),
+        );
+        for member_constraint in member_constraints {
+            tmp.push_constraint(
+                member_constraint,
+                |r| self.to_region_vid(r),
+            );
+        }
+        self.constraints.member_constraints = tmp;
+
+        for query_constraint in outlives {
             self.convert(query_constraint);
         }
     }
 
-    pub(super) fn convert(&mut self, query_constraint: &QueryRegionConstraint<'tcx>) {
+    pub(super) fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
         debug!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.
