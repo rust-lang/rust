@@ -2,9 +2,10 @@ use crate::{Assist, AssistId, AssistCtx, ast_editor::{AstEditor, AstBuilder}};
 
 use hir::{HasSource, db::HirDatabase};
 use ra_syntax::{SmolStr, TreeArc};
-use ra_syntax::ast::{self, AstNode, FnDef, ImplItem, ImplItemKind, NameOwner};
+use ra_syntax::ast::{self, AstNode, ImplItem, ImplItemKind, NameOwner};
 use ra_db::FilePosition;
 
+#[derive(PartialEq)]
 enum AddMissingImplMembersMode {
     DefaultMethodsOnly,
     NoDefaultMethods,
@@ -45,39 +46,50 @@ fn add_missing_impl_members_inner(
         resolve_target_trait_def(ctx.db, &analyzer, impl_node)?
     };
 
-    let missing_fns: Vec<_> = {
-        let fn_def_opt = |kind| if let ImplItemKind::FnDef(def) = kind { Some(def) } else { None };
-        let def_name = |def| -> Option<&SmolStr> { FnDef::name(def).map(ast::Name::text) };
-
-        let trait_items =
-            trait_def.syntax().descendants().find_map(ast::ItemList::cast)?.impl_items();
-        let impl_items = impl_item_list.impl_items();
-
-        let trait_fns = trait_items.map(ImplItem::kind).filter_map(fn_def_opt);
-        let impl_fns = impl_items.map(ImplItem::kind).filter_map(fn_def_opt).collect::<Vec<_>>();
-
-        trait_fns
-            .filter(|t| def_name(t).is_some())
-            .filter(|t| match mode {
-                AddMissingImplMembersMode::DefaultMethodsOnly => t.body().is_some(),
-                AddMissingImplMembersMode::NoDefaultMethods => t.body().is_none(),
-            })
-            .filter(|t| impl_fns.iter().all(|i| def_name(i) != def_name(t)))
-            .collect()
+    let def_name = |kind| -> Option<&SmolStr> {
+        match kind {
+            ImplItemKind::FnDef(def) => def.name(),
+            ImplItemKind::TypeAliasDef(def) => def.name(),
+            ImplItemKind::ConstDef(def) => def.name(),
+        }
+        .map(ast::Name::text)
     };
-    if missing_fns.is_empty() {
+
+    let trait_items = trait_def.item_list()?.impl_items();
+    let impl_items = impl_item_list.impl_items().collect::<Vec<_>>();
+
+    let missing_items: Vec<_> = trait_items
+        .filter(|t| def_name(t.kind()).is_some())
+        .filter(|t| match t.kind() {
+            ImplItemKind::FnDef(def) => match mode {
+                AddMissingImplMembersMode::DefaultMethodsOnly => def.body().is_some(),
+                AddMissingImplMembersMode::NoDefaultMethods => def.body().is_none(),
+            },
+            _ => mode == AddMissingImplMembersMode::NoDefaultMethods,
+        })
+        .filter(|t| impl_items.iter().all(|i| def_name(i.kind()) != def_name(t.kind())))
+        .collect();
+    if missing_items.is_empty() {
         return None;
     }
 
     ctx.add_action(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
-        let fns = missing_fns.into_iter().map(add_body_and_strip_docstring).collect::<Vec<_>>();
-
         let mut ast_editor = AstEditor::new(impl_item_list);
         if n_existing_items == 0 {
             ast_editor.make_multiline();
         }
-        ast_editor.append_functions(fns.iter().map(|it| &**it));
+
+        for item in missing_items {
+            let it = match item.kind() {
+                ImplItemKind::FnDef(def) => {
+                    strip_docstring(ImplItem::cast(add_body(def).syntax()).unwrap())
+                }
+                _ => strip_docstring(item),
+            };
+            ast_editor.append_item(&it)
+        }
+
         let first_new_item = ast_editor.ast().impl_items().nth(n_existing_items).unwrap();
         let cursor_poisition = first_new_item.syntax().range().start();
         ast_editor.into_text_edit(edit.text_edit_builder());
@@ -88,14 +100,19 @@ fn add_missing_impl_members_inner(
     ctx.build()
 }
 
-fn add_body_and_strip_docstring(fn_def: &ast::FnDef) -> TreeArc<ast::FnDef> {
+fn strip_docstring(item: &ast::ImplItem) -> TreeArc<ast::ImplItem> {
+    let mut ast_editor = AstEditor::new(item);
+    ast_editor.strip_attrs_and_docs();
+    ast_editor.ast().to_owned()
+}
+
+fn add_body(fn_def: &ast::FnDef) -> TreeArc<ast::FnDef> {
     let mut ast_editor = AstEditor::new(fn_def);
     if fn_def.body().is_none() {
         ast_editor.set_body(&AstBuilder::<ast::Block>::single_expr(
             &AstBuilder::<ast::Expr>::unimplemented(),
         ));
     }
-    ast_editor.strip_attrs_and_docs();
     ast_editor.ast().to_owned()
 }
 
@@ -126,6 +143,10 @@ mod tests {
             add_missing_impl_members,
             "
 trait Foo {
+    type Output;
+
+    const CONST: usize = 42;
+
     fn foo(&self);
     fn bar(&self);
     fn baz(&self);
@@ -139,6 +160,10 @@ impl Foo for S {
 }",
             "
 trait Foo {
+    type Output;
+
+    const CONST: usize = 42;
+
     fn foo(&self);
     fn bar(&self);
     fn baz(&self);
@@ -148,7 +173,9 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    <|>fn foo(&self) { unimplemented!() }
+    <|>type Output;
+    const CONST: usize = 42;
+    fn foo(&self) { unimplemented!() }
     fn baz(&self) { unimplemented!() }
 
 }",
@@ -256,6 +283,8 @@ impl Foo for S { <|> }",
 #[doc(alias = "test alias")]
 trait Foo {
     /// doc string
+    type Output;
+
     #[must_use]
     fn foo(&self);
 }
@@ -265,12 +294,15 @@ impl Foo for S {}<|>"#,
 #[doc(alias = "test alias")]
 trait Foo {
     /// doc string
+    type Output;
+
     #[must_use]
     fn foo(&self);
 }
 struct S;
 impl Foo for S {
-    <|>fn foo(&self) { unimplemented!() }
+    <|>type Output;
+    fn foo(&self) { unimplemented!() }
 }"#,
         )
     }
@@ -281,6 +313,10 @@ impl Foo for S {
             add_missing_default_members,
             "
 trait Foo {
+    type Output;
+
+    const CONST: usize = 42;
+
     fn valid(some: u32) -> bool { false }
     fn foo(some: u32) -> bool;
 }
@@ -288,6 +324,10 @@ struct S;
 impl Foo for S { <|> }",
             "
 trait Foo {
+    type Output;
+
+    const CONST: usize = 42;
+
     fn valid(some: u32) -> bool { false }
     fn foo(some: u32) -> bool;
 }
