@@ -1,11 +1,13 @@
 // compile-flags: -Zmiri-seed=0000000000000000
-fn transmute_ptr_to_int<T>(x: *const T) -> usize { 
-    unsafe { std::mem::transmute::<*const T, usize>(x) * 1 }
+
+// This returns a miri pointer at type usize, if the argument is a proper pointer
+fn transmute_ptr_to_int<T>(x: *const T) -> usize {
+    unsafe { std::mem::transmute(x) }
 }
 
 fn main() {
     // Some casting-to-int with arithmetic.
-    let x = &42 as *const i32 as usize; 
+    let x = &42 as *const i32 as usize;
     let y = x * 2;
     assert_eq!(y, x + x);
     let z = y as u8 as usize;
