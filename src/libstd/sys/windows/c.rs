@@ -4,10 +4,6 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "0", feature = "windows_c")]
 
-macro_rules! ifdef {
-    ($($t:tt)*) => ($($t)*)
-}
-
 use crate::os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
 use crate::ptr;
 
@@ -608,8 +604,8 @@ pub struct timeval {
 }
 
 // Functions forbidden when targeting UWP
-#[cfg(not(target_vendor = "uwp"))]
-ifdef! {
+cfg_if::cfg_if! {
+if #[cfg(not(target_vendor = "uwp"))] {
     pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
     pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
     pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
@@ -707,10 +703,11 @@ ifdef! {
                                -> BOOL;
     }
 }
+}
 
 // UWP specific functions & types
-#[cfg(target_vendor = "uwp")]
-ifdef! {
+cfg_if::cfg_if! {
+if #[cfg(target_vendor = "uwp")] {
     pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
     #[repr(C)]
@@ -730,6 +727,7 @@ ifdef! {
         pub fn BCryptGenRandom(hAlgorithm: LPVOID, pBuffer: *mut u8,
                                cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
     }
+}
 }
 
 // Shared between Desktop & UWP
