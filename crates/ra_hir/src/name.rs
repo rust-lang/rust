@@ -98,14 +98,14 @@ pub(crate) trait AsName {
 
 impl AsName for ast::NameRef {
     fn as_name(&self) -> Name {
-        let name = resolve_name(self.text().clone()); 
+        let name = resolve_name(self.text());
         Name::new(name)
     }
 }
 
 impl AsName for ast::Name {
     fn as_name(&self) -> Name {
-        let name = resolve_name(self.text().clone());
+        let name = resolve_name(self.text());
         Name::new(name)
     }
 }
@@ -187,11 +187,11 @@ impl AsName for KnownName {
     }
 }
 
-fn resolve_name(text: SmolStr) -> SmolStr {
+fn resolve_name(text: &SmolStr) -> SmolStr {
     let raw_start = "r#";
     if text.as_str().starts_with(raw_start) {
         SmolStr::new(&text[raw_start.len()..])
     } else {
-        text
+        text.clone()
     }
 }

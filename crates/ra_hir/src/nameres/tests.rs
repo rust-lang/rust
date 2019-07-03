@@ -340,7 +340,7 @@ fn module_resolution_works_for_non_standard_filenames() {
 
 #[test]
 fn module_resolution_works_for_raw_modules() {
-   let map = def_map_with_crate_graph(
+    let map = def_map_with_crate_graph(
         "
         //- /library.rs
         mod r#async;
@@ -362,7 +362,6 @@ fn module_resolution_works_for_raw_modules() {
         ⋮crate::async
         ⋮Bar: t v
     "###);
-
 }
 
 #[test]
