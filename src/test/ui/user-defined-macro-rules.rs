@@ -1,5 +1,9 @@
-#![allow(unused_macros)]
+// check-pass
 
-macro_rules! macro_rules { () => {} } //~ ERROR user-defined macros may not be named `macro_rules`
+macro_rules! macro_rules { () => { struct S; } } // OK
 
-fn main() {}
+macro_rules! {} // OK, calls the macro defined above
+
+fn main() {
+    let s = S;
+}
