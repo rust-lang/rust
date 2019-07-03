@@ -38,8 +38,6 @@ pub struct StringReader<'a> {
     crate source_file: Lrc<syntax_pos::SourceFile>,
     /// Stop reading src at this index.
     crate end_src_index: usize,
-    // cached:
-    peek_span_src_raw: Span,
     fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.source_file.src.as_ref().unwrap()` all the time.
@@ -59,7 +57,7 @@ impl<'a> StringReader<'a> {
         (real, raw)
     }
 
-    fn unwrap_or_abort(&mut self, res: Result<Token, ()>) -> Token {
+    fn unwrap_or_abort<T>(&mut self, res: Result<T, ()>) -> T {
         match res {
             Ok(tok) => tok,
             Err(_) => {
@@ -69,34 +67,50 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn next_token(&mut self) -> Token where Self: Sized {
+    /// Returns the next token. EFFECT: advances the string_reader.
+    pub fn try_next_token(&mut self) -> Result<Token, ()> {
+        let (token, _raw_span) = self.try_next_token_with_raw_span()?;
+        Ok(token)
+    }
+
+    pub fn next_token(&mut self) -> Token {
         let res = self.try_next_token();
         self.unwrap_or_abort(res)
     }
 
-    /// Returns the next token. EFFECT: advances the string_reader.
-    pub fn try_next_token(&mut self) -> Result<Token, ()> {
-        assert!(self.fatal_errs.is_empty());
-        self.advance_token()
-    }
-
-    fn try_real_token(&mut self) -> Result<Token, ()> {
-        let mut t = self.try_next_token()?;
+    fn try_real_token(&mut self) -> Result<(Token, Span), ()> {
         loop {
-            match t.kind {
-                token::Whitespace | token::Comment | token::Shebang(_) => {
-                    t = self.try_next_token()?;
-                }
-                _ => break,
+            let t = self.try_next_token_with_raw_span()?;
+            match t.0.kind {
+                token::Whitespace | token::Comment | token::Shebang(_) => continue,
+                _ => return Ok(t),
             }
         }
-
-        Ok(t)
     }
 
-    pub fn real_token(&mut self) -> Token {
+    fn real_token(&mut self) -> (Token, Span) {
         let res = self.try_real_token();
         self.unwrap_or_abort(res)
+    }
+
+    fn try_next_token_with_raw_span(&mut self) -> Result<(Token, Span), ()> {
+        assert!(self.fatal_errs.is_empty());
+        match self.scan_whitespace_or_comment() {
+            Some(comment) => {
+                let raw_span = comment.span;
+                Ok((comment, raw_span))
+            }
+            None => {
+                let (kind, start_pos, end_pos) = if self.is_eof() {
+                    (token::Eof, self.source_file.end_pos, self.source_file.end_pos)
+                } else {
+                    let start_pos = self.pos;
+                    (self.next_token_inner()?, start_pos, self.pos)
+                };
+                let (real, raw) = self.mk_sp_and_raw(start_pos, end_pos);
+                Ok((Token::new(kind, real), raw))
+            }
+        }
     }
 
     #[inline]
@@ -141,7 +155,6 @@ impl<'a> StringReader<'a> {
                override_span: Option<Span>) -> Self {
         let mut sr = StringReader::new_raw_internal(sess, source_file, override_span);
         sr.bump();
-
         sr
     }
 
@@ -162,7 +175,6 @@ impl<'a> StringReader<'a> {
             ch: Some('\n'),
             source_file,
             end_src_index: src.len(),
-            peek_span_src_raw: syntax_pos::DUMMY_SP,
             src,
             fatal_errs: Vec::new(),
             override_span,
@@ -172,12 +184,8 @@ impl<'a> StringReader<'a> {
     pub fn new_or_buffered_errs(sess: &'a ParseSess,
                                 source_file: Lrc<syntax_pos::SourceFile>,
                                 override_span: Option<Span>) -> Result<Self, Vec<Diagnostic>> {
-        let mut sr = StringReader::new_raw(sess, source_file, override_span);
-        if sr.advance_token().is_err() {
-            Err(sr.buffer_fatal_errors())
-        } else {
-            Ok(sr)
-        }
+        let sr = StringReader::new_raw(sess, source_file, override_span);
+        Ok(sr)
     }
 
     pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
@@ -196,11 +204,6 @@ impl<'a> StringReader<'a> {
         sr.end_src_index = sr.src_index(span.hi());
 
         sr.bump();
-
-        if sr.advance_token().is_err() {
-            sr.emit_fatal_errors();
-            FatalError.raise();
-        }
 
         sr
     }
@@ -255,28 +258,6 @@ impl<'a> StringReader<'a> {
         push_escaped_char(&mut m, c);
 
         self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), &m[..])
-    }
-
-    /// Advance peek_token to refer to the next token, and
-    /// possibly update the interner.
-    fn advance_token(&mut self) -> Result<Token, ()> {
-        match self.scan_whitespace_or_comment() {
-            Some(comment) => {
-                self.peek_span_src_raw = comment.span;
-                Ok(comment)
-            }
-            None => {
-                let (kind, start_pos, end_pos) = if self.is_eof() {
-                    (token::Eof, self.source_file.end_pos, self.source_file.end_pos)
-                } else {
-                    let start_pos = self.pos;
-                    (self.next_token_inner()?, start_pos, self.pos)
-                };
-                let (real, raw) = self.mk_sp_and_raw(start_pos, end_pos);
-                self.peek_span_src_raw = raw;
-                Ok(Token::new(kind, real))
-            }
-        }
     }
 
     #[inline]
@@ -1447,12 +1428,7 @@ mod tests {
                  teststr: String)
                  -> StringReader<'a> {
         let sf = sm.new_source_file(PathBuf::from(teststr.clone()).into(), teststr);
-        let mut sr = StringReader::new_raw(sess, sf, None);
-        if sr.advance_token().is_err() {
-            sr.emit_fatal_errors();
-            FatalError.raise();
-        }
-        sr
+        StringReader::new_raw(sess, sf, None)
     }
 
     #[test]

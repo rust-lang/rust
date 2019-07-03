@@ -1,4 +1,4 @@
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use crate::print::pprust::token_to_string;
 use crate::parse::lexer::{StringReader, UnmatchedBrace};
@@ -11,6 +11,7 @@ impl<'a> StringReader<'a> {
         let mut tt_reader = TokenTreesReader {
             string_reader: self,
             token: Token::dummy(),
+            raw_span: DUMMY_SP,
             open_braces: Vec::new(),
             unmatched_braces: Vec::new(),
             matching_delim_spans: Vec::new(),
@@ -24,6 +25,7 @@ impl<'a> StringReader<'a> {
 struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
     token: Token,
+    raw_span: Span,
     /// Stack of open delimiters and their spans. Used for error message.
     open_braces: Vec<(token::DelimToken, Span)>,
     unmatched_braces: Vec<UnmatchedBrace>,
@@ -206,18 +208,17 @@ impl<'a> TokenTreesReader<'a> {
                 // Note that testing for joint-ness here is done via the raw
                 // source span as the joint-ness is a property of the raw source
                 // rather than wanting to take `override_span` into account.
-                // Additionally, we actually check if the *next* pair of tokens
-                // is joint, but this is equivalent to checking the current pair.
-                let raw = self.string_reader.peek_span_src_raw;
+                let raw_span = self.raw_span;
                 self.real_token();
-                let is_joint = raw.hi() == self.string_reader.peek_span_src_raw.lo()
-                    && self.token.is_op();
+                let is_joint = raw_span.hi() == self.raw_span.lo() && self.token.is_op();
                 Ok((tt, if is_joint { Joint } else { NonJoint }))
             }
         }
     }
 
     fn real_token(&mut self) {
-        self.token = self.string_reader.real_token();
+        let (token, raw_span) = self.string_reader.real_token();
+        self.token = token;
+        self.raw_span = raw_span;
     }
 }
