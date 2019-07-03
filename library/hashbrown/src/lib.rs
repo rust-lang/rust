@@ -29,10 +29,10 @@
 #[macro_use]
 extern crate std;
 
-#[cfg(feature = "nightly")]
+#[cfg(has_extern_crate_alloc)]
 #[cfg_attr(test, macro_use)]
 extern crate alloc;
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(has_extern_crate_alloc))]
 extern crate std as alloc;
 
 #[macro_use]
