@@ -118,29 +118,36 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// Returns the next token. EFFECT: advances the string_reader.
+    /// Returns the next token, including trivia like whitespace or comments.
+    ///
+    /// `Err(())` means that some errors were encountered, which can be
+    /// retrieved using `buffer_fatal_errors`.
     pub fn try_next_token(&mut self) -> Result<Token, ()> {
         let (token, _raw_span) = self.try_next_token_with_raw_span()?;
         Ok(token)
     }
 
+    /// Returns the next token, including trivia like whitespace or comments.
+    ///
+    /// Aborts in case of an error.
     pub fn next_token(&mut self) -> Token {
         let res = self.try_next_token();
         self.unwrap_or_abort(res)
     }
 
-    fn try_real_token(&mut self) -> Result<(Token, Span), ()> {
-        loop {
-            let t = self.try_next_token_with_raw_span()?;
-            match t.0.kind {
-                token::Whitespace | token::Comment | token::Shebang(_) => continue,
-                _ => return Ok(t),
-            }
-        }
-    }
-
+    /// Returns the next token, skipping over trivia.
+    /// Also returns an unoverriden span which can be used to check tokens
     fn real_token(&mut self) -> (Token, Span) {
-        let res = self.try_real_token();
+        let res = try {
+            loop {
+                let t = self.try_next_token_with_raw_span()?;
+                match t.0.kind {
+                    token::Whitespace | token::Comment | token::Shebang(_) => continue,
+                    _ => break t,
+                }
+            }
+        };
+
         self.unwrap_or_abort(res)
     }
 
