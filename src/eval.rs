@@ -32,11 +32,11 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let mut ecx = InterpretCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
-        Evaluator::new(config.validate),
+        Evaluator::new(),
     );
 
     // FIXME: InterpretCx::new should take an initial MemoryExtra
-    ecx.memory_mut().extra = MemoryExtra::with_rng(config.seed.map(StdRng::seed_from_u64));
+    ecx.memory_mut().extra = MemoryExtra::new(config.seed.map(StdRng::seed_from_u64), config.validate);
     
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;

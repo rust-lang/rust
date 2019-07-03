@@ -41,7 +41,8 @@ impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
 /// Extra per-allocation data
 #[derive(Debug, Clone)]
 pub struct AllocExtra {
-    pub stacked_borrows: stacked_borrows::AllocExtra,
+    /// Stacked Borrows state is only added if validation is enabled.
+    pub stacked_borrows: Option<stacked_borrows::AllocExtra>,
 }
 
 /// Extra global memory data
@@ -49,17 +50,22 @@ pub struct AllocExtra {
 pub struct MemoryExtra {
     pub stacked_borrows: stacked_borrows::MemoryExtra,
     pub intptrcast: intptrcast::MemoryExtra,
+
     /// The random number generator to use if Miri is running in non-deterministic mode and to
     /// enable intptrcast
-    pub(crate) rng: Option<RefCell<StdRng>>
+    pub(crate) rng: Option<RefCell<StdRng>>,
+
+    /// Whether to enforce the validity invariant.
+    pub(crate) validate: bool,
 }
 
 impl MemoryExtra {
-    pub fn with_rng(rng: Option<StdRng>) -> Self {
+    pub fn new(rng: Option<StdRng>, validate: bool) -> Self {
         MemoryExtra {
             stacked_borrows: Default::default(),
             intptrcast: Default::default(),
             rng: rng.map(RefCell::new),
+            validate,
         }
     }
 }
@@ -82,13 +88,10 @@ pub struct Evaluator<'tcx> {
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
-
-    /// Whether to enforce the validity invariant.
-    pub(crate) validate: bool,
 }
 
 impl<'tcx> Evaluator<'tcx> {
-    pub(crate) fn new(validate: bool) -> Self {
+    pub(crate) fn new() -> Self {
         Evaluator {
             env_vars: HashMap::default(),
             argc: None,
@@ -96,7 +99,6 @@ impl<'tcx> Evaluator<'tcx> {
             cmd_line: None,
             last_error: 0,
             tls: TlsData::default(),
-            validate,
         }
     }
 }
@@ -135,7 +137,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn enforce_validity(ecx: &InterpretCx<'mir, 'tcx, Self>) -> bool {
-        ecx.machine.validate
+        ecx.memory().extra.validate
     }
 
     /// Returns `Ok()` when the function was handled; fail otherwise.
@@ -251,12 +253,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (stacks, base_tag) = Stacks::new_allocation(
-            id,
-            Size::from_bytes(alloc.bytes.len() as u64),
-            Rc::clone(&memory.extra.stacked_borrows),
-            kind,
-        );
+        let (stacks, base_tag) = if !memory.extra.validate {
+            (None, Tag::Untagged)
+        } else {
+            let (stacks, base_tag) = Stacks::new_allocation(
+                id,
+                Size::from_bytes(alloc.bytes.len() as u64),
+                Rc::clone(&memory.extra.stacked_borrows),
+                kind,
+            );
+            (Some(stacks), base_tag)
+        };
         if kind != MiriMemoryKind::Static.into() {
             assert!(alloc.relocations.is_empty(), "Only statics can come initialized with inner pointers");
             // Now we can rely on the inner pointers being static, too.
@@ -268,7 +275,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 alloc.relocations.iter()
                     // The allocations in the relocations (pointers stored *inside* this allocation)
                     // all get the base pointer tag.
-                    .map(|&(offset, ((), alloc))| (offset, (memory_extra.static_base_ptr(alloc), alloc)))
+                    .map(|&(offset, ((), alloc))| {
+                        let tag = if !memory.extra.validate {
+                            Tag::Untagged
+                        } else {
+                            memory_extra.static_base_ptr(alloc)
+                        };
+                        (offset, (tag, alloc))
+                    })
                     .collect()
             ),
             undef_mask: alloc.undef_mask,
@@ -286,7 +300,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         id: AllocId,
         memory: &Memory<'mir, 'tcx, Self>,
     ) -> Self::PointerTag {
-        memory.extra.stacked_borrows.borrow_mut().static_base_ptr(id)
+        if !memory.extra.validate {
+            Tag::Untagged
+        } else {
+            memory.extra.stacked_borrows.borrow_mut().static_base_ptr(id)
+        }
     }
 
     #[inline(always)]
@@ -295,12 +313,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         kind: mir::RetagKind,
         place: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
-        if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag || !Self::enforce_validity(ecx) {
-            // No tracking, or no retagging. The latter is possible because a dependency of ours
-            // might be called with different flags than we are, so there are `Retag`
-            // statements but we do not want to execute them.
-            // Also, honor the whitelist in `enforce_validity` because otherwise we might retag
-            // uninitialized data.
+        if !Self::enforce_validity(ecx) {
+            // No tracking.
              Ok(())
         } else {
             ecx.retag(kind, place)
@@ -354,7 +368,11 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        alloc.extra.stacked_borrows.memory_read(ptr, size)
+        if let Some(ref stacked_borrows) = alloc.extra.stacked_borrows {
+            stacked_borrows.memory_read(ptr, size)
+        } else {
+            Ok(())
+        }
     }
 
     #[inline(always)]
@@ -363,7 +381,11 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        alloc.extra.stacked_borrows.memory_written(ptr, size)
+        if let Some(ref mut stacked_borrows) = alloc.extra.stacked_borrows {
+            stacked_borrows.memory_written(ptr, size)
+        } else {
+            Ok(())
+        }
     }
 
     #[inline(always)]
@@ -372,7 +394,11 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        alloc.extra.stacked_borrows.memory_deallocated(ptr, size)
+        if let Some(ref mut stacked_borrows) = alloc.extra.stacked_borrows {
+            stacked_borrows.memory_deallocated(ptr, size)
+        } else {
+            Ok(())
+        }
     }
 }
 
