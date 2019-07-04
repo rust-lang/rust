@@ -1,16 +1,14 @@
 //! This modules takes care of rendering various defenitions as completion items.
+use hir::{Docs, HasSource, HirDisplay, PerNs, Resolution};
 use join_to_string::join;
-use test_utils::tested_by;
-use hir::{Docs, PerNs, Resolution, HirDisplay, HasSource};
 use ra_syntax::ast::NameOwner;
+use test_utils::tested_by;
 
 use crate::completion::{
-    Completions, CompletionKind, CompletionItemKind, CompletionContext, CompletionItem,
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
 };
 
-use crate::display::{
-    function_label, const_label, type_label,
-};
+use crate::display::{const_label, function_label, type_label};
 
 impl Completions {
     pub(crate) fn add_field(
@@ -178,7 +176,7 @@ impl Completions {
 mod tests {
     use test_utils::covers;
 
-    use crate::completion::{CompletionKind, check_completion};
+    use crate::completion::{check_completion, CompletionKind};
 
     fn check_reference_completion(code: &str, expected_completions: &str) {
         check_completion(code, expected_completions, CompletionKind::Reference);

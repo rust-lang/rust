@@ -1,13 +1,13 @@
 use lsp_types::{
-    self, CreateFile, Documentation, DocumentChangeOperation, DocumentChanges, Location, LocationLink,
-    MarkupContent, MarkupKind, Position, Range, RenameFile, ResourceOp, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
-    TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
-    WorkspaceEdit,
+    self, CreateFile, DocumentChangeOperation, DocumentChanges, Documentation, Location,
+    LocationLink, MarkupContent, MarkupKind, Position, Range, RenameFile, ResourceOp, SymbolKind,
+    TextDocumentEdit, TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams, Url,
+    VersionedTextDocumentIdentifier, WorkspaceEdit,
 };
 use ra_ide_api::{
-    CompletionItem, CompletionItemKind, FileId, FilePosition, FileRange, FileSystemEdit,
-    NavigationTarget, SourceChange, SourceFileEdit, RangeInfo,
-    LineCol, LineIndex, translate_offset_with_edit, InsertTextFormat
+    translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
+    FileRange, FileSystemEdit, InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo,
+    SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};

@@ -1,4 +1,4 @@
-use hir::{Ty, AdtDef, TypeCtor};
+use hir::{AdtDef, Ty, TypeCtor};
 
 use crate::completion::{CompletionContext, Completions};
 use rustc_hash::FxHashSet;
@@ -49,7 +49,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{do_completion, CompletionKind, CompletionItem};
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot_matches;
 
     fn do_ref_completion(code: &str) -> Vec<CompletionItem> {

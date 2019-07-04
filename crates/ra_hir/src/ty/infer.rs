@@ -15,38 +15,37 @@
 
 use std::borrow::Cow;
 use std::iter::repeat;
+use std::mem;
 use std::ops::Index;
 use std::sync::Arc;
-use std::mem;
 
-use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
+use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 use test_utils::tested_by;
 
+use super::{
+    autoderef, method_resolution, op, primitive,
+    traits::{Guidance, Obligation, Solution},
+    ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypableDef, TypeCtor,
+};
 use crate::{
-    Function, StructField, Path, Name, FnData, AdtDef, ConstData, HirDatabase,
-    DefWithBody, ImplItem,
-    type_ref::{TypeRef, Mutability},
+    adt::VariantDef,
+    diagnostics::DiagnosticSink,
     expr::{
-        Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement,
-        FieldPat, Array, self,
+        self, Array, BinaryOp, BindingAnnotation, Body, Expr, ExprId, FieldPat, Literal, Pat,
+        PatId, Statement, UnaryOp,
     },
     generics::{GenericParams, HasGenericParams},
-    path::{GenericArgs, GenericArg},
-    ModuleDef,
-    adt::VariantDef,
-    resolve::{Resolver, Resolution},
     nameres::Namespace,
+    path::{GenericArg, GenericArgs},
+    resolve::{Resolution, Resolver},
     ty::infer::diagnostics::InferenceDiagnostic,
-    diagnostics::DiagnosticSink,
-};
-use super::{
-    Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, CallableDef, TraitRef,
-    traits::{Solution, Obligation, Guidance},
-    method_resolution, autoderef,
+    type_ref::{Mutability, TypeRef},
+    AdtDef, ConstData, DefWithBody, FnData, Function, HirDatabase, ImplItem, ModuleDef, Name, Path,
+    StructField,
 };
 
 mod unify;
@@ -1415,10 +1414,10 @@ impl Expectation {
 
 mod diagnostics {
     use crate::{
-        expr::ExprId,
         diagnostics::{DiagnosticSink, NoSuchField},
-        HirDatabase, Function, HasSource,
-};
+        expr::ExprId,
+        Function, HasSource, HirDatabase,
+    };
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     pub(super) enum InferenceDiagnostic {

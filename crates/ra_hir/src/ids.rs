@@ -3,14 +3,12 @@ use std::{
     sync::Arc,
 };
 
-use ra_db::{FileId, salsa};
-use ra_syntax::{TreeArc, AstNode, ast, SyntaxNode};
-use ra_prof::profile;
 use mbe::MacroRules;
+use ra_db::{salsa, FileId};
+use ra_prof::profile;
+use ra_syntax::{ast, AstNode, SyntaxNode, TreeArc};
 
-use crate::{
-    Module, DefDatabase, AstId, FileAstId, AstDatabase, Source, InternDatabase,
-};
+use crate::{AstDatabase, AstId, DefDatabase, FileAstId, InternDatabase, Module, Source};
 
 /// hir makes heavy use of ids: integer (u32) handlers to various things. You
 /// can think of id as a pointer (but without a lifetime) or a file descriptor

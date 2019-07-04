@@ -3,24 +3,32 @@ pub(crate) mod docs;
 
 use std::sync::Arc;
 
-use ra_db::{CrateId, SourceRootId, Edition, FileId};
-use ra_syntax::{ast::{self, NameOwner, TypeAscriptionOwner}, TreeArc};
+use ra_db::{CrateId, Edition, FileId, SourceRootId};
+use ra_syntax::{
+    ast::{self, NameOwner, TypeAscriptionOwner},
+    TreeArc,
+};
 
 use crate::{
-    Name, AsName, AstId, Ty, Either, KnownName, HasSource,
-    HirDatabase, DefDatabase, AstDatabase,
-    type_ref::TypeRef,
-    nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
-    expr::{Body, BodySourceMap, validation::ExprValidator},
-    ty::{TraitRef, InferenceResult, primitive::{IntTy, FloatTy, Signedness, IntBitness, FloatBitness}},
     adt::{EnumVariantId, StructFieldId, VariantDef},
+    diagnostics::DiagnosticSink,
+    expr::{validation::ExprValidator, Body, BodySourceMap},
     generics::HasGenericParams,
-    ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeAliasId, MacroDefId},
+    ids::{
+        AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
+        TypeAliasId,
+    },
     impl_block::ImplBlock,
+    nameres::{CrateModuleId, ImportId, ModuleScope, Namespace},
     resolve::Resolver,
-    diagnostics::{DiagnosticSink},
-    traits::{TraitItem, TraitData},
+    traits::{TraitData, TraitItem},
+    ty::{
+        primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
+        InferenceResult, TraitRef,
+    },
     type_ref::Mutability,
+    type_ref::TypeRef,
+    AsName, AstDatabase, AstId, DefDatabase, Either, HasSource, HirDatabase, KnownName, Name, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which

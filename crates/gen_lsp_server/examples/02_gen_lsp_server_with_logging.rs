@@ -44,14 +44,14 @@
 
 use std::error::Error;
 
-use crossbeam_channel::{Sender, Receiver};
-use lsp_types::{
-    ServerCapabilities, InitializeParams,
-    request::{GotoDefinition, GotoDefinitionResponse},
+use crossbeam_channel::{Receiver, Sender};
+use gen_lsp_server::{
+    handle_shutdown, run_server, stdio_transport, RawMessage, RawRequest, RawResponse,
 };
 use log::info;
-use gen_lsp_server::{
-    run_server, stdio_transport, handle_shutdown, RawMessage, RawResponse, RawRequest,
+use lsp_types::{
+    request::{GotoDefinition, GotoDefinitionResponse},
+    InitializeParams, ServerCapabilities,
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {

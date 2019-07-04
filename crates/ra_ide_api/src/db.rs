@@ -1,14 +1,14 @@
-use std::{
-    sync::Arc,
-    time,
-};
+use std::{sync::Arc, time};
 
 use ra_db::{
-    CheckCanceled, FileId, Canceled, SourceDatabase,
     salsa::{self, Database},
+    Canceled, CheckCanceled, FileId, SourceDatabase,
 };
 
-use crate::{LineIndex, symbol_index::{self, SymbolsDatabase}};
+use crate::{
+    symbol_index::{self, SymbolsDatabase},
+    LineIndex,
+};
 
 #[salsa::database(
     ra_db::SourceDatabaseStorage,

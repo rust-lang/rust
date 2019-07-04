@@ -1,11 +1,11 @@
 use std::error::Error;
 
-use crossbeam_channel::{Sender, Receiver};
+use crossbeam_channel::{Receiver, Sender};
+use gen_lsp_server::{handle_shutdown, run_server, stdio_transport, RawMessage, RawResponse};
 use lsp_types::{
-    ServerCapabilities, InitializeParams,
     request::{GotoDefinition, GotoDefinitionResponse},
+    InitializeParams, ServerCapabilities,
 };
-use gen_lsp_server::{run_server, stdio_transport, handle_shutdown, RawMessage, RawResponse};
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     let (receiver, sender, io_threads) = stdio_transport();

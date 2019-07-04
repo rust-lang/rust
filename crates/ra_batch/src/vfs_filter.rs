@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use ra_project_model::ProjectRoot;
-use ra_vfs::{RootEntry, Filter, RelativePath};
+use ra_vfs::{Filter, RelativePath, RootEntry};
+use std::path::PathBuf;
 
 /// `IncludeRustFiles` is used to convert
 /// from `ProjectRoot` to `RootEntry` for VFS

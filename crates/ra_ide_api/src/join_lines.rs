@@ -1,14 +1,11 @@
 use itertools::Itertools;
+use ra_fmt::{compute_ws, extract_trivial_expression};
 use ra_syntax::{
-    T,
-    SourceFile, TextRange, TextUnit, SyntaxNode, SyntaxElement, SyntaxToken,
-    SyntaxKind::{self, WHITESPACE},
     algo::{find_covering_element, non_trivia_sibling},
     ast::{self, AstNode, AstToken},
-    Direction,
-};
-use ra_fmt::{
-    compute_ws, extract_trivial_expression
+    Direction, SourceFile, SyntaxElement,
+    SyntaxKind::{self, WHITESPACE},
+    SyntaxNode, SyntaxToken, TextRange, TextUnit, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 

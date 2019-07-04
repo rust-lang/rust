@@ -1,13 +1,13 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    Direction, SyntaxNode, TextRange, TextUnit, SyntaxElement,
     algo::{find_covering_element, find_token_at_offset, TokenAtOffset},
-    SyntaxKind::*, SyntaxToken,
     ast::{self, AstNode, AstToken},
-    T
+    Direction, SyntaxElement,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, TextRange, TextUnit, T,
 };
 
-use crate::{FileRange, db::RootDatabase};
+use crate::{db::RootDatabase, FileRange};
 
 // FIXME: restore macro support
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
@@ -205,7 +205,7 @@ fn adj_comments(comment: ast::Comment, dir: Direction) -> ast::Comment {
 
 #[cfg(test)]
 mod tests {
-    use ra_syntax::{SourceFile, AstNode};
+    use ra_syntax::{AstNode, SourceFile};
     use test_utils::extract_offset;
 
     use super::*;

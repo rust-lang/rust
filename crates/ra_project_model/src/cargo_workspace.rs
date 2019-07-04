@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use cargo_metadata::{MetadataCommand, CargoOpt};
-use ra_arena::{Arena, RawId, impl_arena_id};
-use rustc_hash::FxHashMap;
+use cargo_metadata::{CargoOpt, MetadataCommand};
+use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_db::Edition;
+use rustc_hash::FxHashMap;
 
 use crate::Result;
 

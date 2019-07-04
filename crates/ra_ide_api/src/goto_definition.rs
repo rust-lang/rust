@@ -1,19 +1,18 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    AstNode, ast::{self, DocCommentsOwner},
     algo::{
         find_node_at_offset,
         visit::{visitor, Visitor},
     },
-    SyntaxNode,
+    ast::{self, DocCommentsOwner},
+    AstNode, SyntaxNode,
 };
 
 use crate::{
-    FilePosition, NavigationTarget,
     db::RootDatabase,
-    RangeInfo,
-    name_ref_kind::{NameRefKind::*, classify_name_ref},
     display::ShortLabel,
+    name_ref_kind::{classify_name_ref, NameRefKind::*},
+    FilePosition, NavigationTarget, RangeInfo,
 };
 
 pub(crate) fn goto_definition(

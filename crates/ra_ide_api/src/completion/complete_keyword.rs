@@ -1,11 +1,14 @@
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
-    AstNode,
     ast::{self, LoopBodyOwner},
-    SyntaxKind::*, SyntaxToken,
+    AstNode,
+    SyntaxKind::*,
+    SyntaxToken,
 };
 
-use crate::completion::{CompletionContext, CompletionItem, Completions, CompletionKind, CompletionItemKind};
+use crate::completion::{
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
+};
 
 pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     // complete keyword "crate" in use stmt

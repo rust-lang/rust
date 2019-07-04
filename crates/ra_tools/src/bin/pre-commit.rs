@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use ra_tools::{Result, run_rustfmt, run, project_root, Overwrite};
+use ra_tools::{project_root, run, run_rustfmt, Overwrite, Result};
 
 fn main() -> Result<()> {
     run_rustfmt(Overwrite)?;

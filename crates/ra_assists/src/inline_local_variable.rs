@@ -1,11 +1,11 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
-    ast::{self, AstNode, AstToken, PatKind, ExprKind},
+    ast::{self, AstNode, AstToken, ExprKind, PatKind},
     TextRange,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
 use crate::assist_ctx::AssistBuilder;
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let let_stmt = ctx.node_at_offset::<ast::LetStmt>()?;

@@ -1,8 +1,8 @@
 use crate::subtree_source::SubtreeTokenSource;
 
 use ra_parser::{TokenSource, TreeSink};
-use ra_syntax::{SyntaxKind};
-use tt::buffer::{TokenBuffer, Cursor};
+use ra_syntax::SyntaxKind;
+use tt::buffer::{Cursor, TokenBuffer};
 
 struct OffsetTokenSink<'a> {
     cursor: Cursor<'a>,

@@ -3,22 +3,20 @@ use std::{
     sync::Arc,
 };
 
+use gen_lsp_server::ErrorCode;
 use lsp_types::Url;
+use parking_lot::RwLock;
 use ra_ide_api::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData,
-    SourceRootId
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
 use ra_vfs::{Vfs, VfsChange, VfsFile, VfsRoot};
 use relative_path::RelativePathBuf;
-use parking_lot::RwLock;
-use gen_lsp_server::ErrorCode;
 
 use crate::{
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     project_model::ProjectWorkspace,
     vfs_filter::IncludeRustFiles,
-    Result,
-    LspError,
+    LspError, Result,
 };
 
 /// `WorldState` is the primary mutable state of the language server

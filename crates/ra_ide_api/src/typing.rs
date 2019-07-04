@@ -1,13 +1,14 @@
+use crate::{db::RootDatabase, SourceChange, SourceFileEdit};
+use ra_db::{FilePosition, SourceDatabase};
+use ra_fmt::leading_indent;
 use ra_syntax::{
-    AstNode, SourceFile, SyntaxKind::*,
-    TextUnit, TextRange, SyntaxToken,
     algo::{find_node_at_offset, find_token_at_offset, TokenAtOffset},
     ast::{self, AstToken},
+    AstNode, SourceFile,
+    SyntaxKind::*,
+    SyntaxToken, TextRange, TextUnit,
 };
-use ra_fmt::leading_indent;
 use ra_text_edit::{TextEdit, TextEditBuilder};
-use ra_db::{FilePosition, SourceDatabase};
-use crate::{db::RootDatabase, SourceChange, SourceFileEdit};
 
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
     let file = db.parse(position.file_id).tree;

@@ -1,9 +1,9 @@
-use ra_db::SourceDatabase;
 use crate::db::RootDatabase;
+use ra_db::SourceDatabase;
 use ra_syntax::{
-    SourceFile, TextRange, AstNode, SyntaxToken, SyntaxElement,
-    algo,
-    SyntaxKind::{STRING, RAW_STRING},
+    algo, AstNode, SourceFile, SyntaxElement,
+    SyntaxKind::{RAW_STRING, STRING},
+    SyntaxToken, TextRange,
 };
 
 pub use ra_db::FileId;

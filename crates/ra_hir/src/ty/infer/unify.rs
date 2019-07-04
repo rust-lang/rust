@@ -1,8 +1,8 @@
 //! Unification and canonicalization logic.
 
-use crate::db::HirDatabase;
-use crate::ty::{Ty, Canonical, TraitRef, InferTy};
 use super::InferenceContext;
+use crate::db::HirDatabase;
+use crate::ty::{Canonical, InferTy, TraitRef, Ty};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b, D>

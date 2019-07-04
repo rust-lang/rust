@@ -4,10 +4,10 @@
 use itertools::Itertools;
 
 use crate::{
-    SmolStr, SyntaxToken,
-    ast::{self, AstNode, children, child_opt},
+    ast::{self, child_opt, children, AstNode},
+    SmolStr, SyntaxElement,
     SyntaxKind::*,
-    SyntaxElement, T,
+    SyntaxToken, T,
 };
 use ra_parser::SyntaxKind;
 

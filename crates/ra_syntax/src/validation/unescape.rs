@@ -7,8 +7,8 @@
 //!
 //! Hopefully, we'll share this code in a proper way some day
 
-use std::str::Chars;
 use std::ops::Range;
+use std::str::Chars;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum EscapeError {

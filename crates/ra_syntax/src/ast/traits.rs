@@ -5,8 +5,8 @@
 use itertools::Itertools;
 
 use crate::{
-    syntax_node::{SyntaxNodeChildren, SyntaxElementChildren},
-    ast::{self, child_opt, children, AstNode, AstToken, AstChildren},
+    ast::{self, child_opt, children, AstChildren, AstNode, AstToken},
+    syntax_node::{SyntaxElementChildren, SyntaxNodeChildren},
 };
 
 pub trait TypeAscriptionOwner: AstNode {

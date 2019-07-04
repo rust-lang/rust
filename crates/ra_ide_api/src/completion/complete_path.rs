@@ -1,8 +1,8 @@
-use hir::{Resolution, Either};
+use hir::{Either, Resolution};
 use ra_syntax::AstNode;
 use test_utils::tested_by;
 
-use crate::completion::{Completions, CompletionContext};
+use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
@@ -78,7 +78,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
 mod tests {
     use test_utils::covers;
 
-    use crate::completion::{CompletionKind, do_completion, CompletionItem};
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot_matches;
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {

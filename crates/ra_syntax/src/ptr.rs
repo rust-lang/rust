@@ -1,10 +1,5 @@
-use std::{
-    marker::PhantomData,
-    iter::successors,
-};
-use crate::{
-    AstNode, SyntaxKind, SyntaxNode, TextRange,
-};
+use crate::{AstNode, SyntaxKind, SyntaxNode, TextRange};
+use std::{iter::successors, marker::PhantomData};
 
 /// A pointer to a syntax node inside a file. It can be used to remember a
 /// specific node across reparses of the same file.

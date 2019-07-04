@@ -1,13 +1,13 @@
 mod analysis_stats;
 mod analysis_bench;
 
-use std::{io::Read, error::Error};
+use std::{error::Error, io::Read};
 
 use clap::{App, Arg, SubCommand};
-use ra_ide_api::{file_structure, Analysis};
-use ra_syntax::{SourceFile, TreeArc, AstNode};
 use flexi_logger::Logger;
+use ra_ide_api::{file_structure, Analysis};
 use ra_prof::profile;
+use ra_syntax::{AstNode, SourceFile, TreeArc};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 

@@ -1,16 +1,16 @@
 //! Trait solving using Chalk.
 use std::sync::Arc;
 
-use parking_lot::Mutex;
-use rustc_hash::FxHashSet;
-use log::debug;
 use chalk_ir::cast::Cast;
+use log::debug;
+use parking_lot::Mutex;
 use ra_prof::profile;
+use rustc_hash::FxHashSet;
 
-use crate::{Crate, Trait, db::HirDatabase, ImplBlock};
-use super::{TraitRef, Ty, Canonical, ProjectionTy};
+use super::{Canonical, ProjectionTy, TraitRef, Ty};
+use crate::{db::HirDatabase, Crate, ImplBlock, Trait};
 
-use self::chalk::{ToChalk, from_chalk};
+use self::chalk::{from_chalk, ToChalk};
 
 pub(crate) mod chalk;
 

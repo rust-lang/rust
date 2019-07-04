@@ -9,16 +9,16 @@ mod expr_extensions;
 use std::marker::PhantomData;
 
 use crate::{
-    syntax_node::{SyntaxNode, SyntaxNodeChildren, TreeArc, SyntaxToken},
+    syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken, TreeArc},
     SmolStr,
 };
 
 pub use self::{
+    expr_extensions::{ArrayExprKind, BinOp, ElseBranch, LiteralKind, PrefixOp},
+    extensions::{FieldKind, PathSegmentKind, SelfParamKind, StructKind},
     generated::*,
-    traits::*,
     tokens::*,
-    extensions::{PathSegmentKind, StructKind,FieldKind, SelfParamKind},
-    expr_extensions::{ElseBranch, PrefixOp, BinOp, LiteralKind,ArrayExprKind},
+    traits::*,
 };
 
 /// The main trait to go from untyped `SyntaxNode`  to a typed ast. The

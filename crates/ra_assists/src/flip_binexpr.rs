@@ -1,7 +1,7 @@
 use hir::db::HirDatabase;
 use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 /// Flip binary expression assist.
 pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
@@ -68,7 +68,7 @@ impl From<BinOp> for FlipAction {
 mod tests {
     use super::*;
 
-    use crate::helpers::{ check_assist, check_assist_target, check_assist_not_applicable };
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn flip_binexpr_target_is_the_op() {

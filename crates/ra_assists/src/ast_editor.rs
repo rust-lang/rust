@@ -1,10 +1,12 @@
 use std::{iter, ops::RangeInclusive};
 
 use arrayvec::ArrayVec;
-use ra_text_edit::TextEditBuilder;
-use ra_syntax::{AstNode, TreeArc, ast, SyntaxKind::*, SyntaxElement, SourceFile, InsertPosition, Direction, T};
-use ra_fmt::leading_indent;
 use hir::Name;
+use ra_fmt::leading_indent;
+use ra_syntax::{
+    ast, AstNode, Direction, InsertPosition, SourceFile, SyntaxElement, SyntaxKind::*, TreeArc, T,
+};
+use ra_text_edit::TextEditBuilder;
 
 pub struct AstEditor<N: AstNode> {
     original_ast: TreeArc<N>,
@@ -283,7 +285,7 @@ fn ast_node_from_file_text<N: AstNode>(text: &str) -> TreeArc<N> {
 
 mod tokens {
     use once_cell::sync::Lazy;
-    use ra_syntax::{AstNode, SourceFile, TreeArc, SyntaxToken, SyntaxKind::*, T};
+    use ra_syntax::{AstNode, SourceFile, SyntaxKind::*, SyntaxToken, TreeArc, T};
 
     static SOURCE_FILE: Lazy<TreeArc<SourceFile>> = Lazy::new(|| SourceFile::parse(",\n; ;").tree);
 

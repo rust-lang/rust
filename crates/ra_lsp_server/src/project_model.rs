@@ -5,7 +5,7 @@ use thread_worker::Worker;
 use crate::Result;
 
 pub use ra_project_model::{
-    ProjectWorkspace, CargoWorkspace, Package, Target, TargetKind, Sysroot,
+    CargoWorkspace, Package, ProjectWorkspace, Sysroot, Target, TargetKind,
 };
 
 pub fn workspace_loader() -> Worker<PathBuf, Result<ProjectWorkspace>> {

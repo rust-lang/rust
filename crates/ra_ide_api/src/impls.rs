@@ -1,11 +1,8 @@
-use ra_db::SourceDatabase;
-use ra_syntax::{
-    AstNode, ast,
-    algo::find_node_at_offset,
-};
 use hir::{db::HirDatabase, source_binder};
+use ra_db::SourceDatabase;
+use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
-use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
+use crate::{db::RootDatabase, FilePosition, NavigationTarget, RangeInfo};
 
 pub(crate) fn goto_implementation(
     db: &RootDatabase,

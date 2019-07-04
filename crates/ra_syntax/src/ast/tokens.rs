@@ -1,9 +1,9 @@
 //! There are many AstNodes, but only a few tokens, so we hand-write them here.
 
 use crate::{
-    SyntaxToken,
-    SyntaxKind::{COMMENT, WHITESPACE},
     ast::AstToken,
+    SyntaxKind::{COMMENT, WHITESPACE},
+    SyntaxToken,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -61,7 +61,7 @@ pub enum CommentPlacement {
 }
 
 const COMMENT_PREFIX_TO_KIND: &[(&str, CommentKind)] = {
-    use {CommentShape::*, CommentPlacement::*};
+    use {CommentPlacement::*, CommentShape::*};
     &[
         ("///", CommentKind { shape: Line, doc: Some(Outer) }),
         ("//!", CommentKind { shape: Line, doc: Some(Inner) }),

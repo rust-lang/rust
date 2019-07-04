@@ -1,12 +1,11 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
-    TextUnit,
-    SyntaxElement,
-    ast::{MatchArm, AstNode, AstToken, IfExpr},
     ast,
+    ast::{AstNode, AstToken, IfExpr, MatchArm},
+    SyntaxElement, TextUnit,
 };
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_arm = ctx.node_at_offset::<MatchArm>()?;
@@ -84,7 +83,7 @@ pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>)
 mod tests {
     use super::*;
 
-    use crate::helpers::{ check_assist, check_assist_target, check_assist_not_applicable };
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn move_guard_to_arm_body_target() {

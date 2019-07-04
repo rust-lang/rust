@@ -1,10 +1,9 @@
+use crate::{Assist, AssistCtx, AssistId};
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
-    TextUnit,
-    T
+    TextUnit, T,
 };
-use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let macro_call = ctx.node_at_offset::<ast::MacroCall>()?;

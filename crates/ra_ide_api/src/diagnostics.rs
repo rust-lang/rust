@@ -1,17 +1,20 @@
 use std::cell::RefCell;
 
-use itertools::Itertools;
-use hir::{source_binder, diagnostics::{Diagnostic as _, DiagnosticSink}};
-use ra_db::SourceDatabase;
-use ra_syntax::{
-    T, Location, TextRange, SyntaxNode,
-    ast::{self, AstNode, NamedFieldList, NamedField},
+use hir::{
+    diagnostics::{Diagnostic as _, DiagnosticSink},
+    source_binder,
 };
-use ra_assists::ast_editor::{AstEditor, AstBuilder};
-use ra_text_edit::{TextEdit, TextEditBuilder};
+use itertools::Itertools;
+use ra_assists::ast_editor::{AstBuilder, AstEditor};
+use ra_db::SourceDatabase;
 use ra_prof::profile;
+use ra_syntax::{
+    ast::{self, AstNode, NamedField, NamedFieldList},
+    Location, SyntaxNode, TextRange, T,
+};
+use ra_text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit, db::RootDatabase};
+use crate::{db::RootDatabase, Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
@@ -170,9 +173,9 @@ fn check_struct_shorthand_initialization(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::assert_eq_text;
     use insta::assert_debug_snapshot_matches;
     use ra_syntax::SourceFile;
+    use test_utils::assert_eq_text;
 
     use crate::mock_analysis::single_file;
 

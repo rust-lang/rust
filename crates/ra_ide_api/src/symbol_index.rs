@@ -20,31 +20,27 @@
 //! file in the current workspace, and run a query against the union of all
 //! those FSTs.
 use std::{
-    hash::{Hash, Hasher},
-    sync::Arc,
-    mem,
     fmt,
+    hash::{Hash, Hasher},
+    mem,
+    sync::Arc,
 };
 
 use fst::{self, Streamer};
-use ra_syntax::{
-    SyntaxNode, SyntaxNodePtr, SourceFile, SmolStr, TreeArc, AstNode,
-    algo::{visit::{visitor, Visitor}},
-    SyntaxKind::{self, *},
-    ast::{self, NameOwner},
-    WalkEvent,
-    TextRange,
-};
 use ra_db::{
-    SourceRootId, SourceDatabase,
     salsa::{self, ParallelDatabase},
+    SourceDatabase, SourceRootId,
+};
+use ra_syntax::{
+    algo::visit::{visitor, Visitor},
+    ast::{self, NameOwner},
+    AstNode, SmolStr, SourceFile,
+    SyntaxKind::{self, *},
+    SyntaxNode, SyntaxNodePtr, TextRange, TreeArc, WalkEvent,
 };
 use rayon::prelude::*;
 
-use crate::{
-    FileId, Query,
-    db::RootDatabase,
-};
+use crate::{db::RootDatabase, FileId, Query};
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
 pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
@@ -305,15 +301,11 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
 
 #[cfg(test)]
 mod tests {
+    use crate::{display::NavigationTarget, mock_analysis::single_file, Query};
     use ra_syntax::{
         SmolStr,
-        SyntaxKind::{FN_DEF, STRUCT_DEF}
-};
-    use crate::{
-        display::NavigationTarget,
-        mock_analysis::single_file,
-        Query,
-};
+        SyntaxKind::{FN_DEF, STRUCT_DEF},
+    };
 
     #[test]
     fn test_world_symbols_with_no_container() {

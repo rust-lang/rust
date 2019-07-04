@@ -1,10 +1,7 @@
 use ra_db::SourceDatabase;
-use ra_syntax::{
-    AstNode, ast,
-    algo::find_token_at_offset
-};
+use ra_syntax::{algo::find_token_at_offset, ast, AstNode};
 
-use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
+use crate::{db::RootDatabase, FilePosition, NavigationTarget, RangeInfo};
 
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,

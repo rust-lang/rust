@@ -10,8 +10,9 @@
 use std::mem;
 
 use crate::{
-    ParseError, TreeSink,
+    ParseError,
     SyntaxKind::{self, *},
+    TreeSink,
 };
 
 /// `Parser` produces a flat list of `Event`s.

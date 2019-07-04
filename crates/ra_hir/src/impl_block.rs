@@ -1,21 +1,21 @@
-use std::sync::Arc;
 use rustc_hash::FxHashMap;
+use std::sync::Arc;
 
-use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
+use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
+    ast::{self, AstNode},
     AstPtr, SourceFile, TreeArc,
-    ast::{self, AstNode}
 };
 
 use crate::{
-    Const, TypeAlias, Function, HirFileId, AstDatabase, HasSource, Source,
-    HirDatabase, DefDatabase, TraitRef,
-    type_ref::TypeRef,
+    code_model::{Module, ModuleSource},
+    generics::HasGenericParams,
     ids::LocationCtx,
     resolve::Resolver,
     ty::Ty,
-    generics::HasGenericParams,
-    code_model::{Module, ModuleSource}
+    type_ref::TypeRef,
+    AstDatabase, Const, DefDatabase, Function, HasSource, HirDatabase, HirFileId, Source, TraitRef,
+    TypeAlias,
 };
 
 #[derive(Debug, Default, PartialEq, Eq)]

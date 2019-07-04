@@ -1,6 +1,6 @@
-use ra_db::{FilePosition, FileId, CrateId};
+use ra_db::{CrateId, FileId, FilePosition};
 
-use crate::{NavigationTarget, db::RootDatabase};
+use crate::{db::RootDatabase, NavigationTarget};
 
 /// This returns `Vec` because a module may be included from several places. We
 /// don't handle this case yet though, so the Vec has length at most one.
@@ -29,10 +29,10 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        AnalysisChange, CrateGraph,
         mock_analysis::{analysis_and_position, MockAnalysis},
+        AnalysisChange, CrateGraph,
         Edition::Edition2018,
-};
+    };
 
     #[test]
     fn test_resolve_parent_module() {

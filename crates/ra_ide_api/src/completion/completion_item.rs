@@ -2,7 +2,7 @@ use std::fmt;
 
 use hir::Documentation;
 use ra_syntax::TextRange;
-use ra_text_edit::{TextEditBuilder, TextEdit};
+use ra_text_edit::{TextEdit, TextEditBuilder};
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -285,8 +285,8 @@ impl Into<Vec<CompletionItem>> for Completions {
 
 #[cfg(test)]
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
-    use crate::mock_analysis::{single_file_with_position, analysis_and_position};
     use crate::completion::completions;
+    use crate::mock_analysis::{analysis_and_position, single_file_with_position};
     let (analysis, position) = if code.contains("//-") {
         analysis_and_position(code)
     } else {

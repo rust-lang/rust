@@ -1,11 +1,11 @@
-use std::sync::Arc;
 use rustc_hash::FxHashMap;
+use std::sync::Arc;
 
-use ra_syntax::{SmolStr, TreeArc, ast::AttrsOwner};
+use ra_syntax::{ast::AttrsOwner, SmolStr, TreeArc};
 
 use crate::{
-    Crate, DefDatabase, Enum, Function, HirDatabase, ImplBlock, Module,
-    Static, Struct, Trait, ModuleDef, AstDatabase, HasSource
+    AstDatabase, Crate, DefDatabase, Enum, Function, HasSource, HirDatabase, ImplBlock, Module,
+    ModuleDef, Static, Struct, Trait,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

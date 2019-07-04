@@ -1,7 +1,7 @@
-use std::{collections::HashSet, time::Instant, fmt::Write, path::Path};
+use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
 use ra_db::SourceDatabase;
-use ra_hir::{Crate, ModuleDef, Ty, ImplItem, HasSource};
+use ra_hir::{Crate, HasSource, ImplItem, ModuleDef, Ty};
 use ra_syntax::AstNode;
 
 use crate::Result;

@@ -1,11 +1,11 @@
-use ra_text_edit::AtomTextEdit;
-use ra_syntax::{
-    AstNode, SyntaxNode, SourceFile, TextUnit, TextRange, SyntaxToken, Parse,
-    ast,
-    algo::{find_token_at_offset, find_covering_element, find_node_at_offset},
-    SyntaxKind::*,
-};
 use hir::source_binder;
+use ra_syntax::{
+    algo::{find_covering_element, find_node_at_offset, find_token_at_offset},
+    ast, AstNode, Parse, SourceFile,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, TextRange, TextUnit,
+};
+use ra_text_edit::AtomTextEdit;
 
 use crate::{db, FilePosition};
 

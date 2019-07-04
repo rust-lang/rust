@@ -1,22 +1,11 @@
+use hir::{source_binder, Either, ModuleSource};
+use ra_db::SourceDatabase;
+use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode};
 use relative_path::{RelativePath, RelativePathBuf};
-use hir::{ModuleSource, source_binder, Either};
-use ra_db::{SourceDatabase};
-use ra_syntax::{
-    AstNode, SyntaxNode, SourceFile,
-    ast,
-    algo::find_node_at_offset,
-};
 
 use crate::{
-    db::RootDatabase,
-    FilePosition,
-    FileRange,
-    FileId,
-    NavigationTarget,
-    FileSystemEdit,
-    SourceChange,
-    SourceFileEdit,
-    TextRange,
+    db::RootDatabase, FileId, FilePosition, FileRange, FileSystemEdit, NavigationTarget,
+    SourceChange, SourceFileEdit, TextRange,
 };
 
 #[derive(Debug, Clone)]
@@ -210,13 +199,12 @@ fn rename_reference(
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        mock_analysis::analysis_and_position, mock_analysis::single_file_with_position, FileId,
+        ReferenceSearchResult,
+    };
     use insta::assert_debug_snapshot_matches;
     use test_utils::assert_eq_text;
-    use crate::{
-        mock_analysis::single_file_with_position,
-        mock_analysis::analysis_and_position,
-        FileId, ReferenceSearchResult
-};
 
     #[test]
     fn test_find_all_refs_for_local() {

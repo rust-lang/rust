@@ -55,28 +55,24 @@ mod tests;
 
 use std::sync::Arc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
-use ra_arena::{Arena, RawId, impl_arena_id};
-use ra_db::{FileId, Edition};
-use test_utils::tested_by;
-use ra_syntax::ast;
-use ra_prof::profile;
 use once_cell::sync::Lazy;
+use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_db::{Edition, FileId};
+use ra_prof::profile;
+use ra_syntax::ast;
+use rustc_hash::{FxHashMap, FxHashSet};
+use test_utils::tested_by;
 
 use crate::{
-    ModuleDef, Name, Crate, Module, MacroDef, AsName, BuiltinType, AstDatabase,
-    DefDatabase, Path, PathKind, HirFileId, Trait,
-    ids::MacroDefId,
-    diagnostics::DiagnosticSink,
-    nameres::diagnostics::DefDiagnostic,
-    either::Either,
-    AstId,
+    diagnostics::DiagnosticSink, either::Either, ids::MacroDefId,
+    nameres::diagnostics::DefDiagnostic, AsName, AstDatabase, AstId, BuiltinType, Crate,
+    DefDatabase, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
 };
 
-pub(crate) use self::raw::{RawItems, ImportSourceMap};
+pub(crate) use self::raw::{ImportSourceMap, RawItems};
 
 pub use self::{
-    per_ns::{PerNs, Namespace},
+    per_ns::{Namespace, PerNs},
     raw::ImportId,
 };
 
@@ -512,14 +508,14 @@ impl CrateDefMap {
 }
 
 mod diagnostics {
+    use ra_syntax::{ast, AstPtr};
     use relative_path::RelativePathBuf;
-    use ra_syntax::{AstPtr, ast};
 
     use crate::{
-        AstId, DefDatabase, AstDatabase,
+        diagnostics::{DiagnosticSink, UnresolvedModule},
         nameres::CrateModuleId,
-        diagnostics::{DiagnosticSink, UnresolvedModule}
-};
+        AstDatabase, AstId, DefDatabase,
+    };
 
     #[derive(Debug, PartialEq, Eq)]
     pub(super) enum DefDiagnostic {

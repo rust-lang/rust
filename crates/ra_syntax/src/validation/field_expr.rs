@@ -1,6 +1,7 @@
-use crate::{ast::{self, FieldKind},
-            SyntaxError,
-            SyntaxErrorKind::*,
+use crate::{
+    ast::{self, FieldKind},
+    SyntaxError,
+    SyntaxErrorKind::*,
 };
 
 pub(crate) fn validate_field_expr_node(node: &ast::FieldExpr, errors: &mut Vec<SyntaxError>) {

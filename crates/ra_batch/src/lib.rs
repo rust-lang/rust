@@ -1,14 +1,12 @@
 mod vfs_filter;
 
-use std::{path::Path, collections::HashSet, error::Error};
+use std::{collections::HashSet, error::Error, path::Path};
 
 use rustc_hash::FxHashMap;
 
-use ra_db::{
-    CrateGraph, FileId, SourceRootId,
-};
-use ra_ide_api::{AnalysisHost, AnalysisChange};
-use ra_project_model::{ProjectWorkspace, ProjectRoot};
+use ra_db::{CrateGraph, FileId, SourceRootId};
+use ra_ide_api::{AnalysisChange, AnalysisHost};
+use ra_project_model::{ProjectRoot, ProjectWorkspace};
 use ra_vfs::{Vfs, VfsChange};
 use vfs_filter::IncludeRustFiles;
 
@@ -106,8 +104,8 @@ pub fn load(
 
 #[cfg(test)]
 mod tests {
-    use ra_hir::Crate;
     use super::*;
+    use ra_hir::Crate;
 
     #[test]
     fn test_loading_rust_analyzer() {

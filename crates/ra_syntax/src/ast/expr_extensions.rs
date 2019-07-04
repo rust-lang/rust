@@ -1,10 +1,10 @@
 //! Various extension methods to ast Expr Nodes, which are hard to code-generate.
 
 use crate::{
-    SyntaxToken, SyntaxElement, SmolStr,
-    ast::{self, AstNode, AstChildren, children, child_opt},
+    ast::{self, child_opt, children, AstChildren, AstNode},
+    SmolStr, SyntaxElement,
     SyntaxKind::*,
-    T
+    SyntaxToken, T,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

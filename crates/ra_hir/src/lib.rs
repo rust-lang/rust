@@ -47,39 +47,33 @@ mod code_model;
 mod marks;
 
 use crate::{
-    db::{InternDatabase, AstDatabase, DefDatabase, HirDatabase},
-    name::{AsName, KnownName},
-    source_id::{FileAstId, AstId},
-    resolve::Resolver,
+    db::{AstDatabase, DefDatabase, HirDatabase, InternDatabase},
     ids::MacroFileKind,
+    name::{AsName, KnownName},
+    resolve::Resolver,
+    source_id::{AstId, FileAstId},
 };
 
 pub use self::{
-    either::Either,
-    path::{Path, PathKind},
-    name::Name,
-    source_id::{AstIdMap, ErasedFileAstId},
-    ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc, MacroFile},
-    nameres::{PerNs, Namespace, ImportId},
-    ty::{Ty, ApplicationTy, TypeCtor, TraitRef, Substs, display::HirDisplay, CallableDef},
-    impl_block::{ImplBlock, ImplItem},
     adt::AdtDef,
+    either::Either,
     expr::ExprScopes,
+    generics::{GenericParam, GenericParams, HasGenericParams},
+    ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
+    impl_block::{ImplBlock, ImplItem},
+    name::Name,
+    nameres::{ImportId, Namespace, PerNs},
+    path::{Path, PathKind},
     resolve::Resolution,
-    generics::{GenericParams, GenericParam, HasGenericParams},
-    source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax},
+    source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
+    source_id::{AstIdMap, ErasedFileAstId},
+    ty::{display::HirDisplay, ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor},
 };
 
 pub use self::code_model::{
-    Crate, CrateDependency,
-    DefWithBody,
-    Module, ModuleDef, ModuleSource,
-    Struct, Union, Enum, EnumVariant,
-    Function, FnData,
-    StructField, FieldSource,
-    Static, Const, ConstData,
-    Trait, TypeAlias, MacroDef, Container,
-    BuiltinType,
-    src::{Source, HasSource},
-    docs::{Docs, Documentation, DocDef},
+    docs::{DocDef, Docs, Documentation},
+    src::{HasSource, Source},
+    BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
+    EnumVariant, FieldSource, FnData, Function, MacroDef, Module, ModuleDef, ModuleSource, Static,
+    Struct, StructField, Trait, TypeAlias, Union,
 };

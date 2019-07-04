@@ -1,16 +1,14 @@
 mod support;
 
-use std::{
-    collections::HashMap,
-    time::Instant,
-};
+use std::{collections::HashMap, time::Instant};
 
 use lsp_types::{
-    CodeActionContext, DocumentFormattingParams, FormattingOptions, Position, Range, DidOpenTextDocumentParams, TextDocumentItem, TextDocumentPositionParams
+    CodeActionContext, DidOpenTextDocumentParams, DocumentFormattingParams, FormattingOptions,
+    Position, Range, TextDocumentItem, TextDocumentPositionParams,
 };
 use ra_lsp_server::req::{
-    CodeActionParams, CodeActionRequest, Formatting, Runnables, RunnablesParams, CompletionParams, Completion,
-    DidOpenTextDocument, OnEnter,
+    CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
+    Formatting, OnEnter, Runnables, RunnablesParams,
 };
 use serde_json::json;
 use tempfile::TempDir;

@@ -14,19 +14,19 @@ mod complete_postfix;
 
 use ra_db::SourceDatabase;
 
-use crate::{
-    db,
-    FilePosition,
-    completion::{
-        completion_item::{Completions, CompletionKind},
-        completion_context::CompletionContext,
-    },
-
-};
 #[cfg(test)]
-use crate::completion::completion_item::{do_completion, check_completion};
+use crate::completion::completion_item::{check_completion, do_completion};
+use crate::{
+    completion::{
+        completion_context::CompletionContext,
+        completion_item::{CompletionKind, Completions},
+    },
+    db, FilePosition,
+};
 
-pub use crate::completion::completion_item::{CompletionItem, CompletionItemKind, InsertTextFormat};
+pub use crate::completion::completion_item::{
+    CompletionItem, CompletionItemKind, InsertTextFormat,
+};
 
 /// Main entry point for completion. We run completion as a two-phase process.
 ///

@@ -197,7 +197,7 @@ impl CrateGraph {
 
 #[cfg(test)]
 mod tests {
-    use super::{CrateGraph, FileId, SmolStr, Edition::Edition2018};
+    use super::{CrateGraph, Edition::Edition2018, FileId, SmolStr};
 
     #[test]
     fn it_should_panic_because_of_cycle_dependencies() {

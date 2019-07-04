@@ -1,13 +1,13 @@
 use hir::db::HirDatabase;
-use ra_text_edit::TextEditBuilder;
 use ra_db::FileRange;
-use ra_syntax::{
-    SourceFile, TextRange, AstNode, TextUnit, SyntaxNode, SyntaxElement, SyntaxToken,
-    algo::{find_token_at_offset, find_node_at_offset, find_covering_element, TokenAtOffset},
-};
 use ra_fmt::{leading_indent, reindent};
+use ra_syntax::{
+    algo::{find_covering_element, find_node_at_offset, find_token_at_offset, TokenAtOffset},
+    AstNode, SourceFile, SyntaxElement, SyntaxNode, SyntaxToken, TextRange, TextUnit,
+};
+use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistLabel, AssistAction, AssistId};
+use crate::{AssistAction, AssistId, AssistLabel};
 
 #[derive(Clone, Debug)]
 pub(crate) enum Assist {

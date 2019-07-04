@@ -2,9 +2,9 @@
 
 use std::{
     fmt,
+    iter::FromIterator,
     marker::PhantomData,
     ops::{Index, IndexMut},
-    iter::FromIterator,
 };
 
 pub mod map;

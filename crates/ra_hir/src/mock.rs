@@ -1,13 +1,12 @@
-use std::{sync::Arc, panic};
+use std::{panic, sync::Arc};
 
 use parking_lot::Mutex;
 use ra_db::{
-    FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, SourceDatabase, salsa,
-    Edition,
+    salsa, CrateGraph, Edition, FileId, FilePosition, SourceDatabase, SourceRoot, SourceRootId,
 };
 use relative_path::RelativePathBuf;
-use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 use rustc_hash::FxHashMap;
+use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
 use crate::{db, diagnostics::DiagnosticSink};
 

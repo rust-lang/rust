@@ -6,14 +6,17 @@ mod navigation_target;
 mod structure;
 mod short_label;
 
-use ra_syntax::{ast::{self, AstNode, TypeParamsOwner}, SyntaxKind::{ATTR, COMMENT}};
+use ra_syntax::{
+    ast::{self, AstNode, TypeParamsOwner},
+    SyntaxKind::{ATTR, COMMENT},
+};
 
-pub use navigation_target::NavigationTarget;
-pub use structure::{StructureNode, file_structure};
 pub use function_signature::FunctionSignature;
+pub use navigation_target::NavigationTarget;
+pub use structure::{file_structure, StructureNode};
 
+pub(crate) use navigation_target::{description_from_symbol, docs_from_symbol};
 pub(crate) use short_label::ShortLabel;
-pub(crate) use navigation_target::{docs_from_symbol, description_from_symbol};
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
     FunctionSignature::from(node).to_string()

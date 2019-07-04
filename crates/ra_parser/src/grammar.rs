@@ -37,9 +37,9 @@ mod type_params;
 mod types;
 
 use crate::{
+    parser::{CompletedMarker, Marker, Parser},
     SyntaxKind::{self, *},
     TokenSet,
-    parser::{CompletedMarker, Marker, Parser},
 };
 
 pub(crate) fn root(p: &mut Parser) {

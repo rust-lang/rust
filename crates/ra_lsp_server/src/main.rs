@@ -1,8 +1,8 @@
-use serde::Deserialize;
 use flexi_logger::{Duplicate, Logger};
 use gen_lsp_server::{run_server, stdio_transport};
+use serde::Deserialize;
 
-use ra_lsp_server::{Result, InitializationOptions};
+use ra_lsp_server::{InitializationOptions, Result};
 use ra_prof;
 
 fn main() -> Result<()> {

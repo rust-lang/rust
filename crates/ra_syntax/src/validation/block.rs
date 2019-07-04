@@ -1,7 +1,8 @@
-use crate::{SyntaxKind::*,
-    ast::{self, AttrsOwner, AstNode},
+use crate::{
+    ast::{self, AstNode, AttrsOwner},
     SyntaxError,
     SyntaxErrorKind::*,
+    SyntaxKind::*,
 };
 
 pub(crate) fn validate_block_node(node: &ast::Block, errors: &mut Vec<SyntaxError>) {

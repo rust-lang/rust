@@ -5,23 +5,22 @@
 //!  - Building the type for an item: This happens through the `type_for_def` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
-use std::sync::Arc;
 use std::iter;
+use std::sync::Arc;
 
+use super::{FnSig, GenericPredicate, Substs, TraitRef, Ty, TypeCtor};
 use crate::{
-    Function, Struct, Union, StructField, Enum, EnumVariant, Path, ModuleDef, TypeAlias, Const, Static,
-    HirDatabase, BuiltinType,
-    type_ref::TypeRef,
-    nameres::Namespace,
-    resolve::{Resolver, Resolution},
-    path::{PathSegment, GenericArg},
-    generics::{HasGenericParams},
     adt::VariantDef,
-    Trait,
-    generics::{WherePredicate, GenericDef},
+    generics::HasGenericParams,
+    generics::{GenericDef, WherePredicate},
+    nameres::Namespace,
+    path::{GenericArg, PathSegment},
+    resolve::{Resolution, Resolver},
     ty::AdtDef,
+    type_ref::TypeRef,
+    BuiltinType, Const, Enum, EnumVariant, Function, HirDatabase, ModuleDef, Path, Static, Struct,
+    StructField, Trait, TypeAlias, Union,
 };
-use super::{Ty, FnSig, Substs, TypeCtor, TraitRef, GenericPredicate};
 
 impl Ty {
     pub(crate) fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {

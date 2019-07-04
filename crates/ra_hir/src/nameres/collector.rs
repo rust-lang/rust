@@ -1,22 +1,19 @@
 use arrayvec::ArrayVec;
-use rustc_hash::FxHashMap;
-use relative_path::RelativePathBuf;
-use test_utils::tested_by;
 use ra_db::FileId;
 use ra_syntax::ast;
+use relative_path::RelativePathBuf;
+use rustc_hash::FxHashMap;
+use test_utils::tested_by;
 
 use crate::{
-    Function, Module, Struct, Union, Enum, Const, Static, Trait, TypeAlias, MacroDef,
-    DefDatabase, HirFileId, Name, Path,
-    KnownName, AstId,
-    nameres::{
-        Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode,
-        CrateDefMap, CrateModuleId, ModuleData, ItemOrMacro,
-        diagnostics::DefDiagnostic,
-        raw,
-    },
-    ids::{AstItemDef, LocationCtx, MacroCallLoc, MacroCallId, MacroDefId, MacroFileKind},
     either::Either,
+    ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
+    nameres::{
+        diagnostics::DefDiagnostic, raw, CrateDefMap, CrateModuleId, ItemOrMacro, ModuleData,
+        ModuleDef, PerNs, ReachedFixedPoint, Resolution, ResolveMode,
+    },
+    AstId, Const, DefDatabase, Enum, Function, HirFileId, KnownName, MacroDef, Module, Name, Path,
+    Static, Struct, Trait, TypeAlias, Union,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -666,9 +663,9 @@ fn resolve_submodule(
 mod tests {
     use ra_db::SourceDatabase;
 
-    use crate::{Crate, mock::MockDatabase, DefDatabase};
-    use ra_arena::{Arena};
     use super::*;
+    use crate::{mock::MockDatabase, Crate, DefDatabase};
+    use ra_arena::Arena;
     use rustc_hash::FxHashSet;
 
     fn do_collect_defs(

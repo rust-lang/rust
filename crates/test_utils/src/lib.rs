@@ -3,11 +3,11 @@ pub mod marks;
 
 use std::{
     fs,
-    path::{Path, PathBuf}
+    path::{Path, PathBuf},
 };
 
-use text_unit::{TextRange, TextUnit};
 use serde_json::Value;
+use text_unit::{TextRange, TextUnit};
 
 pub use difference::Changeset as __Changeset;
 

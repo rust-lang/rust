@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
-use ra_syntax::{ast::{self, NameOwner}, AstNode};
+use ra_syntax::{
+    ast::{self, NameOwner},
+    AstNode,
+};
 
-use crate::{Name, AsName, type_ref::TypeRef};
+use crate::{type_ref::TypeRef, AsName, Name};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
