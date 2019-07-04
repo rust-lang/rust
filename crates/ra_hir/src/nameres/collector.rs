@@ -227,10 +227,8 @@ where
                             .items
                             .iter()
                             .map(|(name, res)| (name.clone(), Either::A(res.clone())));
-                        let macros = scope
-                            .macros
-                            .iter()
-                            .map(|(name, res)| (name.clone(), Either::B(res.clone())));
+                        let macros =
+                            scope.macros.iter().map(|(name, res)| (name.clone(), Either::B(*res)));
 
                         let all = items.chain(macros).collect::<Vec<_>>();
                         self.update(module_id, Some(import_id), &all);
@@ -243,10 +241,8 @@ where
                             .items
                             .iter()
                             .map(|(name, res)| (name.clone(), Either::A(res.clone())));
-                        let macros = scope
-                            .macros
-                            .iter()
-                            .map(|(name, res)| (name.clone(), Either::B(res.clone())));
+                        let macros =
+                            scope.macros.iter().map(|(name, res)| (name.clone(), Either::B(*res)));
 
                         let all = items.chain(macros).collect::<Vec<_>>();
 
@@ -651,7 +647,7 @@ fn resolve_submodule(
         candidates.push(file_dir_mod.clone());
     };
     let sr = db.source_root(source_root_id);
-    let mut points_to = candidates.into_iter().filter_map(|path| sr.files.get(&path)).map(|&it| it);
+    let mut points_to = candidates.into_iter().filter_map(|path| sr.files.get(&path)).copied();
     // FIXME: handle ambiguity
     match points_to.next() {
         Some(file_id) => Ok(file_id),

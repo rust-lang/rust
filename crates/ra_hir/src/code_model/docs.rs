@@ -74,7 +74,7 @@ pub(crate) fn documentation_query(
         DocDef::Module(it) => docs_from_ast(&*it.declaration_source(db)?.ast),
         DocDef::StructField(it) => match it.source(db).ast {
             FieldSource::Named(named) => docs_from_ast(&*named),
-            FieldSource::Pos(..) => return None,
+            FieldSource::Pos(..) => None,
         },
         DocDef::Struct(it) => docs_from_ast(&*it.source(db).ast),
         DocDef::Enum(it) => docs_from_ast(&*it.source(db).ast),

@@ -56,7 +56,7 @@ fn parse_subtree(tt: &tt::Subtree, transcriber: bool) -> Result<crate::Subtree, 
                     }
                 }
                 tt::Leaf::Punct(punct) => crate::Leaf::from(*punct).into(),
-                tt::Leaf::Ident(tt::Ident { text, id: _ }) => {
+                tt::Leaf::Ident(tt::Ident { text, .. }) => {
                     crate::Leaf::from(crate::Ident { text: text.clone() }).into()
                 }
                 tt::Leaf::Literal(tt::Literal { text }) => {

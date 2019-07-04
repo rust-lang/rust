@@ -171,14 +171,14 @@ impl<'a> TtCursor<'a> {
     }
 
     fn eat_punct3(&mut self, p: &tt::Punct) -> Option<SmallVec<[tt::Punct; 3]>> {
-        let sec = self.eat_punct()?.clone();
-        let third = self.eat_punct()?.clone();
-        Some(smallvec![p.clone(), sec, third])
+        let sec = *self.eat_punct()?;
+        let third = *self.eat_punct()?;
+        Some(smallvec![*p, sec, third])
     }
 
     fn eat_punct2(&mut self, p: &tt::Punct) -> Option<SmallVec<[tt::Punct; 3]>> {
-        let sec = self.eat_punct()?.clone();
-        Some(smallvec![p.clone(), sec])
+        let sec = *self.eat_punct()?;
+        Some(smallvec![*p, sec])
     }
 
     fn eat_multi_char_punct<'b, I>(
@@ -251,7 +251,7 @@ impl<'a> TtCursor<'a> {
                 // So we by pass that check here.
                 let mut peekable = TokenPeek::new(self.subtree.token_trees[self.pos..].iter());
                 let puncts = self.eat_multi_char_punct(punct, &mut peekable);
-                let puncts = puncts.unwrap_or_else(|| smallvec![punct.clone()]);
+                let puncts = puncts.unwrap_or_else(|| smallvec![*punct]);
 
                 Some(crate::Separator::Puncts(puncts))
             }

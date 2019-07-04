@@ -21,8 +21,8 @@ pub struct CheckReparse {
 
 impl CheckReparse {
     pub fn from_data(data: &[u8]) -> Option<Self> {
-        const PREFIX: &'static str = "fn main(){\n\t";
-        const SUFFIX: &'static str = "\n}";
+        const PREFIX: &str = "fn main(){\n\t";
+        const SUFFIX: &str = "\n}";
 
         let data = str::from_utf8(data).ok()?;
         let mut lines = data.lines();

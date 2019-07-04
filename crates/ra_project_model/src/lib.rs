@@ -191,7 +191,7 @@ impl ProjectWorkspace {
                     }
                 }
 
-                let libstd = sysroot.std().and_then(|it| sysroot_crates.get(&it).map(|&it| it));
+                let libstd = sysroot.std().and_then(|it| sysroot_crates.get(&it).copied());
 
                 let mut pkg_to_lib_crate = FxHashMap::default();
                 let mut pkg_crates = FxHashMap::default();

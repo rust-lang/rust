@@ -39,13 +39,13 @@ fn collect_path_segments_raw<'a>(
     // We need to reverse only the new added segments
     let only_new_segments = segments.split_at_mut(oldlen).1;
     only_new_segments.reverse();
-    return Some(segments.len() - oldlen);
+    Some(segments.len() - oldlen)
 }
 
 fn fmt_segments(segments: &[SmolStr]) -> String {
     let mut buf = String::new();
     fmt_segments_raw(segments, &mut buf);
-    return buf;
+    buf
 }
 
 fn fmt_segments_raw(segments: &[SmolStr], buf: &mut String) {
@@ -61,7 +61,7 @@ fn fmt_segments_raw(segments: &[SmolStr], buf: &mut String) {
 
 // Returns the numeber of common segments.
 fn compare_path_segments(left: &[SmolStr], right: &[&ast::PathSegment]) -> usize {
-    return left.iter().zip(right).filter(|(l, r)| compare_path_segment(l, r)).count();
+    left.iter().zip(right).filter(|(l, r)| compare_path_segment(l, r)).count()
 }
 
 fn compare_path_segment(a: &SmolStr, b: &ast::PathSegment) -> bool {
@@ -320,7 +320,7 @@ fn walk_use_tree_for_best_action<'a>(
 
     // We remove the segments added
     current_path_segments.truncate(prev_len);
-    return action;
+    action
 }
 
 fn best_action_for_target<'b, 'a: 'b>(
@@ -339,7 +339,7 @@ fn best_action_for_target<'b, 'a: 'b>(
         });
 
     match best_action {
-        Some(action) => return action,
+        Some(action) => action,
         None => {
             // We have no action and no UseItem was found in container so we find
             // another item and we use it as anchor.
@@ -350,7 +350,7 @@ fn best_action_for_target<'b, 'a: 'b>(
                 .find(|n| n.range().start() < anchor.range().start())
                 .or_else(|| Some(anchor));
 
-            return ImportAction::add_new_use(anchor, false);
+            ImportAction::add_new_use(anchor, false)
         }
     }
 }

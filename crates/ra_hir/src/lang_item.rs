@@ -122,7 +122,7 @@ impl LangItems {
         module: Module,
     ) {
         if let Some(module_lang_items) = db.module_lang_items(module) {
-            self.items.extend(module_lang_items.items.iter().map(|(k, v)| (k.clone(), v.clone())))
+            self.items.extend(module_lang_items.items.iter().map(|(k, v)| (k.clone(), *v)))
         }
 
         // Look for lang items in the children
@@ -142,7 +142,7 @@ impl LangItems {
     {
         let node = item.source(db).ast;
         if let Some(lang_item_name) = lang_item_name(&*node) {
-            self.items.entry(lang_item_name).or_insert(constructor(item));
+            self.items.entry(lang_item_name).or_insert_with(|| constructor(item));
         }
     }
 }

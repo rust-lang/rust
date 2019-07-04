@@ -78,7 +78,7 @@ impl<'a> SubtreeTokenSource<'a> {
             }
         }
 
-        return cached[pos].clone();
+        cached[pos].clone()
     }
 }
 

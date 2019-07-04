@@ -5,9 +5,7 @@ pub(crate) mod pending_requests;
 use std::{error::Error, fmt, path::PathBuf, sync::Arc, time::Instant};
 
 use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
-use gen_lsp_server::{
-    handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
-};
+use gen_lsp_server::{handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse};
 use lsp_types::NumberOrString;
 use ra_ide_api::{Canceled, FileId, LibraryData};
 use ra_prof::profile;
@@ -398,7 +396,8 @@ fn on_notification(
         Ok(mut params) => {
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
-            let text = params.content_changes.pop().ok_or_else(|| format!("empty changes"))?.text;
+            let text =
+                params.content_changes.pop().ok_or_else(|| "empty changes".to_string())?.text;
             state.vfs.write().change_file_overlay(path.as_path(), text);
             return Ok(());
         }

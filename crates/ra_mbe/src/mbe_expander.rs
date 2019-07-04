@@ -498,7 +498,7 @@ fn expand_tt(
                 tt::Leaf::from(tt::Ident { text: ident.text.clone(), id: TokenId::unspecified() })
                     .into()
             }
-            crate::Leaf::Punct(punct) => tt::Leaf::from(punct.clone()).into(),
+            crate::Leaf::Punct(punct) => tt::Leaf::from(*punct).into(),
             crate::Leaf::Var(v) => {
                 if v.text == "crate" {
                     // FIXME: Properly handle $crate token

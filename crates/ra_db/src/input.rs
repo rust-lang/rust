@@ -139,7 +139,7 @@ impl CrateGraph {
     }
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = CrateId> + 'a {
-        self.arena.keys().map(|it| *it)
+        self.arena.keys().copied()
     }
 
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
@@ -191,7 +191,7 @@ impl CrateGraph {
                 return true;
             }
         }
-        return false;
+        false
     }
 }
 

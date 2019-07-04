@@ -112,6 +112,6 @@ fn read_stdin() -> Result<String> {
 }
 
 fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
-    let idx = s.rfind(":").ok_or_else(|| format!("no `{}` in {}", c, s))?;
+    let idx = s.rfind(':').ok_or_else(|| format!("no `{}` in {}", c, s))?;
     Ok((&s[..idx], &s[idx + 1..]))
 }

@@ -137,7 +137,7 @@ impl<'a> Edits<'a> {
             Step::Newline(n) => n,
             Step::Utf16Char(r) => r.end(),
         };
-        let res = match &mut self.current {
+        match &mut self.current {
             Some(edit) => {
                 if step_pos <= edit.delete.start() {
                     NextSteps::Use
@@ -155,8 +155,7 @@ impl<'a> Edits<'a> {
                 }
             }
             None => NextSteps::Use,
-        };
-        res
+        }
     }
 
     fn translate_range(&self, range: TextRange) -> TextRange {
