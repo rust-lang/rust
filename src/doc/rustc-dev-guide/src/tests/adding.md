@@ -171,8 +171,8 @@ source.
   argument is the first version to ignore.  If no second argument is
   given, all subsequent versions are ignored; otherwise, the second
   argument is the last version to ignore.
-* `compile-pass` for UI tests, indicates that the test is
-  supposed to compile, as opposed to the default where the test is
+* `build-pass` for UI tests, indicates that the test is supposed to
+  successfully compile and link, as opposed to the default where the test is
   supposed to error out.
 * `compile-flags` passes extra command-line args to the compiler,
   e.g. `compile-flags -g` which forces debuginfo to be enabled.
@@ -279,7 +279,9 @@ can also make UI tests where compilation is expected to succeed, and
 you can even run the resulting program. Just add one of the following
 [header commands](#header_commands):
 
-- `// compile-pass` – compilation should succeed but do
+- `// check-pass` - compilation should succeed but skip codegen
+  (which is expensive and isn't supposed to fail in most cases)
+- `// build-pass` – compilation and linking should succeed but do
   not run the resulting binary
 - `// run-pass` – compilation should succeed and we should run the
   resulting binary
