@@ -13,9 +13,13 @@ impl Drop for NeedDrop {
     fn drop(&mut self) {}
 }
 
-// Constant expressions allow `NoDrop` to go out of scope,
+// Constant expressios allow `NoDrop` to go out of scope,
 // unlike a value of the interior type implementing `Drop`.
 static X: () = (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1;
+
+const Y: () = (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1;
+
+const fn _f() { (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1 }
 
 // A union that scrubs the drop glue from its inner type
 union NoDrop<T> { inner: ManuallyDrop<T> }
