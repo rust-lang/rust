@@ -75,7 +75,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 // If unresolved type isn't a ty_var then unresolved_type_span is None
                 self.fcx.need_type_info_err_in_generator(
                     self.kind,
-                    unresolved_type_span.unwrap_or(yield_data.span),
+                    unresolved_type_span.unwrap_or(source_span),
                     unresolved_type,
                 )
                     .span_note(yield_data.span, &*note)
