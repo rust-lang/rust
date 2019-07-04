@@ -13,23 +13,22 @@ fn main() {
 
         #[used]
         static _F1: unsafe extern fn(usize, usize) -> *mut c_void =
-            mimalloc_sys::mi_calloc;
-        // NOTE: this symbol calls mi_malloc_aligned
-        // #[used]
-        // static _F2: unsafe extern fn(*mut *mut c_void, usize, usize) -> c_int =
-        //   mimalloc_sys::mi_posix_memalign;
+            mimalloc_sys::calloc;
+        #[used]
+        static _F2: unsafe extern fn(*mut *mut c_void, usize, usize) -> c_int =
+            mimalloc_sys::posix_memalign;
         #[used]
         static _F3: unsafe extern fn(usize, usize) -> *mut c_void =
-            mimalloc_sys::mi_malloc_aligned;
+            mimalloc_sys::aligned_alloc;
         #[used]
         static _F4: unsafe extern fn(usize) -> *mut c_void =
-            mimalloc_sys::mi_malloc;
+            mimalloc_sys::malloc;
         #[used]
         static _F5: unsafe extern fn(*mut c_void, usize) -> *mut c_void =
-            mimalloc_sys::mi_realloc;
+            mimalloc_sys::realloc;
         #[used]
         static _F6: unsafe extern fn(*mut c_void) =
-            mimalloc_sys::mi_free;
+            mimalloc_sys::free;
     }
 
     rustc_driver::set_sigpipe_handler();
