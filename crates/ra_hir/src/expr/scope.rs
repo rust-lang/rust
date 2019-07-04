@@ -72,7 +72,7 @@ impl ExprScopes {
     }
 
     pub(crate) fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
-        self.scope_by_expr.get(&expr).map(|&scope| scope)
+        self.scope_by_expr.get(&expr).copied()
     }
 
     pub(crate) fn scope_by_expr(&self) -> &FxHashMap<ExprId, ScopeId> {

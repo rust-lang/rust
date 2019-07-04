@@ -72,8 +72,8 @@ impl salsa::ParallelDatabase for RootDatabase {
     fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
         salsa::Snapshot::new(RootDatabase {
             runtime: self.runtime.snapshot(self),
-            last_gc: self.last_gc.clone(),
-            last_gc_check: self.last_gc_check.clone(),
+            last_gc: self.last_gc,
+            last_gc_check: self.last_gc_check,
         })
     }
 }

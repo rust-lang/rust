@@ -150,7 +150,7 @@ impl BodySourceMap {
     }
 
     pub(crate) fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::NamedField> {
-        self.field_map[&(expr, field)].clone()
+        self.field_map[&(expr, field)]
     }
 }
 
@@ -471,15 +471,15 @@ impl Pat {
         match self {
             Pat::Range { .. } | Pat::Lit(..) | Pat::Path(..) | Pat::Wild | Pat::Missing => {}
             Pat::Bind { subpat, .. } => {
-                subpat.iter().map(|pat| *pat).for_each(f);
+                subpat.iter().copied().for_each(f);
             }
             Pat::Tuple(args) | Pat::TupleStruct { args, .. } => {
-                args.iter().map(|pat| *pat).for_each(f);
+                args.iter().copied().for_each(f);
             }
             Pat::Ref { pat, .. } => f(*pat),
             Pat::Slice { prefix, rest, suffix } => {
                 let total_iter = prefix.iter().chain(rest.iter()).chain(suffix.iter());
-                total_iter.map(|pat| *pat).for_each(f);
+                total_iter.copied().for_each(f);
             }
             Pat::Struct { args, .. } => {
                 args.iter().map(|f| f.pat).for_each(f);

@@ -130,7 +130,7 @@ fn initialize(
         Ok(RawMessage::Notification(n)) => {
             n.cast::<Initialized>().map_err(|_| "expected initialized notification")?;
         }
-        _ => Err(format!("expected initialized notification"))?,
+        _ => Err("expected initialized notification".to_string())?,
     }
     Ok(params)
 }

@@ -116,16 +116,16 @@ pub struct InferenceResult {
 
 impl InferenceResult {
     pub fn method_resolution(&self, expr: ExprId) -> Option<Function> {
-        self.method_resolutions.get(&expr).map(|it| *it)
+        self.method_resolutions.get(&expr).copied()
     }
     pub fn field_resolution(&self, expr: ExprId) -> Option<StructField> {
-        self.field_resolutions.get(&expr).map(|it| *it)
+        self.field_resolutions.get(&expr).copied()
     }
     pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<ImplItem> {
-        self.assoc_resolutions.get(&id.into()).map(|it| *it)
+        self.assoc_resolutions.get(&id.into()).copied()
     }
     pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<ImplItem> {
-        self.assoc_resolutions.get(&id.into()).map(|it| *it)
+        self.assoc_resolutions.get(&id.into()).copied()
     }
     pub(crate) fn add_diagnostics(
         &self,
@@ -239,8 +239,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             &self.resolver,
             type_ref,
         );
-        let ty = self.insert_type_vars(ty);
-        ty
+        self.insert_type_vars(ty)
     }
 
     fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs, depth: usize) -> bool {
@@ -973,8 +972,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
                     let expected = if let Some(type_ref) = arg_type {
-                        let ty = self.make_ty(type_ref);
-                        ty
+                        self.make_ty(type_ref)
                     } else {
                         Ty::Unknown
                     };

@@ -107,7 +107,7 @@ pub fn token_tree_to_ast_item_list(tt: &tt::Subtree) -> TreeArc<ast::SourceFile>
 impl TokenMap {
     pub fn relative_range_of(&self, tt: tt::TokenId) -> Option<TextRange> {
         let idx = tt.0 as usize;
-        self.tokens.get(idx).map(|&it| it)
+        self.tokens.get(idx).copied()
     }
 
     fn alloc(&mut self, relative_range: TextRange) -> tt::TokenId {

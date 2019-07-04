@@ -272,7 +272,7 @@ impl Scope {
             },
             Scope::ImplBlockScope(i) => {
                 if name.as_known_name() == Some(KnownName::SelfType) {
-                    PerNs::types(Resolution::SelfType(i.clone()))
+                    PerNs::types(Resolution::SelfType(*i))
                 } else {
                     PerNs::none()
                 }
@@ -317,7 +317,7 @@ impl Scope {
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(Name::self_type(), PerNs::types(Resolution::SelfType(i.clone())));
+                f(Name::self_type(), PerNs::types(Resolution::SelfType(*i)));
             }
             Scope::ExprScope(e) => {
                 e.expr_scopes.entries(e.scope_id).iter().for_each(|e| {

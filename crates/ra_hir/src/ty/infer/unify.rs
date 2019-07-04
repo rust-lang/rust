@@ -102,7 +102,7 @@ impl<T> Canonicalized<T> {
         ty.fold(&mut |ty| match ty {
             Ty::Bound(idx) => {
                 if (idx as usize) < self.free_vars.len() {
-                    Ty::Infer(self.free_vars[idx as usize].clone())
+                    Ty::Infer(self.free_vars[idx as usize])
                 } else {
                     Ty::Bound(idx)
                 }
@@ -120,7 +120,7 @@ impl<T> Canonicalized<T> {
         let new_vars =
             (0..solution.num_vars).map(|_| ctx.new_type_var()).collect::<Vec<_>>().into();
         for (i, ty) in solution.value.into_iter().enumerate() {
-            let var = self.free_vars[i].clone();
+            let var = self.free_vars[i];
             ctx.unify(&Ty::Infer(var), &ty.subst_bound_vars(&new_vars));
         }
     }

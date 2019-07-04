@@ -94,7 +94,7 @@ impl SysrootCrate {
         self.root(sysroot).parent().unwrap()
     }
     pub fn deps<'a>(self, sysroot: &'a Sysroot) -> impl Iterator<Item = SysrootCrate> + 'a {
-        sysroot.crates[self].deps.iter().map(|&it| it)
+        sysroot.crates[self].deps.iter().copied()
     }
 }
 

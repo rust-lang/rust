@@ -25,7 +25,7 @@ pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
         match event {
             WalkEvent::Enter(node) => {
                 if let Some(mut symbol) = structure_node(node) {
-                    symbol.parent = stack.last().map(|&n| n);
+                    symbol.parent = stack.last().copied();
                     stack.push(res.len());
                     res.push(symbol);
                 }

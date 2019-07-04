@@ -173,7 +173,7 @@ fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: Mode) -> Result<ch
                         }
 
                         break std::char::from_u32(value).ok_or_else(|| {
-                            if value > 0x10FFFF {
+                            if value > 0x0010_FFFF {
                                 EscapeError::OutOfRangeUnicodeEscape
                             } else {
                                 EscapeError::LoneSurrogateUnicodeEscape

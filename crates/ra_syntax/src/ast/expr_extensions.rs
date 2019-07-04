@@ -260,7 +260,7 @@ impl ast::Literal {
                     .iter()
                     .find(|&s| text.ends_with(s))
                     .map(|&suf| SmolStr::new(suf));
-                LiteralKind::FloatNumber { suffix: suffix }
+                LiteralKind::FloatNumber { suffix }
             }
             STRING | RAW_STRING => LiteralKind::String,
             T![true] | T![false] => LiteralKind::Bool,

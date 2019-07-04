@@ -28,7 +28,7 @@ pub(crate) struct TextTokenSource<'t> {
 
 impl<'t> TokenSource for TextTokenSource<'t> {
     fn current(&self) -> PToken {
-        return self.curr.0;
+        self.curr.0
     }
 
     fn lookahead_nth(&self, n: usize) -> PToken {
