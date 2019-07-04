@@ -4864,7 +4864,7 @@ assert_eq!(1, discriminant(&Enum::Struct{a: 7, b: 11}));
 "##,
 
 E0740: r##"
-A `union` can not have fields with destructors.
+A `union` cannot have fields with destructors.
 "##,
 
 E0733: r##"
