@@ -1889,6 +1889,30 @@ impl<'tcx> Place<'tcx> {
         }
     }
 
+    /// Finds the innermost `PlaceBase` for this `Place`.
+    pub fn base(&self) -> &PlaceBase<'tcx> {
+        &self.base
+    }
+
+    /// Finds the innermost `PlaceBase` for this `Place`, or `None` if the target of this `Place`
+    /// is behind an indirection.
+    pub fn base_direct(&self) -> Option<&PlaceBase<'tcx>> {
+        self.iterate(|base, projections| {
+            for proj in projections {
+                if let PlaceElem::Deref = proj.elem {
+                    return None;
+                }
+            }
+
+            Some(base)
+        })
+    }
+
+    /// Finds the innermost `Local` from this `Place`.
+    pub fn base_local(&self) -> Option<Local> {
+        self.base().local()
+    }
+
     /// Recursively "iterates" over place components, generating a `PlaceBase` and
     /// `Projections` list and invoking `op` with a `ProjectionsIter`.
     pub fn iterate<R>(
@@ -1980,6 +2004,15 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
                 }),
             } => Some(*local),
             _ => None,
+        }
+    }
+}
+
+impl PlaceBase<'_> {
+    pub fn local(&self) -> Option<Local> {
+        match *self {
+            PlaceBase::Local(local) => Some(local),
+            PlaceBase::Static(_) => None,
         }
     }
 }
