@@ -1,0 +1,12 @@
+error[E0658]: async closures are unstable
+  --> $DIR/feature-async-closure.rs:5:13
+   |
+LL |     let _ = async || {};
+   |             ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/62290
+   = help: add #![feature(async_closure)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
