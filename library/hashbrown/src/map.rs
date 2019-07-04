@@ -233,7 +233,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// ```
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self::with_capacity_and_hasher(capacity, Default::default())
+        Self::with_capacity_and_hasher(capacity, DefaultHashBuilder::default())
     }
 }
 
