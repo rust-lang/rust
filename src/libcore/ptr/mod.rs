@@ -662,7 +662,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///
 /// An example of what not to do and how this relates to `read_unaligned` is:
 ///
-/// ```
+/// ```no_run
 /// #[repr(packed, C)]
 /// struct Packed {
 ///     _padding: u8,
@@ -689,7 +689,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// };
 /// ```
 ///
-/// Accessing unaligned values directly with e.g. `packed.unaligned` is safe however.
+/// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
 // FIXME: Update docs based on outcome of RFC #2582 and friends.
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
@@ -834,7 +834,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// An example of what not to do and how this relates to `write_unaligned` is:
 ///
-/// ```
+/// ```no_run
 /// #[repr(packed, C)]
 /// struct Packed {
 ///     _padding: u8,
@@ -859,7 +859,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// };
 /// ```
 ///
-/// Accessing unaligned values directly with e.g. `packed.unaligned` is safe however.
+/// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
 // FIXME: Update docs based on outcome of RFC #2582 and friends.
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
