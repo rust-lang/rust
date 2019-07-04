@@ -2032,7 +2032,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(keys, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
+    pub fn keys(&self) -> Keys<'_, K, V> {
         Keys { inner: self.iter() }
     }
 
@@ -2053,7 +2053,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(values, ["hello", "goodbye"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn values<'a>(&'a self) -> Values<'a, K, V> {
+    pub fn values(&self) -> Values<'_, K, V> {
         Values { inner: self.iter() }
     }
 
@@ -2557,8 +2557,8 @@ enum UnderflowResult<'a, K, V> {
     Stole(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
 }
 
-fn handle_underfull_node<'a, K, V>(node: NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>)
-                                   -> UnderflowResult<'a, K, V> {
+fn handle_underfull_node<K, V>(node: NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal>)
+                               -> UnderflowResult<'_, K, V> {
     let parent = if let Ok(parent) = node.ascend() {
         parent
     } else {
