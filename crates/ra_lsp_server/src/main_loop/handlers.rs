@@ -2,7 +2,7 @@ use std::{fmt::Write as _, io::Write as _};
 
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
-    CodeAction, CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
+    CodeAction, CodeActionOrCommand, CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
     DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeKind,
     FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
     PrepareRenameResponse, Range, RenameParams, SymbolInformation, TextDocumentIdentifier,
@@ -665,7 +665,7 @@ pub fn handle_code_action(
 
     let assists = world.analysis().assists(FileRange { file_id, range })?.into_iter();
     let diagnostics = world.analysis().diagnostics(file_id)?;
-    let mut res: Vec<CodeAction> = Vec::new();
+    let mut res: CodeActionResponse = Default::default();
 
     let fixes_from_diagnostics = diagnostics
         .into_iter()
@@ -689,7 +689,7 @@ pub fn handle_code_action(
             edit: None,
             command: Some(command),
         };
-        res.push(action);
+        res.push(CodeActionOrCommand::CodeAction(action));
     }
 
     for assist in assists {
@@ -711,10 +711,10 @@ pub fn handle_code_action(
             edit: None,
             command: Some(command),
         };
-        res.push(action);
+        res.push(CodeActionOrCommand::CodeAction(action));
     }
 
-    Ok(Some(CodeActionResponse::Actions(res)))
+    Ok(Some(res))
 }
 
 pub fn handle_code_lens(
