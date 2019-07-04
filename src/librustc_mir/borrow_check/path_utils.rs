@@ -2,8 +2,7 @@ use crate::borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseActivation}
 use crate::borrow_check::places_conflict;
 use crate::borrow_check::AccessDepth;
 use crate::dataflow::indexes::BorrowIndex;
-use rustc::mir::{BasicBlock, Location, Body, Place, PlaceBase};
-use rustc::mir::{ProjectionElem, BorrowKind};
+use rustc::mir::{BasicBlock, BorrowKind, Location, Body, Place, PlaceBase};
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::graph::dominators::Dominators;
 
@@ -132,21 +131,8 @@ pub(super) fn is_active<'tcx>(
 
 /// Determines if a given borrow is borrowing local data
 /// This is called for all Yield statements on movable generators
-pub(super) fn borrow_of_local_data(place: &Place<'_>) -> bool {
-    place.iterate(|place_base, place_projection| {
-        match place_base {
-            PlaceBase::Static(..) => return false,
-            PlaceBase::Local(..) => {},
-        }
-
-        for proj in place_projection {
-            // Reborrow of already borrowed data is ignored
-            // Any errors will be caught on the initial borrow
-            if proj.elem == ProjectionElem::Deref {
-                return false;
-            }
-        }
-
-        true
-    })
+pub(super) fn borrow_of_local_data<'tcx>(place: &Place<'tcx>) -> bool {
+    place.base_direct()
+        .and_then(PlaceBase::local)
+        .is_some()
 }

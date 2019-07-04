@@ -64,7 +64,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
             // Drop terminators borrows the location
             TerminatorKind::Drop { location, .. } |
             TerminatorKind::DropAndReplace { location, .. } => {
-                if let Some(local) = find_local(location) {
+                if let Some(local) = location.base_direct().and_then(PlaceBase::local) {
                     trans.gen(local);
                 }
             }
@@ -92,28 +92,12 @@ struct BorrowedLocalsVisitor<'gk> {
     trans: &'gk mut GenKillSet<Local>,
 }
 
-fn find_local(place: &Place<'_>) -> Option<Local> {
-    place.iterate(|place_base, place_projection| {
-        for proj in place_projection {
-            if proj.elem == ProjectionElem::Deref {
-                return None;
-            }
-        }
-
-        if let PlaceBase::Local(local) = place_base {
-            Some(*local)
-        } else {
-            None
-        }
-    })
-}
-
 impl<'tcx> Visitor<'tcx> for BorrowedLocalsVisitor<'_> {
     fn visit_rvalue(&mut self,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         if let Rvalue::Ref(_, _, ref place) = *rvalue {
-            if let Some(local) = find_local(place) {
+            if let Some(local) = place.base_direct().and_then(PlaceBase::local) {
                 self.trans.gen(local);
             }
         }
