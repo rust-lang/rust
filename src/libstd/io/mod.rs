@@ -1144,7 +1144,7 @@ pub trait Write {
 
     /// Like `write`, except that it writes from a slice of buffers.
     ///
-    /// Data is copied to from each buffer in order, with the final buffer
+    /// Data is copied from each buffer in order, with the final buffer
     /// read from possibly being only partially consumed. This method must
     /// behave as a call to `write` with the buffers concatenated would.
     ///
