@@ -1391,7 +1391,9 @@ fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     check_packed(tcx, span, def_id);
 }
 
-fn check_union_fields<'tcx>(tcx: TyCtxt<'tcx>, _sp: Span, item_def_id: DefId) -> bool {
+/// When the `#![feature(untagged_unions)]` gate is active,
+/// check that the fields of the `union` does not contain fields that need dropping.
+fn check_union_fields(tcx: TyCtxt<'_>, _: Span, item_def_id: DefId) -> bool {
     // Without the feature we check Copy types only later
     if !tcx.features().untagged_unions {
         return true;
