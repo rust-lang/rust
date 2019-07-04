@@ -108,6 +108,7 @@ impl<T: Write + Send + 'static> WinConsole<T> {
         let fg;
         let bg;
         unsafe {
+            #[allow(deprecated)]
             let mut buffer_info = ::std::mem::uninitialized();
             if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as DWORD), &mut buffer_info) != 0 {
                 fg = bits_to_color(buffer_info.wAttributes);

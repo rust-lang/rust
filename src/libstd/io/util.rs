@@ -44,6 +44,7 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
     where R: Read, W: Write
 {
     let mut buf = unsafe {
+        #[allow(deprecated)]
         let mut buf: [u8; super::DEFAULT_BUF_SIZE] = mem::uninitialized();
         reader.initializer().initialize(&mut buf);
         buf

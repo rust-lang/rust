@@ -3,6 +3,7 @@
 // in a runtime panic.
 
 #![feature(never_type)]
+#![allow(deprecated)]
 
 use std::{mem, panic};
 

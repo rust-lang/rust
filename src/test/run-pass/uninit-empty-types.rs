@@ -7,6 +7,7 @@ use std::mem;
 #[derive(Clone)]
 struct Foo;
 
+#[allow(deprecated)]
 pub fn main() {
     unsafe {
         let _x: Foo = mem::uninitialized();

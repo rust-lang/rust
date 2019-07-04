@@ -49,6 +49,7 @@ fn main() {
 #[allow(unconditional_recursion)]
 fn recurse(array: &[u64]) {
     unsafe { black_box(array.as_ptr() as u64); }
+    #[allow(deprecated)]
     let local: [_; 1024] = unsafe { mem::uninitialized() };
     recurse(&local);
 }
