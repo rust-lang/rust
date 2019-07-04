@@ -1,7 +1,7 @@
 // edition:2018
 
 #![allow(non_camel_case_types)]
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 
 mod outer_mod {
     pub mod await { //~ ERROR expected identifier, found reserved keyword `await`
