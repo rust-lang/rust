@@ -1,5 +1,5 @@
 // run-pass
-
+// aux-build:arc_wake.rs
 // edition:2018
 
 #![feature(async_await)]
