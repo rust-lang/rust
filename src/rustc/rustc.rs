@@ -1,13 +1,13 @@
 fn main() {
-    // Pull in jemalloc when enabled.
+    // Pull in mimalloc when enabled.
     //
-    // Note that we're pulling in a static copy of jemalloc which means that to
+    // Note that we're pulling in a static copy of mimalloc which means that to
     // pull it in we need to actually reference its symbols for it to get
     // linked. The two crates we link to here, std and rustc_driver, are both
-    // dynamic libraries. That means to pull in jemalloc we need to actually
+    // dynamic libraries. That means to pull in mimalloc we need to actually
     // reference allocation symbols one way or another (as this file is the only
     // object code in the rustc executable).
-    #[cfg(feature = "jemalloc-sys")]
+    #[cfg(feature = "mimalloc-sys")]
     {
         use std::os::raw::{c_void, c_int};
 

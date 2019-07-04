@@ -22,8 +22,8 @@ rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
 #features = ['unprefixed_malloc_on_supported_platforms']
 
 [dependencies.mimalloc-sys]
-version = '0.1'
+version = '0.1.4'
 optional = true
 
 [features]
-jemalloc = ['mimalloc-sys']
+jemalloc = ['mimalloc-sys', 'mimalloc-sys/override']
