@@ -665,7 +665,7 @@ pub fn handle_code_action(
 
     let assists = world.analysis().assists(FileRange { file_id, range })?.into_iter();
     let diagnostics = world.analysis().diagnostics(file_id)?;
-    let mut res: CodeActionResponse = Default::default();
+    let mut res = CodeActionResponse::default();
 
     let fixes_from_diagnostics = diagnostics
         .into_iter()
