@@ -5,7 +5,9 @@ pub(crate) mod pending_requests;
 use std::{error::Error, fmt, path::PathBuf, sync::Arc, time::Instant};
 
 use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
-use gen_lsp_server::{handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse};
+use gen_lsp_server::{
+    handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
+};
 use lsp_types::NumberOrString;
 use ra_ide_api::{Canceled, FileId, LibraryData};
 use ra_prof::profile;
