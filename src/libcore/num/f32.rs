@@ -450,10 +450,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
     /// let v = f32::from_bits(0x41480000);
-    /// let difference = (v - 12.5).abs();
-    /// assert!(difference <= 1e-5);
+    /// assert_eq!(v, 12.5);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
@@ -462,13 +460,15 @@ impl f32 {
         unsafe { mem::transmute(v) }
     }
 
-    /// Return the floating point value as a byte array in big-endian byte order.
+    /// Return the memory representation of this floating point number as a byte array in
+    /// big-endian (network) byte order.
     ///
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(0.0f32.to_be_bytes(), [0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000]);
-    /// assert_eq!(1.0f32.to_be_bytes(), [0b0111_1111, 0b1000_0000, 0b0000_0000, 0b0000_0000]);
+    /// #![feature(float_to_from_bytes)]
+    /// let bytes = 12.5f32.to_be_bytes();
+    /// assert_eq!(bytes, [0x41, 0x48, 0x00, 0x00]);
     /// ```
     #[unstable(feature = "float_to_from_bytes", issue = "60446")]
     #[inline]
@@ -476,13 +476,15 @@ impl f32 {
         self.to_bits().to_be_bytes()
     }
 
-    /// Return the floating point value as a byte array in little-endian byte order.
+    /// Return the memory representation of this floating point number as a byte array in
+    /// little-endian byte order.
     ///
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(0.0f32.to_le_bytes(), [0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000]);
-    /// assert_eq!(1.0f32.to_le_bytes(), [0b0000_0000, 0b0000_0000, 0b1000_0000, 0b0111_1111]);
+    /// #![feature(float_to_from_bytes)]
+    /// let bytes = 12.5f32.to_le_bytes();
+    /// assert_eq!(bytes, [0x00, 0x00, 0x48, 0x41]);
     /// ```
     #[unstable(feature = "float_to_from_bytes", issue = "60446")]
     #[inline]
@@ -490,22 +492,27 @@ impl f32 {
         self.to_bits().to_le_bytes()
     }
 
-    /// Return the floating point value as a byte array in native byte order.
-    ///
+    /// Return the memory representation of this floating point number as a byte array in
+    /// native byte order.
     ///
     /// As the target platform's native endianness is used, portable code
     /// should use [`to_be_bytes`] or [`to_le_bytes`], as appropriate, instead.
     ///
+    /// [`to_be_bytes`]: #method.to_be_bytes
+    /// [`to_le_bytes`]: #method.to_le_bytes
+    ///
     /// # Examples
     ///
     /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let bytes = 12.5f32.to_ne_bytes();
     /// assert_eq!(
-    ///     u32::from_ne_bytes(0.0f32.to_ne_bytes()),
-    ///     0b0000_0000_0000_0000_0000_0000_0000_0000,
-    /// );
-    /// assert_eq!(
-    ///     u32::from_ne_bytes(1.0f32.to_ne_bytes()),
-    ///     0b0111_1111_1000_0000_0000_0000_0000_0000,
+    ///     bytes,
+    ///     if cfg!(target_endian = "big") {
+    ///         [0x41, 0x48, 0x00, 0x00]
+    ///     } else {
+    ///         [0x00, 0x00, 0x48, 0x41]
+    ///     }
     /// );
     /// ```
     #[unstable(feature = "float_to_from_bytes", issue = "60446")]
@@ -514,18 +521,56 @@ impl f32 {
         self.to_bits().to_ne_bytes()
     }
 
+    /// Create a floating point value from its representation as a byte array in big endian.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let value = f32::from_be_bytes([0x41, 0x48, 0x00, 0x00]);
+    /// assert_eq!(value, 12.5);
+    /// ```
     #[unstable(feature = "float_to_from_bytes", issue = "60446")]
     #[inline]
     pub fn from_be_bytes(bytes: [u8; 4]) -> Self {
         Self::from_bits(u32::from_be_bytes(bytes))
     }
 
+    /// Create a floating point value from its representation as a byte array in big endian.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let value = f32::from_le_bytes([0x00, 0x00, 0x48, 0x41]);
+    /// assert_eq!(value, 12.5);
+    /// ```
     #[unstable(feature = "float_to_from_bytes", issue = "60446")]
     #[inline]
     pub fn from_le_bytes(bytes: [u8; 4]) -> Self {
         Self::from_bits(u32::from_le_bytes(bytes))
     }
 
+    /// Create a floating point value from its representation as a byte array in big endian.
+    ///
+    /// As the target platform's native endianness is used, portable code
+    /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
+    /// appropriate instead.
+    ///
+    /// [`from_be_bytes`]: #method.from_be_bytes
+    /// [`from_le_bytes`]: #method.from_le_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let value = f32::from_ne_bytes(if cfg!(target_endian = "big") {
+    ///     [0x41, 0x48, 0x00, 0x00]
+    /// } else {
+    ///     [0x00, 0x00, 0x48, 0x41]
+    /// });
+    /// assert_eq!(value, 12.5);
+    /// ```
     #[unstable(feature = "float_to_from_bytes", issue = "60446")]
     #[inline]
     pub fn from_ne_bytes(bytes: [u8; 4]) -> Self {
