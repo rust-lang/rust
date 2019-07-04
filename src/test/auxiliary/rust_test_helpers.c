@@ -215,6 +215,29 @@ uint64_t get_c_many_params(void *a, void *b, void *c, void *d, struct quad f) {
     return f.c;
 }
 
+struct quad_floats {
+    float a;
+    float b;
+    float c;
+    float d;
+};
+
+float get_c_exhaust_sysv64_ints(
+    void *a,
+    void *b,
+    void *c,
+    void *d,
+    void *e,
+    void *f,
+    // `f` used the last integer register, so `g` goes on the stack.
+    // It also used to bring the "count of available integer registers" down to
+    // `-1` which broke the next SSE-only aggregate argument (`h`) - see #62350.
+    void *g,
+    struct quad_floats h
+) {
+    return h.c;
+}
+
 // Calculates the average of `(x + y) / n` where x: i64, y: f64. There must be exactly n pairs
 // passed as variadic arguments. There are two versions of this function: the
 // variadic one, and the one that takes a `va_list`.
