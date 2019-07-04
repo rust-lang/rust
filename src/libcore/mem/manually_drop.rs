@@ -118,7 +118,8 @@ impl<T: ?Sized> ManuallyDrop<T> {
     ///
     /// This function runs the destructor of the contained value and thus the wrapped value
     /// now represents uninitialized data. It is up to the user of this method to ensure the
-    /// uninitialized data is not actually used.
+    /// uninitialized data is not actually used, and that this function is called at most once
+    /// for a given instance of ManuallyDrop
     ///
     /// [`ManuallyDrop::into_inner`]: #method.into_inner
     #[stable(feature = "manually_drop", since = "1.20.0")]
