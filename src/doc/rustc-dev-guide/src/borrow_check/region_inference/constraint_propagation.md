@@ -112,8 +112,8 @@ induces an edge `'a -> 'b`. This conversion happens in the
 [`RegionInferenceContext::new`] function that creates the inference
 context.
 
-[`ConstraintSet`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/constraints/struct.ConstraintSet.html
-[graph-fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/constraints/struct.ConstraintSet.html#method.graph
+[`ConstraintSet`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/constraints/struct.OutlivesConstraintSet.html
+[graph-fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/constraints/struct.OutlivesConstraintSet.html#method.graph
 [`RegionInferenceContext::new`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.new
 
 When using a graph representation, we can detect regions that must be equal
