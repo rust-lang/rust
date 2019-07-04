@@ -32,7 +32,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             dox[code_block.code].to_owned(),
         );
 
-        let errors = Lexer::new_or_buffered_errs(&sess, source_file, None).and_then(|mut lexer| {
+        let errors = {
+            let mut lexer = Lexer::new(&sess, source_file, None);
             while let Ok(token::Token { kind, .. }) = lexer.try_next_token() {
                 if kind == token::Eof {
                     break;
@@ -46,7 +47,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             } else {
                 Ok(())
             }
-        });
+        };
 
         if let Err(errors) = errors {
             let mut diag = if let Some(sp) =
