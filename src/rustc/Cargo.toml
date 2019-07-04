@@ -26,4 +26,9 @@ version = '0.1.5'
 optional = true
 
 [features]
-jemalloc = ['mimalloc-sys', 'mimalloc-sys/override']
+jemalloc = [
+  'mimalloc-sys',
+  'mimalloc-sys/override',
+  'mimalloc-sys/secure',
+  'mimalloc-sys/check_full'
+]
