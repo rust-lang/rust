@@ -2,7 +2,7 @@ use std::{fmt::Write as _, io::Write as _};
 
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
-    CodeAction, CodeActionOrCommand, CodeActionResponse, CodeLens, Command, Diagnostic,
+    CodeAction, CodeActionResponse, CodeLens, Command, Diagnostic,
     DiagnosticSeverity, DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
     FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
     MarkupKind, Position, PrepareRenameResponse, Range, RenameParams, SymbolInformation,
@@ -689,7 +689,7 @@ pub fn handle_code_action(
             edit: None,
             command: Some(command),
         };
-        res.push(CodeActionOrCommand::CodeAction(action));
+        res.push(action.into());
     }
 
     for assist in assists {
@@ -711,7 +711,7 @@ pub fn handle_code_action(
             edit: None,
             command: Some(command),
         };
-        res.push(CodeActionOrCommand::CodeAction(action));
+        res.push(action.into());
     }
 
     Ok(Some(res))
