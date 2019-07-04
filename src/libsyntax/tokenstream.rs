@@ -59,17 +59,6 @@ where
     TokenStream: Send + Sync,
 {}
 
-// These are safe since we ensure that they hold for all fields in the `_dummy` function.
-//
-// These impls are only here because the compiler takes forever to compute the Send and Sync
-// bounds without them.
-// FIXME: Remove these impls when the compiler can compute the bounds quickly again.
-// See https://github.com/rust-lang/rust/issues/60846
-#[cfg(all(bootstrap, parallel_compiler))]
-unsafe impl Send for TokenTree {}
-#[cfg(all(bootstrap, parallel_compiler))]
-unsafe impl Sync for TokenTree {}
-
 impl TokenTree {
     /// Use this token tree as a matcher to parse given tts.
     pub fn parse(cx: &base::ExtCtxt<'_>, mtch: &[quoted::TokenTree], tts: TokenStream)

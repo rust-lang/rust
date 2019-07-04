@@ -207,7 +207,7 @@ use crate::mem::ManuallyDrop;
 #[allow(missing_debug_implementations)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 #[derive(Copy)]
-#[cfg_attr(not(bootstrap), repr(transparent))]
+#[repr(transparent)]
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,

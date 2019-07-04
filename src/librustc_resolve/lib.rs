@@ -7,7 +7,6 @@
 #![feature(mem_take)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
-#![cfg_attr(bootstrap, feature(type_alias_enum_variants))]
 
 #![recursion_limit="256"]
 

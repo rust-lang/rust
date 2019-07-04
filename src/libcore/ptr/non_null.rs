@@ -38,7 +38,7 @@ use crate::cmp::Ordering;
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
-#[cfg_attr(not(bootstrap), rustc_nonnull_optimization_guaranteed)]
+#[rustc_nonnull_optimization_guaranteed]
 pub struct NonNull<T: ?Sized> {
     pointer: *const T,
 }

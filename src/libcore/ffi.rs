@@ -302,7 +302,6 @@ impl<T> sealed_trait::VaArgSafe for *const T {}
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-#[cfg(not(bootstrap))]
 impl<'f> VaListImpl<'f> {
     /// Advance to the next arg.
     #[inline]
@@ -324,7 +323,6 @@ impl<'f> VaListImpl<'f> {
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-#[cfg(not(bootstrap))]
 impl<'f> Clone for VaListImpl<'f> {
     #[inline]
     fn clone(&self) -> Self {
@@ -340,7 +338,6 @@ impl<'f> Clone for VaListImpl<'f> {
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-#[cfg(not(bootstrap))]
 impl<'f> Drop for VaListImpl<'f> {
     fn drop(&mut self) {
         // FIXME: this should call `va_end`, but there's no clean way to
@@ -359,15 +356,12 @@ impl<'f> Drop for VaListImpl<'f> {
 extern "rust-intrinsic" {
     /// Destroy the arglist `ap` after initialization with `va_start` or
     /// `va_copy`.
-    #[cfg(not(bootstrap))]
     fn va_end(ap: &mut VaListImpl<'_>);
 
     /// Copies the current location of arglist `src` to the arglist `dst`.
-    #[cfg(not(bootstrap))]
     fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
 
     /// Loads an argument of type `T` from the `va_list` `ap` and increment the
     /// argument `ap` points to.
-    #[cfg(not(bootstrap))]
     fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
 }
