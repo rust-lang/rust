@@ -512,6 +512,19 @@ impl<'tcx> EnclosingBreakables<'tcx> {
     }
 }
 
+/// This is returned by `get_node_fn_decl` to decide whether to suggest
+/// a return type
+pub enum FnDeclType {
+    /// A return type can always be suggested, for all Items or TraitItems
+    /// but the program entry point
+    Item,
+    /// A return type can be suggested if the expected type implements
+    /// `std::process::Termination`
+    MainItem,
+    /// A return type should not be suggested for ImplItems
+    ImplItem,
+}
+
 pub struct FnCtxt<'a, 'tcx> {
     body_id: hir::HirId,
 
@@ -3728,7 +3741,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
-    fn get_node_fn_decl(&self, node: Node<'tcx>) -> Option<(&'tcx hir::FnDecl, ast::Ident, bool)> {
+    fn get_node_fn_decl(&self, node: Node<'tcx>)
+    -> Option<(&'tcx hir::FnDecl, ast::Ident, FnDeclType)> {
         match node {
             Node::Item(&hir::Item {
                 ident, node: hir::ItemKind::Fn(ref decl, ..), ..
@@ -3736,30 +3750,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
-                Some((decl, ident, ident.name != sym::main))
+                Some((decl, ident, if ident.name == sym::main {
+                    FnDeclType::MainItem
+                } else {
+                    FnDeclType::Item
+                }))
             }
             Node::TraitItem(&hir::TraitItem {
                 ident, node: hir::TraitItemKind::Method(hir::MethodSig {
                     ref decl, ..
                 }, ..), ..
-            }) => Some((decl, ident, true)),
+            }) => Some((decl, ident, FnDeclType::Item)),
             Node::ImplItem(&hir::ImplItem {
                 ident, node: hir::ImplItemKind::Method(hir::MethodSig {
                     ref decl, ..
                 }, ..), ..
-            }) => Some((decl, ident, false)),
+            }) => Some((decl, ident, FnDeclType::ImplItem)),
             _ => None,
         }
     }
 
     /// Given a `HirId`, return the `FnDecl` of the method it is enclosed by and whether a
     /// suggestion can be made, `None` otherwise.
-    pub fn get_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl, bool)> {
+    pub fn get_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl, FnDeclType)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
             let parent = self.tcx.hir().get(blk_id);
-            self.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
+            self.get_node_fn_decl(parent).map(|(fn_decl, _, decl_ty)| (fn_decl, decl_ty))
         })
     }
 
@@ -3898,12 +3916,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_decl: &hir::FnDecl,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        can_suggest: bool,
+        can_suggest: FnDeclType,
     ) -> bool {
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
-            (&hir::FunctionRetTy::DefaultReturn(span), true, true, true) => {
+            (&hir::FunctionRetTy::DefaultReturn(span), true, FnDeclType::Item, true) => {
                 err.span_suggestion(
                     span,
                     "try adding a return type",
@@ -3911,13 +3929,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable);
                 true
             }
-            (&hir::FunctionRetTy::DefaultReturn(span), false, true, true) => {
+            (&hir::FunctionRetTy::DefaultReturn(span), false, FnDeclType::Item, true) => {
                 err.span_label(span, "possibly return type missing here?");
                 true
             }
-            (&hir::FunctionRetTy::DefaultReturn(span), _, false, true) => {
-                // `fn main()` must return `()`, do not suggest changing return type
+            (&hir::FunctionRetTy::DefaultReturn(span), _, FnDeclType::ImplItem, true) => {
+                // do not suggest changing return type for trait impls
                 err.span_label(span, "expected `()` because of default return type");
+                true
+            }
+            (&hir::FunctionRetTy::DefaultReturn(span), _, FnDeclType::MainItem, true) => {
+                // in main(), we can only return types that implement `std::process::Termination`
+                let ret_ty = self.resolve_type_vars_with_obligations(found);
+                let is_term = if let Some(term_id) = self.infcx.tcx.lang_items().termination() {
+                    self.infcx.predicate_must_hold_modulo_regions(
+                        &self.infcx.tcx.predicate_for_trait_def(
+                            self.param_env,
+                            traits::ObligationCause::dummy(),
+                            term_id,
+                            0,
+                            ret_ty,
+                            &[]
+                        ))
+                } else {
+                    false
+                };
+                if is_term {
+                    err.span_suggestion(
+                        span,
+                        "try adding a return type",
+                        format!("-> {} ", ret_ty),
+                        Applicability::MachineApplicable);
+                } else {
+                    // `fn main()` must return `()`, do not suggest changing return type
+                    err.span_label(span, "expected `()` because of default return type");
+                }
                 true
             }
             // expectation was caused by something else, not the default return
