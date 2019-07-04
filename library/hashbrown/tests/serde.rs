@@ -1,9 +1,9 @@
 #![cfg(feature = "serde")]
 
-use hashbrown::{HashMap, HashSet};
-use serde_test::{assert_tokens, Token};
-use rustc_hash::FxHasher;
 use core::hash::BuildHasherDefault;
+use hashbrown::{HashMap, HashSet};
+use rustc_hash::FxHasher;
+use serde_test::{assert_tokens, Token};
 
 // We use FxHash for this test because we rely on the ordering
 type FxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
