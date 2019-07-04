@@ -250,37 +250,61 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 ref niche_variants,
                 niche_start,
             } => {
+                // Rebase from niche values to discriminants, and check
+                // whether the result is in range for the niche variants.
                 let niche_llty = bx.cx().immediate_backend_type(encoded_discr.layout);
                 let encoded_discr = encoded_discr.immediate();
-                let (is_niche, niche_discr) = if niche_variants.start() == niche_variants.end() {
-                    // Special case for when we can use a simple equality check,
-                    // which covers null pointers, and needs simpler codegen.
-                    // FIXME(eddyb): check the actual primitive type here.
-                    let encoded_niche = if niche_start == 0 {
-                        // HACK(eddyb): using `c_null` as it works on all types.
+
+                // We first compute the "relative discriminant" (wrt `niche_variants`),
+                // that is, if `n = niche_variants.end() - niche_variants.start()`,
+                // we remap `niche_start..=niche_start + n` (which may wrap around)
+                // to (non-wrap-around) `0..=n`, to be able to check whether the
+                // discriminant corresponds to a niche variant with one comparison.
+                // We also can't go directly to the (variant index) discriminant
+                // and check that it is in the range `niche_variants`, because
+                // that might not fit in the same type, on top of needing an extra
+                // comparison (see also the comment on `let niche_discr`).
+                let relative_discr = if niche_start == 0 {
+                    // Avoid subtracting `0`, which wouldn't work for pointers.
+                    // FIXME(eddyb) check the actual primitive type here.
+                    encoded_discr
+                } else {
+                    bx.sub(encoded_discr, bx.cx().const_uint_big(niche_llty, niche_start))
+                };
+                let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
+                let is_niche = {
+                    let relative_max = if relative_max == 0 {
+                        // Avoid calling `const_uint`, which wouldn't work for pointers.
+                        // FIXME(eddyb) check the actual primitive type here.
                         bx.cx().const_null(niche_llty)
                     } else {
-                        bx.cx().const_uint_big(niche_llty, niche_start)
+                        bx.cx().const_uint(niche_llty, relative_max as u64)
                     };
-                    (
-                        bx.icmp(IntPredicate::IntEQ, encoded_discr, encoded_niche),
+                    bx.icmp(IntPredicate::IntULE, relative_discr, relative_max)
+                };
+
+                // NOTE(eddyb) this addition needs to be performed on the final
+                // type, in case the niche itself can't represent all variant
+                // indices (e.g. `u8` niche with more than `256` variants,
+                // but enough uninhabited variants so that the remaining variants
+                // fit in the niche).
+                // In other words, `niche_variants.end - niche_variants.start`
+                // is representable in the niche, but `niche_variants.end`
+                // might not be, in extreme cases.
+                let niche_discr = {
+                    let relative_discr = if relative_max == 0 {
+                        // HACK(eddyb) since we have only one niche, we know which
+                        // one it is, and we can avoid having a dynamic value here.
+                        bx.cx().const_uint(cast_to, 0)
+                    } else {
+                        bx.intcast(relative_discr, cast_to, false)
+                    };
+                    bx.add(
+                        relative_discr,
                         bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64),
                     )
-                } else {
-                    // Rebase from niche values to discriminants, and check
-                    // whether the result is in range for the niche variants.
-                    // FIXME(#61696) the range check is sometimes incorrect.
-                    let delta = niche_start.wrapping_sub(niche_variants.start().as_u32() as u128);
-                    let niche_discr =
-                        bx.sub(encoded_discr, bx.cx().const_uint_big(niche_llty, delta));
-                    let niche_discr_max =
-                        bx.cx().const_uint(niche_llty, niche_variants.end().as_u32() as u64);
-                    (
-                        bx.icmp(IntPredicate::IntULE, niche_discr, niche_discr_max),
-                        niche_discr,
-                    )
                 };
-                let niche_discr = bx.intcast(niche_discr, cast_to, false);
+
                 bx.select(
                     is_niche,
                     niche_discr,
