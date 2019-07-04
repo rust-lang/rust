@@ -49,22 +49,3 @@ export CARGO_TARGET_DIR=`pwd`/target/
 
   # TODO: CLIPPY_CONF_DIR / CARGO_MANIFEST_DIR
 )
-
-# make sure tests are formatted
-
-# some lints are sensitive to formatting, exclude some files
-tests_need_reformatting="false"
-# switch to nightly
-rustup override set nightly
-# avoid loop spam and allow cmds with exit status != 0
-set +ex
-
-set -ex # reset
-
-if [ "${tests_need_reformatting}" == "true" ] ; then
-    echo "Tests need reformatting!"
-    exit 2
-fi
-
-# switch back to master
-rustup override set master
