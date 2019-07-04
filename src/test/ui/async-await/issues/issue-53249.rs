@@ -1,7 +1,7 @@
 // build-pass (FIXME(62277): could be check-pass?)
 // edition:2018
 
-#![feature(arbitrary_self_types, async_await, await_macro)]
+#![feature(arbitrary_self_types, async_await)]
 
 use std::task::{self, Poll};
 use std::future::Future;
@@ -37,11 +37,11 @@ impl<R, F> Future for Lazy<F>
 async fn __receive<WantFn, Fut>(want: WantFn) -> ()
     where Fut: Future<Output = ()>, WantFn: Fn(&Box<dyn Send + 'static>) -> Fut,
 {
-    await!(lazy(|_| ()));
+    lazy(|_| ()).await;
 }
 
 pub fn basic_spawn_receive() {
-    async { await!(__receive(|_| async { () })) };
+    async { __receive(|_| async { () }).await };
 }
 
 fn main() {}
