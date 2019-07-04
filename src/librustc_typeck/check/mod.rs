@@ -1402,7 +1402,7 @@ fn check_union_fields<'tcx>(tcx: TyCtxt<'tcx>, _sp: Span, item_def_id: DefId) ->
             let fields = &def.non_enum_variant().fields;
             for field in fields {
                 let field_ty = field.ty(tcx, substs);
-                // We are currently checking the type this field came from, so it must be local
+                // We are currently checking the type this field came from, so it must be local.
                 let field_span = tcx.hir().span_if_local(field.did).unwrap();
                 let param_env = tcx.param_env(field.did);
                 if field_ty.needs_drop(tcx, param_env) {
