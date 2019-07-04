@@ -18,15 +18,4 @@ async fn suggest_await_in_async_fn() {
     //~| SUGGESTION x.await
 }
 
-#[allow(unused)]
-async fn suggest_await_in_async_closure() {
-    async || {
-        let x = make_u32();
-        take_u32(x.await)
-        //~^ ERROR mismatched types [E0308]
-        //~| HELP consider using `.await` here
-        //~| SUGGESTION x.await
-    };
-}
-
 fn main() {}
