@@ -8,7 +8,7 @@ use rustc::hir::intravisit::FnKind;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::session::config::Config as SessionConfig;
-use rustc::ty::{self, FnSig};
+use rustc::ty;
 use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 use rustc_target::abi::LayoutOf;
