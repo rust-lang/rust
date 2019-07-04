@@ -36,7 +36,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 {
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
-    fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
+    fn build_sibling_block(&self, name: &str) -> Self;
     fn cx(&self) -> &Self::CodegenCx;
     fn llbb(&self) -> Self::BasicBlock;
 

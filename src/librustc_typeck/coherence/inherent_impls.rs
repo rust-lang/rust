@@ -7,7 +7,6 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
-use rustc::dep_graph::DepKind;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -17,10 +16,10 @@ use syntax::ast;
 use syntax_pos::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
-pub fn crate_inherent_impls<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn crate_inherent_impls(
+    tcx: TyCtxt<'_>,
     crate_num: CrateNum,
-) -> &'tcx CrateInherentImpls {
+) -> &CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
@@ -33,38 +32,14 @@ pub fn crate_inherent_impls<'tcx>(
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
-pub fn inherent_impls<'tcx>(tcx: TyCtxt<'tcx>, ty_def_id: DefId) -> &'tcx [DefId] {
+pub fn inherent_impls(tcx: TyCtxt<'_>, ty_def_id: DefId) -> &[DefId] {
     assert!(ty_def_id.is_local());
 
-    // NB. Until we adopt the red-green dep-tracking algorithm (see
-    // [the plan] for details on that), we do some hackery here to get
-    // the dependencies correct.  Basically, we use a `with_ignore` to
-    // read the result we want. If we didn't have the `with_ignore`,
-    // we would wind up with a dependency on the entire crate, which
-    // we don't want. Then we go and add dependencies on all the impls
-    // in the result (which is what we wanted).
-    //
-    // The result is a graph with an edge from `Hir(I)` for every impl
-    // `I` defined on some type `T` to `CoherentInherentImpls(T)`,
-    // thus ensuring that if any of those impls change, the set of
-    // inherent impls is considered dirty.
-    //
-    // [the plan]: https://github.com/rust-lang/rust-roadmap/issues/4
-
-    let result = tcx.dep_graph.with_ignore(|| {
-        let crate_map = tcx.crate_inherent_impls(ty_def_id.krate);
-        match crate_map.inherent_impls.get(&ty_def_id) {
-            Some(v) => &v[..],
-            None => &[],
-        }
-    });
-
-    for &impl_def_id in &result[..] {
-        let def_path_hash = tcx.def_path_hash(impl_def_id);
-        tcx.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
+    let crate_map = tcx.crate_inherent_impls(ty_def_id.krate);
+    match crate_map.inherent_impls.get(&ty_def_id) {
+        Some(v) => &v[..],
+        None => &[],
     }
-
-    result
 }
 
 struct InherentCollect<'tcx> {

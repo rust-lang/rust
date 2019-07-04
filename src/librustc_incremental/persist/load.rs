@@ -15,7 +15,7 @@ use super::fs::*;
 use super::file_format;
 use super::work_product;
 
-pub fn dep_graph_tcx_init<'tcx>(tcx: TyCtxt<'tcx>) {
+pub fn dep_graph_tcx_init(tcx: TyCtxt<'_>) {
     if !tcx.dep_graph.is_fully_enabled() {
         return
     }
@@ -192,7 +192,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     }))
 }
 
-pub fn load_query_result_cache<'sess>(sess: &'sess Session) -> OnDiskCache<'sess> {
+pub fn load_query_result_cache(sess: &Session) -> OnDiskCache<'_> {
     if sess.opts.incremental.is_none() ||
        !sess.opts.debugging_opts.incremental_queries {
         return OnDiskCache::new_empty(sess.source_map());

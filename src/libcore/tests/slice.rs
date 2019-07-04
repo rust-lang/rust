@@ -276,6 +276,25 @@ fn test_chunks_exact_nth() {
 }
 
 #[test]
+fn test_chunks_exact_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks_exact(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.chunks_exact(3);
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks_exact(10);
+    assert_eq!(c3.nth_back(0), None);
+}
+
+#[test]
 fn test_chunks_exact_last() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.chunks_exact(2);
@@ -1396,7 +1415,7 @@ pub mod memchr {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_simple() {
     let bytes = [1u8, 2, 3, 4, 5, 6, 7];
     let (prefix, aligned, suffix) = unsafe { bytes.align_to::<u16>() };
@@ -1420,7 +1439,7 @@ fn test_align_to_zst() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_non_trivial() {
     #[repr(align(8))] struct U64(u64, u64);
     #[repr(align(8))] struct U64U64U32(u64, u64, u32);

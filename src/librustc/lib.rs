@@ -35,6 +35,8 @@
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(const_fn)]
+#![feature(const_transmute)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![feature(inner_deref)]
@@ -65,6 +67,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(proc_macro_hygiene)]
 #![feature(log_syntax)]
+#![feature(mem_take)]
 
 #![recursion_limit="512"]
 

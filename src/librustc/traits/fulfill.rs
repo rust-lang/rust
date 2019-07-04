@@ -461,41 +461,35 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                match self.selcx.tcx().lift_to_global(&obligation.param_env) {
-                    None => {
+                if obligation.param_env.has_local_value() {
                         ProcessResult::Unchanged
-                    }
-                    Some(param_env) => {
-                        match self.selcx.tcx().lift_to_global(&substs) {
-                            Some(substs) => {
-                                let instance = ty::Instance::resolve(
-                                    self.selcx.tcx().global_tcx(),
-                                    param_env,
-                                    def_id,
-                                    substs,
-                                );
-                                if let Some(instance) = instance {
-                                    let cid = GlobalId {
-                                        instance,
-                                        promoted: None,
-                                    };
-                                    match self.selcx.tcx().at(obligation.cause.span)
-                                                          .const_eval(param_env.and(cid)) {
-                                        Ok(_) => ProcessResult::Changed(vec![]),
-                                        Err(err) => ProcessResult::Error(
-                                            CodeSelectionError(ConstEvalFailure(err)))
-                                    }
-                                } else {
-                                    ProcessResult::Error(CodeSelectionError(
-                                        ConstEvalFailure(ErrorHandled::TooGeneric)
-                                    ))
-                                }
-                            },
-                            None => {
-                                pending_obligation.stalled_on = substs.types().collect();
-                                ProcessResult::Unchanged
+                } else {
+                    if !substs.has_local_value() {
+                        let instance = ty::Instance::resolve(
+                            self.selcx.tcx().global_tcx(),
+                            obligation.param_env,
+                            def_id,
+                            substs,
+                        );
+                        if let Some(instance) = instance {
+                            let cid = GlobalId {
+                                instance,
+                                promoted: None,
+                            };
+                            match self.selcx.tcx().at(obligation.cause.span)
+                                                    .const_eval(obligation.param_env.and(cid)) {
+                                Ok(_) => ProcessResult::Changed(vec![]),
+                                Err(err) => ProcessResult::Error(
+                                    CodeSelectionError(ConstEvalFailure(err)))
                             }
+                        } else {
+                            ProcessResult::Error(CodeSelectionError(
+                                ConstEvalFailure(ErrorHandled::TooGeneric)
+                            ))
                         }
+                    } else {
+                        pending_obligation.stalled_on = substs.types().collect();
+                        ProcessResult::Unchanged
                     }
                 }
             }

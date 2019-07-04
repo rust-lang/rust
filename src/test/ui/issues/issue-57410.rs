@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Tests that the `unreachable_pub` lint doesn't fire for `pub self::imp::f`.
 

@@ -74,7 +74,7 @@ impl<T: LambdaL> ScopedCell<T> {
     }
 
     /// Sets the value in `self` to `value` while running `f`.
-    pub fn set<'a, R>(&self, value: <T as ApplyL<'a>>::Out, f: impl FnOnce() -> R) -> R {
+    pub fn set<R>(&self, value: <T as ApplyL<'_>>::Out, f: impl FnOnce() -> R) -> R {
         self.replace(value, |_| f())
     }
 }

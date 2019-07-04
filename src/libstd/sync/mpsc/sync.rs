@@ -383,7 +383,7 @@ impl<T> Packet<T> {
         // needs to be careful to destroy the data *outside* of the lock to
         // prevent deadlock.
         let _data = if guard.cap != 0 {
-            mem::replace(&mut guard.buf.buf, Vec::new())
+            mem::take(&mut guard.buf.buf)
         } else {
             Vec::new()
         };

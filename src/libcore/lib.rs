@@ -126,6 +126,7 @@
 #![feature(adx_target_feature)]
 #![feature(maybe_uninit_slice, maybe_uninit_array)]
 #![feature(external_doc)]
+#![feature(mem_take)]
 
 #[prelude_import]
 #[allow(unused)]

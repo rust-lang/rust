@@ -363,10 +363,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_free_region_map(&mut self) {
-        let free_region_map = self.tcx()
-            .lift_to_global(&self.fcx.tables.borrow().free_region_map);
-        let free_region_map = free_region_map.expect("all regions in free-region-map are global");
-        self.tables.free_region_map = free_region_map;
+        self.tables.free_region_map = self.fcx.tables.borrow().free_region_map.clone();
+        debug_assert!(!self.tables.free_region_map.elements().any(|r| r.has_local_value()));
     }
 
     fn visit_user_provided_tys(&mut self) {
@@ -381,12 +379,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 local_id,
             };
 
-            let c_ty = if let Some(c_ty) = self.tcx().lift_to_global(c_ty) {
-                c_ty
-            } else {
+            if cfg!(debug_assertions) && c_ty.has_local_value() {
                 span_bug!(
                     hir_id.to_span(self.fcx.tcx),
-                    "writeback: `{:?}` missing from the global type context",
+                    "writeback: `{:?}` is a local value",
                     c_ty
                 );
             };
@@ -423,12 +419,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
 
         for (&def_id, c_sig) in fcx_tables.user_provided_sigs.iter() {
-            let c_sig = if let Some(c_sig) = self.tcx().lift_to_global(c_sig) {
-                c_sig
-            } else {
+            if cfg!(debug_assertions) && c_sig.has_local_value() {
                 span_bug!(
                     self.fcx.tcx.hir().span_if_local(def_id).unwrap(),
-                    "writeback: `{:?}` missing from the global type context",
+                    "writeback: `{:?}` is a local value",
                     c_sig
                 );
             };
@@ -592,10 +586,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            if let Some(substs) = self.tcx().lift_to_global(&opaque_defn.substs) {
+            if !opaque_defn.substs.has_local_value() {
                 let new = ty::ResolvedOpaqueTy {
                     concrete_type: definition_ty,
-                    substs,
+                    substs: opaque_defn.substs,
                 };
 
                 let old = self.tables
@@ -617,7 +611,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             } else {
                 self.tcx().sess.delay_span_bug(
                     span,
-                    "cannot lift `opaque_defn` substs to global type context",
+                    "`opaque_defn` is a local value",
                 );
             }
         }
@@ -743,20 +737,19 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn resolve<T>(&self, x: &T, span: &dyn Locatable) -> T::Lifted
+    fn resolve<T>(&self, x: &T, span: &dyn Locatable) -> T
     where
-        T: TypeFoldable<'tcx> + ty::Lift<'tcx>,
+        T: TypeFoldable<'tcx>,
     {
         let x = x.fold_with(&mut Resolver::new(self.fcx, span, self.body));
-        if let Some(lifted) = self.tcx().lift_to_global(&x) {
-            lifted
-        } else {
+        if cfg!(debug_assertions) && x.has_local_value() {
             span_bug!(
                 span.to_span(self.fcx.tcx),
-                "writeback: `{:?}` missing from the global type context",
+                "writeback: `{:?}` is a local value",
                 x
             );
         }
+        x
     }
 }
 

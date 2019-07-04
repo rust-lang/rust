@@ -11,6 +11,7 @@ use self::OverloadedCallType::*;
 
 use crate::hir::def::{CtorOf, Res, DefKind};
 use crate::hir::def_id::DefId;
+use crate::hir::ptr::P;
 use crate::infer::InferCtxt;
 use crate::middle::mem_categorization as mc;
 use crate::middle::region;
@@ -18,7 +19,6 @@ use crate::ty::{self, DefIdTree, TyCtxt, adjustment};
 
 use crate::hir::{self, PatKind};
 use std::rc::Rc;
-use syntax::ptr::P;
 use syntax_pos::Span;
 use crate::util::nodemap::ItemLocalSet;
 

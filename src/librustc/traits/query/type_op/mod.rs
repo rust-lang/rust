@@ -1,6 +1,6 @@
 use crate::infer::canonical::{
     Canonical, Canonicalized, CanonicalizedQueryResponse, OriginalQueryValues,
-    QueryRegionConstraint, QueryResponse,
+    QueryRegionConstraints, QueryResponse,
 };
 use crate::infer::{InferCtxt, InferOk};
 use std::fmt;
@@ -32,7 +32,7 @@ pub trait TypeOp<'tcx>: Sized + fmt::Debug {
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)>;
+    ) -> Fallible<(Self::Output, Option<Rc<QueryRegionConstraints<'tcx>>>)>;
 }
 
 /// "Query type ops" are type ops that are implemented using a
@@ -85,7 +85,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + 'tcx {
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'_, 'tcx>,
-        output_query_region_constraints: &mut Vec<QueryRegionConstraint<'tcx>>,
+        output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
     ) -> Fallible<Self::QueryResponse> {
         if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
             return Ok(result);
@@ -140,16 +140,16 @@ where
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
-        let mut qrc = vec![];
-        let r = Q::fully_perform_into(self, infcx, &mut qrc)?;
+    ) -> Fallible<(Self::Output, Option<Rc<QueryRegionConstraints<'tcx>>>)> {
+        let mut region_constraints = QueryRegionConstraints::default();
+        let r = Q::fully_perform_into(self, infcx, &mut region_constraints)?;
 
         // Promote the final query-region-constraints into a
         // (optional) ref-counted vector:
-        let opt_qrc = if qrc.is_empty() {
+        let opt_qrc = if region_constraints.is_empty() {
             None
         } else {
-            Some(Rc::new(qrc))
+            Some(Rc::new(region_constraints))
         };
 
         Ok((r, opt_qrc))

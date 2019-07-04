@@ -58,6 +58,10 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
         self.edges.is_empty()
     }
 
+    pub fn elements(&self) -> impl Iterator<Item=&T> {
+        self.elements.iter()
+    }
+
     fn index(&self, a: &T) -> Option<Index> {
         self.map.get(a).cloned()
     }

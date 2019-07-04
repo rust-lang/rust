@@ -69,6 +69,7 @@ This API is completely unstable and subject to change.
 #![feature(slice_patterns)]
 #![feature(never_type)]
 #![feature(inner_deref)]
+#![feature(mem_take)]
 
 #![recursion_limit="256"]
 
@@ -105,7 +106,7 @@ use rustc::lint;
 use rustc::middle;
 use rustc::session;
 use rustc::util::common::ErrorReported;
-use rustc::session::config::{EntryFnType, nightly_options};
+use rustc::session::config::EntryFnType;
 use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -122,21 +123,6 @@ pub use collect::checked_type_of;
 pub struct TypeAndSubsts<'tcx> {
     substs: SubstsRef<'tcx>,
     ty: Ty<'tcx>,
-}
-
-fn check_type_alias_enum_variants_enabled<'tcx>(tcx: TyCtxt<'tcx>, span: Span) {
-    if !tcx.features().type_alias_enum_variants {
-        let mut err = tcx.sess.struct_span_err(
-            span,
-            "enum variants on type aliases are experimental"
-        );
-        if nightly_options::is_nightly_build() {
-            help!(&mut err,
-                "add `#![feature(type_alias_enum_variants)]` to the \
-                crate attributes to enable");
-        }
-        err.emit();
-    }
 }
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl, abi: Abi, span: Span) {
@@ -176,7 +162,7 @@ fn require_same_types<'tcx>(
     })
 }
 
-fn check_main_fn_ty<'tcx>(tcx: TyCtxt<'tcx>, main_def_id: DefId) {
+fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     let main_id = tcx.hir().as_local_hir_id(main_def_id).unwrap();
     let main_span = tcx.def_span(main_def_id);
     let main_t = tcx.type_of(main_def_id);
@@ -241,7 +227,7 @@ fn check_main_fn_ty<'tcx>(tcx: TyCtxt<'tcx>, main_def_id: DefId) {
     }
 }
 
-fn check_start_fn_ty<'tcx>(tcx: TyCtxt<'tcx>, start_def_id: DefId) {
+fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_id = tcx.hir().as_local_hir_id(start_def_id).unwrap();
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id);
@@ -298,7 +284,7 @@ fn check_start_fn_ty<'tcx>(tcx: TyCtxt<'tcx>, start_def_id: DefId) {
     }
 }
 
-fn check_for_entry_fn<'tcx>(tcx: TyCtxt<'tcx>) {
+fn check_for_entry_fn(tcx: TyCtxt<'_>) {
     match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
         Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
@@ -315,7 +301,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     impl_wf_check::provide(providers);
 }
 
-pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) -> Result<(), ErrorReported> {
+pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     tcx.sess.profiler(|p| p.start_activity("type-check crate"));
 
     // this ensures that later parts of type checking can assume that items

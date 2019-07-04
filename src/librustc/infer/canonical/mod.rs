@@ -23,6 +23,7 @@
 
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
+use crate::infer::region_constraints::MemberConstraint;
 use crate::mir::interpret::ConstValue;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_macros::HashStable;
@@ -189,9 +190,23 @@ pub enum CanonicalTyVarKind {
 #[derive(Clone, Debug, HashStable)]
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
-    pub region_constraints: Vec<QueryRegionConstraint<'tcx>>,
+    pub region_constraints: QueryRegionConstraints<'tcx>,
     pub certainty: Certainty,
     pub value: R,
+}
+
+#[derive(Clone, Debug, Default, HashStable)]
+pub struct QueryRegionConstraints<'tcx> {
+    pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
+    pub member_constraints: Vec<MemberConstraint<'tcx>>,
+}
+
+impl QueryRegionConstraints<'_> {
+    /// Represents an empty (trivially true) set of region
+    /// constraints.
+    pub fn is_empty(&self) -> bool {
+        self.outlives.is_empty() && self.member_constraints.is_empty()
+    }
 }
 
 pub type Canonicalized<'tcx, V> = Canonical<'tcx, V>;
@@ -292,7 +307,8 @@ impl<'tcx, V> Canonical<'tcx, V> {
     }
 }
 
-pub type QueryRegionConstraint<'tcx> = ty::Binder<ty::OutlivesPredicate<Kind<'tcx>, Region<'tcx>>>;
+pub type QueryOutlivesConstraint<'tcx> =
+    ty::Binder<ty::OutlivesPredicate<Kind<'tcx>, Region<'tcx>>>;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Creates a substitution S for the canonical value with fresh
@@ -538,6 +554,19 @@ BraceStructLiftImpl! {
         type Lifted = QueryResponse<'tcx, R::Lifted>;
         var_values, region_constraints, certainty, value
     } where R: Lift<'tcx>
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for QueryRegionConstraints<'tcx> {
+        outlives, member_constraints
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for QueryRegionConstraints<'a> {
+        type Lifted = QueryRegionConstraints<'tcx>;
+        outlives, member_constraints
+    }
 }
 
 impl<'tcx> Index<BoundVar> for CanonicalVarValues<'tcx> {

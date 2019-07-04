@@ -221,26 +221,8 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<check_match<'_>, _>(tcx, enc, qri)?;
                 encode_query_results::<codegen_fn_attrs<'_>, _>(tcx, enc, qri)?;
                 encode_query_results::<specialization_graph_of<'_>, _>(tcx, enc, qri)?;
-
-                // const eval is special, it only encodes successfully evaluated constants
-                use crate::ty::query::QueryAccessors;
-                let cache = const_eval::query_cache(tcx).borrow();
-                assert!(cache.active.is_empty());
-                for (key, entry) in cache.results.iter() {
-                    use crate::ty::query::config::QueryDescription;
-                    if const_eval::cache_on_disk(tcx, key.clone()) {
-                        if let Ok(ref value) = entry.value {
-                            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
-
-                            // Record position of the cache entry
-                            qri.push((dep_node, AbsoluteBytePos::new(enc.position())));
-
-                            // Encode the type check tables with the SerializedDepNodeIndex
-                            // as tag.
-                            enc.encode_tagged(dep_node, value)?;
-                        }
-                    }
-                }
+                encode_query_results::<const_eval<'_>, _>(tcx, enc, qri)?;
+                // FIXME: Include const_eval_raw?
 
                 Ok(())
             })?;
@@ -324,9 +306,9 @@ impl<'sess> OnDiskCache<'sess> {
     }
 
     /// Loads a diagnostic emitted during the previous compilation session.
-    pub fn load_diagnostics<'tcx>(
+    pub fn load_diagnostics(
         &self,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
     ) -> Vec<Diagnostic> {
         let diagnostics: Option<EncodedDiagnostics> = self.load_indexed(
@@ -353,9 +335,9 @@ impl<'sess> OnDiskCache<'sess> {
 
     /// Returns the cached query result if there is something in the cache for
     /// the given `SerializedDepNodeIndex`; otherwise returns `None`.
-    pub fn try_load_query_result<'tcx, T>(
+    pub fn try_load_query_result<T>(
         &self,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
     ) -> Option<T>
     where
@@ -1090,7 +1072,7 @@ where
         let map = Q::query_cache(tcx).borrow();
         assert!(map.active.is_empty());
         for (key, entry) in map.results.iter() {
-            if Q::cache_on_disk(tcx, key.clone()) {
+            if Q::cache_on_disk(tcx, key.clone(), Some(&entry.value)) {
                 let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
                 // Record position of the cache entry

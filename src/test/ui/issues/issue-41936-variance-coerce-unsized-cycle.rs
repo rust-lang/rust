@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 // Regression test for #41936. The coerce-unsized trait check in
 // coherence was using subtyping, which triggered variance

@@ -251,12 +251,12 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// # Examples
 ///
-/// [`String`] implements `Into<Vec<u8>>`:
+/// [`String`] implements [`Into`]`<`[`Vec`]`<`[`u8`]`>>`:
 ///
 /// In order to express that we want a generic function to take all arguments that can be
 /// converted to a specified type `T`, we can use a trait bound of [`Into`]`<T>`.
 /// For example: The function `is_hello` takes all arguments that can be converted into a
-/// `Vec<u8>`.
+/// [`Vec`]`<`[`u8`]`>`.
 ///
 /// ```
 /// fn is_hello<T: Into<Vec<u8>>>(s: T) {
@@ -274,6 +274,7 @@ pub trait AsMut<T: ?Sized> {
 /// [`String`]: ../../std/string/struct.String.html
 /// [`From`]: trait.From.html
 /// [`Into`]: trait.Into.html
+/// [`Vec`]: ../../std/vec/struct.Vec.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
@@ -410,12 +411,12 @@ pub trait TryInto<T>: Sized {
 ///
 /// This is useful when you are doing a type conversion that may
 /// trivially succeed but may also need special handling.
-/// For example, there is no way to convert an `i64` into an `i32`
-/// using the [`From`] trait, because an `i64` may contain a value
-/// that an `i32` cannot represent and so the conversion would lose data.
-/// This might be handled by truncating the `i64` to an `i32` (essentially
-/// giving the `i64`'s value modulo `i32::MAX`) or by simply returning
-/// `i32::MAX`, or by some other method.  The `From` trait is intended
+/// For example, there is no way to convert an [`i64`] into an [`i32`]
+/// using the [`From`] trait, because an [`i64`] may contain a value
+/// that an [`i32`] cannot represent and so the conversion would lose data.
+/// This might be handled by truncating the [`i64`] to an [`i32`] (essentially
+/// giving the [`i64`]'s value modulo [`i32::MAX`]) or by simply returning
+/// [`i32::MAX`], or by some other method.  The [`From`] trait is intended
 /// for perfect conversions, so the `TryFrom` trait informs the
 /// programmer when a type conversion could go bad and lets them
 /// decide how to handle it.
@@ -425,8 +426,8 @@ pub trait TryInto<T>: Sized {
 /// - `TryFrom<T> for U` implies [`TryInto`]`<U> for T`
 /// - [`try_from`] is reflexive, which means that `TryFrom<T> for T`
 /// is implemented and cannot fail -- the associated `Error` type for
-/// calling `T::try_from()` on a value of type `T` is `Infallible`.
-/// When the `!` type is stablized `Infallible` and `!` will be
+/// calling `T::try_from()` on a value of type `T` is [`Infallible`].
+/// When the [`!`] type is stablized [`Infallible`] and [`!`] will be
 /// equivalent.
 ///
 /// `TryFrom<T>` can be implemented as follows:
@@ -451,7 +452,7 @@ pub trait TryInto<T>: Sized {
 ///
 /// # Examples
 ///
-/// As described, [`i32`] implements `TryFrom<i64>`:
+/// As described, [`i32`] implements `TryFrom<`[`i64`]`>`:
 ///
 /// ```
 /// use std::convert::TryFrom;
@@ -474,6 +475,8 @@ pub trait TryInto<T>: Sized {
 ///
 /// [`try_from`]: trait.TryFrom.html#tymethod.try_from
 /// [`TryInto`]: trait.TryInto.html
+/// [`i32::MAX`]: ../../std/i32/constant.MAX.html
+/// [`!`]: ../../std/primitive.never.html
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.

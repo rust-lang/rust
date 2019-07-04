@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 fn with_closure<F, A>(_: F)
     where F: FnOnce(A, &u32)

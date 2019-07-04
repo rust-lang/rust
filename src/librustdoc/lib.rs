@@ -21,6 +21,7 @@
 #![feature(drain_filter)]
 #![feature(inner_deref)]
 #![feature(never_type)]
+#![feature(mem_take)]
 
 #![recursion_limit="256"]
 
@@ -41,8 +42,6 @@ extern crate syntax_pos;
 extern crate test as testing;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
-
-extern crate serialize as rustc_serialize; // used by deriving
 
 use std::default::Default;
 use std::env;

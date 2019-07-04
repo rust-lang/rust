@@ -5,6 +5,7 @@ use errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::{self, PatKind, Pat, ExprKind};
 use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
+use rustc::hir::ptr::P;
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::{ObligationCause, ObligationCauseCode};
@@ -12,7 +13,6 @@ use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::subst::Kind;
 use syntax::ast;
 use syntax::source_map::Spanned;
-use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 use syntax_pos::hygiene::CompilerDesugaringKind;
@@ -458,7 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 match ty.sty {
                                     ty::Array(..) | ty::Slice(..) => {
                                         err.help("the semantics of slice patterns changed \
-                                                  recently; see issue #23121");
+                                                  recently; see issue #62254");
                                     }
                                     _ => {}
                                 }

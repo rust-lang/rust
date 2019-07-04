@@ -1,5 +1,5 @@
 // compile-flags: -Z print-type-sizes
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // This file illustrates two things:
 //

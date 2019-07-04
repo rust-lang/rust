@@ -6,7 +6,6 @@ use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self, PrintState};
-use syntax::ptr::P;
 use syntax::symbol::kw;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
@@ -14,6 +13,7 @@ use syntax_pos::{self, BytePos, FileName};
 use crate::hir;
 use crate::hir::{PatKind, GenericBound, TraitBoundModifier, RangeEnd};
 use crate::hir::{GenericParam, GenericParamKind, GenericArg};
+use crate::hir::ptr::P;
 
 use std::borrow::Cow;
 use std::cell::Cell;

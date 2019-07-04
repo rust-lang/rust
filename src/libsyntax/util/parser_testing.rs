@@ -20,7 +20,7 @@ pub fn string_to_stream(source_str: String) -> TokenStream {
 }
 
 /// Map string to parser (via tts)
-pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a> {
+pub fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
     new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
 }
 

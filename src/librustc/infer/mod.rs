@@ -26,6 +26,7 @@ use crate::ty::{FloatVid, IntVid, TyVid, ConstVid};
 use crate::util::nodemap::FxHashMap;
 
 use errors::DiagnosticBuilder;
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
@@ -904,6 +905,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .make_subregion(origin, a, b);
     }
 
+    /// Require that the region `r` be equal to one of the regions in
+    /// the set `regions`.
+    pub fn member_constraint(
+        &self,
+        opaque_type_def_id: DefId,
+        definition_span: Span,
+        hidden_ty: Ty<'tcx>,
+        region: ty::Region<'tcx>,
+        in_regions: &Lrc<Vec<ty::Region<'tcx>>>,
+    ) {
+        debug!("member_constraint({:?} <: {:?})", region, in_regions);
+        self.borrow_region_constraints()
+            .member_constraint(opaque_type_def_id, definition_span, hidden_ty, region, in_regions);
+    }
+
     pub fn subtype_predicate(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -1456,7 +1472,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Even if the type may have no inference variables, during
         // type-checking closure types are in local tables only.
         if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
-            if let Some((param_env, ty)) = self.tcx.lift_to_global(&(param_env, ty)) {
+            if !(param_env, ty).has_local_value() {
                 return ty.is_copy_modulo_regions(self.tcx.global_tcx(), param_env, span);
             }
         }

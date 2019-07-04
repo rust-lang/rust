@@ -15,7 +15,7 @@ use crate::lowering::Lower;
 use crate::generic_types;
 use std::iter;
 
-crate fn wf_clause_for_raw_ptr<'tcx>(tcx: TyCtxt<'tcx>, mutbl: hir::Mutability) -> Clauses<'tcx> {
+crate fn wf_clause_for_raw_ptr(tcx: TyCtxt<'_>, mutbl: hir::Mutability) -> Clauses<'_> {
     let ptr_ty = generic_types::raw_ptr(tcx, mutbl);
 
     let wf_clause = ProgramClause {
@@ -29,13 +29,13 @@ crate fn wf_clause_for_raw_ptr<'tcx>(tcx: TyCtxt<'tcx>, mutbl: hir::Mutability) 
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-crate fn wf_clause_for_fn_ptr<'tcx>(
-    tcx: TyCtxt<'tcx>,
+crate fn wf_clause_for_fn_ptr(
+    tcx: TyCtxt<'_>,
     arity_and_output: usize,
     variadic: bool,
     unsafety: hir::Unsafety,
     abi: abi::Abi,
-) -> Clauses<'tcx> {
+) -> Clauses<'_> {
     let fn_ptr = generic_types::fn_ptr(tcx, arity_and_output, variadic, unsafety, abi);
 
     let wf_clause = ProgramClause {
@@ -50,7 +50,7 @@ crate fn wf_clause_for_fn_ptr<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-crate fn wf_clause_for_slice<'tcx>(tcx: TyCtxt<'tcx>) -> Clauses<'tcx> {
+crate fn wf_clause_for_slice(tcx: TyCtxt<'_>) -> Clauses<'_> {
     let ty = generic_types::bound(tcx, 0);
     let slice_ty = tcx.mk_slice(ty);
 
@@ -111,7 +111,7 @@ crate fn wf_clause_for_array<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-crate fn wf_clause_for_tuple<'tcx>(tcx: TyCtxt<'tcx>, arity: usize) -> Clauses<'tcx> {
+crate fn wf_clause_for_tuple(tcx: TyCtxt<'_>, arity: usize) -> Clauses<'_> {
     let type_list = generic_types::type_list(tcx, arity);
     let tuple_ty = tcx.mk_ty(ty::Tuple(type_list));
 
@@ -152,7 +152,7 @@ crate fn wf_clause_for_tuple<'tcx>(tcx: TyCtxt<'tcx>, arity: usize) -> Clauses<'
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-crate fn wf_clause_for_ref<'tcx>(tcx: TyCtxt<'tcx>, mutbl: hir::Mutability) -> Clauses<'tcx> {
+crate fn wf_clause_for_ref(tcx: TyCtxt<'_>, mutbl: hir::Mutability) -> Clauses<'_> {
     let region = tcx.mk_region(
         ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
     );
@@ -176,7 +176,7 @@ crate fn wf_clause_for_ref<'tcx>(tcx: TyCtxt<'tcx>, mutbl: hir::Mutability) -> C
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-crate fn wf_clause_for_fn_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Clauses<'tcx> {
+crate fn wf_clause_for_fn_def(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
     let fn_def = generic_types::fn_def(tcx, def_id);
 
     let wf_clause = ProgramClause {

@@ -3,7 +3,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
 use syntax::symbol::sym;
 
-pub fn test_inferred_outlives<'tcx>(tcx: TyCtxt<'tcx>) {
+pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
     tcx.hir()
        .krate()
        .visit_all_item_likes(&mut OutlivesTest { tcx });

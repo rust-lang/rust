@@ -23,7 +23,7 @@ use rustc::ty::layout::{
 };
 
 use crate::interpret::{
-    self, InterpretCx, ScalarMaybeUndef, Immediate, OpTy,
+    self, InterpCx, ScalarMaybeUndef, Immediate, OpTy,
     ImmTy, MemoryKind, StackPopCleanup, LocalValue, LocalState,
 };
 use crate::const_eval::{
@@ -117,7 +117,7 @@ type Const<'tcx> = OpTy<'tcx>;
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'mir, 'tcx> {
-    ecx: InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
     can_const_prop: IndexVec<Local, bool>,
@@ -202,7 +202,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // If the local is `Unitialized` or `Dead` then we haven't propagated a value into it.
         //
-        // `InterpretCx::access_local()` mostly takes care of this for us however, for ZSTs,
+        // `InterpCx::access_local()` mostly takes care of this for us however, for ZSTs,
         // it will synthesize a value for us. In doing so, that will cause the
         // `get_const(l).is_empty()` assert right before we call `set_const()` in `visit_statement`
         // to fail.

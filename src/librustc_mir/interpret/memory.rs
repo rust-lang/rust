@@ -158,8 +158,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn reallocate(
         &mut self,
         ptr: Pointer<M::PointerTag>,
-        old_size: Size,
-        old_align: Align,
+        old_size_and_align: Option<(Size, Align)>,
         new_size: Size,
         new_align: Align,
         kind: MemoryKind<M::MemoryKinds>,
@@ -171,15 +170,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
         let new_ptr = self.allocate(new_size, new_align, kind);
+        let old_size = match old_size_and_align {
+            Some((size, _align)) => size,
+            None => Size::from_bytes(self.get(ptr.alloc_id)?.bytes.len() as u64),
+        };
         self.copy(
             ptr.into(),
-            old_align,
+            Align::from_bytes(1).unwrap(), // old_align anyway gets checked below by `deallocate`
             new_ptr.into(),
             new_align,
             old_size.min(new_size),
             /*nonoverlapping*/ true,
         )?;
-        self.deallocate(ptr, Some((old_size, old_align)), kind)?;
+        self.deallocate(ptr, old_size_and_align, kind)?;
 
         Ok(new_ptr)
     }
@@ -198,7 +201,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn deallocate(
         &mut self,
         ptr: Pointer<M::PointerTag>,
-        size_and_align: Option<(Size, Align)>,
+        old_size_and_align: Option<(Size, Align)>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> InterpResult<'tcx> {
         trace!("deallocating: {}", ptr.alloc_id);
@@ -232,7 +235,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 format!("{:?}", kind),
             ));
         }
-        if let Some((size, align)) = size_and_align {
+        if let Some((size, align)) = old_size_and_align {
             if size.bytes() != alloc.bytes.len() as u64 || align != alloc.align {
                 let bytes = Size::from_bytes(alloc.bytes.len() as u64);
                 return err!(IncorrectAllocationInformation(size,

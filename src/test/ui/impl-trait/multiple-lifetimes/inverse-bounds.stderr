@@ -1,0 +1,19 @@
+warning[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/inverse-bounds.rs:16:70
+   |
+LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Invert<'a>, b: Invert<'b>) -> impl Trait<'d, 'e>
+   |                                                                      ^^^^^^^^^^^^^^^^^^
+   |
+   = note: hidden type `Invert<'_>` captures lifetime '_#8r
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+   = note: for more information, try `rustc --explain E0729`
+
+warning: the feature `pin` has been stable since 1.33.0 and no longer requires an attribute to enable
+  --> $DIR/inverse-bounds.rs:4:60
+   |
+LL | #![feature(arbitrary_self_types, async_await, await_macro, pin)]
+   |                                                            ^^^
+   |
+   = note: #[warn(stable_features)] on by default
+

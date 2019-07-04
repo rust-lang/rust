@@ -1,0 +1,256 @@
+error[E0308]: mismatched types
+  --> $DIR/enum-variant-generic-args.rs:13:25
+   |
+LL |         Self::TSVariant(());
+   |                         ^^ expected type parameter, found ()
+   |
+   = note: expected type `T`
+              found type `()`
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:15:27
+   |
+LL |         Self::TSVariant::<()>(());
+   |                           ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:17:16
+   |
+LL |         Self::<()>::TSVariant(());
+   |                ^^ type argument not allowed
+
+error[E0308]: mismatched types
+  --> $DIR/enum-variant-generic-args.rs:17:31
+   |
+LL |         Self::<()>::TSVariant(());
+   |                               ^^ expected type parameter, found ()
+   |
+   = note: expected type `T`
+              found type `()`
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:20:16
+   |
+LL |         Self::<()>::TSVariant::<()>(());
+   |                ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:20:33
+   |
+LL |         Self::<()>::TSVariant::<()>(());
+   |                                 ^^ type argument not allowed
+
+error[E0308]: mismatched types
+  --> $DIR/enum-variant-generic-args.rs:26:29
+   |
+LL |         Self::SVariant { v: () };
+   |                             ^^ expected type parameter, found ()
+   |
+   = note: expected type `T`
+              found type `()`
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:28:26
+   |
+LL |         Self::SVariant::<()> { v: () };
+   |                          ^^ type argument not allowed
+
+error[E0308]: mismatched types
+  --> $DIR/enum-variant-generic-args.rs:28:35
+   |
+LL |         Self::SVariant::<()> { v: () };
+   |                                   ^^ expected type parameter, found ()
+   |
+   = note: expected type `T`
+              found type `()`
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:31:16
+   |
+LL |         Self::<()>::SVariant { v: () };
+   |                ^^ type argument not allowed
+
+error[E0308]: mismatched types
+  --> $DIR/enum-variant-generic-args.rs:31:35
+   |
+LL |         Self::<()>::SVariant { v: () };
+   |                                   ^^ expected type parameter, found ()
+   |
+   = note: expected type `T`
+              found type `()`
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:34:16
+   |
+LL |         Self::<()>::SVariant::<()> { v: () };
+   |                ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:34:32
+   |
+LL |         Self::<()>::SVariant::<()> { v: () };
+   |                                ^^ type argument not allowed
+
+error[E0308]: mismatched types
+  --> $DIR/enum-variant-generic-args.rs:34:41
+   |
+LL |         Self::<()>::SVariant::<()> { v: () };
+   |                                         ^^ expected type parameter, found ()
+   |
+   = note: expected type `T`
+              found type `()`
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:41:26
+   |
+LL |         Self::UVariant::<()>;
+   |                          ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:43:16
+   |
+LL |         Self::<()>::UVariant;
+   |                ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:45:16
+   |
+LL |         Self::<()>::UVariant::<()>;
+   |                ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:45:32
+   |
+LL |         Self::<()>::UVariant::<()>;
+   |                                ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:54:29
+   |
+LL |     Enum::<()>::TSVariant::<()>(());
+   |                             ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:57:24
+   |
+LL |     Alias::TSVariant::<()>(());
+   |                        ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:59:30
+   |
+LL |     Alias::<()>::TSVariant::<()>(());
+   |                              ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:62:29
+   |
+LL |     AliasFixed::TSVariant::<()>(());
+   |                             ^^ type argument not allowed
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:64:18
+   |
+LL |     AliasFixed::<()>::TSVariant(());
+   |                  ^^ unexpected type argument
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:66:18
+   |
+LL |     AliasFixed::<()>::TSVariant::<()>(());
+   |                  ^^ unexpected type argument
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:66:35
+   |
+LL |     AliasFixed::<()>::TSVariant::<()>(());
+   |                                   ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:72:28
+   |
+LL |     Enum::<()>::SVariant::<()> { v: () };
+   |                            ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:75:23
+   |
+LL |     Alias::SVariant::<()> { v: () };
+   |                       ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:77:29
+   |
+LL |     Alias::<()>::SVariant::<()> { v: () };
+   |                             ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:80:28
+   |
+LL |     AliasFixed::SVariant::<()> { v: () };
+   |                            ^^ type argument not allowed
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:82:18
+   |
+LL |     AliasFixed::<()>::SVariant { v: () };
+   |                  ^^ unexpected type argument
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:84:18
+   |
+LL |     AliasFixed::<()>::SVariant::<()> { v: () };
+   |                  ^^ unexpected type argument
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:84:34
+   |
+LL |     AliasFixed::<()>::SVariant::<()> { v: () };
+   |                                  ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:90:28
+   |
+LL |     Enum::<()>::UVariant::<()>;
+   |                            ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:93:23
+   |
+LL |     Alias::UVariant::<()>;
+   |                       ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:95:29
+   |
+LL |     Alias::<()>::UVariant::<()>;
+   |                             ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:98:28
+   |
+LL |     AliasFixed::UVariant::<()>;
+   |                            ^^ type argument not allowed
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:100:18
+   |
+LL |     AliasFixed::<()>::UVariant;
+   |                  ^^ unexpected type argument
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:102:18
+   |
+LL |     AliasFixed::<()>::UVariant::<()>;
+   |                  ^^ unexpected type argument
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/enum-variant-generic-args.rs:102:34
+   |
+LL |     AliasFixed::<()>::UVariant::<()>;
+   |                                  ^^ type argument not allowed
+
+error: aborting due to 39 previous errors
+
+Some errors have detailed explanations: E0107, E0109, E0308.
+For more information about an error, try `rustc --explain E0107`.

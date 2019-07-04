@@ -5,7 +5,7 @@
 // opaque type. As all regions are now required to outlive the bound in an
 // opaque type we avoid the issue here.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 struct A<F>(F);
 

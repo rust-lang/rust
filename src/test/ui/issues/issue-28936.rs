@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 pub type Session = i32;
 pub struct StreamParser<'a, T> {
     _tokens: T,

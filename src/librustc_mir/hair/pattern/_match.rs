@@ -835,7 +835,7 @@ impl<'tcx> IntRange<'tcx> {
     fn from_ctor(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) -> Option<IntRange<'tcx>> {
         // Floating-point ranges are permitted and we don't want
         // to consider them when constructing integer ranges.
-        fn is_integral<'tcx>(ty: Ty<'tcx>) -> bool {
+        fn is_integral(ty: Ty<'_>) -> bool {
             match ty.sty {
                 ty::Char | ty::Int(_) | ty::Uint(_) => true,
                 _ => false,

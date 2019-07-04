@@ -72,6 +72,7 @@ macro_rules! unlikely {
 pub mod macros;
 pub mod svh;
 pub mod base_n;
+pub mod binary_search_util;
 pub mod bit_set;
 pub mod box_region;
 pub mod const_cstr;

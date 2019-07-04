@@ -519,11 +519,11 @@ fn test_codegen_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.debugging_opts.pgo_gen = SwitchWithOptPath::Enabled(None);
+    opts.cg.profile_generate = SwitchWithOptPath::Enabled(None);
     assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.debugging_opts.pgo_use = Some(PathBuf::from("abc"));
+    opts.cg.profile_use = Some(PathBuf::from("abc"));
     assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts = reference.clone();

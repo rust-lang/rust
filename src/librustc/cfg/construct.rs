@@ -1,11 +1,11 @@
 use crate::cfg::*;
 use crate::middle::region;
 use rustc_data_structures::graph::implementation as graph;
-use syntax::ptr::P;
 use crate::ty::{self, TyCtxt};
 
 use crate::hir::{self, PatKind};
 use crate::hir::def_id::DefId;
+use crate::hir::ptr::P;
 
 struct CFGBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -30,7 +30,7 @@ struct LoopScope {
     break_index: CFGIndex,    // where to go on a `break`
 }
 
-pub fn construct<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body) -> CFG {
+pub fn construct(tcx: TyCtxt<'_>, body: &hir::Body) -> CFG {
     let mut graph = graph::Graph::new();
     let entry = graph.add_node(CFGNodeData::Entry);
 

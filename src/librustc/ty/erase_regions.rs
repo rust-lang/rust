@@ -42,10 +42,10 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let Some(ty_lifted) = self.tcx.lift_to_global(&ty) {
-            self.tcx.erase_regions_ty(ty_lifted)
-        } else {
+        if ty.has_local_value() {
             ty.super_fold_with(self)
+        } else {
+            self.tcx.erase_regions_ty(ty)
         }
     }
 

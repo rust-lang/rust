@@ -1,9 +1,7 @@
 // In this regression test we check that a path pattern referring to a unit variant
 // through a type alias is successful in inferring the generic argument.
 
-// compile-pass
-
-#![feature(type_alias_enum_variants)]
+// build-pass (FIXME(62277): could be check-pass?)
 
 enum Opt<T> {
     N,

@@ -423,8 +423,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
 
-    modules_config.pgo_gen = sess.opts.debugging_opts.pgo_gen.clone();
-    modules_config.pgo_use = sess.opts.debugging_opts.pgo_use.clone();
+    modules_config.pgo_gen = sess.opts.cg.profile_generate.clone();
+    modules_config.pgo_use = sess.opts.cg.profile_use.clone();
 
     modules_config.opt_level = Some(sess.opts.optimize);
     modules_config.opt_size = Some(sess.opts.optimize);
@@ -1345,12 +1345,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!started_lto);
                     started_lto = true;
 
-                    let needs_fat_lto =
-                        mem::replace(&mut needs_fat_lto, Vec::new());
-                    let needs_thin_lto =
-                        mem::replace(&mut needs_thin_lto, Vec::new());
-                    let import_only_modules =
-                        mem::replace(&mut lto_import_only_modules, Vec::new());
+                    let needs_fat_lto = mem::take(&mut needs_fat_lto);
+                    let needs_thin_lto = mem::take(&mut needs_thin_lto);
+                    let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                     for (work, cost) in generate_lto_work(&cgcx, needs_fat_lto,
                                                           needs_thin_lto, import_only_modules) {

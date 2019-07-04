@@ -770,8 +770,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
 
         // First, we merge `self` and `other` into a sorted sequence in linear time.
-        let self_iter = mem::replace(self, BTreeMap::new()).into_iter();
-        let other_iter = mem::replace(other, BTreeMap::new()).into_iter();
+        let self_iter = mem::take(self).into_iter();
+        let other_iter = mem::take(other).into_iter();
         let iter = MergeIter {
             left: self_iter.peekable(),
             right: other_iter.peekable(),
@@ -1193,6 +1193,10 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.length, Some(self.length))
     }
+
+    fn last(mut self) -> Option<(&'a K, &'a V)> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1252,6 +1256,10 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.length, Some(self.length))
+    }
+
+    fn last(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next_back()
     }
 }
 
@@ -1421,6 +1429,10 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+
+    fn last(mut self) -> Option<&'a K> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1457,6 +1469,10 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+
+    fn last(mut self) -> Option<&'a V> {
+        self.next_back()
     }
 }
 
@@ -1495,6 +1511,10 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
             unsafe { Some(self.next_unchecked()) }
         }
     }
+
+    fn last(mut self) -> Option<(&'a K, &'a V)> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
@@ -1507,6 +1527,10 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+
+    fn last(mut self) -> Option<&'a mut V> {
+        self.next_back()
     }
 }
 
@@ -1625,6 +1649,10 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
         } else {
             unsafe { Some(self.next_unchecked()) }
         }
+    }
+
+    fn last(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next_back()
     }
 }
 

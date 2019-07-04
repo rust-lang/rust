@@ -18,7 +18,7 @@ use errors::DiagnosticBuilder;
 use syntax_pos::{Pos, Span};
 use syntax::symbol::Symbol;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
     /// Already reported a lint or an error for this evaluation.
     Reported,
@@ -35,6 +35,10 @@ impl ErrorHandled {
                                               even though it was fully monomorphized"),
         }
     }
+}
+
+CloneTypeFoldableImpls! {
+    ErrorHandled,
 }
 
 pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
@@ -178,7 +182,7 @@ pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'
 /// up with a Rust-level backtrace of where the error occured.
 /// Thsese should always be constructed by calling `.into()` on
 /// a `InterpError`. In `librustc_mir::interpret`, we have the `err!`
-/// macro for this
+/// macro for this.
 #[derive(Debug, Clone)]
 pub struct InterpErrorInfo<'tcx> {
     pub kind: InterpError<'tcx, u64>,

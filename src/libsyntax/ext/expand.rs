@@ -13,8 +13,7 @@ use crate::parse::{DirectoryOwnership, PResult, ParseSess};
 use crate::parse::token;
 use crate::parse::parser::Parser;
 use crate::ptr::P;
-use crate::symbol::Symbol;
-use crate::symbol::{kw, sym};
+use crate::symbol::{sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::visit::{self, Visitor};
 use crate::util::map_in_place::MapInPlace;
@@ -197,7 +196,6 @@ pub struct Invocation {
 pub enum InvocationKind {
     Bang {
         mac: ast::Mac,
-        ident: Option<Ident>,
         span: Span,
     },
     Attr {
@@ -307,7 +305,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             } else {
                 self.resolve_imports();
                 if undetermined_invocations.is_empty() { break }
-                invocations = mem::replace(&mut undetermined_invocations, Vec::new());
+                invocations = mem::take(&mut undetermined_invocations);
                 force = !mem::replace(&mut progress, false);
                 continue
             };
@@ -664,13 +662,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                          ext: &SyntaxExtension)
                          -> Option<AstFragment> {
         let kind = invoc.fragment_kind;
-        let (mac, ident, span) = match invoc.kind {
-            InvocationKind::Bang { mac, ident, span } => (mac, ident, span),
+        let (mac, span) = match invoc.kind {
+            InvocationKind::Bang { mac, span } => (mac, span),
             _ => unreachable!(),
         };
         let path = &mac.node.path;
 
-        let ident = ident.unwrap_or_else(|| Ident::invalid());
         let validate = |this: &mut Self| {
             // feature-gate the macro invocation
             if let Some((feature, issue)) = ext.unstable_feature {
@@ -690,12 +687,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             }
 
-            if ident.name != kw::Invalid {
-                let msg = format!("macro {}! expects no ident argument, given '{}'", path, ident);
-                this.cx.span_err(path.span, &msg);
-                this.cx.trace_macros_diag();
-                return Err(kind.dummy(span));
-            }
             Ok(())
         };
 
@@ -729,19 +720,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
 
             SyntaxExtensionKind::Bang(expander) => {
-                if ident.name != kw::Invalid {
-                    let msg =
-                        format!("macro {}! expects no ident argument, given '{}'", path, ident);
-                    self.cx.span_err(path.span, &msg);
-                    self.cx.trace_macros_diag();
-                    kind.dummy(span)
-                } else {
-                    self.gate_proc_macro_expansion_kind(span, kind);
-                    let tok_result = expander.expand(self.cx, span, mac.node.stream());
-                    let result = self.parse_ast_fragment(tok_result, kind, path, span);
-                    self.gate_proc_macro_expansion(span, &result);
-                    result
-                }
+                self.gate_proc_macro_expansion_kind(span, kind);
+                let tok_result = expander.expand(self.cx, span, mac.node.stream());
+                let result = self.parse_ast_fragment(tok_result, kind, path, span);
+                self.gate_proc_macro_expansion(span, &result);
+                result
             }
         };
 
@@ -944,7 +927,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: AstFragmentKind) -> AstFragment {
-        self.collect(kind, InvocationKind::Bang { mac, ident: None, span })
+        self.collect(kind, InvocationKind::Bang { mac, span })
     }
 
     fn collect_attr(&mut self,
@@ -1179,13 +1162,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             ast::ItemKind::Mac(..) => {
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.node {
-                    ItemKind::Mac(mac) => {
-                        self.collect(AstFragmentKind::Items, InvocationKind::Bang {
-                            mac,
-                            ident: Some(item.ident),
-                            span: item.span,
-                        }).make_items()
-                    }
+                    ItemKind::Mac(mac) => self.collect(
+                        AstFragmentKind::Items, InvocationKind::Bang { mac, span: item.span }
+                    ).make_items(),
                     _ => unreachable!(),
                 })
             }

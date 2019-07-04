@@ -1,5 +1,8 @@
 // compile-flags: -Z print-type-sizes
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
+// ignore-pass
+// ^-- needed because `--pass check` does not emit the output needed.
+//     FIXME: consider using an attribute instead of side-effects.
 
 // This file illustrates how packing is handled; it should cause
 // the elimination of padding that would normally be introduced

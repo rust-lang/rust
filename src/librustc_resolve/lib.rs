@@ -4,9 +4,10 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
+#![feature(mem_take)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(type_alias_enum_variants)]
+#![cfg_attr(bootstrap, feature(type_alias_enum_variants))]
 
 #![recursion_limit="256"]
 
@@ -198,9 +199,9 @@ enum ResolutionError<'a> {
 ///
 /// This takes the error provided, combines it with the span and any additional spans inside the
 /// error and emits it.
-fn resolve_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
-                            span: Span,
-                            resolution_error: ResolutionError<'a>) {
+fn resolve_error(resolver: &Resolver<'_>,
+                 span: Span,
+                 resolution_error: ResolutionError<'_>) {
     resolve_struct_error(resolver, span, resolution_error).emit();
 }
 

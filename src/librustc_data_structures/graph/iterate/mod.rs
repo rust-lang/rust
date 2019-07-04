@@ -1,5 +1,6 @@
 use super::super::indexed_vec::IndexVec;
-use super::{DirectedGraph, WithSuccessors, WithNumNodes};
+use super::{DirectedGraph, WithNumNodes, WithSuccessors};
+use crate::bit_set::BitSet;
 
 #[cfg(test)]
 mod test;
@@ -50,4 +51,37 @@ pub fn reverse_post_order<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     let mut vec = post_order_from(graph, start_node);
     vec.reverse();
     vec
+}
+
+/// A "depth-first search" iterator for a directed graph.
+pub struct DepthFirstSearch<'graph, G>
+where
+    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+{
+    graph: &'graph G,
+    stack: Vec<G::Node>,
+    visited: BitSet<G::Node>,
+}
+
+impl<G> DepthFirstSearch<'graph, G>
+where
+    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+{
+    pub fn new(graph: &'graph G, start_node: G::Node) -> Self {
+        Self { graph, stack: vec![start_node], visited: BitSet::new_empty(graph.num_nodes()) }
+    }
+}
+
+impl<G> Iterator for DepthFirstSearch<'_, G>
+where
+    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+{
+    type Item = G::Node;
+
+    fn next(&mut self) -> Option<G::Node> {
+        let DepthFirstSearch { stack, visited, graph } = self;
+        let n = stack.pop()?;
+        stack.extend(graph.successors(n).filter(|&m| visited.insert(m)));
+        Some(n)
+    }
 }

@@ -389,6 +389,7 @@ symbols! {
         match_beginning_vert,
         match_default_bindings,
         may_dangle,
+        member_constraints,
         message,
         meta,
         min_const_fn,
@@ -1132,6 +1133,7 @@ impl LocalInternedString {
         }
     }
 
+    #[inline]
     pub fn get(&self) -> &str {
         // This returns a valid string since we ensure that `self` outlives the interner
         // by creating the interner on a thread which outlives threads which can access it.
@@ -1145,6 +1147,7 @@ impl<U: ?Sized> std::convert::AsRef<U> for LocalInternedString
 where
     str: std::convert::AsRef<U>
 {
+    #[inline]
     fn as_ref(&self) -> &U {
         self.string.as_ref()
     }
@@ -1185,6 +1188,7 @@ impl !Sync for LocalInternedString {}
 
 impl std::ops::Deref for LocalInternedString {
     type Target = str;
+    #[inline]
     fn deref(&self) -> &str { self.string }
 }
 

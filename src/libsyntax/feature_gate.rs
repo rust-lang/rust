@@ -323,7 +323,7 @@ declare_features! (
     (active, nll, "1.0.0", Some(43234), None),
 
     // Allows using slice patterns.
-    (active, slice_patterns, "1.0.0", Some(23121), None),
+    (active, slice_patterns, "1.0.0", Some(62254), None),
 
     // Allows the definition of `const` functions with some advanced features.
     (active, const_fn, "1.2.0", Some(57563), None),
@@ -530,9 +530,6 @@ declare_features! (
     // Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
 
-    // Allows paths to enum variants on type aliases.
-    (active, type_alias_enum_variants, "1.31.0", Some(49683), None),
-
     // Allows exhaustive integer pattern matching on `usize` and `isize`.
     (active, precise_pointer_size_matching, "1.32.0", Some(56354), None),
 
@@ -573,6 +570,9 @@ declare_features! (
     // Allows explicit discriminants on non-unit enum variants.
     (active, arbitrary_enum_discriminant, "1.37.0", Some(60553), None),
 
+    // Allows `impl Trait` with multiple unrelated lifetimes.
+    (active, member_constraints, "1.37.0", Some(61977), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -610,7 +610,7 @@ declare_features! (
     (removed, allocator, "1.0.0", None, None, None),
     (removed, simd, "1.0.0", Some(27731), None,
      Some("removed in favor of `#[repr(simd)]`")),
-    (removed, advanced_slice_patterns, "1.0.0", Some(23121), None,
+    (removed, advanced_slice_patterns, "1.0.0", Some(62254), None,
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, macro_reexport, "1.0.0", Some(29638), None,
      Some("subsumed by `pub use`")),
@@ -853,6 +853,8 @@ declare_features! (
     (accepted, extern_crate_self, "1.34.0", Some(56409), None),
     // Allows arbitrary delimited token streams in non-macro attributes.
     (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208), None),
+    // Allows paths to enum variants on type aliases including `Self`.
+    (accepted, type_alias_enum_variants, "1.37.0", Some(49683), None),
     // Allows using `#[repr(align(X))]` on enums with equivalent semantics
     // to wrapping an enum in a wrapper struct with `#[repr(align(X))]`.
     (accepted, repr_align_enum, "1.37.0", Some(57996), None),

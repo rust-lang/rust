@@ -13,7 +13,7 @@ use rustc::mir::interpret::{
 use std::hash::Hash;
 
 use super::{
-    OpTy, Machine, InterpretCx, ValueVisitor, MPlaceTy,
+    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
 };
 
 macro_rules! validation_failure {
@@ -174,7 +174,7 @@ struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
         MPlaceTy<'tcx, M::PointerTag>,
         Vec<PathElem>,
     >>,
-    ecx: &'rt InterpretCx<'mir, 'tcx, M>,
+    ecx: &'rt InterpCx<'mir, 'tcx, M>,
 }
 
 impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M> {
@@ -259,7 +259,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     type V = OpTy<'tcx, M::PointerTag>;
 
     #[inline(always)]
-    fn ecx(&self) -> &InterpretCx<'mir, 'tcx, M> {
+    fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
         &self.ecx
     }
 
@@ -628,7 +628,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This function checks the data at `op`. `op` is assumed to cover valid memory if it
     /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.

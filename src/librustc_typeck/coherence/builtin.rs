@@ -17,7 +17,7 @@ use rustc::hir::def_id::DefId;
 use hir::Node;
 use rustc::hir::{self, ItemKind};
 
-pub fn check_trait<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) {
+pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }
         .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
         .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
@@ -46,7 +46,7 @@ impl<'tcx> Checker<'tcx> {
     }
 }
 
-fn visit_implementation_of_drop<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
+fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
     if let ty::Adt(..) = tcx.type_of(impl_did).sty {
         /* do nothing */
     } else {
@@ -74,7 +74,7 @@ fn visit_implementation_of_drop<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
     }
 }
 
-fn visit_implementation_of_copy<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
+fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
     let impl_hir_id = if let Some(n) = tcx.hir().as_local_hir_id(impl_did) {
@@ -154,7 +154,7 @@ fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx>, impl_did: DefId) {
     }
 }
 
-fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
+fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}",
            impl_did);
     if impl_did.is_local() {
