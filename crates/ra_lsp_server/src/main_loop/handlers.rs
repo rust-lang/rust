@@ -2,11 +2,11 @@ use std::{fmt::Write as _, io::Write as _};
 
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
-    CodeAction, CodeActionOrCommand, CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeKind,
-    FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
-    PrepareRenameResponse, Range, RenameParams, SymbolInformation, TextDocumentIdentifier,
-    TextEdit, WorkspaceEdit,
+    CodeAction, CodeActionOrCommand, CodeActionResponse, CodeLens, Command, Diagnostic,
+    DiagnosticSeverity, DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
+    FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
+    MarkupKind, Position, PrepareRenameResponse, Range, RenameParams, SymbolInformation,
+    TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
     AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo,
