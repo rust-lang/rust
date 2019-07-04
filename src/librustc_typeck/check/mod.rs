@@ -1398,8 +1398,8 @@ fn check_union_fields(tcx: TyCtxt<'_>, _: Span, item_def_id: DefId) -> bool {
     if !tcx.features().untagged_unions {
         return true;
     }
-    let t = tcx.type_of(item_def_id);
-    if let ty::Adt(def, substs) = t.sty {
+    let item_type = tcx.type_of(item_def_id);
+    if let ty::Adt(def, substs) = item_type.sty {
         if def.is_union() {
             let fields = &def.non_enum_variant().fields;
             for field in fields {
