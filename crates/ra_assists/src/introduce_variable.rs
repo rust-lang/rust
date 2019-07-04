@@ -1,12 +1,14 @@
-use test_utils::tested_by;
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
+    SyntaxKind::{
+        BREAK_EXPR, COMMENT, LAMBDA_EXPR, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR, WHITESPACE,
+    },
     SyntaxNode, TextUnit,
-    SyntaxKind::{WHITESPACE, MATCH_ARM, LAMBDA_EXPR, PATH_EXPR, BREAK_EXPR, LOOP_EXPR, RETURN_EXPR, COMMENT},
 };
+use test_utils::tested_by;
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     if ctx.frange.range.is_empty() {
@@ -121,7 +123,9 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
 mod tests {
     use test_utils::covers;
 
-    use crate::helpers::{check_assist_range_not_applicable, check_assist_range, check_assist_range_target};
+    use crate::helpers::{
+        check_assist_range, check_assist_range_not_applicable, check_assist_range_target,
+    };
 
     use super::*;
 

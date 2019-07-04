@@ -1,23 +1,25 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use ra_syntax::{SyntaxNode, TreeArc, SmolStr, ast};
-use ra_db::{SourceDatabase, salsa};
+use ra_db::{salsa, SourceDatabase};
+use ra_syntax::{ast, SmolStr, SyntaxNode, TreeArc};
 
 use crate::{
-    HirFileId, MacroDefId, AstIdMap, ErasedFileAstId, Crate, Module, MacroCallLoc,
-    Function, FnData, ExprScopes, TypeAlias,
-    Struct, Enum, StructField,
-    Const, ConstData, Static,
-    DefWithBody, Trait,
+    adt::{EnumData, StructData},
+    generics::{GenericDef, GenericParams},
     ids,
-    nameres::{Namespace, ImportSourceMap, RawItems, CrateDefMap},
-    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig, TypeCtor, GenericPredicate, Substs},
-    adt::{StructData, EnumData},
-    impl_block::{ModuleImplBlocks, ImplSourceMap, ImplBlock},
-    generics::{GenericParams, GenericDef},
+    impl_block::{ImplBlock, ImplSourceMap, ModuleImplBlocks},
+    lang_item::{LangItemTarget, LangItems},
+    nameres::{CrateDefMap, ImportSourceMap, Namespace, RawItems},
     traits::TraitData,
-    lang_item::{LangItems, LangItemTarget}, type_alias::TypeAliasData,
+    ty::{
+        method_resolution::CrateImplBlocks, CallableDef, FnSig, GenericPredicate, InferenceResult,
+        Substs, Ty, TypableDef, TypeCtor,
+    },
+    type_alias::TypeAliasData,
+    AstIdMap, Const, ConstData, Crate, DefWithBody, Enum, ErasedFileAstId, ExprScopes, FnData,
+    Function, HirFileId, MacroCallLoc, MacroDefId, Module, Static, Struct, StructField, Trait,
+    TypeAlias,
 };
 
 /// We store all interned things in the single QueryGroup.

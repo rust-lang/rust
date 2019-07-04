@@ -1,10 +1,10 @@
 use std::{
-    fs,
     collections::HashMap,
+    error::Error,
+    fs,
+    io::{Error as IoError, ErrorKind},
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
-    io::{Error as IoError, ErrorKind},
-    error::Error
 };
 
 use itertools::Itertools;

@@ -3,7 +3,7 @@ use std::{
     process::Command,
 };
 
-use ra_arena::{Arena, RawId, impl_arena_id};
+use ra_arena::{impl_arena_id, Arena, RawId};
 
 use crate::Result;
 

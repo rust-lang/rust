@@ -1,6 +1,6 @@
-use crate::ParseError;
 use crate::subtree_parser::Parser;
-use smallvec::{SmallVec, smallvec};
+use crate::ParseError;
+use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug, Clone)]
 pub(crate) struct TtCursor<'a> {

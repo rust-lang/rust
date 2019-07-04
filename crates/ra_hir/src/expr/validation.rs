@@ -1,17 +1,16 @@
-use std::sync::Arc;
 use rustc_hash::FxHashSet;
+use std::sync::Arc;
 
 use ra_syntax::ast::{AstNode, StructLit};
 
+use super::{Expr, ExprId, StructLitField};
 use crate::{
-    expr::AstPtr,
-    HirDatabase, Function, Name, HasSource,
-    diagnostics::{DiagnosticSink, MissingFields},
     adt::AdtDef,
-    Path,
+    diagnostics::{DiagnosticSink, MissingFields},
+    expr::AstPtr,
     ty::InferenceResult,
+    Function, HasSource, HirDatabase, Name, Path,
 };
-use super::{Expr, StructLitField, ExprId};
 
 pub(crate) struct ExprValidator<'a, 'b: 'a> {
     func: Function,

@@ -1,18 +1,11 @@
 use crate::{
     completion::{
-        completion_item::{
-            Completions,
-            Builder,
-            CompletionKind,
-        },
         completion_context::CompletionContext,
+        completion_item::{Builder, CompletionKind, Completions},
     },
-    CompletionItem
+    CompletionItem,
 };
-use ra_syntax::{
-    ast::AstNode,
-    TextRange
-};
+use ra_syntax::{ast::AstNode, TextRange};
 use ra_text_edit::TextEditBuilder;
 
 fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
@@ -58,7 +51,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{CompletionKind, check_completion};
+    use crate::completion::{check_completion, CompletionKind};
 
     fn check_snippet_completion(test_name: &str, code: &str) {
         check_completion(test_name, code, CompletionKind::Postfix);

@@ -2,7 +2,7 @@ pub mod visit;
 
 use itertools::Itertools;
 
-use crate::{SyntaxNode, TextRange, TextUnit, AstNode, Direction, SyntaxToken, SyntaxElement};
+use crate::{AstNode, Direction, SyntaxElement, SyntaxNode, SyntaxToken, TextRange, TextUnit};
 
 pub use rowan::TokenAtOffset;
 

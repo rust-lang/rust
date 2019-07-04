@@ -1,7 +1,7 @@
 use crate::{
     project_model::{self, TargetKind},
     world::WorldSnapshot,
-    Result
+    Result,
 };
 
 use ra_ide_api::{FileId, RunnableKind};

@@ -4,7 +4,12 @@ use std::sync::Arc;
 
 use ra_syntax::ast::NameOwner;
 
-use crate::{TypeAlias, db::{DefDatabase, AstDatabase}, type_ref::TypeRef, name::{Name, AsName}, HasSource};
+use crate::{
+    db::{AstDatabase, DefDatabase},
+    name::{AsName, Name},
+    type_ref::TypeRef,
+    HasSource, TypeAlias,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeAliasData {

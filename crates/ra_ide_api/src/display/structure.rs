@@ -2,7 +2,7 @@ use crate::TextRange;
 
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
-    ast::{self, AttrsOwner, NameOwner, TypeParamsOwner, TypeAscriptionOwner},
+    ast::{self, AttrsOwner, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
     AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
 };
 

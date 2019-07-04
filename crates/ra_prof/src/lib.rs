@@ -2,18 +2,21 @@ mod memory_usage;
 
 use std::{
     cell::RefCell,
-    time::{Duration, Instant},
-    mem,
+    collections::HashSet,
     io::{stderr, Write},
     iter::repeat,
-    collections::HashSet,
-    sync::{RwLock, atomic::{AtomicBool, Ordering}},
+    mem,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        RwLock,
+    },
+    time::{Duration, Instant},
 };
 
-use once_cell::sync::Lazy;
 use itertools::Itertools;
+use once_cell::sync::Lazy;
 
-pub use crate::memory_usage::{MemoryUsage, Bytes};
+pub use crate::memory_usage::{Bytes, MemoryUsage};
 
 // We use jemalloc mainly to get heap usage statistics, actual performance
 // difference is not measures.

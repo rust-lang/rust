@@ -7,17 +7,17 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
 
+use super::{autoderef, Canonical, TraitRef};
 use crate::{
-    HirDatabase, Module, Crate, Name, Function, Trait,
-    impl_block::{ImplId, ImplBlock, ImplItem},
-    ty::{Ty, TypeCtor},
+    generics::HasGenericParams,
+    impl_block::{ImplBlock, ImplId, ImplItem},
     nameres::CrateModuleId,
     resolve::Resolver,
     traits::TraitItem,
-    generics::HasGenericParams,
-    ty::primitive::{UncertainIntTy, UncertainFloatTy}
+    ty::primitive::{UncertainFloatTy, UncertainIntTy},
+    ty::{Ty, TypeCtor},
+    Crate, Function, HirDatabase, Module, Name, Trait,
 };
-use super::{TraitRef, Canonical, autoderef};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

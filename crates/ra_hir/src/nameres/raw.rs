@@ -1,13 +1,16 @@
-use std::{sync::Arc, ops::Index};
+use std::{ops::Index, sync::Arc};
 
-use test_utils::tested_by;
-use ra_arena::{Arena, impl_arena_id, RawId, map::ArenaMap};
+use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
-    AstNode, SourceFile, AstPtr, TreeArc,
-    ast::{self, NameOwner, AttrsOwner},
+    ast::{self, AttrsOwner, NameOwner},
+    AstNode, AstPtr, SourceFile, TreeArc,
 };
+use test_utils::tested_by;
 
-use crate::{DefDatabase, Name, AsName, Path, HirFileId, ModuleSource, AstIdMap, FileAstId, Either, AstDatabase};
+use crate::{
+    AsName, AstDatabase, AstIdMap, DefDatabase, Either, FileAstId, HirFileId, ModuleSource, Name,
+    Path,
+};
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
 ///

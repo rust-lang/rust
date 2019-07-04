@@ -7,21 +7,25 @@
 /// purely for "IDE needs".
 use std::sync::Arc;
 
-use rustc_hash::{FxHashSet, FxHashMap};
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
-    SyntaxNode, AstPtr, TextUnit, SyntaxNodePtr, TextRange,
-    ast::{self, AstNode, NameOwner},
     algo::find_node_at_offset,
+    ast::{self, AstNode, NameOwner},
+    AstPtr,
     SyntaxKind::*,
+    SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
 };
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
-    AsName, Module, HirFileId, Crate, Trait, Resolver, Ty, Path, MacroDef,
-    expr::{BodySourceMap, scope::{ScopeId, ExprScopes}},
+    expr,
+    expr::{
+        scope::{ExprScopes, ScopeId},
+        BodySourceMap,
+    },
     ids::LocationCtx,
-    expr, AstId,
+    AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HirDatabase, HirFileId,
+    MacroDef, Module, Name, Path, PerNs, Resolver, Static, Struct, Trait, Ty,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.

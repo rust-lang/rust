@@ -1,11 +1,14 @@
 use std::fmt::{self, Display};
 
+use hir::{Docs, Documentation, HasSource};
 use join_to_string::join;
 use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 use std::convert::From;
-use hir::{Docs, Documentation, HasSource};
 
-use crate::{db, display::{where_predicates, generic_parameters}};
+use crate::{
+    db,
+    display::{generic_parameters, where_predicates},
+};
 
 /// Contains information about a function signature
 #[derive(Debug)]

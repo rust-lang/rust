@@ -31,23 +31,26 @@ pub mod ast;
 #[doc(hidden)]
 pub mod fuzz;
 
-use std::{sync::Arc, fmt::Write};
+use std::{fmt::Write, sync::Arc};
 
 use ra_text_edit::AtomTextEdit;
 
 use crate::syntax_node::GreenNode;
 
-pub use rowan::{SmolStr, TextRange, TextUnit};
-pub use ra_parser::SyntaxKind;
-pub use ra_parser::T;
 pub use crate::{
     ast::AstNode,
-    syntax_error::{SyntaxError, SyntaxErrorKind, Location},
+    parsing::{classify_literal, tokenize, Token},
+    ptr::{AstPtr, SyntaxNodePtr},
+    syntax_error::{Location, SyntaxError, SyntaxErrorKind},
+    syntax_node::{
+        Direction, InsertPosition, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
+        TreeArc, WalkEvent,
+    },
     syntax_text::SyntaxText,
-    syntax_node::{Direction,  SyntaxNode, WalkEvent, TreeArc, SyntaxTreeBuilder, SyntaxElement, SyntaxToken, InsertPosition},
-    ptr::{SyntaxNodePtr, AstPtr},
-    parsing::{tokenize, classify_literal, Token},
 };
+pub use ra_parser::SyntaxKind;
+pub use ra_parser::T;
+pub use rowan::{SmolStr, TextRange, TextUnit};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.

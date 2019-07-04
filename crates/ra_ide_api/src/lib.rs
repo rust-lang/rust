@@ -46,33 +46,35 @@ mod test_utils;
 
 use std::sync::Arc;
 
-use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit};
-use ra_text_edit::TextEdit;
 use ra_db::{
-    SourceDatabase, CheckCanceled,
     salsa::{self, ParallelDatabase},
+    CheckCanceled, SourceDatabase,
 };
+use ra_syntax::{SourceFile, TextRange, TextUnit, TreeArc};
+use ra_text_edit::TextEdit;
 use relative_path::RelativePathBuf;
 
-use crate::{symbol_index::FileSymbol, db::LineIndexDatabase};
+use crate::{db::LineIndexDatabase, symbol_index::FileSymbol};
 
 pub use crate::{
+    assists::{Assist, AssistId},
     change::{AnalysisChange, LibraryData},
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
-    runnables::{Runnable, RunnableKind},
-    references::ReferenceSearchResult,
-    assists::{Assist, AssistId},
-    hover::{HoverResult},
-    line_index::{LineIndex, LineCol},
-    line_index_utils::translate_offset_with_edit,
-    folding_ranges::{Fold, FoldKind},
-    syntax_highlighting::HighlightedRange,
     diagnostics::Severity,
-    display::{FunctionSignature, NavigationTarget, StructureNode, file_structure},
+    display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
+    folding_ranges::{Fold, FoldKind},
+    hover::HoverResult,
+    line_index::{LineCol, LineIndex},
+    line_index_utils::translate_offset_with_edit,
+    references::ReferenceSearchResult,
+    runnables::{Runnable, RunnableKind},
+    syntax_highlighting::HighlightedRange,
 };
 
-pub use ra_db::{Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId, Edition};
 pub use hir::Documentation;
+pub use ra_db::{
+    Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRootId,
+};
 
 pub type Cancelable<T> = Result<T, Canceled>;
 

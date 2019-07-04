@@ -1,14 +1,15 @@
+use hir::{FieldSource, HasSource, ImplItem, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    SyntaxNode, AstNode, SmolStr, TextRange, AstPtr, TreeArc,
-    SyntaxKind::{self, NAME},
-    ast::{self, DocCommentsOwner},
     algo::visit::{visitor, Visitor},
+    ast::{self, DocCommentsOwner},
+    AstNode, AstPtr, SmolStr,
+    SyntaxKind::{self, NAME},
+    SyntaxNode, TextRange, TreeArc,
 };
-use hir::{ModuleSource, FieldSource, ImplItem, HasSource};
 
-use crate::{FileSymbol, db::RootDatabase};
 use super::short_label::ShortLabel;
+use crate::{db::RootDatabase, FileSymbol};
 
 /// `NavigationTarget` represents and element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.

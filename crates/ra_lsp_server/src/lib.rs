@@ -10,4 +10,7 @@ pub mod init;
 mod world;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-pub use crate::{caps::server_capabilities, main_loop::main_loop, main_loop::LspError, init::InitializationOptions};
+pub use crate::{
+    caps::server_capabilities, init::InitializationOptions, main_loop::main_loop,
+    main_loop::LspError,
+};

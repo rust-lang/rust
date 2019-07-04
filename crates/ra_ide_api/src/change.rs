@@ -1,22 +1,19 @@
-use std::{
-    fmt, time,
-    sync::Arc,
-};
+use std::{fmt, sync::Arc, time};
 
-use rustc_hash::FxHashMap;
 use ra_db::{
-    SourceRootId, FileId, CrateGraph, SourceDatabase, SourceRoot,
     salsa::{Database, SweepStrategy},
+    CrateGraph, FileId, SourceDatabase, SourceRoot, SourceRootId,
 };
+use ra_prof::{memory_usage, profile, Bytes};
 use ra_syntax::SourceFile;
-use ra_prof::{profile, Bytes, memory_usage};
-use relative_path::RelativePathBuf;
 use rayon::prelude::*;
+use relative_path::RelativePathBuf;
+use rustc_hash::FxHashMap;
 
 use crate::{
     db::RootDatabase,
-    symbol_index::{SymbolIndex, SymbolsDatabase},
     status::syntax_tree_stats,
+    symbol_index::{SymbolIndex, SymbolsDatabase},
 };
 
 #[derive(Default)]

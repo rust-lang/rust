@@ -1,13 +1,10 @@
-use hir::{
-    HirDisplay, Ty,
-    db::HirDatabase,
-};
+use hir::{db::HirDatabase, HirDisplay, Ty};
 use ra_syntax::{
+    ast::{AstNode, LetStmt, NameOwner, PatKind},
     T,
-    ast::{LetStmt, PatKind, NameOwner, AstNode}
 };
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 /// Add explicit type assist.
 pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
@@ -56,7 +53,7 @@ fn is_unknown(ty: &Ty) -> bool {
 mod tests {
     use super::*;
 
-    use crate::helpers::{ check_assist, check_assist_target, check_assist_not_applicable };
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn add_explicit_type_target() {

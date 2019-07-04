@@ -1,11 +1,7 @@
 use hir::db::HirDatabase;
-use ra_syntax::{
-    T,
-    Direction,
-    algo::non_trivia_sibling,
-};
+use ra_syntax::{algo::non_trivia_sibling, Direction, T};
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn flip_comma(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let comma = ctx.token_at_offset().find(|leaf| leaf.kind() == T![,])?;

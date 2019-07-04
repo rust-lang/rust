@@ -1,8 +1,9 @@
 use lsp_types::{
-    CodeActionProviderCapability, CodeLensOptions, CompletionOptions, DocumentOnTypeFormattingOptions,
-    ExecuteCommandOptions, FoldingRangeProviderCapability, RenameOptions, RenameProviderCapability,
+    CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
+    DocumentOnTypeFormattingOptions, ExecuteCommandOptions, FoldingRangeProviderCapability,
+    GenericCapability, ImplementationProviderCapability, RenameOptions, RenameProviderCapability,
     ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions, ImplementationProviderCapability, GenericCapability, TypeDefinitionProviderCapability
+    TextDocumentSyncOptions, TypeDefinitionProviderCapability,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {

@@ -4,11 +4,11 @@ extern crate walkdir;
 
 use std::{
     fmt::Write,
-    path::{PathBuf, Component},
+    path::{Component, PathBuf},
 };
 
-use test_utils::{project_dir, dir_tests, read_text, collect_tests};
-use ra_syntax::{SourceFile, fuzz};
+use ra_syntax::{fuzz, SourceFile};
+use test_utils::{collect_tests, dir_tests, project_dir, read_text};
 
 #[test]
 fn lexer_tests() {

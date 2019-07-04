@@ -1,10 +1,10 @@
 use std::{
-    path::{PathBuf, Path},
+    path::{Path, PathBuf},
     time::Instant,
 };
 
-use ra_db::{SourceDatabase, salsa::Database};
-use ra_ide_api::{AnalysisHost, Analysis, LineCol, FilePosition};
+use ra_db::{salsa::Database, SourceDatabase};
+use ra_ide_api::{Analysis, AnalysisHost, FilePosition, LineCol};
 
 use crate::Result;
 

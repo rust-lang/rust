@@ -1,13 +1,9 @@
 use std::iter::successors;
 
 use hir::db::HirDatabase;
-use ra_syntax::{
-    T,
-    TextUnit, AstNode,
-    ast,
-};
+use ra_syntax::{ast, AstNode, TextUnit, T};
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let colon_colon = ctx.token_at_offset().find(|leaf| leaf.kind() == T![::])?;

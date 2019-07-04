@@ -1,12 +1,13 @@
 use std::mem;
 
-use ra_parser::{TreeSink, ParseError};
+use ra_parser::{ParseError, TreeSink};
 
 use crate::{
-    SmolStr, SyntaxError, TextUnit, TextRange, SyntaxTreeBuilder,
-    SyntaxKind::{self, *},
     parsing::Token,
     syntax_node::GreenNode,
+    SmolStr, SyntaxError,
+    SyntaxKind::{self, *},
+    SyntaxTreeBuilder, TextRange, TextUnit,
 };
 
 /// Bridges the parser with our specific syntax tree representation.

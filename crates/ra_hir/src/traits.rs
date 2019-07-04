@@ -1,13 +1,13 @@
 //! HIR for trait definitions.
 
-use std::sync::Arc;
 use rustc_hash::FxHashMap;
+use std::sync::Arc;
 
 use ra_syntax::ast::{self, NameOwner};
 
 use crate::{
-    Function, Const, TypeAlias, Name, DefDatabase, Trait, AstDatabase, Module, HasSource,
-    ids::LocationCtx, name::AsName,
+    ids::LocationCtx, name::AsName, AstDatabase, Const, DefDatabase, Function, HasSource, Module,
+    Name, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

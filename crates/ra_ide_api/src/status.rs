@@ -1,20 +1,20 @@
-use std::{
-    fmt,
-    iter::FromIterator,
-    sync::Arc,
-};
+use std::{fmt, iter::FromIterator, sync::Arc};
 
-use ra_syntax::{TreeArc, SyntaxNode, Parse, AstNode};
-use ra_db::{
-    FileTextQuery, SourceRootId,
-    salsa::{Database, debug::{DebugQueryTable, TableEntry}},
-};
-use ra_prof::{Bytes, memory_usage};
 use hir::MacroFile;
+use ra_db::{
+    salsa::{
+        debug::{DebugQueryTable, TableEntry},
+        Database,
+    },
+    FileTextQuery, SourceRootId,
+};
+use ra_prof::{memory_usage, Bytes};
+use ra_syntax::{AstNode, Parse, SyntaxNode, TreeArc};
 
 use crate::{
-    FileId, db::RootDatabase,
-    symbol_index::{SymbolIndex, LibrarySymbolsQuery},
+    db::RootDatabase,
+    symbol_index::{LibrarySymbolsQuery, SymbolIndex},
+    FileId,
 };
 
 pub(crate) fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {

@@ -1,4 +1,4 @@
-use crate::{TokenTree, Subtree};
+use crate::{Subtree, TokenTree};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 struct EntryId(usize);

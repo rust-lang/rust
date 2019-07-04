@@ -3,7 +3,10 @@ use std::sync::Arc;
 use relative_path::RelativePathBuf;
 use test_utils::{extract_offset, extract_range, parse_fixture, CURSOR_MARKER};
 
-use crate::{Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, FilePosition, FileRange, SourceRootId, Edition::Edition2018};
+use crate::{
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition::Edition2018, FileId, FilePosition,
+    FileRange, SourceRootId,
+};
 
 /// Mock analysis is used in test to bootstrap an AnalysisHost/Analysis
 /// from a set of in-memory files.

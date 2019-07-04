@@ -5,14 +5,14 @@ mod primitives;
 
 use std::sync::Arc;
 
+use insta::assert_snapshot_matches;
 use ra_db::SourceDatabase;
 use test_utils::covers;
-use insta::assert_snapshot_matches;
 
 use crate::{
-    Crate, Either,
-    mock::{MockDatabase, CrateGraphFixture},
+    mock::{CrateGraphFixture, MockDatabase},
     nameres::Resolution,
+    Crate, Either,
 };
 
 use super::*;

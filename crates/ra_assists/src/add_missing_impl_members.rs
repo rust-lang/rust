@@ -1,9 +1,12 @@
-use crate::{Assist, AssistId, AssistCtx, ast_editor::{AstEditor, AstBuilder}};
+use crate::{
+    ast_editor::{AstBuilder, AstEditor},
+    Assist, AssistCtx, AssistId,
+};
 
-use hir::{HasSource, db::HirDatabase};
-use ra_syntax::{SmolStr, TreeArc};
-use ra_syntax::ast::{self, AstNode, ImplItem, ImplItemKind, NameOwner};
+use hir::{db::HirDatabase, HasSource};
 use ra_db::FilePosition;
+use ra_syntax::ast::{self, AstNode, ImplItem, ImplItemKind, NameOwner};
+use ra_syntax::{SmolStr, TreeArc};
 
 #[derive(PartialEq)]
 enum AddMissingImplMembersMode {

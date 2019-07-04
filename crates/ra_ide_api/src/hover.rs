@@ -1,16 +1,22 @@
+use hir::{HasSource, HirDisplay};
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    AstNode, TreeArc,
+    algo::{
+        ancestors_at_offset, find_covering_element, find_node_at_offset,
+        visit::{visitor, Visitor},
+    },
     ast::{self, DocCommentsOwner},
-    algo::{find_covering_element, find_node_at_offset, ancestors_at_offset, visit::{visitor, Visitor}},
+    AstNode, TreeArc,
 };
-use hir::{HirDisplay, HasSource};
 
 use crate::{
     db::RootDatabase,
-    RangeInfo, FilePosition, FileRange,
-    display::{rust_code_markup, rust_code_markup_with_doc, ShortLabel, docs_from_symbol, description_from_symbol},
-    name_ref_kind::{NameRefKind::*, classify_name_ref},
+    display::{
+        description_from_symbol, docs_from_symbol, rust_code_markup, rust_code_markup_with_doc,
+        ShortLabel,
+    },
+    name_ref_kind::{classify_name_ref, NameRefKind::*},
+    FilePosition, FileRange, RangeInfo,
 };
 
 /// Contains the results when hovering over an item
@@ -256,8 +262,10 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use crate::mock_analysis::{
+        analysis_and_position, single_file_with_position, single_file_with_range,
+    };
     use ra_syntax::TextRange;
-    use crate::mock_analysis::{single_file_with_position, single_file_with_range, analysis_and_position};
 
     fn trim_markup(s: &str) -> &str {
         s.trim_start_matches("```rust\n").trim_end_matches("\n```")

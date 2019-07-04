@@ -1,4 +1,4 @@
-use crate::{SourceFile, validation, TextUnit, TextRange, AstNode};
+use crate::{validation, AstNode, SourceFile, TextRange, TextUnit};
 use ra_text_edit::AtomTextEdit;
 use std::str::{self, FromStr};
 

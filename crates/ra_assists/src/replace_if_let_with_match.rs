@@ -1,8 +1,8 @@
-use ra_syntax::{AstNode, ast};
-use ra_fmt::extract_trivial_expression;
 use hir::db::HirDatabase;
+use ra_fmt::extract_trivial_expression;
+use ra_syntax::{ast, AstNode};
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: &ast::IfExpr = ctx.node_at_offset()?;

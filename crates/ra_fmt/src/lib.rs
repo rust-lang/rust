@@ -1,11 +1,13 @@
 //! This crate provides some utilities for indenting rust code.
 //!
-use std::iter::successors;
 use itertools::Itertools;
 use ra_syntax::{
-    SyntaxNode, SyntaxKind::*, SyntaxToken, SyntaxKind, T,
     ast::{self, AstNode, AstToken},
+    SyntaxKind,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, T,
 };
+use std::iter::successors;
 
 pub fn reindent(text: &str, indent: &str) -> String {
     let indent = format!("\n{}", indent);

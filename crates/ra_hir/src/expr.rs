@@ -3,19 +3,25 @@ use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
 
-use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
+use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
-    SyntaxNodePtr, AstPtr, AstNode,
-    ast::{self, TryBlockBodyOwner, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind,ArrayExprKind, TypeAscriptionOwner},
+    ast::{
+        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, NameOwner,
+        TryBlockBodyOwner, TypeAscriptionOwner,
+    },
+    AstNode, AstPtr, SyntaxNodePtr,
 };
 
 use crate::{
-    Path, Name, HirDatabase, Resolver,DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind,
-    HasSource,
     name::AsName,
     type_ref::{Mutability, TypeRef},
+    DefWithBody, Either, HasSource, HirDatabase, HirFileId, MacroCallLoc, MacroFileKind, Name,
+    Path, Resolver,
 };
-use crate::{path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
+use crate::{
+    path::GenericArgs,
+    ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
+};
 
 pub use self::scope::ExprScopes;
 
@@ -249,8 +255,8 @@ pub enum Expr {
     Literal(Literal),
 }
 
-pub use ra_syntax::ast::PrefixOp as UnaryOp;
 pub use ra_syntax::ast::BinOp as BinaryOp;
+pub use ra_syntax::ast::PrefixOp as UnaryOp;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Array {
     ElementList(Vec<ExprId>),

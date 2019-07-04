@@ -4,17 +4,15 @@ mod input;
 
 use std::{panic, sync::Arc};
 
-use ra_syntax::{TextUnit, TextRange, SourceFile, Parse};
-use relative_path::RelativePathBuf;
 use ra_prof::profile;
+use ra_syntax::{Parse, SourceFile, TextRange, TextUnit};
+use relative_path::RelativePathBuf;
 
-pub use ::salsa as salsa;
 pub use crate::{
     cancellation::Canceled,
-    input::{
-        FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, Dependency, Edition,
-    },
+    input::{CrateGraph, CrateId, Dependency, Edition, FileId, SourceRoot, SourceRootId},
 };
+pub use ::salsa;
 
 pub trait CheckCanceled {
     /// Aborts current query if there are pending changes.

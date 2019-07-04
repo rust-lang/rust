@@ -1,6 +1,6 @@
 use walkdir::WalkDir;
 
-use ra_tools::{generate, gen_tests, run_rustfmt, Verify, project_root};
+use ra_tools::{gen_tests, generate, project_root, run_rustfmt, Verify};
 
 #[test]
 fn generated_grammar_is_fresh() {

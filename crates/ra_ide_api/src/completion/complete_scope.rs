@@ -1,9 +1,9 @@
-use rustc_hash::FxHashMap;
-use ra_text_edit::TextEditBuilder;
-use ra_syntax::{SmolStr, ast, AstNode};
 use ra_assists::auto_import;
+use ra_syntax::{ast, AstNode, SmolStr};
+use ra_text_edit::TextEditBuilder;
+use rustc_hash::FxHashMap;
 
-use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionContext};
+use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.is_trivial_path {
@@ -121,7 +121,7 @@ impl ImportResolver {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{CompletionKind, check_completion};
+    use crate::completion::{check_completion, CompletionKind};
 
     fn check_reference_completion(name: &str, code: &str) {
         check_completion(name, code, CompletionKind::Reference);

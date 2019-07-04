@@ -1,11 +1,11 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
-    SyntaxKind::{WHITESPACE, COMMENT},
+    SyntaxKind::{COMMENT, WHITESPACE},
     TextUnit,
 };
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn add_derive(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.node_at_offset::<ast::NominalDef>()?;

@@ -1,13 +1,10 @@
-use std::fmt::Write;
 use itertools::Itertools;
+use std::fmt::Write;
 
-use hir::{
-    AdtDef, FieldSource, HasSource,
-    db::HirDatabase,
-};
+use hir::{db::HirDatabase, AdtDef, FieldSource, HasSource};
 use ra_syntax::ast::{self, AstNode};
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 fn is_trivial_arm(arm: &ast::MatchArm) -> bool {
     fn single_pattern(arm: &ast::MatchArm) -> Option<ast::PatKind> {

@@ -1,12 +1,12 @@
-use test_utils::tested_by;
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    AstNode, SyntaxNode, TextUnit,
-    ast::{self, ArgListOwner},
     algo::find_node_at_offset,
+    ast::{self, ArgListOwner},
+    AstNode, SyntaxNode, TextUnit,
 };
+use test_utils::tested_by;
 
-use crate::{FilePosition, CallInfo, FunctionSignature, db::RootDatabase};
+use crate::{db::RootDatabase, CallInfo, FilePosition, FunctionSignature};
 
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {

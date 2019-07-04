@@ -3,15 +3,15 @@ mod json_project;
 mod sysroot;
 
 use std::{
+    error::Error,
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
-    error::Error
 };
 
 use rustc_hash::FxHashMap;
 
-use ra_db::{CrateGraph, FileId, Edition};
+use ra_db::{CrateGraph, Edition, FileId};
 
 use serde_json::from_reader;
 

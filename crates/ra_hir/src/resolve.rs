@@ -4,16 +4,19 @@ use std::sync::Arc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    ModuleDef, Trait, MacroDef,
     code_model::Crate,
     db::HirDatabase,
-    name::{Name, KnownName},
-    nameres::{PerNs, CrateDefMap, CrateModuleId},
-    generics::GenericParams,
-    expr::{scope::{ExprScopes, ScopeId}, PatId},
-    impl_block::ImplBlock,
-    path::Path,
     either::Either,
+    expr::{
+        scope::{ExprScopes, ScopeId},
+        PatId,
+    },
+    generics::GenericParams,
+    impl_block::ImplBlock,
+    name::{KnownName, Name},
+    nameres::{CrateDefMap, CrateModuleId, PerNs},
+    path::Path,
+    MacroDef, ModuleDef, Trait,
 };
 
 #[derive(Debug, Clone, Default)]

@@ -1,9 +1,10 @@
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{
-    SourceFile, SyntaxNode, TextRange, Direction, SyntaxElement,
-    SyntaxKind::{self, *},
     ast::{self, AstNode, AstToken, VisibilityOwner},
+    Direction, SourceFile, SyntaxElement,
+    SyntaxKind::{self, *},
+    SyntaxNode, TextRange,
 };
 
 #[derive(Debug, PartialEq, Eq)]

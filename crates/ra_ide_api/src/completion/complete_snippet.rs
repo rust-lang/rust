@@ -1,4 +1,7 @@
-use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionItemKind, CompletionContext, completion_item::Builder};
+use crate::completion::{
+    completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
+    CompletionKind, Completions,
+};
 
 fn snippet(ctx: &CompletionContext, label: &str, snippet: &str) -> Builder {
     CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), label)
@@ -36,7 +39,7 @@ fn ${1:feature}() {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{CompletionKind, check_completion};
+    use crate::completion::{check_completion, CompletionKind};
 
     fn check_snippet_completion(name: &str, code: &str) {
         check_completion(name, code, CompletionKind::Snippet);

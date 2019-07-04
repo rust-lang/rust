@@ -6,19 +6,20 @@
 //!   - otherwise, we search for the nearest `{}` block which contains the edit
 //!     and try to parse only this block.
 
-use ra_text_edit::AtomTextEdit;
 use ra_parser::Reparser;
+use ra_text_edit::AtomTextEdit;
 
 use crate::{
-    SyntaxKind::*, TextRange, TextUnit, SyntaxError,
     algo,
-    syntax_node::{GreenNode, SyntaxNode, GreenToken, SyntaxElement},
     parsing::{
+        lexer::{tokenize, Token},
         text_token_source::TextTokenSource,
         text_tree_sink::TextTreeSink,
-        lexer::{tokenize, Token},
     },
-    T,
+    syntax_node::{GreenNode, GreenToken, SyntaxElement, SyntaxNode},
+    SyntaxError,
+    SyntaxKind::*,
+    TextRange, TextUnit, T,
 };
 
 pub(crate) fn incremental_reparse(
@@ -168,10 +169,10 @@ fn merge_errors(
 mod tests {
     use std::sync::Arc;
 
-    use test_utils::{extract_range, assert_eq_text};
+    use test_utils::{assert_eq_text, extract_range};
 
-    use crate::{SourceFile, AstNode, Parse};
     use super::*;
+    use crate::{AstNode, Parse, SourceFile};
 
     fn do_check(before: &str, replace_with: &str, reparsed_len: u32) {
         let (range, before) = extract_range(before);

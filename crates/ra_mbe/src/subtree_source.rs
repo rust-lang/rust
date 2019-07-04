@@ -1,7 +1,7 @@
-use ra_parser::{TokenSource, Token};
+use ra_parser::{Token, TokenSource};
 use ra_syntax::{classify_literal, SmolStr, SyntaxKind, SyntaxKind::*, T};
-use std::cell::{RefCell, Cell};
-use tt::buffer::{TokenBuffer, Cursor};
+use std::cell::{Cell, RefCell};
+use tt::buffer::{Cursor, TokenBuffer};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct TtToken {

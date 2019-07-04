@@ -6,8 +6,7 @@ mod strings;
 
 use crate::{
     SyntaxKind::{self, *},
-    TextUnit,
-    T,
+    TextUnit, T,
 };
 
 use self::{

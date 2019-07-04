@@ -1,9 +1,9 @@
-use std::{fmt, any::Any};
+use std::{any::Any, fmt};
 
-use ra_syntax::{SyntaxNodePtr, TreeArc, AstPtr, TextRange, ast, SyntaxNode};
+use ra_syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr, TextRange, TreeArc};
 use relative_path::RelativePathBuf;
 
-use crate::{HirFileId, HirDatabase, Name};
+use crate::{HirDatabase, HirFileId, Name};
 
 /// Diagnostic defines hir API for errors and warnings.
 ///

@@ -7,18 +7,18 @@
 //! modules just wraps its API.
 
 use std::{
-    ops::RangeInclusive,
-    fmt::{self, Write},
     borrow::Borrow,
+    fmt::{self, Write},
     iter::successors,
+    ops::RangeInclusive,
 };
 
 use ra_parser::ParseError;
-use rowan::{TransparentNewType, GreenNodeBuilder};
+use rowan::{GreenNodeBuilder, TransparentNewType};
 
 use crate::{
-    SmolStr, SyntaxKind, TextUnit, TextRange, SyntaxText, SourceFile, AstNode, SyntaxNodePtr,
     syntax_error::{SyntaxError, SyntaxErrorKind},
+    AstNode, SmolStr, SourceFile, SyntaxKind, SyntaxNodePtr, SyntaxText, TextRange, TextUnit,
 };
 
 pub use rowan::WalkEvent;

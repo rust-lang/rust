@@ -1,9 +1,9 @@
 use itertools::Itertools;
-use ra_syntax::{
-    TextRange, SyntaxNode,
-    ast::{self, AstNode, NameOwner, ModuleItemOwner, AttrsOwner},
-};
 use ra_db::SourceDatabase;
+use ra_syntax::{
+    ast::{self, AstNode, AttrsOwner, ModuleItemOwner, NameOwner},
+    SyntaxNode, TextRange,
+};
 
 use crate::{db::RootDatabase, FileId};
 

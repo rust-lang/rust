@@ -1,11 +1,11 @@
-use ra_parser::{TreeSink, ParseError};
-use ra_syntax::{
-    AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr, SyntaxTreeBuilder, TreeArc, SyntaxElement,
-    ast, SyntaxKind::*, TextUnit, T
-};
-use tt::buffer::{TokenBuffer, Cursor};
-use crate::subtree_source::{SubtreeTokenSource};
+use crate::subtree_source::SubtreeTokenSource;
 use crate::ExpandError;
+use ra_parser::{ParseError, TreeSink};
+use ra_syntax::{
+    ast, AstNode, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxNode, SyntaxTreeBuilder,
+    TextRange, TextUnit, TreeArc, T,
+};
+use tt::buffer::{Cursor, TokenBuffer};
 
 /// Maps `tt::TokenId` to the relative range of the original token.
 #[derive(Default)]
@@ -367,7 +367,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{expand, create_rules};
+    use crate::tests::{create_rules, expand};
     use ra_parser::TokenSource;
 
     #[test]

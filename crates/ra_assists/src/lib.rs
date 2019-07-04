@@ -11,12 +11,12 @@ pub mod ast_editor;
 
 use itertools::Itertools;
 
-use ra_text_edit::TextEdit;
-use ra_syntax::{TextRange, TextUnit};
-use ra_db::FileRange;
 use hir::db::HirDatabase;
+use ra_db::FileRange;
+use ra_syntax::{TextRange, TextUnit};
+use ra_text_edit::TextEdit;
 
-pub(crate) use crate::assist_ctx::{AssistCtx, Assist};
+pub(crate) use crate::assist_ctx::{Assist, AssistCtx};
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -127,11 +127,11 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
 #[cfg(test)]
 mod helpers {
     use hir::mock::MockDatabase;
-    use ra_syntax::TextRange;
     use ra_db::FileRange;
-    use test_utils::{extract_offset, extract_range, assert_eq_text, add_cursor};
+    use ra_syntax::TextRange;
+    use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
-    use crate::{AssistCtx, Assist};
+    use crate::{Assist, AssistCtx};
 
     pub(crate) fn check_assist(
         assist: fn(AssistCtx<MockDatabase>) -> Option<Assist>,
@@ -289,8 +289,8 @@ mod helpers {
 #[cfg(test)]
 mod tests {
     use hir::mock::MockDatabase;
-    use ra_syntax::TextRange;
     use ra_db::FileRange;
+    use ra_syntax::TextRange;
     use test_utils::{extract_offset, extract_range};
 
     #[test]

@@ -3,20 +3,25 @@ use std::sync::Arc;
 
 use log::debug;
 
-use chalk_ir::{TypeId, ImplId, TypeKindId, Parameter, Identifier, cast::Cast, PlaceholderIndex, UniverseIndex, TypeName};
-use chalk_rust_ir::{AssociatedTyDatum, TraitDatum, StructDatum, ImplDatum};
-
-use test_utils::tested_by;
-use ra_db::salsa::{InternId, InternKey};
-
-use crate::{
-    Trait, HasGenericParams, ImplBlock, Crate,
-    db::HirDatabase,
-    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate, CallableDef, ProjectionTy},
-    ty::display::HirDisplay,
-    generics::GenericDef, TypeAlias, ImplItem,
+use chalk_ir::{
+    cast::Cast, Identifier, ImplId, Parameter, PlaceholderIndex, TypeId, TypeKindId, TypeName,
+    UniverseIndex,
 };
+use chalk_rust_ir::{AssociatedTyDatum, ImplDatum, StructDatum, TraitDatum};
+
+use ra_db::salsa::{InternId, InternKey};
+use test_utils::tested_by;
+
 use super::ChalkContext;
+use crate::{
+    db::HirDatabase,
+    generics::GenericDef,
+    ty::display::HirDisplay,
+    ty::{
+        ApplicationTy, CallableDef, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+    },
+    Crate, HasGenericParams, ImplBlock, ImplItem, Trait, TypeAlias,
+};
 
 /// This represents a trait whose name we could not resolve.
 const UNKNOWN_TRAIT: chalk_ir::TraitId =

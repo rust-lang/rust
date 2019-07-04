@@ -27,8 +27,8 @@ pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
 
 #[cfg(test)]
 mod tests {
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot_matches;
-    use crate::completion::{CompletionItem, CompletionKind, do_completion};
 
     fn complete(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)

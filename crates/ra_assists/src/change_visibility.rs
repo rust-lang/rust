@@ -1,12 +1,15 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
-    T,
-    AstNode, SyntaxNode, TextUnit,
-    ast::{self, VisibilityOwner, NameOwner},
-    SyntaxKind::{VISIBILITY, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF, IDENT, WHITESPACE, COMMENT, ATTR},
+    ast::{self, NameOwner, VisibilityOwner},
+    AstNode,
+    SyntaxKind::{
+        ATTR, COMMENT, ENUM_DEF, FN_DEF, IDENT, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY,
+        WHITESPACE,
+    },
+    SyntaxNode, TextUnit, T,
 };
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn change_visibility(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     if let Some(vis) = ctx.node_at_offset::<ast::Visibility>() {

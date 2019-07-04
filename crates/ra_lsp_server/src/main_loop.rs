@@ -2,7 +2,7 @@ mod handlers;
 mod subscriptions;
 pub(crate) mod pending_requests;
 
-use std::{fmt, path::PathBuf, sync::Arc, time::Instant, error::Error};
+use std::{error::Error, fmt, path::PathBuf, sync::Arc, time::Instant};
 
 use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
 use gen_lsp_server::{
@@ -10,21 +10,20 @@ use gen_lsp_server::{
 };
 use lsp_types::NumberOrString;
 use ra_ide_api::{Canceled, FileId, LibraryData};
+use ra_prof::profile;
 use ra_vfs::VfsTask;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
-use ra_prof::profile;
 
 use crate::{
     main_loop::{
+        pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
-        pending_requests::{PendingRequests, PendingRequest},
     },
     project_model::workspace_loader,
     req,
     world::{WorldSnapshot, WorldState},
-    Result,
-    InitializationOptions,
+    InitializationOptions, Result,
 };
 
 const THREADPOOL_SIZE: usize = 8;

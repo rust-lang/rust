@@ -1,12 +1,12 @@
+use ra_syntax::SmolStr;
 /// This module takes a (parsed) definition of `macro_rules` invocation, a
 /// `tt::TokenTree` representing an argument of macro invocation, and produces a
 /// `tt::TokenTree` for the result of the expansion.
 use rustc_hash::FxHashMap;
-use ra_syntax::SmolStr;
 use tt::TokenId;
 
-use crate::ExpandError;
 use crate::tt_cursor::TtCursor;
+use crate::ExpandError;
 
 pub(crate) fn expand(
     rules: &crate::MacroRules,

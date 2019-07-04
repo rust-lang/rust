@@ -11,20 +11,17 @@ use flexi_logger::Logger;
 use gen_lsp_server::{RawMessage, RawNotification, RawRequest};
 use lsp_types::{
     notification::DidOpenTextDocument,
+    notification::{Notification, ShowMessage},
     request::{Request, Shutdown},
     DidOpenTextDocumentParams, TextDocumentIdentifier, TextDocumentItem, Url,
-    notification::{Notification, ShowMessage},
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use tempfile::TempDir;
+use test_utils::{find_mismatch, parse_fixture};
 use thread_worker::Worker;
-use test_utils::{parse_fixture, find_mismatch};
 
-use ra_lsp_server::{
-    main_loop, req,
-    InitializationOptions,
-};
+use ra_lsp_server::{main_loop, req, InitializationOptions};
 
 pub struct Project<'a> {
     fixture: &'a str,

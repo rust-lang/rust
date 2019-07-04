@@ -1,6 +1,4 @@
-use ra_syntax::{
-    ast::{self, NameOwner, VisibilityOwner, TypeAscriptionOwner, AstNode},
-};
+use ra_syntax::ast::{self, AstNode, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 pub(crate) trait ShortLabel {
     fn short_label(&self) -> Option<String>;

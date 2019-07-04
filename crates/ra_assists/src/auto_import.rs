@@ -1,14 +1,15 @@
+use hir::{self, db::HirDatabase};
 use ra_text_edit::TextEditBuilder;
-use hir::{ self, db::HirDatabase};
 
-use ra_syntax::{
-    T,
-    ast::{ self, NameOwner }, AstNode, SyntaxNode, Direction, TextRange, SmolStr,
-    SyntaxKind::{ PATH, PATH_SEGMENT }
-};
 use crate::{
+    assist_ctx::{Assist, AssistCtx},
     AssistId,
-    assist_ctx::{AssistCtx, Assist},
+};
+use ra_syntax::{
+    ast::{self, NameOwner},
+    AstNode, Direction, SmolStr,
+    SyntaxKind::{PATH, PATH_SEGMENT},
+    SyntaxNode, TextRange, T,
 };
 
 fn collect_path_segments_raw<'a>(
@@ -577,7 +578,7 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{ check_assist, check_assist_not_applicable };
+    use crate::helpers::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn test_auto_import_add_use_no_anchor() {

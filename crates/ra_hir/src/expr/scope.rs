@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
+use ra_arena::{impl_arena_id, Arena, RawId};
 use rustc_hash::FxHashMap;
-use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    Name, DefWithBody,
-    expr::{PatId, ExprId, Pat, Expr, Body, Statement},
-    HirDatabase,
+    expr::{Body, Expr, ExprId, Pat, PatId, Statement},
+    DefWithBody, HirDatabase, Name,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -173,10 +172,10 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
 #[cfg(test)]
 mod tests {
     use ra_db::SourceDatabase;
-    use ra_syntax::{algo::find_node_at_offset, AstNode, SyntaxNodePtr, ast};
-    use test_utils::{extract_offset, assert_eq_text};
+    use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SyntaxNodePtr};
+    use test_utils::{assert_eq_text, extract_offset};
 
-    use crate::{source_binder::SourceAnalyzer, mock::MockDatabase};
+    use crate::{mock::MockDatabase, source_binder::SourceAnalyzer};
 
     fn do_check(code: &str, expected: &[&str]) {
         let (off, code) = extract_offset(code);

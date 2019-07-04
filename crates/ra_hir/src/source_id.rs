@@ -1,9 +1,13 @@
-use std::{marker::PhantomData, sync::Arc, hash::{Hash, Hasher}};
+use std::{
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+    sync::Arc,
+};
 
-use ra_arena::{Arena, RawId, impl_arena_id};
-use ra_syntax::{SyntaxNodePtr, TreeArc, SyntaxNode, AstNode, ast};
+use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr, TreeArc};
 
-use crate::{HirFileId, AstDatabase};
+use crate::{AstDatabase, HirFileId};
 
 /// `AstId` points to an AST node in any file.
 ///

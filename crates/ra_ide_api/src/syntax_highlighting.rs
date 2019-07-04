@@ -1,12 +1,12 @@
-use rustc_hash::{FxHashSet, FxHashMap};
+use rustc_hash::{FxHashMap, FxHashSet};
 
-use ra_syntax::{
-    ast, AstNode, TextRange, Direction, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxElement, T,
-};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
+use ra_syntax::{
+    ast, AstNode, Direction, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T,
+};
 
-use crate::{FileId, db::RootDatabase};
+use crate::{db::RootDatabase, FileId};
 
 #[derive(Debug)]
 pub struct HighlightedRange {
@@ -64,7 +64,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 if let Some(name_ref) = node.as_node().and_then(ast::NameRef::cast) {
                     // FIXME: revisit this after #1340
                     use crate::name_ref_kind::{classify_name_ref, NameRefKind::*};
-                    use hir::{ModuleDef, ImplItem};
+                    use hir::{ImplItem, ModuleDef};
 
                     // FIXME: try to reuse the SourceAnalyzers
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
@@ -264,8 +264,8 @@ pre        { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4e
 
 #[cfg(test)]
 mod tests {
-    use test_utils::{project_dir, read_text, assert_eq_text};
     use crate::mock_analysis::single_file;
+    use test_utils::{assert_eq_text, project_dir, read_text};
 
     #[test]
     fn test_highlighting() {

@@ -1,6 +1,6 @@
-use proptest::prelude::*;
-use text_unit::{TextUnit, TextRange};
 use crate::{AtomTextEdit, TextEdit};
+use proptest::prelude::*;
+use text_unit::{TextRange, TextUnit};
 
 pub fn arb_text() -> proptest::string::RegexGeneratorStrategy<String> {
     // generate multiple newlines

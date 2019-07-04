@@ -1,22 +1,21 @@
-use std::{io::Write as _, fmt::Write as _};
+use std::{fmt::Write as _, io::Write as _};
 
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
-    CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity, CodeAction,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
-    FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
-    MarkupKind, Position, PrepareRenameResponse, Range,
-    RenameParams,SymbolInformation, TextDocumentIdentifier, TextEdit,
-    WorkspaceEdit,
+    CodeAction, CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
+    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeKind,
+    FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
+    PrepareRenameResponse, Range, RenameParams, SymbolInformation, TextDocumentIdentifier,
+    TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
-    FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity, Cancelable,
-    AssistId,
+    AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo,
+    RunnableKind, Severity,
 };
-use ra_syntax::{AstNode, SyntaxKind, TextUnit, TextRange};
 use ra_prof::profile;
+use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
 use rustc_hash::FxHashMap;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use url_serde::Ser;
 

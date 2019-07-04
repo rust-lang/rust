@@ -1,6 +1,6 @@
-use ra_db::{FileRange, FilePosition};
+use ra_db::{FilePosition, FileRange};
 
-use crate::{SourceFileEdit, SourceChange, db::RootDatabase};
+use crate::{db::RootDatabase, SourceChange, SourceFileEdit};
 
 pub use ra_assists::AssistId;
 

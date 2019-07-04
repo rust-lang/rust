@@ -1,5 +1,5 @@
-use crate::{ ty::ApplicationTy, expr::BinaryOp};
-use super::{Ty, TypeCtor, InferTy};
+use super::{InferTy, Ty, TypeCtor};
+use crate::{expr::BinaryOp, ty::ApplicationTy};
 
 pub(super) fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
     match op {
