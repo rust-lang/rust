@@ -44,7 +44,6 @@ doc_comment::doctest!("../README.md");
 mod macros;
 
 mod external_trait_impls;
-mod fx;
 mod map;
 mod raw;
 #[cfg(feature = "rustc-internal-api")]

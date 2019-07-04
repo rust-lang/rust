@@ -8,7 +8,13 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ops::Index;
 
-pub use crate::fx::FxHashBuilder as DefaultHashBuilder;
+/// Default hasher for `HashMap`.
+#[cfg(feature = "ahash")]
+pub type DefaultHashBuilder = ahash::ABuildHasher;
+
+/// Dummy default hasher for `HashMap`.
+#[cfg(not(feature = "ahash"))]
+pub enum DefaultHashBuilder {}
 
 /// A hash map implemented with quadratic probing and SIMD lookup.
 ///
@@ -183,7 +189,6 @@ pub use crate::fx::FxHashBuilder as DefaultHashBuilder;
 ///     // use the values stored in map
 /// }
 /// ```
-
 #[derive(Clone)]
 pub struct HashMap<K, V, S = DefaultHashBuilder> {
     pub(crate) hash_builder: S,
@@ -197,6 +202,7 @@ pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: 
     state.finish()
 }
 
+#[cfg(feature = "ahash")]
 impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// Creates an empty `HashMap`.
     ///
@@ -227,7 +233,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// ```
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self::with_capacity_and_hasher(capacity, DefaultHashBuilder::default())
+        Self::with_capacity_and_hasher(capacity, Default::default())
     }
 }
 
