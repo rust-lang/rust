@@ -195,7 +195,7 @@ fn wide_char_to_multi_byte(code_page: u32,
     }
 }
 
-pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
+pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
     match v.iter().position(|c| *c == 0) {
         // don't include the 0
         Some(i) => &v[..i],

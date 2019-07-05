@@ -392,7 +392,7 @@ impl fmt::Debug for Item {
 impl Item {
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
-    pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
+    pub fn doc_value(&self) -> Option<&str> {
         self.attrs.doc_value()
     }
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
@@ -699,11 +699,11 @@ impl<'a> Iterator for ListAttributesIter<'a> {
 
 pub trait AttributesExt {
     /// Finds an attribute as List and returns the list of attributes nested inside.
-    fn lists<'a>(&'a self, name: Symbol) -> ListAttributesIter<'a>;
+    fn lists(&self, name: Symbol) -> ListAttributesIter<'_>;
 }
 
 impl AttributesExt for [ast::Attribute] {
-    fn lists<'a>(&'a self, name: Symbol) -> ListAttributesIter<'a> {
+    fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
         ListAttributesIter {
             attrs: self.iter(),
             current_list: Vec::new().into_iter(),
@@ -952,7 +952,7 @@ impl Attributes {
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
-    pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
+    pub fn doc_value(&self) -> Option<&str> {
         self.doc_strings.first().map(|s| s.as_str())
     }
 
@@ -1037,7 +1037,7 @@ impl Hash for Attributes {
 }
 
 impl AttributesExt for Attributes {
-    fn lists<'a>(&'a self, name: Symbol) -> ListAttributesIter<'a> {
+    fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
         self.other_attrs.lists(name)
     }
 }

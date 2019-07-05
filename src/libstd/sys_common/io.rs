@@ -16,7 +16,7 @@ pub mod test {
             p.join(path)
         }
 
-        pub fn path<'a>(&'a self) -> &'a Path {
+        pub fn path(&self) -> &Path {
             let TempDir(ref p) = *self;
             p
         }
