@@ -240,10 +240,10 @@ impl Module {
     }
 
     pub fn path_to_root(self, db: &impl HirDatabase) -> Vec<Module> {
-        let mut res = vec![self.clone()];
-        let mut curr = self.clone();
+        let mut res = vec![self];
+        let mut curr = self;
         while let Some(next) = curr.parent(db) {
-            res.push(next.clone());
+            res.push(next);
             curr = next
         }
         res

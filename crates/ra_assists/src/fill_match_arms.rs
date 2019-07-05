@@ -23,27 +23,24 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     // We already have some match arms, so we don't provide any assists.
     // Unless if there is only one trivial match arm possibly created
     // by match postfix complete. Trivial match arm is the catch all arm.
-    match match_expr.match_arm_list() {
-        Some(arm_list) => {
-            let mut arm_iter = arm_list.arms();
-            let first = arm_iter.next();
+    if let Some(arm_list) = match_expr.match_arm_list() {
+        let mut arm_iter = arm_list.arms();
+        let first = arm_iter.next();
 
-            match first {
-                // If there arm list is empty or there is only one trivial arm, then proceed.
-                Some(arm) if is_trivial_arm(arm) => {
-                    if arm_iter.next() != None {
-                        return None;
-                    }
-                }
-                None => {}
-
-                _ => {
+        match first {
+            // If there arm list is empty or there is only one trivial arm, then proceed.
+            Some(arm) if is_trivial_arm(arm) => {
+                if arm_iter.next() != None {
                     return None;
                 }
             }
+            None => {}
+
+            _ => {
+                return None;
+            }
         }
-        _ => {}
-    }
+    };
 
     let expr = match_expr.expr()?;
     let analyzer = hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, expr.syntax(), None);
