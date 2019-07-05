@@ -248,7 +248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This may change if abstract return types of some sort are
         // implemented.
         let tcx = self.tcx;
-        let closure_def_id = tcx.hir().local_def_id_from_hir_id(closure_id);
+        let closure_def_id = tcx.hir().local_def_id(closure_id);
 
         tcx.upvars(closure_def_id).iter().flat_map(|upvars| {
             upvars

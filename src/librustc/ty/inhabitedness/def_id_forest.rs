@@ -33,7 +33,7 @@ impl<'tcx> DefIdForest {
     /// crate.
     #[inline]
     pub fn full(tcx: TyCtxt<'tcx>) -> DefIdForest {
-        let crate_id = tcx.hir().local_def_id_from_hir_id(CRATE_HIR_ID);
+        let crate_id = tcx.hir().local_def_id(CRATE_HIR_ID);
         DefIdForest::from_id(crate_id)
     }
 

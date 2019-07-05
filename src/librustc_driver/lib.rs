@@ -17,7 +17,6 @@
 #![recursion_limit="256"]
 
 #![deny(rust_2018_idioms)]
-#![deny(internal)]
 #![deny(unused_lifetimes)]
 
 pub extern crate getopts;
@@ -38,7 +37,8 @@ use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::util::common::{time, ErrorReported, install_panic_hook};
+use rustc::util::common::{ErrorReported, install_panic_hook, print_time_passes_entry};
+use rustc::util::common::{set_time_depth, time};
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -54,11 +54,12 @@ use std::default::Default;
 use std::env;
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
+use std::mem;
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
-use std::mem;
+use std::time::Instant;
 
 use syntax::ast;
 use syntax::source_map::FileLoader;
@@ -72,7 +73,7 @@ pub mod pretty;
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
 
-/// Exit status code used for compilation failures and  invalid flags.
+/// Exit status code used for compilation failures and invalid flags.
 pub const EXIT_FAILURE: i32 = 1;
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
@@ -117,6 +118,18 @@ pub trait Callbacks {
 pub struct DefaultCallbacks;
 
 impl Callbacks for DefaultCallbacks {}
+
+#[derive(Default)]
+pub struct TimePassesCallbacks {
+    time_passes: bool,
+}
+
+impl Callbacks for TimePassesCallbacks {
+    fn config(&mut self, config: &mut interface::Config) {
+        self.time_passes =
+            config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time;
+    }
+}
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
@@ -1169,7 +1182,9 @@ pub fn init_rustc_env_logger() {
 }
 
 pub fn main() {
+    let start = Instant::now();
     init_rustc_env_logger();
+    let mut callbacks = TimePassesCallbacks::default();
     let result = report_ices_to_stderr_if_any(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
@@ -1177,10 +1192,14 @@ pub fn main() {
                             &format!("Argument {} is not valid Unicode: {:?}", i, arg))
             }))
             .collect::<Vec<_>>();
-        run_compiler(&args, &mut DefaultCallbacks, None, None)
+        run_compiler(&args, &mut callbacks, None, None)
     }).and_then(|result| result);
-    process::exit(match result {
+    let exit_code = match result {
         Ok(_) => EXIT_SUCCESS,
         Err(_) => EXIT_FAILURE,
-    });
+    };
+    // The extra `\t` is necessary to align this label with the others.
+    set_time_depth(0);
+    print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
+    process::exit(exit_code);
 }

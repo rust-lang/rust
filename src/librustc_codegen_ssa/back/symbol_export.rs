@@ -84,7 +84,7 @@ fn reachable_non_generics_provider(
             // let it through if it's included statically.
             match tcx.hir().get(hir_id) {
                 Node::ForeignItem(..) => {
-                    let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+                    let def_id = tcx.hir().local_def_id(hir_id);
                     if tcx.is_statically_included_foreign_item(def_id) {
                         Some(def_id)
                     } else {
@@ -104,7 +104,7 @@ fn reachable_non_generics_provider(
                     node: hir::ImplItemKind::Method(..),
                     ..
                 }) => {
-                    let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+                    let def_id = tcx.hir().local_def_id(hir_id);
                     let generics = tcx.generics_of(def_id);
                     if !generics.requires_monomorphization(tcx) &&
                         // Functions marked with #[inline] are only ever codegened

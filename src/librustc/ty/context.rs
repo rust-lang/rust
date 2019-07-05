@@ -130,6 +130,7 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 
     /// Intern a type
+    #[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
     #[inline(never)]
     fn intern_ty(&self,
         st: TyKind<'tcx>
@@ -1251,15 +1252,15 @@ impl<'tcx> TyCtxt<'tcx> {
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports
                     .into_iter()
-                    .map(|id| hir.local_def_id(id))
+                    .map(|id| hir.local_def_id_from_node_id(id))
                     .collect(),
             maybe_unused_extern_crates:
                 resolutions.maybe_unused_extern_crates
                     .into_iter()
-                    .map(|(id, sp)| (hir.local_def_id(id), sp))
+                    .map(|(id, sp)| (hir.local_def_id_from_node_id(id), sp))
                     .collect(),
             glob_map: resolutions.glob_map.into_iter().map(|(id, names)| {
-                (hir.local_def_id(id), names)
+                (hir.local_def_id_from_node_id(id), names)
             }).collect(),
             extern_prelude: resolutions.extern_prelude,
             hir_map: hir,
@@ -2107,6 +2108,7 @@ impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
 impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
         &self.0.sty
@@ -2321,6 +2323,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_fn_ptr(converted_sig)
     }
 
+    #[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
     #[inline]
     pub fn mk_ty(&self, st: TyKind<'tcx>) -> Ty<'tcx> {
         self.interners.intern_ty(st)

@@ -628,7 +628,7 @@ struct ClauseDumper<'tcx> {
 
 impl ClauseDumper<'tcx> {
     fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(hir_id);
+        let def_id = self.tcx.hir().local_def_id(hir_id);
         for attr in attrs {
             let mut clauses = None;
 

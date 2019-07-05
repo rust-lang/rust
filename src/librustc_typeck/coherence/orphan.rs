@@ -22,7 +22,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
     /// to prevent inundating the user with a bunch of similar error
     /// reports.
     fn visit_item(&mut self, item: &hir::Item) {
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let def_id = self.tcx.hir().local_def_id(item.hir_id);
         // "Trait" impl
         if let hir::ItemKind::Impl(.., Some(_), _, _) = item.node {
             debug!("coherence2::orphan check: trait impl {}",

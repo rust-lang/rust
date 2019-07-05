@@ -901,7 +901,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count_def_id = tcx.hir().local_def_id_from_hir_id(count.hir_id);
+        let count_def_id = tcx.hir().local_def_id(count.hir_id);
         let count = if self.const_param_def_id(count).is_some() {
             Ok(self.to_const(count, tcx.type_of(count_def_id)))
         } else {

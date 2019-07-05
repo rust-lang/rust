@@ -99,7 +99,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
 
         let solutions = &self.solutions;
         self.terms_cx.inferred_starts.iter().map(|(&id, &InferredIndex(start))| {
-            let def_id = tcx.hir().local_def_id_from_hir_id(id);
+            let def_id = tcx.hir().local_def_id(id);
             let generics = tcx.generics_of(def_id);
             let count = generics.count();
 

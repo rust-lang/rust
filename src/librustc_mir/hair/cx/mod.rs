@@ -54,7 +54,7 @@ pub struct Cx<'a, 'tcx> {
 impl<'a, 'tcx> Cx<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'tcx>, src_id: hir::HirId) -> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
-        let src_def_id = tcx.hir().local_def_id_from_hir_id(src_id);
+        let src_def_id = tcx.hir().local_def_id(src_id);
         let tables = tcx.typeck_tables_of(src_def_id);
         let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 

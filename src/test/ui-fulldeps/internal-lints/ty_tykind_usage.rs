@@ -6,7 +6,7 @@ extern crate rustc;
 
 use rustc::ty::{self, Ty, TyKind};
 
-#[deny(usage_of_ty_tykind)]
+#[deny(rustc::usage_of_ty_tykind)]
 fn main() {
     let sty = TyKind::Bool; //~ ERROR usage of `ty::TyKind::<kind>`
 

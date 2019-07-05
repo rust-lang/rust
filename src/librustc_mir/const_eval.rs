@@ -47,7 +47,7 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
-    InterpCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
+    InterpCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), Default::default())
 }
 
 pub(crate) fn eval_promoted<'mir, 'tcx>(
@@ -632,7 +632,12 @@ pub fn const_eval_raw_provider<'tcx>(
     }
 
     let span = tcx.def_span(cid.instance.def_id());
-    let mut ecx = InterpCx::new(tcx.at(span), key.param_env, CompileTimeInterpreter::new());
+    let mut ecx = InterpCx::new(
+        tcx.at(span),
+        key.param_env,
+        CompileTimeInterpreter::new(),
+        Default::default()
+    );
 
     let res = ecx.load_mir(cid.instance.def);
     res.map(|body| {

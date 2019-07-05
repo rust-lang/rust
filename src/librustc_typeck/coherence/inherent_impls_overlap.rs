@@ -89,7 +89,7 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Trait(..) |
             hir::ItemKind::Union(..) => {
-                let type_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                let type_def_id = self.tcx.hir().local_def_id(item.hir_id);
                 self.check_for_overlapping_inherent_impls(type_def_id);
             }
             _ => {}

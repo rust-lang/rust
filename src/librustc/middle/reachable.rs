@@ -35,7 +35,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAt
     match item.node {
         hir::ItemKind::Impl(..) |
         hir::ItemKind::Fn(..) => {
-            let generics = tcx.generics_of(tcx.hir().local_def_id_from_hir_id(item.hir_id));
+            let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
             generics.requires_monomorphization(tcx)
         }
         _ => false,
@@ -48,7 +48,7 @@ fn method_might_be_inlined(
     impl_src: DefId,
 ) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner_def_id());
-    let generics = tcx.generics_of(tcx.hir().local_def_id_from_hir_id(impl_item.hir_id));
+    let generics = tcx.generics_of(tcx.hir().local_def_id(impl_item.hir_id));
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true
     }
@@ -222,7 +222,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 } else {
                     false
                 };
-                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                let def_id = self.tcx.hir().local_def_id(item.hir_id);
                 let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
                 let is_extern = codegen_attrs.contains_extern_indicator();
                 let std_internal = codegen_attrs.flags.contains(
@@ -243,7 +243,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Node::Item(item) => {
                 match item.node {
                     hir::ItemKind::Fn(.., body) => {
-                        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                        let def_id = self.tcx.hir().local_def_id(item.hir_id);
                         if item_might_be_inlined(self.tcx,
                                                  &item,
                                                  self.tcx.codegen_fn_attrs(def_id)) {
@@ -345,7 +345,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         // Anything which has custom linkage gets thrown on the worklist no
         // matter where it is in the crate, along with "special std symbols"
         // which are currently akin to allocator symbols.
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let def_id = self.tcx.hir().local_def_id(item.hir_id);
         let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
         if codegen_attrs.contains_extern_indicator() ||
             codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {

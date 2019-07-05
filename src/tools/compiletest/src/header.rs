@@ -591,9 +591,6 @@ impl TestProps {
         } else if config.parse_name_directive(ln, "build-pass") {
             check_no_run("build-pass");
             Some(PassMode::Build)
-        } else if config.parse_name_directive(ln, "compile-pass") /* compatibility */ {
-            check_no_run("compile-pass");
-            Some(PassMode::Build)
         } else if config.parse_name_directive(ln, "run-pass") {
             if config.mode != Mode::Ui && config.mode != Mode::RunPass /* compatibility */ {
                 panic!("`run-pass` header is only supported in UI tests")

@@ -1,7 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![deny(rust_2018_idioms)]
-#![deny(internal)]
 #![deny(unused_lifetimes)]
 
 #![feature(in_band_lifetimes)]
@@ -250,13 +249,13 @@ fn def_id_visibility<'tcx>(
                     let parent_hir_id = tcx.hir().get_parent_node(hir_id);
                     match tcx.hir().get(parent_hir_id) {
                         Node::Variant(..) => {
-                            let parent_did = tcx.hir().local_def_id_from_hir_id(parent_hir_id);
+                            let parent_did = tcx.hir().local_def_id(parent_hir_id);
                             let (mut ctor_vis, mut span, mut descr) = def_id_visibility(
                                 tcx, parent_did,
                             );
 
                             let adt_def = tcx.adt_def(tcx.hir().get_parent_did(hir_id));
-                            let ctor_did = tcx.hir().local_def_id_from_hir_id(
+                            let ctor_did = tcx.hir().local_def_id(
                                 vdata.ctor_hir_id().unwrap());
                             let variant = adt_def.variant_with_ctor_id(ctor_did);
 
@@ -333,7 +332,7 @@ fn item_tables<'a, 'tcx>(
     hir_id: hir::HirId,
     empty_tables: &'a ty::TypeckTables<'tcx>,
 ) -> &'a ty::TypeckTables<'tcx> {
-    let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+    let def_id = tcx.hir().local_def_id(hir_id);
     if tcx.has_typeck_tables(def_id) { tcx.typeck_tables_of(def_id) } else { empty_tables }
 }
 
@@ -394,7 +393,7 @@ trait VisibilityLike: Sized {
         access_levels: &AccessLevels,
     ) -> Self {
         let mut find = FindMin { tcx, access_levels, min: Self::MAX };
-        let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+        let def_id = tcx.hir().local_def_id(hir_id);
         find.visit(tcx.type_of(def_id));
         if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
             find.visit_trait(trait_ref);
@@ -475,7 +474,7 @@ impl EmbargoVisitor<'tcx> {
     ) -> ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
         ReachEverythingInTheInterfaceVisitor {
             access_level: cmp::min(access_level, Some(AccessLevel::Reachable)),
-            item_def_id: self.tcx.hir().local_def_id_from_hir_id(item_id),
+            item_def_id: self.tcx.hir().local_def_id(item_id),
             ev: self,
         }
     }
@@ -506,7 +505,7 @@ impl EmbargoVisitor<'tcx> {
                 if let hir::ItemKind::Mod(m) = &item.node {
                     for item_id in m.item_ids.as_ref() {
                         let item = self.tcx.hir().expect_item(item_id.id);
-                        let def_id = self.tcx.hir().local_def_id_from_hir_id(item_id.id);
+                        let def_id = self.tcx.hir().local_def_id(item_id.id);
                         if !self.tcx.hygienic_eq(segment.ident, item.ident, def_id) { continue; }
                         if let hir::ItemKind::Use(..) = item.node {
                             self.update(item.hir_id, Some(AccessLevel::Exported));
@@ -726,7 +725,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_level.is_some() {
-            let def_id = self.tcx.hir().local_def_id_from_hir_id(id);
+            let def_id = self.tcx.hir().local_def_id(id);
             if let Some(exports) = self.tcx.module_exports(def_id) {
                 for export in exports.iter() {
                     if export.vis == ty::Visibility::Public {
@@ -751,7 +750,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
 
         let module_did = ty::DefIdTree::parent(
             self.tcx,
-            self.tcx.hir().local_def_id_from_hir_id(md.hir_id)
+            self.tcx.hir().local_def_id(md.hir_id)
         ).unwrap();
         let mut module_id = self.tcx.hir().as_local_hir_id(module_did).unwrap();
         let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
@@ -772,7 +771,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             for id in &module.item_ids {
                 self.update(id.id, level);
             }
-            let def_id = self.tcx.hir().local_def_id_from_hir_id(module_id);
+            let def_id = self.tcx.hir().local_def_id(module_id);
             if let Some(exports) = self.tcx.module_exports(def_id) {
                 for export in exports.iter() {
                     if let Some(hir_id) = self.tcx.hir().as_local_hir_id(export.res.def_id()) {
@@ -1163,7 +1162,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     // Check types in item interfaces.
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let orig_current_item = mem::replace(&mut self.current_item,
-            self.tcx.hir().local_def_id_from_hir_id(item.hir_id));
+            self.tcx.hir().local_def_id(item.hir_id));
         let orig_in_body = mem::replace(&mut self.in_body, false);
         let orig_tables =
             mem::replace(&mut self.tables, item_tables(self.tcx, item.hir_id, self.empty_tables));
@@ -1689,7 +1688,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
         SearchInterfaceForPrivateItemsVisitor {
             tcx: self.tcx,
             item_id,
-            item_def_id: self.tcx.hir().local_def_id_from_hir_id(item_id),
+            item_def_id: self.tcx.hir().local_def_id(item_id),
             span: self.tcx.hir().span(item_id),
             required_visibility,
             has_pub_restricted: self.has_pub_restricted,
