@@ -83,6 +83,7 @@ fn miri_pass(path: &str, target: &str, opt: bool, noseed: bool) {
         flags.push("-Zmir-opt-level=3".to_owned());
     } else if !noseed {
         // Run with intptrcast.  Avoid test matrix explosion by doing either this or opt-level=3.
+        #[cfg(not(windows))] // FIXME re-enable on Windows
         flags.push("-Zmiri-seed=".to_owned());
     }
 
