@@ -529,7 +529,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 match matching_def {
                     Some(_) => {
                         self.write_assoc_resolution(id, item);
-                        return matching_def;
+                        matching_def
                     }
                     None => None,
                 }

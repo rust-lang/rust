@@ -131,7 +131,8 @@ impl CrateGraph {
         if self.dfs_find(from, to, &mut FxHashSet::default()) {
             return Err(CyclicDependencies);
         }
-        Ok(self.arena.get_mut(&from).unwrap().add_dep(name, to))
+        self.arena.get_mut(&from).unwrap().add_dep(name, to);
+        Ok(())
     }
 
     pub fn is_empty(&self) -> bool {
