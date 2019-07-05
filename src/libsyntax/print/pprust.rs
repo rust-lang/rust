@@ -21,7 +21,6 @@ use syntax_pos::{self, BytePos};
 use syntax_pos::{DUMMY_SP, FileName, Span};
 
 use std::borrow::Cow;
-use std::io::Read;
 
 pub enum AnnNode<'a> {
     Ident(&'a ast::Ident),
@@ -102,7 +101,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
                        krate: &ast::Crate,
                        filename: FileName,
-                       input: &mut dyn Read,
+                       input: String,
                        out: &mut String,
                        ann: &'a dyn PpAnn,
                        is_expanded: bool) {
@@ -136,7 +135,7 @@ impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a SourceMap,
                           sess: &ParseSess,
                           filename: FileName,
-                          input: &mut dyn Read,
+                          input: String,
                           out: &'a mut String,
                           ann: &'a dyn PpAnn,
                           is_expanded: bool) -> State<'a> {

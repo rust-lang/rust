@@ -16,7 +16,6 @@ use crate::hir::ptr::P;
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::io::Read;
 use std::vec;
 
 pub enum AnnNode<'a> {
@@ -93,7 +92,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
                        krate: &hir::Crate,
                        filename: FileName,
-                       input: &mut dyn Read,
+                       input: String,
                        out: &'a mut String,
                        ann: &'a dyn PpAnn)
                        {
@@ -111,7 +110,7 @@ impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a SourceMap,
                           sess: &ParseSess,
                           filename: FileName,
-                          input: &mut dyn Read,
+                          input: String,
                           out: &'a mut String,
                           ann: &'a dyn PpAnn)
                           -> State<'a> {

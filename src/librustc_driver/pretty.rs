@@ -687,16 +687,14 @@ pub fn visit_crate(sess: &Session, krate: &mut ast::Crate, ppm: PpMode) {
     }
 }
 
-fn get_source(input: &Input, sess: &Session) -> (Vec<u8>, FileName) {
+fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     let src_name = source_name(input);
-    let src = sess.source_map()
+    let src = String::clone(&sess.source_map()
         .get_source_file(&src_name)
         .unwrap()
         .src
         .as_ref()
-        .unwrap()
-        .as_bytes()
-        .to_vec();
+        .unwrap());
     (src, src_name)
 }
 
@@ -719,7 +717,6 @@ pub fn print_after_parsing(sess: &Session,
                            ofile: Option<&Path>) {
     let (src, src_name) = get_source(input, sess);
 
-    let mut rdr = &*src;
     let mut out = String::new();
 
     if let PpmSource(s) = ppm {
@@ -732,7 +729,7 @@ pub fn print_after_parsing(sess: &Session,
                                 &sess.parse_sess,
                                 krate,
                                 src_name,
-                                &mut rdr,
+                                src,
                                 out,
                                 annotation.pp_ann(),
                                 false)
@@ -764,13 +761,13 @@ pub fn print_after_hir_lowering<'tcx>(
 
     let (src, src_name) = get_source(input, tcx.sess);
 
-    let mut rdr = &src[..];
     let mut out = String::new();
 
     match (ppm, opt_uii) {
             (PpmSource(s), _) => {
                 // Silently ignores an identified node.
                 let out = &mut out;
+                let src = src.clone();
                 s.call_with_pp_support(tcx.sess, Some(tcx), move |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -778,7 +775,7 @@ pub fn print_after_hir_lowering<'tcx>(
                                         &sess.parse_sess,
                                         krate,
                                         src_name,
-                                        &mut rdr,
+                                        src,
                                         out,
                                         annotation.pp_ann(),
                                         true)
@@ -787,6 +784,7 @@ pub fn print_after_hir_lowering<'tcx>(
 
             (PpmHir(s), None) => {
                 let out = &mut out;
+                let src = src.clone();
                 s.call_with_pp_support_hir(tcx, move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -794,7 +792,7 @@ pub fn print_after_hir_lowering<'tcx>(
                                             &sess.parse_sess,
                                             krate,
                                             src_name,
-                                            &mut rdr,
+                                            src,
                                             out,
                                             annotation.pp_ann())
                 })
@@ -810,6 +808,7 @@ pub fn print_after_hir_lowering<'tcx>(
 
             (PpmHir(s), Some(uii)) => {
                 let out = &mut out;
+                let src = src.clone();
                 s.call_with_pp_support_hir(tcx, move |annotation, _| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -817,7 +816,7 @@ pub fn print_after_hir_lowering<'tcx>(
                     let mut pp_state = pprust_hir::State::new_from_input(sess.source_map(),
                                                                          &sess.parse_sess,
                                                                          src_name,
-                                                                         &mut rdr,
+                                                                         src,
                                                                          out,
                                                                          annotation.pp_ann());
                     for node_id in uii.all_matching_node_ids(hir_map) {
