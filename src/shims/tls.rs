@@ -12,7 +12,10 @@ pub type TlsKey = u128;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TlsEntry<'tcx> {
-    pub(crate) data: Scalar<Tag>, // Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
+    /// The data for this key. None is used to represent NULL.
+    /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
+    /// Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
+    pub(crate) data: Option<Scalar<Tag>>,
     pub(crate) dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -38,14 +41,13 @@ impl<'tcx> TlsData<'tcx> {
     pub fn create_tls_key(
         &mut self,
         dtor: Option<ty::Instance<'tcx>>,
-        cx: &impl HasDataLayout,
     ) -> TlsKey {
         let new_key = self.next_key;
         self.next_key += 1;
         self.keys.insert(
             new_key,
             TlsEntry {
-                data: Scalar::ptr_null(cx).into(),
+                data: None,
                 dtor,
             },
         );
@@ -63,17 +65,21 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn load_tls(&mut self, key: TlsKey) -> InterpResult<'tcx, Scalar<Tag>> {
+    pub fn load_tls(
+        &mut self,
+        key: TlsKey,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Scalar<Tag>> {
         match self.keys.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
-                Ok(data)
+                Ok(data.unwrap_or_else(|| Scalar::ptr_null(cx).into()))
             }
             None => err!(TlsOutOfBounds),
         }
     }
 
-    pub fn store_tls(&mut self, key: TlsKey, new_data: Scalar<Tag>) -> InterpResult<'tcx> {
+    pub fn store_tls(&mut self, key: TlsKey, new_data: Option<Scalar<Tag>>) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(&mut TlsEntry { ref mut data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
@@ -117,7 +123,7 @@ impl<'tcx> TlsData<'tcx> {
         for (&key, &mut TlsEntry { ref mut data, dtor }) in
             thread_local.range_mut((start, Unbounded))
         {
-            if !data.is_null_ptr(cx) {
+            if let Some(ref mut data) = *data {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
                     *data = Scalar::ptr_null(cx);
