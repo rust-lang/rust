@@ -87,7 +87,7 @@ impl<'a> Comments<'a> {
 }
 
 pub struct State<'a> {
-    pub s: pp::Printer<'a>,
+    pub s: pp::Printer,
     comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn+'a),
     is_expanded: bool
@@ -104,9 +104,8 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        input: String,
                        ann: &'a dyn PpAnn,
                        is_expanded: bool) -> String {
-    let mut out = String::new();
     let mut s = State {
-        s: pp::mk_printer(&mut out),
+        s: pp::mk_printer(),
         comments: Some(Comments::new(cm, sess, filename, input)),
         ann,
         is_expanded,
@@ -133,25 +132,20 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
 
     s.print_mod(&krate.module, &krate.attrs);
     s.print_remaining_comments();
-    s.s.eof();
-    out
+    s.s.eof()
 }
 
 pub fn to_string<F>(f: F) -> String where
     F: FnOnce(&mut State<'_>),
 {
-    let mut wr = String::new();
-    {
-        let mut printer = State {
-            s: pp::mk_printer(&mut wr),
-            comments: None,
-            ann: &NoAnn,
-            is_expanded: false
-        };
-        f(&mut printer);
-        printer.s.eof();
-    }
-    wr
+    let mut printer = State {
+        s: pp::mk_printer(),
+        comments: None,
+        ann: &NoAnn,
+        is_expanded: false
+    };
+    f(&mut printer);
+    printer.s.eof()
 }
 
 fn binop_to_string(op: BinOpToken) -> &'static str {
@@ -439,7 +433,7 @@ fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
 }
 
 pub trait PrintState<'a> {
-    fn writer(&mut self) -> &mut pp::Printer<'a>;
+    fn writer(&mut self) -> &mut pp::Printer;
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
 
     fn word_space<S: Into<Cow<'static, str>>>(&mut self, w: S) {
@@ -760,7 +754,7 @@ pub trait PrintState<'a> {
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn writer(&mut self) -> &mut pp::Printer<'a> {
+    fn writer(&mut self) -> &mut pp::Printer {
         &mut self.s
     }
 

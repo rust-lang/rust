@@ -68,13 +68,13 @@ impl PpAnn for hir::Crate {
 }
 
 pub struct State<'a> {
-    pub s: pp::Printer<'a>,
+    pub s: pp::Printer,
     comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn writer(&mut self) -> &mut pp::Printer<'a> {
+    fn writer(&mut self) -> &mut pp::Printer {
         &mut self.s
     }
 
@@ -94,16 +94,14 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        filename: FileName,
                        input: String,
                        ann: &'a dyn PpAnn) -> String {
-    let mut out = String::new();
-    let mut s = State::new_from_input(cm, sess, filename, input, &mut out, ann);
+    let mut s = State::new_from_input(cm, sess, filename, input, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
     s.print_mod(&krate.module, &krate.attrs);
     s.print_remaining_comments();
-    s.s.eof();
-    out
+    s.s.eof()
 }
 
 impl<'a> State<'a> {
@@ -111,11 +109,10 @@ impl<'a> State<'a> {
                           sess: &ParseSess,
                           filename: FileName,
                           input: String,
-                          out: &'a mut String,
                           ann: &'a dyn PpAnn)
                           -> State<'a> {
         State {
-            s: pp::mk_printer(out),
+            s: pp::mk_printer(),
             comments: Some(Comments::new(cm, sess, filename, input)),
             ann,
         }
@@ -125,17 +122,13 @@ impl<'a> State<'a> {
 pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
     where F: FnOnce(&mut State<'_>)
 {
-    let mut wr = String::new();
-    {
-        let mut printer = State {
-            s: pp::mk_printer(&mut wr),
-            comments: None,
-            ann,
-        };
-        f(&mut printer);
-        printer.s.eof();
-    }
-    wr
+    let mut printer = State {
+        s: pp::mk_printer(),
+        comments: None,
+        ann,
+    };
+    f(&mut printer);
+    printer.s.eof()
 }
 
 pub fn visibility_qualified<S: Into<Cow<'static, str>>>(vis: &hir::Visibility, w: S) -> String {

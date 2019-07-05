@@ -235,13 +235,13 @@ crate struct PrintStackElem {
 
 const SIZE_INFINITY: isize = 0xffff;
 
-pub fn mk_printer(out: &mut String) -> Printer<'_> {
+pub fn mk_printer() -> Printer {
     let linewidth = 78;
     // Yes 55, it makes the ring buffers big enough to never fall behind.
     let n: usize = 55 * linewidth;
     debug!("mk_printer {}", linewidth);
     Printer {
-        out,
+        out: String::new(),
         buf_max_len: n,
         margin: linewidth as isize,
         space: linewidth as isize,
@@ -258,8 +258,8 @@ pub fn mk_printer(out: &mut String) -> Printer<'_> {
     }
 }
 
-pub struct Printer<'a> {
-    out: &'a mut String,
+pub struct Printer {
+    out: String,
     buf_max_len: usize,
     /// Width of lines we're constrained to
     margin: isize,
@@ -300,7 +300,7 @@ impl Default for BufEntry {
     }
 }
 
-impl<'a> Printer<'a> {
+impl Printer {
     pub fn last_token(&mut self) -> Token {
         self.buf[self.right].token.clone()
     }
@@ -629,8 +629,9 @@ impl<'a> Printer<'a> {
         self.pretty_print_end()
     }
 
-    pub fn eof(&mut self) {
-        self.pretty_print_eof()
+    pub fn eof(mut self) -> String {
+        self.pretty_print_eof();
+        self.out
     }
 
     pub fn word<S: Into<Cow<'static, str>>>(&mut self, wrd: S) {

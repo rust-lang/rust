@@ -814,7 +814,6 @@ pub fn print_after_hir_lowering<'tcx>(
                                                                          &sess.parse_sess,
                                                                          src_name,
                                                                          src,
-                                                                         out,
                                                                          annotation.pp_ann());
                     for node_id in uii.all_matching_node_ids(hir_map) {
                         let hir_id = tcx.hir().node_to_hir_id(node_id);
@@ -826,7 +825,7 @@ pub fn print_after_hir_lowering<'tcx>(
                         pp_state.synth_comment(path);
                         pp_state.s.hardbreak();
                     }
-                    pp_state.s.eof();
+                    *out = pp_state.s.eof();
                 })
             }
 
