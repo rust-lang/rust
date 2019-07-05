@@ -198,7 +198,7 @@ impl SocketAddr {
         }
     }
 
-    fn address<'a>(&'a self) -> AddressKind<'a> {
+    fn address(&self) -> AddressKind<'_> {
         let len = self.len as usize - sun_path_offset(&self.addr);
         let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
 
@@ -894,7 +894,7 @@ impl UnixListener {
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn incoming<'a>(&'a self) -> Incoming<'a> {
+    pub fn incoming(&self) -> Incoming<'_> {
         Incoming { listener: self }
     }
 }
