@@ -163,7 +163,7 @@ pub enum Token {
     // In practice a string token contains either a `&'static str` or a
     // `String`. `Cow` is overkill for this because we never modify the data,
     // but it's more convenient than rolling our own more specialized type.
-    String(Cow<'static, str>, isize),
+    String(Cow<'static, str>),
     Break(BreakToken),
     Begin(BeginToken),
     End,
@@ -194,7 +194,7 @@ impl Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Token::String(ref s, len) => write!(f, "STR({},{})", s, len),
+            Token::String(ref s) => write!(f, "STR({},{})", s, s.len()),
             Token::Break(_) => f.write_str("BREAK"),
             Token::Begin(_) => f.write_str("BEGIN"),
             Token::End => f.write_str("END"),
@@ -358,16 +358,17 @@ impl Printer {
         self.right_total += b.blank_space;
     }
 
-    fn scan_string(&mut self, s: Cow<'static, str>, len: isize) {
+    fn scan_string(&mut self, s: Cow<'static, str>) {
         if self.scan_stack.is_empty() {
             debug!("pp String('{}')/print Vec<{},{}>",
                    s, self.left, self.right);
-            self.print_string(s, len);
+            self.print_string(s);
         } else {
             debug!("pp String('{}')/buffer Vec<{},{}>",
                    s, self.left, self.right);
             self.advance_right();
-            self.buf[self.right] = BufEntry { token: Token::String(s, len), size: len };
+            let len = s.len() as isize;
+            self.buf[self.right] = BufEntry { token: Token::String(s), size: len };
             self.right_total += len;
             self.check_stream();
         }
@@ -430,7 +431,8 @@ impl Printer {
 
             let len = match left {
                 Token::Break(b) => b.blank_space,
-                Token::String(_, len) => {
+                Token::String(ref s) => {
+                    let len = s.len() as isize;
                     assert_eq!(len, left_size);
                     len
                 }
@@ -554,7 +556,8 @@ impl Printer {
         }
     }
 
-    fn print_string(&mut self, s: Cow<'static, str>, len: isize) {
+    fn print_string(&mut self, s: Cow<'static, str>) {
+        let len = s.len() as isize;
         debug!("print String({})", s);
         // assert!(len <= space);
         self.space -= len;
@@ -582,9 +585,10 @@ impl Printer {
             Token::Begin(b) => self.print_begin(b, l),
             Token::End => self.print_end(),
             Token::Break(b) => self.print_break(b, l),
-            Token::String(s, len) => {
+            Token::String(s) => {
+                let len = s.len() as isize;
                 assert_eq!(len, l);
-                self.print_string(s, len);
+                self.print_string(s);
             }
             Token::Eof => panic!(), // Eof should never get here.
         }
@@ -628,8 +632,7 @@ impl Printer {
 
     pub fn word<S: Into<Cow<'static, str>>>(&mut self, wrd: S) {
         let s = wrd.into();
-        let len = s.len() as isize;
-        self.scan_string(s, len)
+        self.scan_string(s)
     }
 
     fn spaces(&mut self, n: usize) {

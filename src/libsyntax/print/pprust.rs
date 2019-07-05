@@ -532,7 +532,7 @@ pub trait PrintState<'a> {
             comments::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
                 let twice = match self.writer().last_token() {
-                    pp::Token::String(s, _) => ";" == s,
+                    pp::Token::String(s) => ";" == s,
                     pp::Token::Begin(_) => true,
                     pp::Token::End => true,
                     _ => false
