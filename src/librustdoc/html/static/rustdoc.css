@@ -146,6 +146,10 @@ img {
 	max-width: 100%;
 }
 
+li {
+	position: relative;
+}
+
 .source .content {
 	margin-top: 50px;
 	max-width: none;
