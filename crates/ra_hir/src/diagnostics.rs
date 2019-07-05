@@ -1,6 +1,6 @@
 use std::{any::Any, fmt};
 
-use ra_syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr, TextRange, TreeArc};
+use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, TextRange, TreeArc};
 use relative_path::RelativePathBuf;
 
 use crate::{HirDatabase, HirFileId, Name};
@@ -27,11 +27,17 @@ pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn as_any(&self) -> &(dyn Any + Send + 'static);
 }
 
+pub trait AstDiagnostic {
+    type AST;
+    fn ast(&self, db: &impl HirDatabase) -> Self::AST;
+}
+
 impl dyn Diagnostic {
     pub fn syntax_node(&self, db: &impl HirDatabase) -> TreeArc<SyntaxNode> {
         let node = db.parse_or_expand(self.file()).unwrap();
         self.syntax_node_ptr().to_node(&*node).to_owned()
     }
+
     pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {
         self.as_any().downcast_ref()
     }
@@ -133,5 +139,15 @@ impl Diagnostic for MissingFields {
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
+    }
+}
+
+impl AstDiagnostic for MissingFields {
+    type AST = TreeArc<ast::NamedFieldList>;
+
+    fn ast(&self, db: &impl HirDatabase) -> Self::AST {
+        let root = db.parse_or_expand(self.file()).unwrap();
+        let node = self.syntax_node_ptr().to_node(&*root);
+        ast::NamedFieldList::cast(&node).unwrap().to_owned()
     }
 }

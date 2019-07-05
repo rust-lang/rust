@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use hir::{
-    diagnostics::{Diagnostic as _, DiagnosticSink},
+    diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink},
     source_binder,
 };
 use itertools::Itertools;
@@ -9,7 +9,7 @@ use ra_assists::ast_editor::{AstBuilder, AstEditor};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, AstNode, NamedField, NamedFieldList},
+    ast::{self, AstNode, NamedField},
     Location, SyntaxNode, TextRange, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
@@ -34,9 +34,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         fix: None,
     }));
 
-    let source_file = parse.tree;
-
-    for node in source_file.syntax().descendants() {
+    for node in parse.tree.syntax().descendants() {
         check_unnecessary_braces_in_use_statement(&mut res, file_id, node);
         check_struct_shorthand_initialization(&mut res, file_id, node);
     }
@@ -61,9 +59,8 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         })
     })
     .on::<hir::diagnostics::MissingFields, _>(|d| {
-        let syntax_node = d.syntax_node_ptr();
-        let node = NamedFieldList::cast(syntax_node.to_node(source_file.syntax())).unwrap();
-        let mut ast_editor = AstEditor::new(node);
+        let node = d.ast(db);
+        let mut ast_editor = AstEditor::new(&*node);
         for f in d.missed_fields.iter() {
             ast_editor.append_field(&AstBuilder::<NamedField>::from_name(f));
         }
