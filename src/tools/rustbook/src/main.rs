@@ -12,6 +12,8 @@ use mdbook_1::errors::{Result as Result1};
 
 use mdbook::MDBook;
 use mdbook::errors::{Result as Result3};
+
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 use mdbook::renderer::RenderContext;
 
 #[cfg(all(target_arch = "x86_64", target_os = "linux"))]
@@ -79,9 +81,12 @@ fn main() {
             if let Err(err) = linkcheck(sub_matches) {
                 eprintln!("Error: {}", err);
 
-                if let Ok(broken_links) = err.downcast::<BrokenLinks>() {
-                    for cause in broken_links.links().iter() {
-                        eprintln!("\tCaused By: {}", cause);
+                #[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+                {
+                    if let Ok(broken_links) = err.downcast::<BrokenLinks>() {
+                        for cause in broken_links.links().iter() {
+                            eprintln!("\tCaused By: {}", cause);
+                        }
                     }
                 }
 
