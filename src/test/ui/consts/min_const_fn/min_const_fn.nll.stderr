@@ -169,7 +169,7 @@ LL | const fn foo30_4(b: bool) -> usize { if b { 1 } else { 42 } }
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: loops and conditional expressions are not stable in const fn
+error[E0723]: loops are not allowed in const fn
   --> $DIR/min_const_fn.rs:102:29
    |
 LL | const fn foo30_5(b: bool) { while b { } }
@@ -179,7 +179,7 @@ LL | const fn foo30_5(b: bool) { while b { } }
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: loops and conditional expressions are not stable in const fn
-  --> $DIR/min_const_fn.rs:104:44
+  --> $DIR/min_const_fn.rs:105:44
    |
 LL | const fn foo36(a: bool, b: bool) -> bool { a && b }
    |                                            ^^^^^^
@@ -188,7 +188,7 @@ LL | const fn foo36(a: bool, b: bool) -> bool { a && b }
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: loops and conditional expressions are not stable in const fn
-  --> $DIR/min_const_fn.rs:106:44
+  --> $DIR/min_const_fn.rs:107:44
    |
 LL | const fn foo37(a: bool, b: bool) -> bool { a || b }
    |                                            ^^^^^^
@@ -197,7 +197,7 @@ LL | const fn foo37(a: bool, b: bool) -> bool { a || b }
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:108:14
+  --> $DIR/min_const_fn.rs:109:14
    |
 LL | const fn inc(x: &mut i32) { *x += 1 }
    |              ^
@@ -206,7 +206,7 @@ LL | const fn inc(x: &mut i32) { *x += 1 }
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:113:6
+  --> $DIR/min_const_fn.rs:114:6
    |
 LL | impl<T: std::fmt::Debug> Foo<T> {
    |      ^
@@ -215,7 +215,7 @@ LL | impl<T: std::fmt::Debug> Foo<T> {
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:118:6
+  --> $DIR/min_const_fn.rs:119:6
    |
 LL | impl<T: std::fmt::Debug + Sized> Foo<T> {
    |      ^
@@ -224,7 +224,7 @@ LL | impl<T: std::fmt::Debug + Sized> Foo<T> {
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:123:6
+  --> $DIR/min_const_fn.rs:124:6
    |
 LL | impl<T: Sync + Sized> Foo<T> {
    |      ^
@@ -233,7 +233,7 @@ LL | impl<T: Sync + Sized> Foo<T> {
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn.rs:129:24
+  --> $DIR/min_const_fn.rs:130:24
    |
 LL | const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> { AlanTuring(0) }
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -242,7 +242,7 @@ LL | const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> { AlanTuring(0) }
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:131:34
+  --> $DIR/min_const_fn.rs:132:34
    |
 LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^
@@ -251,7 +251,7 @@ LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:133:22
+  --> $DIR/min_const_fn.rs:134:22
    |
 LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                      ^^^^^^^^^^^^^^^^^^^^
@@ -260,7 +260,7 @@ LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn.rs:134:23
+  --> $DIR/min_const_fn.rs:135:23
    |
 LL | const fn no_rpit() -> impl std::fmt::Debug {}
    |                       ^^^^^^^^^^^^^^^^^^^^
@@ -269,7 +269,7 @@ LL | const fn no_rpit() -> impl std::fmt::Debug {}
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:135:23
+  --> $DIR/min_const_fn.rs:136:23
    |
 LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    |                       ^^
@@ -278,7 +278,7 @@ LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:136:32
+  --> $DIR/min_const_fn.rs:137:32
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -287,7 +287,7 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0515]: cannot return reference to temporary value
-  --> $DIR/min_const_fn.rs:136:63
+  --> $DIR/min_const_fn.rs:137:63
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                                               ^--
@@ -296,7 +296,7 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                                               returns a reference to data owned by the current function
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:144:41
+  --> $DIR/min_const_fn.rs:145:41
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -305,7 +305,7 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/min_const_fn.rs:147:21
+  --> $DIR/min_const_fn.rs:148:21
    |
 LL | const fn no_fn_ptrs(_x: fn()) {}
    |                     ^^
@@ -314,7 +314,7 @@ LL | const fn no_fn_ptrs(_x: fn()) {}
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/min_const_fn.rs:149:27
+  --> $DIR/min_const_fn.rs:150:27
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                           ^^^^
