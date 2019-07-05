@@ -11,8 +11,6 @@ fn main() {
     //~^ ERROR `await` is only allowed inside `async` functions and blocks
         let task1 = print_dur().await;
     }.await;
-    (async || 2333)().await;
-    //~^ ERROR `await` is only allowed inside `async` functions and blocks
     (|_| 2333).await;
     //~^ ERROR `await` is only allowed inside `async` functions and blocks
     //~^^ ERROR

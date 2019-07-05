@@ -146,6 +146,7 @@ symbols! {
         associated_type_defaults,
         associated_types,
         async_await,
+        async_closure,
         attr,
         attributes,
         attr_literals,
