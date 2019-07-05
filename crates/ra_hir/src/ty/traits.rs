@@ -50,7 +50,7 @@ pub(crate) fn impls_for_trait_query(
         impls.extend(db.impls_for_trait(dep.krate, trait_).iter());
     }
     let crate_impl_blocks = db.impls_in_crate(krate);
-    impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_));
+    impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(trait_));
     impls.into_iter().collect::<Vec<_>>().into()
 }
 

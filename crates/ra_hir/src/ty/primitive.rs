@@ -131,7 +131,7 @@ impl IntTy {
         IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X128 }
     }
 
-    pub(crate) fn ty_to_string(&self) -> &'static str {
+    pub(crate) fn ty_to_string(self) -> &'static str {
         match (self.signedness, self.bitness) {
             (Signedness::Signed, IntBitness::Xsize) => "isize",
             (Signedness::Signed, IntBitness::X8) => "i8",

@@ -213,7 +213,7 @@ impl RunningLineCol {
         self.col_adjust = TextUnit::from(0);
     }
 
-    fn adjust_col(&mut self, range: &TextRange) {
+    fn adjust_col(&mut self, range: TextRange) {
         self.col_adjust += range.len() - TextUnit::from(1);
     }
 }
@@ -244,7 +244,7 @@ pub fn translate_offset_with_edit(
                         let clamp = offset.min(x.start());
                         return res.to_line_col(clamp);
                     } else {
-                        res.adjust_col(x);
+                        res.adjust_col(*x);
                     }
                 }
             }

@@ -31,7 +31,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let body = self.func.body(db);
         for e in body.exprs() {
             if let (id, Expr::StructLit { path, fields, spread }) = e {
-                self.validate_struct_literal(id, path, fields, spread, db);
+                self.validate_struct_literal(id, path, fields, *spread, db);
             }
         }
     }
@@ -41,7 +41,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         id: ExprId,
         _path: &Option<Path>,
         fields: &[StructLitField],
-        spread: &Option<ExprId>,
+        spread: Option<ExprId>,
         db: &impl HirDatabase,
     ) {
         if spread.is_some() {

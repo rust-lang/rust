@@ -85,7 +85,7 @@ enum BindingMode {
 }
 
 impl BindingMode {
-    pub fn convert(annotation: &BindingAnnotation) -> BindingMode {
+    pub fn convert(annotation: BindingAnnotation) -> BindingMode {
         match annotation {
             BindingAnnotation::Unannotated | BindingAnnotation::Mutable => BindingMode::Move,
             BindingAnnotation::Ref => BindingMode::Ref(Mutability::Shared),
@@ -778,7 +778,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let mode = if mode == &BindingAnnotation::Unannotated {
                     default_bm
                 } else {
-                    BindingMode::convert(mode)
+                    BindingMode::convert(*mode)
                 };
                 let inner_ty = if let Some(subpat) = subpat {
                     self.infer_pat(*subpat, expected, default_bm)

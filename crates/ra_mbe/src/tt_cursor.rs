@@ -170,20 +170,20 @@ impl<'a> TtCursor<'a> {
         }
     }
 
-    fn eat_punct3(&mut self, p: &tt::Punct) -> Option<SmallVec<[tt::Punct; 3]>> {
+    fn eat_punct3(&mut self, p: tt::Punct) -> Option<SmallVec<[tt::Punct; 3]>> {
         let sec = *self.eat_punct()?;
         let third = *self.eat_punct()?;
-        Some(smallvec![*p, sec, third])
+        Some(smallvec![p, sec, third])
     }
 
-    fn eat_punct2(&mut self, p: &tt::Punct) -> Option<SmallVec<[tt::Punct; 3]>> {
+    fn eat_punct2(&mut self, p: tt::Punct) -> Option<SmallVec<[tt::Punct; 3]>> {
         let sec = *self.eat_punct()?;
-        Some(smallvec![*p, sec])
+        Some(smallvec![p, sec])
     }
 
     fn eat_multi_char_punct<'b, I>(
         &mut self,
-        p: &tt::Punct,
+        p: tt::Punct,
         iter: &mut TokenPeek<'b, I>,
     ) -> Option<SmallVec<[tt::Punct; 3]>>
     where
@@ -250,7 +250,7 @@ impl<'a> TtCursor<'a> {
                 // But at this phase, some punct still is jointed.
                 // So we by pass that check here.
                 let mut peekable = TokenPeek::new(self.subtree.token_trees[self.pos..].iter());
-                let puncts = self.eat_multi_char_punct(punct, &mut peekable);
+                let puncts = self.eat_multi_char_punct(*punct, &mut peekable);
                 let puncts = puncts.unwrap_or_else(|| smallvec![*punct]);
 
                 Some(crate::Separator::Puncts(puncts))
@@ -292,7 +292,7 @@ where
         TokenPeek { iter: itertools::multipeek(iter) }
     }
 
-    pub fn current_punct2(&mut self, p: &tt::Punct) -> Option<((char, char), bool)> {
+    pub fn current_punct2(&mut self, p: tt::Punct) -> Option<((char, char), bool)> {
         if p.spacing != tt::Spacing::Joint {
             return None;
         }
@@ -302,7 +302,7 @@ where
         Some(((p.char, p1.char), p1.spacing == tt::Spacing::Joint))
     }
 
-    pub fn current_punct3(&mut self, p: &tt::Punct) -> Option<((char, char, char), bool)> {
+    pub fn current_punct3(&mut self, p: tt::Punct) -> Option<((char, char, char), bool)> {
         self.current_punct2(p).and_then(|((p0, p1), last_joint)| {
             if !last_joint {
                 None

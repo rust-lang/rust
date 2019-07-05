@@ -58,7 +58,7 @@ impl CrateImplBlocks {
 
     pub fn lookup_impl_blocks_for_trait<'a>(
         &'a self,
-        tr: &Trait,
+        tr: Trait,
     ) -> impl Iterator<Item = ImplBlock> + 'a {
         self.impls_by_trait.get(&tr).into_iter().flat_map(|i| i.iter()).map(
             move |(module_id, impl_id)| {
@@ -68,8 +68,8 @@ impl CrateImplBlocks {
         )
     }
 
-    fn collect_recursive(&mut self, db: &impl HirDatabase, module: &Module) {
-        let module_impl_blocks = db.impls_in_module(module.clone());
+    fn collect_recursive(&mut self, db: &impl HirDatabase, module: Module) {
+        let module_impl_blocks = db.impls_in_module(module);
 
         for (impl_id, _) in module_impl_blocks.impls.iter() {
             let impl_block = ImplBlock::from_id(module_impl_blocks.module, impl_id);
@@ -94,7 +94,7 @@ impl CrateImplBlocks {
         }
 
         for child in module.children(db) {
-            self.collect_recursive(db, &child);
+            self.collect_recursive(db, child);
         }
     }
 
@@ -108,7 +108,7 @@ impl CrateImplBlocks {
             impls_by_trait: FxHashMap::default(),
         };
         if let Some(module) = krate.root_module(db) {
-            crate_impl_blocks.collect_recursive(db, &module);
+            crate_impl_blocks.collect_recursive(db, module);
         }
         Arc::new(crate_impl_blocks)
     }
