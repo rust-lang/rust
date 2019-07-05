@@ -105,7 +105,12 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        ann: &'a dyn PpAnn,
                        is_expanded: bool) -> String {
     let mut out = String::new();
-    let mut s = State::new_from_input(cm, sess, filename, input, &mut out, ann, is_expanded);
+    let mut s = State {
+        s: pp::mk_printer(&mut out),
+        comments: Some(Comments::new(cm, sess, filename, input)),
+        ann,
+        is_expanded,
+    };
 
     if is_expanded && std_inject::injected_crate_name().is_some() {
         // We need to print `#![no_std]` (and its feature gate) so that
@@ -130,23 +135,6 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
     s.print_remaining_comments();
     s.s.eof();
     out
-}
-
-impl<'a> State<'a> {
-    pub fn new_from_input(cm: &'a SourceMap,
-                          sess: &ParseSess,
-                          filename: FileName,
-                          input: String,
-                          out: &'a mut String,
-                          ann: &'a dyn PpAnn,
-                          is_expanded: bool) -> State<'a> {
-        State {
-            s: pp::mk_printer(out),
-            comments: Some(Comments::new(cm, sess, filename, input)),
-            ann,
-            is_expanded,
-        }
-    }
 }
 
 pub fn to_string<F>(f: F) -> String where
