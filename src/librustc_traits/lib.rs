@@ -2,7 +2,6 @@
 //! the guts are broken up into modules; see the comments in those modules.
 
 #![deny(rust_2018_idioms)]
-#![deny(internal)]
 #![deny(unused_lifetimes)]
 
 #![feature(crate_visibility_modifier)]
