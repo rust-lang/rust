@@ -48,7 +48,6 @@ pub struct State<'a> {
     cm: Option<&'a SourceMap>,
     comments: Option<Vec<comments::Comment>>,
     cur_cmnt: usize,
-    boxes: Vec<pp::Breaks>,
     ann: &'a (dyn PpAnn+'a),
     is_expanded: bool
 }
@@ -113,7 +112,6 @@ impl<'a> State<'a> {
             cm: Some(cm),
             comments,
             cur_cmnt: 0,
-            boxes: Vec::new(),
             ann,
             is_expanded,
         }
@@ -130,7 +128,6 @@ pub fn to_string<F>(f: F) -> String where
             cm: None,
             comments: None,
             cur_cmnt: 0,
-            boxes: Vec::new(),
             ann: &NoAnn,
             is_expanded: false
         };
@@ -426,7 +423,6 @@ fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
 
 pub trait PrintState<'a> {
     fn writer(&mut self) -> &mut pp::Printer<'a>;
-    fn boxes(&mut self) -> &mut Vec<pp::Breaks>;
     fn comments(&mut self) -> &mut Option<Vec<comments::Comment>>;
     fn cur_cmnt(&mut self) -> &mut usize;
 
@@ -466,17 +462,14 @@ pub trait PrintState<'a> {
 
     // "raw box"
     fn rbox(&mut self, u: usize, b: pp::Breaks) {
-        self.boxes().push(b);
         self.writer().rbox(u, b)
     }
 
     fn ibox(&mut self, u: usize) {
-        self.boxes().push(pp::Breaks::Inconsistent);
         self.writer().ibox(u);
     }
 
     fn end(&mut self) {
-        self.boxes().pop().unwrap();
         self.writer().end()
     }
 
@@ -763,10 +756,6 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.s
     }
 
-    fn boxes(&mut self) -> &mut Vec<pp::Breaks> {
-        &mut self.boxes
-    }
-
     fn comments(&mut self) -> &mut Option<Vec<comments::Comment>> {
         &mut self.comments
     }
@@ -778,7 +767,6 @@ impl<'a> PrintState<'a> for State<'a> {
 
 impl<'a> State<'a> {
     pub fn cbox(&mut self, u: usize) {
-        self.boxes.push(pp::Breaks::Consistent);
         self.s.cbox(u);
     }
 

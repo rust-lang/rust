@@ -74,17 +74,12 @@ pub struct State<'a> {
     cm: Option<&'a SourceMap>,
     comments: Option<Vec<comments::Comment>>,
     cur_cmnt: usize,
-    boxes: Vec<pp::Breaks>,
     ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> PrintState<'a> for State<'a> {
     fn writer(&mut self) -> &mut pp::Printer<'a> {
         &mut self.s
-    }
-
-    fn boxes(&mut self) -> &mut Vec<pp::Breaks> {
-        &mut self.boxes
     }
 
     fn comments(&mut self) -> &mut Option<Vec<comments::Comment>> {
@@ -141,7 +136,6 @@ impl<'a> State<'a> {
             cm: Some(cm),
             comments,
             cur_cmnt: 0,
-            boxes: Vec::new(),
             ann,
         }
     }
@@ -157,7 +151,6 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
             cm: None,
             comments: None,
             cur_cmnt: 0,
-            boxes: Vec::new(),
             ann,
         };
         f(&mut printer);
@@ -175,7 +168,6 @@ pub fn visibility_qualified<S: Into<Cow<'static, str>>>(vis: &hir::Visibility, w
 
 impl<'a> State<'a> {
     pub fn cbox(&mut self, u: usize) {
-        self.boxes.push(pp::Breaks::Consistent);
         self.s.cbox(u);
     }
 
@@ -224,13 +216,6 @@ impl<'a> State<'a> {
 
     pub fn bclose(&mut self, span: syntax_pos::Span) {
         self.bclose_(span, indent_unit)
-    }
-
-    pub fn in_cbox(&self) -> bool {
-        match self.boxes.last() {
-            Some(&last_box) => last_box == pp::Breaks::Consistent,
-            None => false,
-        }
     }
 
     pub fn space_if_not_bol(&mut self) {
