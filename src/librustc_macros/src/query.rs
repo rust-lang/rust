@@ -414,6 +414,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut dep_node_force_stream = quote! {};
     let mut try_load_from_on_disk_cache_stream = quote! {};
     let mut no_force_queries = Vec::new();
+    let mut cached_queries = quote! {};
 
     for group in groups.0 {
         let mut group_stream = quote! {};
@@ -426,6 +427,12 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 ReturnType::Default => quote! { -> () },
                 _ => quote! { #result_full },
             };
+
+            if modifiers.cache.is_some() {
+                cached_queries.extend(quote! {
+                    #name,
+                });
+            }
 
             if modifiers.cache.is_some() && !modifiers.no_force {
                 try_load_from_on_disk_cache_stream.extend(quote! {
@@ -549,6 +556,12 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 }
             }
         }
+        macro_rules! rustc_cached_queries {
+            ($($macro:tt)*) => {
+                $($macro)*(#cached_queries);
+            }
+        }
+
         #query_description_stream
 
         impl DepNode {

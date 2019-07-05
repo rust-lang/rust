@@ -422,11 +422,6 @@ rustc_queries! {
                 "const-evaluating `{}`",
                 tcx.def_path_str(key.value.instance.def.def_id())
             }
-            cache_on_disk_if(_, opt_result) {
-                // Only store results without errors
-                // FIXME: We never store these
-                opt_result.map_or(true, |r| r.is_ok())
-            }
         }
 
         /// Results of evaluating const items or constants embedded in
