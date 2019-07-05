@@ -136,7 +136,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
-use crate::{convert, fmt, hint, mem, ops::{self, Deref}};
+use crate::{convert, fmt, hint, mem, ops::{self, Deref, DerefMut}};
 use crate::pin::Pin;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on

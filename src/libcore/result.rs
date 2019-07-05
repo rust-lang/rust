@@ -232,7 +232,7 @@
 
 use crate::fmt;
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
-use crate::ops::{self, Deref};
+use crate::ops::{self, Deref, DerefMut};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
