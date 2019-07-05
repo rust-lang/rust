@@ -2,8 +2,6 @@
 
 // FIXME (#13400): this is only a tiny fraction of the Windows console api
 
-extern crate libc;
-
 use std::io;
 use std::io::prelude::*;
 
@@ -122,12 +120,17 @@ impl<T: Write + Send + 'static> WinConsole<T> {
 
     /// Returns `None` whenever the terminal cannot be created for some reason.
     pub fn new(out: T) -> io::Result<WinConsole<T>> {
+        use std::mem::MaybeUninit;
+
         let fg;
         let bg;
         unsafe {
-            #[allow(deprecated)]
-            let mut buffer_info = ::std::mem::uninitialized();
-            if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as DWORD), &mut buffer_info) != 0 {
+            let mut buffer_info = MaybeUninit::<CONSOLE_SCREEN_BUFFER_INFO>::uninit();
+            if GetConsoleScreenBufferInfo(
+                GetStdHandle(-11i32 as DWORD),
+                buffer_info.as_mut_ptr()
+            ) != 0 {
+                let buffer_info = buffer_info.assume_init() ;
                 fg = bits_to_color(buffer_info.wAttributes);
                 bg = bits_to_color(buffer_info.wAttributes >> 4);
             } else {
