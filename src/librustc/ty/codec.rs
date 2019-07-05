@@ -27,6 +27,7 @@ pub trait EncodableWithShorthand: Clone + Eq + Hash {
     fn variant(&self) -> &Self::Variant;
 }
 
+#[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
 impl<'tcx> EncodableWithShorthand for Ty<'tcx> {
     type Variant = ty::TyKind<'tcx>;
     fn variant(&self) -> &Self::Variant {
@@ -159,6 +160,7 @@ where
     Ok(decoder.map_encoded_cnum_to_current(cnum))
 }
 
+#[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
 #[inline]
 pub fn decode_ty<D>(decoder: &mut D) -> Result<Ty<'tcx>, D::Error>
 where

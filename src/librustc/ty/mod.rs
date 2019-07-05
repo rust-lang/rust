@@ -1,7 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(usage_of_ty_tykind)]
-
 pub use self::Variance::*;
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
@@ -484,6 +482,7 @@ bitflags! {
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
 pub struct TyS<'tcx> {
     pub sty: TyKind<'tcx>,
     pub flags: TypeFlags,
@@ -541,29 +540,29 @@ impl<'tcx> Hash for TyS<'tcx> {
 impl<'tcx> TyS<'tcx> {
     pub fn is_primitive_ty(&self) -> bool {
         match self.sty {
-            TyKind::Bool |
-            TyKind::Char |
-            TyKind::Int(_) |
-            TyKind::Uint(_) |
-            TyKind::Float(_) |
-            TyKind::Infer(InferTy::IntVar(_)) |
-            TyKind::Infer(InferTy::FloatVar(_)) |
-            TyKind::Infer(InferTy::FreshIntTy(_)) |
-            TyKind::Infer(InferTy::FreshFloatTy(_)) => true,
-            TyKind::Ref(_, x, _) => x.is_primitive_ty(),
+            Bool |
+            Char |
+            Int(_) |
+            Uint(_) |
+            Float(_) |
+            Infer(InferTy::IntVar(_)) |
+            Infer(InferTy::FloatVar(_)) |
+            Infer(InferTy::FreshIntTy(_)) |
+            Infer(InferTy::FreshFloatTy(_)) => true,
+            Ref(_, x, _) => x.is_primitive_ty(),
             _ => false,
         }
     }
 
     pub fn is_suggestable(&self) -> bool {
         match self.sty {
-            TyKind::Opaque(..) |
-            TyKind::FnDef(..) |
-            TyKind::FnPtr(..) |
-            TyKind::Dynamic(..) |
-            TyKind::Closure(..) |
-            TyKind::Infer(..) |
-            TyKind::Projection(..) => false,
+            Opaque(..) |
+            FnDef(..) |
+            FnPtr(..) |
+            Dynamic(..) |
+            Closure(..) |
+            Infer(..) |
+            Projection(..) => false,
             _ => true,
         }
     }

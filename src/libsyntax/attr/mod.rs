@@ -60,7 +60,7 @@ pub fn is_known(attr: &Attribute) -> bool {
 }
 
 pub fn is_known_lint_tool(m_item: Ident) -> bool {
-    ["clippy"].contains(&m_item.as_str().as_ref())
+    [sym::clippy, sym::rustc].contains(&m_item.name)
 }
 
 impl NestedMetaItem {

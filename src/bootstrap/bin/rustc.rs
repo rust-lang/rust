@@ -306,7 +306,20 @@ fn main() {
     }
 
     // This is required for internal lints.
-    cmd.arg("-Zunstable-options");
+    if let Some(crate_name) = args.windows(2).find(|a| &*a[0] == "--crate-name") {
+        let crate_name = crate_name[1].to_string_lossy();
+        if crate_name != "rustc_version"
+            && (crate_name.starts_with("rustc")
+                || crate_name.starts_with("syntax")
+                || crate_name == "arena"
+                || crate_name == "fmt_macros")
+        {
+            cmd.arg("-Zunstable-options");
+            if stage != "0" {
+                cmd.arg("-Wrustc::internal");
+            }
+        }
+    }
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
     // allow the `rustc_private` feature to link to other unstable crates
