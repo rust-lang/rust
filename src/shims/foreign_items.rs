@@ -318,8 +318,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "dlsym" => {
                 let _handle = this.read_scalar(args[0])?;
-                let symbol = this.read_scalar(args[1])?.to_ptr()?;
-                let symbol_name = this.memory().get(symbol.alloc_id)?.read_c_str(tcx, symbol)?;
+                let symbol = this.read_scalar(args[1])?.not_undef()?;
+                let symbol_name = this.memory().read_c_str(symbol)?;
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
                 let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
                 if let Some(dlsym) = Dlsym::from_str(symbol_name)? {
@@ -433,8 +433,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "getenv" => {
                 let result = {
-                    let name_ptr = this.read_scalar(args[0])?.to_ptr()?;
-                    let name = this.memory().get(name_ptr.alloc_id)?.read_c_str(tcx, name_ptr)?;
+                    let name_ptr = this.read_scalar(args[0])?.not_undef()?;
+                    let name = this.memory().read_c_str(name_ptr)?;
                     match this.machine.env_vars.get(name) {
                         Some(&var) => Scalar::Ptr(var),
                         None => Scalar::ptr_null(&*this.tcx),
@@ -448,12 +448,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 {
                     let name_ptr = this.read_scalar(args[0])?.not_undef()?;
                     if !this.is_null(name_ptr)? {
-                        let name_ptr = name_ptr.to_ptr()?;
-                        let name = this
-                            .memory()
-                            .get(name_ptr.alloc_id)?
-                            .read_c_str(tcx, name_ptr)?
-                            .to_owned();
+                        let name = this.memory().read_c_str(name_ptr)?.to_owned();
                         if !name.is_empty() && !name.contains(&b'=') {
                             success = Some(this.machine.env_vars.remove(&name));
                         }
@@ -473,11 +468,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let mut new = None;
                 {
                     let name_ptr = this.read_scalar(args[0])?.not_undef()?;
-                    let value_ptr = this.read_scalar(args[1])?.to_ptr()?;
-                    let value = this.memory().get(value_ptr.alloc_id)?.read_c_str(tcx, value_ptr)?;
+                    let value_ptr = this.read_scalar(args[1])?.not_undef()?;
+                    let value = this.memory().read_c_str(value_ptr)?;
                     if !this.is_null(name_ptr)? {
-                        let name_ptr = name_ptr.to_ptr()?;
-                        let name = this.memory().get(name_ptr.alloc_id)?.read_c_str(tcx, name_ptr)?;
+                        let name = this.memory().read_c_str(name_ptr)?;
                         if !name.is_empty() && !name.contains(&b'=') {
                             new = Some((name.to_owned(), value.to_owned()));
                         }
@@ -552,8 +546,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "strlen" => {
-                let ptr = this.read_scalar(args[0])?.to_ptr()?;
-                let n = this.memory().get(ptr.alloc_id)?.read_c_str(tcx, ptr)?.len();
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
+                let n = this.memory().read_c_str(ptr)?.len();
                 this.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
             }
 
