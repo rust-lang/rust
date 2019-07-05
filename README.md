@@ -18,7 +18,7 @@ Read ["Installation"] from [The Book].
 
 _Note: If you wish to contribute to the compiler, you should read
 [this chapter](https://rust-lang.github.io/rustc-guide/how-to-build-and-run.html)
-of the rustc-guide instead._
+of the rustc-guide instead of this section._
 
 ### Building on *nix
 1. Make sure you have installed the dependencies:
