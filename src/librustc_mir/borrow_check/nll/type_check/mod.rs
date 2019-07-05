@@ -1253,16 +1253,37 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             &anon_ty,
                             locations.span(body),
                         ));
+
+                    let revealed_ty_is_opaque = revealed_ty.is_impl_trait();
+
                     debug!(
                         "eq_opaque_type_and_type: \
                          instantiated output_ty={:?} \
                          opaque_type_map={:#?} \
-                         revealed_ty={:?}",
-                        output_ty, opaque_type_map, revealed_ty
+                         revealed_ty={:?} \
+                         revealed_ty_is_opaque={}",
+                        output_ty, opaque_type_map, revealed_ty, revealed_ty_is_opaque
                     );
                     obligations.add(infcx
                         .at(&ObligationCause::dummy(), param_env)
                         .eq(output_ty, revealed_ty)?);
+
+                    // This is 'true' when we're using an existential
+                    // type without 'revelaing' it. For example, code like this:
+                    //
+                    // existential type Foo: Debug;
+                    // fn foo1() -> Foo { ... }
+                    // fn foo2() -> Foo { foo1() }
+                    //
+                    // In 'foo2', we're not revealing the type of 'Foo' - we're
+                    // just treating it as the opaque type. All of the constraints
+                    // in our 'opaque_type_map' apply to the concrete type,
+                    // not to the opaque type itself. Therefore, it's enough
+                    // to simply equate the output and opque 'revealed_type',
+                    // as we do above
+                    if revealed_ty_is_opaque {
+                        return Ok(InferOk { value: None, obligations: obligations.into_vec() });
+                    }
 
                     for (&opaque_def_id, opaque_decl) in &opaque_type_map {
                         let opaque_defn_ty = tcx.type_of(opaque_def_id);
