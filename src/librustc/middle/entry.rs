@@ -32,7 +32,7 @@ struct EntryContext<'a, 'tcx> {
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx Item) {
-        let def_id = self.map.local_def_id_from_hir_id(item.hir_id);
+        let def_id = self.map.local_def_id(item.hir_id);
         let def_key = self.map.def_key(def_id);
         let at_root = def_key.parent == Some(CRATE_DEF_INDEX);
         find_item(item, self, at_root);
@@ -142,11 +142,11 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
 
 fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(DefId, EntryFnType)> {
     if let Some((hir_id, _)) = visitor.start_fn {
-        Some((tcx.hir().local_def_id_from_hir_id(hir_id), EntryFnType::Start))
+        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Start))
     } else if let Some((hir_id, _)) = visitor.attr_main_fn {
-        Some((tcx.hir().local_def_id_from_hir_id(hir_id), EntryFnType::Main))
+        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
     } else if let Some((hir_id, _)) = visitor.main_fn {
-        Some((tcx.hir().local_def_id_from_hir_id(hir_id), EntryFnType::Main))
+        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
     } else {
         // No main function
         let mut err = struct_err!(tcx.sess, E0601,

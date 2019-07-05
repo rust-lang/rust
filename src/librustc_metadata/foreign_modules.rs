@@ -25,11 +25,11 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
         };
 
         let foreign_items = fm.items.iter()
-            .map(|it| self.tcx.hir().local_def_id_from_hir_id(it.hir_id))
+            .map(|it| self.tcx.hir().local_def_id(it.hir_id))
             .collect();
         self.modules.push(ForeignModule {
             foreign_items,
-            def_id: self.tcx.hir().local_def_id_from_hir_id(it.hir_id),
+            def_id: self.tcx.hir().local_def_id(it.hir_id),
         });
     }
 

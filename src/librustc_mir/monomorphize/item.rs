@@ -55,7 +55,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
                 tcx.symbol_name(Instance::mono(tcx, def_id))
             }
             MonoItem::GlobalAsm(hir_id) => {
-                let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+                let def_id = tcx.hir().local_def_id(hir_id);
                 ty::SymbolName {
                     name: InternedString::intern(&format!("global_asm_{:?}", def_id))
                 }

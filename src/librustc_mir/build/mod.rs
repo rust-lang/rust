@@ -69,7 +69,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
             let fn_sig = cx.tables().liberated_fn_sigs()[id].clone();
-            let fn_def_id = tcx.hir().local_def_id_from_hir_id(id);
+            let fn_def_id = tcx.hir().local_def_id(id);
 
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
@@ -534,7 +534,7 @@ where
     let span = tcx_hir.span(fn_id);
 
     let hir_tables = hir.tables();
-    let fn_def_id = tcx_hir.local_def_id_from_hir_id(fn_id);
+    let fn_def_id = tcx_hir.local_def_id(fn_id);
 
     // Gather the upvars of a closure, if any.
     let mut upvar_mutbls = vec![];

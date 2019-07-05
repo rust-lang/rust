@@ -103,7 +103,7 @@ fn lang_items(tcx: TyCtxt<'_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
 impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn add_inferreds_for_item(&mut self, id: hir::HirId) {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id_from_hir_id(id);
+        let def_id = tcx.hir().local_def_id(id);
         let count = tcx.generics_of(def_id).count();
 
         if count == 0 {

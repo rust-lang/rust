@@ -114,7 +114,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemKind::Enum(..) |
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Union(..) => {
-                let def_id = cx.tcx.hir().local_def_id_from_hir_id(it.hir_id);
+                let def_id = cx.tcx.hir().local_def_id(it.hir_id);
                 self.check_heap_type(cx, it.span, cx.tcx.type_of(def_id))
             }
             _ => ()
@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemKind::Struct(ref struct_def, _) |
             hir::ItemKind::Union(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
-                    let def_id = cx.tcx.hir().local_def_id_from_hir_id(struct_field.hir_id);
+                    let def_id = cx.tcx.hir().local_def_id(struct_field.hir_id);
                     self.check_heap_type(cx, struct_field.span,
                                          cx.tcx.type_of(def_id));
                 }
@@ -500,21 +500,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id_from_hir_id(item.hir_id));
+                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.hir_id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Union(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id_from_hir_id(item.hir_id));
+                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.hir_id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Enum(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id_from_hir_id(item.hir_id));
+                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.hir_id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             _ => return,
@@ -792,7 +792,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
             _ => return,
         };
 
-        let def_id = cx.tcx.hir().local_def_id_from_hir_id(it.hir_id);
+        let def_id = cx.tcx.hir().local_def_id(it.hir_id);
         let prfn = match cx.tcx.extern_mod_stmt_cnum(def_id) {
             Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
             None => {
@@ -973,7 +973,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
         if let hir::ItemKind::Union(ref vdata, _) = item.node {
             for field in vdata.fields() {
                 let field_ty = ctx.tcx.type_of(
-                    ctx.tcx.hir().local_def_id_from_hir_id(field.hir_id));
+                    ctx.tcx.hir().local_def_id(field.hir_id));
                 if field_ty.needs_drop(ctx.tcx, ctx.param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,
@@ -1216,7 +1216,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
         use rustc::ty::Predicate::*;
 
         if cx.tcx.features().trivial_bounds {
-            let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+            let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
             for &(predicate, span) in &predicates.predicates {
                 let predicate_kind_name = match predicate {
@@ -1541,7 +1541,7 @@ impl ExplicitOutlivesRequirements {
         ty_generics: &'tcx ty::Generics,
     ) -> Vec<ty::Region<'tcx>> {
         let index = ty_generics.param_def_id_to_index[
-            &tcx.hir().local_def_id_from_hir_id(param.hir_id)];
+            &tcx.hir().local_def_id(param.hir_id)];
 
         match param.kind {
             hir::GenericParamKind::Lifetime { .. } => {
@@ -1659,7 +1659,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
         use rustc::middle::resolve_lifetime::Region;
 
         let infer_static = cx.tcx.features().infer_static_outlives_requirements;
-        let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if let hir::ItemKind::Struct(_, ref hir_generics)
             | hir::ItemKind::Enum(_, ref hir_generics)
             | hir::ItemKind::Union(_, ref hir_generics) = item.node

@@ -1252,15 +1252,15 @@ impl<'tcx> TyCtxt<'tcx> {
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports
                     .into_iter()
-                    .map(|id| hir.local_def_id(id))
+                    .map(|id| hir.local_def_id_from_node_id(id))
                     .collect(),
             maybe_unused_extern_crates:
                 resolutions.maybe_unused_extern_crates
                     .into_iter()
-                    .map(|(id, sp)| (hir.local_def_id(id), sp))
+                    .map(|(id, sp)| (hir.local_def_id_from_node_id(id), sp))
                     .collect(),
             glob_map: resolutions.glob_map.into_iter().map(|(id, names)| {
-                (hir.local_def_id(id), names)
+                (hir.local_def_id_from_node_id(id), names)
             }).collect(),
             extern_prelude: resolutions.extern_prelude,
             hir_map: hir,

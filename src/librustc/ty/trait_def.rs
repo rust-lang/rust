@@ -186,7 +186,7 @@ pub(super) fn trait_impls_of_provider(
         }
 
         for &hir_id in tcx.hir().trait_impls(trait_id) {
-            add_impl(tcx.hir().local_def_id_from_hir_id(hir_id));
+            add_impl(tcx.hir().local_def_id(hir_id));
         }
     }
 

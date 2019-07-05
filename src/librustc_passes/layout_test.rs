@@ -29,7 +29,7 @@ struct VarianceTest<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let item_def_id = self.tcx.hir().local_def_id(item.hir_id);
 
         if let ItemKind::Ty(..) = item.node {
             for attr in self.tcx.get_attrs(item_def_id).iter() {

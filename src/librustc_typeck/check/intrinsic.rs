@@ -22,7 +22,7 @@ fn equate_intrinsic_type<'tcx>(
     inputs: Vec<Ty<'tcx>>,
     output: Ty<'tcx>,
 ) {
-    let def_id = tcx.hir().local_def_id_from_hir_id(it.hir_id);
+    let def_id = tcx.hir().local_def_id(it.hir_id);
 
     match it.node {
         hir::ForeignItemKind::Fn(..) => {}

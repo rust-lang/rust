@@ -66,12 +66,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     fn stability(&self, id: hir::HirId) -> Option<attr::Stability> {
-        self.cx.tcx.hir().opt_local_def_id_from_hir_id(id)
+        self.cx.tcx.hir().opt_local_def_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_stability(def_id)).cloned()
     }
 
     fn deprecation(&self, id: hir::HirId) -> Option<attr::Deprecation> {
-        self.cx.tcx.hir().opt_local_def_id_from_hir_id(id)
+        self.cx.tcx.hir().opt_local_def_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_deprecation(def_id))
     }
 
@@ -375,7 +375,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let ident = renamed.unwrap_or(item.ident);
 
         if item.vis.node.is_pub() {
-            let def_id = self.cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+            let def_id = self.cx.tcx.hir().local_def_id(item.hir_id);
             self.store_path(def_id);
         }
 
@@ -389,7 +389,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             _ if self.inlining && !item.vis.node.is_pub() => {}
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::ExternCrate(orig_name) => {
-                let def_id = self.cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                let def_id = self.cx.tcx.hir().local_def_id(item.hir_id);
                 om.extern_crates.push(ExternCrate {
                     cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id)
                                 .unwrap_or(LOCAL_CRATE),
@@ -618,7 +618,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         Macro {
 
-            def_id: self.cx.tcx.hir().local_def_id_from_hir_id(def.hir_id),
+            def_id: self.cx.tcx.hir().local_def_id(def.hir_id),
             attrs: &def.attrs,
             name: renamed.unwrap_or(def.name),
             whence: def.span,

@@ -165,7 +165,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn check_nested_body(&mut self, body_id: hir::BodyId) -> Promotability {
         let item_id = self.tcx.hir().body_owner(body_id);
-        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id(item_id);
 
         let outer_in_fn = self.in_fn;
         let outer_tables = self.tables;
@@ -451,7 +451,7 @@ fn check_expr_kind<'a, 'tcx>(
             let nested_body_promotable = v.check_nested_body(body_id);
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
-            let closure_def_id = v.tcx.hir().local_def_id_from_hir_id(e.hir_id);
+            let closure_def_id = v.tcx.hir().local_def_id(e.hir_id);
             if !v.tcx.upvars(closure_def_id).map_or(true, |v| v.is_empty()) {
                 NotPromotable
             } else {
