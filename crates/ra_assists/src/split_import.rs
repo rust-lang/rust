@@ -10,7 +10,10 @@ pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
     let path = ast::Path::cast(colon_colon.parent())?;
     let top_path = successors(Some(path), |it| it.parent_path()).last()?;
 
-    let _use_tree = top_path.syntax().ancestors().find_map(ast::UseTree::cast)?;
+    let use_tree = top_path.syntax().ancestors().find_map(ast::UseTree::cast);
+    if use_tree.is_none() {
+        return None;
+    }
 
     let l_curly = colon_colon.range().end();
     let r_curly = match top_path.syntax().parent().and_then(ast::UseTree::cast) {
