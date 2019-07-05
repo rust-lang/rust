@@ -106,11 +106,11 @@ where
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxtAt<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxtAt<'tcx>, extra: M::MemoryExtra) -> Self {
         Memory {
             alloc_map: M::MemoryMap::default(),
             dead_alloc_map: FxHashMap::default(),
-            extra: M::MemoryExtra::default(),
+            extra,
             tcx,
         }
     }
