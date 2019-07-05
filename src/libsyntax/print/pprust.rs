@@ -326,10 +326,6 @@ pub fn expr_to_string(e: &ast::Expr) -> String {
     to_string(|s| s.print_expr(e))
 }
 
-pub fn lifetime_to_string(lt: &ast::Lifetime) -> String {
-    to_string(|s| s.print_lifetime(*lt))
-}
-
 pub fn tt_to_string(tt: tokenstream::TokenTree) -> String {
     to_string(|s| s.print_tt(tt, false))
 }
