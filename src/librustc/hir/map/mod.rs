@@ -25,7 +25,6 @@ use crate::hir::print::Nested;
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
 
-use std::io;
 use std::result::Result::Err;
 use crate::ty::query::Providers;
 
@@ -1187,7 +1186,7 @@ pub fn map_crate<'hir>(sess: &crate::session::Session,
 /// Identical to the `PpAnn` implementation for `hir::Crate`,
 /// except it avoids creating a dependency on the whole crate.
 impl<'hir> print::PpAnn for Map<'hir> {
-    fn nested(&self, state: &mut print::State<'_>, nested: print::Nested) -> io::Result<()> {
+    fn nested(&self, state: &mut print::State<'_>, nested: print::Nested) {
         match nested {
             Nested::Item(id) => state.print_item(self.expect_item(id.id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
@@ -1199,7 +1198,7 @@ impl<'hir> print::PpAnn for Map<'hir> {
 }
 
 impl<'a> print::State<'a> {
-    pub fn print_node(&mut self, node: Node<'_>) -> io::Result<()> {
+    pub fn print_node(&mut self, node: Node<'_>) {
         match node {
             Node::Item(a)         => self.print_item(&a),
             Node::ForeignItem(a)  => self.print_foreign_item(&a),
@@ -1219,9 +1218,9 @@ impl<'a> print::State<'a> {
                 use syntax::print::pprust::PrintState;
 
                 // containing cbox, will be closed by print-block at }
-                self.cbox(print::indent_unit)?;
+                self.cbox(print::indent_unit);
                 // head-ibox, will be closed by print-block after {
-                self.ibox(0)?;
+                self.ibox(0);
                 self.print_block(&a)
             }
             Node::Lifetime(a)     => self.print_lifetime(&a),

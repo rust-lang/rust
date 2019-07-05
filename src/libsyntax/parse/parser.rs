@@ -2572,12 +2572,12 @@ impl<'a> Parser<'a> {
                           };
                           let sugg = pprust::to_string(|s| {
                               use crate::print::pprust::PrintState;
-                              s.popen()?;
-                              s.print_expr(&e)?;
-                              s.s.word( ".")?;
-                              s.print_usize(float.trunc() as usize)?;
-                              s.pclose()?;
-                              s.s.word(".")?;
+                              s.popen();
+                              s.print_expr(&e);
+                              s.s.word( ".");
+                              s.print_usize(float.trunc() as usize);
+                              s.pclose();
+                              s.s.word(".");
                               s.s.word(fstr.splitn(2, ".").last().unwrap().to_string())
                           });
                           err.span_suggestion(
@@ -4583,9 +4583,9 @@ impl<'a> Parser<'a> {
                     }
                     let sugg = pprust::to_string(|s| {
                         use crate::print::pprust::{PrintState, INDENT_UNIT};
-                        s.ibox(INDENT_UNIT)?;
-                        s.bopen()?;
-                        s.print_stmt(&stmt)?;
+                        s.ibox(INDENT_UNIT);
+                        s.bopen();
+                        s.print_stmt(&stmt);
                         s.bclose_maybe_open(stmt.span, INDENT_UNIT, false)
                     });
                     e.span_suggestion(

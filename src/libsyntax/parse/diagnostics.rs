@@ -613,12 +613,12 @@ impl<'a> Parser<'a> {
                 let sum_with_parens = pprust::to_string(|s| {
                     use crate::print::pprust::PrintState;
 
-                    s.s.word("&")?;
-                    s.print_opt_lifetime(lifetime)?;
-                    s.print_mutability(mut_ty.mutbl)?;
-                    s.popen()?;
-                    s.print_type(&mut_ty.ty)?;
-                    s.print_type_bounds(" +", &bounds)?;
+                    s.s.word("&");
+                    s.print_opt_lifetime(lifetime);
+                    s.print_mutability(mut_ty.mutbl);
+                    s.popen();
+                    s.print_type(&mut_ty.ty);
+                    s.print_type_bounds(" +", &bounds);
                     s.pclose()
                 });
                 err.span_suggestion(
