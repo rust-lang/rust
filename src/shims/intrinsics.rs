@@ -481,36 +481,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(res, dest)?;
             }
 
-            "uninit" => {
-                // Check fast path: we don't want to force an allocation in case the destination is a simple value,
-                // but we also do not want to create a new allocation with 0s and then copy that over.
-                // FIXME: We do not properly validate in case of ZSTs and when doing it in memory!
-                // However, this only affects direct calls of the intrinsic; calls to the stable
-                // functions wrapping them do get their validation.
-                // FIXME: should we check alignment for ZSTs?
-                if !dest.layout.is_zst() {
-                    match dest.layout.abi {
-                        layout::Abi::Scalar(..) => {
-                            let x = ScalarMaybeUndef::Undef;
-                            this.write_immediate(Immediate::Scalar(x), dest)?;
-                        }
-                        layout::Abi::ScalarPair(..) => {
-                            let x = ScalarMaybeUndef::Undef;
-                            this.write_immediate(Immediate::ScalarPair(x, x), dest)?;
-                        }
-                        _ => {
-                            // Do it in memory
-                            let mplace = this.force_allocation(dest)?;
-                            assert!(mplace.meta.is_none());
-                            let ptr = mplace.ptr.to_ptr()?;
-                            this.memory_mut()
-                                .get_mut(ptr.alloc_id)?
-                                .mark_definedness(ptr, dest.layout.size, false);
-                        }
-                    }
-                }
-            }
-
             "write_bytes" => {
                 let ty = substs.type_at(0);
                 let ty_layout = this.layout_of(ty)?;
