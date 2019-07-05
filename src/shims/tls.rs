@@ -6,6 +6,7 @@ use rustc::{ty, ty::layout::HasDataLayout, mir};
 use crate::{
     InterpResult, InterpError, StackPopCleanup,
     MPlaceTy, Scalar, Tag,
+    HelpersEvalContextExt,
 };
 
 pub type TlsKey = u128;
@@ -111,7 +112,6 @@ impl<'tcx> TlsData<'tcx> {
     fn fetch_tls_dtor(
         &mut self,
         key: Option<TlsKey>,
-        cx: &impl HasDataLayout,
     ) -> Option<(ty::Instance<'tcx>, Scalar<Tag>, TlsKey)> {
         use std::collections::Bound::*;
 
@@ -123,10 +123,10 @@ impl<'tcx> TlsData<'tcx> {
         for (&key, &mut TlsEntry { ref mut data, dtor }) in
             thread_local.range_mut((start, Unbounded))
         {
-            if let Some(ref mut data) = *data {
+            if let Some(data_scalar) = *data {
                 if let Some(dtor) = dtor {
-                    let ret = Some((dtor, *data, key));
-                    *data = Scalar::ptr_null(cx);
+                    let ret = Some((dtor, data_scalar, key));
+                    *data = None;
                     return ret;
                 }
             }
@@ -139,10 +139,11 @@ impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tc
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn run_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let mut dtor = this.machine.tls.fetch_tls_dtor(None, &*this.tcx);
+        let mut dtor = this.machine.tls.fetch_tls_dtor(None);
         // FIXME: replace loop by some structure that works with stepping
         while let Some((instance, ptr, key)) = dtor {
             trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
+            assert!(!this.is_null(ptr).unwrap(), "Data can't be NULL when dtor is called!");
             // TODO: Potentially, this has to support all the other possible instances?
             // See eval_fn_call in interpret/terminator/mod.rs
             let mir = this.load_mir(instance.def)?;
@@ -163,9 +164,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // step until out of stackframes
             this.run()?;
 
-            dtor = match this.machine.tls.fetch_tls_dtor(Some(key), &*this.tcx) {
+            dtor = match this.machine.tls.fetch_tls_dtor(Some(key)) {
                 dtor @ Some(_) => dtor,
-                None => this.machine.tls.fetch_tls_dtor(None, &*this.tcx),
+                None => this.machine.tls.fetch_tls_dtor(None),
             };
         }
         // FIXME: On a windows target, call `unsafe extern "system" fn on_tls_callback`.
