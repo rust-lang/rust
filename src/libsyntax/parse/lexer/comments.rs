@@ -268,7 +268,7 @@ fn read_block_comment(rdr: &mut StringReader<'_>,
         while level > 0 {
             debug!("=== block comment level {}", level);
             if rdr.is_eof() {
-                rdr.fatal("unterminated block comment").raise();
+                rdr.fatal_span_(rdr.pos, rdr.pos, "unterminated block comment").raise();
             }
             if rdr.ch_is('\n') {
                 trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
@@ -346,7 +346,7 @@ pub fn gather_comments(sess: &ParseSess, path: FileName, srdr: &mut dyn Read) ->
     srdr.read_to_string(&mut src).unwrap();
     let cm = SourceMap::new(sess.source_map().path_mapping().clone());
     let source_file = cm.new_source_file(path, src);
-    let mut rdr = lexer::StringReader::new_raw(sess, source_file, None);
+    let mut rdr = lexer::StringReader::new(sess, source_file, None);
 
     let mut comments: Vec<Comment> = Vec::new();
     let mut code_to_the_left = false; // Only code

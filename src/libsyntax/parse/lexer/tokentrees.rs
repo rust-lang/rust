@@ -4,13 +4,14 @@ use crate::print::pprust::token_to_string;
 use crate::parse::lexer::{StringReader, UnmatchedBrace};
 use crate::parse::token::{self, Token};
 use crate::parse::PResult;
-use crate::tokenstream::{DelimSpan, IsJoint::*, TokenStream, TokenTree, TreeAndJoint};
+use crate::tokenstream::{DelimSpan, IsJoint::{self, *}, TokenStream, TokenTree, TreeAndJoint};
 
 impl<'a> StringReader<'a> {
     crate fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
         let mut tt_reader = TokenTreesReader {
             string_reader: self,
             token: Token::dummy(),
+            joint_to_prev: Joint,
             open_braces: Vec::new(),
             unmatched_braces: Vec::new(),
             matching_delim_spans: Vec::new(),
@@ -24,6 +25,7 @@ impl<'a> StringReader<'a> {
 struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
     token: Token,
+    joint_to_prev: IsJoint,
     /// Stack of open delimiters and their spans. Used for error message.
     open_braces: Vec<(token::DelimToken, Span)>,
     unmatched_braces: Vec<UnmatchedBrace>,
@@ -203,21 +205,26 @@ impl<'a> TokenTreesReader<'a> {
             },
             _ => {
                 let tt = TokenTree::Token(self.token.take());
-                // Note that testing for joint-ness here is done via the raw
-                // source span as the joint-ness is a property of the raw source
-                // rather than wanting to take `override_span` into account.
-                // Additionally, we actually check if the *next* pair of tokens
-                // is joint, but this is equivalent to checking the current pair.
-                let raw = self.string_reader.peek_span_src_raw;
                 self.real_token();
-                let is_joint = raw.hi() == self.string_reader.peek_span_src_raw.lo()
-                    && self.token.is_op();
+                let is_joint = self.joint_to_prev == Joint && self.token.is_op();
                 Ok((tt, if is_joint { Joint } else { NonJoint }))
             }
         }
     }
 
     fn real_token(&mut self) {
-        self.token = self.string_reader.real_token();
+        self.joint_to_prev = Joint;
+        loop {
+            let token = self.string_reader.next_token();
+            match token.kind {
+                token::Whitespace | token::Comment | token::Shebang(_) => {
+                    self.joint_to_prev = NonJoint;
+                }
+                _ => {
+                    self.token = token;
+                    return;
+                },
+            }
+        }
     }
 }
