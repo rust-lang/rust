@@ -604,9 +604,18 @@ where
         }
 
         let arg_scope_s = (arg_scope, source_info);
-        unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
-            builder.args_and_body(block, &arguments, arg_scope, &body.value)
-        }));
+        // `return_block` is called when we evaluate a `return` expression, so
+        // we just use `START_BLOCK` here.
+        unpack!(block = builder.in_breakable_scope(
+            None,
+            START_BLOCK,
+            Place::RETURN_PLACE,
+            |builder| {
+                builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
+                    builder.args_and_body(block, &arguments, arg_scope, &body.value)
+                })
+            },
+        ));
         // Attribute epilogue to function's closing brace
         let fn_end = span.shrink_to_hi();
         let source_info = builder.source_info(fn_end);
@@ -860,11 +869,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        // `return_block` is called when we evaluate a `return` expression, so
-        // we just use `START_BLOCK` here.
-        self.in_breakable_scope(None, START_BLOCK, Place::RETURN_PLACE, |this| {
-            this.into(&Place::RETURN_PLACE, block, body)
-        })
+        self.into(&Place::RETURN_PLACE, block, body)
     }
 
     fn get_unit_temp(&mut self) -> Place<'tcx> {
