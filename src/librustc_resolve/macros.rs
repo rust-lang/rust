@@ -19,7 +19,7 @@ use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{feature_err, is_builtin_attr_name};
+use syntax::feature_gate::{feature_err, emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::{AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::visit::Visitor;
