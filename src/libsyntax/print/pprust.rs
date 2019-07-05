@@ -322,10 +322,6 @@ pub fn pat_to_string(pat: &ast::Pat) -> String {
     to_string(|s| s.print_pat(pat))
 }
 
-pub fn arm_to_string(arm: &ast::Arm) -> String {
-    to_string(|s| s.print_arm(arm))
-}
-
 pub fn expr_to_string(e: &ast::Expr) -> String {
     to_string(|s| s.print_expr(e))
 }
