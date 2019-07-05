@@ -20,6 +20,7 @@ pub struct WinConsole<T> {
     background: color::Color,
 }
 
+type SHORT = i16;
 type WORD = u16;
 type DWORD = u32;
 type BOOL = i32;
@@ -27,12 +28,28 @@ type HANDLE = *mut u8;
 
 #[allow(non_snake_case)]
 #[repr(C)]
+struct SMALL_RECT {
+    Left: SHORT,
+    Top: SHORT,
+    Right: SHORT,
+    Bottom: SHORT,
+}
+
+#[allow(non_snake_case)]
+#[repr(C)]
+struct COORD {
+    X: SHORT,
+    Y: SHORT,
+}
+
+#[allow(non_snake_case)]
+#[repr(C)]
 struct CONSOLE_SCREEN_BUFFER_INFO {
-    dwSize: [libc::c_short; 2],
-    dwCursorPosition: [libc::c_short; 2],
+    dwSize: COORD,
+    dwCursorPosition: COORD,
     wAttributes: WORD,
-    srWindow: [libc::c_short; 4],
-    dwMaximumWindowSize: [libc::c_short; 2],
+    srWindow: SMALL_RECT,
+    dwMaximumWindowSize: COORD,
 }
 
 #[allow(non_snake_case)]
