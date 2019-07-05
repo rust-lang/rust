@@ -287,6 +287,7 @@ impl File {
         Ok(())
     }
 
+    #[cfg(not(target_vendor = "uwp"))]
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         unsafe {
             let mut info: c::BY_HANDLE_FILE_INFORMATION = mem::zeroed();
@@ -300,6 +301,49 @@ impl File {
                 file_size: ((info.nFileSizeHigh as u64) << 32) | (info.nFileSizeLow as u64),
                 reparse_tag: 0,
             };
+            if attr.is_reparse_point() {
+                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+                if let Ok((_, buf)) = self.reparse_point(&mut b) {
+                    attr.reparse_tag = buf.ReparseTag;
+                }
+            }
+            Ok(attr)
+        }
+    }
+
+    #[cfg(target_vendor = "uwp")]
+    pub fn file_attr(&self) -> io::Result<FileAttr> {
+        unsafe {
+            let mut info: c::FILE_BASIC_INFO = mem::zeroed();
+            let size = mem::size_of_val(&info);
+            cvt(c::GetFileInformationByHandleEx(self.handle.raw(),
+                                              c::FileBasicInfo,
+                                              &mut info as *mut _ as *mut libc::c_void,
+                                              size as c::DWORD))?;
+            let mut attr = FileAttr {
+                attributes: info.FileAttributes,
+                creation_time: c::FILETIME {
+                    dwLowDateTime: info.CreationTime as c::DWORD,
+                    dwHighDateTime: (info.CreationTime >> 32) as c::DWORD,
+                },
+                last_access_time: c::FILETIME {
+                    dwLowDateTime: info.LastAccessTime as c::DWORD,
+                    dwHighDateTime: (info.LastAccessTime >> 32) as c::DWORD,
+                },
+                last_write_time: c::FILETIME {
+                    dwLowDateTime: info.LastWriteTime as c::DWORD,
+                    dwHighDateTime: (info.LastWriteTime >> 32) as c::DWORD,
+                },
+                file_size: 0,
+                reparse_tag: 0,
+            };
+            let mut info: c::FILE_STANDARD_INFO = mem::zeroed();
+            let size = mem::size_of_val(&info);
+            cvt(c::GetFileInformationByHandleEx(self.handle.raw(),
+                                                c::FileStandardInfo,
+                                                &mut info as *mut _ as *mut libc::c_void,
+                                                size as c::DWORD))?;
+            attr.file_size = info.AllocationSize as u64;
             if attr.is_reparse_point() {
                 let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
@@ -670,6 +714,7 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_vendor = "uwp"))]
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
     let src = to_u16s(src)?;
     let dst = to_u16s(dst)?;
@@ -677,6 +722,12 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
         c::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
     })?;
     Ok(())
+}
+
+#[cfg(target_vendor = "uwp")]
+pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
+    return Err(io::Error::new(io::ErrorKind::Other,
+                            "hard link are not supported on UWP"));
 }
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
