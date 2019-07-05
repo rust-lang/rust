@@ -83,7 +83,6 @@ fn miri_pass(path: &str, target: &str, opt: bool, noseed: bool) {
         flags.push("-Zmir-opt-level=3".to_owned());
     } else if !noseed {
         // Run with intptrcast.  Avoid test matrix explosion by doing either this or opt-level=3.
-        #[cfg(not(windows))] // FIXME re-enable on Windows
         flags.push("-Zmiri-seed=".to_owned());
     }
 
@@ -113,7 +112,9 @@ fn run_pass_miri(opt: bool) {
 }
 
 fn compile_fail_miri(opt: bool) {
-    compile_fail("tests/compile-fail", &get_target(), opt);
+    if !cfg!(windows) { // FIXME re-enable on Windows
+        compile_fail("tests/compile-fail", &get_target(), opt);
+    }
 }
 
 fn test_runner(_tests: &[&()]) {
