@@ -299,7 +299,7 @@ impl Module {
             .collect()
     }
 
-    fn with_module_id(&self, module_id: CrateModuleId) -> Module {
+    fn with_module_id(self, module_id: CrateModuleId) -> Module {
         Module { module_id, krate: self.krate }
     }
 }
@@ -463,33 +463,33 @@ pub struct EnumVariant {
 }
 
 impl EnumVariant {
-    pub fn module(&self, db: &impl HirDatabase) -> Module {
+    pub fn module(self, db: &impl HirDatabase) -> Module {
         self.parent.module(db)
     }
-    pub fn parent_enum(&self, _db: &impl DefDatabase) -> Enum {
+    pub fn parent_enum(self, _db: &impl DefDatabase) -> Enum {
         self.parent
     }
 
-    pub fn name(&self, db: &impl DefDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
         db.enum_data(self.parent).variants[self.id].name.clone()
     }
 
-    pub fn fields(&self, db: &impl HirDatabase) -> Vec<StructField> {
+    pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
         self.variant_data(db)
             .fields()
             .into_iter()
             .flat_map(|it| it.iter())
-            .map(|(id, _)| StructField { parent: (*self).into(), id })
+            .map(|(id, _)| StructField { parent: self.into(), id })
             .collect()
     }
 
-    pub fn field(&self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
         self.variant_data(db)
             .fields()
             .into_iter()
             .flat_map(|it| it.iter())
             .find(|(_id, data)| data.name == *name)
-            .map(|(id, _)| StructField { parent: (*self).into(), id })
+            .map(|(id, _)| StructField { parent: self.into(), id })
     }
 }
 
@@ -517,11 +517,11 @@ impl DefWithBody {
     }
 
     /// Builds a resolver for code inside this item.
-    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
-        match *self {
-            DefWithBody::Const(ref c) => c.resolver(db),
-            DefWithBody::Function(ref f) => f.resolver(db),
-            DefWithBody::Static(ref s) => s.resolver(db),
+    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
+        match self {
+            DefWithBody::Const(c) => c.resolver(db),
+            DefWithBody::Function(f) => f.resolver(db),
+            DefWithBody::Static(s) => s.resolver(db),
         }
     }
 }
