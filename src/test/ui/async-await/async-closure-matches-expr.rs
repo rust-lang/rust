@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass
 // edition:2018
 
 #![feature(async_await, async_closure)]
