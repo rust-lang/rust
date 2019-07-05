@@ -2137,7 +2137,7 @@ impl Context {
         self.shared.fs.write(&final_file, &v)?;
 
         // Generating settings page.
-        let settings = Settings::new(self.shared.static_root_path.deref().unwrap_or("./"),
+        let settings = Settings::new(self.shared.static_root_path.as_deref().unwrap_or("./"),
                                      &self.shared.resource_suffix);
         page.title = "Rustdoc settings";
         page.description = "Settings of Rustdoc";

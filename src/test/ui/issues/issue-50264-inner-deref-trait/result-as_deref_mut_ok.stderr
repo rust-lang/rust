@@ -2,7 +2,7 @@ error[E0599]: no method named `as_deref_mut_ok` found for type `std::result::Res
   --> $DIR/result-as_deref_mut_ok.rs:4:31
    |
 LL |     let _result = &mut Ok(42).as_deref_mut_ok();
-   |                               ^^^^^^^^^^^^^^^ help: did you mean: `as_deref_mut_err`
+   |                               ^^^^^^^^^^^^^^^ help: there is a method with a similar name: `as_deref_mut_err`
    |
    = note: the method `as_deref_mut_ok` exists but the following trait bounds were not satisfied:
            `{integer} : std::ops::DerefMut`
