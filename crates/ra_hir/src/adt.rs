@@ -34,8 +34,8 @@ impl AdtDef {
 }
 
 impl Struct {
-    pub(crate) fn variant_data(&self, db: &impl DefDatabase) -> Arc<VariantData> {
-        db.struct_data(*self).variant_data.clone()
+    pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
+        db.struct_data(self).variant_data.clone()
     }
 }
 
@@ -69,7 +69,7 @@ fn variants(enum_def: &ast::EnumDef) -> impl Iterator<Item = &ast::EnumVariant> 
 
 impl EnumVariant {
     pub(crate) fn source_impl(
-        &self,
+        self,
         db: &(impl DefDatabase + AstDatabase),
     ) -> Source<TreeArc<ast::EnumVariant>> {
         let src = self.parent.source(db);
@@ -81,7 +81,7 @@ impl EnumVariant {
             .to_owned();
         Source { file_id: src.file_id, ast }
     }
-    pub(crate) fn variant_data(&self, db: &impl DefDatabase) -> Arc<VariantData> {
+    pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
         db.enum_data(self.parent).variants[self.id].variant_data.clone()
     }
 }

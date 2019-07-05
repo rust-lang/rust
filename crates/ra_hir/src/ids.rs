@@ -359,8 +359,8 @@ impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
 }
 
 impl MacroCallId {
-    pub fn debug_dump(&self, db: &impl AstDatabase) -> String {
-        let loc = self.clone().loc(db);
+    pub fn debug_dump(self, db: &impl AstDatabase) -> String {
+        let loc = self.loc(db);
         let node = loc.ast_id.to_node(db);
         let syntax_str = node.syntax().text().chunks().collect::<Vec<_>>().join(" ");
 

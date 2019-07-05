@@ -65,7 +65,7 @@ fn impls_for_trait(
 
     Some(
         impls
-            .lookup_impl_blocks_for_trait(&tr)
+            .lookup_impl_blocks_for_trait(tr)
             .map(|imp| NavigationTarget::from_impl_block(db, imp))
             .collect(),
     )

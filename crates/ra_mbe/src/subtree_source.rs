@@ -145,7 +145,7 @@ fn convert_ident(ident: &tt::Ident) -> TtToken {
     TtToken { kind, is_joint_to_next: false, text: ident.text.clone() }
 }
 
-fn convert_punct(p: &tt::Punct) -> TtToken {
+fn convert_punct(p: tt::Punct) -> TtToken {
     let kind = match p.char {
         // lexer may produce compound tokens for these ones
         '.' => T![.],
@@ -167,6 +167,6 @@ fn convert_leaf(leaf: &tt::Leaf) -> TtToken {
     match leaf {
         tt::Leaf::Literal(l) => convert_literal(l),
         tt::Leaf::Ident(ident) => convert_ident(ident),
-        tt::Leaf::Punct(punct) => convert_punct(punct),
+        tt::Leaf::Punct(punct) => convert_punct(*punct),
     }
 }
