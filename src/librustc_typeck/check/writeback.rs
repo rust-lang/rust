@@ -587,6 +587,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
 
             if !opaque_defn.substs.has_local_value() {
+                // We only want to add an entry into `concrete_existential_types`
+                // if we actually found a defining usage of this existential type.
+                // Otherwise, we do nothing - we'll either find a defining usage
+                // in some other location, or we'll end up emitting an error due
+                // to the lack of defining usage
                 if !skip_add {
                     let new = ty::ResolvedOpaqueTy {
                         concrete_type: definition_ty,

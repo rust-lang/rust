@@ -1280,14 +1280,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             concrete_is_opaque
                         );
 
-                        // concrete_is_opaque is 'true' when we're using an existential
-                        // type without 'revelaing' it. For example, code like this:
+                        // concrete_is_opaque is `true` when we're using an existential
+                        // type without 'revealing' it. For example, code like this:
                         //
                         // existential type Foo: Debug;
                         // fn foo1() -> Foo { ... }
                         // fn foo2() -> Foo { foo1() }
                         //
-                        // In 'foo2', we're not revealing the type of 'Foo' - we're
+                        // In `foo2`, we're not revealing the type of `Foo` - we're
                         // just treating it as the opaque type.
                         //
                         // When this occurs, we do *not* want to try to equate

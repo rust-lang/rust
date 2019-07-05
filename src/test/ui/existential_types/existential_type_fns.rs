@@ -1,3 +1,5 @@
+// check-pass
+
 #![feature(existential_type)]
 
 // Regression test for issue #61863

@@ -1,5 +1,6 @@
-#![feature(existential_type)]
+// check-pass
 
+#![feature(existential_type)]
 #![allow(dead_code)]
 
 pub trait MyTrait {}
