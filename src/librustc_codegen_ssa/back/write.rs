@@ -1554,7 +1554,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             let total_llvm_time = Instant::now().duration_since(llvm_start_time);
             // This is the top-level timing for all of LLVM, set the time-depth
             // to zero.
-            set_time_depth(0);
+            set_time_depth(1);
             print_time_passes_entry(cgcx.time_passes,
                                     "LLVM passes",
                                     total_llvm_time);

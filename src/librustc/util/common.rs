@@ -170,7 +170,7 @@ pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> 
         }
     }
 
-    print_time_passes_entry_internal(what, dur);
+    print_time_passes_entry(true, what, dur);
 
     TIME_DEPTH.with(|slot| slot.set(old));
 
@@ -182,18 +182,6 @@ pub fn print_time_passes_entry(do_it: bool, what: &str, dur: Duration) {
         return
     }
 
-    let old = TIME_DEPTH.with(|slot| {
-        let r = slot.get();
-        slot.set(r + 1);
-        r
-    });
-
-    print_time_passes_entry_internal(what, dur);
-
-    TIME_DEPTH.with(|slot| slot.set(old));
-}
-
-fn print_time_passes_entry_internal(what: &str, dur: Duration) {
     let indentation = TIME_DEPTH.with(|slot| slot.get());
 
     let mem_string = match get_resident() {

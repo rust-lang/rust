@@ -20,7 +20,7 @@ use rustc::mir::{
     ConstraintCategory, Local, Location,
 };
 use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
-use rustc::util::common::{self, ErrorReported};
+use rustc::util::common::ErrorReported;
 use rustc_data_structures::binary_search_util;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -462,22 +462,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
     pub(super) fn solve(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-        body: &Body<'tcx>,
-        upvars: &[Upvar],
-        mir_def_id: DefId,
-        errors_buffer: &mut Vec<Diagnostic>,
-    ) -> Option<ClosureRegionRequirements<'tcx>> {
-        common::time_ext(
-            infcx.tcx.sess.time_extended(),
-            Some(infcx.tcx.sess),
-            &format!("solve_nll_region_constraints({:?})", mir_def_id),
-            || self.solve_inner(infcx, body, upvars, mir_def_id, errors_buffer),
-        )
-    }
-
-    fn solve_inner(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
