@@ -316,6 +316,7 @@ impl interpret::MayLeak for ! {
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     type MemoryKinds = !;
     type PointerTag = ();
+    type ExtraFnVal = !;
 
     type FrameExtra = ();
     type MemoryExtra = ();
@@ -368,6 +369,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 return Err(err);
             }
         }))
+    }
+
+    fn call_extra_fn(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: !,
+        _args: &[OpTy<'tcx>],
+        _dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        match fn_val {}
     }
 
     fn call_intrinsic(
