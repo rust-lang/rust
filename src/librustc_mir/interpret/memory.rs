@@ -728,6 +728,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
 /// Reading and writing.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
+    /// Reads the given number of bytes from memory. Returns them as a slice.
+    ///
     /// Performs appropriate bounds checks.
     pub fn read_bytes(
         &self,
@@ -739,6 +741,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             None => return Ok(&[]), // zero-sized access
         };
         self.get(ptr.alloc_id)?.get_bytes(self, ptr, size)
+    }
+
+    /// Reads a 0-terminated sequence of bytes from memory. Returns them as a slice.
+    ///
+    /// Performs appropriate bounds checks.
+    pub fn read_c_str(&self, ptr: Scalar<M::PointerTag>) -> InterpResult<'tcx, &[u8]> {
+        let ptr = self.force_ptr(ptr)?; // We need to read at least 1 byte, so we *need* a ptr.
+        self.get(ptr.alloc_id)?.read_c_str(self, ptr)
     }
 
     /// Performs appropriate bounds checks.
