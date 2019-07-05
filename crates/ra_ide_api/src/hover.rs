@@ -88,7 +88,7 @@ impl HoverResult {
 fn hover_text(docs: Option<String>, desc: Option<String>) -> Option<String> {
     match (desc, docs) {
         (Some(desc), docs) => Some(rust_code_markup_with_doc(desc, docs)),
-        (None, Some(docs)) => Some(docs.to_string()),
+        (None, Some(docs)) => Some(docs),
         _ => None,
     }
 }

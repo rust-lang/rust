@@ -62,13 +62,13 @@ impl MockAnalysis {
     pub fn add_file_with_position(&mut self, path: &str, text: &str) -> FilePosition {
         let (offset, text) = extract_offset(text);
         let file_id = FileId((self.files.len() + 1) as u32);
-        self.files.push((path.to_string(), text.to_string()));
+        self.files.push((path.to_string(), text));
         FilePosition { file_id, offset }
     }
     pub fn add_file_with_range(&mut self, path: &str, text: &str) -> FileRange {
         let (range, text) = extract_range(text);
         let file_id = FileId((self.files.len() + 1) as u32);
-        self.files.push((path.to_string(), text.to_string()));
+        self.files.push((path.to_string(), text));
         FileRange { file_id, range }
     }
     pub fn id_of(&self, path: &str) -> FileId {

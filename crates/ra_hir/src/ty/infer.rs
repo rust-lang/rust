@@ -895,8 +895,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             None => (receiver_ty, Ty::Unknown, None),
         };
-        let substs =
-            self.substs_for_method_call(def_generics.clone(), generic_args, &derefed_receiver_ty);
+        let substs = self.substs_for_method_call(def_generics, generic_args, &derefed_receiver_ty);
         let method_ty = method_ty.apply_substs(substs);
         let method_ty = self.insert_type_vars(method_ty);
         self.register_obligations_for_call(&method_ty);
