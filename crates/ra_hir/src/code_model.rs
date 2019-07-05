@@ -169,7 +169,7 @@ impl ModuleSource {
             (None, Some(item_id)) => {
                 let module = item_id.to_node(db);
                 assert!(module.item_list().is_some(), "expected inline module");
-                ModuleSource::Module(module.to_owned())
+                ModuleSource::Module(module)
             }
             (None, None) => panic!(),
         }
