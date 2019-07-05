@@ -93,17 +93,17 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        krate: &hir::Crate,
                        filename: FileName,
                        input: String,
-                       out: &'a mut String,
-                       ann: &'a dyn PpAnn)
-                       {
-    let mut s = State::new_from_input(cm, sess, filename, input, out, ann);
+                       ann: &'a dyn PpAnn) -> String {
+    let mut out = String::new();
+    let mut s = State::new_from_input(cm, sess, filename, input, &mut out, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
     s.print_mod(&krate.module, &krate.attrs);
     s.print_remaining_comments();
-    s.s.eof()
+    s.s.eof();
+    out
 }
 
 impl<'a> State<'a> {

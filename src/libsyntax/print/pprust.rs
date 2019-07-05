@@ -102,10 +102,10 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        krate: &ast::Crate,
                        filename: FileName,
                        input: String,
-                       out: &mut String,
                        ann: &'a dyn PpAnn,
-                       is_expanded: bool) {
-    let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
+                       is_expanded: bool) -> String {
+    let mut out = String::new();
+    let mut s = State::new_from_input(cm, sess, filename, input, &mut out, ann, is_expanded);
 
     if is_expanded && std_inject::injected_crate_name().is_some() {
         // We need to print `#![no_std]` (and its feature gate) so that
@@ -128,7 +128,8 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
 
     s.print_mod(&krate.module, &krate.attrs);
     s.print_remaining_comments();
-    s.s.eof()
+    s.s.eof();
+    out
 }
 
 impl<'a> State<'a> {

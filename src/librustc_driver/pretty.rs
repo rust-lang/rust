@@ -725,12 +725,11 @@ pub fn print_after_parsing(sess: &Session,
         s.call_with_pp_support(sess, None, move |annotation| {
             debug!("pretty printing source code {:?}", s);
             let sess = annotation.sess();
-            pprust::print_crate(sess.source_map(),
+            *out = pprust::print_crate(sess.source_map(),
                                 &sess.parse_sess,
                                 krate,
                                 src_name,
                                 src,
-                                out,
                                 annotation.pp_ann(),
                                 false)
         })
@@ -771,12 +770,11 @@ pub fn print_after_hir_lowering<'tcx>(
                 s.call_with_pp_support(tcx.sess, Some(tcx), move |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
-                    pprust::print_crate(sess.source_map(),
+                    *out = pprust::print_crate(sess.source_map(),
                                         &sess.parse_sess,
                                         krate,
                                         src_name,
                                         src,
-                                        out,
                                         annotation.pp_ann(),
                                         true)
                 })
@@ -788,12 +786,11 @@ pub fn print_after_hir_lowering<'tcx>(
                 s.call_with_pp_support_hir(tcx, move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
-                    pprust_hir::print_crate(sess.source_map(),
+                    *out = pprust_hir::print_crate(sess.source_map(),
                                             &sess.parse_sess,
                                             krate,
                                             src_name,
                                             src,
-                                            out,
                                             annotation.pp_ann())
                 })
             }
