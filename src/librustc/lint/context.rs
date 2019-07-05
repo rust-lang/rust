@@ -926,7 +926,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
     {
         let old_param_env = self.context.param_env;
         self.context.param_env = self.context.tcx.param_env(
-            self.context.tcx.hir().local_def_id_from_hir_id(id)
+            self.context.tcx.hir().local_def_id(id)
         );
         f(self);
         self.context.param_env = old_param_env;
@@ -1501,7 +1501,7 @@ pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         time(tcx.sess, "module lints", || {
             // Run per-module lints
             par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                tcx.ensure().lint_mod(tcx.hir().local_def_id(module));
+                tcx.ensure().lint_mod(tcx.hir().local_def_id_from_node_id(module));
             });
         });
     });

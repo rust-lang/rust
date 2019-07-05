@@ -768,7 +768,7 @@ fn for_each_late_bound_region_defined_on<'tcx>(
                 local_id: *late_bound,
             };
             let name = tcx.hir().name(hir_id).as_interned_str();
-            let region_def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+            let region_def_id = tcx.hir().local_def_id(hir_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: fn_def_id,
                 bound_region: ty::BoundRegion::BrNamed(region_def_id, name),

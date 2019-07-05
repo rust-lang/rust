@@ -16,7 +16,7 @@ fn proc_macro_decls_static(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
     let mut finder = Finder { decls: None };
     tcx.hir().krate().visit_all_item_likes(&mut finder);
 
-    finder.decls.map(|id| tcx.hir().local_def_id_from_hir_id(id))
+    finder.decls.map(|id| tcx.hir().local_def_id(id))
 }
 
 struct Finder {

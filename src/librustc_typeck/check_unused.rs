@@ -52,7 +52,7 @@ struct CheckVisitor<'tcx> {
 
 impl CheckVisitor<'tcx> {
     fn check_import(&self, id: hir::HirId, span: Span) {
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(id);
+        let def_id = self.tcx.hir().local_def_id(id);
         if !self.tcx.maybe_unused_trait_import(def_id) {
             return;
         }
@@ -219,7 +219,7 @@ struct ExternCrateToLint {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemKind::ExternCrate(orig_name) = item.node {
-            let extern_crate_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+            let extern_crate_def_id = self.tcx.hir().local_def_id(item.hir_id);
             self.crates_to_lint.push(
                 ExternCrateToLint {
                     def_id: extern_crate_def_id,

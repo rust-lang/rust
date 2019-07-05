@@ -34,7 +34,7 @@ use syntax_pos::Span;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn resolve_type_vars_in_body(&self, body: &'tcx hir::Body) -> &'tcx ty::TypeckTables<'tcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
-        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id(item_id);
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is uSymbolfor unit tests.

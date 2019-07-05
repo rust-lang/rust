@@ -314,7 +314,7 @@ fn mono_item_visibility(
             };
         }
         MonoItem::GlobalAsm(hir_id) => {
-            let def_id = tcx.hir().local_def_id_from_hir_id(*hir_id);
+            let def_id = tcx.hir().local_def_id(*hir_id);
             return if tcx.is_reachable_non_generic(def_id) {
                 *can_be_internalized = false;
                 default_visibility(tcx, def_id, false)
@@ -698,7 +698,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             Some(def_id)
         }
         MonoItem::Static(def_id) => Some(def_id),
-        MonoItem::GlobalAsm(hir_id) => Some(tcx.hir().local_def_id_from_hir_id(hir_id)),
+        MonoItem::GlobalAsm(hir_id) => Some(tcx.hir().local_def_id(hir_id)),
     }
 }
 

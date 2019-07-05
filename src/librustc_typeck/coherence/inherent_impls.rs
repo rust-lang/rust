@@ -54,7 +54,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
             _ => return
         };
 
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let def_id = self.tcx.hir().local_def_id(item.hir_id);
         let self_ty = self.tcx.type_of(def_id);
         let lang_items = self.tcx.lang_items();
         match self_ty.sty {
@@ -257,7 +257,7 @@ impl InherentCollect<'tcx> {
             // Add the implementation to the mapping from implementation to base
             // type def ID, if there is a base type for this implementation and
             // the implementation does not have any associated traits.
-            let impl_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+            let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
             let vec = self.impls_map.inherent_impls.entry(def_id).or_default();
             vec.push(impl_def_id);
         } else {

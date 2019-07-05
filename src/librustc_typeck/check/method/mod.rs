@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )?;
 
         for import_id in &pick.import_ids {
-            let import_def_id = self.tcx.hir().local_def_id_from_hir_id(*import_id);
+            let import_def_id = self.tcx.hir().local_def_id(*import_id);
             debug!("used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                 .unwrap().insert(import_def_id);
@@ -434,7 +434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        self_ty, expr_id, ProbeScope::TraitsInScope)?;
         debug!("resolve_ufcs: pick={:?}", pick);
         for import_id in pick.import_ids {
-            let import_def_id = tcx.hir().local_def_id_from_hir_id(import_id);
+            let import_def_id = tcx.hir().local_def_id(import_id);
             debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                 .unwrap().insert(import_def_id);
