@@ -72,7 +72,7 @@ impl PpAnn for hir::Crate {
 pub struct State<'a> {
     pub s: pp::Printer<'a>,
     cm: Option<&'a SourceMap>,
-    comments: Option<Vec<comments::Comment>>,
+    comments: Vec<comments::Comment>,
     cur_cmnt: usize,
     ann: &'a (dyn PpAnn + 'a),
 }
@@ -82,7 +82,7 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.s
     }
 
-    fn comments(&mut self) -> &mut Option<Vec<comments::Comment>> {
+    fn comments(&mut self) -> &mut Vec<comments::Comment> {
         &mut self.comments
     }
 
@@ -134,7 +134,7 @@ impl<'a> State<'a> {
         State {
             s: pp::mk_printer(out),
             cm: Some(cm),
-            comments,
+            comments: comments.unwrap_or_default(),
             cur_cmnt: 0,
             ann,
         }
@@ -149,7 +149,7 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
         let mut printer = State {
             s: pp::mk_printer(&mut wr),
             cm: None,
-            comments: None,
+            comments: Vec::new(),
             cur_cmnt: 0,
             ann,
         };

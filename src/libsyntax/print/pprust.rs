@@ -46,7 +46,7 @@ impl PpAnn for NoAnn {}
 pub struct State<'a> {
     pub s: pp::Printer<'a>,
     cm: Option<&'a SourceMap>,
-    comments: Option<Vec<comments::Comment>>,
+    comments: Vec<comments::Comment>,
     cur_cmnt: usize,
     ann: &'a (dyn PpAnn+'a),
     is_expanded: bool
@@ -110,7 +110,7 @@ impl<'a> State<'a> {
         State {
             s: pp::mk_printer(out),
             cm: Some(cm),
-            comments,
+            comments: comments.unwrap_or_default(),
             cur_cmnt: 0,
             ann,
             is_expanded,
@@ -126,7 +126,7 @@ pub fn to_string<F>(f: F) -> String where
         let mut printer = State {
             s: pp::mk_printer(&mut wr),
             cm: None,
-            comments: None,
+            comments: Vec::new(),
             cur_cmnt: 0,
             ann: &NoAnn,
             is_expanded: false
@@ -423,7 +423,7 @@ fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
 
 pub trait PrintState<'a> {
     fn writer(&mut self) -> &mut pp::Printer<'a>;
-    fn comments(&mut self) -> &mut Option<Vec<comments::Comment>>;
+    fn comments(&mut self) -> &mut Vec<comments::Comment>;
     fn cur_cmnt(&mut self) -> &mut usize;
 
     fn word_space<S: Into<Cow<'static, str>>>(&mut self, w: S) {
@@ -550,15 +550,11 @@ pub trait PrintState<'a> {
 
     fn next_comment(&mut self) -> Option<comments::Comment> {
         let cur_cmnt = *self.cur_cmnt();
-        match *self.comments() {
-            Some(ref cmnts) => {
-                if cur_cmnt < cmnts.len() {
-                    Some(cmnts[cur_cmnt].clone())
-                } else {
-                    None
-                }
-            }
-            _ => None
+        let cmnts = &*self.comments();
+        if cur_cmnt < cmnts.len() {
+            Some(cmnts[cur_cmnt].clone())
+        } else {
+            None
         }
     }
 
@@ -756,7 +752,7 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.s
     }
 
-    fn comments(&mut self) -> &mut Option<Vec<comments::Comment>> {
+    fn comments(&mut self) -> &mut Vec<comments::Comment> {
         &mut self.comments
     }
 
