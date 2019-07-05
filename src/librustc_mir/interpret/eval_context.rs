@@ -196,12 +196,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>, machine: M) -> Self {
+    pub fn new(
+        tcx: TyCtxtAt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        machine: M,
+        memory_extra: M::MemoryExtra,
+    ) -> Self {
         InterpCx {
             machine,
             tcx,
             param_env,
-            memory: Memory::new(tcx),
+            memory: Memory::new(tcx, memory_extra),
             stack: Vec::new(),
             vtables: FxHashMap::default(),
         }

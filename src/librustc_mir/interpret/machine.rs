@@ -73,7 +73,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Extra data stored in memory. A reference to this is available when `AllocExtra`
     /// gets initialized, so you can e.g., have an `Rc` here if there is global state you
     /// need access to in the `AllocExtra` hooks.
-    type MemoryExtra: Default;
+    type MemoryExtra;
 
     /// Extra data stored in every allocation.
     type AllocExtra: AllocationExtra<Self::PointerTag> + 'static;
