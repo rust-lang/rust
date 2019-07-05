@@ -11,10 +11,8 @@ fn main() {
     // Test that small allocations sometimes *are* not very aligned.
     let saw_unaligned = (0..64).any(|_| unsafe {
         let p = libc::malloc(3);
-        let addr = p as usize;
-        let unaligned = addr % 4 != 0; // test that this is not 4-aligned
-        libc::free(p); // FIXME have to free *after* test; should allow ptr-to-int of dangling ptr.
-        unaligned
+        libc::free(p);
+        (p as usize) % 4 != 0 // find any that this is *not* 4-aligned
     });
     assert!(saw_unaligned);
 
