@@ -4,13 +4,11 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let target = env::var("TARGET").expect("TARGET was not set");
 
-    // FIXME: the not(bootstrap) part is needed because of the issue addressed by #62286,
-    // and could be removed once that change is in beta.
-    if cfg!(all(not(bootstrap), feature = "llvm-libunwind")) &&
+    if cfg!(feature = "llvm-libunwind") &&
         (target.contains("linux") ||
          target.contains("fuchsia")) {
         // Build the unwinding from libunwind C/C++ source code.
-        #[cfg(all(not(bootstrap), feature = "llvm-libunwind"))]
+        #[cfg(feature = "llvm-libunwind")]
         llvm_libunwind::compile();
     } else if target.contains("linux") {
         if target.contains("musl") {
@@ -44,7 +42,7 @@ fn main() {
     }
 }
 
-#[cfg(all(not(bootstrap), feature = "llvm-libunwind"))]
+#[cfg(feature = "llvm-libunwind")]
 mod llvm_libunwind {
     use std::env;
     use std::path::Path;

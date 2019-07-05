@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 enum Void {}
 
 fn main() {

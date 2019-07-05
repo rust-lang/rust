@@ -3,6 +3,8 @@
 //! This module contains the facade (aka platform-specific) implementations of
 //! OS level functionality for Fortanix SGX.
 
+#![allow(deprecated)]
+
 use crate::io::ErrorKind;
 use crate::os::raw::c_char;
 use crate::sync::atomic::{AtomicBool, Ordering};
