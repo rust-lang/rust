@@ -108,7 +108,7 @@ pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
 }
 
 #[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
-pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
+pub fn linkcheck(_args: &ArgMatches<'_>) -> Result<(), Error> {
     bail!("mdbook-linkcheck only works on x86_64 linux targets.");
 }
 
