@@ -2,10 +2,9 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::source_map::{SourceMap, Spanned};
 use syntax::parse::ParseSess;
-use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pprust::PrintState;
+use syntax::print::pprust::{Comments, PrintState};
 use syntax::symbol::kw;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
@@ -71,9 +70,7 @@ impl PpAnn for hir::Crate {
 
 pub struct State<'a> {
     pub s: pp::Printer<'a>,
-    cm: Option<&'a SourceMap>,
-    comments: Vec<comments::Comment>,
-    cur_cmnt: usize,
+    comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
 }
 
@@ -82,12 +79,8 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.s
     }
 
-    fn comments(&mut self) -> &mut Vec<comments::Comment> {
+    fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
-    }
-
-    fn cur_cmnt(&mut self) -> &mut usize {
-        &mut self.cur_cmnt
     }
 }
 
@@ -122,12 +115,9 @@ impl<'a> State<'a> {
                           out: &'a mut String,
                           ann: &'a dyn PpAnn)
                           -> State<'a> {
-        let comments = comments::gather_comments(sess, filename, input);
         State {
             s: pp::mk_printer(out),
-            cm: Some(cm),
-            comments: comments,
-            cur_cmnt: 0,
+            comments: Some(Comments::new(cm, sess, filename, input)),
             ann,
         }
     }
@@ -140,9 +130,7 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
     {
         let mut printer = State {
             s: pp::mk_printer(&mut wr),
-            cm: None,
-            comments: Vec::new(),
-            cur_cmnt: 0,
+            comments: None,
             ann,
         };
         f(&mut printer);
@@ -2151,23 +2139,9 @@ impl<'a> State<'a> {
                                         span: syntax_pos::Span,
                                         next_pos: Option<BytePos>)
                                         {
-        let cm = match self.cm {
-            Some(cm) => cm,
-            _ => return,
-        };
-        if let Some(ref cmnt) = self.next_comment() {
-            if (*cmnt).style != comments::Trailing {
-                return;
-            }
-            let span_line = cm.lookup_char_pos(span.hi());
-            let comment_line = cm.lookup_char_pos((*cmnt).pos);
-            let mut next = (*cmnt).pos + BytePos(1);
-            if let Some(p) = next_pos {
-                next = p;
-            }
-            if span.hi() < (*cmnt).pos && (*cmnt).pos < next &&
-               span_line.line == comment_line.line {
-                self.print_comment(cmnt);
+        if let Some(cmnts) = self.comments() {
+            if let Some(cmnt) = cmnts.trailing_comment(span, next_pos) {
+                self.print_comment(&cmnt);
             }
         }
     }

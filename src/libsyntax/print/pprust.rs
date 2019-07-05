@@ -43,11 +43,53 @@ pub struct NoAnn;
 
 impl PpAnn for NoAnn {}
 
+pub struct Comments<'a> {
+    cm: &'a SourceMap,
+    comments: Vec<comments::Comment>,
+    current: usize,
+}
+
+impl<'a> Comments<'a> {
+    pub fn new(
+        cm: &'a SourceMap,
+        sess: &ParseSess,
+        filename: FileName,
+        input: String,
+    ) -> Comments<'a> {
+        let comments = comments::gather_comments(sess, filename, input);
+        Comments {
+            cm,
+            comments,
+            current: 0,
+        }
+    }
+
+    pub fn next(&self) -> Option<comments::Comment> {
+        self.comments.get(self.current).cloned()
+    }
+
+    pub fn trailing_comment(
+        &mut self,
+        span: syntax_pos::Span,
+        next_pos: Option<BytePos>,
+    ) -> Option<comments::Comment> {
+        if let Some(cmnt) = self.next() {
+            if cmnt.style != comments::Trailing { return None; }
+            let span_line = self.cm.lookup_char_pos(span.hi());
+            let comment_line = self.cm.lookup_char_pos(cmnt.pos);
+            let next = next_pos.unwrap_or_else(|| cmnt.pos + BytePos(1));
+            if span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
+                return Some(cmnt);
+            }
+        }
+
+        None
+    }
+}
+
 pub struct State<'a> {
     pub s: pp::Printer<'a>,
-    cm: Option<&'a SourceMap>,
-    comments: Vec<comments::Comment>,
-    cur_cmnt: usize,
+    comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn+'a),
     is_expanded: bool
 }
@@ -98,12 +140,9 @@ impl<'a> State<'a> {
                           out: &'a mut String,
                           ann: &'a dyn PpAnn,
                           is_expanded: bool) -> State<'a> {
-        let comments = comments::gather_comments(sess, filename, input);
         State {
             s: pp::mk_printer(out),
-            cm: Some(cm),
-            comments,
-            cur_cmnt: 0,
+            comments: Some(Comments::new(cm, sess, filename, input)),
             ann,
             is_expanded,
         }
@@ -117,9 +156,7 @@ pub fn to_string<F>(f: F) -> String where
     {
         let mut printer = State {
             s: pp::mk_printer(&mut wr),
-            cm: None,
-            comments: Vec::new(),
-            cur_cmnt: 0,
+            comments: None,
             ann: &NoAnn,
             is_expanded: false
         };
@@ -415,8 +452,7 @@ fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
 
 pub trait PrintState<'a> {
     fn writer(&mut self) -> &mut pp::Printer<'a>;
-    fn comments(&mut self) -> &mut Vec<comments::Comment>;
-    fn cur_cmnt(&mut self) -> &mut usize;
+    fn comments(&mut self) -> &mut Option<Comments<'a>>;
 
     fn word_space<S: Into<Cow<'static, str>>>(&mut self, w: S) {
         self.writer().word(w);
@@ -537,17 +573,13 @@ pub trait PrintState<'a> {
                 self.writer().hardbreak();
             }
         }
-        *self.cur_cmnt() = *self.cur_cmnt() + 1;
+        if let Some(cm) = self.comments() {
+            cm.current += 1;
+        }
     }
 
     fn next_comment(&mut self) -> Option<comments::Comment> {
-        let cur_cmnt = *self.cur_cmnt();
-        let cmnts = &*self.comments();
-        if cur_cmnt < cmnts.len() {
-            Some(cmnts[cur_cmnt].clone())
-        } else {
-            None
-        }
+        self.comments().as_mut().and_then(|c| c.next())
     }
 
     fn print_literal(&mut self, lit: &ast::Lit) {
@@ -744,12 +776,8 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.s
     }
 
-    fn comments(&mut self) -> &mut Vec<comments::Comment> {
+    fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
-    }
-
-    fn cur_cmnt(&mut self) -> &mut usize {
-        &mut self.cur_cmnt
     }
 }
 
@@ -2913,18 +2941,10 @@ impl<'a> State<'a> {
 
     crate fn maybe_print_trailing_comment(&mut self, span: syntax_pos::Span,
                                         next_pos: Option<BytePos>)
-        {
-        let cm = match self.cm {
-            Some(cm) => cm,
-            _ => return,
-        };
-        if let Some(ref cmnt) = self.next_comment() {
-            if cmnt.style != comments::Trailing { return; }
-            let span_line = cm.lookup_char_pos(span.hi());
-            let comment_line = cm.lookup_char_pos(cmnt.pos);
-            let next = next_pos.unwrap_or_else(|| cmnt.pos + BytePos(1));
-            if span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
-                self.print_comment(cmnt);
+    {
+        if let Some(cmnts) = self.comments() {
+            if let Some(cmnt) = cmnts.trailing_comment(span, next_pos) {
+                self.print_comment(&cmnt);
             }
         }
     }
