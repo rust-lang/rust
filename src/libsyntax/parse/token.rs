@@ -816,7 +816,7 @@ fn prepend_attrs(sess: &ParseSess,
         assert_eq!(attr.style, ast::AttrStyle::Outer,
                    "inner attributes should prevent cached tokens from existing");
 
-        let source = pprust::attr_to_string(attr);
+        let source = pprust::attribute_to_string(attr);
         let macro_filename = FileName::macro_expansion_source_code(&source);
         if attr.is_sugared_doc {
             let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
