@@ -758,7 +758,10 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn macro_def_scope(&mut self, expansion: Mark) -> Module<'a> {
-        let def_id = self.macro_defs[&expansion];
+        let def_id = match self.macro_defs.get(&expansion) {
+            Some(def_id) => *def_id,
+            None => return self.graph_root,
+        };
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
         } else if def_id.krate == CrateNum::BuiltinMacros {
