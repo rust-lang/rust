@@ -346,24 +346,16 @@ pub fn item_to_string(i: &ast::Item) -> String {
     to_string(|s| s.print_item(i))
 }
 
-pub fn impl_item_to_string(i: &ast::ImplItem) -> String {
+fn impl_item_to_string(i: &ast::ImplItem) -> String {
     to_string(|s| s.print_impl_item(i))
 }
 
-pub fn trait_item_to_string(i: &ast::TraitItem) -> String {
+fn trait_item_to_string(i: &ast::TraitItem) -> String {
     to_string(|s| s.print_trait_item(i))
 }
 
 pub fn generic_params_to_string(generic_params: &[ast::GenericParam]) -> String {
     to_string(|s| s.print_generic_params(generic_params))
-}
-
-pub fn where_clause_to_string(i: &ast::WhereClause) -> String {
-    to_string(|s| s.print_where_clause(i))
-}
-
-pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
-    to_string(|s| s.print_fn_block_args(p))
 }
 
 pub fn path_to_string(p: &ast::Path) -> String {
@@ -378,7 +370,8 @@ pub fn vis_to_string(v: &ast::Visibility) -> String {
     to_string(|s| s.print_visibility(v))
 }
 
-pub fn fun_to_string(decl: &ast::FnDecl,
+#[cfg(test)]
+fn fun_to_string(decl: &ast::FnDecl,
                      header: ast::FnHeader,
                      name: ast::Ident,
                      generics: &ast::Generics)
@@ -392,7 +385,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
     })
 }
 
-pub fn block_to_string(blk: &ast::Block) -> String {
+fn block_to_string(blk: &ast::Block) -> String {
     to_string(|s| {
         // containing cbox, will be closed by print-block at }
         s.cbox(INDENT_UNIT);
@@ -414,7 +407,8 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
     to_string(|s| s.print_attribute(attr))
 }
 
-pub fn variant_to_string(var: &ast::Variant) -> String {
+#[cfg(test)]
+fn variant_to_string(var: &ast::Variant) -> String {
     to_string(|s| s.print_variant(var))
 }
 
@@ -422,15 +416,11 @@ pub fn arg_to_string(arg: &ast::Arg) -> String {
     to_string(|s| s.print_arg(arg, false))
 }
 
-pub fn mac_to_string(arg: &ast::Mac) -> String {
-    to_string(|s| s.print_mac(arg))
-}
-
-pub fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
+fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
     to_string(|s| s.print_foreign_item(arg))
 }
 
-pub fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
+fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
     format!("{}{}", to_string(|s| s.print_visibility(vis)), s)
 }
 
