@@ -10,8 +10,8 @@ use crate::*;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    /// Returns the minimum alignment for the target architecture.
-    fn min_align(&self) -> Align {
+    /// Returns the minimum alignment for the target architecture for allocations of the given size.
+    fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
         let this = self.eval_context_ref();
         // List taken from `libstd/sys_common/alloc.rs`.
         let min_align = match this.tcx.tcx.sess.target.target.arch.as_str() {
@@ -19,21 +19,39 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "x86_64" | "aarch64" | "mips64" | "s390x" | "sparc64" => 16,
             arch => bug!("Unsupported target architecture: {}", arch),
         };
-        Align::from_bytes(min_align).unwrap()
+        // Windows always aligns, even small allocations.
+        // Source: <https://support.microsoft.com/en-us/help/286470/how-to-use-pageheap-exe-in-windows-xp-windows-2000-and-windows-server>
+        // But jemalloc does not, so for the C heap we only align if the allocation is sufficiently big.
+        if kind == MiriMemoryKind::WinHeap || size >= min_align {
+            return Align::from_bytes(min_align).unwrap();
+        }
+        // We have `size < min_align`. Round `size` *down* to the next power of two and use that.
+        fn prev_power_of_two(x: u64) -> u64 {
+            let next_pow2 = x.next_power_of_two();
+            if next_pow2 == x {
+                // x *is* a power of two, just use that.
+                x
+            } else {
+                // x is between two powers, so next = 2*prev.
+                next_pow2 / 2
+            }
+        }
+        Align::from_bytes(prev_power_of_two(size)).unwrap()
     }
 
     fn malloc(
         &mut self,
         size: u64,
         zero_init: bool,
+        kind: MiriMemoryKind,
     ) -> Scalar<Tag> {
         let this = self.eval_context_mut();
         let tcx = &{this.tcx.tcx};
         if size == 0 {
             Scalar::from_int(0, this.pointer_size())
         } else {
-            let align = this.min_align();
-            let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into());
+            let align = this.min_align(size, kind);
+            let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, kind.into());
             if zero_init {
                 // We just allocated this, the access cannot fail
                 this.memory_mut()
@@ -47,6 +65,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn free(
         &mut self,
         ptr: Scalar<Tag>,
+        kind: MiriMemoryKind,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !this.is_null(ptr)? {
@@ -54,7 +73,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.memory_mut().deallocate(
                 ptr,
                 None,
-                MiriMemoryKind::C.into(),
+                kind.into(),
             )?;
         }
         Ok(())
@@ -64,39 +83,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         old_ptr: Scalar<Tag>,
         new_size: u64,
+        kind: MiriMemoryKind,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
-        let align = this.min_align();
+        let new_align = this.min_align(new_size, kind);
         if this.is_null(old_ptr)? {
             if new_size == 0 {
                 Ok(Scalar::from_int(0, this.pointer_size()))
             } else {
                 let new_ptr = this.memory_mut().allocate(
                     Size::from_bytes(new_size),
-                    align,
-                    MiriMemoryKind::C.into()
+                    new_align,
+                    kind.into()
                 );
                 Ok(Scalar::Ptr(new_ptr))
             }
         } else {
             let old_ptr = this.force_ptr(old_ptr)?;
             let memory = this.memory_mut();
-            let old_size = Size::from_bytes(memory.get(old_ptr.alloc_id)?.bytes.len() as u64);
             if new_size == 0 {
                 memory.deallocate(
                     old_ptr,
-                    Some((old_size, align)),
-                    MiriMemoryKind::C.into(),
+                    None,
+                    kind.into(),
                 )?;
                 Ok(Scalar::from_int(0, this.pointer_size()))
             } else {
                 let new_ptr = memory.reallocate(
                     old_ptr,
-                    old_size,
-                    align,
+                    None,
                     Size::from_bytes(new_size),
-                    align,
-                    MiriMemoryKind::C.into(),
+                    new_align,
+                    kind.into(),
                 )?;
                 Ok(Scalar::Ptr(new_ptr))
             }
@@ -145,14 +163,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match link_name {
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_usize(this)?;
-                let res = this.malloc(size, /*zero_init:*/ false);
+                let res = this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }
             "calloc" => {
                 let items = this.read_scalar(args[0])?.to_usize(this)?;
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
                 let size = items.checked_mul(len).ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
-                let res = this.malloc(size, /*zero_init:*/ true);
+                let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }
             "posix_memalign" => {
@@ -187,12 +205,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "free" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
-                this.free(ptr)?;
+                this.free(ptr, MiriMemoryKind::C)?;
             }
             "realloc" => {
                 let old_ptr = this.read_scalar(args[0])?.not_undef()?;
                 let new_size = this.read_scalar(args[1])?.to_usize(this)?;
-                let res = this.realloc(old_ptr, new_size)?;
+                let res = this.realloc(old_ptr, new_size, MiriMemoryKind::C)?;
                 this.write_scalar(res, dest)?;
             }
 
@@ -262,12 +280,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
+                let align = Align::from_bytes(align).unwrap();
                 let new_ptr = this.memory_mut().reallocate(
                     ptr,
-                    Size::from_bytes(old_size),
-                    Align::from_bytes(align).unwrap(),
+                    Some((Size::from_bytes(old_size), align)),
                     Size::from_bytes(new_size),
-                    Align::from_bytes(align).unwrap(),
+                    align,
                     MiriMemoryKind::Rust.into(),
                 )?;
                 this.write_scalar(Scalar::Ptr(new_ptr), dest)?;
@@ -327,7 +345,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 trace!("__rust_maybe_catch_panic: {:?}", f_instance);
 
                 // Now we make a function call.
-                // TODO: consider making this reusable? `InterpretCx::step` does something similar
+                // TODO: consider making this reusable? `InterpCx::step` does something similar
                 // for the TLS destructors, and of course `eval_main`.
                 let mir = this.load_mir(f_instance.def)?;
                 let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
@@ -765,14 +783,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let flags = this.read_scalar(args[1])?.to_u32()?;
                 let size = this.read_scalar(args[2])?.to_usize(this)?;
                 let zero_init = (flags & 0x00000008) != 0; // HEAP_ZERO_MEMORY
-                let res = this.malloc(size, zero_init);
+                let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap);
                 this.write_scalar(res, dest)?;
             }
             "HeapFree" => {
                 let _handle = this.read_scalar(args[0])?.to_isize(this)?;
                 let _flags = this.read_scalar(args[1])?.to_u32()?;
                 let ptr = this.read_scalar(args[2])?.not_undef()?;
-                this.free(ptr)?;
+                this.free(ptr, MiriMemoryKind::WinHeap)?;
                 this.write_scalar(Scalar::from_int(1, Size::from_bytes(4)), dest)?;
             }
             "HeapReAlloc" => {
@@ -780,7 +798,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let _flags = this.read_scalar(args[1])?.to_u32()?;
                 let ptr = this.read_scalar(args[2])?.not_undef()?;
                 let size = this.read_scalar(args[3])?.to_usize(this)?;
-                let res = this.realloc(ptr, size)?;
+                let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;
                 this.write_scalar(res, dest)?;
             }
 

@@ -25,6 +25,8 @@ pub enum MiriMemoryKind {
     Rust,
     /// `malloc` memory.
     C,
+    /// Windows `HeapAlloc` memory.
+    WinHeap,
     /// Part of env var emulation.
     Env,
     /// Statics.
@@ -103,8 +105,8 @@ impl<'tcx> Evaluator<'tcx> {
     }
 }
 
-/// A rustc InterpretCx for Miri.
-pub type MiriEvalContext<'mir, 'tcx> = InterpretCx<'mir, 'tcx, Evaluator<'tcx>>;
+/// A rustc InterpCx for Miri.
+pub type MiriEvalContext<'mir, 'tcx> = InterpCx<'mir, 'tcx, Evaluator<'tcx>>;
 
 /// A little trait that's useful to be inherited by extension traits.
 pub trait MiriEvalContextExt<'mir, 'tcx> {
@@ -136,14 +138,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Static);
 
     #[inline(always)]
-    fn enforce_validity(ecx: &InterpretCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         ecx.memory().extra.validate
     }
 
     /// Returns `Ok()` when the function was handled; fail otherwise.
     #[inline(always)]
     fn find_fn(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
@@ -154,7 +156,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn call_intrinsic(
-        ecx: &mut rustc_mir::interpret::InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
@@ -164,7 +166,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn ptr_op(
-        ecx: &rustc_mir::interpret::InterpretCx<'mir, 'tcx, Self>,
+        ecx: &rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
@@ -173,7 +175,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn box_alloc(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         trace!("box_alloc for {:?}", dest.layout.ty);
@@ -239,7 +241,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn before_terminator(_ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>
+    fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>
     {
         // We are not interested in detecting loops.
         Ok(())
@@ -309,7 +311,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn retag(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         kind: mir::RetagKind,
         place: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
@@ -323,14 +325,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn stack_push(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
     ) -> InterpResult<'tcx, stacked_borrows::CallId> {
         Ok(ecx.memory().extra.stacked_borrows.borrow_mut().new_call())
     }
 
     #[inline(always)]
     fn stack_pop(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         extra: stacked_borrows::CallId,
     ) -> InterpResult<'tcx> {
         Ok(ecx.memory().extra.stacked_borrows.borrow_mut().end_call(extra))
@@ -407,7 +409,7 @@ impl MayLeak for MiriMemoryKind {
     fn may_leak(self) -> bool {
         use self::MiriMemoryKind::*;
         match self {
-            Rust | C => false,
+            Rust | C | WinHeap => false,
             Env | Static => true,
         }
     }

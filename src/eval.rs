@@ -8,7 +8,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 
 use crate::{
-    InterpResult, InterpError, InterpretCx, StackPopCleanup, struct_error,
+    InterpResult, InterpError, InterpCx, StackPopCleanup, struct_error,
     Scalar, Tag, Pointer,
     MemoryExtra, MiriMemoryKind, Evaluator, TlsEvalContextExt,
 };
@@ -28,8 +28,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     tcx: TyCtxt<'tcx>,
     main_id: DefId,
     config: MiriConfig,
-) -> InterpResult<'tcx, InterpretCx<'mir, 'tcx, Evaluator<'tcx>>> {
-    let mut ecx = InterpretCx::new(
+) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, Evaluator<'tcx>>> {
+    let mut ecx = InterpCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(),
@@ -43,7 +43,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         config.validate
     };
 
-    // FIXME: InterpretCx::new should take an initial MemoryExtra
+    // FIXME: InterpCx::new should take an initial MemoryExtra
     ecx.memory_mut().extra = MemoryExtra::new(config.seed.map(StdRng::seed_from_u64), validate);
     
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
