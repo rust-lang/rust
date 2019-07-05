@@ -320,7 +320,7 @@ impl<T: ?Sized> Box<T> {
     /// This conversion does not allocate on the heap and happens in place.
     ///
     /// This is also available via [`From`].
-    #[unstable(feature = "box_into_pin", issue = "0")]
+    #[unstable(feature = "box_into_pin", issue = "62370")]
     pub fn into_pin(boxed: Box<T>) -> Pin<Box<T>> {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
         // when `T: !Unpin`,  so it's safe to pin it directly without any
