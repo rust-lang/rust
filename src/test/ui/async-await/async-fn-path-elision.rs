@@ -1,6 +1,6 @@
 // edition:2018
 
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 #![allow(dead_code)]
 
 struct HasLifetime<'a>(&'a bool);
