@@ -50,8 +50,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !this.is_null(ptr)? {
+            let ptr = this.force_ptr(ptr)?;
             this.memory_mut().deallocate(
-                ptr.to_ptr()?,
+                ptr,
                 None,
                 MiriMemoryKind::C.into(),
             )?;
@@ -78,7 +79,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(Scalar::Ptr(new_ptr))
             }
         } else {
-            let old_ptr = old_ptr.to_ptr()?;
+            let old_ptr = this.force_ptr(old_ptr)?;
             let memory = this.memory_mut();
             let old_size = Size::from_bytes(memory.get(old_ptr.alloc_id)?.bytes.len() as u64);
             if new_size == 0 {
@@ -234,7 +235,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             "__rust_dealloc" => {
-                let ptr = this.read_scalar(args[0])?.to_ptr()?;
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let old_size = this.read_scalar(args[1])?.to_usize(this)?;
                 let align = this.read_scalar(args[2])?.to_usize(this)?;
                 if old_size == 0 {
@@ -243,6 +244,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
+                let ptr = this.force_ptr(ptr)?;
                 this.memory_mut().deallocate(
                     ptr,
                     Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),

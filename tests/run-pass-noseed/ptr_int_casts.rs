@@ -1,3 +1,4 @@
+// FIXME move this to run-pass, it should work with intptrcast.
 use std::mem;
 use std::ptr;
 
