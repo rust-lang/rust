@@ -20,9 +20,6 @@ use mdbook::renderer::RenderContext;
 use mdbook_linkcheck::{self, errors::BrokenLinks};
 use failure::Error;
 
-#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
-use failure::bail;
-
 fn main() {
     let d_message = "-d, --dest-dir=[dest-dir]
 'The output directory for your book{n}(Defaults to ./book when omitted)'";
@@ -109,7 +106,8 @@ pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
 
 #[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
 pub fn linkcheck(_args: &ArgMatches<'_>) -> Result<(), Error> {
-    bail!("mdbook-linkcheck only works on x86_64 linux targets.");
+    println!("mdbook-linkcheck only works on x86_64 linux targets.");
+    Ok(())
 }
 
 // Build command implementation
