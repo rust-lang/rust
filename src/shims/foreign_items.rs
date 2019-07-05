@@ -49,7 +49,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         ptr: Scalar<Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        if !ptr.is_null_ptr(this) {
+        if !this.is_null(ptr)? {
             this.memory_mut().deallocate(
                 ptr.to_ptr()?,
                 None,
@@ -66,7 +66,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
         let align = this.min_align();
-        if old_ptr.is_null_ptr(this) {
+        if this.is_null(old_ptr)? {
             if new_size == 0 {
                 Ok(Scalar::from_int(0, this.pointer_size()))
             } else {
@@ -427,7 +427,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let mut success = None;
                 {
                     let name_ptr = this.read_scalar(args[0])?.not_undef()?;
-                    if !name_ptr.is_null_ptr(this) {
+                    if !this.is_null(name_ptr)? {
                         let name_ptr = name_ptr.to_ptr()?;
                         let name = this
                             .memory()
@@ -455,7 +455,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let name_ptr = this.read_scalar(args[0])?.not_undef()?;
                     let value_ptr = this.read_scalar(args[1])?.to_ptr()?;
                     let value = this.memory().get(value_ptr.alloc_id)?.read_c_str(tcx, value_ptr)?;
-                    if !name_ptr.is_null_ptr(this) {
+                    if !this.is_null(name_ptr)? {
                         let name_ptr = name_ptr.to_ptr()?;
                         let name = this.memory().get(name_ptr.alloc_id)?.read_c_str(tcx, name_ptr)?;
                         if !name.is_empty() && !name.contains(&b'=') {
@@ -638,14 +638,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let key_ptr = this.read_scalar(args[0])?.not_undef()?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
-                let dtor = match this.read_scalar(args[1])?.not_undef()? {
-                    Scalar::Ptr(dtor_ptr) => Some(this.memory().get_fn(dtor_ptr)?),
-                    Scalar::Raw { data: 0, size } => {
-                        // NULL pointer
-                        assert_eq!(size as u64, this.memory().pointer_size().bytes());
-                        None
-                    },
-                    Scalar::Raw { .. } => return err!(ReadBytesAsPointer),
+                let dtor = match this.test_null(this.read_scalar(args[1])?.not_undef()?)? {
+                    Some(dtor_ptr) => Some(this.memory().get_fn(dtor_ptr.to_ptr()?)?),
+                    None => None,
                 };
 
                 // Figure out how large a pthread TLS key actually is.
@@ -657,7 +652,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let key_layout = this.layout_of(key_type)?;
 
                 // Create key and write it into the memory where `key_ptr` wants it.
-                let key = this.machine.tls.create_tls_key(dtor, tcx) as u128;
+                let key = this.machine.tls.create_tls_key(dtor) as u128;
                 if key_layout.size.bits() < 128 && key >= (1u128 << key_layout.size.bits() as u128) {
                     return err!(OutOfTls);
                 }
@@ -682,13 +677,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_getspecific" => {
                 let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
-                let ptr = this.machine.tls.load_tls(key)?;
+                let ptr = this.machine.tls.load_tls(key, tcx)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
-                this.machine.tls.store_tls(key, new_ptr)?;
+                this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
@@ -842,7 +837,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // This just creates a key; Windows does not natively support TLS destructors.
 
                 // Create key and return it.
-                let key = this.machine.tls.create_tls_key(None, tcx) as u128;
+                let key = this.machine.tls.create_tls_key(None) as u128;
 
                 // Figure out how large a TLS key actually is. This is `c::DWORD`.
                 if dest.layout.size.bits() < 128
@@ -853,13 +848,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "TlsGetValue" => {
                 let key = this.read_scalar(args[0])?.to_u32()? as u128;
-                let ptr = this.machine.tls.load_tls(key)?;
+                let ptr = this.machine.tls.load_tls(key, tcx)?;
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
                 let key = this.read_scalar(args[0])?.to_u32()? as u128;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
-                this.machine.tls.store_tls(key, new_ptr)?;
+                this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
 
                 // Return success (`1`).
                 this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
@@ -934,10 +929,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.goto_block(Some(ret))?;
         this.dump_place(*dest);
         Ok(())
-    }
-
-    fn write_null(&mut self, dest: PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
-        self.eval_context_mut().write_scalar(Scalar::from_int(0, dest.layout.size), dest)
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
