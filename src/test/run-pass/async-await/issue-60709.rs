@@ -2,7 +2,7 @@
 // handled incorrectly in generators.
 // compile-flags: -Copt-level=z -Cdebuginfo=2 --edition=2018
 
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 #![allow(unused)]
 
 use std::future::Future;
@@ -22,7 +22,7 @@ impl Future for Never {
 fn main() {
     let fut = async {
         let _rc = Rc::new(()); // Also crashes with Arc
-        await!(Never());
+        Never().await;
     };
     let _bla = fut; // Moving the future is required.
 }

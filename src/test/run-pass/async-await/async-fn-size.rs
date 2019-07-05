@@ -1,6 +1,6 @@
 // edition:2018
 
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 
 #[path = "../auxiliary/arc_wake.rs"]
 mod arc_wake;
@@ -58,31 +58,31 @@ fn wait(fut: impl Future<Output = u8>) -> u8 {
 fn base() -> WakeOnceThenComplete { WakeOnceThenComplete(false, 1) }
 
 async fn await1_level1() -> u8 {
-    await!(base())
+    base().await
 }
 
 async fn await2_level1() -> u8 {
-    await!(base()) + await!(base())
+    base().await + base().await
 }
 
 async fn await3_level1() -> u8 {
-    await!(base()) + await!(base()) + await!(base())
+    base().await + base().await + base().await
 }
 
 async fn await3_level2() -> u8 {
-    await!(await3_level1()) + await!(await3_level1()) + await!(await3_level1())
+    await3_level1().await + await3_level1().await + await3_level1().await
 }
 
 async fn await3_level3() -> u8 {
-    await!(await3_level2()) + await!(await3_level2()) + await!(await3_level2())
+    await3_level2().await + await3_level2().await + await3_level2().await
 }
 
 async fn await3_level4() -> u8 {
-    await!(await3_level3()) + await!(await3_level3()) + await!(await3_level3())
+    await3_level3().await + await3_level3().await + await3_level3().await
 }
 
 async fn await3_level5() -> u8 {
-    await!(await3_level4()) + await!(await3_level4()) + await!(await3_level4())
+    await3_level4().await + await3_level4().await + await3_level4().await
 }
 
 fn main() {
