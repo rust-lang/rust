@@ -31,6 +31,7 @@ use crate::tokenstream::TokenTree;
 
 use errors::{Applicability, DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::debug;
@@ -572,6 +573,9 @@ declare_features! (
 
     // Allows `impl Trait` with multiple unrelated lifetimes.
     (active, member_constraints, "1.37.0", Some(61977), None),
+
+    // Allows `async || body` closures.
+    (active, async_closure, "1.37.0", Some(62290), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
@@ -2191,9 +2195,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                     "labels on blocks are unstable");
                 }
             }
-            ast::ExprKind::Closure(_, ast::IsAsync::Async { .. }, ..) => {
-                gate_feature_post!(&self, async_await, e.span, "async closures are unstable");
-            }
             ast::ExprKind::Async(..) => {
                 gate_feature_post!(&self, async_await, e.span, "async blocks are unstable");
             }
@@ -2527,6 +2528,10 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     features
 }
 
+fn for_each_in_lock<T>(vec: &Lock<Vec<T>>, f: impl Fn(&T)) {
+    vec.borrow().iter().for_each(f);
+}
+
 pub fn check_crate(krate: &ast::Crate,
                    sess: &ParseSess,
                    features: &Features,
@@ -2539,27 +2544,26 @@ pub fn check_crate(krate: &ast::Crate,
         plugin_attributes,
     };
 
-    sess
-        .param_attr_spans
-        .borrow()
-        .iter()
-        .for_each(|span| gate_feature!(
-            &ctx,
-            param_attrs,
-            *span,
-            "attributes on function parameters are unstable"
-        ));
+    for_each_in_lock(&sess.param_attr_spans, |span| gate_feature!(
+        &ctx,
+        param_attrs,
+        *span,
+        "attributes on function parameters are unstable"
+    ));
 
-    sess
-        .let_chains_spans
-        .borrow()
-        .iter()
-        .for_each(|span| gate_feature!(
-            &ctx,
-            let_chains,
-            *span,
-            "`let` expressions in this position are experimental"
-        ));
+    for_each_in_lock(&sess.let_chains_spans, |span| gate_feature!(
+        &ctx,
+        let_chains,
+        *span,
+        "`let` expressions in this position are experimental"
+    ));
+
+    for_each_in_lock(&sess.async_closure_spans, |span| gate_feature!(
+        &ctx,
+        async_closure,
+        *span,
+        "async closures are unstable"
+    ));
 
     let visitor = &mut PostExpansionVisitor {
         context: &ctx,

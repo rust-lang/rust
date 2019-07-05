@@ -332,9 +332,9 @@ impl<'tcx> Scopes<'tcx> {
         }
     }
 
-    fn num_scopes_to(&self, region_scope: (region::Scope, SourceInfo), span: Span) -> usize {
-        let scope_count = 1 + self.scopes.iter().rev()
-            .position(|scope| scope.region_scope == region_scope.0)
+    fn num_scopes_above(&self, region_scope: region::Scope, span: Span) -> usize {
+        let scope_count = self.scopes.iter().rev()
+            .position(|scope| scope.region_scope == region_scope)
             .unwrap_or_else(|| {
                 span_bug!(span, "region_scope {:?} does not enclose", region_scope)
             });
@@ -354,7 +354,7 @@ impl<'tcx> Scopes<'tcx> {
 
     /// Returns the topmost active scope, which is known to be alive until
     /// the next scope expression.
-    fn topmost(&self) -> region::Scope {
+    pub(super) fn topmost(&self) -> region::Scope {
         self.scopes.last().expect("topmost_scope: no scopes present").region_scope
     }
 
@@ -514,7 +514,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             assert!(value.is_none(), "`return` and `break` should have a destination");
         }
-        self.exit_scope(source_info.span, (region_scope, source_info), block, target_block);
+        self.exit_scope(source_info.span, region_scope, block, target_block);
         self.cfg.start_new_block().unit()
     }
 
@@ -523,12 +523,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// needed. See module comment for details.
     pub fn exit_scope(&mut self,
                       span: Span,
-                      region_scope: (region::Scope, SourceInfo),
+                      region_scope: region::Scope,
                       mut block: BasicBlock,
                       target: BasicBlock) {
         debug!("exit_scope(region_scope={:?}, block={:?}, target={:?})",
                region_scope, block, target);
-        let scope_count = self.scopes.num_scopes_to(region_scope, span);
+        let scope_count = self.scopes.num_scopes_above(region_scope, span);
 
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
@@ -545,7 +545,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 continue;
             }
             let source_info = scope.source_info(span);
-            block = match scope.cached_exits.entry((target, region_scope.0)) {
+            block = match scope.cached_exits.entry((target, region_scope)) {
                 Entry::Occupied(e) => {
                     self.cfg.terminate(block, source_info,
                                     TerminatorKind::Goto { target: *e.get() });

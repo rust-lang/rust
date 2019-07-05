@@ -1,7 +1,7 @@
 // build-pass (FIXME(62277): could be check-pass?)
 // edition:2018
 
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 
 struct Xyz {
     a: u64,

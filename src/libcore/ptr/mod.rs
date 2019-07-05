@@ -625,42 +625,50 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// [read-ownership]: ./fn.read.html#ownership-of-the-returned-value
 /// [valid]: ../ptr/index.html#safety
 ///
-/// # Examples
+/// ## On `packed` structs
 ///
-/// Access members of a packed struct by reference:
+/// It is currently impossible to create raw pointers to unaligned fields
+/// of a packed struct.
 ///
-/// ```
-/// use std::ptr;
+/// Attempting to create a raw pointer to an `unaligned` struct field with
+/// an expression such as `&packed.unaligned as *const FieldType` creates an
+/// intermediate unaligned reference before converting that to a raw pointer.
+/// That this reference is temporary and immediately cast is inconsequential
+/// as the compiler always expects references to be properly aligned.
+/// As a result, using `&packed.unaligned as *const FieldType` causes immediate
+/// *undefined behavior* in your program.
 ///
+/// An example of what not to do and how this relates to `read_unaligned` is:
+///
+/// ```no_run
 /// #[repr(packed, C)]
 /// struct Packed {
 ///     _padding: u8,
 ///     unaligned: u32,
 /// }
 ///
-/// let x = Packed {
+/// let packed = Packed {
 ///     _padding: 0x00,
 ///     unaligned: 0x01020304,
 /// };
 ///
 /// let v = unsafe {
-///     // Take the address of a 32-bit integer which is not aligned.
-///     // This must be done as a raw pointer; unaligned references are invalid.
-///     let unaligned = &x.unaligned as *const u32;
+///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
+///     let unaligned =
+///         // A temporary unaligned reference is created here which results in
+///         // undefined behavior regardless of whether the reference is used or not.
+///         &packed.unaligned
+///         // Casting to a raw pointer doesn't help; the mistake already happened.
+///         as *const u32;
 ///
-///     // Dereferencing normally will emit an aligned load instruction,
-///     // causing undefined behavior.
-///     // let v = *unaligned; // ERROR
-///
-///     // Instead, use `read_unaligned` to read improperly aligned values.
-///     let v = ptr::read_unaligned(unaligned);
+///     let v = std::ptr::read_unaligned(unaligned);
 ///
 ///     v
 /// };
-///
-/// // Accessing unaligned values directly is safe.
-/// assert!(x.unaligned == v);
 /// ```
+///
+/// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
+// FIXME: Update docs based on outcome of RFC #2582 and friends.
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
@@ -789,38 +797,48 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
-/// # Examples
+/// ## On `packed` structs
 ///
-/// Access fields in a packed struct:
+/// It is currently impossible to create raw pointers to unaligned fields
+/// of a packed struct.
 ///
-/// ```
-/// use std::{mem, ptr};
+/// Attempting to create a raw pointer to an `unaligned` struct field with
+/// an expression such as `&packed.unaligned as *const FieldType` creates an
+/// intermediate unaligned reference before converting that to a raw pointer.
+/// That this reference is temporary and immediately cast is inconsequential
+/// as the compiler always expects references to be properly aligned.
+/// As a result, using `&packed.unaligned as *const FieldType` causes immediate
+/// *undefined behavior* in your program.
 ///
+/// An example of what not to do and how this relates to `write_unaligned` is:
+///
+/// ```no_run
 /// #[repr(packed, C)]
-/// #[derive(Default)]
 /// struct Packed {
 ///     _padding: u8,
 ///     unaligned: u32,
 /// }
 ///
 /// let v = 0x01020304;
-/// let mut x: Packed = unsafe { mem::zeroed() };
+/// let mut packed: Packed = unsafe { std::mem::zeroed() };
 ///
-/// unsafe {
-///     // Take a reference to a 32-bit integer which is not aligned.
-///     let unaligned = &mut x.unaligned as *mut u32;
+/// let v = unsafe {
+///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
+///     let unaligned =
+///         // A temporary unaligned reference is created here which results in
+///         // undefined behavior regardless of whether the reference is used or not.
+///         &mut packed.unaligned
+///         // Casting to a raw pointer doesn't help; the mistake already happened.
+///         as *mut u32;
 ///
-///     // Dereferencing normally will emit an aligned store instruction,
-///     // causing undefined behavior because the pointer is not aligned.
-///     // *unaligned = v; // ERROR
+///     std::ptr::write_unaligned(unaligned, v);
 ///
-///     // Instead, use `write_unaligned` to write improperly aligned values.
-///     ptr::write_unaligned(unaligned, v);
-/// }
-///
-/// // Accessing unaligned values directly is safe.
-/// assert!(x.unaligned == v);
+///     v
+/// };
 /// ```
+///
+/// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
+// FIXME: Update docs based on outcome of RFC #2582 and friends.
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {

@@ -57,6 +57,8 @@ pub struct ParseSess {
     pub param_attr_spans: Lock<Vec<Span>>,
     // Places where `let` exprs were used and should be feature gated according to `let_chains`.
     pub let_chains_spans: Lock<Vec<Span>>,
+    // Places where `async || ..` exprs were used and should be feature gated.
+    pub async_closure_spans: Lock<Vec<Span>>,
 }
 
 impl ParseSess {
@@ -84,6 +86,7 @@ impl ParseSess {
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             param_attr_spans: Lock::new(Vec::new()),
             let_chains_spans: Lock::new(Vec::new()),
+            async_closure_spans: Lock::new(Vec::new()),
         }
     }
 
