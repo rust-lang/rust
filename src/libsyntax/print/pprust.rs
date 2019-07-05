@@ -99,18 +99,10 @@ impl<'a> State<'a> {
                           ann: &'a dyn PpAnn,
                           is_expanded: bool) -> State<'a> {
         let comments = comments::gather_comments(sess, filename, input);
-        State::new(cm, out, ann, Some(comments), is_expanded)
-    }
-
-    pub fn new(cm: &'a SourceMap,
-               out: &'a mut String,
-               ann: &'a dyn PpAnn,
-               comments: Option<Vec<comments::Comment>>,
-               is_expanded: bool) -> State<'a> {
         State {
             s: pp::mk_printer(out),
             cm: Some(cm),
-            comments: comments.unwrap_or_default(),
+            comments,
             cur_cmnt: 0,
             ann,
             is_expanded,
