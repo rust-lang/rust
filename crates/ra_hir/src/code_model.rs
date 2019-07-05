@@ -259,7 +259,12 @@ impl Module {
         for decl in self.declarations(db) {
             match decl {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
-                crate::ModuleDef::Module(f) => f.diagnostics(db, sink),
+                crate::ModuleDef::Module(m) => {
+                    // Only add diagnostics from inline modules
+                    if let ModuleSource::Module(_) = m.definition_source(db).ast {
+                        m.diagnostics(db, sink)
+                    }
+                }
                 _ => (),
             }
         }
