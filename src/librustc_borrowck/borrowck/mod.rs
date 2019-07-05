@@ -198,7 +198,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     cfg: &cfg::CFG,
 ) -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'tcx>) {
     let owner_id = tcx.hir().body_owner(body_id);
-    let owner_def_id = tcx.hir().local_def_id_from_hir_id(owner_id);
+    let owner_def_id = tcx.hir().local_def_id(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_scope_tree = tcx.region_scope_tree(owner_def_id);
     let body = tcx.hir().body(body_id);

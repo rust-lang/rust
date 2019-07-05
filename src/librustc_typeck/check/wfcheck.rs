@@ -95,7 +95,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
         hir::ItemKind::Impl(_, polarity, defaultness, _, ref trait_ref, ref self_ty, _) => {
-            let is_auto = tcx.impl_trait_ref(tcx.hir().local_def_id_from_hir_id(item.hir_id))
+            let is_auto = tcx.impl_trait_ref(tcx.hir().local_def_id(item.hir_id))
                                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
             if let (hir::Defaultness::Default { .. }, true) = (defaultness, is_auto) {
                 tcx.sess.span_err(item.span, "impls of auto traits cannot be default");
@@ -188,7 +188,7 @@ fn check_associated_item(
 
     let code = ObligationCauseCode::MiscObligation;
     for_id(tcx, item_id, span).with_fcx(|fcx, tcx| {
-        let item = fcx.tcx.associated_item(fcx.tcx.hir().local_def_id_from_hir_id(item_id));
+        let item = fcx.tcx.associated_item(fcx.tcx.hir().local_def_id(item_id));
 
         let (mut implied_bounds, self_ty) = match item.container {
             ty::TraitContainer(_) => (vec![], fcx.tcx.mk_self_type()),
@@ -232,7 +232,7 @@ fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item) -> CheckWfFcxBuilder<'tcx
 }
 
 fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> {
-    let def_id = tcx.hir().local_def_id_from_hir_id(id);
+    let def_id = tcx.hir().local_def_id(id);
     CheckWfFcxBuilder {
         inherited: Inherited::build(tcx, def_id),
         id,
@@ -252,7 +252,7 @@ fn check_type_defn<'tcx, F>(
 {
     for_item(tcx, item).with_fcx(|fcx, fcx_tcx| {
         let variants = lookup_fields(fcx);
-        let def_id = fcx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let def_id = fcx.tcx.hir().local_def_id(item.hir_id);
         let packed = fcx.tcx.adt_def(def_id).repr.packed();
 
         for variant in &variants {
@@ -320,7 +320,7 @@ fn check_type_defn<'tcx, F>(
 fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item) {
     debug!("check_trait: {:?}", item.hir_id);
 
-    let trait_def_id = tcx.hir().local_def_id_from_hir_id(item.hir_id);
+    let trait_def_id = tcx.hir().local_def_id(item.hir_id);
 
     let trait_def = tcx.trait_def(trait_def_id);
     if trait_def.is_marker {
@@ -342,7 +342,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item) {
 
 fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item) {
     for_item(tcx, item).with_fcx(|fcx, tcx| {
-        let def_id = fcx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let def_id = fcx.tcx.hir().local_def_id(item.hir_id);
         let sig = fcx.tcx.fn_sig(def_id);
         let sig = fcx.normalize_associated_types_in(item.span, &sig);
         let mut implied_bounds = vec![];
@@ -361,7 +361,7 @@ fn check_item_type(
     debug!("check_item_type: {:?}", item_id);
 
     for_id(tcx, item_id, ty_span).with_fcx(|fcx, gcx| {
-        let ty = gcx.type_of(gcx.hir().local_def_id_from_hir_id(item_id));
+        let ty = gcx.type_of(gcx.hir().local_def_id(item_id));
         let item_ty = fcx.normalize_associated_types_in(ty_span, &ty);
 
         let mut forbid_unsized = true;
@@ -394,7 +394,7 @@ fn check_impl<'tcx>(
     debug!("check_impl: {:?}", item);
 
     for_item(tcx, item).with_fcx(|fcx, tcx| {
-        let item_def_id = fcx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let item_def_id = fcx.tcx.hir().local_def_id(item.hir_id);
 
         match *ast_trait_ref {
             Some(ref ast_trait_ref) => {
@@ -943,7 +943,7 @@ fn check_variances_for_type_defn<'tcx>(
     item: &hir::Item,
     hir_generics: &hir::Generics,
 ) {
-    let item_def_id = tcx.hir().local_def_id_from_hir_id(item.hir_id);
+    let item_def_id = tcx.hir().local_def_id(item.hir_id);
     let ty = tcx.type_of(item_def_id);
     if tcx.has_error_field(ty) {
         return;
@@ -1026,7 +1026,7 @@ fn reject_shadowing_parameters(tcx: TyCtxt<'_>, def_id: DefId) {
 fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, span: Span, id: hir::HirId) {
     let empty_env = ty::ParamEnv::empty();
 
-    let def_id = fcx.tcx.hir().local_def_id_from_hir_id(id);
+    let def_id = fcx.tcx.hir().local_def_id(id);
     let predicates = fcx.tcx.predicates_of(def_id).predicates
         .iter()
         .map(|(p, _)| *p)
@@ -1069,19 +1069,19 @@ impl CheckTypeWellFormedVisitor<'tcx> {
 impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
     fn visit_item(&self, i: &'tcx hir::Item) {
         debug!("visit_item: {:?}", i);
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(i.hir_id);
+        let def_id = self.tcx.hir().local_def_id(i.hir_id);
         self.tcx.ensure().check_item_well_formed(def_id);
     }
 
     fn visit_trait_item(&self, trait_item: &'tcx hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(trait_item.hir_id);
+        let def_id = self.tcx.hir().local_def_id(trait_item.hir_id);
         self.tcx.ensure().check_trait_item_well_formed(def_id);
     }
 
     fn visit_impl_item(&self, impl_item: &'tcx hir::ImplItem) {
         debug!("visit_impl_item: {:?}", impl_item);
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(impl_item.hir_id);
+        let def_id = self.tcx.hir().local_def_id(impl_item.hir_id);
         self.tcx.ensure().check_impl_item_well_formed(def_id);
     }
 }
@@ -1101,7 +1101,7 @@ struct AdtField<'tcx> {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn non_enum_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
         let fields = struct_def.fields().iter().map(|field| {
-            let field_ty = self.tcx.type_of(self.tcx.hir().local_def_id_from_hir_id(field.hir_id));
+            let field_ty = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
             let field_ty = self.normalize_associated_types_in(field.span,
                                                               &field_ty);
             let field_ty = self.resolve_vars_if_possible(&field_ty);

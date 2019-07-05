@@ -930,7 +930,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_captures(&mut self, closure_expr: &hir::Expr, fn_decl_span: Span) {
         debug!("walk_captures({:?})", closure_expr);
 
-        let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_expr.hir_id);
+        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id);
         if let Some(upvars) = self.tcx().upvars(closure_def_id) {
             for (&var_id, upvar) in upvars.iter() {
                 let upvar_id = ty::UpvarId {

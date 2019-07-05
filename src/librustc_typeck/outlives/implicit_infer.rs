@@ -52,7 +52,7 @@ pub struct InferVisitor<'cx, 'tcx> {
 
 impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let item_did = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let item_did = self.tcx.hir().local_def_id(item.hir_id);
 
         debug!("InferVisitor::visit_item(item={:?})", item_did);
 

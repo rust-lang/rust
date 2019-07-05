@@ -33,7 +33,7 @@ impl SymbolNamesTest<'tcx> {
     fn process_attrs(&mut self,
                      hir_id: hir::HirId) {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+        let def_id = tcx.hir().local_def_id(hir_id);
         for attr in tcx.get_attrs(def_id).iter() {
             if attr.check_name(SYMBOL_NAME) {
                 // for now, can only use on monomorphic names

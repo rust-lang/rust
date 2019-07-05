@@ -123,7 +123,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     where
         F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, O>),
     {
-        let item_def_id = self.tcx.hir().local_def_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
         if self.tcx.has_typeck_tables(item_def_id) {
             let tables = self.tcx.typeck_tables_of(item_def_id);
             let old_tables = self.save_ctxt.tables;
@@ -436,7 +436,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         attrs: &'l [Attribute],
     ) {
         let qualname = format!("::{}",
-            self.tcx.def_path_str(self.tcx.hir().local_def_id(id)));
+            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(id)));
 
         if !self.span.filter_generated(ident.span) {
             let sig = sig::assoc_const_signature(id, ident.name, typ, expr, &self.save_ctxt);
@@ -481,7 +481,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         debug!("process_struct {:?} {:?}", item, item.span);
         let name = item.ident.to_string();
         let qualname = format!("::{}",
-            self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
+            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
 
         let kind = match item.node {
             ast::ItemKind::Struct(_, _) => DefKind::Struct,
@@ -683,7 +683,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         self.process_generic_params(generics, "", item.id);
         for impl_item in impl_items {
             let map = &self.tcx.hir();
-            self.process_impl_item(impl_item, map.local_def_id(item.id));
+            self.process_impl_item(impl_item, map.local_def_id_from_node_id(item.id));
         }
     }
 
@@ -696,7 +696,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     ) {
         let name = item.ident.to_string();
         let qualname = format!("::{}",
-            self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
+            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
         let mut val = name.clone();
         if !generics.params.is_empty() {
             val.push_str(&generic_params_to_string(&generics.params));
@@ -764,7 +764,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         self.process_generic_params(generics, &qualname, item.id);
         for method in methods {
             let map = &self.tcx.hir();
-            self.process_trait_item(method, map.local_def_id(item.id))
+            self.process_trait_item(method, map.local_def_id_from_node_id(item.id))
         }
     }
 
@@ -1109,7 +1109,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
                 let qualname = format!("::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id(trait_item.id)));
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(trait_item.id)));
 
                 if !self.span.filter_generated(trait_item.ident.span) {
                     let span = self.span_from_span(trait_item.ident.span);
@@ -1217,7 +1217,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let access = access_from!(self.save_ctxt, root_item, hir_id);
 
         // The parent `DefId` of a given use tree is always the enclosing item.
-        let parent = self.save_ctxt.tcx.hir().opt_local_def_id(id)
+        let parent = self.save_ctxt.tcx.hir().opt_local_def_id_from_node_id(id)
             .and_then(|id| self.save_ctxt.tcx.parent(id))
             .map(id_from_def_id);
 
@@ -1261,7 +1261,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 };
 
                 // Make a comma-separated list of names of imported modules.
-                let def_id = self.tcx.hir().local_def_id(id);
+                let def_id = self.tcx.hir().local_def_id_from_node_id(id);
                 let names = self.tcx.names_imported_by_glob_use(def_id);
                 let names: Vec<_> = names.iter().map(|n| n.to_string()).collect();
 
@@ -1318,7 +1318,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
         assert_eq!(id, ast::CRATE_NODE_ID);
 
         let qualname = format!("::{}",
-            self.tcx.def_path_str(self.tcx.hir().local_def_id(id)));
+            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(id)));
 
         let cm = self.tcx.sess.source_map();
         let filename = cm.span_to_filename(span);
@@ -1367,7 +1367,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
                 let name_span = item.ident.span;
                 if !self.span.filter_generated(name_span) {
                     let span = self.span_from_span(name_span);
-                    let parent = self.save_ctxt.tcx.hir().opt_local_def_id(item.id)
+                    let parent = self.save_ctxt.tcx.hir().opt_local_def_id_from_node_id(item.id)
                         .and_then(|id| self.save_ctxt.tcx.parent(id))
                         .map(id_from_def_id);
                     self.dumper.import(
@@ -1408,7 +1408,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
             }
             Ty(ref ty, ref ty_params) => {
                 let qualname = format!("::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
                 let value = ty_to_string(&ty);
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
@@ -1439,7 +1439,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
             }
             Existential(ref _bounds, ref ty_params) => {
                 let qualname = format!("::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
                 // FIXME do something with _bounds
                 let value = String::new();
                 if !self.span.filter_generated(item.ident.span) {

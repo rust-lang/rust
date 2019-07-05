@@ -20,7 +20,7 @@ pub enum MethodLateContext {
 }
 
 pub fn method_context(cx: &LateContext<'_, '_>, id: hir::HirId) -> MethodLateContext {
-    let def_id = cx.tcx.hir().local_def_id_from_hir_id(id);
+    let def_id = cx.tcx.hir().local_def_id(id);
     let item = cx.tcx.associated_item(def_id);
     match item.container {
         ty::TraitContainer(..) => MethodLateContext::TraitAutoImpl,
