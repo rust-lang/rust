@@ -8,7 +8,7 @@ fn fmt() {
     let dev_dir = root_dir.join("clippy_dev");
     let output = std::process::Command::new("cargo")
         .current_dir(dev_dir)
-        .args(&["run", "--", "fmt", "--check"])
+        .args(&["+nightly", "run", "--", "fmt", "--check"])
         .output()
         .unwrap();
 
