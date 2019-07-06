@@ -88,6 +88,7 @@ status_check() {
     # these tools are not required for beta to successfully branch
     check_dispatch $1 nightly miri src/tools/miri
     check_dispatch $1 nightly embedded-book src/doc/embedded-book
+    check_dispatch $1 nightly rustc-guide src/doc/rustc-guide
 }
 
 # If this PR is intended to update one of these tools, do not let the build pass

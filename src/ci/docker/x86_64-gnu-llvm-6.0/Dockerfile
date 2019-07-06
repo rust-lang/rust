@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gdb \
   llvm-6.0-tools \
   libedit-dev \
+  libssl-dev \
+  pkg-config \
   zlib1g-dev \
   xz-utils
 
