@@ -770,19 +770,25 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn get_macro(&mut self, res: Res) -> Lrc<SyntaxExtension> {
+        self.opt_get_macro(res).expect("expected `DefKind::Macro` or `Res::NonMacroAttr`")
+    }
+
+    crate fn opt_get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         let def_id = match res {
+            Res::Def(DefKind::Macro(MacroKind::ProcMacroStub), _) =>
+                return Some(self.non_macro_attr(true)), // some dummy extension
             Res::Def(DefKind::Macro(..), def_id) => def_id,
             Res::NonMacroAttr(attr_kind) =>
-                return self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool),
-            _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
+                return Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),
+            _ => return None,
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
-            return ext.clone();
+            return Some(ext.clone());
         }
 
         let macro_def = match self.cstore.load_macro_untracked(def_id, &self.session) {
             LoadedMacro::MacroDef(macro_def) => macro_def,
-            LoadedMacro::ProcMacro(ext) => return ext,
+            LoadedMacro::ProcMacro(ext) => return Some(ext),
         };
 
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
@@ -790,7 +796,7 @@ impl<'a> Resolver<'a> {
                                                &macro_def,
                                                self.cstore.crate_edition_untracked(def_id.krate)));
         self.macro_map.insert(def_id, ext.clone());
-        ext
+        Some(ext)
     }
 
     /// Ensures that the reduced graph rooted at the given external module
