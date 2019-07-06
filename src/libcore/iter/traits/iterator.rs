@@ -2740,9 +2740,8 @@ pub trait Iterator {
         };
 
         while let Some(curr) = self.next() {
-            match compare(&last, &curr) {
-                Some(Ordering::Greater) | None => return false,
-                _ => {}
+            if let Some(Ordering::Greater) | None = compare(&last, &curr) {
+                return false;
             }
             last = curr;
         }
