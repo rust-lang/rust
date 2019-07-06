@@ -9,7 +9,7 @@ use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::Map;
 use crate::hir::ptr::P;
-use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
+use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName, QPath};
 use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
 use crate::rustc::lint;
@@ -1458,10 +1458,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     }
 
     // helper method to issue suggestions from `fn rah<'a>(&'a T)` to `fn rah(&T)`
+    // or from `fn rah<'a>(T<'a>)` to `fn rah(T<'_>)`
     fn suggest_eliding_single_use_lifetime(
         &self, err: &mut DiagnosticBuilder<'_>, def_id: DefId, lifetime: &hir::Lifetime
     ) {
-        // FIXME: future work: also suggest `impl Foo<'_>` for `impl<'a> Foo<'a>`
         let name = lifetime.name.ident();
         let mut remove_decl = None;
         if let Some(parent_def_id) = self.tcx.parent(def_id) {
@@ -1471,18 +1471,38 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
 
         let mut remove_use = None;
+        let mut elide_use = None;
         let mut find_arg_use_span = |inputs: &hir::HirVec<hir::Ty>| {
             for input in inputs {
-                if let hir::TyKind::Rptr(lt, _) = input.node {
-                    if lt.name.ident() == name {
-                        // include the trailing whitespace between the ampersand and the type name
-                        let lt_through_ty_span = lifetime.span.to(input.span.shrink_to_hi());
-                        remove_use = Some(
-                            self.tcx.sess.source_map()
-                                .span_until_non_whitespace(lt_through_ty_span)
-                        );
-                        break;
+                match input.node {
+                    hir::TyKind::Rptr(lt, _) => {
+                        if lt.name.ident() == name {
+                            // include the trailing whitespace between the lifetime and type names
+                            let lt_through_ty_span = lifetime.span.to(input.span.shrink_to_hi());
+                            remove_use = Some(
+                                self.tcx.sess.source_map()
+                                    .span_until_non_whitespace(lt_through_ty_span)
+                            );
+                            break;
+                        }
                     }
+                    hir::TyKind::Path(ref qpath) => {
+                        if let QPath::Resolved(_, path) = qpath {
+
+                            let last_segment = &path.segments[path.segments.len()-1];
+                            let generics = last_segment.generic_args();
+                            for arg in generics.args.iter() {
+                                if let GenericArg::Lifetime(lt) = arg {
+                                    if lt.name.ident() == name {
+                                        elide_use = Some(lt.span);
+                                        break;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    },
+                    _ => {}
                 }
             }
         };
@@ -1506,24 +1526,35 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
 
-        if let (Some(decl_span), Some(use_span)) = (remove_decl, remove_use) {
-            // if both declaration and use deletion spans start at the same
-            // place ("start at" because the latter includes trailing
-            // whitespace), then this is an in-band lifetime
-            if decl_span.shrink_to_lo() == use_span.shrink_to_lo() {
-                err.span_suggestion(
-                    use_span,
-                    "elide the single-use lifetime",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                );
-            } else {
+        let msg = "elide the single-use lifetime";
+        match (remove_decl, remove_use, elide_use) {
+            (Some(decl_span), Some(use_span), None) => {
+                // if both declaration and use deletion spans start at the same
+                // place ("start at" because the latter includes trailing
+                // whitespace), then this is an in-band lifetime
+                if decl_span.shrink_to_lo() == use_span.shrink_to_lo() {
+                    err.span_suggestion(
+                        use_span,
+                        msg,
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    err.multipart_suggestion(
+                        msg,
+                        vec![(decl_span, String::new()), (use_span, String::new())],
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+            (Some(decl_span), None, Some(use_span)) => {
                 err.multipart_suggestion(
-                    "elide the single-use lifetime",
-                    vec![(decl_span, String::new()), (use_span, String::new())],
+                    msg,
+                    vec![(decl_span, String::new()), (use_span, "'_".to_owned())],
                     Applicability::MachineApplicable,
                 );
             }
+            _ => {}
         }
     }
 
