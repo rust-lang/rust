@@ -1,0 +1,21 @@
+error[E0425]: cannot find value `Opaque` in this scope
+  --> $DIR/rustc-macro-transparency.rs:26:5
+   |
+LL |     Opaque;
+   |     ^^^^^^ help: a local variable with a similar name exists: `opaque`
+
+error[E0425]: cannot find value `semitransparent` in this scope
+  --> $DIR/rustc-macro-transparency.rs:29:5
+   |
+LL |     semitransparent;
+   |     ^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `opaque` in this scope
+  --> $DIR/rustc-macro-transparency.rs:30:5
+   |
+LL |     opaque;
+   |     ^^^^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
