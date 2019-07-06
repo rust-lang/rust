@@ -4,14 +4,9 @@
 #![deny(clippy::replace_consts)]
 
 use std::sync::atomic::*;
-use std::sync::Once;
 
 #[rustfmt::skip]
 fn bad() {
-    #[allow(deprecated, unused_imports)]
-    use std::sync::ONCE_INIT;
-    // Once
-    { let foo = ONCE_INIT; };
     // Min
     { let foo = std::isize::MIN; };
     { let foo = std::i8::MIN; };
@@ -42,8 +37,6 @@ fn bad() {
 
 #[rustfmt::skip]
 fn good() {
-    // Once
-    { let foo = Once::new(); };
     // Atomic
     { let foo = AtomicBool::new(false); };
     { let foo = AtomicIsize::new(0); };
