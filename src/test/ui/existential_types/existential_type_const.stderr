@@ -1,5 +1,5 @@
 warning: the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash
-  --> $DIR/existential_type_const.rs:2:12
+  --> $DIR/existential_type_const.rs:4:12
    |
 LL | #![feature(impl_trait_in_bindings)]
    |            ^^^^^^^^^^^^^^^^^^^^^^
