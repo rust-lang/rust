@@ -440,9 +440,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             }
                         }
                     }
-                    // Check if we have encountered this pointer+layout combination
-                    // before.  Proceed recursively even for ZST, no
-                    // reason to skip them! E.g., `!` is a ZST and we want to validate it.
+                    // Proceed recursively even for ZST, no reason to skip them!
+                    // `!` is a ZST and we want to validate it.
+                    // Normalize before handing `place` to tracking because that will
+                    // check for duplicates.
+                    let place = self.ecx.normalize_mplace_ptr(place)?;
                     let path = &self.path;
                     ref_tracking.track(place, || {
                         // We need to clone the path anyway, make sure it gets created
@@ -548,7 +550,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         match op.layout.ty.sty {
             ty::Str => {
-                let mplace = op.to_mem_place(); // strings are never immediate
+                let mplace = op.assert_mem_place(); // strings are never immediate
                 try_validation!(self.ecx.read_str(mplace),
                     "uninitialized or non-UTF-8 data in str", self.path);
             }
@@ -565,7 +567,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     return Ok(());
                 }
                 // non-ZST array cannot be immediate, slices are never immediate
-                let mplace = op.to_mem_place();
+                let mplace = op.assert_mem_place();
                 // This is the length of the array/slice.
                 let len = mplace.len(self.ecx)?;
                 // zero length slices have nothing to be checked
@@ -576,8 +578,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 let ty_size = self.ecx.layout_of(tys)?.size;
                 // This is the size in bytes of the whole array.
                 let size = ty_size * len;
-
-                let ptr = self.ecx.force_ptr(mplace.ptr)?;
+                // Size is not 0, get a pointer (no cast because we normalized in validate_operand).
+                let ptr = mplace.ptr.assert_ptr();
 
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
@@ -633,7 +635,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// `ref_tracking_for_consts` can be `None` to avoid recursive checking below references.
     /// This also toggles between "run-time" (no recursion) and "compile-time" (with recursion)
     /// validation (e.g., pointer values are fine in integers at runtime) and various other const
-    /// specific validation checks
+    /// specific validation checks.
     pub fn validate_operand(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
@@ -653,6 +655,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // Run it
+        let op = self.normalize_op_ptr(op)?; // avoid doing ptr-to-int all the time
         visitor.visit_value(op)
     }
 }

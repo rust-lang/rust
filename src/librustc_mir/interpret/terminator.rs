@@ -426,7 +426,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     None => {
                         // Unsized self.
-                        args[0].to_mem_place()
+                        args[0].assert_mem_place()
                     }
                 };
                 // Find and consult vtable

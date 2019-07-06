@@ -109,7 +109,7 @@ fn op_to_const<'tcx>(
                 // `Immediate` is when we are called from `const_field`, and that `Immediate`
                 // comes from a constant so it can happen have `Undef`, because the indirect
                 // memory that was read had undefined bytes.
-                let mplace = op.to_mem_place();
+                let mplace = op.assert_mem_place();
                 let ptr = mplace.ptr.to_ptr().unwrap();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                 ConstValue::ByRef { offset: ptr.offset, align: mplace.align, alloc }
