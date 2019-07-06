@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "rustc_incremental"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
 graphviz = { path = "../libgraphviz" }

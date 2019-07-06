@@ -36,6 +36,7 @@ __pycache__/
 /src/libcore/unicode/Scripts.txt
 /src/libcore/unicode/SpecialCasing.txt
 /src/libcore/unicode/UnicodeData.txt
+/src/libcore/unicode/downloaded
 /stage[0-9]+/
 /target
 target/

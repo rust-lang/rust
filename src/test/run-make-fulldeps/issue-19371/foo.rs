@@ -2,6 +2,8 @@
 
 extern crate rustc;
 extern crate rustc_interface;
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
 extern crate syntax;
 
 use rustc::session::DiagnosticOutput;

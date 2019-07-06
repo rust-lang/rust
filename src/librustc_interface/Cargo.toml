@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "rustc_interface"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
 log = "0.4"
