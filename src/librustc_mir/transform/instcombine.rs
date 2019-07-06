@@ -39,7 +39,7 @@ pub struct InstCombineVisitor<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
         if self.optimizations.and_stars.remove(&location) {
-            debug!("Replacing `&*`: {:?}", rvalue);
+            debug!("replacing `&*`: {:?}", rvalue);
             let new_place = match *rvalue {
                 Rvalue::Ref(_, _, Place::Projection(ref mut projection)) => {
                     // Replace with dummy
@@ -51,7 +51,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
-            debug!("Replacing `Len([_; N])`: {:?}", rvalue);
+            debug!("replacing `Len([_; N])`: {:?}", rvalue);
             *rvalue = Rvalue::Use(Operand::Constant(box constant));
         }
 

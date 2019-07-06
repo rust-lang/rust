@@ -1545,7 +1545,7 @@ impl MirPass for QualifyAndPromoteConstants {
                             diag.note("for more information, see issue \
                                        https://github.com/rust-lang/rust/issues/57563");
                             diag.help(
-                                "add #![feature(const_fn)] to the crate attributes to enable",
+                                "add `#![feature(const_fn)]` to the crate attributes to enable",
                             );
                             diag.emit();
                         } else {
