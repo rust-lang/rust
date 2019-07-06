@@ -1,3 +1,5 @@
+//! Main evaluator loop and setting up the initial stack frame.
+
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
@@ -29,23 +31,22 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     main_id: DefId,
     config: MiriConfig,
 ) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, Evaluator<'tcx>>> {
-    let mut ecx = InterpCx::new(
-        tcx.at(syntax::source_map::DUMMY_SP),
-        ty::ParamEnv::reveal_all(),
-        Evaluator::new(),
-    );
 
     // FIXME(https://github.com/rust-lang/miri/pull/803): no validation on Windows.
-    let target_os = ecx.tcx.tcx.sess.target.target.target_os.to_lowercase();
+    let target_os = tcx.sess.target.target.target_os.to_lowercase();
     let validate = if target_os == "windows" {
         false
     } else {
         config.validate
     };
 
-    // FIXME: InterpCx::new should take an initial MemoryExtra
-    ecx.memory_mut().extra = MemoryExtra::new(config.seed.map(StdRng::seed_from_u64), validate);
-    
+    let mut ecx = InterpCx::new(
+        tcx.at(syntax::source_map::DUMMY_SP),
+        ty::ParamEnv::reveal_all(),
+        Evaluator::new(),
+        MemoryExtra::new(config.seed.map(StdRng::seed_from_u64), validate),
+    );
+
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
 

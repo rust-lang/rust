@@ -1,3 +1,6 @@
+//! Global machine state as well as implementation of the interpreter engine
+//! `Machine` trait.
+
 use std::rc::Rc;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -48,7 +51,7 @@ pub struct AllocExtra {
 }
 
 /// Extra global memory data
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct MemoryExtra {
     pub stacked_borrows: stacked_borrows::MemoryExtra,
     pub intptrcast: intptrcast::MemoryExtra,

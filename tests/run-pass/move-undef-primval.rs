@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 struct Foo {
     _inner: i32,
 }

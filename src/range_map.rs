@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 //! Implements a map from integer indices to data.
 //! Rather than storing data for every index, internally, this maps entire ranges to the data.
 //! To this end, the APIs all work on ranges, not on individual integers. Ranges are split as
@@ -8,7 +6,6 @@
 //! via the iteration APIs.
 
 use std::ops;
-use std::num::NonZeroU64;
 
 use rustc::ty::layout::Size;
 
@@ -158,7 +155,7 @@ impl<T> RangeMap<T> {
                 let mut end_idx = first_idx; // when the loop is done, this is the first excluded element.
                 loop {
                     // Compute if `end` is the last element we need to look at.
-                    let done = (self.v[end_idx].range.end >= offset+len);
+                    let done = self.v[end_idx].range.end >= offset+len;
                     // We definitely need to include `end`, so move the index.
                     end_idx += 1;
                     debug_assert!(done || end_idx < self.v.len(), "iter_mut: end-offset {} is out-of-bounds", offset+len);
@@ -284,7 +281,7 @@ mod tests {
             .map(|&t| t).collect::<Vec<_>>(), vec![19, 19]);
 
         // A NOP `iter_mut` should trigger merging.
-        for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) { }
+        for _ in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) { }
         assert_eq!(map.v.len(), 5);
         assert_eq!(
             to_vec(&map, 10, 10),
