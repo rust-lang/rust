@@ -279,10 +279,10 @@ fn dtorck_constraint_for_ty<'tcx>(
 }
 
 /// Calculates the dtorck constraint for a type.
-crate fn adt_dtorck_constraint<'tcx>(
-    tcx: TyCtxt<'tcx>,
+crate fn adt_dtorck_constraint(
+    tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Result<DtorckConstraint<'tcx>, NoSolution> {
+) -> Result<DtorckConstraint<'_>, NoSolution> {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     debug!("dtorck_constraint: {:?}", def);
@@ -313,7 +313,7 @@ crate fn adt_dtorck_constraint<'tcx>(
     Ok(result)
 }
 
-fn dedup_dtorck_constraint<'tcx>(c: &mut DtorckConstraint<'tcx>) {
+fn dedup_dtorck_constraint(c: &mut DtorckConstraint<'_>) {
     let mut outlives = FxHashSet::default();
     let mut dtorck_types = FxHashSet::default();
 

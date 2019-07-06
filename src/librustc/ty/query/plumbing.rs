@@ -376,15 +376,13 @@ impl<'tcx> TyCtxt<'tcx> {
             return self.force_query_with_job::<Q>(key, job, null_dep_node).0;
         }
 
-        let dep_node = Q::to_dep_node(self, &key);
-
-        if dep_node.kind.is_anon() {
+        if Q::ANON {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
             self.sess.profiler(|p| p.start_query(Q::NAME));
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
                 self.start_query(job.job.clone(), diagnostics, |tcx| {
-                    tcx.dep_graph.with_anon_task(dep_node.kind, || {
+                    tcx.dep_graph.with_anon_task(Q::dep_kind(), || {
                         Q::compute(tcx.global_tcx(), key)
                     })
                 })
@@ -405,7 +403,9 @@ impl<'tcx> TyCtxt<'tcx> {
             return result;
         }
 
-        if !dep_node.kind.is_eval_always() {
+        let dep_node = Q::to_dep_node(self, &key);
+
+        if !Q::EVAL_ALWAYS {
             // The diagnostics for this query will be
             // promoted to the current session during
             // try_mark_green(), so we can ignore them here.
@@ -444,7 +444,7 @@ impl<'tcx> TyCtxt<'tcx> {
         debug_assert!(self.dep_graph.is_green(dep_node));
 
         // First we try to load the result from the on-disk cache
-        let result = if Q::cache_on_disk(self.global_tcx(), key.clone()) &&
+        let result = if Q::cache_on_disk(self.global_tcx(), key.clone(), None) &&
                         self.sess.opts.debugging_opts.incremental_queries {
             self.sess.profiler(|p| p.incremental_load_result_start(Q::NAME));
             let result = Q::try_load_from_disk(self.global_tcx(), prev_dep_node_index);
@@ -546,7 +546,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
             self.start_query(job.job.clone(), diagnostics, |tcx| {
-                if dep_node.kind.is_eval_always() {
+                if Q::EVAL_ALWAYS {
                     tcx.dep_graph.with_eval_always_task(dep_node,
                                                         tcx,
                                                         key,
@@ -569,8 +569,8 @@ impl<'tcx> TyCtxt<'tcx> {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, false);
         }
 
-        if dep_node.kind != crate::dep_graph::DepKind::Null {
-            if unlikely!(!diagnostics.is_empty()) {
+        if unlikely!(!diagnostics.is_empty()) {
+            if dep_node.kind != crate::dep_graph::DepKind::Null {
                 self.queries.on_disk_cache
                     .store_diagnostics(dep_node_index, diagnostics);
             }
@@ -589,15 +589,16 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// Note: The optimization is only available during incr. comp.
     pub(super) fn ensure_query<Q: QueryDescription<'tcx>>(self, key: Q::Key) -> () {
-        let dep_node = Q::to_dep_node(self, &key);
-
-        if dep_node.kind.is_eval_always() {
+        if Q::EVAL_ALWAYS {
             let _ = self.get_query::<Q>(DUMMY_SP, key);
             return;
         }
 
         // Ensuring an anonymous query makes no sense
-        assert!(!dep_node.kind.is_anon());
+        assert!(!Q::ANON);
+
+        let dep_node = Q::to_dep_node(self, &key);
+
         if self.dep_graph.try_mark_green_and_read(self, &dep_node).is_none() {
             // A None return from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -650,6 +651,30 @@ macro_rules! handle_cycle_error {
     }};
     ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
         handle_cycle_error!([$($modifiers),*][$($args)*])
+    };
+}
+
+macro_rules! is_anon {
+    ([]) => {{
+        false
+    }};
+    ([anon$(, $modifiers:ident)*]) => {{
+        true
+    }};
+    ([$other:ident$(, $modifiers:ident)*]) => {
+        is_anon!([$($modifiers),*])
+    };
+}
+
+macro_rules! is_eval_always {
+    ([]) => {{
+        false
+    }};
+    ([eval_always$(, $modifiers:ident)*]) => {{
+        true
+    }};
+    ([$other:ident$(, $modifiers:ident)*]) => {
+        is_eval_always!([$($modifiers),*])
     };
 }
 
@@ -933,6 +958,9 @@ macro_rules! define_queries_inner {
         }
 
         impl<$tcx> QueryAccessors<$tcx> for queries::$name<$tcx> {
+            const ANON: bool = is_anon!([$($modifiers)*]);
+            const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
+
             #[inline(always)]
             fn query(key: Self::Key) -> Query<'tcx> {
                 Query::$name(key)
@@ -949,6 +977,11 @@ macro_rules! define_queries_inner {
                 use crate::dep_graph::DepConstructor::*;
 
                 DepNode::new(tcx, $node(*key))
+            }
+
+            #[inline(always)]
+            fn dep_kind() -> dep_graph::DepKind {
+                dep_graph::DepKind::$node
             }
 
             #[inline]
@@ -1133,7 +1166,7 @@ macro_rules! define_provider_struct {
 /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
 /// add it to the "We don't have enough information to reconstruct..." group in
 /// the match below.
-pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool {
+pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
     use crate::dep_graph::RecoverKey;
 
     // We must avoid ever having to call force_from_dep_node() for a
@@ -1210,66 +1243,3 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
 
     true
 }
-
-
-// FIXME(#45015): Another piece of boilerplate code that could be generated in
-//                a combined define_dep_nodes!()/define_queries!() macro.
-macro_rules! impl_load_from_cache {
-    ($($dep_kind:ident => $query_name:ident,)*) => {
-        impl DepNode {
-            // Check whether the query invocation corresponding to the given
-            // DepNode is eligible for on-disk-caching.
-            pub fn cache_on_disk(&self, tcx: TyCtxt<'_>) -> bool {
-                use crate::ty::query::queries;
-                use crate::ty::query::QueryDescription;
-
-                match self.kind {
-                    $(DepKind::$dep_kind => {
-                        let def_id = self.extract_def_id(tcx).unwrap();
-                        queries::$query_name::cache_on_disk(tcx.global_tcx(), def_id)
-                    })*
-                    _ => false
-                }
-            }
-
-            // This is method will execute the query corresponding to the given
-            // DepNode. It is only expected to work for DepNodes where the
-            // above `cache_on_disk` methods returns true.
-            // Also, as a sanity check, it expects that the corresponding query
-            // invocation has been marked as green already.
-            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt<'_>) {
-                match self.kind {
-                    $(DepKind::$dep_kind => {
-                        debug_assert!(tcx.dep_graph
-                                         .node_color(self)
-                                         .map(|c| c.is_green())
-                                         .unwrap_or(false));
-
-                        let def_id = self.extract_def_id(tcx).unwrap();
-                        let _ = tcx.$query_name(def_id);
-                    })*
-                    _ => {
-                        bug!()
-                    }
-                }
-            }
-        }
-    }
-}
-
-impl_load_from_cache!(
-    typeck_tables_of => typeck_tables_of,
-    optimized_mir => optimized_mir,
-    unsafety_check_result => unsafety_check_result,
-    borrowck => borrowck,
-    mir_borrowck => mir_borrowck,
-    mir_const_qualif => mir_const_qualif,
-    const_is_rvalue_promotable_to_static => const_is_rvalue_promotable_to_static,
-    check_match => check_match,
-    type_of => type_of,
-    generics_of => generics_of,
-    predicates_of => predicates_of,
-    used_trait_imports => used_trait_imports,
-    codegen_fn_attrs => codegen_fn_attrs,
-    specialization_graph_of => specialization_graph_of,
-);

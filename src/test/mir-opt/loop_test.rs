@@ -25,6 +25,7 @@ fn main() {
 //    bb3: { // Entry into the loop
 //        _1 = ();
 //        StorageDead(_2);
+//        StorageDead(_1);
 //        goto -> bb5;
 //    }
 //    ...

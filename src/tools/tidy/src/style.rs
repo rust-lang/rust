@@ -13,8 +13,6 @@
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
 
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::Path;
 
 const COLS: usize = 100;
@@ -109,7 +107,11 @@ enum Directive {
     Ignore(bool),
 }
 
-fn contains_ignore_directive(contents: &String, check: &str) -> Directive {
+fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> Directive {
+    if !can_contain {
+        return Directive::Deny;
+    }
+    // Update `can_contain` when changing this
     if contents.contains(&format!("// ignore-tidy-{}", check)) ||
         contents.contains(&format!("# ignore-tidy-{}", check)) {
         Directive::Ignore(false)
@@ -129,8 +131,8 @@ macro_rules! suppressible_tidy_err {
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let mut contents = String::new();
-    super::walk(path, &mut super::filter_dirs, &mut |file| {
+    super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h"];
         if extensions.iter().all(|e| !filename.ends_with(e)) ||
@@ -138,19 +140,19 @@ pub fn check(path: &Path, bad: &mut bool) {
             return
         }
 
-        contents.truncate(0);
-        t!(t!(File::open(file), file).read_to_string(&mut contents));
-
         if contents.is_empty() {
             tidy_error!(bad, "{}: empty file", file.display());
         }
 
-        let mut skip_cr = contains_ignore_directive(&contents, "cr");
-        let mut skip_tab = contains_ignore_directive(&contents, "tab");
-        let mut skip_line_length = contains_ignore_directive(&contents, "linelength");
-        let mut skip_file_length = contains_ignore_directive(&contents, "filelength");
-        let mut skip_end_whitespace = contains_ignore_directive(&contents, "end-whitespace");
-        let mut skip_copyright = contains_ignore_directive(&contents, "copyright");
+        let can_contain = contents.contains("// ignore-tidy-") ||
+            contents.contains("# ignore-tidy-");
+        let mut skip_cr = contains_ignore_directive(can_contain, &contents, "cr");
+        let mut skip_tab = contains_ignore_directive(can_contain, &contents, "tab");
+        let mut skip_line_length = contains_ignore_directive(can_contain, &contents, "linelength");
+        let mut skip_file_length = contains_ignore_directive(can_contain, &contents, "filelength");
+        let mut skip_end_whitespace =
+            contains_ignore_directive(can_contain, &contents, "end-whitespace");
+        let mut skip_copyright = contains_ignore_directive(can_contain, &contents, "copyright");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;

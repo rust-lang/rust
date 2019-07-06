@@ -708,7 +708,7 @@ impl<T> LinkedList<T> {
         let len = self.len();
         assert!(at <= len, "Cannot split off at a nonexistent index");
         if at == 0 {
-            return mem::replace(self, Self::new());
+            return mem::take(self);
         } else if at == len {
             return Self::new();
         }
@@ -832,6 +832,11 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.len, Some(self.len))
     }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a T> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -880,6 +885,11 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.len, Some(self.len))
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a mut T> {
+        self.next_back()
     }
 }
 

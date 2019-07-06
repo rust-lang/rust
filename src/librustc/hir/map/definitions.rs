@@ -371,7 +371,6 @@ impl Definitions {
         None
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
     #[inline]
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
         if def_id.krate == LOCAL_CRATE {

@@ -20,13 +20,13 @@ use crate::astconv::AstConv as _;
 
 use errors::{Applicability, DiagnosticBuilder};
 use syntax::ast;
-use syntax::ptr::P;
 use syntax::symbol::{Symbol, LocalInternedString, kw, sym};
 use syntax::source_map::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 use rustc::hir;
 use rustc::hir::{ExprKind, QPath};
 use rustc::hir::def::{CtorKind, Res, DefKind};
+use rustc::hir::ptr::P;
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::mir::interpret::GlobalId;
@@ -295,8 +295,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Index(ref base, ref idx) => {
                 self.check_expr_index(base, idx, needs, expr)
             }
-            ExprKind::Yield(ref value, _) => {
-                self.check_expr_yield(value, expr)
+            ExprKind::Yield(ref value, ref src) => {
+                self.check_expr_yield(value, expr, src)
             }
             hir::ExprKind::Err => {
                 tcx.types.err
@@ -565,7 +565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // else an error would have been flagged by the
                 // `loops` pass for using break with an expression
                 // where you are not supposed to.
-                assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
+                assert!(expr_opt.is_none() || self.tcx.sess.has_errors());
             }
 
             ctxt.may_break = true;
@@ -577,10 +577,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // this can only happen if the `break` was not
             // inside a loop at all, which is caught by the
             // loop-checking pass.
-            if self.tcx.sess.err_count() == 0 {
-                self.tcx.sess.delay_span_bug(expr.span,
-                    "break was outside loop, but no error was emitted");
-            }
+            self.tcx.sess.delay_span_bug(expr.span,
+                "break was outside loop, but no error was emitted");
 
             // We still need to assign a type to the inner expression to
             // prevent the ICE in #43162.
@@ -903,7 +901,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count_def_id = tcx.hir().local_def_id_from_hir_id(count.hir_id);
+        let count_def_id = tcx.hir().local_def_id(count.hir_id);
         let count = if self.const_param_def_id(count).is_some() {
             Ok(self.to_const(count, tcx.type_of(count_def_id)))
         } else {
@@ -1543,12 +1541,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_yield(&self, value: &'tcx hir::Expr, expr: &'tcx hir::Expr) -> Ty<'tcx> {
+    fn check_expr_yield(
+        &self,
+        value: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr,
+        src: &'tcx hir::YieldSource
+    ) -> Ty<'tcx> {
         match self.yield_ty {
             Some(ty) => {
                 self.check_expr_coercable_to_type(&value, ty);
             }
-            None => {
+            // Given that this `yield` expression was generated as a result of lowering a `.await`,
+            // we know that the yield type must be `()`; however, the context won't contain this
+            // information. Hence, we check the source of the yield expression here and check its
+            // value's type against `()` (this check should always hold).
+            None if src == &hir::YieldSource::Await => {
+                self.check_expr_coercable_to_type(&value, self.tcx.mk_unit());
+            }
+            _ => {
                 struct_span_err!(self.tcx.sess, expr.span, E0627,
                                     "yield statement outside of generator literal").emit();
             }

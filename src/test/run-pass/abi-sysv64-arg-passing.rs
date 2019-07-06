@@ -20,6 +20,7 @@
 // extern-return-TwoU64s
 // foreign-fn-with-byval
 // issue-28676
+// issue-62350-sysv-neg-reg-counts
 // struct-return
 
 // ignore-android
@@ -83,6 +84,9 @@ mod tests {
     #[derive(Copy, Clone)]
     pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
 
+    #[derive(Copy, Clone)]
+    pub struct QuadFloats { a: f32, b: f32, c: f32, d: f32 }
+
     #[repr(C)]
     #[derive(Copy, Clone)]
     pub struct Floats { a: f64, b: u8, c: f64 }
@@ -108,6 +112,16 @@ mod tests {
         pub fn get_z(x: S) -> u64;
         pub fn get_c_many_params(_: *const (), _: *const (),
                                  _: *const (), _: *const (), f: Quad) -> u64;
+        pub fn get_c_exhaust_sysv64_ints(
+            _: *const (),
+            _: *const (),
+            _: *const (),
+            _: *const (),
+            _: *const (),
+            _: *const (),
+            _: *const (),
+            h: QuadFloats,
+        ) -> f32;
         pub fn rust_dbg_abi_1(q: Quad) -> Quad;
         pub fn rust_dbg_abi_2(f: Floats) -> Floats;
     }
@@ -263,6 +277,27 @@ mod tests {
         test();
     }
 
+    fn test_62350() {
+        use std::ptr;
+        unsafe {
+            let null = ptr::null();
+            let q = QuadFloats {
+                a: 10.2,
+                b: 20.3,
+                c: 30.4,
+                d: 40.5
+            };
+            assert_eq!(
+                get_c_exhaust_sysv64_ints(null, null, null, null, null, null, null, q),
+                q.c,
+            );
+        }
+    }
+
+    pub fn issue_62350() {
+        test_62350();
+    }
+
     fn test1() {
         unsafe {
             let q = Quad { a: 0xaaaa_aaaa_aaaa_aaaa,
@@ -321,6 +356,7 @@ fn main() {
     extern_return_twou64s();
     foreign_fn_with_byval();
     issue_28676();
+    issue_62350();
     struct_return();
 }
 

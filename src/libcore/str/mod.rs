@@ -1333,6 +1333,11 @@ impl<'a> Iterator for Lines<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
     }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a str> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3716,10 +3721,10 @@ impl str {
     ///
     /// # Text directionality
     ///
-    /// A string is a sequence of bytes. 'Left' in this context means the first
-    /// position of that byte string; for a language like Arabic or Hebrew
-    /// which are 'right to left' rather than 'left to right', this will be
-    /// the _right_ side, not the left.
+    /// A string is a sequence of bytes. `start` in this context means the first
+    /// position of that byte string; for a left-to-right language like English or
+    /// Russian, this will be left side, and for right-to-left languages like
+    /// like Arabic or Hebrew, this will be the right side.
     ///
     /// # Examples
     ///
@@ -3755,10 +3760,10 @@ impl str {
     ///
     /// # Text directionality
     ///
-    /// A string is a sequence of bytes. 'Right' in this context means the last
-    /// position of that byte string; for a language like Arabic or Hebrew
-    /// which are 'right to left' rather than 'left to right', this will be
-    /// the _left_ side, not the right.
+    /// A string is a sequence of bytes. `end` in this context means the last
+    /// position of that byte string; for a left-to-right language like English or
+    /// Russian, this will be right side, and for right-to-left languages like
+    /// like Arabic or Hebrew, this will be the left side.
     ///
     /// # Examples
     ///
@@ -3804,10 +3809,10 @@ impl str {
     ///
     /// # Text directionality
     ///
-    /// A string is a sequence of bytes. `start` in this context means the first
-    /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be left side, and for right-to-left languages like
-    /// like Arabic or Hebrew, this will be the right side.
+    /// A string is a sequence of bytes. 'Left' in this context means the first
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _right_ side, not the left.
     ///
     /// # Examples
     ///
@@ -3840,10 +3845,10 @@ impl str {
     ///
     /// # Text directionality
     ///
-    /// A string is a sequence of bytes. `end` in this context means the last
-    /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be right side, and for right-to-left languages like
-    /// like Arabic or Hebrew, this will be the left side.
+    /// A string is a sequence of bytes. 'Right' in this context means the last
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _left_ side, not the right.
     ///
     /// # Examples
     ///
@@ -4241,6 +4246,11 @@ impl<'a> Iterator for SplitWhitespace<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a str> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "split_whitespace", since = "1.1.0")]
@@ -4266,6 +4276,11 @@ impl<'a> Iterator for SplitAsciiWhitespace<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a str> {
+        self.next_back()
     }
 }
 

@@ -2,7 +2,7 @@
 // they permit lifetimes to be approximated as expected.
 
 #![allow(dead_code)]
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 struct SomeStruct<T>(fn(T));
 

@@ -7,11 +7,12 @@ use crate::lint::{
 };
 use errors::Applicability;
 use rustc_data_structures::fx::FxHashMap;
-use syntax::ast::Ident;
+use syntax::ast::{Ident, Item, ItemKind};
 use syntax::symbol::{sym, Symbol};
+use syntax_pos::ExpnInfo;
 
-declare_lint! {
-    pub DEFAULT_HASH_TYPES,
+declare_tool_lint! {
+    pub rustc::DEFAULT_HASH_TYPES,
     Allow,
     "forbid HashMap and HashSet and suggest the FxHash* variants"
 }
@@ -22,7 +23,7 @@ pub struct DefaultHashTypes {
 
 impl DefaultHashTypes {
     // we are allowed to use `HashMap` and `HashSet` as identifiers for implementing the lint itself
-    #[allow(internal)]
+    #[cfg_attr(not(bootstrap), allow(rustc::default_hash_types))]
     pub fn new() -> Self {
         let mut map = FxHashMap::default();
         map.insert(sym::HashMap, sym::FxHashMap);
@@ -36,10 +37,7 @@ impl_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 impl EarlyLintPass for DefaultHashTypes {
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         if let Some(replace) = self.map.get(&ident.name) {
-            let msg = format!(
-                "Prefer {} over {}, it has better performance",
-                replace, ident
-            );
+            let msg = format!("Prefer {} over {}, it has better performance", replace, ident);
             let mut db = cx.struct_span_lint(DEFAULT_HASH_TYPES, ident.span, &msg);
             db.span_suggestion(
                 ident.span,
@@ -47,29 +45,26 @@ impl EarlyLintPass for DefaultHashTypes {
                 replace.to_string(),
                 Applicability::MaybeIncorrect, // FxHashMap, ... needs another import
             );
-            db.note(&format!(
-                "a `use rustc_data_structures::fx::{}` may be necessary",
-                replace
-            ))
-            .emit();
+            db.note(&format!("a `use rustc_data_structures::fx::{}` may be necessary", replace))
+                .emit();
         }
     }
 }
 
-declare_lint! {
-    pub USAGE_OF_TY_TYKIND,
+declare_tool_lint! {
+    pub rustc::USAGE_OF_TY_TYKIND,
     Allow,
     "usage of `ty::TyKind` outside of the `ty::sty` module"
 }
 
-declare_lint! {
-    pub TY_PASS_BY_REFERENCE,
+declare_tool_lint! {
+    pub rustc::TY_PASS_BY_REFERENCE,
     Allow,
     "passing `Ty` or `TyCtxt` by reference"
 }
 
-declare_lint! {
-    pub USAGE_OF_QUALIFIED_TY,
+declare_tool_lint! {
+    pub rustc::USAGE_OF_QUALIFIED_TY,
     Allow,
     "using `ty::{Ty,TyCtxt}` instead of importing it"
 }
@@ -137,13 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
                     }
                 }
             }
-            TyKind::Rptr(
-                _,
-                MutTy {
-                    ty: inner_ty,
-                    mutbl: Mutability::MutImmutable,
-                },
-            ) => {
+            TyKind::Rptr(_, MutTy { ty: inner_ty, mutbl: Mutability::MutImmutable }) => {
                 if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner_def_id()) {
                     if cx.tcx.impl_trait_ref(impl_did).is_some() {
                         return;
@@ -224,4 +213,45 @@ fn gen_args(segment: &PathSegment) -> String {
     }
 
     String::new()
+}
+
+declare_tool_lint! {
+    pub rustc::LINT_PASS_IMPL_WITHOUT_MACRO,
+    Allow,
+    "`impl LintPass` without the `declare_lint_pass!` or `impl_lint_pass!` macros"
+}
+
+declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
+
+impl EarlyLintPass for LintPassImpl {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+        if let ItemKind::Impl(_, _, _, _, Some(lint_pass), _, _) = &item.node {
+            if let Some(last) = lint_pass.path.segments.last() {
+                if last.ident.name == sym::LintPass {
+                    match &lint_pass.path.span.ctxt().outer_expn_info() {
+                        Some(info) if is_lint_pass_expansion(info) => {}
+                        _ => {
+                            cx.struct_span_lint(
+                                LINT_PASS_IMPL_WITHOUT_MACRO,
+                                lint_pass.path.span,
+                                "implementing `LintPass` by hand",
+                            )
+                            .help("try using `declare_lint_pass!` or `impl_lint_pass!` instead")
+                            .emit();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn is_lint_pass_expansion(expn_info: &ExpnInfo) -> bool {
+    if expn_info.format.name() == sym::impl_lint_pass {
+        true
+    } else if let Some(info) = expn_info.call_site.ctxt().outer_expn_info() {
+        info.format.name() == sym::declare_lint_pass
+    } else {
+        false
+    }
 }

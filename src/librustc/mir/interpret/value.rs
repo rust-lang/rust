@@ -276,17 +276,6 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn is_null_ptr(self, cx: &impl HasDataLayout) -> bool {
-        match self {
-            Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, cx.data_layout().pointer_size.bytes());
-                data == 0
-            },
-            Scalar::Ptr(_) => false,
-        }
-    }
-
-    #[inline]
     pub fn from_bool(b: bool) -> Self {
         Scalar::Raw { data: b as u128, size: 1 }
     }

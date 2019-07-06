@@ -4,23 +4,18 @@
 //! statistics about the error codes.
 
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let mut contents = String::new();
     let mut map: HashMap<_, Vec<_>> = HashMap::new();
     super::walk(path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
-                &mut |file| {
+                &mut |entry, contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         if filename != "error_codes.rs" {
             return
         }
-
-        contents.truncate(0);
-        t!(t!(File::open(file)).read_to_string(&mut contents));
 
         // In the `register_long_diagnostics!` macro, entries look like this:
         //

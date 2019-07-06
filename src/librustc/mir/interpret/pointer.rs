@@ -1,12 +1,34 @@
-use std::fmt;
+use std::fmt::{self, Display};
 
 use crate::mir;
 use crate::ty::layout::{self, HasDataLayout, Size};
 use rustc_macros::HashStable;
 
 use super::{
-    AllocId, InterpResult, CheckInAllocMsg
+    AllocId, InterpResult,
 };
+
+/// Used by `check_in_alloc` to indicate context of check
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum CheckInAllocMsg {
+    MemoryAccessTest,
+    NullPointerTest,
+    PointerArithmeticTest,
+    InboundsTest,
+}
+
+impl Display for CheckInAllocMsg {
+    /// When this is printed as an error the context looks like this
+    /// "{test name} failed: pointer must be in-bounds at offset..."
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match *self {
+            CheckInAllocMsg::MemoryAccessTest => "Memory access",
+            CheckInAllocMsg::NullPointerTest => "Null pointer test",
+            CheckInAllocMsg::PointerArithmeticTest => "Pointer arithmetic",
+            CheckInAllocMsg::InboundsTest => "Inbounds test",
+        })
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pointer arithmetic

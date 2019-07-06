@@ -51,15 +51,15 @@ impl WithNumNodes for TestGraph {
 }
 
 impl WithPredecessors for TestGraph {
-    fn predecessors<'graph>(&'graph self,
-                            node: usize)
-                            -> <Self as GraphPredecessors<'graph>>::Iter {
+    fn predecessors(&self,
+                    node: usize)
+                    -> <Self as GraphPredecessors<'_>>::Iter {
         self.predecessors[&node].iter().cloned()
     }
 }
 
 impl WithSuccessors for TestGraph {
-    fn successors<'graph>(&'graph self, node: usize) -> <Self as GraphSuccessors<'graph>>::Iter {
+    fn successors(&self, node: usize) -> <Self as GraphSuccessors<'_>>::Iter {
         self.successors[&node].iter().cloned()
     }
 }

@@ -95,7 +95,7 @@ fn find_dead_unwinds<'tcx>(
         };
 
         let mut init_data = InitializationData {
-            live: flow_inits.sets().on_entry_set_for(bb.index()).to_owned(),
+            live: flow_inits.sets().entry_set_for(bb.index()).to_owned(),
             dead: BitSet::new_empty(env.move_data.move_paths.len()),
         };
         debug!("find_dead_unwinds @ {:?}: {:?}; init_data={:?}",
@@ -304,9 +304,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn initialization_data_at(&self, loc: Location) -> InitializationData {
         let mut data = InitializationData {
-            live: self.flow_inits.sets().on_entry_set_for(loc.block.index())
+            live: self.flow_inits.sets().entry_set_for(loc.block.index())
                 .to_owned(),
-            dead: self.flow_uninits.sets().on_entry_set_for(loc.block.index())
+            dead: self.flow_uninits.sets().entry_set_for(loc.block.index())
                 .to_owned(),
         };
         for stmt in 0..loc.statement_index {
@@ -326,7 +326,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn drop_flag(&mut self, index: MovePathIndex) -> Option<Place<'tcx>> {
-        self.drop_flags.get(&index).map(|t| Place::Base(PlaceBase::Local(*t)))
+        self.drop_flags.get(&index).map(|t| Place::from(*t))
     }
 
     /// create a patch that elaborates all drops in the input
@@ -537,7 +537,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         if let Some(&flag) = self.drop_flags.get(&path) {
             let span = self.patch.source_info_for_location(self.body, loc).span;
             let val = self.constant_bool(span, val.value());
-            self.patch.add_assign(loc, Place::Base(PlaceBase::Local(flag)), val);
+            self.patch.add_assign(loc, Place::from(flag), val);
         }
     }
 
@@ -546,7 +546,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let span = self.patch.source_info_for_location(self.body, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
-            self.patch.add_assign(loc, Place::Base(PlaceBase::Local(*flag)), false_.clone());
+            self.patch.add_assign(loc, Place::from(*flag), false_.clone());
         }
     }
 

@@ -2206,6 +2206,11 @@ impl<'a, T> Iterator for Iter<'a, T> {
         self.tail = self.head - iter.len();
         final_res
     }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a T> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2318,6 +2323,11 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         accum = front.iter_mut().fold(accum, &mut f);
         back.iter_mut().fold(accum, &mut f)
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a mut T> {
+        self.next_back()
     }
 }
 

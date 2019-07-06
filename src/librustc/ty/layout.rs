@@ -226,6 +226,19 @@ enum StructKind {
     Prefixed(Size, Align),
 }
 
+// Invert a bijective mapping, i.e. `invert(map)[y] = x` if `map[x] = y`.
+// This is used to go between `memory_index` (source field order to memory order)
+// and `inverse_memory_index` (memory order to source field order).
+// See also `FieldPlacement::Arbitrary::memory_index` for more details.
+// FIXME(eddyb) build a better abstraction for permutations, if possible.
+fn invert_mapping(map: &[u32]) -> Vec<u32> {
+    let mut inverse = vec![0; map.len()];
+    for i in 0..map.len() {
+        inverse[map[i] as usize] = i as u32;
+    }
+    inverse
+}
+
 impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     fn scalar_pair(&self, a: Scalar, b: Scalar) -> LayoutDetails {
         let dl = self.data_layout();
@@ -303,7 +316,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
         // We now write field offsets to the corresponding offset slot;
         // field 5 with offset 0 puts 0 in offsets[5].
-        // At the bottom of this function, we use inverse_memory_index to produce memory_index.
+        // At the bottom of this function, we invert `inverse_memory_index` to
+        // produce `memory_index` (see `invert_mapping`).
+
 
         let mut offset = Size::ZERO;
 
@@ -360,13 +375,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Field 5 would be the first element, so memory_index is i:
         // Note: if we didn't optimize, it's already right.
 
-        let mut memory_index;
+        let memory_index;
         if optimize {
-            memory_index = vec![0; inverse_memory_index.len()];
-
-            for i in 0..inverse_memory_index.len() {
-                memory_index[inverse_memory_index[i] as usize]  = i as u32;
-            }
+            memory_index = invert_mapping(&inverse_memory_index);
         } else {
             memory_index = inverse_memory_index;
         }
@@ -1311,18 +1322,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     ) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
-        let recompute_memory_index = |offsets: &[Size]| -> Vec<u32> {
-            debug!("recompute_memory_index({:?})", offsets);
-            let mut inverse_index = (0..offsets.len() as u32).collect::<Vec<_>>();
-            inverse_index.sort_unstable_by_key(|i| offsets[*i as usize]);
 
-            let mut index = vec![0; offsets.len()];
-            for i in 0..index.len() {
-                index[inverse_index[i] as usize] = i as u32;
-            }
-            debug!("recompute_memory_index() => {:?}", index);
-            index
-        };
         let subst_field = |ty: Ty<'tcx>| { ty.subst(tcx, substs.substs) };
 
         let info = tcx.generator_layout(def_id);
@@ -1349,14 +1349,34 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // get included in each variant that requested them in
         // GeneratorLayout.
         debug!("prefix = {:#?}", prefix);
-        let (outer_fields, promoted_offsets) = match prefix.fields {
-            FieldPlacement::Arbitrary { mut offsets, .. } => {
-                let offsets_b = offsets.split_off(discr_index + 1);
+        let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
+            FieldPlacement::Arbitrary { mut offsets, memory_index } => {
+                let mut inverse_memory_index = invert_mapping(&memory_index);
+
+                // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
+                // "outer" and "promoted" fields respectively.
+                let b_start = (discr_index + 1) as u32;
+                let offsets_b = offsets.split_off(b_start as usize);
                 let offsets_a = offsets;
 
-                let memory_index = recompute_memory_index(&offsets_a);
-                let outer_fields = FieldPlacement::Arbitrary { offsets: offsets_a, memory_index };
-                (outer_fields, offsets_b)
+                // Disentangle the "a" and "b" components of `inverse_memory_index`
+                // by preserving the order but keeping only one disjoint "half" each.
+                // FIXME(eddyb) build a better abstraction for permutations, if possible.
+                let inverse_memory_index_b: Vec<_> =
+                    inverse_memory_index.iter().filter_map(|&i| i.checked_sub(b_start)).collect();
+                inverse_memory_index.retain(|&i| i < b_start);
+                let inverse_memory_index_a = inverse_memory_index;
+
+                // Since `inverse_memory_index_{a,b}` each only refer to their
+                // respective fields, they can be safely inverted
+                let memory_index_a = invert_mapping(&inverse_memory_index_a);
+                let memory_index_b = invert_mapping(&inverse_memory_index_b);
+
+                let outer_fields = FieldPlacement::Arbitrary {
+                    offsets: offsets_a,
+                    memory_index: memory_index_a,
+                };
+                (outer_fields, offsets_b, memory_index_b)
             }
             _ => bug!(),
         };
@@ -1386,30 +1406,51 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 StructKind::Prefixed(prefix_size, prefix_align.abi))?;
             variant.variants = Variants::Single { index };
 
-            let offsets = match variant.fields {
-                FieldPlacement::Arbitrary { offsets, .. } => offsets,
+            let (offsets, memory_index) = match variant.fields {
+                FieldPlacement::Arbitrary { offsets, memory_index } => {
+                    (offsets, memory_index)
+                }
                 _ => bug!(),
             };
 
             // Now, stitch the promoted and variant-only fields back together in
             // the order they are mentioned by our GeneratorLayout.
-            let mut next_variant_field = 0;
-            let mut combined_offsets = Vec::new();
-            for local in variant_fields.iter() {
-                match assignments[*local] {
+            // Because we only use some subset (that can differ between variants)
+            // of the promoted fields, we can't just pick those elements of the
+            // `promoted_memory_index` (as we'd end up with gaps).
+            // So instead, we build an "inverse memory_index", as if all of the
+            // promoted fields were being used, but leave the elements not in the
+            // subset as `INVALID_FIELD_IDX`, which we can filter out later to
+            // obtain a valid (bijective) mapping.
+            const INVALID_FIELD_IDX: u32 = !0;
+            let mut combined_inverse_memory_index =
+                vec![INVALID_FIELD_IDX; promoted_memory_index.len() + memory_index.len()];
+            let mut offsets_and_memory_index = offsets.into_iter().zip(memory_index);
+            let combined_offsets = variant_fields.iter().enumerate().map(|(i, local)| {
+                let (offset, memory_index) = match assignments[*local] {
                     Unassigned => bug!(),
                     Assigned(_) => {
-                        combined_offsets.push(offsets[next_variant_field]);
-                        next_variant_field += 1;
+                        let (offset, memory_index) = offsets_and_memory_index.next().unwrap();
+                        (offset, promoted_memory_index.len() as u32 + memory_index)
                     }
                     Ineligible(field_idx) => {
                         let field_idx = field_idx.unwrap() as usize;
-                        combined_offsets.push(promoted_offsets[field_idx]);
+                        (promoted_offsets[field_idx], promoted_memory_index[field_idx])
                     }
-                }
-            }
-            let memory_index = recompute_memory_index(&combined_offsets);
-            variant.fields = FieldPlacement::Arbitrary { offsets: combined_offsets, memory_index };
+                };
+                combined_inverse_memory_index[memory_index as usize] = i as u32;
+                offset
+            }).collect();
+
+            // Remove the unused slots and invert the mapping to obtain the
+            // combined `memory_index` (also see previous comment).
+            combined_inverse_memory_index.retain(|&i| i != INVALID_FIELD_IDX);
+            let combined_memory_index = invert_mapping(&combined_inverse_memory_index);
+
+            variant.fields = FieldPlacement::Arbitrary {
+                offsets: combined_offsets,
+                memory_index: combined_memory_index,
+            };
 
             size = size.max(variant.size);
             align = align.max(variant.align);

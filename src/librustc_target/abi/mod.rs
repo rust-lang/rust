@@ -699,7 +699,16 @@ pub enum FieldPlacement {
         offsets: Vec<Size>,
 
         /// Maps source order field indices to memory order indices,
-        /// depending how fields were permuted.
+        /// depending on how the fields were reordered (if at all).
+        /// This is a permutation, with both the source order and the
+        /// memory order using the same (0..n) index ranges.
+        ///
+        /// Note that during computation of `memory_index`, sometimes
+        /// it is easier to operate on the inverse mapping (that is,
+        /// from memory order to source order), and that is usually
+        /// named `inverse_memory_index`.
+        ///
+        // FIXME(eddyb) build a better abstraction for permutations, if possible.
         // FIXME(camlorn) also consider small vector  optimization here.
         memory_index: Vec<u32>
     }

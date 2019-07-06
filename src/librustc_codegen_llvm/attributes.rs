@@ -102,8 +102,8 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         return
     }
 
-    // probestack doesn't play nice either with pgo-gen.
-    if cx.sess().opts.debugging_opts.pgo_gen.enabled() {
+    // probestack doesn't play nice either with `-C profile-generate`.
+    if cx.sess().opts.cg.profile_generate.enabled() {
         return;
     }
 

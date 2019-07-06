@@ -33,8 +33,11 @@ pub struct Flags {
     pub rustc_error_format: Option<String>,
     pub dry_run: bool,
 
-    // true => deny
-    pub warnings: Option<bool>,
+    // This overrides the deny-warnings configuation option,
+    // which passes -Dwarnings to the compiler invocations.
+    //
+    // true => deny, false => allow
+    pub deny_warnings: Option<bool>,
 }
 
 pub enum Subcommand {
@@ -58,6 +61,7 @@ pub enum Subcommand {
         /// Whether to automatically update stderr/stdout files
         bless: bool,
         compare_mode: Option<String>,
+        pass: Option<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -198,6 +202,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                     "compare-mode",
                     "mode describing what file the actual ui output will be compared to",
                     "COMPARE MODE",
+                );
+                opts.optopt(
+                    "",
+                    "pass",
+                    "force {check,build,run}-pass tests to this mode.",
+                    "check | build | run"
                 );
                 opts.optflag(
                     "",
@@ -401,6 +411,7 @@ Arguments:
                 paths,
                 bless: matches.opt_present("bless"),
                 compare_mode: matches.opt_str("compare-mode"),
+                pass: matches.opt_str("pass"),
                 test_args: matches.opt_strs("test-args"),
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
@@ -460,7 +471,7 @@ Arguments:
                 .into_iter()
                 .map(|p| p.into())
                 .collect::<Vec<_>>(),
-            warnings: matches.opt_str("warnings").map(|v| v == "deny"),
+            deny_warnings: parse_deny_warnings(&matches),
         }
     }
 }
@@ -524,6 +535,15 @@ impl Subcommand {
             _ => None,
         }
     }
+
+    pub fn pass(&self) -> Option<&str> {
+        match *self {
+            Subcommand::Test {
+                ref pass, ..
+            } => pass.as_ref().map(|s| &s[..]),
+            _ => None,
+        }
+    }
 }
 
 fn split(s: &[String]) -> Vec<String> {
@@ -531,4 +551,19 @@ fn split(s: &[String]) -> Vec<String> {
         .flat_map(|s| s.split(','))
         .map(|s| s.to_string())
         .collect()
+}
+
+fn parse_deny_warnings(matches: &getopts::Matches) -> Option<bool> {
+    match matches.opt_str("warnings").as_ref().map(|v| v.as_str()) {
+        Some("deny") => Some(true),
+        Some("allow") => Some(false),
+        Some(value) => {
+            eprintln!(
+                r#"invalid value for --warnings: {:?}, expected "allow" or "deny""#,
+                value,
+                );
+            process::exit(1);
+        },
+        None => None,
+    }
 }

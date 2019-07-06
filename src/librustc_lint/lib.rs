@@ -20,7 +20,6 @@
 #![recursion_limit="256"]
 
 #![deny(rust_2018_idioms)]
-#![deny(internal)]
 #![deny(unused_lifetimes)]
 
 #[macro_use]
@@ -42,7 +41,6 @@ use rustc::lint::builtin::{
     INTRA_DOC_LINK_RESOLUTION_FAILURE,
     MISSING_DOC_CODE_EXAMPLES,
     PRIVATE_DOC_TESTS,
-    parser::QUESTION_MARK_MACRO_SEP,
     parser::ILL_FORMED_ATTRIBUTE_INPUT,
 };
 use rustc::session;
@@ -75,7 +73,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn lint_mod<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
+fn lint_mod(tcx: TyCtxt<'_>, module_def_id: DefId) {
     lint::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
@@ -405,11 +403,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(QUESTION_MARK_MACRO_SEP),
-            reference: "issue #48075 <https://github.com/rust-lang/rust/issues/48075>",
-            edition: Some(Edition::Edition2018),
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS),
             reference: "issue #52234 <https://github.com/rust-lang/rust/issues/52234>",
             edition: None,
@@ -493,15 +486,17 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_early_pass(sess, false, false, box DefaultHashTypes::new());
+    store.register_early_pass(sess, false, false, box LintPassImpl);
     store.register_late_pass(sess, false, false, false, box TyTyKind);
     store.register_group(
         sess,
         false,
-        "internal",
+        "rustc::internal",
         None,
         vec![
             LintId::of(DEFAULT_HASH_TYPES),
             LintId::of(USAGE_OF_TY_TYKIND),
+            LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(TY_PASS_BY_REFERENCE),
             LintId::of(USAGE_OF_QUALIFIED_TY),
         ],

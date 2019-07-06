@@ -87,7 +87,7 @@ impl<'a> Code<'a> {
         match map.get(id) {
             map::Node::Block(_) => {
                 //  Use the parent, hopefully an expression node.
-                Code::from_node(map, map.get_parent_node_by_hir_id(id))
+                Code::from_node(map, map.get_parent_node(id))
             }
             map::Node::Expr(expr) => Some(Code::Expr(expr)),
             node => FnLikeNode::from_node(node).map(Code::FnLike)

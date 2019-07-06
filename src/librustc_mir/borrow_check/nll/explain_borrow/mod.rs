@@ -252,7 +252,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Some(Cause::LiveVar(local, location)) => {
                 let span = body.source_info(location).span;
                 let spans = self
-                    .move_spans(&Place::Base(PlaceBase::Local(local)), location)
+                    .move_spans(&Place::from(local), location)
                     .or_else(|| self.borrow_spans(span, location));
 
                 let borrow_location = location;

@@ -182,7 +182,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            kind: StatementKind::Assign(Place::Base(PlaceBase::Local(dest)), box rvalue)
+            kind: StatementKind::Assign(Place::from(dest), box rvalue)
         });
     }
 
@@ -273,7 +273,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             args,
                             cleanup: None,
                             destination: Some(
-                                (Place::Base(PlaceBase::Local(new_temp)), new_target)
+                                (Place::from(new_temp), new_target)
                             ),
                             from_hir_call,
                         },

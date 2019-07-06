@@ -470,7 +470,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::ProjectionElem::Index(index) => {
                         let index = &mir::Operand::Copy(
-                            mir::Place::Base(mir::PlaceBase::Local(index))
+                            mir::Place::from(index)
                         );
                         let index = self.codegen_operand(bx, index);
                         let llindex = index.immediate();

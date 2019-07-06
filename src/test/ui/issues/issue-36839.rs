@@ -1,5 +1,4 @@
-// compile-pass
-// skip-codegen
+// check-pass
 
 pub trait Foo {
     type Bar;
@@ -16,7 +15,6 @@ impl<T> Broken for T {
         let _x: <Self::Assoc as Foo>::Bar;
     }
 }
-
 
 fn main() {
     let _m: &dyn Broken<Assoc=()> = &();

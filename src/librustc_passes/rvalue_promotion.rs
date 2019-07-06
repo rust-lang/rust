@@ -39,7 +39,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn const_is_rvalue_promotable_to_static<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+fn const_is_rvalue_promotable_to_static(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     assert!(def_id.is_local());
 
     let hir_id = tcx.hir().as_local_hir_id(def_id)
@@ -48,7 +48,7 @@ fn const_is_rvalue_promotable_to_static<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) 
     tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
 
-fn rvalue_promotable_map<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ItemLocalSet {
+fn rvalue_promotable_map(tcx: TyCtxt<'_>, def_id: DefId) -> &ItemLocalSet {
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
         return tcx.rvalue_promotable_map(outer_def_id);
@@ -165,7 +165,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn check_nested_body(&mut self, body_id: hir::BodyId) -> Promotability {
         let item_id = self.tcx.hir().body_owner(body_id);
-        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id(item_id);
 
         let outer_in_fn = self.in_fn;
         let outer_tables = self.tables;
@@ -451,7 +451,7 @@ fn check_expr_kind<'a, 'tcx>(
             let nested_body_promotable = v.check_nested_body(body_id);
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
-            let closure_def_id = v.tcx.hir().local_def_id_from_hir_id(e.hir_id);
+            let closure_def_id = v.tcx.hir().local_def_id(e.hir_id);
             if !v.tcx.upvars(closure_def_id).map_or(true, |v| v.is_empty()) {
                 NotPromotable
             } else {

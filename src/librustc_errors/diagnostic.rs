@@ -388,7 +388,7 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             style: SuggestionStyle::CompletelyHidden,
-            applicability: applicability,
+            applicability,
         });
         self
     }

@@ -269,7 +269,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         let filename = tcx.sess.source_map().span_to_filename(span);
 
                                         let parent_node = self.tcx.hir().get(
-                                            self.tcx.hir().get_parent_node_by_hir_id(hir_id),
+                                            self.tcx.hir().get_parent_node(hir_id),
                                         );
                                         let msg = format!(
                                             "you must specify a type for this binding, like `{}`",
@@ -390,7 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             } else {
                                 let call_expr = self.tcx.hir().expect_expr(
-                                    self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id),
+                                    self.tcx.hir().get_parent_node(expr.hir_id),
                                 );
 
                                 if let Some(span) = call_expr.span.trim_start(item_name.span) {
@@ -775,12 +775,12 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieves all traits in this crate and any dependent crates.
-pub fn all_traits<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<TraitInfo> {
+pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
     tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
 }
 
 /// Computes all traits in this crate and any dependent crates.
-fn compute_all_traits<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<DefId> {
+fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
     use hir::itemlikevisit;
 
     let mut traits = vec![];
@@ -797,7 +797,7 @@ fn compute_all_traits<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<DefId> {
             match i.node {
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::TraitAlias(..) => {
-                    let def_id = self.map.local_def_id_from_hir_id(i.hir_id);
+                    let def_id = self.map.local_def_id(i.hir_id);
                     self.traits.push(def_id);
                 }
                 _ => ()

@@ -21,8 +21,8 @@
 #![feature(link_args)]
 #![feature(static_nobundle)]
 #![feature(trusted_len)]
+#![feature(mem_take)]
 #![deny(rust_2018_idioms)]
-#![deny(internal)]
 #![deny(unused_lifetimes)]
 
 use back::write::{create_target_machine, create_informational_target_machine};
@@ -124,7 +124,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) {
         unsafe { allocator::codegen(tcx, mods, kind) }
     }
-    fn compile_codegen_unit<'tcx>(&self, tcx: TyCtxt<'tcx>, cgu_name: InternedString) {
+    fn compile_codegen_unit(&self, tcx: TyCtxt<'_>, cgu_name: InternedString) {
         base::compile_codegen_unit(tcx, cgu_name);
     }
     fn target_machine_factory(

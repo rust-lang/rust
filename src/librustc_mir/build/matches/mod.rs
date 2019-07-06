@@ -228,10 +228,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         // Step 5. Create everything else: the guards and the arms.
+        let match_scope = self.scopes.topmost();
+
         let arm_end_blocks: Vec<_> = arm_candidates.into_iter().map(|(arm, mut candidates)| {
             let arm_source_info = self.source_info(arm.span);
-            let region_scope = (arm.scope, arm_source_info);
-            self.in_scope(region_scope, arm.lint_level, |this| {
+            let arm_scope = (arm.scope, arm_source_info);
+            self.in_scope(arm_scope, arm.lint_level, |this| {
                 let body = this.hir.mirror(arm.body.clone());
                 let scope = this.declare_bindings(
                     None,
@@ -248,7 +250,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         arm.guard.clone(),
                         &fake_borrow_temps,
                         scrutinee_span,
-                        region_scope,
+                        match_scope,
                     );
                 } else {
                     arm_block = this.cfg.start_new_block();
@@ -259,7 +261,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             arm.guard.clone(),
                             &fake_borrow_temps,
                             scrutinee_span,
-                            region_scope,
+                            match_scope,
                         );
                         this.cfg.terminate(
                             binding_end,
@@ -531,11 +533,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 kind: StatementKind::StorageLive(local_id),
             },
         );
-        let place = Place::Base(PlaceBase::Local(local_id));
         let var_ty = self.local_decls[local_id].ty;
         let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
-        self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage);
-        place
+        self.schedule_drop(span, region_scope, local_id, var_ty, DropKind::Storage);
+        Place::Base(PlaceBase::Local(local_id))
     }
 
     pub fn schedule_drop_for_binding(&mut self, var: HirId, span: Span, for_guard: ForGuard) {
@@ -545,7 +546,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.schedule_drop(
             span,
             region_scope,
-            &Place::Base(PlaceBase::Local(local_id)),
+            local_id,
             var_ty,
             DropKind::Value,
         );
@@ -1340,7 +1341,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         guard: Option<Guard<'tcx>>,
         fake_borrows: &Vec<(&Place<'tcx>, Local)>,
         scrutinee_span: Span,
-        region_scope: (region::Scope, SourceInfo),
+        region_scope: region::Scope,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
 
@@ -1478,7 +1479,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(
                     block,
                     scrutinee_source_info,
-                    &Place::Base(PlaceBase::Local(temp)),
+                    &Place::from(temp),
                     borrow,
                 );
             }
@@ -1490,7 +1491,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             };
             let source_info = self.source_info(guard.span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard.span));
-            let cond = unpack!(block = self.as_local_operand(block, guard));
+            let (post_guard_block, otherwise_post_guard_block)
+                = self.test_bool(block, guard, source_info);
             let guard_frame = self.guard_context.pop().unwrap();
             debug!(
                 "Exiting guard building context with locals: {:?}",
@@ -1498,14 +1500,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
 
             for &(_, temp) in fake_borrows {
-                self.cfg.push(block, Statement {
+                self.cfg.push(post_guard_block, Statement {
                     source_info: guard_end,
                     kind: StatementKind::FakeRead(
                         FakeReadCause::ForMatchGuard,
-                        Place::Base(PlaceBase::Local(temp)),
+                        Place::from(temp),
                     ),
                 });
             }
+
+            self.exit_scope(
+                source_info.span,
+                region_scope,
+                otherwise_post_guard_block,
+                candidate.otherwise_block.unwrap(),
+            );
 
             // We want to ensure that the matched candidates are bound
             // after we have confirmed this candidate *and* any
@@ -1533,41 +1542,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // ```
             //
             // and that is clearly not correct.
-            let post_guard_block = self.cfg.start_new_block();
-            let otherwise_post_guard_block = self.cfg.start_new_block();
-            self.cfg.terminate(
-                block,
-                source_info,
-                TerminatorKind::if_(
-                    self.hir.tcx(),
-                    cond.clone(),
-                    post_guard_block,
-                    otherwise_post_guard_block,
-                ),
-            );
-
-            self.exit_scope(
-                source_info.span,
-                region_scope,
-                otherwise_post_guard_block,
-                candidate.otherwise_block.unwrap(),
-            );
-
-            if let Operand::Copy(cond_place) | Operand::Move(cond_place) = cond {
-                if let Place::Base(PlaceBase::Local(cond_temp)) = cond_place {
-                    // We will call `clear_top_scope` if there's another guard. So
-                    // we have to drop this variable now or it will be "storage
-                    // leaked".
-                    self.pop_variable(
-                        post_guard_block,
-                        region_scope.0,
-                        cond_temp
-                    );
-                } else {
-                    bug!("Expected as_local_operand to produce a temporary");
-                }
-            }
-
             let by_value_bindings = candidate.bindings.iter().filter(|binding| {
                 if let BindingMode::ByValue = binding.binding_mode { true } else { false }
             });
@@ -1575,9 +1549,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {
                 let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
-                    let place = Place::Base(PlaceBase::Local(local_id));
+                    let place = Place::from(local_id);
                 self.cfg.push(
-                    block,
+                    post_guard_block,
                     Statement {
                         source_info: guard_end,
                         kind: StatementKind::FakeRead(FakeReadCause::ForGuardBinding, place),
@@ -1652,11 +1626,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // denotes *R.
             let ref_for_guard =
                 self.storage_live_binding(block, binding.var_id, binding.span, RefWithinGuard);
-            // Question: Why schedule drops if bindings are all
-            // shared-&'s?
-            // Answer: Because schedule_drop_for_binding also emits
-            // StorageDead's for those locals.
-            self.schedule_drop_for_binding(binding.var_id, binding.span, RefWithinGuard);
             match binding.binding_mode {
                 BindingMode::ByValue => {
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source.clone());
@@ -1666,11 +1635,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 BindingMode::ByRef(borrow_kind) => {
                     let value_for_arm = self.storage_live_binding(
                         block,
-                        binding.var_id,
-                        binding.span,
-                        OutsideGuard,
-                    );
-                    self.schedule_drop_for_binding(
                         binding.var_id,
                         binding.span,
                         OutsideGuard,

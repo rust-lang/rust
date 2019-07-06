@@ -42,7 +42,7 @@ impl S {
 // START rustc.test.ElaborateDrops.after.mir
 //    let mut _0: ();
 //    let _1: S;
-//    let mut _3: ();
+//    let _3: ();
 //    let mut _4: S;
 //    let mut _5: S;
 //    let mut _6: bool;

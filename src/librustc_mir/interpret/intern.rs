@@ -3,7 +3,6 @@
 //! After a const evaluation has computed a value, before we destroy the const evaluator's session
 //! memory, we need to extract all memory allocations to the global memory pool so they stay around.
 
-use rustc::ty::layout::LayoutOf;
 use rustc::ty::{Ty, TyCtxt, ParamEnv, self};
 use rustc::mir::interpret::{
     InterpResult, ErrorHandled,
@@ -143,18 +142,15 @@ for
         // Handle Reference types, as these are the only relocations supported by const eval.
         // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
         let ty = mplace.layout.ty;
-        if let ty::Ref(_, _, mutability) = ty.sty {
+        if let ty::Ref(_, referenced_ty, mutability) = ty.sty {
             let value = self.ecx.read_immediate(mplace.into())?;
             // Handle trait object vtables
             if let Ok(meta) = value.to_meta() {
-                let layout = self.ecx.layout_of(ty.builtin_deref(true).unwrap().ty)?;
-                if layout.is_unsized() {
-                    if let ty::Dynamic(..) = self.ecx.tcx.struct_tail(layout.ty).sty {
-                        if let Ok(vtable) = meta.unwrap().to_ptr() {
-                            // explitly choose `Immutable` here, since vtables are immutable, even
-                            // if the reference of the fat pointer is mutable
-                            self.intern_shallow(vtable, Mutability::Immutable)?;
-                        }
+                if let ty::Dynamic(..) = self.ecx.tcx.struct_tail(referenced_ty).sty {
+                    if let Ok(vtable) = meta.unwrap().to_ptr() {
+                        // explitly choose `Immutable` here, since vtables are immutable, even
+                        // if the reference of the fat pointer is mutable
+                        self.intern_shallow(vtable, Mutability::Immutable)?;
                     }
                 }
             }
@@ -178,8 +174,14 @@ for
                     (InternMode::Static, hir::Mutability::MutMutable) => {},
                     // we statically prevent `&mut T` via `const_qualif` and double check this here
                     (InternMode::ConstBase, hir::Mutability::MutMutable) |
-                    (InternMode::Const, hir::Mutability::MutMutable) =>
-                        bug!("const qualif failed to prevent mutable references"),
+                    (InternMode::Const, hir::Mutability::MutMutable) => {
+                        match referenced_ty.sty {
+                            ty::Array(_, n) if n.unwrap_usize(self.ecx.tcx.tcx) == 0 => {}
+                            ty::Slice(_)
+                                if value.to_meta().unwrap().unwrap().to_usize(self.ecx)? == 0 => {}
+                            _ => bug!("const qualif failed to prevent mutable references"),
+                        }
+                    },
                 }
                 // Compute the mutability with which we'll start visiting the allocation. This is
                 // what gets changed when we encounter an `UnsafeCell`

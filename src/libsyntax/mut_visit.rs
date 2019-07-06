@@ -131,10 +131,6 @@ pub trait MutVisitor: Sized {
         noop_visit_arm(a, self);
     }
 
-    fn visit_guard(&mut self, g: &mut Guard) {
-        noop_visit_guard(g, self);
-    }
-
     fn visit_pat(&mut self, p: &mut P<Pat>) {
         noop_visit_pat(p, self);
     }
@@ -389,15 +385,9 @@ pub fn noop_visit_arm<T: MutVisitor>(
 ) {
     visit_attrs(attrs, vis);
     visit_vec(pats, |pat| vis.visit_pat(pat));
-    visit_opt(guard, |guard| vis.visit_guard(guard));
+    visit_opt(guard, |guard| vis.visit_expr(guard));
     vis.visit_expr(body);
     vis.visit_span(span);
-}
-
-pub fn noop_visit_guard<T: MutVisitor>(g: &mut Guard, vis: &mut T) {
-    match g {
-        Guard::If(e) => vis.visit_expr(e),
-    }
 }
 
 pub fn noop_visit_ty_constraint<T: MutVisitor>(
@@ -1271,7 +1261,6 @@ pub fn noop_visit_vis<T: MutVisitor>(Spanned { node, span }: &mut Visibility, vi
 
 #[cfg(test)]
 mod tests {
-    use std::io;
     use crate::ast::{self, Ident};
     use crate::util::parser_testing::{string_to_crate, matches_codepattern};
     use crate::print::pprust;
@@ -1281,7 +1270,7 @@ mod tests {
 
     // this version doesn't care about getting comments or docstrings in.
     fn fake_print_crate(s: &mut pprust::State<'_>,
-                        krate: &ast::Crate) -> io::Result<()> {
+                        krate: &ast::Crate) {
         s.print_mod(&krate.module, &krate.attrs)
     }
 

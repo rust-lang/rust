@@ -320,7 +320,7 @@ impl<T: ?Sized> Box<T> {
     /// This conversion does not allocate on the heap and happens in place.
     ///
     /// This is also available via [`From`].
-    #[unstable(feature = "box_into_pin", issue = "0")]
+    #[unstable(feature = "box_into_pin", issue = "62370")]
     pub fn into_pin(boxed: Box<T>) -> Pin<Box<T>> {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
         // when `T: !Unpin`,  so it's safe to pin it directly without any
@@ -367,12 +367,19 @@ impl<T: Clone> Clone for Box<T> {
     /// ```
     /// let x = Box::new(5);
     /// let y = x.clone();
+    ///
+    /// // The value is the same
+    /// assert_eq!(x, y);
+    ///
+    /// // But they are unique objects
+    /// assert_ne!(&*x as *const i32, &*y as *const i32);
     /// ```
     #[rustfmt::skip]
     #[inline]
     fn clone(&self) -> Box<T> {
         box { (**self).clone() }
     }
+
     /// Copies `source`'s contents into `self` without creating a new allocation.
     ///
     /// # Examples
@@ -380,10 +387,15 @@ impl<T: Clone> Clone for Box<T> {
     /// ```
     /// let x = Box::new(5);
     /// let mut y = Box::new(10);
+    /// let yp: *const i32 = &*y;
     ///
     /// y.clone_from(&x);
     ///
-    /// assert_eq!(*y, 5);
+    /// // The value is the same
+    /// assert_eq!(x, y);
+    ///
+    /// // And no allocation occurred
+    /// assert_eq!(yp, &*y);
     /// ```
     #[inline]
     fn clone_from(&mut self, source: &Box<T>) {
@@ -716,6 +728,14 @@ impl<I: Iterator + ?Sized> Iterator for Box<I> {
         (**self).nth(n)
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator + Sized> Iterator for Box<I> {
+    fn last(self) -> Option<I::Item> where I: Sized {
+        (*self).last()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
     fn next_back(&mut self) -> Option<I::Item> {
@@ -758,85 +778,6 @@ impl<A, F: FnMut<A> + ?Sized> FnMut<A> for Box<F> {
 impl<A, F: Fn<A> + ?Sized> Fn<A> for Box<F> {
     extern "rust-call" fn call(&self, args: A) -> Self::Output {
         <F as Fn<A>>::call(self, args)
-    }
-}
-
-/// `FnBox` is deprecated and will be removed.
-/// `Box<dyn FnOnce()>` can be called directly, since Rust 1.35.0.
-///
-/// `FnBox` is a version of the `FnOnce` intended for use with boxed
-/// closure objects. The idea was that where one would normally store a
-/// `Box<dyn FnOnce()>` in a data structure, you whould use
-/// `Box<dyn FnBox()>`. The two traits behave essentially the same, except
-/// that a `FnBox` closure can only be called if it is boxed.
-///
-/// # Examples
-///
-/// Here is a snippet of code which creates a hashmap full of boxed
-/// once closures and then removes them one by one, calling each
-/// closure as it is removed. Note that the type of the closures
-/// stored in the map is `Box<dyn FnBox() -> i32>` and not `Box<dyn FnOnce()
-/// -> i32>`.
-///
-/// ```
-/// #![feature(fnbox)]
-/// #![allow(deprecated)]
-///
-/// use std::boxed::FnBox;
-/// use std::collections::HashMap;
-///
-/// fn make_map() -> HashMap<i32, Box<dyn FnBox() -> i32>> {
-///     let mut map: HashMap<i32, Box<dyn FnBox() -> i32>> = HashMap::new();
-///     map.insert(1, Box::new(|| 22));
-///     map.insert(2, Box::new(|| 44));
-///     map
-/// }
-///
-/// fn main() {
-///     let mut map = make_map();
-///     for i in &[1, 2] {
-///         let f = map.remove(&i).unwrap();
-///         assert_eq!(f(), i * 22);
-///     }
-/// }
-/// ```
-///
-/// In Rust 1.35.0 or later, use `FnOnce`, `FnMut`, or `Fn` instead:
-///
-/// ```
-/// use std::collections::HashMap;
-///
-/// fn make_map() -> HashMap<i32, Box<dyn FnOnce() -> i32>> {
-///     let mut map: HashMap<i32, Box<dyn FnOnce() -> i32>> = HashMap::new();
-///     map.insert(1, Box::new(|| 22));
-///     map.insert(2, Box::new(|| 44));
-///     map
-/// }
-///
-/// fn main() {
-///     let mut map = make_map();
-///     for i in &[1, 2] {
-///         let f = map.remove(&i).unwrap();
-///         assert_eq!(f(), i * 22);
-///     }
-/// }
-/// ```
-#[rustc_paren_sugar]
-#[unstable(feature = "fnbox", issue = "28796")]
-#[rustc_deprecated(reason = "use `FnOnce`, `FnMut`, or `Fn` instead", since = "1.37.0")]
-pub trait FnBox<A>: FnOnce<A> {
-    /// Performs the call operation.
-    fn call_box(self: Box<Self>, args: A) -> Self::Output;
-}
-
-#[unstable(feature = "fnbox", issue = "28796")]
-#[rustc_deprecated(reason = "use `FnOnce`, `FnMut`, or `Fn` instead", since = "1.37.0")]
-#[allow(deprecated, deprecated_in_future)]
-impl<A, F> FnBox<A> for F
-    where F: FnOnce<A>
-{
-    fn call_box(self: Box<F>, args: A) -> F::Output {
-        self.call_once(args)
     }
 }
 

@@ -26,7 +26,6 @@ use crate::mut_visit::{*, ExpectOne};
 use crate::feature_gate::Features;
 use crate::util::map_in_place::MapInPlace;
 use crate::parse::{token, ParseSess};
-use crate::print::pprust;
 use crate::ast::{self, Ident};
 use crate::ptr::P;
 use crate::symbol::{self, Symbol, kw, sym};
@@ -120,8 +119,8 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
         if let ast::ItemKind::Mod(mut module) = item.node {
-            let tests = mem::replace(&mut self.tests, Vec::new());
-            let tested_submods = mem::replace(&mut self.tested_submods, Vec::new());
+            let tests = mem::take(&mut self.tests);
+            let tested_submods = mem::take(&mut self.tested_submods);
             noop_visit_mod(&mut module, self);
             let tests = mem::replace(&mut self.tests, tests);
             let tested_submods = mem::replace(&mut self.tested_submods, tested_submods);

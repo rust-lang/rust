@@ -346,7 +346,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         // current architecture.
         let resolver = abort_on_err(compiler.expansion(), sess).peek().1.clone();
 
-        if sess.err_count() > 0 {
+        if sess.has_errors() {
             sess.fatal("Compilation failed, aborting rustdoc");
         }
 
@@ -363,7 +363,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             // to the map from defid -> hirid
             let access_levels = AccessLevels {
                 map: access_levels.map.iter()
-                                    .map(|(&k, &v)| (tcx.hir().local_def_id_from_hir_id(k), v))
+                                    .map(|(&k, &v)| (tcx.hir().local_def_id(k), v))
                                     .collect()
             };
 

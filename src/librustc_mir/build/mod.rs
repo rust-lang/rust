@@ -22,7 +22,7 @@ use syntax_pos::Span;
 use super::lints;
 
 /// Construct the MIR for a given `DefId`.
-pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
+pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
@@ -69,7 +69,7 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
             let fn_sig = cx.tables().liberated_fn_sigs()[id].clone();
-            let fn_def_id = tcx.hir().local_def_id_from_hir_id(id);
+            let fn_def_id = tcx.hir().local_def_id(id);
 
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
@@ -171,11 +171,11 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn liberated_closure_env_ty<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn liberated_closure_env_ty(
+    tcx: TyCtxt<'_>,
     closure_expr_id: hir::HirId,
     body_id: hir::BodyId,
-) -> Ty<'tcx> {
+) -> Ty<'_> {
     let closure_ty = tcx.body_tables(body_id).node_type(closure_expr_id);
 
     let (closure_def_id, closure_substs) = match closure_ty.sty {
@@ -251,7 +251,7 @@ struct Builder<'a, 'tcx> {
 
     /// The current set of scopes, updated as we traverse;
     /// see the `scope` module for more details.
-    scopes: Vec<scope::Scope<'tcx>>,
+    scopes: scope::Scopes<'tcx>,
 
     /// The block-context: each time we build the code within an hair::Block,
     /// we push a frame here tracking whether we are building a statement or
@@ -273,10 +273,6 @@ struct Builder<'a, 'tcx> {
 
     /// The number of `push_unsafe_block` levels in scope.
     push_unsafe_count: usize,
-
-    /// The current set of breakables; see the `scope` module for more
-    /// details.
-    breakable_scopes: Vec<scope::BreakableScope<'tcx>>,
 
     /// The vector of all scopes that we have created thus far;
     /// we track this for debuginfo later.
@@ -489,7 +485,7 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: DefId, abi: Abi) -> bool {
+fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
     // Not callable from C, so we can safely unwind through these
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
 
@@ -538,7 +534,7 @@ where
     let span = tcx_hir.span(fn_id);
 
     let hir_tables = hir.tables();
-    let fn_def_id = tcx_hir.local_def_id_from_hir_id(fn_id);
+    let fn_def_id = tcx_hir.local_def_id(fn_id);
 
     // Gather the upvars of a closure, if any.
     let mut upvar_mutbls = vec![];
@@ -552,7 +548,6 @@ where
         .into_iter()
         .flatten()
         .map(|(&var_hir_id, &upvar_id)| {
-            let var_node_id = tcx_hir.hir_to_node_id(var_hir_id);
             let capture = hir_tables.upvar_capture(upvar_id);
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
@@ -563,7 +558,7 @@ where
                 by_ref,
             };
             let mut mutability = Mutability::Not;
-            if let Some(Node::Binding(pat)) = tcx_hir.find(var_node_id) {
+            if let Some(Node::Binding(pat)) = tcx_hir.find(var_hir_id) {
                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
                     debuginfo.debug_name = ident.name;
                     if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
@@ -609,9 +604,18 @@ where
         }
 
         let arg_scope_s = (arg_scope, source_info);
-        unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
-            builder.args_and_body(block, &arguments, arg_scope, &body.value)
-        }));
+        // `return_block` is called when we evaluate a `return` expression, so
+        // we just use `START_BLOCK` here.
+        unpack!(block = builder.in_breakable_scope(
+            None,
+            START_BLOCK,
+            Place::RETURN_PLACE,
+            |builder| {
+                builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
+                    builder.args_and_body(block, &arguments, arg_scope, &body.value)
+                })
+            },
+        ));
         // Attribute epilogue to function's closing brace
         let fn_end = span.shrink_to_hi();
         let source_info = builder.source_info(fn_end);
@@ -715,7 +719,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             fn_span: span,
             arg_count,
             is_generator,
-            scopes: vec![],
+            scopes: Default::default(),
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
@@ -723,7 +727,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             guard_context: vec![],
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
-            breakable_scopes: vec![],
             local_decls: IndexVec::from_elem_n(
                 LocalDecl::new_return_place(return_ty, return_span),
                 1,
@@ -809,13 +812,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for (index, arg_info) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
-            let place = Place::Base(PlaceBase::Local(local));
+            let place = Place::from(local);
             let &ArgInfo(ty, opt_ty_info, pattern, ref self_binding) = arg_info;
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
                 pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                argument_scope, &place, ty, DropKind::Value,
+                argument_scope, local, ty, DropKind::Value,
             );
 
             if let Some(pattern) = pattern {

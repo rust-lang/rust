@@ -2096,6 +2096,18 @@ impl<'tcx> Place<'tcx> {
     }
 }
 
+impl From<Local> for Place<'_> {
+    fn from(local: Local) -> Self {
+        Place::Base(local.into())
+    }
+}
+
+impl From<Local> for PlaceBase<'_> {
+    fn from(local: Local) -> Self {
+        PlaceBase::Local(local)
+    }
+}
+
 /// A linked list of projections running up the stack; begins with the
 /// innermost projection and extends to the outermost (e.g., `a.b.c`
 /// would have the place `b` with a "next" pointer to `b.c`).
@@ -2855,19 +2867,19 @@ impl<'tcx> graph::WithStartNode for Body<'tcx> {
 }
 
 impl<'tcx> graph::WithPredecessors for Body<'tcx> {
-    fn predecessors<'graph>(
-        &'graph self,
+    fn predecessors(
+        &self,
         node: Self::Node,
-    ) -> <Self as GraphPredecessors<'graph>>::Iter {
+    ) -> <Self as GraphPredecessors<'_>>::Iter {
         self.predecessors_for(node).clone().into_iter()
     }
 }
 
 impl<'tcx> graph::WithSuccessors for Body<'tcx> {
-    fn successors<'graph>(
-        &'graph self,
+    fn successors(
+        &self,
         node: Self::Node,
-    ) -> <Self as GraphSuccessors<'graph>>::Iter {
+    ) -> <Self as GraphSuccessors<'_>>::Iter {
         self.basic_blocks[node].terminator().successors().cloned()
     }
 }

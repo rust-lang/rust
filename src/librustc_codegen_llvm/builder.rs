@@ -144,7 +144,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn build_sibling_block<'b>(&self, name: &'b str) -> Self {
+    fn build_sibling_block(&self, name: &str) -> Self {
         Builder::new_block(self.cx, self.llfn(), name)
     }
 

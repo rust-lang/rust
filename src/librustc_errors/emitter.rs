@@ -1339,7 +1339,7 @@ impl EmitterWriter {
         }
 
         let mut dst = self.dst.writable();
-        match write!(dst, "\n") {
+        match writeln!(dst) {
             Err(e) => panic!("failed to emit error: {}", e),
             _ => {
                 match dst.flush() {
@@ -1598,7 +1598,7 @@ fn emit_to_destination(rendered_buffer: &[Vec<StyledString>],
             dst.reset()?;
         }
         if !short_message && (!lvl.is_failure_note() || pos != rendered_buffer.len() - 1) {
-            write!(dst, "\n")?;
+            writeln!(dst)?;
         }
     }
     dst.flush()?;
@@ -1635,7 +1635,7 @@ impl Destination {
         }
     }
 
-    fn writable<'a>(&'a mut self) -> WritableDst<'a> {
+    fn writable(&mut self) -> WritableDst<'_> {
         match *self {
             Destination::Terminal(ref mut t) => WritableDst::Terminal(t),
             Destination::Buffered(ref mut t) => {

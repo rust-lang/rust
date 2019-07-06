@@ -7,6 +7,7 @@ use crate::hir::{self, GenericArg, GenericArgs, ExprKind};
 use crate::hir::def::{CtorOf, Res, DefKind};
 use crate::hir::def_id::DefId;
 use crate::hir::HirVec;
+use crate::hir::ptr::P;
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
@@ -23,7 +24,6 @@ use crate::require_c_abi_if_c_variadic;
 use smallvec::SmallVec;
 use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span, MultiSpan};
@@ -34,7 +34,6 @@ use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
 
-use super::{check_type_alias_enum_variants_enabled};
 use rustc_data_structures::fx::FxHashSet;
 
 #[derive(Debug)]
@@ -1595,7 +1594,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 });
                 if let Some(variant_def) = variant_def {
                     if permit_variants {
-                        check_type_alias_enum_variants_enabled(tcx, span);
                         tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span);
                         return Ok((qself_ty, DefKind::Variant, variant_def.def_id));
                     } else {
@@ -2000,8 +1998,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.prohibit_generics(&path.segments);
 
                 let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-                let item_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
-                let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
+                let item_id = tcx.hir().get_parent_node(hir_id);
+                let item_def_id = tcx.hir().local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
                 tcx.mk_ty_param(index, tcx.hir().name(hir_id).as_interned_str())
@@ -2093,7 +2091,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.res_to_ty(opt_self_ty, path, false)
             }
             hir::TyKind::Def(item_id, ref lifetimes) => {
-                let did = tcx.hir().local_def_id_from_hir_id(item_id.id);
+                let did = tcx.hir().local_def_id(item_id.id);
                 self.impl_trait_ty_to_ty(did, lifetimes)
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
@@ -2175,7 +2173,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         debug!("ast_const_to_const(id={:?}, ast_const={:?})", ast_const.hir_id, ast_const);
 
         let tcx = self.tcx();
-        let def_id = tcx.hir().local_def_id_from_hir_id(ast_const.hir_id);
+        let def_id = tcx.hir().local_def_id(ast_const.hir_id);
 
         let mut const_ = ty::Const {
             val: ConstValue::Unevaluated(
@@ -2190,10 +2188,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // Find the name and index of the const parameter by indexing the generics of the
             // parent item and construct a `ParamConst`.
             let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-            let item_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
-            let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
+            let item_id = tcx.hir().get_parent_node(hir_id);
+            let item_def_id = tcx.hir().local_def_id(item_id);
             let generics = tcx.generics_of(item_def_id);
-            let index = generics.param_def_id_to_index[&tcx.hir().local_def_id_from_hir_id(hir_id)];
+            let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
             let name = tcx.hir().name(hir_id).as_interned_str();
             const_.val = ConstValue::Param(ty::ParamConst::new(index, name));
         }

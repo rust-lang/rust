@@ -467,7 +467,7 @@ impl Inliner<'tcx> {
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
                     let tmp = caller_body.local_decls.push(temp);
-                    let tmp = Place::Base(PlaceBase::Local(tmp));
+                    let tmp = Place::from(tmp);
 
                     let stmt = Statement {
                         source_info: callsite.location,
@@ -561,7 +561,7 @@ impl Inliner<'tcx> {
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             assert!(args.next().is_none());
 
-            let tuple = Place::Base(PlaceBase::Local(tuple));
+            let tuple = Place::from(tuple);
             let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body, tcx).ty.sty {
                 s
             } else {
@@ -621,7 +621,7 @@ impl Inliner<'tcx> {
 
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Base(PlaceBase::Local(arg_tmp)), box arg),
+            kind: StatementKind::Assign(Place::from(arg_tmp), box arg),
         };
         caller_body[callsite.bb].statements.push(stmt);
         arg_tmp

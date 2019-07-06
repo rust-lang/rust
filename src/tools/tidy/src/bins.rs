@@ -25,16 +25,17 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
     }
 
-    super::walk(path,
+    super::walk_no_read(path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/etc"),
-                &mut |file| {
+                &mut |entry| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".py", ".sh"];
         if extensions.iter().any(|e| filename.ends_with(e)) {
             return;
         }
 
-        let metadata = t!(fs::symlink_metadata(&file), &file);
+        let metadata = t!(entry.metadata(), file);
         if metadata.mode() & 0o111 != 0 {
             let rel_path = file.strip_prefix(path).unwrap();
             let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");

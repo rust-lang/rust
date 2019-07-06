@@ -1,37 +1,37 @@
-use crate::{ast, attr};
 use crate::edition::Edition;
-use crate::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::ext::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
+use crate::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::ext::expand::{AstFragment, AstFragmentKind};
 use crate::ext::hygiene::Transparency;
-use crate::ext::tt::macro_parser::{Success, Error, Failure};
-use crate::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use crate::ext::tt::macro_parser::{parse, parse_failure_msg};
+use crate::ext::tt::macro_parser::{Error, Failure, Success};
+use crate::ext::tt::macro_parser::{MatchedNonterminal, MatchedSeq};
 use crate::ext::tt::quoted;
 use crate::ext::tt::transcribe::transcribe;
 use crate::feature_gate::Features;
-use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::Parser;
-use crate::parse::token::{self, Token, NtTT};
 use crate::parse::token::TokenKind::*;
-use crate::symbol::{Symbol, kw, sym};
+use crate::parse::token::{self, NtTT, Token};
+use crate::parse::{Directory, ParseSess};
+use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use crate::{ast, attr};
 
 use errors::FatalError;
-use syntax_pos::{Span, symbol::Ident};
 use log::debug;
+use syntax_pos::{symbol::Ident, Span};
 
-use rustc_data_structures::fx::{FxHashMap};
+use rustc_data_structures::fx::FxHashMap;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::slice;
 
-use rustc_data_structures::sync::Lrc;
 use errors::Applicability;
+use rustc_data_structures::sync::Lrc;
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
-    `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, \
-    `path`, `meta`, `tt`, `item` and `vis`";
+                                        `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
+                                        `literal`, `path`, `meta`, `tt`, `item` and `vis`";
 
 pub struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -48,7 +48,8 @@ impl<'a> ParserAnyMacro<'a> {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
         let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
             if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
-                if !e.span.is_dummy() {  // early end of macro arm (#52866)
+                if !e.span.is_dummy() {
+                    // early end of macro arm (#52866)
                     e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));
                 }
                 let msg = &e.message[0];
@@ -60,7 +61,8 @@ impl<'a> ParserAnyMacro<'a> {
                     msg.1,
                 );
             }
-            if e.span.is_dummy() {  // Get around lack of span in error (#30128)
+            if e.span.is_dummy() {
+                // Get around lack of span in error (#30128)
                 e.replace_span_with(site_span);
                 if parser.sess.source_map().span_to_filename(arm_span).is_real() {
                     e.span_label(arm_span, "in this macro arm");
@@ -99,17 +101,11 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         sp: Span,
         input: TokenStream,
         def_span: Option<Span>,
-    ) -> Box<dyn MacResult+'cx> {
+    ) -> Box<dyn MacResult + 'cx> {
         if !self.valid {
             return DummyResult::any(sp);
         }
-        generic_extension(cx,
-                          sp,
-                          def_span,
-                          self.name,
-                          input,
-                          &self.lhses,
-                          &self.rhses)
+        generic_extension(cx, sp, def_span, self.name, input, &self.lhses, &self.rhses)
     }
 }
 
@@ -119,14 +115,15 @@ fn trace_macros_note(cx: &mut ExtCtxt<'_>, sp: Span, message: String) {
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create
-fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
-                          sp: Span,
-                          def_span: Option<Span>,
-                          name: ast::Ident,
-                          arg: TokenStream,
-                          lhses: &[quoted::TokenTree],
-                          rhses: &[quoted::TokenTree])
-                          -> Box<dyn MacResult+'cx> {
+fn generic_extension<'cx>(
+    cx: &'cx mut ExtCtxt<'_>,
+    sp: Span,
+    def_span: Option<Span>,
+    name: ast::Ident,
+    arg: TokenStream,
+    lhses: &[quoted::TokenTree],
+    rhses: &[quoted::TokenTree],
+) -> Box<dyn MacResult + 'cx> {
     if cx.trace_macros() {
         trace_macros_note(cx, sp, format!("expanding `{}! {{ {} }}`", name, arg));
     }
@@ -134,10 +131,11 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
     // Which arm's failure should we report? (the one furthest along)
     let mut best_failure: Option<(Token, &str)> = None;
 
-    for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
+    for (i, lhs) in lhses.iter().enumerate() {
+        // try each arm's matchers
         let lhs_tt = match *lhs {
             quoted::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
-            _ => cx.span_bug(sp, "malformed macro lhs")
+            _ => cx.span_bug(sp, "malformed macro lhs"),
         };
 
         match TokenTree::parse(cx, lhs_tt, arg.clone()) {
@@ -173,8 +171,8 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
                     ownership: cx.current_expansion.directory_ownership,
                 };
                 let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false, None);
-                p.root_module_name = cx.current_expansion.module.mod_path.last()
-                    .map(|id| id.as_str().to_string());
+                p.root_module_name =
+                    cx.current_expansion.module.mod_path.last().map(|id| id.as_str().to_string());
 
                 p.process_potential_macro_variable();
                 // Let the context choose how to interpret the result.
@@ -188,15 +186,13 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
                     site_span: sp,
                     macro_ident: name,
                     arm_span,
-                })
+                });
             }
             Failure(token, msg) => match best_failure {
                 Some((ref best_token, _)) if best_token.span.lo() >= token.span.lo() => {}
-                _ => best_failure = Some((token, msg))
-            }
-            Error(err_sp, ref msg) => {
-                cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..])
-            }
+                _ => best_failure = Some((token, msg)),
+            },
+            Error(err_sp, ref msg) => cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..]),
         }
     }
 
@@ -212,7 +208,8 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
-        for lhs in lhses { // try each arm's matchers
+        for lhs in lhses {
+            // try each arm's matchers
             let lhs_tt = match *lhs {
                 quoted::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
@@ -249,7 +246,7 @@ pub fn compile(
     sess: &ParseSess,
     features: &Features,
     def: &ast::Item,
-    edition: Edition
+    edition: Edition,
 ) -> SyntaxExtension {
     let lhs_nm = ast::Ident::new(sym::lhs, def.span);
     let rhs_nm = ast::Ident::new(sym::rhs, def.span);
@@ -267,25 +264,32 @@ pub fn compile(
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
     let argument_gram = vec![
-        quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
-            tts: vec![
-                quoted::TokenTree::MetaVarDecl(def.span, lhs_nm, tt_spec),
-                quoted::TokenTree::token(token::FatArrow, def.span),
-                quoted::TokenTree::MetaVarDecl(def.span, rhs_nm, tt_spec),
-            ],
-            separator: Some(Token::new(
-                if body.legacy { token::Semi } else { token::Comma }, def.span
-            )),
-            op: quoted::KleeneOp::OneOrMore,
-            num_captures: 2,
-        })),
+        quoted::TokenTree::Sequence(
+            DelimSpan::dummy(),
+            Lrc::new(quoted::SequenceRepetition {
+                tts: vec![
+                    quoted::TokenTree::MetaVarDecl(def.span, lhs_nm, tt_spec),
+                    quoted::TokenTree::token(token::FatArrow, def.span),
+                    quoted::TokenTree::MetaVarDecl(def.span, rhs_nm, tt_spec),
+                ],
+                separator: Some(Token::new(
+                    if body.legacy { token::Semi } else { token::Comma },
+                    def.span,
+                )),
+                op: quoted::KleeneOp::OneOrMore,
+                num_captures: 2,
+            }),
+        ),
         // to phase into semicolon-termination instead of semicolon-separation
-        quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
-            tts: vec![quoted::TokenTree::token(token::Semi, def.span)],
-            separator: None,
-            op: quoted::KleeneOp::ZeroOrMore,
-            num_captures: 0
-        })),
+        quoted::TokenTree::Sequence(
+            DelimSpan::dummy(),
+            Lrc::new(quoted::SequenceRepetition {
+                tts: vec![quoted::TokenTree::token(token::Semi, def.span)],
+                separator: None,
+                op: quoted::KleeneOp::ZeroOrMore,
+                num_captures: 0,
+            }),
+        ),
     ];
 
     let argument_map = match parse(sess, body.stream(), &argument_gram, None, true) {
@@ -307,8 +311,9 @@ pub fn compile(
 
     // Extract the arguments:
     let lhses = match *argument_map[&lhs_nm] {
-        MatchedSeq(ref s, _) => {
-            s.iter().map(|m| {
+        MatchedSeq(ref s, _) => s
+            .iter()
+            .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
                         let tt = quoted::parse(
@@ -327,14 +332,15 @@ pub fn compile(
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
-            }).collect::<Vec<quoted::TokenTree>>()
-        }
-        _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
+            })
+            .collect::<Vec<quoted::TokenTree>>(),
+        _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
     };
 
     let rhses = match *argument_map[&rhs_nm] {
-        MatchedSeq(ref s, _) => {
-            s.iter().map(|m| {
+        MatchedSeq(ref s, _) => s
+            .iter()
+            .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
                         return quoted::parse(
@@ -345,14 +351,15 @@ pub fn compile(
                             &def.attrs,
                             edition,
                             def.id,
-                        ).pop()
-                         .unwrap();
+                        )
+                        .pop()
+                        .unwrap();
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
-            }).collect::<Vec<quoted::TokenTree>>()
-        }
-        _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs")
+            })
+            .collect::<Vec<quoted::TokenTree>>(),
+        _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs"),
     };
 
     for rhs in &rhses {
@@ -366,16 +373,12 @@ pub fn compile(
             sess,
             slice::from_ref(lhs),
             &mut FxHashMap::default(),
-            def.id
+            def.id,
         );
     }
 
-    let expander: Box<_> = Box::new(MacroRulesMacroExpander {
-        name: def.ident,
-        lhses,
-        rhses,
-        valid,
-    });
+    let expander: Box<_> =
+        Box::new(MacroRulesMacroExpander { name: def.ident, lhses, rhses, valid });
 
     let default_transparency = if attr::contains_name(&def.attrs, sym::rustc_transparent_macro) {
         Transparency::Transparent
@@ -385,29 +388,34 @@ pub fn compile(
         Transparency::Opaque
     };
 
-    let allow_internal_unstable = attr::find_by_name(&def.attrs, sym::allow_internal_unstable)
-        .map(|attr| attr
-            .meta_item_list()
-            .map(|list| list.iter()
-                .filter_map(|it| {
-                    let name = it.ident().map(|ident| ident.name);
-                    if name.is_none() {
-                        sess.span_diagnostic.span_err(it.span(),
-                            "allow internal unstable expects feature names")
-                    }
-                    name
+    let allow_internal_unstable =
+        attr::find_by_name(&def.attrs, sym::allow_internal_unstable).map(|attr| {
+            attr.meta_item_list()
+                .map(|list| {
+                    list.iter()
+                        .filter_map(|it| {
+                            let name = it.ident().map(|ident| ident.name);
+                            if name.is_none() {
+                                sess.span_diagnostic.span_err(
+                                    it.span(),
+                                    "allow internal unstable expects feature names",
+                                )
+                            }
+                            name
+                        })
+                        .collect::<Vec<Symbol>>()
+                        .into()
                 })
-                .collect::<Vec<Symbol>>().into()
-            )
-            .unwrap_or_else(|| {
-                sess.span_diagnostic.span_warn(
-                    attr.span, "allow_internal_unstable expects list of feature names. In the \
-                    future this will become a hard error. Please use `allow_internal_unstable(\
-                    foo, bar)` to only allow the `foo` and `bar` features",
-                );
-                vec![sym::allow_internal_unstable_backcompat_hack].into()
-            })
-        );
+                .unwrap_or_else(|| {
+                    sess.span_diagnostic.span_warn(
+                        attr.span,
+                        "allow_internal_unstable expects list of feature names. In the \
+                         future this will become a hard error. Please use `allow_internal_unstable(\
+                         foo, bar)` to only allow the `foo` and `bar` features",
+                    );
+                    vec![sym::allow_internal_unstable_backcompat_hack].into()
+                })
+        });
 
     let allow_internal_unsafe = attr::contains_name(&def.attrs, sym::allow_internal_unsafe);
 
@@ -418,14 +426,14 @@ pub fn compile(
         }
     }
 
-    let unstable_feature = attr::find_stability(&sess,
-                                                &def.attrs, def.span).and_then(|stability| {
-        if let attr::StabilityLevel::Unstable { issue, .. } = stability.level {
-            Some((stability.feature, issue))
-        } else {
-            None
-        }
-    });
+    let unstable_feature =
+        attr::find_stability(&sess, &def.attrs, def.span).and_then(|stability| {
+            if let attr::StabilityLevel::Unstable { issue, .. } = stability.level {
+                Some((stability.feature, issue))
+            } else {
+                None
+            }
+        });
 
     SyntaxExtension {
         kind: SyntaxExtensionKind::LegacyBang(expander),
@@ -440,10 +448,12 @@ pub fn compile(
     }
 }
 
-fn check_lhs_nt_follows(sess: &ParseSess,
-                        features: &Features,
-                        attrs: &[ast::Attribute],
-                        lhs: &quoted::TokenTree) -> bool {
+fn check_lhs_nt_follows(
+    sess: &ParseSess,
+    features: &Features,
+    attrs: &[ast::Attribute],
+    lhs: &quoted::TokenTree,
+) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     if let quoted::TokenTree::Delimited(_, ref tts) = *lhs {
@@ -464,19 +474,22 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
     for tt in tts {
         match *tt {
             TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => (),
-            TokenTree::Delimited(_, ref del) => if !check_lhs_no_empty_seq(sess, &del.tts) {
-                return false;
-            },
+            TokenTree::Delimited(_, ref del) => {
+                if !check_lhs_no_empty_seq(sess, &del.tts) {
+                    return false;
+                }
+            }
             TokenTree::Sequence(span, ref seq) => {
-                if seq.separator.is_none() && seq.tts.iter().all(|seq_tt| {
-                    match *seq_tt {
+                if seq.separator.is_none()
+                    && seq.tts.iter().all(|seq_tt| match *seq_tt {
                         TokenTree::MetaVarDecl(_, _, id) => id.name == sym::vis,
-                        TokenTree::Sequence(_, ref sub_seq) =>
+                        TokenTree::Sequence(_, ref sub_seq) => {
                             sub_seq.op == quoted::KleeneOp::ZeroOrMore
-                            || sub_seq.op == quoted::KleeneOp::ZeroOrOne,
+                                || sub_seq.op == quoted::KleeneOp::ZeroOrOne
+                        }
                         _ => false,
-                    }
-                }) {
+                    })
+                {
                     let sp = span.entire();
                     sess.span_diagnostic.span_err(sp, "repetition matches empty token tree");
                     return false;
@@ -517,7 +530,7 @@ fn check_lhs_duplicate_matcher_bindings(
                 if !check_lhs_duplicate_matcher_bindings(sess, &del.tts, metavar_names, node_id) {
                     return false;
                 }
-            },
+            }
             TokenTree::Sequence(_, ref seq) => {
                 if !check_lhs_duplicate_matcher_bindings(sess, &seq.tts, metavar_names, node_id) {
                     return false;
@@ -533,15 +546,17 @@ fn check_lhs_duplicate_matcher_bindings(
 fn check_rhs(sess: &ParseSess, rhs: &quoted::TokenTree) -> bool {
     match *rhs {
         quoted::TokenTree::Delimited(..) => return true,
-        _ => sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited")
+        _ => sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited"),
     }
     false
 }
 
-fn check_matcher(sess: &ParseSess,
-                 features: &Features,
-                 attrs: &[ast::Attribute],
-                 matcher: &[quoted::TokenTree]) -> bool {
+fn check_matcher(
+    sess: &ParseSess,
+    features: &Features,
+    attrs: &[ast::Attribute],
+    matcher: &[quoted::TokenTree],
+) -> bool {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
     let err = sess.span_diagnostic.err_count();
@@ -620,8 +635,8 @@ impl FirstSets {
 
                         // Reverse scan: Sequence comes before `first`.
                         if subfirst.maybe_empty
-                           || seq_rep.op == quoted::KleeneOp::ZeroOrMore
-                           || seq_rep.op == quoted::KleeneOp::ZeroOrOne
+                            || seq_rep.op == quoted::KleeneOp::ZeroOrMore
+                            || seq_rep.op == quoted::KleeneOp::ZeroOrOne
                         {
                             // If sequence is potentially empty, then
                             // union them (preserving first emptiness).
@@ -659,7 +674,6 @@ impl FirstSets {
                 TokenTree::Sequence(sp, ref seq_rep) => {
                     match self.first.get(&sp.entire()) {
                         Some(&Some(ref subfirst)) => {
-
                             // If the sequence contents can be empty, then the first
                             // token could be the separator token itself.
 
@@ -670,8 +684,8 @@ impl FirstSets {
                             assert!(first.maybe_empty);
                             first.add_all(subfirst);
                             if subfirst.maybe_empty
-                               || seq_rep.op == quoted::KleeneOp::ZeroOrMore
-                               || seq_rep.op == quoted::KleeneOp::ZeroOrOne
+                                || seq_rep.op == quoted::KleeneOp::ZeroOrMore
+                                || seq_rep.op == quoted::KleeneOp::ZeroOrOne
                             {
                                 // continue scanning for more first
                                 // tokens, but also make sure we
@@ -720,7 +734,9 @@ struct TokenSet {
 
 impl TokenSet {
     // Returns a set for the empty sequence.
-    fn empty() -> Self { TokenSet { tokens: Vec::new(), maybe_empty: true } }
+    fn empty() -> Self {
+        TokenSet { tokens: Vec::new(), maybe_empty: true }
+    }
 
     // Returns the set `{ tok }` for the single-token (and thus
     // non-empty) sequence [tok].
@@ -789,12 +805,14 @@ impl TokenSet {
 //
 // Requires that `first_sets` is pre-computed for `matcher`;
 // see `FirstSets::new`.
-fn check_matcher_core(sess: &ParseSess,
-                      features: &Features,
-                      attrs: &[ast::Attribute],
-                      first_sets: &FirstSets,
-                      matcher: &[quoted::TokenTree],
-                      follow: &TokenSet) -> TokenSet {
+fn check_matcher_core(
+    sess: &ParseSess,
+    features: &Features,
+    attrs: &[ast::Attribute],
+    first_sets: &FirstSets,
+    matcher: &[quoted::TokenTree],
+    follow: &TokenSet,
+) -> TokenSet {
     use quoted::TokenTree;
 
     let mut last = TokenSet::empty();
@@ -804,11 +822,13 @@ fn check_matcher_core(sess: &ParseSess,
     // then ensure T can also be followed by any element of FOLLOW.
     'each_token: for i in 0..matcher.len() {
         let token = &matcher[i];
-        let suffix = &matcher[i+1..];
+        let suffix = &matcher[i + 1..];
 
         let build_suffix_first = || {
             let mut s = first_sets.first(suffix);
-            if s.maybe_empty { s.add_all(follow); }
+            if s.maybe_empty {
+                s.add_all(follow);
+            }
             s
         };
 
@@ -824,7 +844,8 @@ fn check_matcher_core(sess: &ParseSess,
                 let can_be_followed_by_any;
                 if let Err(bad_frag) = has_legal_fragment_specifier(sess, features, attrs, token) {
                     let msg = format!("invalid fragment specifier `{}`", bad_frag);
-                    sess.span_diagnostic.struct_span_err(token.span(), &msg)
+                    sess.span_diagnostic
+                        .struct_span_err(token.span(), &msg)
                         .help(VALID_FRAGMENT_NAMES_MSG)
                         .emit();
                     // (This eliminates false positives and duplicates
@@ -879,12 +900,8 @@ fn check_matcher_core(sess: &ParseSess,
                 // At this point, `suffix_first` is built, and
                 // `my_suffix` is some TokenSet that we can use
                 // for checking the interior of `seq_rep`.
-                let next = check_matcher_core(sess,
-                                              features,
-                                              attrs,
-                                              first_sets,
-                                              &seq_rep.tts,
-                                              my_suffix);
+                let next =
+                    check_matcher_core(sess, features, attrs, first_sets, &seq_rep.tts, my_suffix);
                 if next.maybe_empty {
                     last.add_all(&next);
                 } else {
@@ -906,16 +923,17 @@ fn check_matcher_core(sess: &ParseSess,
                 for next_token in &suffix_first.tokens {
                     match is_in_follow(next_token, &frag_spec.as_str()) {
                         IsInFollow::Invalid(msg, help) => {
-                            sess.span_diagnostic.struct_span_err(next_token.span(), &msg)
-                                .help(help).emit();
+                            sess.span_diagnostic
+                                .struct_span_err(next_token.span(), &msg)
+                                .help(help)
+                                .emit();
                             // don't bother reporting every source of
                             // conflict for a particular element of `last`.
                             continue 'each_last;
                         }
                         IsInFollow::Yes => {}
                         IsInFollow::No(possible) => {
-                            let may_be = if last.tokens.len() == 1 &&
-                                suffix_first.tokens.len() == 1
+                            let may_be = if last.tokens.len() == 1 && suffix_first.tokens.len() == 1
                             {
                                 "is"
                             } else {
@@ -925,12 +943,14 @@ fn check_matcher_core(sess: &ParseSess,
                             let sp = next_token.span();
                             let mut err = sess.span_diagnostic.struct_span_err(
                                 sp,
-                                &format!("`${name}:{frag}` {may_be} followed by `{next}`, which \
-                                          is not allowed for `{frag}` fragments",
-                                         name=name,
-                                         frag=frag_spec,
-                                         next=quoted_tt_to_string(next_token),
-                                         may_be=may_be),
+                                &format!(
+                                    "`${name}:{frag}` {may_be} followed by `{next}`, which \
+                                     is not allowed for `{frag}` fragments",
+                                    name = name,
+                                    frag = frag_spec,
+                                    next = quoted_tt_to_string(next_token),
+                                    may_be = may_be
+                                ),
                             );
                             err.span_label(
                                 sp,
@@ -942,16 +962,18 @@ fn check_matcher_core(sess: &ParseSess,
                                 &[t] => {
                                     err.note(&format!(
                                         "only {} is allowed after `{}` fragments",
-                                        t,
-                                        frag_spec,
+                                        t, frag_spec,
                                     ));
                                 }
                                 ts => {
                                     err.note(&format!(
                                         "{}{} or {}",
                                         msg,
-                                        ts[..ts.len() - 1].iter().map(|s| *s)
-                                            .collect::<Vec<_>>().join(", "),
+                                        ts[..ts.len() - 1]
+                                            .iter()
+                                            .map(|s| *s)
+                                            .collect::<Vec<_>>()
+                                            .join(", "),
                                         ts[ts.len() - 1],
                                     ));
                                 }
@@ -1026,13 +1048,13 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 // since items *must* be followed by either a `;` or a `}`, we can
                 // accept anything after them
                 IsInFollow::Yes
-            },
+            }
             "block" => {
                 // anything can follow block, the braces provide an easy boundary to
                 // maintain
                 IsInFollow::Yes
-            },
-            "stmt" | "expr"  => {
+            }
+            "stmt" | "expr" => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`;`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1041,7 +1063,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     },
                     _ => IsInFollow::No(TOKENS),
                 }
-            },
+            }
             "pat" => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
@@ -1052,40 +1074,48 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     },
                     _ => IsInFollow::No(TOKENS),
                 }
-            },
+            }
             "path" | "ty" => {
                 const TOKENS: &[&str] = &[
-                    "`{`", "`[`", "`=>`", "`,`", "`>`","`=`", "`:`", "`;`", "`|`", "`as`",
+                    "`{`", "`[`", "`=>`", "`,`", "`>`", "`=`", "`:`", "`;`", "`|`", "`as`",
                     "`where`",
                 ];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
-                        OpenDelim(token::DelimToken::Brace) |
-                        OpenDelim(token::DelimToken::Bracket) |
-                        Comma | FatArrow | Colon | Eq | Gt | BinOp(token::Shr) | Semi |
-                        BinOp(token::Or) => IsInFollow::Yes,
-                        Ident(name, false) if name == kw::As ||
-                                              name == kw::Where => IsInFollow::Yes,
+                        OpenDelim(token::DelimToken::Brace)
+                        | OpenDelim(token::DelimToken::Bracket)
+                        | Comma
+                        | FatArrow
+                        | Colon
+                        | Eq
+                        | Gt
+                        | BinOp(token::Shr)
+                        | Semi
+                        | BinOp(token::Or) => IsInFollow::Yes,
+                        Ident(name, false) if name == kw::As || name == kw::Where => {
+                            IsInFollow::Yes
+                        }
                         _ => IsInFollow::No(TOKENS),
                     },
-                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::block =>
-                        IsInFollow::Yes,
+                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::block => {
+                        IsInFollow::Yes
+                    }
                     _ => IsInFollow::No(TOKENS),
                 }
-            },
+            }
             "ident" | "lifetime" => {
                 // being a single token, idents and lifetimes are harmless
                 IsInFollow::Yes
-            },
+            }
             "literal" => {
                 // literals may be of a single token, or two tokens (negative numbers)
                 IsInFollow::Yes
-            },
+            }
             "meta" | "tt" => {
                 // being either a single token or a delimited sequence, tt is
                 // harmless
                 IsInFollow::Yes
-            },
+            }
             "vis" => {
                 // Explicitly disallow `priv`, on the off chance it comes back.
                 const TOKENS: &[&str] = &["`,`", "an ident", "a type"];
@@ -1093,30 +1123,39 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     TokenTree::Token(token) => match token.kind {
                         Comma => IsInFollow::Yes,
                         Ident(name, is_raw) if is_raw || name != kw::Priv => IsInFollow::Yes,
-                        _ => if token.can_begin_type() {
-                            IsInFollow::Yes
-                        } else {
-                            IsInFollow::No(TOKENS)
+                        _ => {
+                            if token.can_begin_type() {
+                                IsInFollow::Yes
+                            } else {
+                                IsInFollow::No(TOKENS)
+                            }
                         }
                     },
-                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::ident
-                                                       || frag.name == sym::ty
-                                                       || frag.name == sym::path =>
-                        IsInFollow::Yes,
+                    TokenTree::MetaVarDecl(_, _, frag)
+                        if frag.name == sym::ident
+                            || frag.name == sym::ty
+                            || frag.name == sym::path =>
+                    {
+                        IsInFollow::Yes
+                    }
                     _ => IsInFollow::No(TOKENS),
                 }
-            },
+            }
             "" => IsInFollow::Yes, // kw::Invalid
-            _ => IsInFollow::Invalid(format!("invalid fragment specifier `{}`", frag),
-                                     VALID_FRAGMENT_NAMES_MSG),
+            _ => IsInFollow::Invalid(
+                format!("invalid fragment specifier `{}`", frag),
+                VALID_FRAGMENT_NAMES_MSG,
+            ),
         }
     }
 }
 
-fn has_legal_fragment_specifier(sess: &ParseSess,
-                                features: &Features,
-                                attrs: &[ast::Attribute],
-                                tok: &quoted::TokenTree) -> Result<(), String> {
+fn has_legal_fragment_specifier(
+    sess: &ParseSess,
+    features: &Features,
+    attrs: &[ast::Attribute],
+    tok: &quoted::TokenTree,
+) -> Result<(), String> {
     debug!("has_legal_fragment_specifier({:?})", tok);
     if let quoted::TokenTree::MetaVarDecl(_, _, ref frag_spec) = *tok {
         let frag_span = tok.span();
@@ -1127,11 +1166,13 @@ fn has_legal_fragment_specifier(sess: &ParseSess,
     Ok(())
 }
 
-fn is_legal_fragment_specifier(_sess: &ParseSess,
-                               _features: &Features,
-                               _attrs: &[ast::Attribute],
-                               frag_name: Symbol,
-                               _frag_span: Span) -> bool {
+fn is_legal_fragment_specifier(
+    _sess: &ParseSess,
+    _features: &Features,
+    _attrs: &[ast::Attribute],
+    frag_name: Symbol,
+    _frag_span: Span,
+) -> bool {
     /*
      * If new fragment specifiers are invented in nightly, `_sess`,
      * `_features`, `_attrs`, and `_frag_span` will be useful here
@@ -1139,9 +1180,20 @@ fn is_legal_fragment_specifier(_sess: &ParseSess,
      * this function.
      */
     match frag_name {
-        sym::item | sym::block | sym::stmt | sym::expr | sym::pat |
-        sym::lifetime | sym::path | sym::ty | sym::ident | sym::meta | sym::tt |
-        sym::vis | sym::literal | kw::Invalid => true,
+        sym::item
+        | sym::block
+        | sym::stmt
+        | sym::expr
+        | sym::pat
+        | sym::lifetime
+        | sym::path
+        | sym::ty
+        | sym::ident
+        | sym::meta
+        | sym::tt
+        | sym::vis
+        | sym::literal
+        | kw::Invalid => true,
         _ => false,
     }
 }
@@ -1151,7 +1203,9 @@ fn quoted_tt_to_string(tt: &quoted::TokenTree) -> String {
         quoted::TokenTree::Token(ref token) => crate::print::pprust::token_to_string(&token),
         quoted::TokenTree::MetaVar(_, name) => format!("${}", name),
         quoted::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
-        _ => panic!("unexpected quoted::TokenTree::{{Sequence or Delimited}} \
-                     in follow set checker"),
+        _ => panic!(
+            "unexpected quoted::TokenTree::{{Sequence or Delimited}} \
+             in follow set checker"
+        ),
     }
 }

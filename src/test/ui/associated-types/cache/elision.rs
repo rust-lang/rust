@@ -1,9 +1,8 @@
-// compile-pass
-// skip-codegen
-#![allow(warnings)]
 // Check that you are allowed to implement using elision but write
 // trait without elision (a bug in this cropped up during
 // bootstrapping, so this is a regression test).
+
+// check-pass
 
 pub struct SplitWhitespace<'a> {
     x: &'a u8

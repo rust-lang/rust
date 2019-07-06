@@ -1,4 +1,4 @@
-// compile-pass
+// error-pattern:returned Box<Error> from main()
 // failure-status: 1
 
 use std::io::{Error, ErrorKind};

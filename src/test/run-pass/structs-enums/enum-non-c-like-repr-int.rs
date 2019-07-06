@@ -65,6 +65,7 @@ fn main() {
     unsafe {
         // This should be safe, because we don't match on it unless it's fully formed,
         // and it doesn't have a destructor.
+        #[allow(deprecated)]
         let mut dest: MyEnum = mem::uninitialized();
         while buf.len() > 0 {
             match parse_my_enum(&mut dest, &mut buf) {

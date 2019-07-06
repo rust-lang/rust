@@ -53,6 +53,7 @@ use crate::infer::{self, SuppressRegionErrors};
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::Node;
+use crate::infer::opaque_types;
 use crate::middle::region;
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::error::TypeError;
@@ -86,7 +87,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     )
                 };
                 let span = scope.span(self, region_scope_tree);
-                let tag = match self.hir().find_by_hir_id(scope.hir_id(region_scope_tree)) {
+                let tag = match self.hir().find(scope.hir_id(region_scope_tree)) {
                     Some(Node::Block(_)) => "block",
                     Some(Node::Expr(expr)) => match expr.node {
                         hir::ExprKind::Call(..) => "call",
@@ -182,7 +183,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let scope = region.free_region_binding_scope(self);
         let node = self.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
-        let tag = match self.hir().find_by_hir_id(node) {
+        let tag = match self.hir().find(node) {
             Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
             Some(Node::Item(it)) => Self::item_scope_tag(&it),
             Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
@@ -375,6 +376,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             );
                         }
                     }
+
+                    RegionResolutionError::MemberConstraintFailure {
+                        opaque_type_def_id,
+                        hidden_ty,
+                        member_region,
+                        span: _,
+                        choice_regions: _,
+                    } => {
+                        let hidden_ty = self.resolve_vars_if_possible(&hidden_ty);
+                        opaque_types::unexpected_hidden_region_diagnostic(
+                            self.tcx,
+                            Some(region_scope_tree),
+                            opaque_type_def_id,
+                            hidden_ty,
+                            member_region,
+                        ).emit();
+                    }
                 }
             }
         }
@@ -411,7 +429,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let is_bound_failure = |e: &RegionResolutionError<'tcx>| match *e {
             RegionResolutionError::GenericBoundFailure(..) => true,
             RegionResolutionError::ConcreteFailure(..)
-            | RegionResolutionError::SubSupConflict(..) => false,
+                | RegionResolutionError::SubSupConflict(..)
+                | RegionResolutionError::MemberConstraintFailure { .. } => false,
         };
 
         let mut errors = if errors.iter().all(|e| is_bound_failure(e)) {
@@ -429,6 +448,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _) => rvo.span(),
+            RegionResolutionError::MemberConstraintFailure { span, .. } => span,
         });
         errors
     }

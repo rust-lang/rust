@@ -5,7 +5,7 @@ LL | use std::option;
    |     ^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/bad-lint-cap3.rs:4:9
+  --> $DIR/bad-lint-cap3.rs:5:9
    |
 LL | #![deny(warnings)]
    |         ^^^^^^^^

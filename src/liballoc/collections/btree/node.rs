@@ -394,7 +394,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     /// Temporarily takes out another, immutable reference to the same node.
-    fn reborrow<'a>(&'a self) -> NodeRef<marker::Immut<'a>, K, V, Type> {
+    fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {
         NodeRef {
             height: self.height,
             node: self.node,

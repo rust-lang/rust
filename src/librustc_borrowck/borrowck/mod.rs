@@ -53,7 +53,7 @@ pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'tcx> = DataFlowContext<'tcx, LoanDataFlowOperator>;
 
-pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
+pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.par_body_owners(|body_owner_def_id| {
         tcx.ensure().borrowck(body_owner_def_id);
     });
@@ -73,7 +73,7 @@ pub struct AnalysisData<'tcx> {
     pub move_data: move_data::FlowedMoveData<'tcx>,
 }
 
-fn borrowck<'tcx>(tcx: TyCtxt<'tcx>, owner_def_id: DefId) -> &'tcx BorrowCheckResult {
+fn borrowck(tcx: TyCtxt<'_>, owner_def_id: DefId) -> &BorrowCheckResult {
     assert!(tcx.use_ast_borrowck() || tcx.migrate_borrowck());
 
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
@@ -198,7 +198,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     cfg: &cfg::CFG,
 ) -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'tcx>) {
     let owner_id = tcx.hir().body_owner(body_id);
-    let owner_def_id = tcx.hir().local_def_id_from_hir_id(owner_id);
+    let owner_def_id = tcx.hir().local_def_id(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_scope_tree = tcx.region_scope_tree(owner_def_id);
     let body = tcx.hir().body(body_id);
@@ -1022,7 +1022,7 @@ impl BorrowckCtxt<'_, 'tcx> {
 
                 if let ty::ReScope(scope) = *super_scope {
                     let hir_id = scope.hir_id(&self.region_scope_tree);
-                    match self.tcx.hir().find_by_hir_id(hir_id) {
+                    match self.tcx.hir().find(hir_id) {
                         Some(Node::Stmt(_)) => {
                             if *sub_scope != ty::ReStatic {
                                 db.note("consider using a `let` binding to increase its lifetime");
@@ -1189,7 +1189,7 @@ impl BorrowckCtxt<'_, 'tcx> {
     }
 
     fn local_ty(&self, hir_id: hir::HirId) -> (Option<&hir::Ty>, bool) {
-        let parent = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+        let parent = self.tcx.hir().get_parent_node(hir_id);
         let parent_node = self.tcx.hir().get(parent);
 
         // The parent node is like a fn
@@ -1287,7 +1287,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                     },
                 )) = ty.map(|t| &t.node)
                 {
-                    let borrow_expr_id = self.tcx.hir().get_parent_node_by_hir_id(borrowed_hir_id);
+                    let borrow_expr_id = self.tcx.hir().get_parent_node(borrowed_hir_id);
                     db.span_suggestion(
                         self.tcx.hir().span(borrow_expr_id),
                         "consider removing the `&mut`, as it is an \

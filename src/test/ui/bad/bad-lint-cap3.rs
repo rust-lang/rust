@@ -1,10 +1,9 @@
+// check-pass
 // compile-flags: --cap-lints warn
 
 #![warn(unused)]
 #![deny(warnings)]
-// compile-pass
-// skip-codegen
-use std::option; //~ WARN
 
+use std::option; //~ WARN
 
 fn main() {}

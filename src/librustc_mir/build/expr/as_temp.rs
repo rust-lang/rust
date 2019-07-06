@@ -64,7 +64,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             this.local_decls.push(local_decl)
         };
-        let temp_place = &Place::Base(PlaceBase::Local(temp));
+        let temp_place = &Place::from(temp);
 
         if !expr_ty.is_never() {
             this.cfg.push(
@@ -88,7 +88,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.schedule_drop(
                     expr_span,
                     temp_lifetime,
-                    temp_place,
+                    temp,
                     expr_ty,
                     DropKind::Storage,
                 );
@@ -101,7 +101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             this.schedule_drop(
                 expr_span,
                 temp_lifetime,
-                temp_place,
+                temp,
                 expr_ty,
                 DropKind::Value,
             );

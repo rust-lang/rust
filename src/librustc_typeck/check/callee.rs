@@ -244,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_node: &hir::ExprKind,
         callee_span: Span,
     ) {
-        let hir_id = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+        let hir_id = self.tcx.hir().get_parent_node(hir_id);
         let parent_node = self.tcx.hir().get(hir_id);
         if let (
             hir::Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, _, _, sp, ..), .. }),

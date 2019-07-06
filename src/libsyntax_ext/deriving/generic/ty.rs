@@ -39,10 +39,10 @@ pub enum PathKind {
 }
 
 impl<'a> Path<'a> {
-    pub fn new<'r>(path: Vec<&'r str>) -> Path<'r> {
+    pub fn new(path: Vec<&str>) -> Path<'_> {
         Path::new_(path, None, Vec::new(), PathKind::Std)
     }
-    pub fn new_local<'r>(path: &'r str) -> Path<'r> {
+    pub fn new_local(path: &str) -> Path<'_> {
         Path::new_(vec![path], None, Vec::new(), PathKind::Local)
     }
     pub fn new_<'r>(path: Vec<&'r str>,
@@ -117,7 +117,7 @@ pub enum Const {
 pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
     Borrowed(None, ast::Mutability::Immutable)
 }
-pub fn borrowed<'r>(ty: Box<Ty<'r>>) -> Ty<'r> {
+pub fn borrowed(ty: Box<Ty<'_>>) -> Ty<'_> {
     Ptr(ty, borrowed_ptrty())
 }
 

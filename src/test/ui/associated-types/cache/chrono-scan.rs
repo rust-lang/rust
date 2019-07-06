@@ -1,10 +1,10 @@
-// compile-pass
-// skip-codegen
-#![allow(warnings)]
+// check-pass
+
 pub type ParseResult<T> = Result<T, ()>;
 
-pub enum Item<'a> {     Literal(&'a str),
- }
+pub enum Item<'a> {
+    Literal(&'a str)
+}
 
 pub fn colon_or_space(s: &str) -> ParseResult<&str> {
     unimplemented!()
@@ -20,10 +20,9 @@ pub fn parse<'a, I>(mut s: &str, items: I) -> ParseResult<()>
     macro_rules! try_consume {
         ($e:expr) => ({ let (s_, v) = try!($e); s = s_; v })
     }
-    let offset = try_consume!(timezone_offset_zulu(s.trim_left(), colon_or_space));
-    let offset = try_consume!(timezone_offset_zulu(s.trim_left(), colon_or_space));
+    let offset = try_consume!(timezone_offset_zulu(s.trim_start(), colon_or_space));
+    let offset = try_consume!(timezone_offset_zulu(s.trim_start(), colon_or_space));
     Ok(())
 }
 
-
-fn main() { }
+fn main() {}

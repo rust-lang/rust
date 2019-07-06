@@ -3,7 +3,7 @@
 //FIXME(#44265): The lifetime shadowing and type parameter shadowing
 // should cause an error. Now it compiles (erroneously) and this will be addressed
 // by a future PR. Then remove the following:
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 trait Shadow<'a> {
     type Bar<'a>; // Error: shadowed lifetime

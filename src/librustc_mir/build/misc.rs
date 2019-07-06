@@ -16,7 +16,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// call `schedule_drop` once the temporary is initialized.
     pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
-        let place = Place::Base(PlaceBase::Local(temp));
+        let place = Place::from(temp);
         debug!("temp: created temp {:?} with type {:?}",
                place, self.local_decls[temp].ty);
         place

@@ -5,7 +5,7 @@ use rustc::ty::TyCtxt;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, Unsafety};
 
-pub fn check<'tcx>(tcx: TyCtxt<'tcx>) {
+pub fn check(tcx: TyCtxt<'_>) {
     let mut unsafety = UnsafetyChecker { tcx };
     tcx.hir().krate().visit_all_item_likes(&mut unsafety);
 }
@@ -21,7 +21,7 @@ impl UnsafetyChecker<'tcx> {
                                 unsafety: hir::Unsafety,
                                 polarity: hir::ImplPolarity)
     {
-        let local_did = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let local_did = self.tcx.hir().local_def_id(item.hir_id);
         if let Some(trait_ref) = self.tcx.impl_trait_ref(local_did) {
             let trait_def = self.tcx.trait_def(trait_ref.def_id);
             let unsafe_attr = impl_generics.and_then(|generics| {

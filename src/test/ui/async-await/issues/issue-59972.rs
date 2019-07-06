@@ -2,7 +2,7 @@
 
 // compile-flags: --edition=2018
 
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 
 pub enum Uninhabited { }
 
@@ -15,7 +15,7 @@ async fn noop() { }
 #[allow(unused)]
 async fn contains_never() {
     let error = uninhabited_async();
-    await!(noop());
+    noop().await;
     let error2 = error;
 }
 

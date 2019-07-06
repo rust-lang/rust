@@ -405,7 +405,7 @@ impl Config {
         config.incremental = flags.incremental;
         config.dry_run = flags.dry_run;
         config.keep_stage = flags.keep_stage;
-        if let Some(value) = flags.warnings {
+        if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
         }
 
@@ -571,7 +571,7 @@ impl Config {
             config.rustc_default_linker = rust.default_linker.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
-            set(&mut config.deny_warnings, rust.deny_warnings.or(flags.warnings));
+            set(&mut config.deny_warnings, flags.deny_warnings.or(rust.deny_warnings));
             set(&mut config.backtrace_on_ice, rust.backtrace_on_ice);
             set(&mut config.rust_verify_llvm_ir, rust.verify_llvm_ir);
             set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);

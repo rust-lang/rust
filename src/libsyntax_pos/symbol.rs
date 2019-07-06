@@ -135,6 +135,7 @@ symbols! {
         always,
         and,
         any,
+        arbitrary_enum_discriminant,
         arbitrary_self_types,
         Arguments,
         ArgumentV1,
@@ -145,6 +146,7 @@ symbols! {
         associated_type_defaults,
         associated_types,
         async_await,
+        async_closure,
         attr,
         attributes,
         attr_literals,
@@ -173,6 +175,7 @@ symbols! {
         cfg_target_thread_local,
         cfg_target_vendor,
         char,
+        clippy,
         clone,
         Clone,
         clone_closures,
@@ -214,6 +217,7 @@ symbols! {
         custom_inner_attributes,
         custom_test_frameworks,
         c_variadic,
+        declare_lint_pass,
         decl_macro,
         Default,
         default_lib_allocator,
@@ -324,6 +328,7 @@ symbols! {
         if_while_or_patterns,
         ignore,
         impl_header_lifetime_elision,
+        impl_lint_pass,
         impl_trait_in_bindings,
         import_shadowing,
         index,
@@ -365,6 +370,7 @@ symbols! {
         link_llvm_intrinsics,
         link_name,
         link_section,
+        LintPass,
         lint_reasons,
         literal,
         local_inner_macros,
@@ -388,6 +394,7 @@ symbols! {
         match_beginning_vert,
         match_default_bindings,
         may_dangle,
+        member_constraints,
         message,
         meta,
         min_const_fn,
@@ -1131,6 +1138,7 @@ impl LocalInternedString {
         }
     }
 
+    #[inline]
     pub fn get(&self) -> &str {
         // This returns a valid string since we ensure that `self` outlives the interner
         // by creating the interner on a thread which outlives threads which can access it.
@@ -1144,6 +1152,7 @@ impl<U: ?Sized> std::convert::AsRef<U> for LocalInternedString
 where
     str: std::convert::AsRef<U>
 {
+    #[inline]
     fn as_ref(&self) -> &U {
         self.string.as_ref()
     }
@@ -1184,6 +1193,7 @@ impl !Sync for LocalInternedString {}
 
 impl std::ops::Deref for LocalInternedString {
     type Target = str;
+    #[inline]
     fn deref(&self) -> &str { self.string }
 }
 

@@ -4,7 +4,7 @@
 // suggestions to use `crate` given when it is on). When that feature becomes
 // stable, this test can be deleted.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 
 #![allow(unused)]

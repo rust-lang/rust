@@ -627,7 +627,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     def_id, is_generator, places
                 );
                 if let Some((args_span, var_span)) = self.closure_span(
-                    *def_id, &Place::Base(PlaceBase::Local(target)), places
+                    *def_id, &Place::from(target), places
                 ) {
                     return ClosureUse {
                         is_generator,

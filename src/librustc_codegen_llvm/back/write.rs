@@ -239,9 +239,9 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
     }
 }
 
-unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<LlvmCodegenBackend>,
-                                               msg: &'b str,
-                                               cookie: c_uint) {
+unsafe extern "C" fn report_inline_asm(cgcx: &CodegenContext<LlvmCodegenBackend>,
+                                       msg: &str,
+                                       cookie: c_uint) {
     cgcx.diag_emitter.inline_asm_error(cookie as u32, msg.to_owned());
 }
 

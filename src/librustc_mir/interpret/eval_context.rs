@@ -26,7 +26,7 @@ use super::{
     Memory, Machine
 };
 
-pub struct InterpretCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
     pub machine: M,
 
@@ -158,14 +158,14 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpretCx<'mir, 'tcx, M>
+impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'mir, 'tcx, M>
 where
     M: Machine<'mir, 'tcx>,
 {
@@ -175,7 +175,7 @@ where
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpretCx<'mir, 'tcx, M>
+impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'mir, 'tcx, M>
 where
     M: Machine<'mir, 'tcx>,
 {
@@ -184,7 +184,7 @@ where
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyLayout = InterpResult<'tcx, TyLayout<'tcx>>;
 
@@ -195,13 +195,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpretCx<'mir, 'tcx, M>
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>, machine: M) -> Self {
-        InterpretCx {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+    pub fn new(
+        tcx: TyCtxtAt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        machine: M,
+        memory_extra: M::MemoryExtra,
+    ) -> Self {
+        InterpCx {
             machine,
             tcx,
             param_env,
-            memory: Memory::new(tcx),
+            memory: Memory::new(tcx, memory_extra),
             stack: Vec::new(),
             vtables: FxHashMap::default(),
         }
@@ -319,7 +324,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         t: T,
     ) -> InterpResult<'tcx, T> {
         match self.stack.last() {
-            Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)),
+            Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)?),
             None => if t.needs_subst() {
                 err!(TooGeneric).into()
             } else {
@@ -332,11 +337,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         &self,
         t: T,
         substs: SubstsRef<'tcx>
-    ) -> T {
+    ) -> InterpResult<'tcx, T> {
         // miri doesn't care about lifetimes, and will choke on some crazy ones
         // let's simply get rid of them
         let substituted = t.subst(*self.tcx, substs);
-        self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted)
+
+        if substituted.needs_subst() {
+            return err!(TooGeneric);
+        }
+
+        Ok(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted))
     }
 
     pub fn layout_of_local(
@@ -349,7 +359,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
-                    let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
+                    let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs)?;
                     self.layout_of(local_ty)
                 })?;
                 // Layouts of locals are requested a lot, so we cache them.
@@ -437,7 +447,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 Ok(Some((size.align_to(align), align)))
             }
             ty::Dynamic(..) => {
-                let vtable = metadata.expect("dyn trait fat ptr must have vtable").to_ptr()?;
+                let vtable = metadata.expect("dyn trait fat ptr must have vtable");
                 // the second entry in the vtable is the dynamic size of the object.
                 Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }

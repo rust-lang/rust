@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Under the 2015 edition with the keyword_idents lint, `dyn` is
 // not entirely acceptable as an identifier.

@@ -354,7 +354,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                          cmt: &mc::cmt_<'tcx>,
                                          loan_region: ty::Region<'tcx>,
                                          borrow_span: Span) {
-        pub fn borrow_of_local_data<'tcx>(cmt: &mc::cmt_<'tcx>) -> bool {
+        pub fn borrow_of_local_data(cmt: &mc::cmt_<'_>) -> bool {
             match cmt.cat {
                 // Borrows of static items is allowed
                 Categorization::StaticItem => false,

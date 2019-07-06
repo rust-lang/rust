@@ -103,7 +103,9 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
         HOOK_LOCK.write_unlock();
 
         if let Hook::Custom(ptr) = old_hook {
-            Box::from_raw(ptr);
+            #[allow(unused_must_use)] {
+                Box::from_raw(ptr);
+            }
         }
     }
 }
@@ -362,7 +364,7 @@ fn continue_panic_fmt(info: &PanicInfo<'_>) -> ! {
 
     unsafe impl<'a> BoxMeUp for PanicPayload<'a> {
         fn box_me_up(&mut self) -> *mut (dyn Any + Send) {
-            let contents = mem::replace(self.fill(), String::new());
+            let contents = mem::take(self.fill());
             Box::into_raw(Box::new(contents))
         }
 

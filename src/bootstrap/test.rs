@@ -709,8 +709,8 @@ impl Step for Tidy {
         if !builder.config.vendor {
             cmd.arg("--no-vendor");
         }
-        if !builder.config.verbose_tests {
-            cmd.arg("--quiet");
+        if builder.is_verbose() {
+            cmd.arg("--verbose");
         }
 
         let _folder = builder.fold_output(|| "tidy");
@@ -1064,6 +1064,11 @@ impl Step for Compiletest {
                 None
             }
         });
+
+        if let Some(ref pass) = builder.config.cmd.pass() {
+            cmd.arg("--pass");
+            cmd.arg(pass);
+        }
 
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);

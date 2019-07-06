@@ -4,14 +4,13 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
+#![feature(mem_take)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(type_alias_enum_variants)]
 
 #![recursion_limit="256"]
 
 #![deny(rust_2018_idioms)]
-#![deny(internal)]
 #![deny(unused_lifetimes)]
 
 pub use rustc::hir::def::{Namespace, PerNS};
@@ -198,9 +197,9 @@ enum ResolutionError<'a> {
 ///
 /// This takes the error provided, combines it with the span and any additional spans inside the
 /// error and emits it.
-fn resolve_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
-                            span: Span,
-                            resolution_error: ResolutionError<'a>) {
+fn resolve_error(resolver: &Resolver<'_>,
+                 span: Span,
+                 resolution_error: ResolutionError<'_>) {
     resolve_struct_error(resolver, span, resolution_error).emit();
 }
 
@@ -1744,12 +1743,12 @@ impl<'a, 'b> ty::DefIdTree for &'a Resolver<'b> {
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
-    fn resolve_hir_path(
+    fn resolve_ast_path(
         &mut self,
         path: &ast::Path,
         is_value: bool,
-    ) -> hir::Path {
-        self.resolve_hir_path_cb(path, is_value,
+    ) -> Res {
+        self.resolve_ast_path_cb(path, is_value,
                                  |resolver, span, error| resolve_error(resolver, span, error))
     }
 
@@ -1759,7 +1758,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         crate_root: Option<Symbol>,
         components: &[Symbol],
         is_value: bool
-    ) -> hir::Path {
+    ) -> (ast::Path, Res) {
         let root = if crate_root.is_some() {
             kw::PathRoot
         } else {
@@ -1777,7 +1776,8 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
             segments,
         };
 
-        self.resolve_hir_path(&path, is_value)
+        let res = self.resolve_ast_path(&path, is_value);
+        (path, res)
     }
 
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
@@ -1803,7 +1803,7 @@ impl<'a> Resolver<'a> {
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occurred.
     pub fn resolve_str_path_error(&mut self, span: Span, path_str: &str, is_value: bool)
-        -> Result<hir::Path, ()> {
+        -> Result<(ast::Path, Res), ()> {
         let mut errored = false;
 
         let path = if path_str.starts_with("::") {
@@ -1826,29 +1826,29 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        let path = self.resolve_hir_path_cb(&path, is_value, |_, _, _| errored = true);
-        if errored || path.res == def::Res::Err {
+        let res = self.resolve_ast_path_cb(&path, is_value, |_, _, _| errored = true);
+        if errored || res == def::Res::Err {
             Err(())
         } else {
-            Ok(path)
+            Ok((path, res))
         }
     }
 
-    /// Like `resolve_hir_path`, but takes a callback in case there was an error.
-    fn resolve_hir_path_cb<F>(
+    /// Like `resolve_ast_path`, but takes a callback in case there was an error.
+    // FIXME(eddyb) use `Result` or something instead of callbacks.
+    fn resolve_ast_path_cb<F>(
         &mut self,
         path: &ast::Path,
         is_value: bool,
         error_callback: F,
-    ) -> hir::Path
+    ) -> Res
         where F: for<'c, 'b> FnOnce(&'c mut Resolver<'_>, Span, ResolutionError<'b>)
     {
         let namespace = if is_value { ValueNS } else { TypeNS };
         let span = path.span;
-        let segments = &path.segments;
         let path = Segment::from_path(&path);
         // FIXME(Manishearth): intra-doc links won't get warned of epoch changes.
-        let res = match self.resolve_path_without_parent_scope(&path, Some(namespace), true,
+        match self.resolve_path_without_parent_scope(&path, Some(namespace), true,
                                                                span, CrateLint::No) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                 module.res().unwrap(),
@@ -1869,19 +1869,6 @@ impl<'a> Resolver<'a> {
                 });
                 Res::Err
             }
-        };
-
-        let segments: Vec<_> = segments.iter().map(|seg| {
-            let mut hir_seg = hir::PathSegment::from_ident(seg.ident);
-            hir_seg.res = Some(self.partial_res_map.get(&seg.id).map_or(def::Res::Err, |p| {
-                p.base_res().map_id(|_| panic!("unexpected node_id"))
-            }));
-            hir_seg
-        }).collect();
-        hir::Path {
-            span,
-            res: res.map_id(|_| panic!("unexpected node_id")),
-            segments: segments.into(),
         }
     }
 
@@ -3055,7 +3042,7 @@ impl<'a> Resolver<'a> {
 
         self.resolve_pats(&arm.pats, PatternSource::Match);
 
-        if let Some(ast::Guard::If(ref expr)) = arm.guard {
+        if let Some(ref expr) = arm.guard {
             self.visit_expr(expr)
         }
         self.visit_expr(&arm.body);

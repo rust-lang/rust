@@ -1,4 +1,3 @@
-// compile-pass
 // run-pass
 
 #![feature(const_fn_union)]

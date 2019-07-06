@@ -49,7 +49,6 @@ fn mirror_stmts<'a, 'tcx>(
     for (index, stmt) in stmts.iter().enumerate() {
         let hir_id = stmt.hir_id;
         let opt_dxn_ext = cx.region_scope_tree.opt_destruction_scope(hir_id.local_id);
-        let stmt_span = StatementSpan(cx.tcx.hir().span(hir_id));
         match stmt.node {
             hir::StmtKind::Expr(ref expr) |
             hir::StmtKind::Semi(ref expr) => {
@@ -62,7 +61,6 @@ fn mirror_stmts<'a, 'tcx>(
                         expr: expr.to_ref(),
                     },
                     opt_destruction_scope: opt_dxn_ext,
-                    span: stmt_span,
                 })))
             }
             hir::StmtKind::Item(..) => {
@@ -107,7 +105,6 @@ fn mirror_stmts<'a, 'tcx>(
                         lint_level: LintLevel::Explicit(local.hir_id),
                     },
                     opt_destruction_scope: opt_dxn_ext,
-                    span: stmt_span,
                 })));
             }
         }

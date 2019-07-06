@@ -1035,6 +1035,11 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
+    #[inline]
+    fn last(self) -> Option<&'a T> {
+        self.iter.last()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

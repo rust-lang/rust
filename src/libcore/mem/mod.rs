@@ -450,8 +450,7 @@ pub const fn needs_drop<T>() -> bool {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn zeroed<T>() -> T {
-    intrinsics::panic_if_uninhabited::<T>();
-    intrinsics::init()
+    MaybeUninit::zeroed().assume_init()
 }
 
 /// Bypasses Rust's normal memory-initialization checks by pretending to
@@ -476,8 +475,7 @@ pub unsafe fn zeroed<T>() -> T {
 #[rustc_deprecated(since = "1.38.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
-    intrinsics::panic_if_uninhabited::<T>();
-    intrinsics::uninit()
+    MaybeUninit::uninit().assume_init()
 }
 
 /// Swaps the values at two mutable locations, without deinitializing either one.
@@ -510,6 +508,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// A simple example:
 ///
 /// ```
+/// #![feature(mem_take)]
+///
 /// use std::mem;
 ///
 /// let mut v: Vec<i32> = vec![1, 2];
@@ -540,7 +540,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// `self`, allowing it to be returned:
 ///
 /// ```
-/// # #![allow(dead_code)]
+/// #![feature(mem_take)]
+///
 /// use std::mem;
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
@@ -549,6 +550,12 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 ///         mem::take(&mut self.buf)
 ///     }
 /// }
+///
+/// let mut buffer = Buffer { buf: vec![0, 1] };
+/// assert_eq!(buffer.buf.len(), 2);
+///
+/// assert_eq!(buffer.get_and_reset(), vec![0, 1]);
+/// assert_eq!(buffer.buf.len(), 0);
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
@@ -583,17 +590,17 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// struct Buffer<T> { buf: Vec<T> }
 ///
 /// impl<T> Buffer<T> {
-///     fn get_and_reset(&mut self) -> Vec<T> {
+///     fn replace_index(&mut self, i: usize, v: T) -> T {
 ///         // error: cannot move out of dereference of `&mut`-pointer
-///         let buf = self.buf;
-///         self.buf = Vec::new();
-///         buf
+///         let t = self.buf[i];
+///         self.buf[i] = v;
+///         t
 ///     }
 /// }
 /// ```
 ///
-/// Note that `T` does not necessarily implement [`Clone`], so it can't even clone and reset
-/// `self.buf`. But `replace` can be used to disassociate the original value of `self.buf` from
+/// Note that `T` does not necessarily implement [`Clone`], so we can't even clone `self.buf[i]` to
+/// avoid the move. But `replace` can be used to disassociate the original value at that index from
 /// `self`, allowing it to be returned:
 ///
 /// ```
@@ -602,10 +609,16 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
 /// impl<T> Buffer<T> {
-///     fn get_and_reset(&mut self) -> Vec<T> {
-///         mem::replace(&mut self.buf, Vec::new())
+///     fn replace_index(&mut self, i: usize, v: T) -> T {
+///         mem::replace(&mut self.buf[i], v)
 ///     }
 /// }
+///
+/// let mut buffer = Buffer { buf: vec![0, 1] };
+/// assert_eq!(buffer.buf[0], 0);
+///
+/// assert_eq!(buffer.replace_index(0, 2), 0);
+/// assert_eq!(buffer.buf[0], 2);
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html

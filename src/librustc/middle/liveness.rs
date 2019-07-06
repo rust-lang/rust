@@ -99,6 +99,7 @@ use self::VarKind::*;
 
 use crate::hir::def::*;
 use crate::hir::Node;
+use crate::hir::ptr::P;
 use crate::ty::{self, TyCtxt};
 use crate::ty::query::Providers;
 use crate::lint;
@@ -110,8 +111,7 @@ use std::{fmt, u32};
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
-use syntax::ast::{self, NodeId};
-use syntax::ptr::P;
+use syntax::ast;
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
@@ -181,7 +181,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn visit_arm(&mut self, a: &'tcx hir::Arm) { visit_arm(self, a); }
 }
 
-fn check_mod_liveness<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
+fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),
@@ -363,13 +363,13 @@ fn visit_fn<'tcx>(
     debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:
-    let def_id = ir.tcx.hir().local_def_id_from_hir_id(id);
+    let def_id = ir.tcx.hir().local_def_id(id);
     let mut fn_maps = IrMaps::new(ir.tcx, def_id);
 
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
         let parent = ir.tcx.hir().get_parent_item(id);
-        if let Some(Node::Item(i)) = ir.tcx.hir().find_by_hir_id(parent) {
+        if let Some(Node::Item(i)) = ir.tcx.hir().find(parent) {
             if i.attrs.iter().any(|a| a.check_name(sym::automatically_derived)) {
                 return;
             }
@@ -494,7 +494,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        let closure_def_id = ir.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
+        let closure_def_id = ir.tcx.hir().local_def_id(expr.hir_id);
         if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
             let parent_upvars = ir.tcx.upvars(ir.body_owner);
             call_caps.extend(upvars.iter().filter_map(|(&var_id, upvar)| {
@@ -1327,12 +1327,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn access_var(&mut self, hir_id: HirId, nid: NodeId, succ: LiveNode, acc: u32, span: Span)
+    fn access_var(&mut self, hir_id: HirId, var_hid: HirId, succ: LiveNode, acc: u32, span: Span)
                   -> LiveNode {
         let ln = self.live_node(hir_id, span);
         if acc != 0 {
             self.init_from_succ(ln, succ);
-            let var_hid = self.ir.tcx.hir().node_to_hir_id(nid);
             let var = self.variable(var_hid, span);
             self.acc(ln, var, acc);
         }
@@ -1345,8 +1344,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             Res::Local(hid) => {
                 let upvars = self.ir.tcx.upvars(self.ir.body_owner);
                 if !upvars.map_or(false, |upvars| upvars.contains_key(&hid)) {
-                    let nid = self.ir.tcx.hir().hir_to_node_id(hid);
-                    self.access_var(hir_id, nid, succ, acc, path.span)
+                    self.access_var(hir_id, hid, succ, acc, path.span)
                 } else {
                     succ
                 }

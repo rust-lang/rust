@@ -13,7 +13,7 @@ use rustc::util::nodemap::DefIdSet;
 
 use rustc_data_structures::fx::FxHashMap;
 
-pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
+pub fn check_crate(tcx: TyCtxt<'_>) {
     let mut used_trait_imports = DefIdSet::default();
     for &body_id in tcx.hir().krate().bodies.keys() {
         let item_def_id = tcx.hir().body_owner_def_id(body_id);
@@ -52,7 +52,7 @@ struct CheckVisitor<'tcx> {
 
 impl CheckVisitor<'tcx> {
     fn check_import(&self, id: hir::HirId, span: Span) {
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(id);
+        let def_id = self.tcx.hir().local_def_id(id);
         if !self.tcx.maybe_unused_trait_import(def_id) {
             return;
         }
@@ -70,7 +70,7 @@ impl CheckVisitor<'tcx> {
     }
 }
 
-fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx>) {
+fn unused_crates_lint(tcx: TyCtxt<'_>) {
     let lint = lint::builtin::UNUSED_EXTERN_CRATES;
 
     // Collect first the crates that are completely unused.  These we
@@ -95,7 +95,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx>) {
             // below it'll cause a panic because `def_id` is actually bogus at this
             // point in time otherwise.
             if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
-                if tcx.hir().find_by_hir_id(id).is_none() {
+                if tcx.hir().find(id).is_none() {
                     return false;
                 }
             }
@@ -219,7 +219,7 @@ struct ExternCrateToLint {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemKind::ExternCrate(orig_name) = item.node {
-            let extern_crate_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+            let extern_crate_def_id = self.tcx.hir().local_def_id(item.hir_id);
             self.crates_to_lint.push(
                 ExternCrateToLint {
                     def_id: extern_crate_def_id,

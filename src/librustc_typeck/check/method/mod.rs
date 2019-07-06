@@ -26,7 +26,6 @@ use rustc::infer::{self, InferOk};
 use syntax::ast;
 use syntax_pos::Span;
 
-use crate::{check_type_alias_enum_variants_enabled};
 use self::probe::{IsSuggestion, ProbeScope};
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
@@ -197,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )?;
 
         for import_id in &pick.import_ids {
-            let import_def_id = self.tcx.hir().local_def_id_from_hir_id(*import_id);
+            let import_def_id = self.tcx.hir().local_def_id(*import_id);
             debug!("used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                 .unwrap().insert(import_def_id);
@@ -417,8 +416,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.hygienic_eq(method_name, vd.ident, adt_def.did)
                 });
                 if let Some(variant_def) = variant_def {
-                    check_type_alias_enum_variants_enabled(tcx, span);
-
                     // Braced variants generate unusable names in value namespace (reserved for
                     // possible future use), so variants resolved as associated items may refer to
                     // them as well. It's ok to use the variant's id as a ctor id since an
@@ -437,7 +434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        self_ty, expr_id, ProbeScope::TraitsInScope)?;
         debug!("resolve_ufcs: pick={:?}", pick);
         for import_id in pick.import_ids {
-            let import_def_id = tcx.hir().local_def_id_from_hir_id(import_id);
+            let import_def_id = tcx.hir().local_def_id(import_id);
             debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                 .unwrap().insert(import_def_id);

@@ -79,7 +79,6 @@
 #![feature(coerce_unsized)]
 #![feature(dispatch_from_dyn)]
 #![feature(core_intrinsics)]
-#![cfg_attr(bootstrap, feature(custom_attribute))]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
@@ -112,6 +111,7 @@
 #![feature(maybe_uninit_extra, maybe_uninit_slice, maybe_uninit_array)]
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
+#![feature(mem_take)]
 
 // Allow testing this library
 

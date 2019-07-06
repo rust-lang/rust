@@ -28,6 +28,10 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
               source_span: Span) {
         use syntax_pos::DUMMY_SP;
 
+        debug!("generator_interior: attempting to record type {:?} {:?} {:?} {:?}",
+               ty, scope, expr, source_span);
+
+
         let live_across_yield = scope.map(|s| {
             self.region_scope_tree.yield_in_scope(s).and_then(|yield_data| {
                 // If we are recording an expression that is the last yield
@@ -71,7 +75,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 // If unresolved type isn't a ty_var then unresolved_type_span is None
                 self.fcx.need_type_info_err_in_generator(
                     self.kind,
-                    unresolved_type_span.unwrap_or(yield_data.span),
+                    unresolved_type_span.unwrap_or(source_span),
                     unresolved_type,
                 )
                     .span_note(yield_data.span, &*note)

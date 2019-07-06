@@ -17,7 +17,7 @@ use rustc::hir::def_id::DefId;
 use hir::Node;
 use rustc::hir::{self, ItemKind};
 
-pub fn check_trait<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) {
+pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }
         .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
         .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
@@ -38,7 +38,7 @@ impl<'tcx> Checker<'tcx> {
     {
         if Some(self.trait_def_id) == trait_def_id {
             for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
-                let impl_def_id = self.tcx.hir().local_def_id_from_hir_id(impl_id);
+                let impl_def_id = self.tcx.hir().local_def_id(impl_id);
                 f(self.tcx, impl_def_id);
             }
         }
@@ -46,13 +46,13 @@ impl<'tcx> Checker<'tcx> {
     }
 }
 
-fn visit_implementation_of_drop<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
+fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
     if let ty::Adt(..) = tcx.type_of(impl_did).sty {
         /* do nothing */
     } else {
         // Destructors only work on nominal types.
         if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_did) {
-            if let Some(Node::Item(item)) = tcx.hir().find_by_hir_id(impl_hir_id) {
+            if let Some(Node::Item(item)) = tcx.hir().find(impl_hir_id) {
                 let span = match item.node {
                     ItemKind::Impl(.., ref ty, _) => ty.span,
                     _ => item.span,
@@ -74,7 +74,7 @@ fn visit_implementation_of_drop<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
     }
 }
 
-fn visit_implementation_of_copy<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
+fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
     let impl_hir_id = if let Some(n) = tcx.hir().as_local_hir_id(impl_did) {
@@ -154,7 +154,7 @@ fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx>, impl_did: DefId) {
     }
 }
 
-fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
+fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}",
            impl_did);
     if impl_did.is_local() {

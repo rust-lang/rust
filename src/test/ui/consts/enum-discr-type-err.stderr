@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/enum-discr-type-err.rs:18:21
+   |
+LL |               $( $v = $s::V, )*
+   |                       ^^^^^ expected isize, found i32
+...
+LL | / mac! {
+LL | |     A = F,
+LL | |     B = T,
+LL | | }
+   | |_- in this macro invocation
+help: you can convert an `i32` to `isize` and panic if the converted value wouldn't fit
+   |
+LL |             $( $v = $s::V.try_into().unwrap(), )*
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

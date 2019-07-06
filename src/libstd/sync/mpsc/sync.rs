@@ -140,7 +140,7 @@ fn wait_timeout_receiver<'a, 'b, T>(lock: &'a Mutex<State<T>>,
     new_guard
 }
 
-fn abort_selection<'a, T>(guard: &mut MutexGuard<'a , State<T>>) -> bool {
+fn abort_selection<T>(guard: &mut MutexGuard<'_, State<T>>) -> bool {
     match mem::replace(&mut guard.blocker, NoneBlocked) {
         NoneBlocked => true,
         BlockedSender(token) => {
@@ -383,7 +383,7 @@ impl<T> Packet<T> {
         // needs to be careful to destroy the data *outside* of the lock to
         // prevent deadlock.
         let _data = if guard.cap != 0 {
-            mem::replace(&mut guard.buf.buf, Vec::new())
+            mem::take(&mut guard.buf.buf)
         } else {
             Vec::new()
         };

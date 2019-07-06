@@ -18,6 +18,7 @@ fn main() {
 // }
 // bb1: {
 //     StorageDead(_3);
+//     StorageDead(_2);
 //     goto -> bb5;
 // }
 // bb2: {
@@ -36,6 +37,7 @@ fn main() {
 //     goto -> bb3;
 // }
 // bb7: {
+//     StorageLive(_2);
 //     StorageLive(_3);
 //     goto -> bb1;
 // }

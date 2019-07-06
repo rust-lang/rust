@@ -11,6 +11,7 @@ use self::OverloadedCallType::*;
 
 use crate::hir::def::{CtorOf, Res, DefKind};
 use crate::hir::def_id::DefId;
+use crate::hir::ptr::P;
 use crate::infer::InferCtxt;
 use crate::middle::mem_categorization as mc;
 use crate::middle::region;
@@ -18,7 +19,6 @@ use crate::ty::{self, DefIdTree, TyCtxt, adjustment};
 
 use crate::hir::{self, PatKind};
 use std::rc::Rc;
-use syntax::ptr::P;
 use syntax_pos::Span;
 use crate::util::nodemap::ItemLocalSet;
 
@@ -930,7 +930,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_captures(&mut self, closure_expr: &hir::Expr, fn_decl_span: Span) {
         debug!("walk_captures({:?})", closure_expr);
 
-        let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_expr.hir_id);
+        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id);
         if let Some(upvars) = self.tcx().upvars(closure_def_id) {
             for (&var_id, upvar) in upvars.iter() {
                 let upvar_id = ty::UpvarId {

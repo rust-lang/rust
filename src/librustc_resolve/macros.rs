@@ -19,9 +19,8 @@ use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{
-    feature_err, is_builtin_attr_name, AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES,
-};
+use syntax::feature_gate::{feature_err, emit_feature_err, is_builtin_attr_name};
+use syntax::feature_gate::{AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::visit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -298,11 +297,24 @@ impl<'a> Resolver<'a> {
         let res = self.resolve_macro_to_res_inner(path, kind, parent_scope, trace, force);
 
         // Report errors and enforce feature gates for the resolved macro.
+        let features = self.session.features_untracked();
         if res != Err(Determinacy::Undetermined) {
             // Do not report duplicated errors on every undetermined resolution.
             for segment in &path.segments {
                 if let Some(args) = &segment.args {
                     self.session.span_err(args.span(), "generic arguments in macro path");
+                }
+                if kind == MacroKind::Attr && !features.rustc_attrs &&
+                   segment.ident.as_str().starts_with("rustc") {
+                    let msg = "attributes starting with `rustc` are \
+                               reserved for use by the `rustc` compiler";
+                    emit_feature_err(
+                        &self.session.parse_sess,
+                        sym::rustc_attrs,
+                        segment.ident.span,
+                        GateIssue::Language,
+                        msg,
+                    );
                 }
             }
         }
@@ -320,24 +332,15 @@ impl<'a> Resolver<'a> {
             }
             Res::NonMacroAttr(attr_kind) => {
                 if kind == MacroKind::Attr {
-                    let features = self.session.features_untracked();
                     if attr_kind == NonMacroAttrKind::Custom {
                         assert!(path.segments.len() == 1);
-                        let name = path.segments[0].ident.as_str();
-                        if name.starts_with("rustc_") {
-                            if !features.rustc_attrs {
-                                let msg = "unless otherwise specified, attributes with the prefix \
-                                           `rustc_` are reserved for internal compiler diagnostics";
-                                self.report_unknown_attribute(path.span, &name, msg,
-                                                              sym::rustc_attrs);
-                            }
-                        } else if !features.custom_attribute {
+                        if !features.custom_attribute {
                             let msg = format!("The attribute `{}` is currently unknown to the \
                                                compiler and may have meaning added to it in the \
                                                future", path);
                             self.report_unknown_attribute(
                                 path.span,
-                                &name,
+                                &path.segments[0].ident.as_str(),
                                 &msg,
                                 sym::custom_attribute,
                             );
@@ -946,7 +949,7 @@ impl<'a> Resolver<'a> {
         };
 
         let macro_resolutions =
-            mem::replace(&mut *module.multi_segment_macro_resolutions.borrow_mut(), Vec::new());
+            mem::take(&mut *module.multi_segment_macro_resolutions.borrow_mut());
         for (mut path, path_span, kind, parent_scope, initial_res) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path { seg.id = None; }
@@ -973,7 +976,7 @@ impl<'a> Resolver<'a> {
         }
 
         let macro_resolutions =
-            mem::replace(&mut *module.single_segment_macro_resolutions.borrow_mut(), Vec::new());
+            mem::take(&mut *module.single_segment_macro_resolutions.borrow_mut());
         for (ident, kind, parent_scope, initial_binding) in macro_resolutions {
             match self.early_resolve_ident_in_lexical_scope(ident, ScopeSet::Macro(kind),
                                                             &parent_scope, true, true, ident.span) {
@@ -998,7 +1001,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let builtin_attrs = mem::replace(&mut *module.builtin_attrs.borrow_mut(), Vec::new());
+        let builtin_attrs = mem::take(&mut *module.builtin_attrs.borrow_mut());
         for (ident, parent_scope) in builtin_attrs {
             let _ = self.early_resolve_ident_in_lexical_scope(
                 ident, ScopeSet::Macro(MacroKind::Attr), &parent_scope, true, true, ident.span
@@ -1022,6 +1025,12 @@ impl<'a> Resolver<'a> {
 
     fn suggest_macro_name(&mut self, name: Symbol, kind: MacroKind,
                           err: &mut DiagnosticBuilder<'a>, span: Span) {
+        if kind == MacroKind::Derive && (name.as_str() == "Send" || name.as_str() == "Sync") {
+            let msg = format!("unsafe traits like `{}` should be implemented explicitly", name);
+            err.span_note(span, &msg);
+            return;
+        }
+
         // First check if this is a locally-defined bang macro.
         let suggestion = if let MacroKind::Bang = kind {
             find_best_match_for_name(
@@ -1103,9 +1112,6 @@ impl<'a> Resolver<'a> {
                         current_legacy_scope: &mut LegacyScope<'a>) {
         self.local_macro_def_scopes.insert(item.id, self.current_module);
         let ident = item.ident;
-        if ident.name == sym::macro_rules {
-            self.session.span_err(item.span, "user-defined macros may not be named `macro_rules`");
-        }
 
         let def_id = self.definitions.local_def_id(item.id);
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,

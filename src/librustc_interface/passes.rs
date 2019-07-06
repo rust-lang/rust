@@ -878,7 +878,7 @@ pub fn create_global_ctxt(
 
 /// Runs the resolution, type-checking, region checking and other
 /// miscellaneous analysis passes on the crate.
-fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
+fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let sess = tcx.sess;
@@ -899,9 +899,10 @@ fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
             });
         }, {
             par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                tcx.ensure().check_mod_loops(tcx.hir().local_def_id(module));
-                tcx.ensure().check_mod_attrs(tcx.hir().local_def_id(module));
-                tcx.ensure().check_mod_unstable_api_usage(tcx.hir().local_def_id(module));
+                tcx.ensure().check_mod_loops(tcx.hir().local_def_id_from_node_id(module));
+                tcx.ensure().check_mod_attrs(tcx.hir().local_def_id_from_node_id(module));
+                tcx.ensure().check_mod_unstable_api_usage(
+                    tcx.hir().local_def_id_from_node_id(module));
             });
         });
     });
@@ -924,9 +925,9 @@ fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
                     // "not all control paths return a value" is reported here.
                     //
                     // maybe move the check to a MIR pass?
-                    tcx.ensure().check_mod_liveness(tcx.hir().local_def_id(module));
+                    tcx.ensure().check_mod_liveness(tcx.hir().local_def_id_from_node_id(module));
 
-                    tcx.ensure().check_mod_intrinsics(tcx.hir().local_def_id(module));
+                    tcx.ensure().check_mod_intrinsics(tcx.hir().local_def_id_from_node_id(module));
                 });
             });
         });
@@ -959,7 +960,7 @@ fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
     // lot of annoying errors in the compile-fail tests (basically,
     // lint warnings and so on -- kindck used to do this abort, but
     // kindck is gone now). -nmatsakis
-    if sess.err_count() > 0 {
+    if sess.has_errors() {
         return Err(ErrorReported);
     }
 
@@ -986,7 +987,7 @@ fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
         }, {
             time(sess, "privacy checking modules", || {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                    tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
+                    tcx.ensure().check_mod_privacy(tcx.hir().local_def_id_from_node_id(module));
                 });
             });
         });
@@ -995,8 +996,8 @@ fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
     Ok(())
 }
 
-fn encode_and_write_metadata<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn encode_and_write_metadata(
+    tcx: TyCtxt<'_>,
     outputs: &OutputFilenames,
 ) -> (middle::cstore::EncodedMetadata, bool) {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]

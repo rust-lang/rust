@@ -1,7 +1,6 @@
 /// A simple static assertion macro.
 #[macro_export]
-#[cfg_attr(bootstrap, allow_internal_unstable(type_ascription, underscore_const_names))]
-#[cfg_attr(not(bootstrap), allow_internal_unstable(type_ascription))]
+#[allow_internal_unstable(type_ascription)]
 macro_rules! static_assert {
     ($test:expr) => {
         // Use the bool to access an array such that if the bool is false, the access
@@ -13,7 +12,6 @@ macro_rules! static_assert {
 
 /// Type size assertion. The first argument is a type and the second argument is its expected size.
 #[macro_export]
-#[cfg_attr(bootstrap, allow_internal_unstable(underscore_const_names))]
 macro_rules! static_assert_size {
     ($ty:ty, $size:expr) => {
         const _: [(); $size] = [(); ::std::mem::size_of::<$ty>()];

@@ -27,6 +27,7 @@
 #![cfg_attr(test, feature(test))]
 
 #![deny(rust_2018_idioms)]
+#![cfg_attr(not(bootstrap), allow(rustc::default_hash_types))]
 
 #[macro_use]
 extern crate log;
@@ -72,6 +73,7 @@ macro_rules! unlikely {
 pub mod macros;
 pub mod svh;
 pub mod base_n;
+pub mod binary_search_util;
 pub mod bit_set;
 pub mod box_region;
 pub mod const_cstr;

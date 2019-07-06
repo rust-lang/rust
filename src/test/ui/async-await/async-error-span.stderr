@@ -1,0 +1,15 @@
+error[E0698]: type inside `async` object must be known in this context
+  --> $DIR/async-error-span.rs:13:9
+   |
+LL |     let a;
+   |         ^ cannot infer type
+   |
+note: the type is part of the `async` object because of this `await`
+  --> $DIR/async-error-span.rs:14:5
+   |
+LL |     get_future().await;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0698`.

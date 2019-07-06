@@ -68,7 +68,7 @@ use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
 use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
-use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals, RequiresStorage};
 use crate::util::dump_mir;
 use crate::util::liveness;
 
@@ -200,7 +200,7 @@ impl TransformVisitor<'tcx> {
 
     // Create a Place referencing a generator struct field
     fn make_field(&self, variant_index: VariantIdx, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
-        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let self_place = Place::from(self_arg());
         let base = self_place.downcast_unnamed(variant_index);
         let field = Projection {
             base: base,
@@ -211,7 +211,7 @@ impl TransformVisitor<'tcx> {
 
     // Create a statement which changes the discriminant
     fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
-        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let self_place = Place::from(self_arg());
         Statement {
             source_info,
             kind: StatementKind::SetDiscriminant { place: self_place, variant_index: state_disc },
@@ -222,9 +222,9 @@ impl TransformVisitor<'tcx> {
     fn get_discr(&self, body: &mut Body<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
         let temp_decl = LocalDecl::new_internal(self.tcx.types.isize, body.span);
         let local_decls_len = body.local_decls.push(temp_decl);
-        let temp = Place::Base(PlaceBase::Local(local_decls_len));
+        let temp = Place::from(local_decls_len);
 
-        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let self_place = Place::from(self_arg());
         let assign = Statement {
             source_info: source_info(body),
             kind: StatementKind::Assign(temp.clone(), box Rvalue::Discriminant(self_place)),
@@ -271,7 +271,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => Some((VariantIdx::new(1),
                 None,
-                Operand::Move(Place::Base(PlaceBase::Local(self.new_ret_local))),
+                Operand::Move(Place::from(self.new_ret_local)),
                 None)),
             TerminatorKind::Yield { ref value, resume, drop } => Some((VariantIdx::new(0),
                 Some(resume),
@@ -437,16 +437,18 @@ fn locals_live_across_suspend_points(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    // This is only used for immovable generators.
-    let borrowed_locals = if !movable {
-        let analysis = HaveBeenBorrowedLocals::new(body);
-        let result =
-            do_dataflow(tcx, body, def_id, &[], &dead_unwinds, analysis,
-                        |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
-        Some((analysis, result))
-    } else {
-        None
-    };
+    let borrowed_locals_analysis = HaveBeenBorrowedLocals::new(body);
+    let borrowed_locals_result =
+        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, borrowed_locals_analysis,
+                    |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+
+    // Calculate the MIR locals that we actually need to keep storage around
+    // for.
+    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
+    let requires_storage =
+        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis,
+                    |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
@@ -471,10 +473,10 @@ fn locals_live_across_suspend_points(
                 statement_index: data.statements.len(),
             };
 
-            if let Some((ref analysis, ref result)) = borrowed_locals {
+            if !movable {
                 let borrowed_locals = state_for_location(loc,
-                                                         analysis,
-                                                         result,
+                                                         &borrowed_locals_analysis,
+                                                         &borrowed_locals_result,
                                                          body);
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
@@ -489,26 +491,33 @@ fn locals_live_across_suspend_points(
                 liveness.outs[block].union(&borrowed_locals);
             }
 
-            let mut storage_liveness = state_for_location(loc,
-                                                          &storage_live_analysis,
-                                                          &storage_live,
-                                                          body);
+            let storage_liveness = state_for_location(loc,
+                                                      &storage_live_analysis,
+                                                      &storage_live,
+                                                      body);
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
             storage_liveness_map.insert(block, storage_liveness.clone());
 
-            // Mark locals without storage statements as always having live storage
-            storage_liveness.union(&ignored.0);
+            let mut storage_required = state_for_location(loc,
+                                                          &requires_storage_analysis,
+                                                          &requires_storage,
+                                                          body);
+
+            // Mark locals without storage statements as always requiring storage
+            storage_required.union(&ignored.0);
 
             // Locals live are live at this point only if they are used across
             // suspension points (the `liveness` variable)
-            // and their storage is live (the `storage_liveness` variable)
-            let mut live_locals_here = storage_liveness;
+            // and their storage is required (the `storage_required` variable)
+            let mut live_locals_here = storage_required;
             live_locals_here.intersect(&liveness.outs[block]);
 
             // The generator argument is ignored
             live_locals_here.remove(self_arg());
+
+            debug!("loc = {:?}, live_locals_here = {:?}", loc, live_locals_here);
 
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
@@ -517,6 +526,7 @@ fn locals_live_across_suspend_points(
             live_locals_at_suspension_points.push(live_locals_here);
         }
     }
+    debug!("live_locals = {:?}", live_locals);
 
     // Renumber our liveness_map bitsets to include only the locals we are
     // saving.
@@ -529,8 +539,8 @@ fn locals_live_across_suspend_points(
         body,
         &live_locals,
         &ignored,
-        storage_live,
-        storage_live_analysis);
+        requires_storage,
+        requires_storage_analysis);
 
     LivenessInfo {
         live_locals,
@@ -567,8 +577,8 @@ fn compute_storage_conflicts(
     body: &'mir Body<'tcx>,
     stored_locals: &liveness::LiveVarSet,
     ignored: &StorageIgnored,
-    storage_live: DataflowResults<'tcx, MaybeStorageLive<'mir, 'tcx>>,
-    _storage_live_analysis: MaybeStorageLive<'mir, 'tcx>,
+    requires_storage: DataflowResults<'tcx, RequiresStorage<'mir, 'tcx>>,
+    _requires_storage_analysis: RequiresStorage<'mir, 'tcx>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), ignored.0.domain_size());
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
@@ -584,9 +594,9 @@ fn compute_storage_conflicts(
     let mut visitor = StorageConflictVisitor {
         body,
         stored_locals: &stored_locals,
-        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len())
+        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
     };
-    let mut state = FlowAtLocation::new(storage_live);
+    let mut state = FlowAtLocation::new(requires_storage);
     visitor.analyze_results(&mut state);
     let local_conflicts = visitor.local_conflicts;
 
@@ -627,7 +637,7 @@ struct StorageConflictVisitor<'body, 'tcx, 's> {
 impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
     for StorageConflictVisitor<'body, 'tcx, 's>
 {
-    type FlowState = FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>;
+    type FlowState = FlowAtLocation<'tcx, RequiresStorage<'body, 'tcx>>;
 
     fn body(&self) -> &'body Body<'tcx> {
         self.body
@@ -657,7 +667,7 @@ impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
 
 impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
     fn apply_state(&mut self,
-                   flow_state: &FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>,
+                   flow_state: &FlowAtLocation<'tcx, RequiresStorage<'body, 'tcx>>,
                    loc: Location) {
         // Ignore unreachable blocks.
         match self.body.basic_blocks()[loc.block].terminator().kind {
@@ -840,7 +850,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut 
         elaborate_drop(
             &mut elaborator,
             source_info,
-            &Place::Base(PlaceBase::Local(gen)),
+            &Place::from(gen),
             (),
             target,
             unwind,
@@ -913,7 +923,7 @@ fn create_generator_drop_shim<'tcx>(
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
             source_info,
-            kind: StatementKind::Retag(RetagKind::Raw, Place::Base(PlaceBase::Local(self_arg()))),
+            kind: StatementKind::Retag(RetagKind::Raw, Place::from(self_arg())),
         })
     }
 
@@ -1018,20 +1028,20 @@ fn create_generator_resume_function<'tcx>(
     dump_mir(tcx, None, "generator_resume", &0, source, body, |_, _| Ok(()) );
 }
 
-fn source_info<'tcx>(body: &Body<'tcx>) -> SourceInfo {
+fn source_info(body: &Body<'_>) -> SourceInfo {
     SourceInfo {
         span: body.span,
         scope: OUTERMOST_SOURCE_SCOPE,
     }
 }
 
-fn insert_clean_drop<'tcx>(body: &mut Body<'tcx>) -> BasicBlock {
+fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(body.basic_blocks().len());
     let term = TerminatorKind::Drop {
-        location: Place::Base(PlaceBase::Local(self_arg())),
+        location: Place::from(self_arg()),
         target: return_block,
         unwind: None,
     };

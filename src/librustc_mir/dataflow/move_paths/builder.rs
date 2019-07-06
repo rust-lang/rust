@@ -33,13 +33,13 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(body),
                 rev_lookup: MovePathLookup {
-                    locals: body.local_decls.indices().map(PlaceBase::Local).map(|v| {
+                    locals: body.local_decls.indices().map(|i| {
                         Self::new_move_path(
                             &mut move_paths,
                             &mut path_map,
                             &mut init_path_map,
                             None,
-                            Place::Base(v),
+                            Place::from(i),
                         )
                     }).collect(),
                     projections: Default::default(),
@@ -289,7 +289,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
-                self.gather_move(&Place::Base(PlaceBase::Local(local)));
+                self.gather_move(&Place::from(local));
             }
             StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span,

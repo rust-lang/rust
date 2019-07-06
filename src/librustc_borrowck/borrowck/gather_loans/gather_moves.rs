@@ -47,7 +47,7 @@ pub enum PatternSource<'tcx> {
 /// with a reference to the let
 fn get_pattern_source<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat) -> PatternSource<'tcx> {
 
-    let parent = tcx.hir().get_parent_node_by_hir_id(pat.hir_id);
+    let parent = tcx.hir().get_parent_node(pat.hir_id);
 
     match tcx.hir().get(parent) {
         Node::Expr(ref e) => {

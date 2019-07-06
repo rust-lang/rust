@@ -170,7 +170,7 @@ where MWF: MirWithFlowState<'tcx>,
 
         write!(w, "<tr>")?;
         // Entry
-        dump_set_for!(on_entry_set_for, interpret_set);
+        dump_set_for!(entry_set_for, interpret_set);
 
         // MIR statements
         write!(w, "<td>")?;
@@ -208,7 +208,7 @@ where MWF: MirWithFlowState<'tcx>,
         write!(w, "<tr>")?;
 
         // Entry
-        let set = flow.sets.on_entry_set_for(i);
+        let set = flow.sets.entry_set_for(i);
         write!(w, "<td>{:?}</td>", dot::escape_html(&set.to_string()))?;
 
         // Terminator
@@ -221,13 +221,10 @@ where MWF: MirWithFlowState<'tcx>,
         }
         write!(w, "</td>")?;
 
-        // Gen
-        let set = flow.sets.gen_set_for(i);
-        write!(w, "<td>{:?}</td>", dot::escape_html(&format!("{:?}", set)))?;
-
-        // Kill
-        let set = flow.sets.kill_set_for(i);
-        write!(w, "<td>{:?}</td>", dot::escape_html(&format!("{:?}", set)))?;
+        // Gen/Kill
+        let trans = flow.sets.trans_for(i);
+        write!(w, "<td>{:?}</td>", dot::escape_html(&format!("{:?}", trans.gen_set)))?;
+        write!(w, "<td>{:?}</td>", dot::escape_html(&format!("{:?}", trans.kill_set)))?;
 
         write!(w, "</tr>")?;
 

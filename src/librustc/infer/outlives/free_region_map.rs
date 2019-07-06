@@ -11,6 +11,10 @@ pub struct FreeRegionMap<'tcx> {
 }
 
 impl<'tcx> FreeRegionMap<'tcx> {
+    pub fn elements(&self) -> impl Iterator<Item=&Region<'tcx>> {
+        self.relation.elements()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.relation.is_empty()
     }

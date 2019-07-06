@@ -7,6 +7,7 @@ use std::mem;
 
 fn foo<const SIZE: usize>() {
     let arr: [u8; SIZE] = unsafe {
+        #[allow(deprecated)]
         let mut array: [u8; SIZE] = mem::uninitialized();
         array
     };

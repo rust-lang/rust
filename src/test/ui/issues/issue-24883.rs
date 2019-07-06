@@ -1,5 +1,5 @@
-// compile-pass
-// skip-codegen
+// check-pass
+
 mod a {
     pub mod b { pub struct Foo; }
 
@@ -10,7 +10,6 @@ mod a {
 
     pub use self::c::*;
 }
-
 
 fn main() {
     let _ = a::c::Bar(a::b::Foo);

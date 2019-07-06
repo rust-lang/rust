@@ -777,15 +777,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert(&mut self, v: T) -> &mut T {
-        match *self {
-            None => *self = Some(v),
-            _ => (),
-        }
-
-        match *self {
-            Some(ref mut v) => v,
-            None => unsafe { hint::unreachable_unchecked() },
-        }
+        self.get_or_insert_with(|| v)
     }
 
     /// Inserts a value computed from `f` into the option if it is [`None`], then
@@ -845,7 +837,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn take(&mut self) -> Option<T> {
-        mem::replace(self, None)
+        mem::take(self)
     }
 
     /// Replaces the actual value in the option by the value given in parameter,

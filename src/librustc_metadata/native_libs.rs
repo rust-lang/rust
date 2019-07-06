@@ -11,7 +11,7 @@ use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::{Symbol, sym};
 use syntax::{span_err, struct_span_err};
 
-pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<NativeLibrary> {
+pub fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
         tcx,
         libs: Vec::new(),
@@ -56,7 +56,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 name: None,
                 kind: cstore::NativeUnknown,
                 cfg: None,
-                foreign_module: Some(self.tcx.hir().local_def_id_from_hir_id(it.hir_id)),
+                foreign_module: Some(self.tcx.hir().local_def_id(it.hir_id)),
                 wasm_import_module: None,
             };
             let mut kind_specified = false;
