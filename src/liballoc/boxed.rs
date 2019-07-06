@@ -200,6 +200,8 @@ impl<T> Box<mem::MaybeUninit<T>> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
     /// # Examples
     ///
     /// ```
@@ -233,6 +235,8 @@ impl<T> Box<[mem::MaybeUninit<T>]> {
     /// really are in an initialized state.
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
     ///
     /// # Examples
     ///

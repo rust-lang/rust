@@ -471,6 +471,8 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
     /// # Examples
     ///
     /// ```
@@ -512,6 +514,8 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     /// really is in an initialized state.
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
     ///
     /// # Examples
     ///
@@ -745,7 +749,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// There must be no other `Rc` or [`Weak`][weak] pointers to the same value.
+    /// There must be no other `Rc` or [`Weak`] pointers to the same value.
     /// This is the case for example immediately after `Rc::new`.
     ///
     /// # Examples
