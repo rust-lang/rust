@@ -11,8 +11,8 @@ use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     path::Path,
     type_ref::TypeRef,
-    AdtDef, AsName, Container, Enum, Function, HasSource, ImplBlock, Name, Struct, Trait,
-    TypeAlias, Union,
+    AdtDef, AsName, Container, Enum, EnumVariant, Function, HasSource, ImplBlock, Name, Struct,
+    Trait, TypeAlias, Union,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -50,8 +50,11 @@ pub enum GenericDef {
     Trait(Trait),
     TypeAlias(TypeAlias),
     ImplBlock(ImplBlock),
+    // enum variants cannot have generics themselves, but their parent enums
+    // can, and this makes some code easier to write
+    EnumVariant(EnumVariant),
 }
-impl_froms!(GenericDef: Function, Struct, Union, Enum, Trait, TypeAlias, ImplBlock);
+impl_froms!(GenericDef: Function, Struct, Union, Enum, Trait, TypeAlias, ImplBlock, EnumVariant);
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -62,6 +65,7 @@ impl GenericParams {
         let parent = match def {
             GenericDef::Function(it) => it.container(db).map(GenericDef::from),
             GenericDef::TypeAlias(it) => it.container(db).map(GenericDef::from),
+            GenericDef::EnumVariant(it) => Some(it.parent_enum(db).into()),
             GenericDef::Struct(_)
             | GenericDef::Union(_)
             | GenericDef::Enum(_)
@@ -86,6 +90,7 @@ impl GenericParams {
             }
             GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).ast, start),
             GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).ast, start),
+            GenericDef::EnumVariant(_) => {}
         }
 
         Arc::new(generics)
@@ -184,6 +189,7 @@ impl GenericDef {
             GenericDef::Trait(inner) => inner.resolver(db),
             GenericDef::TypeAlias(inner) => inner.resolver(db),
             GenericDef::ImplBlock(inner) => inner.resolver(db),
+            GenericDef::EnumVariant(inner) => inner.parent_enum(db).resolver(db),
         }
     }
 }

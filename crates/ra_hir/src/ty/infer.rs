@@ -849,8 +849,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
         if let Ty::Apply(a_ty) = callable_ty {
             if let TypeCtor::FnDef(def) = a_ty.ctor {
+                let generic_predicates = self.db.generic_predicates(def.into());
+                for predicate in generic_predicates.iter() {
+                    let predicate = predicate.clone().subst(&a_ty.parameters);
+                    if let Some(obligation) = Obligation::from_predicate(predicate) {
+                        self.obligations.push(obligation);
+                    }
+                }
                 // add obligation for trait implementation, if this is a trait method
-                // FIXME also register obligations from where clauses from the trait or impl and method
                 match def {
                     CallableDef::Function(f) => {
                         if let Some(trait_) = f.parent_trait(self.db) {
@@ -992,7 +998,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         (Vec::new(), Ty::Unknown)
                     }
                 };
-                // FIXME register obligations from where clauses from the function
+                self.register_obligations_for_call(&callee_ty);
                 let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
                 for (arg, param) in args.iter().zip(param_iter) {
                     self.infer_expr(*arg, &Expectation::has_type(param));

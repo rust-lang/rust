@@ -2232,16 +2232,18 @@ fn test() {
 }
 "#),
         @r###"
-[86; 87) 't': T
-[92; 94) '{}': ()
-[105; 144) '{     ...(s); }': ()
-[115; 116) 's': S<{unknown}>
-[119; 120) 'S': S<{unknown}>(T) -> S<T>
-[119; 129) 'S(unknown)': S<{unknown}>
-[121; 128) 'unknown': {unknown}
-[135; 138) 'foo': fn foo<S<{unknown}>>(T) -> ()
-[135; 141) 'foo(s)': ()
-[139; 140) 's': S<{unknown}>"###
+   ⋮
+   ⋮[86; 87) 't': T
+   ⋮[92; 94) '{}': ()
+   ⋮[105; 144) '{     ...(s); }': ()
+   ⋮[115; 116) 's': S<u32>
+   ⋮[119; 120) 'S': S<u32>(T) -> S<T>
+   ⋮[119; 129) 'S(unknown)': S<u32>
+   ⋮[121; 128) 'unknown': u32
+   ⋮[135; 138) 'foo': fn foo<S<u32>>(T) -> ()
+   ⋮[135; 141) 'foo(s)': ()
+   ⋮[139; 140) 's': S<u32>
+    "###
     );
 }
 
@@ -2259,17 +2261,19 @@ fn test() {
 }
 "#),
         @r###"
-[87; 88) 't': T
-[98; 100) '{}': ()
-[111; 163) '{     ...(s); }': ()
-[121; 122) 's': S<{unknown}>
-[125; 126) 'S': S<{unknown}>(T) -> S<T>
-[125; 135) 'S(unknown)': S<{unknown}>
-[127; 134) 'unknown': {unknown}
-[145; 146) 'x': u32
-[154; 157) 'foo': fn foo<u32, S<{unknown}>>(T) -> U
-[154; 160) 'foo(s)': u32
-[158; 159) 's': S<{unknown}>"###
+   ⋮
+   ⋮[87; 88) 't': T
+   ⋮[98; 100) '{}': ()
+   ⋮[111; 163) '{     ...(s); }': ()
+   ⋮[121; 122) 's': S<u32>
+   ⋮[125; 126) 'S': S<u32>(T) -> S<T>
+   ⋮[125; 135) 'S(unknown)': S<u32>
+   ⋮[127; 134) 'unknown': u32
+   ⋮[145; 146) 'x': u32
+   ⋮[154; 157) 'foo': fn foo<u32, S<u32>>(T) -> U
+   ⋮[154; 160) 'foo(s)': u32
+   ⋮[158; 159) 's': S<u32>
+    "###
     );
 }
 
@@ -2820,6 +2824,94 @@ fn test(s: S) {
 "#,
     );
     assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn obligation_from_function_clause() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct S;
+
+trait Trait<T> {}
+impl Trait<u32> for S {}
+
+fn foo<T: Trait<U>, U>(t: T) -> U {}
+
+fn test(s: S) {
+    foo(s)<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
+fn obligation_from_method_clause() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct S;
+
+trait Trait<T> {}
+impl Trait<isize> for S {}
+
+struct O;
+impl O {
+    fn foo<T: Trait<U>, U>(&self, t: T) -> U {}
+}
+
+fn test() {
+    O.foo(S)<|>;
+}
+"#,
+    );
+    assert_eq!(t, "isize");
+}
+
+#[test]
+fn obligation_from_self_method_clause() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct S;
+
+trait Trait<T> {}
+impl Trait<i64> for S {}
+
+impl S {
+    fn foo<U>(&self) -> U where Self: Trait<U> {}
+}
+
+fn test() {
+    S.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "i64");
+}
+
+#[test]
+fn obligation_from_impl_clause() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct S;
+
+trait Trait<T> {}
+impl Trait<&str> for S {}
+
+struct O<T>;
+impl<U, T: Trait<U>> O<T> {
+    fn foo(&self) -> U {}
+}
+
+fn test(o: O<S>) {
+    o.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "&str");
 }
 
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
