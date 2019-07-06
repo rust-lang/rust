@@ -34,17 +34,17 @@ trait ArgAttributeExt {
 impl ArgAttributeExt for ArgAttribute {
     fn for_each_kind<F>(&self, mut f: F) where F: FnMut(llvm::Attribute) {
         for_each_kind!(self, f,
-                       ByVal, NoAlias, NoCapture, NonNull, ReadOnly, SExt, StructRet, ZExt, InReg)
+                       NoAlias, NoCapture, NonNull, ReadOnly, SExt, StructRet, ZExt, InReg)
     }
 }
 
 pub trait ArgAttributesExt {
-    fn apply_llfn(&self, idx: AttributePlace, llfn: &Value);
-    fn apply_callsite(&self, idx: AttributePlace, callsite: &Value);
+    fn apply_llfn(&self, idx: AttributePlace, llfn: &Value, ty: Option<&Type>);
+    fn apply_callsite(&self, idx: AttributePlace, callsite: &Value, ty: Option<&Type>);
 }
 
 impl ArgAttributesExt for ArgAttributes {
-    fn apply_llfn(&self, idx: AttributePlace, llfn: &Value) {
+    fn apply_llfn(&self, idx: AttributePlace, llfn: &Value, ty: Option<&Type>) {
         let mut regular = self.regular;
         unsafe {
             let deref = self.pointee_size.bytes();
@@ -65,11 +65,14 @@ impl ArgAttributesExt for ArgAttributes {
                                                idx.as_uint(),
                                                align.bytes() as u32);
             }
+            if regular.contains(ArgAttribute::ByVal) {
+                llvm::LLVMRustAddByValAttr(llfn, idx.as_uint(), ty.unwrap());
+            }
             regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
         }
     }
 
-    fn apply_callsite(&self, idx: AttributePlace, callsite: &Value) {
+    fn apply_callsite(&self, idx: AttributePlace, callsite: &Value, ty: Option<&Type>) {
         let mut regular = self.regular;
         unsafe {
             let deref = self.pointee_size.bytes();
@@ -89,6 +92,9 @@ impl ArgAttributesExt for ArgAttributes {
                 llvm::LLVMRustAddAlignmentCallSiteAttr(callsite,
                                                        idx.as_uint(),
                                                        align.bytes() as u32);
+            }
+            if regular.contains(ArgAttribute::ByVal) {
+                llvm::LLVMRustAddByValCallSiteAttr(callsite, idx.as_uint(), ty.unwrap());
             }
             regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
         }
@@ -298,7 +304,7 @@ pub trait FnTypeLlvmExt<'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
-    fn apply_attrs_llfn(&self, llfn: &'ll Value);
+    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value);
     fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
 }
 
@@ -384,51 +390,51 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_llfn(&self, llfn: &'ll Value) {
+    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
         let mut i = 0;
-        let mut apply = |attrs: &ArgAttributes| {
-            attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn);
+        let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
+            attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn, ty);
             i += 1;
         };
         match self.ret.mode {
             PassMode::Direct(ref attrs) => {
-                attrs.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
+                attrs.apply_llfn(llvm::AttributePlace::ReturnValue, llfn, None);
             }
-            PassMode::Indirect(ref attrs, _) => apply(attrs),
+            PassMode::Indirect(ref attrs, _) => apply(attrs, Some(self.ret.layout.llvm_type(cx))),
             _ => {}
         }
         for arg in &self.args {
             if arg.pad.is_some() {
-                apply(&ArgAttributes::new());
+                apply(&ArgAttributes::new(), None);
             }
             match arg.mode {
                 PassMode::Ignore(_) => {}
                 PassMode::Direct(ref attrs) |
-                PassMode::Indirect(ref attrs, None) => apply(attrs),
+                PassMode::Indirect(ref attrs, None) => apply(attrs, Some(arg.layout.llvm_type(cx))),
                 PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
-                    apply(attrs);
-                    apply(extra_attrs);
+                    apply(attrs, None);
+                    apply(extra_attrs, None);
                 }
                 PassMode::Pair(ref a, ref b) => {
-                    apply(a);
-                    apply(b);
+                    apply(a, None);
+                    apply(b, None);
                 }
-                PassMode::Cast(_) => apply(&ArgAttributes::new()),
+                PassMode::Cast(_) => apply(&ArgAttributes::new(), None),
             }
         }
     }
 
     fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
         let mut i = 0;
-        let mut apply = |attrs: &ArgAttributes| {
-            attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);
+        let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
+            attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite, ty);
             i += 1;
         };
         match self.ret.mode {
             PassMode::Direct(ref attrs) => {
-                attrs.apply_callsite(llvm::AttributePlace::ReturnValue, callsite);
+                attrs.apply_callsite(llvm::AttributePlace::ReturnValue, callsite, None);
             }
-            PassMode::Indirect(ref attrs, _) => apply(attrs),
+            PassMode::Indirect(ref attrs, _) => apply(attrs, Some(self.ret.layout.llvm_type(bx))),
             _ => {}
         }
         if let layout::Abi::Scalar(ref scalar) = self.ret.layout.abi {
@@ -446,21 +452,21 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         }
         for arg in &self.args {
             if arg.pad.is_some() {
-                apply(&ArgAttributes::new());
+                apply(&ArgAttributes::new(), None);
             }
             match arg.mode {
                 PassMode::Ignore(_) => {}
                 PassMode::Direct(ref attrs) |
-                PassMode::Indirect(ref attrs, None) => apply(attrs),
+                PassMode::Indirect(ref attrs, None) => apply(attrs, Some(arg.layout.llvm_type(bx))),
                 PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
-                    apply(attrs);
-                    apply(extra_attrs);
+                    apply(attrs, None);
+                    apply(extra_attrs, None);
                 }
                 PassMode::Pair(ref a, ref b) => {
-                    apply(a);
-                    apply(b);
+                    apply(a, None);
+                    apply(b, None);
                 }
-                PassMode::Cast(_) => apply(&ArgAttributes::new()),
+                PassMode::Cast(_) => apply(&ArgAttributes::new(), None),
             }
         }
 

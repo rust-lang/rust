@@ -794,6 +794,7 @@ extern "C" {
     pub fn LLVMRustAddAlignmentAttr(Fn: &Value, index: c_uint, bytes: u32);
     pub fn LLVMRustAddDereferenceableAttr(Fn: &Value, index: c_uint, bytes: u64);
     pub fn LLVMRustAddDereferenceableOrNullAttr(Fn: &Value, index: c_uint, bytes: u64);
+    pub fn LLVMRustAddByValAttr(Fn: &Value, index: c_uint, ty: &Type);
     pub fn LLVMRustAddFunctionAttribute(Fn: &Value, index: c_uint, attr: Attribute);
     pub fn LLVMRustAddFunctionAttrStringValue(Fn: &Value,
                                               index: c_uint,
@@ -824,6 +825,7 @@ extern "C" {
     pub fn LLVMRustAddDereferenceableOrNullCallSiteAttr(Instr: &Value,
                                                         index: c_uint,
                                                         bytes: u64);
+    pub fn LLVMRustAddByValCallSiteAttr(Instr: &Value, index: c_uint, ty: &Type);
 
     // Operations on load/store instructions (only)
     pub fn LLVMSetVolatile(MemoryAccessInst: &Value, volatile: Bool);
