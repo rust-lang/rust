@@ -351,7 +351,7 @@ where
                 if field >= len {
                     // This can be violated because this runs during promotion on code where the
                     // type system has not yet ensured that such things don't happen.
-                    debug!("Tried to access element {} of array/slice with length {}", field, len);
+                    debug!("tried to access element {} of array/slice with length {}", field, len);
                     return err!(BoundsCheck { len, index: field });
                 }
                 stride * field

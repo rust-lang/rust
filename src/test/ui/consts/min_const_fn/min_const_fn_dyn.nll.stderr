@@ -5,7 +5,7 @@ LL |     x.0.field;
    |     ^^^^^^^^^
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn_dyn.rs:12:66
@@ -14,7 +14,7 @@ LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
    |                                                                  ^^
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/min_const_fn_dyn.rs:12:67
