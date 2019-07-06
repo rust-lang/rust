@@ -262,19 +262,6 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
-    /// Returns this pointer's offset from the allocation base, or from NULL (for
-    /// integer pointers).
-    #[inline]
-    pub fn get_ptr_offset(self, cx: &impl HasDataLayout) -> Size {
-        match self {
-            Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, cx.pointer_size().bytes());
-                Size::from_bytes(data as u64)
-            }
-            Scalar::Ptr(ptr) => ptr.offset,
-        }
-    }
-
     #[inline]
     pub fn from_bool(b: bool) -> Self {
         Scalar::Raw { data: b as u128, size: 1 }
