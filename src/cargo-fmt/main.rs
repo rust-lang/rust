@@ -247,7 +247,7 @@ fn get_targets(strategy: &CargoFmtStrategy) -> Result<BTreeSet<Target>, io::Erro
 }
 
 fn get_targets_root_only(targets: &mut BTreeSet<Target>) -> Result<(), io::Error> {
-    let metadata = get_cargo_metadata(None)?;
+    let metadata = get_cargo_metadata(None, false)?;
     let current_dir = env::current_dir()?.canonicalize()?;
     let current_dir_manifest = current_dir.join("Cargo.toml");
     let workspace_root_path = PathBuf::from(&metadata.workspace_root).canonicalize()?;
@@ -282,7 +282,8 @@ fn get_targets_recursive(
     mut targets: &mut BTreeSet<Target>,
     visited: &mut BTreeSet<String>,
 ) -> Result<(), io::Error> {
-    let metadata = get_cargo_metadata(manifest_path)?;
+    let metadata = get_cargo_metadata(manifest_path, false)?;
+    let metadata_with_deps = get_cargo_metadata(manifest_path, true)?;
 
     for package in metadata.packages {
         add_targets(&package.targets, &mut targets);
@@ -293,11 +294,19 @@ fn get_targets_recursive(
                 continue;
             }
 
-            let mut manifest_path = PathBuf::from(&package.manifest_path);
-
-            manifest_path.pop();
-            manifest_path.push(&dependency.name);
-            manifest_path.push("Cargo.toml");
+            let dependency_package = metadata_with_deps
+                .packages
+                .iter()
+                .find(|p| p.name == dependency.name);
+            let manifest_path = if dependency_package.is_some() {
+                PathBuf::from(&dependency_package.unwrap().manifest_path)
+            } else {
+                let mut package_manifest_path = PathBuf::from(&package.manifest_path);
+                package_manifest_path.pop();
+                package_manifest_path.push(&dependency.name);
+                package_manifest_path.push("Cargo.toml");
+                package_manifest_path
+            };
 
             if manifest_path.exists() {
                 visited.insert(dependency.name);
@@ -313,7 +322,7 @@ fn get_targets_with_hitlist(
     hitlist: &[String],
     targets: &mut BTreeSet<Target>,
 ) -> Result<(), io::Error> {
-    let metadata = get_cargo_metadata(None)?;
+    let metadata = get_cargo_metadata(None, false)?;
 
     let mut workspace_hitlist: BTreeSet<&String> = BTreeSet::from_iter(hitlist);
 
@@ -399,9 +408,14 @@ fn run_rustfmt(
         .unwrap_or(SUCCESS))
 }
 
-fn get_cargo_metadata(manifest_path: Option<&Path>) -> Result<cargo_metadata::Metadata, io::Error> {
+fn get_cargo_metadata(
+    manifest_path: Option<&Path>,
+    include_deps: bool,
+) -> Result<cargo_metadata::Metadata, io::Error> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.no_deps();
+    if !include_deps {
+        cmd.no_deps();
+    }
     if let Some(manifest_path) = manifest_path {
         cmd.manifest_path(manifest_path);
     }
