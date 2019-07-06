@@ -329,7 +329,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
 }
 
 fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
-    let did = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+    let did = cx.tcx.hir().local_def_id(item.hir_id);
     println!("item `{}`", item.ident.name);
     match item.vis.node {
         hir::VisibilityKind::Public => println!("public"),
@@ -342,7 +342,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
     }
     match item.node {
         hir::ItemKind::ExternCrate(ref _renamed_from) => {
-            let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+            let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             if let Some(crate_id) = cx.tcx.extern_mod_stmt_cnum(def_id) {
                 let source = cx.tcx.used_crate_source(crate_id);
                 if let Some(ref src) = source.dylib {

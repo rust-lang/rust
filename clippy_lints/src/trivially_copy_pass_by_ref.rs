@@ -73,7 +73,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
     }
 
     fn check_poly_fn(&mut self, cx: &LateContext<'_, 'tcx>, hir_id: HirId, decl: &FnDecl, span: Option<Span>) {
-        let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
+        let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);

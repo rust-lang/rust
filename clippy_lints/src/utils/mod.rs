@@ -716,7 +716,7 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
 
 /// Convenience function to get the return type of a function.
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: hir::HirId) -> Ty<'tcx> {
-    let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(fn_item);
+    let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
 }

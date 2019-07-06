@@ -1,5 +1,5 @@
 error: using `MIN`
-  --> $DIR/replace_consts.rs:14:17
+  --> $DIR/replace_consts.rs:11:17
    |
 LL |     { let foo = std::isize::MIN; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `isize::min_value()`
@@ -11,139 +11,139 @@ LL | #![deny(clippy::replace_consts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:15:17
+  --> $DIR/replace_consts.rs:12:17
    |
 LL |     { let foo = std::i8::MIN; };
    |                 ^^^^^^^^^^^^ help: try this: `i8::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:16:17
+  --> $DIR/replace_consts.rs:13:17
    |
 LL |     { let foo = std::i16::MIN; };
    |                 ^^^^^^^^^^^^^ help: try this: `i16::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:17:17
+  --> $DIR/replace_consts.rs:14:17
    |
 LL |     { let foo = std::i32::MIN; };
    |                 ^^^^^^^^^^^^^ help: try this: `i32::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:18:17
+  --> $DIR/replace_consts.rs:15:17
    |
 LL |     { let foo = std::i64::MIN; };
    |                 ^^^^^^^^^^^^^ help: try this: `i64::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:19:17
+  --> $DIR/replace_consts.rs:16:17
    |
 LL |     { let foo = std::i128::MIN; };
    |                 ^^^^^^^^^^^^^^ help: try this: `i128::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:20:17
+  --> $DIR/replace_consts.rs:17:17
    |
 LL |     { let foo = std::usize::MIN; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `usize::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:21:17
+  --> $DIR/replace_consts.rs:18:17
    |
 LL |     { let foo = std::u8::MIN; };
    |                 ^^^^^^^^^^^^ help: try this: `u8::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:22:17
+  --> $DIR/replace_consts.rs:19:17
    |
 LL |     { let foo = std::u16::MIN; };
    |                 ^^^^^^^^^^^^^ help: try this: `u16::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:23:17
+  --> $DIR/replace_consts.rs:20:17
    |
 LL |     { let foo = std::u32::MIN; };
    |                 ^^^^^^^^^^^^^ help: try this: `u32::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:24:17
+  --> $DIR/replace_consts.rs:21:17
    |
 LL |     { let foo = std::u64::MIN; };
    |                 ^^^^^^^^^^^^^ help: try this: `u64::min_value()`
 
 error: using `MIN`
-  --> $DIR/replace_consts.rs:25:17
+  --> $DIR/replace_consts.rs:22:17
    |
 LL |     { let foo = std::u128::MIN; };
    |                 ^^^^^^^^^^^^^^ help: try this: `u128::min_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:27:17
+  --> $DIR/replace_consts.rs:24:17
    |
 LL |     { let foo = std::isize::MAX; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `isize::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:28:17
+  --> $DIR/replace_consts.rs:25:17
    |
 LL |     { let foo = std::i8::MAX; };
    |                 ^^^^^^^^^^^^ help: try this: `i8::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:29:17
+  --> $DIR/replace_consts.rs:26:17
    |
 LL |     { let foo = std::i16::MAX; };
    |                 ^^^^^^^^^^^^^ help: try this: `i16::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:30:17
+  --> $DIR/replace_consts.rs:27:17
    |
 LL |     { let foo = std::i32::MAX; };
    |                 ^^^^^^^^^^^^^ help: try this: `i32::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:31:17
+  --> $DIR/replace_consts.rs:28:17
    |
 LL |     { let foo = std::i64::MAX; };
    |                 ^^^^^^^^^^^^^ help: try this: `i64::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:32:17
+  --> $DIR/replace_consts.rs:29:17
    |
 LL |     { let foo = std::i128::MAX; };
    |                 ^^^^^^^^^^^^^^ help: try this: `i128::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:33:17
+  --> $DIR/replace_consts.rs:30:17
    |
 LL |     { let foo = std::usize::MAX; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `usize::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:34:17
+  --> $DIR/replace_consts.rs:31:17
    |
 LL |     { let foo = std::u8::MAX; };
    |                 ^^^^^^^^^^^^ help: try this: `u8::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:35:17
+  --> $DIR/replace_consts.rs:32:17
    |
 LL |     { let foo = std::u16::MAX; };
    |                 ^^^^^^^^^^^^^ help: try this: `u16::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:36:17
+  --> $DIR/replace_consts.rs:33:17
    |
 LL |     { let foo = std::u32::MAX; };
    |                 ^^^^^^^^^^^^^ help: try this: `u32::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:37:17
+  --> $DIR/replace_consts.rs:34:17
    |
 LL |     { let foo = std::u64::MAX; };
    |                 ^^^^^^^^^^^^^ help: try this: `u64::max_value()`
 
 error: using `MAX`
-  --> $DIR/replace_consts.rs:38:17
+  --> $DIR/replace_consts.rs:35:17
    |
 LL |     { let foo = std::u128::MAX; };
    |                 ^^^^^^^^^^^^^^ help: try this: `u128::max_value()`

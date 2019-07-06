@@ -77,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
             too_large_for_stack: self.too_large_for_stack,
         };
 
-        let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
+        let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
         let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
         ExprUseVisitor::new(
             &mut v,

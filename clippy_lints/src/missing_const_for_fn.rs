@@ -69,7 +69,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         span: Span,
         hir_id: HirId,
     ) {
-        let def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
+        let def_id = cx.tcx.hir().local_def_id(hir_id);
 
         if in_external_macro(cx.tcx.sess, span) || is_entrypoint_fn(cx, def_id) {
             return;
