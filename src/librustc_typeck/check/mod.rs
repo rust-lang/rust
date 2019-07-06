@@ -3941,10 +3941,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             (&hir::FunctionRetTy::DefaultReturn(span), _, FnDeclType::MainItem, true) => {
-                // In `fn main()`, we can only return types that implement `std::process::Termination`.
+                // In `fn main()`, we can only return types that implement
+                // `std::process::Termination`.
                 let ret_ty = self.resolve_type_vars_with_obligations(found);
+                debug!("suggest_missing_return_type: main(), return type {:?}", ret_ty);
                 let is_term = if let Some(term_id) = self.infcx.tcx.lang_items().termination() {
-                    self.infcx.predicate_must_hold_modulo_regions(
+                    let pred = self.infcx.predicate_must_hold_modulo_regions(
                         &self.infcx.tcx.predicate_for_trait_def(
                             self.param_env,
                             traits::ObligationCause::dummy(),
@@ -3952,8 +3954,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             0,
                             ret_ty,
                             &[]
-                        ))
+                        ));
+                    debug!(
+                        "suggest_missing_return_type: termination lang item available, pred={}",
+                        pred
+                    );
+                    pred
                 } else {
+                    debug!("suggest_missing_return_type: missing termination lang item");
                     false
                 };
                 if is_term {
