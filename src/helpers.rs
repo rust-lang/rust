@@ -116,7 +116,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .map(|(size, _)| size)
             .unwrap_or_else(|| place.layout.size)
         );
-        let place = this.normalize_mplace_ptr(place)?;
         // Store how far we proceeded into the place so far. Everything to the left of
         // this offset has already been handled, in the sense that the frozen parts
         // have had `action` called on them.
