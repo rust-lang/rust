@@ -1,3 +1,23 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/liveness-move-in-while.rs:8:9
+   |
+LL |         while true { while true { while true { x = y; x.clone(); } } }
+   |         ^^^^^^^^^^ help: use `loop`
+   |
+   = note: #[warn(while_true)] on by default
+
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/liveness-move-in-while.rs:8:22
+   |
+LL |         while true { while true { while true { x = y; x.clone(); } } }
+   |                      ^^^^^^^^^^ help: use `loop`
+
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/liveness-move-in-while.rs:8:35
+   |
+LL |         while true { while true { while true { x = y; x.clone(); } } }
+   |                                   ^^^^^^^^^^ help: use `loop`
+
 error[E0382]: borrow of moved value: `y`
   --> $DIR/liveness-move-in-while.rs:7:24
    |

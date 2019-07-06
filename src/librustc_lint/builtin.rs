@@ -64,22 +64,30 @@ declare_lint! {
 
 declare_lint_pass!(WhileTrue => [WHILE_TRUE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
-        if let hir::ExprKind::While(ref cond, ..) = e.node {
-            if let hir::ExprKind::Lit(ref lit) = cond.node {
+/// Traverse through any amount of parenthesis and return the first non-parens expression.
+fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
+    while let ast::ExprKind::Paren(sub) = &expr.node {
+        expr = sub;
+    }
+    expr
+}
+
+impl EarlyLintPass for WhileTrue {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
+        if let ast::ExprKind::While(cond, ..) = &e.node {
+            if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).node {
                 if let ast::LitKind::Bool(true) = lit.node {
                     if lit.span.ctxt() == SyntaxContext::empty() {
                         let msg = "denote infinite loops with `loop { ... }`";
-                        let condition_span = cx.tcx.sess.source_map().def_span(e.span);
-                        let mut err = cx.struct_span_lint(WHILE_TRUE, condition_span, msg);
-                        err.span_suggestion_short(
-                            condition_span,
-                            "use `loop`",
-                            "loop".to_owned(),
-                            Applicability::MachineApplicable
-                        );
-                        err.emit();
+                        let condition_span = cx.sess.source_map().def_span(e.span);
+                        cx.struct_span_lint(WHILE_TRUE, condition_span, msg)
+                            .span_suggestion_short(
+                                condition_span,
+                                "use `loop`",
+                                "loop".to_owned(),
+                                Applicability::MachineApplicable
+                            )
+                            .emit();
                     }
                 }
             }

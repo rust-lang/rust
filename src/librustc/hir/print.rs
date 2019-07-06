@@ -1299,16 +1299,6 @@ impl<'a> State<'a> {
                 // Print `}`:
                 self.bclose_maybe_open(expr.span, indent_unit, true);
             }
-            hir::ExprKind::While(ref test, ref blk, opt_label) => {
-                if let Some(label) = opt_label {
-                    self.print_ident(label.ident);
-                    self.word_space(":");
-                }
-                self.head("while");
-                self.print_expr_as_cond(&test);
-                self.s.space();
-                self.print_block(&blk);
-            }
             hir::ExprKind::Loop(ref blk, opt_label, _) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
@@ -2289,7 +2279,6 @@ fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
     match e.node {
         hir::ExprKind::Match(..) |
         hir::ExprKind::Block(..) |
-        hir::ExprKind::While(..) |
         hir::ExprKind::Loop(..) => false,
         _ => true,
     }

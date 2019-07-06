@@ -520,13 +520,6 @@ fn check_expr_kind<'a, 'tcx>(
             NotPromotable
         }
 
-        // Loops (not very meaningful in constants).
-        hir::ExprKind::While(ref expr, ref box_block, ref _option_label) => {
-            let _ = v.check_expr(expr);
-            let _ = v.check_block(box_block);
-            NotPromotable
-        }
-
         hir::ExprKind::Loop(ref box_block, ref _option_label, ref _loop_source) => {
             let _ = v.check_block(box_block);
             NotPromotable

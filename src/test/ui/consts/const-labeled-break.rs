@@ -4,7 +4,6 @@
 // See https://github.com/rust-lang/rust/issues/51350 for more information.
 
 const CRASH: () = 'a: while break 'a {};
+//~^ ERROR constant contains unimplemented expression type
 
-fn main() {
-    println!("{:?}", CRASH);
-}
+fn main() {}

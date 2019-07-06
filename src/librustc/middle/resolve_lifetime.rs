@@ -1201,11 +1201,10 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
     }
 
     fn expression_label(ex: &hir::Expr) -> Option<ast::Ident> {
-        match ex.node {
-            hir::ExprKind::While(.., Some(label)) | hir::ExprKind::Loop(_, Some(label), _) => {
-                Some(label.ident)
-            }
-            _ => None,
+        if let hir::ExprKind::Loop(_, Some(label), _) = ex.node {
+            Some(label.ident)
+        } else {
+            None
         }
     }
 

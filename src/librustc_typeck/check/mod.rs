@@ -2161,10 +2161,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// function is unreachable, and there hasn't been another warning.
     fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
         if self.diverges.get() == Diverges::Always &&
-            // If span arose from a desugaring of `if` then it is the condition itself,
-            // which diverges, that we are about to lint on. This gives suboptimal diagnostics
-            // and so we stop here and allow the block of the `if`-expression to be linted instead.
-            !span.is_compiler_desugaring(CompilerDesugaringKind::IfTemporary) {
+            // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
+            // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
+            // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
+            !span.is_compiler_desugaring(CompilerDesugaringKind::CondTemporary) {
             self.diverges.set(Diverges::WarnedAlways);
 
             debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
@@ -3865,7 +3865,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match expression.node {
                 ExprKind::Call(..) |
                 ExprKind::MethodCall(..) |
-                ExprKind::While(..) |
                 ExprKind::Loop(..) |
                 ExprKind::Match(..) |
                 ExprKind::Block(..) => {

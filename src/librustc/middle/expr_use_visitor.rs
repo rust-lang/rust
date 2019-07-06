@@ -487,11 +487,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.walk_block(&blk);
             }
 
-            hir::ExprKind::While(ref cond_expr, ref blk, _) => {
-                self.consume_expr(&cond_expr);
-                self.walk_block(&blk);
-            }
-
             hir::ExprKind::Unary(_, ref lhs) => {
                 self.consume_expr(&lhs);
             }

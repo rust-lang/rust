@@ -1405,7 +1405,6 @@ impl Expr {
             ExprKind::Lit(_) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
-            ExprKind::While(..) => ExprPrecedence::While,
             ExprKind::Loop(..) => ExprPrecedence::Loop,
             ExprKind::Match(..) => ExprPrecedence::Match,
             ExprKind::Closure(..) => ExprPrecedence::Closure,
@@ -1464,7 +1463,6 @@ impl Expr {
             ExprKind::Break(..) |
             ExprKind::Continue(..) |
             ExprKind::Ret(..) |
-            ExprKind::While(..) |
             ExprKind::Loop(..) |
             ExprKind::Assign(..) |
             ExprKind::InlineAsm(..) |
@@ -1532,10 +1530,6 @@ pub enum ExprKind {
     /// This construct only exists to tweak the drop order in HIR lowering.
     /// An example of that is the desugaring of `for` loops.
     DropTemps(P<Expr>),
-    /// A while loop, with an optional label
-    ///
-    /// I.e., `'label: while expr { <block> }`.
-    While(P<Expr>, P<Block>, Option<Label>),
     /// A conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// I.e., `'label: loop { <block> }`.
@@ -1653,6 +1647,8 @@ pub enum MatchSource {
     IfLetDesugar {
         contains_else_clause: bool,
     },
+    /// A `while _ { .. }` (which was desugared to a `loop { match _ { .. } }`).
+    WhileDesugar,
     /// A `while let _ = _ { .. }` (which was desugared to a
     /// `loop { match _ { .. } }`).
     WhileLetDesugar,
@@ -1669,10 +1665,23 @@ pub enum MatchSource {
 pub enum LoopSource {
     /// A `loop { .. }` loop.
     Loop,
+    /// A `while _ { .. }` loop.
+    While,
     /// A `while let _ = _ { .. }` loop.
     WhileLet,
     /// A `for _ in _ { .. }` loop.
     ForLoop,
+}
+
+impl LoopSource {
+    pub fn name(self) -> &'static str {
+        match self {
+            LoopSource::Loop => "loop",
+            LoopSource::While => "while",
+            LoopSource::WhileLet => "while let",
+            LoopSource::ForLoop => "for",
+        }
+    }
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]

@@ -915,11 +915,6 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
                 terminating(body.hir_id.local_id);
             }
 
-            hir::ExprKind::While(ref expr, ref body, _) => {
-                terminating(expr.hir_id.local_id);
-                terminating(body.hir_id.local_id);
-            }
-
             hir::ExprKind::DropTemps(ref expr) => {
                 // `DropTemps(expr)` does not denote a conditional scope.
                 // Rather, we want to achieve the same behavior as `{ let _t = expr; _t }`.

@@ -34,44 +34,52 @@ error: unnecessary parentheses around `while` condition
 LL |     while (true) {}
    |           ^^^^^^ help: remove these parentheses
 
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/lint-unnecessary-parens.rs:21:5
+   |
+LL |     while (true) {}
+   |     ^^^^^^^^^^^^ help: use `loop`
+   |
+   = note: #[warn(while_true)] on by default
+
 error: unnecessary parentheses around `match` head expression
-  --> $DIR/lint-unnecessary-parens.rs:22:11
+  --> $DIR/lint-unnecessary-parens.rs:23:11
    |
 LL |     match (true) {
    |           ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `let` head expression
-  --> $DIR/lint-unnecessary-parens.rs:25:16
+  --> $DIR/lint-unnecessary-parens.rs:26:16
    |
 LL |     if let 1 = (1) {}
    |                ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `let` head expression
-  --> $DIR/lint-unnecessary-parens.rs:26:19
+  --> $DIR/lint-unnecessary-parens.rs:27:19
    |
 LL |     while let 1 = (2) {}
    |                   ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around method argument
-  --> $DIR/lint-unnecessary-parens.rs:40:24
+  --> $DIR/lint-unnecessary-parens.rs:41:24
    |
 LL |     X { y: false }.foo((true));
    |                        ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:42:18
+  --> $DIR/lint-unnecessary-parens.rs:43:18
    |
 LL |     let mut _a = (0);
    |                  ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:43:10
+  --> $DIR/lint-unnecessary-parens.rs:44:10
    |
 LL |     _a = (0);
    |          ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:44:11
+  --> $DIR/lint-unnecessary-parens.rs:45:11
    |
 LL |     _a += (1);
    |           ^^^ help: remove these parentheses

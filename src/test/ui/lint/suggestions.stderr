@@ -1,3 +1,11 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/suggestions.rs:46:5
+   |
+LL |     while true {
+   |     ^^^^^^^^^^ help: use `loop`
+   |
+   = note: #[warn(while_true)] on by default
+
 warning: unnecessary parentheses around assigned value
   --> $DIR/suggestions.rs:49:31
    |
@@ -64,14 +72,6 @@ LL | pub fn defiant<T>(_t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[warn(no_mangle_generic_items)] on by default
-
-warning: denote infinite loops with `loop { ... }`
-  --> $DIR/suggestions.rs:46:5
-   |
-LL |     while true {
-   |     ^^^^^^^^^^ help: use `loop`
-   |
-   = note: #[warn(while_true)] on by default
 
 warning: the `warp_factor:` in this pattern is redundant
   --> $DIR/suggestions.rs:61:23
