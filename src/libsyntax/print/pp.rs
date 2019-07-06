@@ -328,9 +328,7 @@ impl Printer {
         }
         debug!("pp Begin({})/buffer Vec<{},{}>",
                b.offset, self.left, self.right);
-        self.buf[self.right] = BufEntry { token: Token::Begin(b), size: -self.right_total };
-        let right = self.right;
-        self.scan_push(right);
+        self.scan_push(BufEntry { token: Token::Begin(b), size: -self.right_total });
     }
 
     fn pretty_print_end(&mut self) {
@@ -340,9 +338,7 @@ impl Printer {
         } else {
             debug!("pp End/buffer Vec<{},{}>", self.left, self.right);
             self.advance_right();
-            self.buf[self.right] = BufEntry { token: Token::End, size: -1 };
-            let right = self.right;
-            self.scan_push(right);
+            self.scan_push(BufEntry { token: Token::End, size: -1 });
         }
     }
 
@@ -358,9 +354,7 @@ impl Printer {
         debug!("pp Break({})/buffer Vec<{},{}>",
                b.offset, self.left, self.right);
         self.check_stack(0);
-        let right = self.right;
-        self.scan_push(right);
-        self.buf[self.right] = BufEntry { token: Token::Break(b), size: -self.right_total };
+        self.scan_push(BufEntry { token: Token::Break(b), size: -self.right_total });
         self.right_total += b.blank_space;
     }
 
@@ -397,9 +391,10 @@ impl Printer {
         }
     }
 
-    fn scan_push(&mut self, x: usize) {
-        debug!("scan_push {}", x);
-        self.scan_stack.push_front(x);
+    fn scan_push(&mut self, entry: BufEntry) {
+        debug!("scan_push {}", self.right);
+        self.buf[self.right] = entry;
+        self.scan_stack.push_front(self.right);
     }
 
     fn scan_pop(&mut self) -> usize {
