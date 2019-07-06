@@ -222,13 +222,13 @@ fn buf_str(buf: &[BufEntry], left: usize, right: usize, lim: usize) -> String {
 }
 
 #[derive(Copy, Clone)]
-crate enum PrintStackBreak {
+enum PrintStackBreak {
     Fits,
     Broken(Breaks),
 }
 
 #[derive(Copy, Clone)]
-crate struct PrintStackElem {
+struct PrintStackElem {
     offset: isize,
     pbreak: PrintStackBreak
 }
@@ -380,7 +380,7 @@ impl Printer {
         }
     }
 
-    crate fn check_stream(&mut self) {
+    fn check_stream(&mut self) {
         debug!("check_stream Vec<{}, {}> with left_total={}, right_total={}",
                self.left, self.right, self.left_total, self.right_total);
         if self.right_total - self.left_total > self.space {
@@ -398,24 +398,24 @@ impl Printer {
         }
     }
 
-    crate fn scan_push(&mut self, x: usize) {
+    fn scan_push(&mut self, x: usize) {
         debug!("scan_push {}", x);
         self.scan_stack.push_front(x);
     }
 
-    crate fn scan_pop(&mut self) -> usize {
+    fn scan_pop(&mut self) -> usize {
         self.scan_stack.pop_front().unwrap()
     }
 
-    crate fn scan_top(&mut self) -> usize {
+    fn scan_top(&mut self) -> usize {
         *self.scan_stack.front().unwrap()
     }
 
-    crate fn scan_pop_bottom(&mut self) -> usize {
+    fn scan_pop_bottom(&mut self) -> usize {
         self.scan_stack.pop_back().unwrap()
     }
 
-    crate fn advance_right(&mut self) {
+    fn advance_right(&mut self) {
         self.right += 1;
         self.right %= self.buf_max_len;
         // Extend the buf if necessary.
@@ -425,7 +425,7 @@ impl Printer {
         assert_ne!(self.right, self.left);
     }
 
-    crate fn advance_left(&mut self) {
+    fn advance_left(&mut self) {
         debug!("advance_left Vec<{},{}>, sizeof({})={}", self.left, self.right,
                self.left, self.buf[self.left].size);
 
@@ -458,7 +458,7 @@ impl Printer {
         }
     }
 
-    crate fn check_stack(&mut self, k: isize) {
+    fn check_stack(&mut self, k: isize) {
         if !self.scan_stack.is_empty() {
             let x = self.scan_top();
             match self.buf[x].token {
@@ -486,19 +486,19 @@ impl Printer {
         }
     }
 
-    crate fn print_newline(&mut self, amount: isize) {
+    fn print_newline(&mut self, amount: isize) {
         debug!("NEWLINE {}", amount);
         self.out.push('\n');
         self.pending_indentation = 0;
         self.indent(amount);
     }
 
-    crate fn indent(&mut self, amount: isize) {
+    fn indent(&mut self, amount: isize) {
         debug!("INDENT {}", amount);
         self.pending_indentation += amount;
     }
 
-    crate fn get_top(&mut self) -> PrintStackElem {
+    fn get_top(&mut self) -> PrintStackElem {
         match self.print_stack.last() {
             Some(el) => *el,
             None => PrintStackElem {
@@ -508,7 +508,7 @@ impl Printer {
         }
     }
 
-    crate fn print_begin(&mut self, b: BeginToken, l: isize) {
+    fn print_begin(&mut self, b: BeginToken, l: isize) {
         if l > self.space {
             let col = self.margin - self.space + b.offset;
             debug!("print Begin -> push broken block at col {}", col);
@@ -525,14 +525,14 @@ impl Printer {
         }
     }
 
-    crate fn print_end(&mut self) {
+    fn print_end(&mut self) {
         debug!("print End -> pop End");
         let print_stack = &mut self.print_stack;
         assert!(!print_stack.is_empty());
         print_stack.pop().unwrap();
     }
 
-    crate fn print_break(&mut self, b: BreakToken, l: isize) {
+    fn print_break(&mut self, b: BreakToken, l: isize) {
         let top = self.get_top();
         match top.pbreak {
             PrintStackBreak::Fits => {
@@ -562,7 +562,7 @@ impl Printer {
         }
     }
 
-    crate fn print_string(&mut self, s: Cow<'static, str>, len: isize) {
+    fn print_string(&mut self, s: Cow<'static, str>, len: isize) {
         debug!("print String({})", s);
         // assert!(len <= space);
         self.space -= len;
@@ -579,7 +579,7 @@ impl Printer {
         self.out.push_str(&s);
     }
 
-    crate fn print(&mut self, token: Token, l: isize) {
+    fn print(&mut self, token: Token, l: isize) {
         debug!("print {} {} (remaining line space={})", token, l,
                self.space);
         debug!("{}", buf_str(&self.buf,
