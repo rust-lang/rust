@@ -31,11 +31,11 @@ before_script:
     RUSTC_HASH=$(cat rust-version)
   fi
 # Install Rust ("stable" toolchain for better caching, it is just used to build rustup-toolchain-install-master)
-- curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain beta
+- curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain stable
 - export PATH=$HOME/.cargo/bin:$PATH
 # Install "master" toolchain
 - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
-- travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c rust-src
+- travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c cargo -c rust-src
 - rustup default master
 - rustc --version
 
@@ -44,7 +44,7 @@ script:
 
 before_cache:
 # Don't cache "master" toolchain, it's a waste
-- rustup default beta
+- rustup default stable
 - rustup toolchain uninstall master
 
 notifications:
