@@ -1210,17 +1210,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
             if_chain! {
                 if let ty::RawPtr(from_ptr_ty) = &cast_from.sty;
                 if let ty::RawPtr(to_ptr_ty) = &cast_to.sty;
-                if let Some(from_align) = cx.layout_of(from_ptr_ty.ty).ok().map(|a| a.align.abi);
-                if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi);
-                if from_align < to_align;
+                if let Ok(from_layout) = cx.layout_of(from_ptr_ty.ty);
+                if let Ok(to_layout) = cx.layout_of(to_ptr_ty.ty);
+                if from_layout.align.abi < to_layout.align.abi;
                 // with c_void, we inherently need to trust the user
                 if !is_c_void(cx, from_ptr_ty.ty);
+                // when casting from a ZST, we don't know enough to properly lint
+                if !from_layout.is_zst();
                 then {
                     span_lint(
                         cx,
                         CAST_PTR_ALIGNMENT,
                         expr.span,
-                        &format!("casting from `{}` to a more-strictly-aligned pointer (`{}`)", cast_from, cast_to)
+                        &format!(
+                            "casting from `{}` to a more-strictly-aligned pointer (`{}`) ({} < {} bytes)",
+                            cast_from,
+                            cast_to,
+                            from_layout.align.abi.bytes(),
+                            to_layout.align.abi.bytes(),
+                        ),
                     );
                 }
             }
