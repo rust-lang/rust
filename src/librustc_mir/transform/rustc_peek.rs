@@ -88,11 +88,8 @@ pub fn sanity_check_via_rustc_peek<'tcx, O>(
     def_id: DefId,
     _attributes: &[ast::Attribute],
     results: &DataflowResults<'tcx, O>,
-) where
-    O: BitDenotation<'tcx, Idx = MovePathIndex> + HasMoveData<'tcx>,
-{
+) where O: RustcPeekAt<'tcx> {
     debug!("sanity_check_via_rustc_peek def_id: {:?}", def_id);
-    let move_data = results.operator().move_data();
 
     let peek_calls = body
             .basic_blocks()
@@ -121,19 +118,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, O>(
             let loc = Location { block: bb, statement_index };
             let flow_state = dataflow::state_for_location(loc, results.operator(), results, body);
 
-            match move_data.rev_lookup.find(peeking_at_place) {
-                LookupResult::Exact(peek_mpi) => {
-                    let bit_state = flow_state.contains(peek_mpi);
-                    debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
-                           call.arg, peeking_at_place, bit_state);
-                    if !bit_state {
-                        tcx.sess.span_err(call.span, "rustc_peek: bit not set");
-                    }
-                }
-                LookupResult::Parent(..) => {
-                    tcx.sess.span_err(call.span, "rustc_peek: argument untracked");
-                }
-            }
+            results.operator().peek_at(tcx, peeking_at_place, &flow_state, call);
         } else {
             let msg = "rustc_peek: argument expression \
                        must be immediate borrow of form `&expr`";
@@ -159,7 +144,8 @@ fn value_assigned_to_local<'a, 'tcx>(
     None
 }
 
-struct PeekCall {
+#[derive(Clone, Copy, Debug)]
+pub struct PeekCall {
     arg: Local,
     span: Span,
 }
@@ -201,5 +187,41 @@ impl PeekCall {
         }
 
         None
+    }
+}
+
+pub trait RustcPeekAt<'tcx>: BitDenotation<'tcx> {
+    fn peek_at(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        place: &mir::Place<'tcx>,
+        flow_state: &BitSet<Self::Idx>,
+        call: PeekCall,
+    );
+}
+
+impl<'tcx, O> RustcPeekAt<'tcx> for O
+    where O: BitDenotation<'tcx, Idx = MovePathIndex> + HasMoveData<'tcx>,
+{
+    fn peek_at(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        place: &mir::Place<'tcx>,
+        flow_state: &BitSet<Self::Idx>,
+        call: PeekCall,
+    ) {
+        match self.move_data().rev_lookup.find(place) {
+            LookupResult::Exact(peek_mpi) => {
+                let bit_state = flow_state.contains(peek_mpi);
+                debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
+                       call.arg, place, bit_state);
+                if !bit_state {
+                    tcx.sess.span_err(call.span, "rustc_peek: bit not set");
+                }
+            }
+            LookupResult::Parent(..) => {
+                tcx.sess.span_err(call.span, "rustc_peek: argument untracked");
+            }
+        }
     }
 }
