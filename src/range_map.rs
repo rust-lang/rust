@@ -281,7 +281,7 @@ mod tests {
             .map(|&t| t).collect::<Vec<_>>(), vec![19, 19]);
 
         // A NOP `iter_mut` should trigger merging.
-        for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) { }
+        for _ in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) { }
         assert_eq!(map.v.len(), 5);
         assert_eq!(
             to_vec(&map, 10, 10),
