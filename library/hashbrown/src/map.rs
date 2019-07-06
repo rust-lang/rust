@@ -1280,6 +1280,19 @@ pub struct RawOccupiedEntryMut<'a, K, V> {
     table: &'a mut RawTable<(K, V)>,
 }
 
+unsafe impl<K, V> Send for RawOccupiedEntryMut<'_, K, V>
+where
+    K: Send,
+    V: Send,
+{
+}
+unsafe impl<K, V> Sync for RawOccupiedEntryMut<'_, K, V>
+where
+    K: Sync,
+    V: Sync,
+{
+}
+
 /// A view into a vacant entry in a `HashMap`.
 /// It is part of the [`RawEntryMut`] enum.
 ///
