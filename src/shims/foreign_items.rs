@@ -842,13 +842,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             },
             "GetSystemInfo" => {
                 let system_info = this.deref_operand(args[0])?;
-                let (system_info_ptr, align) = system_info.to_scalar_ptr_align();
-                let system_info_ptr = this.memory()
-                    .check_ptr_access(
-                        system_info_ptr,
-                        system_info.layout.size,
-                        align,
-                    )?
+                let system_info_ptr = this.check_mplace_access(system_info, None)?
                     .expect("cannot be a ZST");
                 // Initialize with `0`.
                 this.memory_mut().get_mut(system_info_ptr.alloc_id)?

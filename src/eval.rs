@@ -136,7 +136,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let place = ecx.mplace_field(argvs_place, idx as u64)?;
         ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
     }
-    ecx.memory_mut().mark_immutable(argvs_place.to_ptr()?.alloc_id)?;
+    ecx.memory_mut().mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
     // Write a pointer to that place as the argument.
     let argv = argvs_place.ptr;
     ecx.write_scalar(argv, dest)?;
