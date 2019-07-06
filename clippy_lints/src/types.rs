@@ -1,4 +1,4 @@
-#![allow(default_hash_types)]
+#![allow(rustc::default_hash_types)]
 
 use std::borrow::Cow;
 use std::cmp::Ordering;

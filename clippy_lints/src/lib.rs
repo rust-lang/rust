@@ -8,7 +8,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![recursion_limit = "512"]
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
-#![deny(internal)]
+#![deny(rustc::internal)]
 #![feature(crate_visibility_modifier)]
 #![feature(concat_idents)]
 
