@@ -508,8 +508,8 @@ where
                 }
                 .collect(&*items);
             }
-            // out of line module, resovle, parse and recurse
-            raw::ModuleData::Declaration { name, ast_id } => {
+            // out of line module, resolve, parse and recurse
+            raw::ModuleData::Declaration { name, ast_id, .. } => {
                 let ast_id = ast_id.with_file_id(self.file_id);
                 let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
                 match resolve_submodule(self.def_collector.db, self.file_id, name, is_root) {

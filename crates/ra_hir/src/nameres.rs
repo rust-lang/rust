@@ -76,7 +76,7 @@ pub use self::{
     raw::ImportId,
 };
 
-/// Contans all top-level defs from a macro-expanded crate
+/// Contains all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateDefMap {
     krate: Crate,
