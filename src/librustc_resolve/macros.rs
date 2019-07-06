@@ -1106,6 +1106,19 @@ impl<'a> Resolver<'a> {
         });
     }
 
+    crate fn check_reserved_macro_name(&mut self, ident: Ident, res: Res) {
+        // Reserve some names that are not quite covered by the general check
+        // performed on `Resolver::builtin_attrs`.
+        if ident.name == sym::cfg || ident.name == sym::cfg_attr || ident.name == sym::derive {
+            let macro_kind = self.opt_get_macro(res).map(|ext| ext.macro_kind());
+            if macro_kind.is_some() && sub_namespace_match(macro_kind, Some(MacroKind::Attr)) {
+                self.session.span_err(
+                    ident.span, &format!("name `{}` is reserved in attribute namespace", ident)
+                );
+            }
+        }
+    }
+
     pub fn define_macro(&mut self,
                         item: &ast::Item,
                         expansion: Mark,
@@ -1117,13 +1130,14 @@ impl<'a> Resolver<'a> {
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
                                                &self.session.features_untracked(),
                                                item, self.session.edition()));
+        let macro_kind = ext.macro_kind();
+        let res = Res::Def(DefKind::Macro(macro_kind), def_id);
         self.macro_map.insert(def_id, ext);
 
         let def = match item.node { ast::ItemKind::MacroDef(ref def) => def, _ => unreachable!() };
         if def.legacy {
             let ident = ident.modern();
             self.macro_names.insert(ident);
-            let res = Res::Def(DefKind::Macro(MacroKind::Bang), def_id);
             let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 ty::Visibility::Public
@@ -1142,14 +1156,11 @@ impl<'a> Resolver<'a> {
                 self.define(module, ident, MacroNS,
                             (res, vis, item.span, expansion, IsMacroExport));
             } else {
-                if !attr::contains_name(&item.attrs, sym::rustc_doc_only_macro) {
-                    self.check_reserved_macro_name(ident, MacroNS);
-                }
+                self.check_reserved_macro_name(ident, res);
                 self.unused_macros.insert(def_id);
             }
         } else {
             let module = self.current_module;
-            let res = Res::Def(DefKind::Macro(MacroKind::Bang), def_id);
             let vis = self.resolve_visibility(&item.vis);
             if vis != ty::Visibility::Public {
                 self.unused_macros.insert(def_id);

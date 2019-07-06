@@ -28,6 +28,7 @@ use rustc_data_structures::fx::FxHashSet;
 use syntax::ast::Ident;
 use syntax::attr;
 use syntax::symbol::{kw, sym};
+use syntax_pos::hygiene::Transparency;
 use syntax_pos::Span;
 
 use std::{cmp, fmt, mem};
@@ -743,7 +744,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
-        if md.legacy {
+        if attr::find_transparency(&md.attrs, md.legacy).0 != Transparency::Opaque {
             self.update(md.hir_id, Some(AccessLevel::Public));
             return
         }
