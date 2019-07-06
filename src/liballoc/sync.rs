@@ -945,11 +945,40 @@ impl<T: ?Sized> Arc<T> {
             // the Arc itself to be `mut`, so we're returning the only possible
             // reference to the inner data.
             unsafe {
-                Some(&mut this.ptr.as_mut().data)
+                Some(Arc::get_mut_unchecked(this))
             }
         } else {
             None
         }
+    }
+
+    /// Returns a mutable reference to the inner value,
+    /// without any check.
+    ///
+    /// See also [`get_mut`], which is safe and does appropriate checks.
+    ///
+    /// [`get_mut`]: struct.Arc.html#method.get_mut
+    ///
+    /// # Safety
+    ///
+    /// There must be no other `Arc` or [`Weak`][weak] pointers to the same value.
+    /// This is the case for example immediately after `Rc::new`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    ///
+    /// let mut x = Arc::new(String::new());
+    /// unsafe {
+    ///     Arc::get_mut_unchecked(&mut x).push_str("foo")
+    /// }
+    /// assert_eq!(*x, "foo");
+    /// ```
+    #[inline]
+    #[unstable(feature = "get_mut_unchecked", issue = "0")]
+    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
+        &mut this.ptr.as_mut().data
     }
 
     /// Determine whether this is the unique reference (including weak refs) to

@@ -560,11 +560,40 @@ impl<T: ?Sized> Rc<T> {
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if Rc::is_unique(this) {
             unsafe {
-                Some(&mut this.ptr.as_mut().value)
+                Some(Rc::get_mut_unchecked(this))
             }
         } else {
             None
         }
+    }
+
+    /// Returns a mutable reference to the inner value,
+    /// without any check.
+    ///
+    /// See also [`get_mut`], which is safe and does appropriate checks.
+    ///
+    /// [`get_mut`]: struct.Rc.html#method.get_mut
+    ///
+    /// # Safety
+    ///
+    /// There must be no other `Rc` or [`Weak`][weak] pointers to the same value.
+    /// This is the case for example immediately after `Rc::new`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::rc::Rc;
+    ///
+    /// let mut x = Rc::new(String::new());
+    /// unsafe {
+    ///     Rc::get_mut_unchecked(&mut x).push_str("foo")
+    /// }
+    /// assert_eq!(*x, "foo");
+    /// ```
+    #[inline]
+    #[unstable(feature = "get_mut_unchecked", issue = "0")]
+    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
+        &mut this.ptr.as_mut().value
     }
 
     #[inline]
