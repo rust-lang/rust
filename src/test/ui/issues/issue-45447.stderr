@@ -1,22 +1,22 @@
-error[E0401]: can't use generic parameters in `const` associated item
+error[E0401]: can't use generic parameters in a `const`
   --> $DIR/issue-45447.rs:4:17
    |
 LL | fn bar<T: Foo>(n: T) {
    |        - type parameter being used
 LL |     const BASE: T = T::FOO;
-   |                 ^ use of generic parameter in `const` associated item
+   |                 ^ use of generic parameter in a `const`
    |
-   = help: `const` associated item need a type instead of a generic parameter
+   = help: a `const` need a type instead of a generic parameter
 
-error[E0401]: can't use generic parameters in `const` associated item
+error[E0401]: can't use generic parameters in a `const`
   --> $DIR/issue-45447.rs:4:21
    |
 LL | fn bar<T: Foo>(n: T) {
    |        - type parameter being used
 LL |     const BASE: T = T::FOO;
-   |                     ^^^^^^ use of generic parameter in `const` associated item
+   |                     ^^^^^^ use of generic parameter in a `const`
    |
-   = help: `const` associated item need a type instead of a generic parameter
+   = help: a `const` need a type instead of a generic parameter
 
 error[E0401]: can't use generic parameters in associated type
   --> $DIR/issue-45447.rs:7:17

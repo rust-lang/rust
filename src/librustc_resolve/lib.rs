@@ -70,7 +70,9 @@ use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
 
-use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
+use diagnostics::{
+    find_span_of_binding_until_next_binding, extend_span_to_previous_binding, CurrentScope,
+};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{InvocationData, LegacyBinding, ParentScope};
 
@@ -192,39 +194,6 @@ enum ResolutionError<'a> {
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// Error E0671: const parameter cannot depend on type parameter.
     ConstParamDependentOnTypeParam,
-}
-
-#[derive(Clone, Copy)]
-enum CurrentScope {
-    Const,
-    Static,
-    Type,
-    Other,
-}
-
-impl CurrentScope {
-    fn is_other(&self) -> bool {
-        match self {
-            CurrentScope::Other => true,
-            _ => false,
-        }
-    }
-
-    fn description(&self) -> &'static str {
-        match self {
-            Self::Const => "`const` associated item",
-            Self::Static => "`static` associated item",
-            Self::Type => "associated type",
-            Self::Other => "outer function",
-        }
-    }
-
-    fn generic_param_resolution_error_message(&self) -> String {
-        match self {
-            Self::Other => format!("from {}", self.description()),
-            _ => format!("in {}", self.description()),
-        }
-    }
 }
 
 /// Combines an error with provided span and emits it.
