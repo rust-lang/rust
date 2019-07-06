@@ -2247,6 +2247,7 @@ impl<'a> Resolver<'a> {
         }
 
         if !module.no_implicit_prelude {
+            ident.span.adjust(Mark::root());
             if ns == TypeNS {
                 if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
                     return Some(LexicalScopeBinding::Item(binding));

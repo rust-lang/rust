@@ -856,6 +856,7 @@ impl<'a> Resolver<'a> {
                     match self.hygienic_lexical_parent(module, &mut ident.span) {
                         Some(parent_module) => WhereToResolve::Module(parent_module),
                         None => {
+                            ident.span.adjust(Mark::root());
                             use_prelude = !module.no_implicit_prelude;
                             match ns {
                                 TypeNS => WhereToResolve::ExternPrelude,
