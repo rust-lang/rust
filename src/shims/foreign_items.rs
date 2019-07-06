@@ -4,8 +4,6 @@ use rustc::mir;
 use syntax::attr;
 use syntax::symbol::sym;
 
-use rand::RngCore;
-
 use crate::*;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -307,7 +305,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         // neither of which have any effect on our current PRNG
                         let _flags = this.read_scalar(args[3])?.to_i32()?;
 
-                        gen_random(this, len as usize, ptr)?;
+                        this.gen_random(len as usize, ptr)?;
                         this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
                     id => {
@@ -324,10 +322,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let symbol_name = this.memory().get(symbol.alloc_id)?.read_c_str(tcx, symbol)?;
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
                 let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
-                return err!(Unimplemented(format!(
-                    "miri does not support dynamically loading libraries (requested symbol: {})",
-                    symbol_name
-                )));
+                if let Some(dlsym) = Dlsym::from_str(symbol_name)? {
+                    let ptr = this.memory_mut().create_fn_alloc(FnVal::Other(dlsym));
+                    this.write_scalar(Scalar::from(ptr), dest)?;
+                } else {
+                    this.write_null(dest)?;
+                }
             }
 
             "__rust_maybe_catch_panic" => {
@@ -338,9 +338,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 //     vtable_ptr: *mut usize,
                 // ) -> u32
                 // We abort on panic, so not much is going on here, but we still have to call the closure.
-                let f = this.read_scalar(args[0])?.to_ptr()?;
+                let f = this.read_scalar(args[0])?.not_undef()?;
                 let data = this.read_scalar(args[1])?.not_undef()?;
-                let f_instance = this.memory().get_fn(f)?;
+                let f_instance = this.memory().get_fn(f)?.as_instance()?;
                 this.write_null(dest)?;
                 trace!("__rust_maybe_catch_panic: {:?}", f_instance);
 
@@ -659,7 +659,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
                 let dtor = match this.test_null(this.read_scalar(args[1])?.not_undef()?)? {
-                    Some(dtor_ptr) => Some(this.memory().get_fn(dtor_ptr.to_ptr()?)?),
+                    Some(dtor_ptr) => Some(this.memory().get_fn(dtor_ptr)?.as_instance()?),
                     None => None,
                 };
 
@@ -709,24 +709,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
-            // Determine stack base address.
-            "pthread_attr_init" | "pthread_attr_destroy" | "pthread_attr_get_np" |
-            "pthread_getattr_np" | "pthread_self" | "pthread_get_stacksize_np" => {
+            // Stack size/address stuff.
+            "pthread_attr_init" | "pthread_attr_destroy" | "pthread_self" |
+            "pthread_attr_setstacksize" => {
                 this.write_null(dest)?;
             }
             "pthread_attr_getstack" => {
-                // Second argument is where we are supposed to write the stack size.
-                let ptr = this.deref_operand(args[1])?;
-                // Just any address.
-                let stack_addr = Scalar::from_uint(STACK_ADDR, args[1].layout.size);
-                this.write_scalar(stack_addr, ptr.into())?;
+                let addr_place = this.deref_operand(args[1])?;
+                let size_place = this.deref_operand(args[2])?;
+
+                this.write_scalar(
+                    Scalar::from_uint(STACK_ADDR, addr_place.layout.size),
+                    addr_place.into(),
+                )?;
+                this.write_scalar(
+                    Scalar::from_uint(STACK_SIZE, size_place.layout.size),
+                    size_place.into(),
+                )?;
+
                 // Return success (`0`).
                 this.write_null(dest)?;
             }
-            "pthread_get_stackaddr_np" => {
-                // Just any address.
-                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
-                this.write_scalar(stack_addr, dest)?;
+
+            // We don't support threading.
+            "pthread_create" => {
+                return err!(Unimplemented(format!("Miri does not support threading")));
             }
 
             // Stub out calls for condvar, mutex and rwlock, to just return `0`.
@@ -754,6 +761,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // macOS API stubs.
+            "pthread_attr_get_np" | "pthread_getattr_np" => {
+                this.write_null(dest)?;
+            }
+            "pthread_get_stackaddr_np" => {
+                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
+                this.write_scalar(stack_addr, dest)?;
+            }
+            "pthread_get_stacksize_np" => {
+                let stack_size = Scalar::from_uint(STACK_SIZE, dest.layout.size);
+                this.write_scalar(stack_size, dest)?;
+            }
             "_tlv_atexit" => {
                 // FIXME: register the destructor.
             },
@@ -766,7 +784,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SecRandomCopyBytes" => {
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
                 let ptr = this.read_scalar(args[2])?.not_undef()?;
-                gen_random(this, len as usize, ptr)?;
+                this.gen_random(len as usize, ptr)?;
                 this.write_null(dest)?;
             }
 
@@ -934,7 +952,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SystemFunction036" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let len = this.read_scalar(args[1])?.to_u32()?;
-                gen_random(this, len as usize, ptr)?;
+                this.gen_random(len as usize, ptr)?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
 
@@ -966,36 +984,4 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         return Ok(None);
     }
-}
-
-fn gen_random<'mir, 'tcx>(
-    this: &mut MiriEvalContext<'mir, 'tcx>,
-    len: usize,
-    dest: Scalar<Tag>,
-) -> InterpResult<'tcx>  {
-    if len == 0 {
-        // Nothing to do
-        return Ok(());
-    }
-    let ptr = dest.to_ptr()?;
-
-    let data = match &mut this.memory_mut().extra.rng {
-        Some(rng) => {
-            let mut rng = rng.borrow_mut();
-            let mut data = vec![0; len];
-            rng.fill_bytes(&mut data);
-            data
-        }
-        None => {
-            return err!(Unimplemented(
-                "miri does not support gathering system entropy in deterministic mode!
-                Use '-Zmiri-seed=<seed>' to enable random number generation.
-                WARNING: Miri does *not* generate cryptographically secure entropy -
-                do not use Miri to run any program that needs secure random number generation".to_owned(),
-            ));
-        }
-    };
-    let tcx = &{this.tcx.tcx};
-    this.memory_mut().get_mut(ptr.alloc_id)?
-        .write_bytes(tcx, ptr, &data)
 }

@@ -11,14 +11,15 @@ use rand::rngs::StdRng;
 use syntax::attr;
 use syntax::symbol::sym;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, layout::{Size, LayoutOf}, query::TyCtxtAt};
+use rustc::ty::{self, layout::{Size, LayoutOf}, TyCtxt};
 use rustc::mir;
 
 use crate::*;
 
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4*1024; // FIXME: adjust to target architecture
-pub const STACK_ADDR: u64 = 16*PAGE_SIZE; // not really about the "stack", but where we start assigning integer addresses to allocations
+pub const STACK_ADDR: u64 = 32*PAGE_SIZE; // not really about the "stack", but where we start assigning integer addresses to allocations
+pub const STACK_SIZE: u64 = 16*PAGE_SIZE; // whatever
 pub const NUM_CPUS: u64 = 1;
 
 /// Extra memory kinds
@@ -135,6 +136,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryExtra = MemoryExtra;
     type AllocExtra = AllocExtra;
     type PointerTag = Tag;
+    type ExtraFnVal = Dlsym;
 
     type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Tag, Self::AllocExtra>)>;
 
@@ -145,7 +147,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.memory().extra.validate
     }
 
-    /// Returns `Ok()` when the function was handled; fail otherwise.
     #[inline(always)]
     fn find_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -155,6 +156,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         ecx.find_fn(instance, args, dest, ret)
+    }
+
+    #[inline(always)]
+    fn call_extra_fn(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: Dlsym,
+        args: &[OpTy<'tcx, Tag>],
+        dest: Option<PlaceTy<'tcx, Tag>>,
+        ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        ecx.call_dlsym(fn_val, args, dest, ret)
     }
 
     #[inline(always)]
@@ -220,8 +232,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn find_foreign_static(
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        tcx: TyCtxtAt<'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
@@ -251,20 +263,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn tag_allocation<'b>(
+        memory_extra: &MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
-        memory: &Memory<'mir, 'tcx, Self>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (stacks, base_tag) = if !memory.extra.validate {
+        let (stacks, base_tag) = if !memory_extra.validate {
             (None, Tag::Untagged)
         } else {
             let (stacks, base_tag) = Stacks::new_allocation(
                 id,
                 Size::from_bytes(alloc.bytes.len() as u64),
-                Rc::clone(&memory.extra.stacked_borrows),
+                Rc::clone(&memory_extra.stacked_borrows),
                 kind,
             );
             (Some(stacks), base_tag)
@@ -273,7 +285,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             assert!(alloc.relocations.is_empty(), "Only statics can come initialized with inner pointers");
             // Now we can rely on the inner pointers being static, too.
         }
-        let mut memory_extra = memory.extra.stacked_borrows.borrow_mut();
+        let mut stacked_borrows = memory_extra.stacked_borrows.borrow_mut();
         let alloc: Allocation<Tag, Self::AllocExtra> = Allocation {
             bytes: alloc.bytes,
             relocations: Relocations::from_presorted(
@@ -281,10 +293,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                     // The allocations in the relocations (pointers stored *inside* this allocation)
                     // all get the base pointer tag.
                     .map(|&(offset, ((), alloc))| {
-                        let tag = if !memory.extra.validate {
+                        let tag = if !memory_extra.validate {
                             Tag::Untagged
                         } else {
-                            memory_extra.static_base_ptr(alloc)
+                            stacked_borrows.static_base_ptr(alloc)
                         };
                         (offset, (tag, alloc))
                     })
@@ -302,13 +314,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn tag_static_base_pointer(
+        memory_extra: &MemoryExtra,
         id: AllocId,
-        memory: &Memory<'mir, 'tcx, Self>,
     ) -> Self::PointerTag {
-        if !memory.extra.validate {
+        if !memory_extra.validate {
             Tag::Untagged
         } else {
-            memory.extra.stacked_borrows.borrow_mut().static_base_ptr(id)
+            memory_extra.stacked_borrows.borrow_mut().static_base_ptr(id)
         }
     }
 
@@ -342,8 +354,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn int_to_ptr(
-        int: u64,
         memory: &Memory<'mir, 'tcx, Self>,
+        int: u64,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         if int == 0 {
             err!(InvalidNullPointerUsage)
@@ -355,8 +367,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn ptr_to_int(
-        ptr: Pointer<Self::PointerTag>,
         memory: &Memory<'mir, 'tcx, Self>,
+        ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64> {
         if memory.extra.rng.is_none() {
             err!(ReadPointerAsBytes)

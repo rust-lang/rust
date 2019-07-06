@@ -31,13 +31,14 @@ pub use crate::shims::{EvalContextExt as ShimsEvalContextExt};
 pub use crate::shims::foreign_items::EvalContextExt as ForeignItemsEvalContextExt;
 pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
 pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
+pub use crate::shims::dlsym::{Dlsym, EvalContextExt as DlsymEvalContextExt};
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt, Tag, Permission, Stack, Stacks, Item};
 pub use crate::machine::{
-    PAGE_SIZE, STACK_ADDR, NUM_CPUS,
+    PAGE_SIZE, STACK_ADDR, STACK_SIZE, NUM_CPUS,
     MemoryExtra, AllocExtra, MiriMemoryKind, Evaluator, MiriEvalContext, MiriEvalContextExt,
 };
 pub use crate::eval::{eval_main, create_ecx, MiriConfig};
