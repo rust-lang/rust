@@ -277,8 +277,6 @@ where
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
-    /// This does NOT call the "deref" machine hook, so it does NOT count as a
-    /// deref as far as Stacked Borrows is concerned.  Use `deref_operand` for that!
     pub fn ref_to_mplace(
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
