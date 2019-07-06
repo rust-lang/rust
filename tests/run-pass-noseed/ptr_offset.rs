@@ -1,3 +1,5 @@
+// FIXME move this to run-pass, it should work with intptrcast.
+
 fn f() -> i32 { 42 }
 
 fn main() {

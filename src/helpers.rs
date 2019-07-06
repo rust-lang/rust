@@ -43,6 +43,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             })
     }
 
+    /// Write a 0 of the appropriate size to `dest`.
+    fn write_null(&mut self, dest: PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+        self.eval_context_mut().write_scalar(Scalar::from_int(0, dest.layout.size), dest)
+    }
+
+    /// Test if this immediate equals 0.
+    fn is_null(&self, val: Scalar<Tag>) -> InterpResult<'tcx, bool> {
+        let this = self.eval_context_ref();
+        let null = Scalar::from_int(0, this.memory().pointer_size());
+        this.ptr_eq(val, null)
+    }
+
+    /// Turn a Scalar into an Option<NonNullScalar>
+    fn test_null(&self, val: Scalar<Tag>) -> InterpResult<'tcx, Option<Scalar<Tag>>> {
+        let this = self.eval_context_ref();
+        Ok(if this.is_null(val)? {
+            None
+        } else {
+            Some(val)
+        })
+    }
+
     /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter
     /// will be true if this is frozen, false if this is in an `UnsafeCell`.
     fn visit_freeze_sensitive(
@@ -58,6 +80,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .map(|(size, _)| size)
             .unwrap_or_else(|| place.layout.size)
         );
+        assert!(size.bytes() > 0);
         // Store how far we proceeded into the place so far. Everything to the left of
         // this offset has already been handled, in the sense that the frozen parts
         // have had `action` called on them.

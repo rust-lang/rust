@@ -1,4 +1,4 @@
-// error-pattern: invalid arithmetic on pointers
+// error-pattern: tried to interpret some bytes as a pointer
 
 fn main() {
     // Can't offset an integer pointer by non-zero offset.

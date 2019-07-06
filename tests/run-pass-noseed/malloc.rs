@@ -1,4 +1,5 @@
 //ignore-windows: Uses POSIX APIs
+//compile-flags: -Zmiri-seed=
 
 #![feature(rustc_private)]
 
@@ -7,6 +8,14 @@ use core::{slice, ptr};
 extern crate libc;
 
 fn main() {
+    // Test that small allocations sometimes *are* not very aligned.
+    let saw_unaligned = (0..64).any(|_| unsafe {
+        let p = libc::malloc(3);
+        libc::free(p);
+        (p as usize) % 4 != 0 // find any that this is *not* 4-aligned
+    });
+    assert!(saw_unaligned);
+
     unsafe {
         // Use calloc for initialized memory
         let p1 = libc::calloc(20, 1);

@@ -8,13 +8,17 @@ use rustc::{ty, ty::layout::HasDataLayout, mir};
 use crate::{
     InterpResult, InterpError, StackPopCleanup,
     MPlaceTy, Scalar, Tag,
+    HelpersEvalContextExt,
 };
 
 pub type TlsKey = u128;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TlsEntry<'tcx> {
-    pub(crate) data: Scalar<Tag>, // Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
+    /// The data for this key. None is used to represent NULL.
+    /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
+    /// Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
+    pub(crate) data: Option<Scalar<Tag>>,
     pub(crate) dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -40,14 +44,13 @@ impl<'tcx> TlsData<'tcx> {
     pub fn create_tls_key(
         &mut self,
         dtor: Option<ty::Instance<'tcx>>,
-        cx: &impl HasDataLayout,
     ) -> TlsKey {
         let new_key = self.next_key;
         self.next_key += 1;
         self.keys.insert(
             new_key,
             TlsEntry {
-                data: Scalar::ptr_null(cx).into(),
+                data: None,
                 dtor,
             },
         );
@@ -65,17 +68,21 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn load_tls(&mut self, key: TlsKey) -> InterpResult<'tcx, Scalar<Tag>> {
+    pub fn load_tls(
+        &mut self,
+        key: TlsKey,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Scalar<Tag>> {
         match self.keys.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
-                Ok(data)
+                Ok(data.unwrap_or_else(|| Scalar::ptr_null(cx).into()))
             }
             None => err!(TlsOutOfBounds),
         }
     }
 
-    pub fn store_tls(&mut self, key: TlsKey, new_data: Scalar<Tag>) -> InterpResult<'tcx> {
+    pub fn store_tls(&mut self, key: TlsKey, new_data: Option<Scalar<Tag>>) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(&mut TlsEntry { ref mut data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
@@ -107,7 +114,6 @@ impl<'tcx> TlsData<'tcx> {
     fn fetch_tls_dtor(
         &mut self,
         key: Option<TlsKey>,
-        cx: &impl HasDataLayout,
     ) -> Option<(ty::Instance<'tcx>, Scalar<Tag>, TlsKey)> {
         use std::collections::Bound::*;
 
@@ -119,10 +125,10 @@ impl<'tcx> TlsData<'tcx> {
         for (&key, &mut TlsEntry { ref mut data, dtor }) in
             thread_local.range_mut((start, Unbounded))
         {
-            if !data.is_null_ptr(cx) {
+            if let Some(data_scalar) = *data {
                 if let Some(dtor) = dtor {
-                    let ret = Some((dtor, *data, key));
-                    *data = Scalar::ptr_null(cx);
+                    let ret = Some((dtor, data_scalar, key));
+                    *data = None;
                     return ret;
                 }
             }
@@ -135,10 +141,11 @@ impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tc
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn run_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let mut dtor = this.machine.tls.fetch_tls_dtor(None, &*this.tcx);
+        let mut dtor = this.machine.tls.fetch_tls_dtor(None);
         // FIXME: replace loop by some structure that works with stepping
         while let Some((instance, ptr, key)) = dtor {
             trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
+            assert!(!this.is_null(ptr).unwrap(), "Data can't be NULL when dtor is called!");
             // TODO: Potentially, this has to support all the other possible instances?
             // See eval_fn_call in interpret/terminator/mod.rs
             let mir = this.load_mir(instance.def)?;
@@ -159,9 +166,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // step until out of stackframes
             this.run()?;
 
-            dtor = match this.machine.tls.fetch_tls_dtor(Some(key), &*this.tcx) {
+            dtor = match this.machine.tls.fetch_tls_dtor(Some(key)) {
                 dtor @ Some(_) => dtor,
-                None => this.machine.tls.fetch_tls_dtor(None, &*this.tcx),
+                None => this.machine.tls.fetch_tls_dtor(None),
             };
         }
         // FIXME: On a windows target, call `unsafe extern "system" fn on_tls_callback`.

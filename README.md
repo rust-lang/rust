@@ -279,6 +279,8 @@ Several `-Z` flags are relevant for Miri:
 * `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
   functions.  This is needed so that Miri can execute such functions, so Miri
   sets this flag per default.
+* `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
+  enables this per default because it is needed for validation.
 
 Moreover, Miri recognizes some environment variables:
 
@@ -327,6 +329,7 @@ Miri has already found a number of bugs in the Rust standard library and beyond,
 Definite bugs found:
 
 * [`Debug for vec_deque::Iter` accessing uninitialized memory](https://github.com/rust-lang/rust/issues/53566)
+* [`Vec::into_iter` doing an unaligned ZST read](https://github.com/rust-lang/rust/pull/53804)
 * [`From<&[T]> for Rc` creating a not sufficiently aligned reference](https://github.com/rust-lang/rust/issues/54908)
 * [`BTreeMap` creating a shared reference pointing to a too small allocation](https://github.com/rust-lang/rust/issues/54957)
 * [`Vec::append` creating a dangling reference](https://github.com/rust-lang/rust/pull/61082)

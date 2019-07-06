@@ -41,7 +41,7 @@ fn check_alloc<T: Alloc>(mut allocator: T) { unsafe {
     }
 } }
 
-fn check_overalign_requests<T: Alloc>(mut allocator: T) {
+fn check_align_requests<T: Alloc>(mut allocator: T) {
     for &size in &[2, 8, 64] { // size less than and bigger than alignment
         for &align in &[4, 8, 16, 32] { // Be sure to cover less than and bigger than `MIN_ALIGN` for all architectures
             let iterations = 32;
@@ -88,8 +88,8 @@ fn box_to_global() {
 fn main() {
     check_alloc(System);
     check_alloc(Global);
-    check_overalign_requests(System);
-    check_overalign_requests(Global);
+    check_align_requests(System);
+    check_align_requests(Global);
     global_to_box();
     box_to_global();
 }

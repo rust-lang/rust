@@ -4,7 +4,8 @@ use std::cmp::max;
 
 use rand::Rng;
 
-use rustc_mir::interpret::{AllocId, Pointer, InterpResult, Memory, AllocCheck};
+use rustc::ty::layout::HasDataLayout;
+use rustc_mir::interpret::{AllocId, Pointer, InterpResult, Memory, AllocCheck, PointerArithmetic};
 use rustc_target::abi::Size;
 
 use crate::{Evaluator, Tag, STACK_ADDR};
@@ -75,7 +76,9 @@ impl<'mir, 'tcx> GlobalState {
         let mut global_state = memory.extra.intptrcast.borrow_mut();
         let global_state = &mut *global_state;
 
-        let (size, align) = memory.get_size_and_align(ptr.alloc_id, AllocCheck::Live)?;
+        // There is nothing wrong with a raw pointer being cast to an integer only after
+        // it became dangling.  Hence `MaybeDead`.
+        let (size, align) = memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?;
 
         let base_addr = match global_state.base_addr.entry(ptr.alloc_id) {
             Entry::Occupied(entry) => *entry.get(),
@@ -107,7 +110,9 @@ impl<'mir, 'tcx> GlobalState {
         };
 
         debug_assert_eq!(base_addr % align.bytes(), 0); // sanity check
-        Ok(base_addr + ptr.offset.bytes())
+        // Add offset with the right kind of pointer-overflowing arithmetic.
+        let dl = memory.data_layout();
+        Ok(dl.overflowing_offset(base_addr, ptr.offset.bytes()).0)
     }
 
     /// Shifts `addr` to make it aligned with `align` by rounding `addr` to the smallest multiple

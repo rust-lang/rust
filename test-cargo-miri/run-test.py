@@ -52,8 +52,9 @@ def test_cargo_miri_run():
     )
 
 def test_cargo_miri_test():
+    # FIXME: enable validation again, once that no longer conflicts with intptrcast
     test("cargo miri test",
-        cargo_miri("test") + ["--", "-Zmiri-seed=feed"],
+        cargo_miri("test") + ["--", "-Zmiri-seed=feed", "-Zmiri-disable-validation"],
         "test.stdout.ref", "test.stderr.ref"
     )
     test("cargo miri test (with filter)",

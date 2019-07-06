@@ -15,7 +15,6 @@ extern crate rustc_target;
 mod shims;
 mod operator;
 mod helpers;
-mod tls;
 mod range_map;
 mod mono_hash_map;
 mod stacked_borrows;
@@ -28,10 +27,11 @@ pub use rustc_mir::interpret::*;
 // Resolve ambiguity.
 pub use rustc_mir::interpret::{self, AllocMap, PlaceTy};
 
+pub use crate::shims::{EvalContextExt as ShimsEvalContextExt};
 pub use crate::shims::foreign_items::EvalContextExt as ForeignItemsEvalContextExt;
 pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
+pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
-pub use crate::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 pub use crate::range_map::RangeMap;
 pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
 pub use crate::mono_hash_map::MonoHashMap;

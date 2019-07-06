@@ -10,7 +10,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 
 use crate::{
-    InterpResult, InterpError, InterpretCx, StackPopCleanup, struct_error,
+    InterpResult, InterpError, InterpCx, StackPopCleanup, struct_error,
     Scalar, Tag, Pointer,
     MemoryExtra, MiriMemoryKind, Evaluator, TlsEvalContextExt,
 };
@@ -30,14 +30,23 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     tcx: TyCtxt<'tcx>,
     main_id: DefId,
     config: MiriConfig,
-) -> InterpResult<'tcx, InterpretCx<'mir, 'tcx, Evaluator<'tcx>>> {
-    let mut ecx = InterpretCx::new(
+) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, Evaluator<'tcx>>> {
+
+    // FIXME(https://github.com/rust-lang/miri/pull/803): no validation on Windows.
+    let target_os = tcx.sess.target.target.target_os.to_lowercase();
+    let validate = if target_os == "windows" {
+        false
+    } else {
+        config.validate
+    };
+
+    let mut ecx = InterpCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
-        Evaluator::new(config.validate),
-        MemoryExtra::with_rng(config.seed.map(StdRng::seed_from_u64)),
+        Evaluator::new(),
+        MemoryExtra::new(config.seed.map(StdRng::seed_from_u64), validate),
     );
-    
+
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
 
