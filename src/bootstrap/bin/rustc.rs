@@ -128,8 +128,10 @@ fn main() {
        env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
         cmd.arg("-Dwarnings");
         cmd.arg("-Drust_2018_idioms");
-        if stage != "0" && crate_name != Some("rustc_version") && // cfg(not(bootstrap))
-           use_internal_lints(crate_name) {
+        // cfg(not(bootstrap)): Remove this during the next stage 0 compiler update.
+        // `-Drustc::internal` is a new feature and `rustc_version` mis-reports the `stage`.
+        let cfg_not_bootstrap = stage != "0" && crate_name != Some("rustc_version");
+        if cfg_not_bootstrap && use_internal_lints(crate_name) {
             cmd.arg("-Zunstable-options");
             cmd.arg("-Drustc::internal");
         }
