@@ -322,19 +322,6 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = cast_pat;
                 self.visit_expr(expr);
             },
-            ExprKind::While(ref cond, ref body, _) => {
-                let cond_pat = self.next("cond");
-                let body_pat = self.next("body");
-                let label_pat = self.next("label");
-                println!(
-                    "While(ref {}, ref {}, ref {}) = {};",
-                    cond_pat, body_pat, label_pat, current
-                );
-                self.current = cond_pat;
-                self.visit_expr(cond);
-                self.current = body_pat;
-                self.visit_block(body);
-            },
             ExprKind::Loop(ref body, _, desugaring) => {
                 let body_pat = self.next("body");
                 let des = loop_desugaring_name(desugaring);
@@ -696,6 +683,7 @@ fn desugaring_name(des: hir::MatchSource) -> String {
     match des {
         hir::MatchSource::ForLoopDesugar => "MatchSource::ForLoopDesugar".to_string(),
         hir::MatchSource::TryDesugar => "MatchSource::TryDesugar".to_string(),
+        hir::MatchSource::WhileDesugar => "MatchSource::WhileDesugar".to_string(),
         hir::MatchSource::WhileLetDesugar => "MatchSource::WhileLetDesugar".to_string(),
         hir::MatchSource::Normal => "MatchSource::Normal".to_string(),
         hir::MatchSource::IfLetDesugar { contains_else_clause } => format!(
@@ -714,6 +702,7 @@ fn loop_desugaring_name(des: hir::LoopSource) -> &'static str {
     match des {
         hir::LoopSource::ForLoop => "LoopSource::ForLoop",
         hir::LoopSource::Loop => "LoopSource::Loop",
+        hir::LoopSource::While => "LoopSource::WhileDesugar",
         hir::LoopSource::WhileLet => "LoopSource::WhileLet",
     }
 }

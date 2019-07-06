@@ -481,17 +481,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
         }
 
         // check for never_loop
-        match expr.node {
-            ExprKind::While(_, ref block, _) | ExprKind::Loop(ref block, _, _) => {
-                match never_loop_block(block, expr.hir_id) {
-                    NeverLoopResult::AlwaysBreak => {
-                        span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops")
-                    },
-                    NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
-                }
-            },
-            _ => (),
-        }
+        if let ExprKind::Loop(ref block, _, _) = expr.node {
+            match never_loop_block(block, expr.hir_id) {
+                NeverLoopResult::AlwaysBreak => {
+                    span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops")
+                },
+                NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
+            }
+        };
 
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
@@ -590,9 +587,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
             }
         }
 
-        // check for while loops which conditions never change
-        if let ExprKind::While(ref cond, _, _) = expr.node {
-            check_infinite_loop(cx, cond, expr);
+        if_chain! {
+            if let ExprKind::Loop(block, _, LoopSource::While) = &expr.node;
+            if let Block { expr: Some(expr), .. } = &**block;
+            if let ExprKind::Match(cond, arms, MatchSource::WhileDesugar) = &expr.node;
+            if let ExprKind::DropTemps(cond) = &cond.node;
+            if let [arm, ..] = &arms[..];
+            if let Arm { body, .. } = arm;
+            then {
+                check_infinite_loop(cx, cond, body);
+            }
         }
 
         check_needless_collect(expr, cx);
@@ -700,12 +704,6 @@ fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
         ExprKind::Loop(ref b, _, _) => {
             // Break can come from the inner loop so remove them.
             absorb_break(&never_loop_block(b, main_loop_id))
-        },
-        ExprKind::While(ref e, ref b, _) => {
-            let e = never_loop_expr(e, main_loop_id);
-            let result = never_loop_block(b, main_loop_id);
-            // Break can come from the inner loop so remove them.
-            combine_seq(e, absorb_break(&result))
         },
         ExprKind::Match(ref e, ref arms, _) => {
             let e = never_loop_expr(e, main_loop_id);
@@ -2202,7 +2200,7 @@ fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<HirId> {
 
 fn is_loop(expr: &Expr) -> bool {
     match expr.node {
-        ExprKind::Loop(..) | ExprKind::While(..) => true,
+        ExprKind::Loop(..) => true,
         _ => false,
     }
 }
@@ -2239,11 +2237,10 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) 
             return false;
         }
         match cx.tcx.hir().find(parent) {
-            Some(Node::Expr(expr)) => match expr.node {
-                ExprKind::Loop(..) | ExprKind::While(..) => {
+            Some(Node::Expr(expr)) => {
+                if let ExprKind::Loop(..) = expr.node {
                     return true;
-                },
-                _ => (),
+                };
             },
             Some(Node::Block(block)) => {
                 let mut block_visitor = LoopNestVisitor {

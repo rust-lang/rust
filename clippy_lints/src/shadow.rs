@@ -319,10 +319,6 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
                 check_expr(cx, e, bindings)
             }
         },
-        ExprKind::While(ref cond, ref block, _) => {
-            check_expr(cx, cond, bindings);
-            check_block(cx, block, bindings);
-        },
         ExprKind::Match(ref init, ref arms, _) => {
             check_expr(cx, init, bindings);
             let len = bindings.len();

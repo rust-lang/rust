@@ -209,11 +209,6 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
             print_expr(cx, e, indent + 1);
             println!("{}target type: {:?}", ind, target);
         },
-        hir::ExprKind::While(ref cond, _, _) => {
-            println!("{}While", ind);
-            println!("{}condition:", ind);
-            print_expr(cx, cond, indent + 1);
-        },
         hir::ExprKind::Loop(..) => {
             println!("{}Loop", ind);
         },
