@@ -3934,7 +3934,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             (&hir::FunctionRetTy::DefaultReturn(span), _, FnDeclType::ImplItem, true) => {
-                // do not suggest changing return type for trait impls
+                // Do not suggest changing return type for trait impls.
                 err.span_label(span, "expected `()` because of default return type");
                 true
             }
