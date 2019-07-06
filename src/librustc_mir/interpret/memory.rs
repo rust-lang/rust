@@ -143,7 +143,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     #[inline]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
-        ptr.with_tag(M::tag_static_base_pointer(ptr.alloc_id, &self))
+        ptr.with_tag(M::tag_static_base_pointer(&self.extra, ptr.alloc_id))
     }
 
     pub fn create_fn_alloc(
@@ -189,7 +189,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
         let id = self.tcx.alloc_map.lock().reserve();
-        let (alloc, tag) = M::tag_allocation(id, Cow::Owned(alloc), Some(kind), &self);
+        let (alloc, tag) = M::tag_allocation(&self.extra, id, Cow::Owned(alloc), Some(kind));
         self.alloc_map.insert(id, (kind, alloc.into_owned()));
         Pointer::from(id).with_tag(tag)
     }
@@ -407,9 +407,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// contains a reference to memory that was created during its evaluation (i.e., not to
     /// another static), those inner references only exist in "resolved" form.
     fn get_static_alloc(
-        id: AllocId,
+        memory_extra: &M::MemoryExtra,
         tcx: TyCtxtAt<'tcx>,
-        memory: &Memory<'mir, 'tcx, M>,
+        id: AllocId,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
         let alloc = match alloc {
@@ -423,7 +423,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // We got a "lazy" static that has not been computed yet.
                 if tcx.is_foreign_item(def_id) {
                     trace!("static_alloc: foreign item {:?}", def_id);
-                    M::find_foreign_static(def_id, tcx)?
+                    M::find_foreign_static(tcx.tcx, def_id)?
                 } else {
                     trace!("static_alloc: Need to compute {:?}", def_id);
                     let instance = Instance::mono(tcx.tcx, def_id);
@@ -453,10 +453,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // We got tcx memory. Let the machine figure out whether and how to
         // turn that into memory with the right pointer tag.
         Ok(M::tag_allocation(
+            memory_extra,
             id, // always use the ID we got as input, not the "hidden" one.
             alloc,
             M::STATIC_KIND.map(MemoryKind::Machine),
-            memory
         ).0)
     }
 
@@ -469,7 +469,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // `get_static_alloc` that we can actually use directly without inserting anything anywhere.
         // So the error type is `InterpResult<'tcx, &Allocation<M::PointerTag>>`.
         let a = self.alloc_map.get_or(id, || {
-            let alloc = Self::get_static_alloc(id, self.tcx, &self).map_err(Err)?;
+            let alloc = Self::get_static_alloc(&self.extra, self.tcx, id).map_err(Err)?;
             match alloc {
                 Cow::Borrowed(alloc) => {
                     // We got a ref, cheaply return that as an "error" so that the
@@ -498,11 +498,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
     ) -> InterpResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
         let tcx = self.tcx;
-        let alloc = Self::get_static_alloc(id, tcx, &self);
+        let memory_extra = &self.extra;
         let a = self.alloc_map.get_mut_or(id, || {
             // Need to make a copy, even if `get_static_alloc` is able
             // to give us a cheap reference.
-            let alloc = alloc?;
+            let alloc = Self::get_static_alloc(memory_extra, tcx, id)?;
             if alloc.mutability == Mutability::Immutable {
                 return err!(ModifiedConstantMemory);
             }
@@ -948,7 +948,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         match scalar {
             Scalar::Ptr(ptr) => Ok(ptr),
-            _ => M::int_to_ptr(scalar.to_usize(self)?, self)
+            _ => M::int_to_ptr(&self, scalar.to_usize(self)?)
         }
     }
 
@@ -959,7 +959,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, u128> {
         match scalar.to_bits_or_ptr(size, self) {
             Ok(bits) => Ok(bits),
-            Err(ptr) => Ok(M::ptr_to_int(ptr, self)? as u128)
+            Err(ptr) => Ok(M::ptr_to_int(&self, ptr)? as u128)
         }
     }
 }

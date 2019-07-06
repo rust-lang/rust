@@ -7,11 +7,11 @@ use std::hash::Hash;
 
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::{self, query::TyCtxtAt};
+use rustc::ty::{self, TyCtxt};
 
 use super::{
-    Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
-    InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory
+    Allocation, AllocId, InterpResult, InterpError, Scalar, AllocationExtra,
+    InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -151,8 +151,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ///
     /// This allocation will then be fed to `tag_allocation` to initialize the "extra" state.
     fn find_foreign_static(
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        tcx: TyCtxtAt<'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>>;
 
     /// Called for all binary operations on integer(-like) types when one operand is a pointer
@@ -189,10 +189,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// For static allocations, the tag returned must be the same as the one returned by
     /// `tag_static_base_pointer`.
     fn tag_allocation<'b>(
+        memory_extra: &Self::MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
-        memory: &Memory<'mir, 'tcx, Self>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
     /// Return the "base" tag for the given static allocation: the one that is used for direct
@@ -201,8 +201,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Be aware that requesting the `Allocation` for that `id` will lead to cycles
     /// for cyclic statics!
     fn tag_static_base_pointer(
+        memory_extra: &Self::MemoryExtra,
         id: AllocId,
-        memory: &Memory<'mir, 'tcx, Self>,
     ) -> Self::PointerTag;
 
     /// Executes a retagging operation
@@ -224,20 +224,22 @@ pub trait Machine<'mir, 'tcx>: Sized {
         extra: Self::FrameExtra,
     ) -> InterpResult<'tcx>;
 
+    #[inline(always)]
     fn int_to_ptr(
-        int: u64,
         _mem: &Memory<'mir, 'tcx, Self>,
+        int: u64,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
-        if int == 0 {
-            err!(InvalidNullPointerUsage)
+        Err((if int == 0 {
+            InterpError::InvalidNullPointerUsage
         } else {
-            err!(ReadBytesAsPointer)
-        }
+            InterpError::ReadBytesAsPointer
+        }).into())
     }
 
+    #[inline(always)]
     fn ptr_to_int(
-        _ptr: Pointer<Self::PointerTag>,
         _mem: &Memory<'mir, 'tcx, Self>,
+        _ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64> {
         err!(ReadPointerAsBytes)
     }
