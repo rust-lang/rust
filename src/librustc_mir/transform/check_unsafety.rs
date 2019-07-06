@@ -552,10 +552,10 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: DefId) {
     // FIXME: when we make this a hard error, this should have its
     // own error code.
     let message = if tcx.generics_of(def_id).own_requires_monomorphization() {
-        "#[derive] can't be used on a #[repr(packed)] struct with \
+        "`#[derive]` can't be used on a `#[repr(packed)]` struct with \
          type or const parameters (error E0133)".to_string()
     } else {
-        "#[derive] can't be used on a #[repr(packed)] struct that \
+        "`#[derive]` can't be used on a `#[repr(packed)]` struct that \
          does not derive Copy (error E0133)".to_string()
     };
     tcx.lint_hir(SAFE_PACKED_BORROWS,

@@ -1465,7 +1465,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|b| GuardFrameLocal::new(b.var_id, b.binding_mode))
                     .collect(),
             };
-            debug!("Entering guard building context: {:?}", guard_frame);
+            debug!("entering guard building context: {:?}", guard_frame);
             self.guard_context.push(guard_frame);
 
             let re_erased = tcx.lifetimes.re_erased;

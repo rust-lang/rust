@@ -5,6 +5,7 @@ use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
 
 use errors::{Applicability, Handler};
+use syntax_pos::hygiene::Transparency;
 use syntax_pos::{symbol::Symbol, symbol::sym, Span};
 
 use super::{mark_used, MetaItemKind};
@@ -853,4 +854,36 @@ fn int_type_of_word(s: Symbol) -> Option<IntType> {
         sym::usize => Some(UnsignedInt(ast::UintTy::Usize)),
         _ => None
     }
+}
+
+pub enum TransparencyError {
+    UnknownTransparency(Symbol, Span),
+    MultipleTransparencyAttrs(Span, Span),
+}
+
+pub fn find_transparency(
+    attrs: &[Attribute], is_legacy: bool
+) -> (Transparency, Option<TransparencyError>) {
+    let mut transparency = None;
+    let mut error = None;
+    for attr in attrs {
+        if attr.check_name(sym::rustc_macro_transparency) {
+            if let Some((_, old_span)) = transparency {
+                error = Some(TransparencyError::MultipleTransparencyAttrs(old_span, attr.span));
+                break;
+            } else if let Some(value) = attr.value_str() {
+                transparency = Some((match &*value.as_str() {
+                    "transparent" => Transparency::Transparent,
+                    "semitransparent" => Transparency::SemiTransparent,
+                    "opaque" => Transparency::Opaque,
+                    _ => {
+                        error = Some(TransparencyError::UnknownTransparency(value, attr.span));
+                        continue;
+                    }
+                }, attr.span));
+            }
+        }
+    }
+    let fallback = if is_legacy { Transparency::SemiTransparent } else { Transparency::Opaque };
+    (transparency.map_or(fallback, |t| t.0), error)
 }
