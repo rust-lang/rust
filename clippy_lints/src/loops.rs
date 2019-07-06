@@ -483,9 +483,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
         // check for never_loop
         if let ExprKind::Loop(ref block, _, _) = expr.node {
             match never_loop_block(block, expr.hir_id) {
-                NeverLoopResult::AlwaysBreak => {
-                    span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops")
-                },
+                NeverLoopResult::AlwaysBreak => span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops"),
                 NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
             }
         }
