@@ -17,7 +17,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Indeterminate};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
-use syntax::ext::hygiene::{self, Mark};
+use syntax::ext::hygiene::{self, Mark, ExpnInfo, ExpnKind};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{feature_err, emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::{AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES};
@@ -148,7 +148,10 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark {
-        let mark = Mark::fresh(Mark::root());
+        let span = DUMMY_SP.fresh_expansion(Mark::root(), ExpnInfo::default(
+            ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
+        ));
+        let mark = span.ctxt().outer();
         let module = self.module_map[&self.definitions.local_def_id(id)];
         self.definitions.set_invocation_parent(mark, module.def_id().unwrap().index);
         self.invocations.insert(mark, self.arenas.alloc_invocation_data(InvocationData {

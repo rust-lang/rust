@@ -60,7 +60,7 @@ use syntax::attr;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::errors;
-use syntax::ext::hygiene::{Mark, SyntaxContext};
+use syntax::ext::hygiene::Mark;
 use syntax::print::pprust;
 use syntax::source_map::{respan, ExpnInfo, ExpnKind, DesugaringKind, Spanned};
 use syntax::std_inject;
@@ -875,13 +875,11 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo {
+        span.fresh_expansion(Mark::root(), ExpnInfo {
             def_site: span,
             allow_internal_unstable,
             ..ExpnInfo::default(ExpnKind::Desugaring(reason), span, self.sess.edition())
-        });
-        span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
+        })
     }
 
     fn with_anonymous_lifetime_mode<R>(

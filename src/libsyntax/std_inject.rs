@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::attr;
 use crate::edition::Edition;
-use crate::ext::hygiene::{Mark, SyntaxContext, MacroKind};
+use crate::ext::hygiene::{Mark, MacroKind};
 use crate::symbol::{Ident, Symbol, kw, sym};
 use crate::source_map::{ExpnInfo, ExpnKind, dummy_spanned, respan};
 use crate::ptr::P;
@@ -9,19 +9,7 @@ use crate::tokenstream::TokenStream;
 
 use std::cell::Cell;
 use std::iter;
-use syntax_pos::{DUMMY_SP, Span};
-
-/// Craft a span that will be ignored by the stability lint's
-/// call to source_map's `is_internal` check.
-/// The expanded code uses the unstable `#[prelude_import]` attribute.
-fn ignored_span(sp: Span, edition: Edition) -> Span {
-    let mark = Mark::fresh(Mark::root());
-    mark.set_expn_info(ExpnInfo::with_unstable(
-        ExpnKind::Macro(MacroKind::Attr, Symbol::intern("std_inject")), sp, edition,
-        &[sym::prelude_import],
-    ));
-    sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
-}
+use syntax_pos::DUMMY_SP;
 
 pub fn injected_crate_name() -> Option<&'static str> {
     INJECTED_CRATE_NAME.with(|name| name.get())
@@ -87,7 +75,11 @@ pub fn maybe_inject_crates_ref(
 
     INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
 
-    let span = ignored_span(DUMMY_SP, edition);
+    let span = DUMMY_SP.fresh_expansion(Mark::root(), ExpnInfo::allow_unstable(
+        ExpnKind::Macro(MacroKind::Attr, sym::std_inject), DUMMY_SP, edition,
+        [sym::prelude_import][..].into(),
+    ));
+
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![ast::Attribute {
             style: ast::AttrStyle::Outer,

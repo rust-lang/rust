@@ -82,11 +82,8 @@ pub enum Transparency {
 }
 
 impl Mark {
-    pub fn fresh(parent: Mark) -> Self {
-        HygieneData::with(|data| {
-            data.marks.push(MarkData { parent, expn_info: None });
-            Mark(data.marks.len() as u32 - 1)
-        })
+    pub fn fresh(parent: Mark, expn_info: Option<ExpnInfo>) -> Self {
+        HygieneData::with(|data| data.fresh_mark(parent, expn_info))
     }
 
     /// The mark of the theoretical expansion that generates freshly parsed, unexpanded AST.
@@ -178,6 +175,11 @@ impl HygieneData {
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
+    }
+
+    fn fresh_mark(&mut self, parent: Mark, expn_info: Option<ExpnInfo>) -> Mark {
+        self.marks.push(MarkData { parent, expn_info });
+        Mark(self.marks.len() as u32 - 1)
     }
 
     fn expn_info(&self, mark: Mark) -> Option<&ExpnInfo> {
@@ -396,33 +398,6 @@ impl SyntaxContext {
         SyntaxContext(raw)
     }
 
-    // Allocate a new SyntaxContext with the given ExpnInfo. This is used when
-    // deserializing Spans from the incr. comp. cache.
-    // FIXME(mw): This method does not restore MarkData::parent or
-    // SyntaxContextData::prev_ctxt or SyntaxContextData::opaque. These things
-    // don't seem to be used after HIR lowering, so everything should be fine
-    // as long as incremental compilation does not kick in before that.
-    pub fn allocate_directly(expansion_info: ExpnInfo) -> Self {
-        HygieneData::with(|data| {
-            data.marks.push(MarkData {
-                parent: Mark::root(),
-                expn_info: Some(expansion_info),
-            });
-
-            let mark = Mark(data.marks.len() as u32 - 1);
-
-            data.syntax_contexts.push(SyntaxContextData {
-                outer_mark: mark,
-                transparency: Transparency::SemiTransparent,
-                prev_ctxt: SyntaxContext::empty(),
-                opaque: SyntaxContext::empty(),
-                opaque_and_semitransparent: SyntaxContext::empty(),
-                dollar_crate_name: kw::DollarCrate,
-            });
-            SyntaxContext(data.syntax_contexts.len() as u32 - 1)
-        })
-    }
-
     /// Extend a syntax context with a given mark and default transparency for that mark.
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
         HygieneData::with(|data| data.apply_mark(self, mark))
@@ -615,6 +590,20 @@ impl fmt::Debug for SyntaxContext {
     }
 }
 
+impl Span {
+    /// Creates a fresh expansion with given properties.
+    /// Expansions are normally created by macros, but in some cases expansions are created for
+    /// other compiler-generated code to set per-span properties like allowed unstable features.
+    /// The returned span belongs to the created expansion and has the new properties,
+    /// but its location is inherited from the current span.
+    pub fn fresh_expansion(self, parent: Mark, expn_info: ExpnInfo) -> Span {
+        HygieneData::with(|data| {
+            let mark = data.fresh_mark(parent, Some(expn_info));
+            self.with_ctxt(data.apply_mark(SyntaxContext::empty(), mark))
+        })
+    }
+}
+
 /// A subset of properties from both macro definition and macro call available through global data.
 /// Avoid using this if you have access to the original definition or call structures.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
@@ -669,10 +658,10 @@ impl ExpnInfo {
         }
     }
 
-    pub fn with_unstable(kind: ExpnKind, call_site: Span, edition: Edition,
-                         allow_internal_unstable: &[Symbol]) -> ExpnInfo {
+    pub fn allow_unstable(kind: ExpnKind, call_site: Span, edition: Edition,
+                          allow_internal_unstable: Lrc<[Symbol]>) -> ExpnInfo {
         ExpnInfo {
-            allow_internal_unstable: Some(allow_internal_unstable.into()),
+            allow_internal_unstable: Some(allow_internal_unstable),
             ..ExpnInfo::default(kind, call_site, edition)
         }
     }

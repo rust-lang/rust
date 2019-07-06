@@ -721,6 +721,7 @@ pub struct ExtCtxt<'a> {
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
+    pub allow_derive_markers: Lrc<[Symbol]>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -740,6 +741,7 @@ impl<'a> ExtCtxt<'a> {
                 directory_ownership: DirectoryOwnership::Owned { relative: None },
             },
             expansions: FxHashMap::default(),
+            allow_derive_markers: [sym::rustc_attrs, sym::structural_match][..].into(),
         }
     }
 

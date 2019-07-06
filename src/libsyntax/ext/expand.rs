@@ -362,7 +362,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 derives.reserve(traits.len());
                 invocations.reserve(traits.len());
                 for path in traits {
-                    let mark = Mark::fresh(self.cx.current_expansion.mark);
+                    let mark = Mark::fresh(self.cx.current_expansion.mark, None);
                     derives.push(mark);
                     invocations.push(Invocation {
                         kind: InvocationKind::Derive {
@@ -847,7 +847,7 @@ struct InvocationCollector<'a, 'b> {
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
-        let mark = Mark::fresh(self.cx.current_expansion.mark);
+        let mark = Mark::fresh(self.cx.current_expansion.mark, None);
         self.invocations.push(Invocation {
             kind,
             fragment_kind,
