@@ -245,7 +245,7 @@ declare_features! (
     (active, allocator_internals, "1.20.0", None, None),
 
     // Allows using the `format_args_nl` macro.
-    (active, format_args_nl, "1.29.0", None, None),
+    (active, format_args_nl, "1.29.0", Some(0), None),
 
     // no-tracking-issue-end
 
@@ -1313,7 +1313,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                     "the `#[rustc_test_marker]` attribute \
                                     is used internally to track tests",
                                     cfg_fn!(rustc_attrs))),
-    (sym::rustc_transparent_macro, Whitelisted, template!(Word), Gated(Stability::Unstable,
+    (sym::rustc_macro_transparency, Whitelisted, template!(NameValueStr:
+                                                           "transparent|semitransparent|opaque"),
+                                                Gated(Stability::Unstable,
                                                 sym::rustc_attrs,
                                                 "used internally for testing macro hygiene",
                                                     cfg_fn!(rustc_attrs))),
@@ -1374,7 +1376,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                                 "internal implementation detail",
                                                 cfg_fn!(rustc_attrs))),
 
-    (sym::rustc_doc_only_macro, Whitelisted, template!(Word), Gated(Stability::Unstable,
+    (sym::rustc_builtin_macro, Whitelisted, template!(Word), Gated(Stability::Unstable,
                                                 sym::rustc_attrs,
                                                 "internal implementation detail",
                                                 cfg_fn!(rustc_attrs))),

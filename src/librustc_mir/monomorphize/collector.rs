@@ -289,7 +289,7 @@ pub fn collect_crate_mono_items(
         collect_roots(tcx, mode)
     });
 
-    debug!("Building mono item graph, beginning at roots");
+    debug!("building mono item graph, beginning at roots");
 
     let mut visited = MTLock::new(FxHashSet::default());
     let mut inlining_map = MTLock::new(InliningMap::new());
@@ -316,7 +316,7 @@ pub fn collect_crate_mono_items(
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<'_>> {
-    debug!("Collecting roots");
+    debug!("collecting roots");
     let mut roots = Vec::new();
 
     {
