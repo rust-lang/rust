@@ -149,6 +149,16 @@ impl<T> Box<T> {
         Box(unique.cast())
     }
 
+    /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
+    /// `x` will be pinned in memory and unable to be moved.
+    #[stable(feature = "pin", since = "1.33.0")]
+    #[inline(always)]
+    pub fn pin(x: T) -> Pin<Box<T>> {
+        (box x).into()
+    }
+}
+
+impl<T> Box<[T]> {
     /// Construct a new boxed slice with uninitialized contents.
     ///
     /// # Examples
@@ -156,7 +166,7 @@ impl<T> Box<T> {
     /// ```
     /// #![feature(new_uninit)]
     ///
-    /// let mut values = Box::<u32>::new_uninit_slice(3);
+    /// let mut values = Box::<[u32]>::new_uninit_slice(3);
     ///
     /// let values = unsafe {
     ///     // Deferred initialization:
@@ -176,14 +186,6 @@ impl<T> Box<T> {
         let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
         let slice = unsafe { slice::from_raw_parts_mut(unique.cast().as_ptr(), len) };
         Box(Unique::from(slice))
-    }
-
-    /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
-    /// `x` will be pinned in memory and unable to be moved.
-    #[stable(feature = "pin", since = "1.33.0")]
-    #[inline(always)]
-    pub fn pin(x: T) -> Pin<Box<T>> {
-        (box x).into()
     }
 }
 
@@ -237,7 +239,7 @@ impl<T> Box<[mem::MaybeUninit<T>]> {
     /// ```
     /// #![feature(new_uninit)]
     ///
-    /// let mut values = Box::<u32>::new_uninit_slice(3);
+    /// let mut values = Box::<[u32]>::new_uninit_slice(3);
     ///
     /// let values = unsafe {
     ///     // Deferred initialization:

@@ -364,50 +364,6 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Construct a new reference-counted slice with uninitialized contents.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(new_uninit)]
-    /// #![feature(get_mut_unchecked)]
-    ///
-    /// use std::rc::Rc;
-    ///
-    /// let mut values = Rc::<u32>::new_uninit_slice(3);
-    ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     Rc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
-    ///     Rc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
-    ///     Rc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
-    ///
-    ///     values.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*values, [1, 2, 3])
-    /// ```
-    #[unstable(feature = "new_uninit", issue = "0")]
-    pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
-        let data_layout = Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        let (layout, offset) = Layout::new::<RcBox<()>>().extend(data_layout).unwrap();
-        unsafe {
-            let allocated_ptr = Global.alloc(layout)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-                .as_ptr();
-            let data_ptr = allocated_ptr.add(offset) as *mut mem::MaybeUninit<T>;
-            let slice: *mut [mem::MaybeUninit<T>] = from_raw_parts_mut(data_ptr, len);
-            let wide_ptr = slice as *mut RcBox<[mem::MaybeUninit<T>]>;
-            let wide_ptr = set_data_ptr(wide_ptr, allocated_ptr);
-            ptr::write(&mut (*wide_ptr).strong, Cell::new(1));
-            ptr::write(&mut (*wide_ptr).weak, Cell::new(1));
-            Rc {
-                ptr: NonNull::new_unchecked(wide_ptr),
-                phantom: PhantomData,
-            }
-        }
-    }
-
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -454,6 +410,52 @@ impl<T> Rc<T> {
             }
         } else {
             Err(this)
+        }
+    }
+}
+
+impl<T> Rc<[T]> {
+    /// Construct a new reference-counted slice with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut values = Rc::<[u32]>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
+    ///     Rc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
+    ///     Rc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
+        let data_layout = Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
+        let (layout, offset) = Layout::new::<RcBox<()>>().extend(data_layout).unwrap();
+        unsafe {
+            let allocated_ptr = Global.alloc(layout)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
+                .as_ptr();
+            let data_ptr = allocated_ptr.add(offset) as *mut mem::MaybeUninit<T>;
+            let slice: *mut [mem::MaybeUninit<T>] = from_raw_parts_mut(data_ptr, len);
+            let wide_ptr = slice as *mut RcBox<[mem::MaybeUninit<T>]>;
+            let wide_ptr = set_data_ptr(wide_ptr, allocated_ptr);
+            ptr::write(&mut (*wide_ptr).strong, Cell::new(1));
+            ptr::write(&mut (*wide_ptr).weak, Cell::new(1));
+            Rc {
+                ptr: NonNull::new_unchecked(wide_ptr),
+                phantom: PhantomData,
+            }
         }
     }
 }
@@ -519,7 +521,7 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     ///
     /// use std::rc::Rc;
     ///
-    /// let mut values = Rc::<u32>::new_uninit_slice(3);
+    /// let mut values = Rc::<[u32]>::new_uninit_slice(3);
     ///
     /// let values = unsafe {
     ///     // Deferred initialization:
