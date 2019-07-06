@@ -702,7 +702,7 @@ fn loop_desugaring_name(des: hir::LoopSource) -> &'static str {
     match des {
         hir::LoopSource::ForLoop => "LoopSource::ForLoop",
         hir::LoopSource::Loop => "LoopSource::Loop",
-        hir::LoopSource::While => "LoopSource::WhileDesugar",
+        hir::LoopSource::While => "LoopSource::While",
         hir::LoopSource::WhileLet => "LoopSource::WhileLet",
     }
 }

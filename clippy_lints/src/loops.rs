@@ -488,7 +488,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
                 },
                 NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
             }
-        };
+        }
 
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
@@ -587,16 +587,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
             }
         }
 
-        if_chain! {
-            if let ExprKind::Loop(block, _, LoopSource::While) = &expr.node;
-            if let Block { expr: Some(expr), .. } = &**block;
-            if let ExprKind::Match(cond, arms, MatchSource::WhileDesugar) = &expr.node;
-            if let ExprKind::DropTemps(cond) = &cond.node;
-            if let [arm, ..] = &arms[..];
-            if let Arm { body, .. } = arm;
-            then {
-                check_infinite_loop(cx, cond, body);
-            }
+        if let Some((cond, body)) = higher::while_loop(&expr) {
+            check_infinite_loop(cx, cond, body);
         }
 
         check_needless_collect(expr, cx);
