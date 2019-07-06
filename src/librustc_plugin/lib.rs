@@ -17,6 +17,7 @@
 //! #![feature(rustc_private)]
 //!
 //! extern crate rustc_plugin;
+//! extern crate rustc_driver;
 //! extern crate syntax;
 //! extern crate syntax_pos;
 //!

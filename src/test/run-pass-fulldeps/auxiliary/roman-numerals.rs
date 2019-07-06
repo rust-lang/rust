@@ -13,6 +13,7 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use syntax::parse::token::{self, Token};
 use syntax::tokenstream::TokenTree;

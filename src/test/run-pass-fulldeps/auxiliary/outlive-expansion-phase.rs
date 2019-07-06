@@ -5,6 +5,7 @@
 
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use std::any::Any;
 use std::cell::RefCell;

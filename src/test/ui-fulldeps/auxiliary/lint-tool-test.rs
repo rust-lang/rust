@@ -7,6 +7,7 @@ extern crate syntax;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use rustc_plugin::Registry;

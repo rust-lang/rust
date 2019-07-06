@@ -7,6 +7,7 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use std::borrow::ToOwned;
 use syntax::ast;
