@@ -67,6 +67,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
     type PointerTag: ::std::fmt::Debug + Copy + Eq + Hash + 'static;
 
+    /// Machines can define extra (non-instance) things that represent values of function pointers.
+    /// For example, Miri uses this to return a fucntion pointer from `dlsym`
+    /// that can later be called to execute the right thing.
+    type ExtraFnVal: ::std::fmt::Debug + Copy;
+
     /// Extra data stored in every call frame.
     type FrameExtra;
 
@@ -118,6 +123,16 @@ pub trait Machine<'mir, 'tcx>: Sized {
         dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
+
+    /// Execute `fn_val`.  it is the hook's responsibility to advance the instruction
+    /// pointer as appropriate.
+    fn call_extra_fn(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: Self::ExtraFnVal,
+        args: &[OpTy<'tcx, Self::PointerTag>],
+        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
+        ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx>;
 
     /// Directly process an intrinsic without pushing a stack frame.
     /// If this returns successfully, the engine will take care of jumping to the next block.
