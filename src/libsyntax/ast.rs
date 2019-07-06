@@ -572,6 +572,7 @@ impl Pat {
                     && after.iter().all(|p| p.walk(it))
             }
             PatKind::Wild
+            | PatKind::Rest
             | PatKind::Lit(_)
             | PatKind::Range(..)
             | PatKind::Ident(..)
@@ -660,6 +661,20 @@ pub enum PatKind {
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
     Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+
+    /// A rest pattern `..`.
+    ///
+    /// Syntactically it is valid anywhere.
+    ///
+    /// Semantically however, it only has meaning immediately inside:
+    /// - a slice pattern: `[a, .., b]`,
+    /// - a binding pattern immediately inside a slice pattern: `[a, r @ ..]`,
+    /// - a tuple pattern: `(a, .., b)`,
+    /// - a tuple struct/variant pattern: `$path(a, .., b)`.
+    ///
+    /// In all of these cases, an additional restriction applies,
+    /// only one rest pattern may occur in the pattern sequences.
+    Rest,
 
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(P<Pat>),

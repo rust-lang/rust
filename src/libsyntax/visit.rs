@@ -463,7 +463,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             visitor.visit_expr(lower_bound);
             visitor.visit_expr(upper_bound);
         }
-        PatKind::Wild => (),
+        PatKind::Wild | PatKind::Rest => {},
         PatKind::Slice(ref prepatterns, ref slice_pattern, ref postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             walk_list!(visitor, visit_pat, slice_pattern);
