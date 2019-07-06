@@ -91,6 +91,7 @@ use core::ops::{
     CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
 };
 use core::ptr::{self, NonNull, Unique};
+use core::slice;
 use core::task::{Context, Poll};
 
 use crate::alloc;
@@ -135,7 +136,7 @@ impl<T> Box<T> {
     ///     // Deferred initialization:
     ///     five.as_mut_ptr().write(5);
     ///
-    ///     Box::assume_init(five)
+    ///     five.assume_init()
     /// };
     ///
     /// assert_eq!(*five, 5)
@@ -146,6 +147,35 @@ impl<T> Box<T> {
         let ptr = unsafe { alloc::alloc(layout) };
         let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
         Box(unique.cast())
+    }
+
+    /// Construct a new boxed slice with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut values = Box::<u32>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     values[0].as_mut_ptr().write(1);
+    ///     values[1].as_mut_ptr().write(2);
+    ///     values[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
+        let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
+        let ptr = unsafe { alloc::alloc(layout) };
+        let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
+        let slice = unsafe { slice::from_raw_parts_mut(unique.cast().as_ptr(), len) };
+        Box(Unique::from(slice))
     }
 
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
@@ -179,15 +209,51 @@ impl<T> Box<mem::MaybeUninit<T>> {
     ///     // Deferred initialization:
     ///     five.as_mut_ptr().write(5);
     ///
-    ///     Box::assume_init(five)
+    ///     five.assume_init()
     /// };
     ///
     /// assert_eq!(*five, 5)
     /// ```
     #[unstable(feature = "new_uninit", issue = "0")]
     #[inline]
-    pub unsafe fn assume_init(this: Self) -> Box<T> {
-        Box(Box::into_unique(this).cast())
+    pub unsafe fn assume_init(self) -> Box<T> {
+        Box(Box::into_unique(self).cast())
+    }
+}
+
+impl<T> Box<[mem::MaybeUninit<T>]> {
+    /// Convert to `Box<[T]>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the values
+    /// really are in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut values = Box::<u32>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     values[0].as_mut_ptr().write(1);
+    ///     values[1].as_mut_ptr().write(2);
+    ///     values[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Box<[T]> {
+        Box(Unique::new_unchecked(Box::into_raw(self) as _))
     }
 }
 

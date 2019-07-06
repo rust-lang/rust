@@ -343,7 +343,7 @@ impl<T> Rc<T> {
     ///     // Deferred initialization:
     ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
     ///
-    ///     Rc::assume_init(five)
+    ///     five.assume_init()
     /// };
     ///
     /// assert_eq!(*five, 5)
@@ -359,6 +359,50 @@ impl<T> Rc<T> {
             ptr::write(&mut ptr.as_mut().weak, Cell::new(1));
             Rc {
                 ptr,
+                phantom: PhantomData,
+            }
+        }
+    }
+
+    /// Construct a new reference-counted slice with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut values = Rc::<u32>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
+    ///     Rc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
+    ///     Rc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
+        let data_layout = Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
+        let (layout, offset) = Layout::new::<RcBox<()>>().extend(data_layout).unwrap();
+        unsafe {
+            let allocated_ptr = Global.alloc(layout)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
+                .as_ptr();
+            let data_ptr = allocated_ptr.add(offset) as *mut mem::MaybeUninit<T>;
+            let slice: *mut [mem::MaybeUninit<T>] = from_raw_parts_mut(data_ptr, len);
+            let wide_ptr = slice as *mut RcBox<[mem::MaybeUninit<T>]>;
+            let wide_ptr = set_data_ptr(wide_ptr, allocated_ptr);
+            ptr::write(&mut (*wide_ptr).strong, Cell::new(1));
+            ptr::write(&mut (*wide_ptr).weak, Cell::new(1));
+            Rc {
+                ptr: NonNull::new_unchecked(wide_ptr),
                 phantom: PhantomData,
             }
         }
@@ -439,16 +483,60 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     ///     // Deferred initialization:
     ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
     ///
-    ///     Rc::assume_init(five)
+    ///     five.assume_init()
     /// };
     ///
     /// assert_eq!(*five, 5)
     /// ```
     #[unstable(feature = "new_uninit", issue = "0")]
     #[inline]
-    pub unsafe fn assume_init(this: Self) -> Rc<T> {
-        let ptr = this.ptr.cast();
-        mem::forget(this);
+    pub unsafe fn assume_init(self) -> Rc<T> {
+        let ptr = self.ptr.cast();
+        mem::forget(self);
+        Rc {
+            ptr,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<T> Rc<[mem::MaybeUninit<T>]> {
+    /// Convert to `Rc<[T]>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut values = Rc::<u32>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
+    ///     Rc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
+    ///     Rc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Rc<[T]> {
+        let ptr = NonNull::new_unchecked(self.ptr.as_ptr() as _);
+        mem::forget(self);
         Rc {
             ptr,
             phantom: PhantomData,
