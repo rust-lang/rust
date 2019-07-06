@@ -8,7 +8,7 @@ use crate::symbol::{Symbol, sym};
 use crate::errors::Applicability;
 
 use syntax_pos::Span;
-
+use syntax_pos::hygiene::{Mark, SyntaxContext};
 use rustc_data_structures::fx::FxHashSet;
 
 pub fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
@@ -55,12 +55,13 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::P
         names.insert(unwrap_or!(path.segments.get(0), continue).ident.name);
     }
 
-    cx.current_expansion.mark.set_expn_info(ExpnInfo::with_unstable(
+    let mark = Mark::fresh(cx.current_expansion.mark);
+    mark.set_expn_info(ExpnInfo::with_unstable(
         ExpnKind::Macro(MacroKind::Derive, Symbol::intern(&pretty_name)), span,
         cx.parse_sess.edition, &[sym::rustc_attrs, sym::structural_match],
     ));
 
-    let span = span.with_ctxt(cx.backtrace());
+    let span = span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
     item.visit_attrs(|attrs| {
         if names.contains(&sym::Eq) && names.contains(&sym::PartialEq) {
             let meta = cx.meta_word(span, sym::structural_match);

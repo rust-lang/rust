@@ -117,7 +117,11 @@ impl Mark {
 
     #[inline]
     pub fn set_expn_info(self, info: ExpnInfo) {
-        HygieneData::with(|data| data.marks[self.0 as usize].expn_info = Some(info))
+        HygieneData::with(|data| {
+            let old_info = &mut data.marks[self.0 as usize].expn_info;
+            assert!(old_info.is_none(), "expansion info is reset for a mark");
+            *old_info = Some(info);
+        })
     }
 
     pub fn is_descendant_of(self, ancestor: Mark) -> bool {
