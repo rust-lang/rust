@@ -516,7 +516,7 @@ impl<'tcx> EnclosingBreakables<'tcx> {
 /// a return type.
 pub enum FnDeclType {
     /// A return type can always be suggested, for all Items or TraitItems
-    /// but the program entry point
+    /// but the program entry point.
     Item,
     /// A return type can be suggested if the expected type implements
     /// `std::process::Termination`
