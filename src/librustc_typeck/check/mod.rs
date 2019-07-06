@@ -521,7 +521,7 @@ pub enum FnDeclType {
     /// A return type can be suggested if the expected type implements
     /// `std::process::Termination`.
     MainItem,
-    /// A return type should not be suggested for ImplItems
+    /// A return type should not be suggested for `ImplItem`s.
     ImplItem,
 }
 
