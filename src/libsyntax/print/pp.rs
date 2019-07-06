@@ -315,7 +315,6 @@ impl Printer {
             self.check_stack(0);
             self.advance_left();
         }
-        self.indent(0);
     }
 
     fn pretty_print_begin(&mut self, b: BeginToken) {
