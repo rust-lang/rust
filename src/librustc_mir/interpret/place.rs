@@ -327,15 +327,13 @@ where
         self.memory.check_ptr_access(place.ptr, size, place.align)
     }
 
-    /// Normalice `place.ptr` to a `Pointer` if this is not a ZST.
+    /// Force `place.ptr` to a `Pointer`.
     /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
-    pub fn normalize_mplace_ptr(
+    pub fn force_mplace_ptr(
         &self,
         mut place: MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        if !place.layout.is_zst() {
-            place.mplace.ptr = self.force_ptr(place.mplace.ptr)?.into();
-        }
+        place.mplace.ptr = self.force_ptr(place.mplace.ptr)?.into();
         Ok(place)
     }
 

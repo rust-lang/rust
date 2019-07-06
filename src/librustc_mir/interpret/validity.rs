@@ -444,7 +444,12 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // `!` is a ZST and we want to validate it.
                     // Normalize before handing `place` to tracking because that will
                     // check for duplicates.
-                    let place = self.ecx.normalize_mplace_ptr(place)?;
+                    let place = if size.bytes() > 0 {
+                        self.ecx.force_mplace_ptr(place)
+                            .expect("we already bounds-checked")
+                    } else {
+                        place
+                    };
                     let path = &self.path;
                     ref_tracking.track(place, || {
                         // We need to clone the path anyway, make sure it gets created
@@ -578,8 +583,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 let ty_size = self.ecx.layout_of(tys)?.size;
                 // This is the size in bytes of the whole array.
                 let size = ty_size * len;
-                // Size is not 0, get a pointer (no cast because we normalized in validate_operand).
-                let ptr = mplace.ptr.assert_ptr();
+                // Size is not 0, get a pointer.
+                let ptr = self.ecx.force_ptr(mplace.ptr)?;
 
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
@@ -654,8 +659,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ecx: self,
         };
 
+        // Try to cast to ptr *once* instead of all the time.
+        let op = self.force_op_ptr(op).unwrap_or(op);
+
         // Run it
-        let op = self.normalize_op_ptr(op)?; // avoid doing ptr-to-int all the time
         visitor.visit_value(op)
     }
 }

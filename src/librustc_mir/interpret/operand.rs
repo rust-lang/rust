@@ -217,13 +217,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Normalice `place.ptr` to a `Pointer` if this is a place and not a ZST.
     /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
     #[inline]
-    pub fn normalize_op_ptr(
+    pub fn force_op_ptr(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         match op.try_as_mplace() {
-            Ok(mplace) => Ok(self.normalize_mplace_ptr(mplace)?.into()),
-            Err(imm) => Ok(imm.into()), // Nothing to normalize
+            Ok(mplace) => Ok(self.force_mplace_ptr(mplace)?.into()),
+            Err(imm) => Ok(imm.into()), // Nothing to cast/force
         }
     }
 
