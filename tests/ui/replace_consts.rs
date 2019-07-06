@@ -4,10 +4,12 @@
 #![deny(clippy::replace_consts)]
 
 use std::sync::atomic::*;
-use std::sync::{Once, ONCE_INIT};
+use std::sync::Once;
 
 #[rustfmt::skip]
 fn bad() {
+    #[allow(deprecated, unused_imports)]
+    use std::sync::ONCE_INIT;
     // Once
     { let foo = ONCE_INIT; };
     // Min
