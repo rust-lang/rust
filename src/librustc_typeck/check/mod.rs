@@ -3961,7 +3961,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("-> {} ", ret_ty),
                         Applicability::MachineApplicable);
                 } else {
-                    // `fn main()` must return `()`, do not suggest changing return type
+                    // `fn main()` must return `()`, so do not suggest changing return type.
                     err.span_label(span, "expected `()` because of default return type");
                 }
                 true
