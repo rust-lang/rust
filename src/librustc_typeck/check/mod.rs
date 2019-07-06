@@ -515,7 +515,7 @@ impl<'tcx> EnclosingBreakables<'tcx> {
 /// This is returned by `get_node_fn_decl` to decide whether to suggest
 /// a return type.
 pub enum FnDeclType {
-    /// A return type can always be suggested, for all Items or TraitItems
+    /// A return type can always be suggested, for all `Item`s or `TraitItem`s
     /// but the program entry point.
     Item,
     /// A return type can be suggested if the expected type implements
