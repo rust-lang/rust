@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "rustc_data_structures"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
 ena = "0.13"
@@ -15,7 +15,6 @@ indexmap = "1"
 log = "0.4"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 lazy_static = "1"
-rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 serialize = { path = "../libserialize" }
 graphviz = { path = "../libgraphviz" }
 cfg-if = "0.1.2"

@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "syntax"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
 bitflags = "1.0"

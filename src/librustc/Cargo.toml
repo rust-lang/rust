@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "rustc"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
 arena = { path = "../libarena" }
@@ -37,33 +37,3 @@ chalk-engine = { version = "0.9.0", default-features=false }
 rustc_fs_util = { path = "../librustc_fs_util" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 measureme = "0.3"
-
-# Note that these dependencies are a lie, they're just here to get linkage to
-# work.
-#
-# We're creating a bunch of dylibs for the compiler but we're also compiling a
-# bunch of crates.io crates. Everything in the compiler is compiled as an
-# rlib/dylib pair but all crates.io crates tend to just be rlibs. This means
-# we've got a problem for dependency graphs that look like:
-#
-#           foo - rustc_codegen_llvm
-#         /                  \
-#   rustc                     ---- rustc_driver
-#         \                     /
-#           foo - rustc_metadata
-#
-# Here the crate `foo` is linked into the `rustc_codegen_llvm` and the
-# `rustc_metadata` dylibs, meaning we've got duplicate copies! When we then
-# go to link `rustc_driver` the compiler notices this and gives us a compiler
-# error.
-#
-# To work around this problem we just add these crates.io dependencies to the
-# `rustc` crate which is a shared dependency above. That way the crate `foo`
-# shows up in the dylib for the `rustc` crate, deduplicating it and allowing
-# crates like `rustc_codegen_llvm` to use `foo` *through* the `rustc` crate.
-#
-# tl;dr; this is not needed to get `rustc` to compile, but if you remove it then
-#        later crate stop compiling. If you can remove this and everything
-#        compiles, then please feel free to do so!
-flate2 = "1.0"
-tempfile = "3.0"

@@ -7,8 +7,8 @@ edition = "2018"
 [lib]
 name = "rustc_resolve"
 path = "lib.rs"
-crate-type = ["dylib"]
 test = false
+doctest = false
 
 [dependencies]
 bitflags = "1.0"

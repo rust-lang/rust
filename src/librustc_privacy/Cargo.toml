@@ -7,7 +7,6 @@ edition = "2018"
 [lib]
 name = "rustc_privacy"
 path = "lib.rs"
-crate-type = ["dylib"]
 
 [dependencies]
 rustc = { path = "../librustc" }
