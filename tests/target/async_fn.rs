@@ -18,3 +18,7 @@ async unsafe fn rust() {
         Ok(())
     }
 }
+
+async fn await_macro() {
+    await!(something)?;
+}
