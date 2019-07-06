@@ -2478,6 +2478,7 @@ impl<'a> State<'a> {
                                    |s, p| s.print_pat(p));
                 self.s.word("]");
             }
+            PatKind::Rest => self.s.word(".."),
             PatKind::Paren(ref inner) => {
                 self.popen();
                 self.print_pat(inner);

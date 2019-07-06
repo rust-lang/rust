@@ -4264,6 +4264,10 @@ impl<'a> LoweringContext<'a> {
                 slice.as_ref().map(|x| self.lower_pat(x)),
                 after.iter().map(|x| self.lower_pat(x)).collect(),
             ),
+            PatKind::Rest => {
+                // If we reach here the `..` pattern is not semantically allowed.
+                self.ban_illegal_rest_pat(p.span)
+            }
             PatKind::Paren(ref inner) => return self.lower_pat(inner),
             PatKind::Mac(_) => panic!("Shouldn't exist here"),
         };
@@ -4273,6 +4277,19 @@ impl<'a> LoweringContext<'a> {
             node,
             span: p.span,
         })
+    }
+
+    /// Used to ban the `..` pattern in places it shouldn't be semantically.
+    fn ban_illegal_rest_pat(&self, sp: Span) -> hir::PatKind {
+        self.diagnostic()
+            .struct_span_err(sp, "`..` patterns are not allowed here")
+            .note("only allowed in tuple, tuple struct, and slice patterns")
+            .emit();
+
+        // We're not in a list context so `..` can be reasonably treated
+        // as `_` because it should always be valid and roughly matches the
+        // intent of `..` (notice that the rest of a single slot is that slot).
+        hir::PatKind::Wild
     }
 
     fn lower_range_end(&mut self, e: &RangeEnd) -> hir::RangeEnd {
