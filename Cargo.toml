@@ -1,5 +1,3 @@
-cargo-features = ["default-run"]
-
 [package]
 authors = ["Scott Olson <scott@solson.me>"]
 description = "An experimental interpreter for Rust MIR."
