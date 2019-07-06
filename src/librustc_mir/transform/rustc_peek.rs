@@ -5,11 +5,11 @@ use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::hir::def_id::DefId;
-use rustc::mir::{self, Body, Location};
+use rustc::mir::{self, Body, Location, Local};
 use rustc_data_structures::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 
-use crate::dataflow::{do_dataflow, DebugFormatted};
+use crate::dataflow::{self, do_dataflow, DebugFormatted};
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::BitDenotation;
 use crate::dataflow::DataflowResults;
@@ -92,147 +92,114 @@ pub fn sanity_check_via_rustc_peek<'tcx, O>(
     O: BitDenotation<'tcx, Idx = MovePathIndex> + HasMoveData<'tcx>,
 {
     debug!("sanity_check_via_rustc_peek def_id: {:?}", def_id);
-    // FIXME: this is not DRY. Figure out way to abstract this and
-    // `dataflow::build_sets`. (But note it is doing non-standard
-    // stuff, so such generalization may not be realistic.)
+    let move_data = results.operator().move_data();
 
-    for bb in body.basic_blocks().indices() {
-        each_block(tcx, body, results, bb);
+    let peek_calls = body
+            .basic_blocks()
+            .iter_enumerated()
+            .filter_map(|(bb, data)| {
+                data.terminator
+                    .as_ref()
+                    .and_then(|term| PeekCall::from_terminator(tcx, term))
+                    .map(|call| (bb, data, call))
+            });
+
+    for (bb, data, call) in peek_calls {
+        // Look for a sequence like the following to indicate that we should be peeking at `_1`:
+        //    _2 = &_1
+        //    rustc_peek(_2)
+        let (statement_index, peek_rval) = data.statements
+            .iter()
+            .map(|stmt| value_assigned_to_local(stmt, call.arg))
+            .enumerate()
+            .filter_map(|(idx, rval)| rval.map(|r| (idx, r)))
+            .next()
+            .expect("call to rustc_peek should be preceded by \
+                    assignment to temporary holding its argument");
+
+        if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, peeking_at_place) = peek_rval {
+            let loc = Location { block: bb, statement_index };
+            let flow_state = dataflow::state_for_location(loc, results.operator(), results, body);
+
+            match move_data.rev_lookup.find(peeking_at_place) {
+                LookupResult::Exact(peek_mpi) => {
+                    let bit_state = flow_state.contains(peek_mpi);
+                    debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
+                           call.arg, peeking_at_place, bit_state);
+                    if !bit_state {
+                        tcx.sess.span_err(call.span, "rustc_peek: bit not set");
+                    }
+                }
+                LookupResult::Parent(..) => {
+                    tcx.sess.span_err(call.span, "rustc_peek: argument untracked");
+                }
+            }
+        } else {
+            let msg = "rustc_peek: argument expression \
+                       must be immediate borrow of form `&expr`";
+            tcx.sess.span_err(call.span, msg);
+        }
     }
 }
 
-fn each_block<'tcx, O>(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    results: &DataflowResults<'tcx, O>,
-    bb: mir::BasicBlock,
-) where
-    O: BitDenotation<'tcx, Idx = MovePathIndex> + HasMoveData<'tcx>,
-{
-    let move_data = results.0.operator.move_data();
-    let mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = body[bb];
-
-    let (args, span) = match is_rustc_peek(tcx, terminator) {
-        Some(args_and_span) => args_and_span,
-        None => return,
-    };
-    assert!(args.len() == 1);
-    let peek_arg_place = match args[0] {
-        mir::Operand::Copy(ref place @ mir::Place {
-            base: mir::PlaceBase::Local(_),
-            projection: None,
-        }) |
-        mir::Operand::Move(ref place @ mir::Place {
-            base: mir::PlaceBase::Local(_),
-            projection: None,
-        }) => Some(place),
-        _ => None,
-    };
-
-    let peek_arg_place = match peek_arg_place {
-        Some(arg) => arg,
-        None => {
-            tcx.sess.diagnostic().span_err(
-                span, "dataflow::sanity_check cannot feed a non-temp to rustc_peek.");
-            return;
-        }
-    };
-
-    let mut on_entry = results.0.sets.entry_set_for(bb.index()).to_owned();
-    let mut trans = results.0.sets.trans_for(bb.index()).clone();
-
-    // Emulate effect of all statements in the block up to (but not
-    // including) the borrow within `peek_arg_place`. Do *not* include
-    // call to `peek_arg_place` itself (since we are peeking the state
-    // of the argument at time immediate preceding Call to
-    // `rustc_peek`).
-
-    for (j, stmt) in statements.iter().enumerate() {
-        debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
-        let (place, rvalue) = match stmt.kind {
-            mir::StatementKind::Assign(ref place, ref rvalue) => {
-                (place, rvalue)
-            }
-            mir::StatementKind::FakeRead(..) |
-            mir::StatementKind::StorageLive(_) |
-            mir::StatementKind::StorageDead(_) |
-            mir::StatementKind::InlineAsm { .. } |
-            mir::StatementKind::Retag { .. } |
-            mir::StatementKind::AscribeUserType(..) |
-            mir::StatementKind::Nop => continue,
-            mir::StatementKind::SetDiscriminant{ .. } =>
-                span_bug!(stmt.source_info.span,
-                          "sanity_check should run before Deaggregator inserts SetDiscriminant"),
-        };
-
-        if place == peek_arg_place {
-            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = **rvalue {
-                // Okay, our search is over.
-                match move_data.rev_lookup.find(peeking_at_place.as_ref()) {
-                    LookupResult::Exact(peek_mpi) => {
-                        let bit_state = on_entry.contains(peek_mpi);
-                        debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
-                               place, peeking_at_place, bit_state);
-                        if !bit_state {
-                            tcx.sess.span_err(span, "rustc_peek: bit not set");
-                        }
-                    }
-                    LookupResult::Parent(..) => {
-                        tcx.sess.span_err(span, "rustc_peek: argument untracked");
-                    }
-                }
-                return;
-            } else {
-                // Our search should have been over, but the input
-                // does not match expectations of `rustc_peek` for
-                // this sanity_check.
-                let msg = "rustc_peek: argument expression \
-                           must be immediate borrow of form `&expr`";
-                tcx.sess.span_err(span, msg);
+/// If `stmt` is an assignment where the LHS is the given local (with no projections), returns the
+/// RHS of the assignment.
+fn value_assigned_to_local<'a, 'tcx>(
+    stmt: &'a mir::Statement<'tcx>,
+    local: Local,
+) -> Option<&'a mir::Rvalue<'tcx>> {
+    if let mir::StatementKind::Assign(place, rvalue) = &stmt.kind {
+        if let mir::Place::Base(mir::PlaceBase::Local(l)) = place {
+            if local == *l {
+                return Some(&*rvalue);
             }
         }
-
-        let lhs_mpi = move_data.rev_lookup.find(place.as_ref());
-
-        debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
-               place, lhs_mpi, stmt);
-        // reset GEN and KILL sets before emulating their effect.
-        trans.clear();
-        results.0.operator.before_statement_effect(
-            &mut trans,
-            Location { block: bb, statement_index: j });
-        results.0.operator.statement_effect(
-            &mut trans,
-            Location { block: bb, statement_index: j });
-        trans.apply(&mut on_entry);
     }
 
-    results.0.operator.before_terminator_effect(
-        &mut trans,
-        Location { block: bb, statement_index: statements.len() });
-
-    tcx.sess.span_err(span, &format!("rustc_peek: MIR did not match \
-                                      anticipated pattern; note that \
-                                      rustc_peek expects input of \
-                                      form `&expr`"));
+    None
 }
 
-fn is_rustc_peek<'a, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    terminator: &'a Option<mir::Terminator<'tcx>>,
-) -> Option<(&'a [mir::Operand<'tcx>], Span)> {
-    if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {
-        if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind {
-            if let mir::Operand::Constant(ref func) = *oper {
-                if let ty::FnDef(def_id, _) = func.ty.sty {
-                    let abi = tcx.fn_sig(def_id).abi();
-                    let name = tcx.item_name(def_id);
-                    if abi == Abi::RustIntrinsic && name == sym::rustc_peek {
-                        return Some((args, source_info.span));
-                    }
+struct PeekCall {
+    arg: Local,
+    span: Span,
+}
+
+impl PeekCall {
+    fn from_terminator<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
+    ) -> Option<Self> {
+        let span = terminator.source_info.span;
+        if let mir::TerminatorKind::Call { func: mir::Operand::Constant(func), args, .. } =
+            &terminator.kind
+        {
+            if let ty::FnDef(def_id, _) = func.ty.sty {
+                let abi = tcx.fn_sig(def_id).abi();
+                let name = tcx.item_name(def_id);
+                if abi != Abi::RustIntrinsic || name != sym::rustc_peek {
+                    return None;
                 }
+
+                assert_eq!(args.len(), 1);
+                let arg = match args[0] {
+                    | mir::Operand::Copy(mir::Place::Base(mir::PlaceBase::Local(local)))
+                    | mir::Operand::Move(mir::Place::Base(mir::PlaceBase::Local(local)))
+                    => local,
+
+                    _ => {
+                        tcx.sess.diagnostic().span_err(
+                            span, "dataflow::sanity_check cannot feed a non-temp to rustc_peek.");
+                        return None;
+                    }
+                };
+
+                return Some(PeekCall {
+                    arg,
+                    span,
+                });
             }
         }
+
+        None
     }
-    return None;
 }
