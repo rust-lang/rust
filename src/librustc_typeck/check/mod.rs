@@ -3741,8 +3741,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
-    fn get_node_fn_decl(&self, node: Node<'tcx>)
-    -> Option<(&'tcx hir::FnDecl, ast::Ident, FnDeclType)> {
+    fn get_node_fn_decl(
+        &self,
+        node: Node<'tcx>
+    ) -> Option<(&'tcx hir::FnDecl, ast::Ident, FnDeclType)> {
         match node {
             Node::Item(&hir::Item {
                 ident, node: hir::ItemKind::Fn(ref decl, ..), ..

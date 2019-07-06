@@ -1,0 +1,27 @@
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+  --> $DIR/missing_return_type.rs:5:5
+   |
+LL |     write!(&mut w, "test")?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `()`
+   = note: required by `std::ops::Try::from_error`
+
+error[E0308]: mismatched types
+  --> $DIR/missing_return_type.rs:6:5
+   |
+LL | fn main() {
+   |           - expected `()` because of default return type
+...
+LL |     Ok(())
+   |     ^^^^^^- help: try adding a semicolon: `;`
+   |     |
+   |     expected (), found enum `std::result::Result`
+   |
+   = note: expected type `()`
+              found type `std::result::Result<(), _>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
