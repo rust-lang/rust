@@ -428,11 +428,7 @@ pub(crate) fn struct_datum_query(
                 CallableDef::Struct(s) => s.module(db).krate(db),
                 CallableDef::EnumVariant(v) => v.parent_enum(db).module(db).krate(db),
             } != Some(krate);
-            let generic_def: GenericDef = match callable {
-                CallableDef::Function(f) => f.into(),
-                CallableDef::Struct(s) => s.into(),
-                CallableDef::EnumVariant(v) => v.parent_enum(db).into(),
-            };
+            let generic_def: GenericDef = callable.into();
             let generic_params = generic_def.generic_params(db);
             let bound_vars = Substs::bound_vars(&generic_params);
             let where_clauses = convert_where_clauses(db, generic_def, &bound_vars);

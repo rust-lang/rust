@@ -509,3 +509,13 @@ pub enum CallableDef {
     EnumVariant(EnumVariant),
 }
 impl_froms!(CallableDef: Function, Struct, EnumVariant);
+
+impl From<CallableDef> for GenericDef {
+    fn from(def: CallableDef) -> GenericDef {
+        match def {
+            CallableDef::Function(f) => f.into(),
+            CallableDef::Struct(s) => s.into(),
+            CallableDef::EnumVariant(e) => e.into(),
+        }
+    }
+}

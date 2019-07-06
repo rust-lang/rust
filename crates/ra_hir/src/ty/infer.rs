@@ -849,12 +849,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
         if let Ty::Apply(a_ty) = callable_ty {
             if let TypeCtor::FnDef(def) = a_ty.ctor {
-                let generic_predicates = self.db.generic_predicates(match def {
-                    // TODO add helper function
-                    CallableDef::Function(f) => f.into(),
-                    CallableDef::Struct(s) => s.into(),
-                    CallableDef::EnumVariant(_e) => unimplemented!(),
-                });
+                let generic_predicates = self.db.generic_predicates(def.into());
                 for predicate in generic_predicates.iter() {
                     let predicate = predicate.clone().subst(&a_ty.parameters);
                     if let Some(obligation) = Obligation::from_predicate(predicate) {
