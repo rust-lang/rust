@@ -6,13 +6,11 @@ use rustc::hir;
 use rustc::ty::layout::{self, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
-use rustc::mir::interpret::{
-    GlobalAlloc, InterpResult, InterpError,
-};
 
 use std::hash::Hash;
 
 use super::{
+    GlobalAlloc, InterpResult, InterpError,
     OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
 };
 
@@ -153,15 +151,16 @@ fn wrapping_range_format(r: &RangeInclusive<u128>, max_hi: u128) -> String {
     debug_assert!(hi <= max_hi);
     if lo > hi {
         format!("less or equal to {}, or greater or equal to {}", hi, lo)
+    } else if lo == hi {
+        format!("equal to {}", lo)
+    } else if lo == 0 {
+        debug_assert!(hi < max_hi, "should not be printing if the range covers everything");
+        format!("less or equal to {}", hi)
+    } else if hi == max_hi {
+        debug_assert!(lo > 0, "should not be printing if the range covers everything");
+        format!("greater or equal to {}", lo)
     } else {
-        if lo == 0 {
-            debug_assert!(hi < max_hi, "should not be printing if the range covers everything");
-            format!("less or equal to {}", hi)
-        } else if hi == max_hi {
-            format!("greater or equal to {}", lo)
-        } else {
-            format!("in the range {:?}", r)
-        }
+        format!("in the range {:?}", r)
     }
 }
 
@@ -457,10 +456,10 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             }
             ty::FnPtr(_sig) => {
                 let value = value.to_scalar_or_undef();
-                let ptr = try_validation!(value.to_ptr(),
-                    value, self.path, "a pointer");
-                let _fn = try_validation!(self.ecx.memory.get_fn(ptr),
-                    value, self.path, "a function pointer");
+                let _fn = try_validation!(
+                    value.not_undef().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
+                    value, self.path, "a function pointer"
+                );
                 // FIXME: Check if the signature matches
             }
             // This should be all the primitive types
@@ -504,20 +503,18 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 if lo == 1 && hi == max_hi {
                     // Only NULL is the niche.  So make sure the ptr is NOT NULL.
                     if self.ecx.memory.ptr_may_be_null(ptr) {
-                        // These conditions are just here to improve the diagnostics so we can
-                        // differentiate between null pointers and dangling pointers
-                        if self.ref_tracking_for_consts.is_some() &&
-                            self.ecx.memory.get(ptr.alloc_id).is_err() &&
-                            self.ecx.memory.get_fn(ptr).is_err() {
-                            return validation_failure!(
-                                "encountered dangling pointer", self.path
-                            );
-                        }
-                        return validation_failure!("a potentially NULL pointer", self.path);
+                        return validation_failure!(
+                            "a potentially NULL pointer",
+                            self.path,
+                            format!(
+                                "something that cannot possibly fail to be {}",
+                                wrapping_range_format(&layout.valid_range, max_hi)
+                            )
+                        );
                     }
                     return Ok(());
                 } else {
-                    // Conservatively, we reject, because the pointer *could* have this
+                    // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
                     return validation_failure!(
                         "a pointer",

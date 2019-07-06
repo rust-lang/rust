@@ -6,9 +6,9 @@ use rustc::ty::layout::{self, TyLayout, LayoutOf};
 use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{InterpResult, PointerArithmetic, InterpError, Scalar};
 use super::{
-    InterpCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup
+    InterpResult, PointerArithmetic, InterpError, Scalar,
+    InterpCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -76,16 +76,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
 
                 let func = self.eval_operand(func, None)?;
-                let (fn_def, abi) = match func.layout.ty.sty {
+                let (fn_val, abi) = match func.layout.ty.sty {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
-                        let fn_ptr = self.force_ptr(self.read_scalar(func)?.not_undef()?)?;
-                        let instance = self.memory.get_fn(fn_ptr)?;
-                        (instance, caller_abi)
+                        let fn_ptr = self.read_scalar(func)?.not_undef()?;
+                        let fn_val = self.memory.get_fn(fn_ptr)?;
+                        (fn_val, caller_abi)
                     }
                     ty::FnDef(def_id, substs) => {
                         let sig = func.layout.ty.fn_sig(*self.tcx);
-                        (self.resolve(def_id, substs)?, sig.abi())
+                        (FnVal::Instance(self.resolve(def_id, substs)?), sig.abi())
                     },
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func.layout.ty);
@@ -94,7 +94,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 let args = self.eval_operands(args)?;
                 self.eval_fn_call(
-                    fn_def,
+                    fn_val,
                     terminator.source_info.span,
                     abi,
                     &args[..],
@@ -228,14 +228,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Call this function -- pushing the stack frame and initializing the arguments.
     fn eval_fn_call(
         &mut self,
-        instance: ty::Instance<'tcx>,
+        fn_val: FnVal<'tcx, M::ExtraFnVal>,
         span: Span,
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
         dest: Option<PlaceTy<'tcx, M::PointerTag>>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        trace!("eval_fn_call: {:#?}", instance);
+        trace!("eval_fn_call: {:#?}", fn_val);
+
+        let instance = match fn_val {
+            FnVal::Instance(instance) => instance,
+            FnVal::Other(extra) => {
+                return M::call_extra_fn(self, extra, args, dest, ret);
+            }
+        };
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
@@ -431,8 +438,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.tcx.data_layout.pointer_align.abi,
                 )?.expect("cannot be a ZST");
                 let fn_ptr = self.memory.get(vtable_slot.alloc_id)?
-                    .read_ptr_sized(self, vtable_slot)?.to_ptr()?;
-                let instance = self.memory.get_fn(fn_ptr)?;
+                    .read_ptr_sized(self, vtable_slot)?.not_undef()?;
+                let drop_fn = self.memory.get_fn(fn_ptr)?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
                 // want for args[0]: We have to project to field 0 because we want
@@ -447,7 +454,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(instance, span, caller_abi, &args, dest, ret)
+                self.eval_fn_call(drop_fn, span, caller_abi, &args, dest, ret)
             }
         }
     }
@@ -482,7 +489,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let dest = MPlaceTy::dangling(self.layout_of(ty)?, self);
 
         self.eval_fn_call(
-            instance,
+            FnVal::Instance(instance),
             span,
             Abi::Rust,
             &[arg.into()],

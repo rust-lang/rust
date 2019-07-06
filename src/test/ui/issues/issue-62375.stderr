@@ -1,0 +1,13 @@
+error[E0369]: binary operation `==` cannot be applied to type `A`
+  --> $DIR/issue-62375.rs:7:7
+   |
+LL |     a == A::Value;
+   |     - ^^ -------- fn(()) -> A {A::Value}
+   |     |
+   |     A
+   |
+   = note: an implementation of `std::cmp::PartialEq` might be missing for `A`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

@@ -38,9 +38,6 @@ pub struct StringReader<'a> {
     crate source_file: Lrc<syntax_pos::SourceFile>,
     /// Stop reading src at this index.
     crate end_src_index: usize,
-    // cached:
-    peek_token: Token,
-    peek_span_src_raw: Span,
     fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.source_file.src.as_ref().unwrap()` all the time.
@@ -49,15 +46,59 @@ pub struct StringReader<'a> {
 }
 
 impl<'a> StringReader<'a> {
-    fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
-        self.mk_sp_and_raw(lo, hi).0
+    pub fn new(sess: &'a ParseSess,
+               source_file: Lrc<syntax_pos::SourceFile>,
+               override_span: Option<Span>) -> Self {
+        let mut sr = StringReader::new_internal(sess, source_file, override_span);
+        sr.bump();
+        sr
     }
 
-    fn mk_sp_and_raw(&self, lo: BytePos, hi: BytePos) -> (Span, Span) {
-        let raw = Span::new(lo, hi, NO_EXPANSION);
-        let real = self.override_span.unwrap_or(raw);
+    pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
+        let begin = sess.source_map().lookup_byte_offset(span.lo());
+        let end = sess.source_map().lookup_byte_offset(span.hi());
 
-        (real, raw)
+        // Make the range zero-length if the span is invalid.
+        if span.lo() > span.hi() || begin.sf.start_pos != end.sf.start_pos {
+            span = span.shrink_to_lo();
+        }
+
+        let mut sr = StringReader::new_internal(sess, begin.sf, None);
+
+        // Seek the lexer to the right byte range.
+        sr.next_pos = span.lo();
+        sr.end_src_index = sr.src_index(span.hi());
+
+        sr.bump();
+
+        sr
+    }
+
+    fn new_internal(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>,
+        override_span: Option<Span>) -> Self
+    {
+        if source_file.src.is_none() {
+            sess.span_diagnostic.bug(&format!("Cannot lex source_file without source: {}",
+                                              source_file.name));
+        }
+
+        let src = (*source_file.src.as_ref().unwrap()).clone();
+
+        StringReader {
+            sess,
+            next_pos: source_file.start_pos,
+            pos: source_file.start_pos,
+            ch: Some('\n'),
+            source_file,
+            end_src_index: src.len(),
+            src,
+            fatal_errs: Vec::new(),
+            override_span,
+        }
+    }
+
+    fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
+        self.override_span.unwrap_or_else(|| Span::new(lo, hi, NO_EXPANSION))
     }
 
     fn unwrap_or_abort(&mut self, res: Result<Token, ()>) -> Token {
@@ -70,35 +111,32 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn next_token(&mut self) -> Token where Self: Sized {
-        let res = self.try_next_token();
-        self.unwrap_or_abort(res)
-    }
-
-    /// Returns the next token. EFFECT: advances the string_reader.
+    /// Returns the next token, including trivia like whitespace or comments.
+    ///
+    /// `Err(())` means that some errors were encountered, which can be
+    /// retrieved using `buffer_fatal_errors`.
     pub fn try_next_token(&mut self) -> Result<Token, ()> {
         assert!(self.fatal_errs.is_empty());
-        let ret_val = self.peek_token.take();
-        self.advance_token()?;
-        Ok(ret_val)
-    }
-
-    fn try_real_token(&mut self) -> Result<Token, ()> {
-        let mut t = self.try_next_token()?;
-        loop {
-            match t.kind {
-                token::Whitespace | token::Comment | token::Shebang(_) => {
-                    t = self.try_next_token()?;
-                }
-                _ => break,
+        match self.scan_whitespace_or_comment() {
+            Some(comment) => Ok(comment),
+            None => {
+                let (kind, start_pos, end_pos) = if self.is_eof() {
+                    (token::Eof, self.source_file.end_pos, self.source_file.end_pos)
+                } else {
+                    let start_pos = self.pos;
+                    (self.next_token_inner()?, start_pos, self.pos)
+                };
+                let span = self.mk_sp(start_pos, end_pos);
+                Ok(Token::new(kind, span))
             }
         }
-
-        Ok(t)
     }
 
-    pub fn real_token(&mut self) -> Token {
-        let res = self.try_real_token();
+    /// Returns the next token, including trivia like whitespace or comments.
+    ///
+    /// Aborts in case of an error.
+    pub fn next_token(&mut self) -> Token {
+        let res = self.try_next_token();
         self.unwrap_or_abort(res)
     }
 
@@ -120,10 +158,6 @@ impl<'a> StringReader<'a> {
         FatalError.raise();
     }
 
-    fn fatal(&self, m: &str) -> FatalError {
-        self.fatal_span(self.peek_token.span, m)
-    }
-
     crate fn emit_fatal_errors(&mut self) {
         for err in &mut self.fatal_errs {
             err.emit();
@@ -140,81 +174,6 @@ impl<'a> StringReader<'a> {
         }
 
         buffer
-    }
-
-    pub fn peek(&self) -> &Token {
-        &self.peek_token
-    }
-
-    /// For comments.rs, which hackily pokes into next_pos and ch
-    fn new_raw(sess: &'a ParseSess,
-               source_file: Lrc<syntax_pos::SourceFile>,
-               override_span: Option<Span>) -> Self {
-        let mut sr = StringReader::new_raw_internal(sess, source_file, override_span);
-        sr.bump();
-
-        sr
-    }
-
-    fn new_raw_internal(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>,
-        override_span: Option<Span>) -> Self
-    {
-        if source_file.src.is_none() {
-            sess.span_diagnostic.bug(&format!("Cannot lex source_file without source: {}",
-                                              source_file.name));
-        }
-
-        let src = (*source_file.src.as_ref().unwrap()).clone();
-
-        StringReader {
-            sess,
-            next_pos: source_file.start_pos,
-            pos: source_file.start_pos,
-            ch: Some('\n'),
-            source_file,
-            end_src_index: src.len(),
-            peek_token: Token::dummy(),
-            peek_span_src_raw: syntax_pos::DUMMY_SP,
-            src,
-            fatal_errs: Vec::new(),
-            override_span,
-        }
-    }
-
-    pub fn new_or_buffered_errs(sess: &'a ParseSess,
-                                source_file: Lrc<syntax_pos::SourceFile>,
-                                override_span: Option<Span>) -> Result<Self, Vec<Diagnostic>> {
-        let mut sr = StringReader::new_raw(sess, source_file, override_span);
-        if sr.advance_token().is_err() {
-            Err(sr.buffer_fatal_errors())
-        } else {
-            Ok(sr)
-        }
-    }
-
-    pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
-        let begin = sess.source_map().lookup_byte_offset(span.lo());
-        let end = sess.source_map().lookup_byte_offset(span.hi());
-
-        // Make the range zero-length if the span is invalid.
-        if span.lo() > span.hi() || begin.sf.start_pos != end.sf.start_pos {
-            span = span.shrink_to_lo();
-        }
-
-        let mut sr = StringReader::new_raw_internal(sess, begin.sf, None);
-
-        // Seek the lexer to the right byte range.
-        sr.next_pos = span.lo();
-        sr.end_src_index = sr.src_index(span.hi());
-
-        sr.bump();
-
-        if sr.advance_token().is_err() {
-            sr.emit_fatal_errors();
-            FatalError.raise();
-        }
-
-        sr
     }
 
     #[inline]
@@ -267,30 +226,6 @@ impl<'a> StringReader<'a> {
         push_escaped_char(&mut m, c);
 
         self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), &m[..])
-    }
-
-    /// Advance peek_token to refer to the next token, and
-    /// possibly update the interner.
-    fn advance_token(&mut self) -> Result<(), ()> {
-        match self.scan_whitespace_or_comment() {
-            Some(comment) => {
-                self.peek_span_src_raw = comment.span;
-                self.peek_token = comment;
-            }
-            None => {
-                let (kind, start_pos, end_pos) = if self.is_eof() {
-                    (token::Eof, self.source_file.end_pos, self.source_file.end_pos)
-                } else {
-                    let start_pos = self.pos;
-                    (self.next_token_inner()?, start_pos, self.pos)
-                };
-                let (real, raw) = self.mk_sp_and_raw(start_pos, end_pos);
-                self.peek_token = Token::new(kind, real);
-                self.peek_span_src_raw = raw;
-            }
-        }
-
-        Ok(())
     }
 
     #[inline]
@@ -1462,12 +1397,7 @@ mod tests {
                  teststr: String)
                  -> StringReader<'a> {
         let sf = sm.new_source_file(PathBuf::from(teststr.clone()).into(), teststr);
-        let mut sr = StringReader::new_raw(sess, sf, None);
-        if sr.advance_token().is_err() {
-            sr.emit_fatal_errors();
-            FatalError.raise();
-        }
-        sr
+        StringReader::new(sess, sf, None)
     }
 
     #[test]
@@ -1489,17 +1419,17 @@ mod tests {
             assert_eq!(tok1.kind, tok2.kind);
             assert_eq!(tok1.span, tok2.span);
             assert_eq!(string_reader.next_token(), token::Whitespace);
-            // the 'main' id is already read:
-            assert_eq!(string_reader.pos.clone(), BytePos(28));
             // read another token:
             let tok3 = string_reader.next_token();
+            assert_eq!(string_reader.pos.clone(), BytePos(28));
             let tok4 = Token::new(
                 mk_ident("main"),
                 Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
             );
             assert_eq!(tok3.kind, tok4.kind);
             assert_eq!(tok3.span, tok4.span);
-            // the lparen is already read:
+
+            assert_eq!(string_reader.next_token(), token::OpenDelim(token::Paren));
             assert_eq!(string_reader.pos.clone(), BytePos(29))
         })
     }

@@ -308,7 +308,7 @@ pub fn maybe_file_to_stream(
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> Result<(TokenStream, Vec<lexer::UnmatchedBrace>), Vec<Diagnostic>> {
-    let srdr = lexer::StringReader::new_or_buffered_errs(sess, source_file, override_span)?;
+    let srdr = lexer::StringReader::new(sess, source_file, override_span);
     let (token_trees, unmatched_braces) = srdr.into_token_trees();
 
     match token_trees {
