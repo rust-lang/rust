@@ -47,7 +47,7 @@ impl MirPass for CopyPropagation {
 
             let mut changed = false;
             for dest_local in body.local_decls.indices() {
-                debug!("Considering destination local: {:?}", dest_local);
+                debug!("considering destination local: {:?}", dest_local);
 
                 let action;
                 let location;
@@ -159,7 +159,7 @@ fn eliminate_self_assignments(
             } else {
                 continue;
             }
-            debug!("Deleting a self-assignment for {:?}", dest_local);
+            debug!("deleting a self-assignment for {:?}", dest_local);
             body.make_statement_nop(location);
             changed = true;
         }
