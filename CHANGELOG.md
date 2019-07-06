@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.3.2] 2019-07-06
+
+### Fixed
+
+- Fix rustfmt from crashing when `async!` macro call is used in a method chain.
+- Fix rustfmt not recognizing a package whose name differs from its directory's name.
+
 ## [1.3.1] 2019-06-30
 
 ### Added
