@@ -661,7 +661,7 @@ pub fn const_eval_raw_provider<'tcx>(
         |body| eval_body_using_ecx(&mut ecx, cid, body, key.param_env)
     ).and_then(|place| {
         Ok(RawConst {
-            alloc_id: place.to_ptr().expect("we allocated this ptr!").alloc_id,
+            alloc_id: place.ptr.assert_ptr().alloc_id,
             ty: place.layout.ty
         })
     }).map_err(|error| {

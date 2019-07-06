@@ -122,21 +122,6 @@ impl<Tag> MemPlace<Tag> {
         Self::from_scalar_ptr(ptr.into(), align)
     }
 
-    #[inline(always)]
-    pub fn to_scalar_ptr_align(self) -> (Scalar<Tag>, Align) {
-        assert!(self.meta.is_none());
-        (self.ptr, self.align)
-    }
-
-    /// metact the ptr part of the mplace
-    #[inline(always)]
-    pub fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
-        // At this point, we forget about the alignment information --
-        // the place has been turned into a reference, and no matter where it came from,
-        // it now must be aligned.
-        self.to_scalar_ptr_align().0.to_ptr()
-    }
-
     /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
     /// This is the inverse of `ref_to_mplace`.
     #[inline(always)]
@@ -246,7 +231,7 @@ impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
+impl<Tag: ::std::fmt::Debug> Place<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
     pub fn null(cx: &impl HasDataLayout) -> Self {
@@ -270,16 +255,6 @@ impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
             _ => bug!("assert_mem_place: expected Place::Ptr, got {:?}", self),
 
         }
-    }
-
-    #[inline]
-    pub fn to_scalar_ptr_align(self) -> (Scalar<Tag>, Align) {
-        self.assert_mem_place().to_scalar_ptr_align()
-    }
-
-    #[inline]
-    pub fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
-        self.assert_mem_place().to_ptr()
     }
 }
 
