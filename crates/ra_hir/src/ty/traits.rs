@@ -7,7 +7,7 @@ use parking_lot::Mutex;
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
-use super::{Canonical, ProjectionTy, TraitRef, Ty};
+use super::{Canonical, GenericPredicate, ProjectionTy, TraitRef, Ty};
 use crate::{db::HirDatabase, Crate, ImplBlock, Trait};
 
 use self::chalk::{from_chalk, ToChalk};
@@ -76,6 +76,15 @@ pub enum Obligation {
     /// parameter to the `TraitRef`).
     Trait(TraitRef),
     // Projection(ProjectionPredicate),
+}
+
+impl Obligation {
+    pub fn from_predicate(predicate: GenericPredicate) -> Option<Obligation> {
+        match predicate {
+            GenericPredicate::Implemented(trait_ref) => Some(Obligation::Trait(trait_ref)),
+            GenericPredicate::Error => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

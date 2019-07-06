@@ -318,15 +318,13 @@ pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
 }
 
 /// Resolve the where clause(s) of an item with generics.
-pub(crate) fn generic_predicates(
+pub(crate) fn generic_predicates_query(
     db: &impl HirDatabase,
     def: GenericDef,
 ) -> Arc<[GenericPredicate]> {
     let resolver = def.resolver(db);
-    let generic_params = def.generic_params(db);
-    let predicates = generic_params
-        .where_predicates
-        .iter()
+    let predicates = resolver
+        .where_predicates_in_scope()
         .map(|pred| {
             TraitRef::for_where_predicate(db, &resolver, pred)
                 .map_or(GenericPredicate::Error, GenericPredicate::Implemented)
@@ -336,7 +334,7 @@ pub(crate) fn generic_predicates(
 }
 
 /// Resolve the default type params from generics
-pub(crate) fn generic_defaults(db: &impl HirDatabase, def: GenericDef) -> Substs {
+pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> Substs {
     let resolver = def.resolver(db);
     let generic_params = def.generic_params(db);
 

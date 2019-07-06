@@ -163,10 +163,10 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     #[salsa::invoke(crate::ty::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDef) -> FnSig;
 
-    #[salsa::invoke(crate::ty::generic_predicates)]
+    #[salsa::invoke(crate::ty::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDef) -> Arc<[GenericPredicate]>;
 
-    #[salsa::invoke(crate::ty::generic_defaults)]
+    #[salsa::invoke(crate::ty::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDef) -> Substs;
 
     #[salsa::invoke(crate::expr::body_with_source_map_query)]

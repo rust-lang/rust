@@ -221,6 +221,18 @@ impl Resolver {
     pub(crate) fn krate(&self) -> Option<Crate> {
         self.module().map(|t| t.0.krate())
     }
+
+    pub(crate) fn where_predicates_in_scope<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = &'a crate::generics::WherePredicate> + 'a {
+        self.scopes
+            .iter()
+            .filter_map(|scope| match scope {
+                Scope::GenericParams(params) => Some(params),
+                _ => None,
+            })
+            .flat_map(|params| params.where_predicates.iter())
+    }
 }
 
 impl Resolver {
