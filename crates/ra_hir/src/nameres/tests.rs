@@ -365,6 +365,101 @@ fn module_resolution_works_for_raw_modules() {
 }
 
 #[test]
+fn module_resolution_decl_path() {
+    let map = def_map_with_crate_graph(
+        "
+        //- /library.rs
+        #[path = \"bar/baz/foo.rs\"]
+        mod foo;
+        use self::foo::Bar;
+
+        //- /bar/baz/foo.rs
+        pub struct Bar;
+        ",
+        crate_graph! {
+            "library": ("/library.rs", []),
+        },
+    );
+
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Bar: t v
+        ⋮foo: t
+        ⋮
+        ⋮crate::foo
+        ⋮Bar: t v
+    "###);
+}
+
+#[test]
+fn module_resolution_module_with_path_in_mod_rs() {
+    let map = def_map_with_crate_graph(
+        "
+        //- /main.rs
+        mod foo;
+        
+        //- /foo/mod.rs
+        #[path = \"baz.rs\"]
+        pub mod bar;
+
+        use self::bar::Baz;
+
+        //- /foo/baz.rs
+        pub struct Baz;
+        ",
+        crate_graph! {
+            "main": ("/main.rs", []),
+        },
+    );
+
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮foo: t
+        ⋮
+        ⋮crate::foo
+        ⋮Baz: t v
+        ⋮bar: t
+        ⋮
+        ⋮crate::foo::bar
+        ⋮Baz: t v
+    "###);
+}
+
+#[test]
+fn module_resolution_module_with_path_non_crate_root() {
+    let map = def_map_with_crate_graph(
+        "
+        //- /main.rs
+        mod foo;
+        
+        //- /foo.rs
+        #[path = \"baz.rs\"]
+        pub mod bar;
+
+        use self::bar::Baz;
+
+        //- /baz.rs
+        pub struct Baz;
+        ",
+        crate_graph! {
+            "main": ("/main.rs", []),
+        },
+    );
+
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮foo: t
+        ⋮
+        ⋮crate::foo
+        ⋮Baz: t v
+        ⋮bar: t
+        ⋮
+        ⋮crate::foo::bar
+        ⋮Baz: t v
+    "###);
+}
+
+#[test]
 fn name_res_works_for_broken_modules() {
     covers!(name_res_works_for_broken_modules);
     let map = def_map(
