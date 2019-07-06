@@ -33,7 +33,7 @@ declare_lint_pass!(FallibleImplFrom => [FALLIBLE_IMPL_FROM]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         // check for `impl From<???> for ..`
-        let impl_def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let impl_def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if_chain! {
             if let hir::ItemKind::Impl(.., ref impl_items) = item.node;
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id);
@@ -95,7 +95,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
             then {
                 // check the body for `begin_panic` or `unwrap`
                 let body = cx.tcx.hir().body(body_id);
-                let impl_item_def_id = cx.tcx.hir().local_def_id_from_hir_id(impl_item.id.hir_id);
+                let impl_item_def_id = cx.tcx.hir().local_def_id(impl_item.id.hir_id);
                 let mut fpu = FindPanicUnwrap {
                     lcx: cx,
                     tables: cx.tcx.typeck_tables_of(impl_item_def_id),

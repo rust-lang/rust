@@ -1102,7 +1102,7 @@ fn check_for_loop_range<'a, 'tcx>(
                 // ensure that the indexed variable was declared before the loop, see #601
                 if let Some(indexed_extent) = indexed_extent {
                     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
-                    let parent_def_id = cx.tcx.hir().local_def_id_from_hir_id(parent_id);
+                    let parent_def_id = cx.tcx.hir().local_def_id(parent_id);
                     let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
                     let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id);
                     if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
@@ -1792,7 +1792,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                     match res {
                         Res::Local(hir_id) => {
                             let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
-                            let parent_def_id = self.cx.tcx.hir().local_def_id_from_hir_id(parent_id);
+                            let parent_def_id = self.cx.tcx.hir().local_def_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
                             if indexed_indirectly {
                                 self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));

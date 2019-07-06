@@ -121,7 +121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                             return;
                         }
                         if sig.decl.inputs.is_empty() && name == sym!(new) && cx.access_levels.is_reachable(id) {
-                            let self_did = cx.tcx.hir().local_def_id_from_hir_id(cx.tcx.hir().get_parent_item(id));
+                            let self_did = cx.tcx.hir().local_def_id(cx.tcx.hir().get_parent_item(id));
                             let self_ty = cx.tcx.type_of(self_did);
                             if_chain! {
                                 if same_tys(cx, self_ty, return_ty(cx, id));

@@ -145,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) | hir::ImplItemKind::Existential(_) => return,
         };
 
-        let def_id = cx.tcx.hir().local_def_id_from_hir_id(impl_item.hir_id);
+        let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
         let trait_def_id = match cx.tcx.associated_item(def_id).container {
             TraitContainer(cid) => Some(cid),
             ImplContainer(cid) => cx.tcx.impl_trait_ref(cid).map(|t| t.def_id),
