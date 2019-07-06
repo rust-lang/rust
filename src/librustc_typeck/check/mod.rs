@@ -3939,7 +3939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             (&hir::FunctionRetTy::DefaultReturn(span), _, FnDeclType::MainItem, true) => {
-                // in main(), we can only return types that implement `std::process::Termination`
+                // In `fn main()`, we can only return types that implement `std::process::Termination`.
                 let ret_ty = self.resolve_type_vars_with_obligations(found);
                 let is_term = if let Some(term_id) = self.infcx.tcx.lang_items().termination() {
                     self.infcx.predicate_must_hold_modulo_regions(
