@@ -93,6 +93,7 @@ use core::ops::{
 use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll};
 
+use crate::alloc;
 use crate::vec::Vec;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
@@ -121,12 +122,72 @@ impl<T> Box<T> {
         box x
     }
 
+    /// Construct a new box with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut five = Box::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     five.as_mut_ptr().write(5);
+    ///
+    ///     Box::assume_init(five)
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
+        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
+        let ptr = unsafe { alloc::alloc(layout) };
+        let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
+        Box(unique.cast())
+    }
+
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
     /// `x` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
+    }
+}
+
+impl<T> Box<mem::MaybeUninit<T>> {
+    /// Convert to `Box<T>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut five = Box::<u32>::new_uninit();
+    ///
+    /// let five: Box<u32> = unsafe {
+    ///     // Deferred initialization:
+    ///     five.as_mut_ptr().write(5);
+    ///
+    ///     Box::assume_init(five)
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    #[inline]
+    pub unsafe fn assume_init(this: Self) -> Box<T> {
+        Box(Box::into_unique(this).cast())
     }
 }
 

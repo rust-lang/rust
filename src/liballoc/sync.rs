@@ -311,6 +311,43 @@ impl<T> Arc<T> {
         Self::from_inner(Box::into_raw_non_null(x))
     }
 
+    /// Construct a Arc box with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let mut five = Arc::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Arc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     Arc::assume_init(five)
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
+        let layout = Layout::new::<ArcInner<mem::MaybeUninit<T>>>();
+        unsafe {
+            let mut ptr = Global.alloc(layout)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
+                .cast::<ArcInner<mem::MaybeUninit<T>>>();
+            ptr::write(&mut ptr.as_mut().strong, atomic::AtomicUsize::new(1));
+            ptr::write(&mut ptr.as_mut().weak, atomic::AtomicUsize::new(1));
+            Arc {
+                ptr,
+                phantom: PhantomData,
+            }
+        }
+    }
+
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
     /// `data` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -357,6 +394,48 @@ impl<T> Arc<T> {
             mem::forget(this);
 
             Ok(elem)
+        }
+    }
+}
+
+impl<T> Arc<mem::MaybeUninit<T>> {
+    /// Convert to `Arc<T>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let mut five = Arc::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Arc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     Arc::assume_init(five)
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    #[inline]
+    pub unsafe fn assume_init(this: Self) -> Arc<T> {
+        let ptr = this.ptr.cast();
+        mem::forget(this);
+        Arc {
+            ptr,
+            phantom: PhantomData,
         }
     }
 }
@@ -967,6 +1046,8 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(get_mut_unchecked)]
+    ///
     /// use std::sync::Arc;
     ///
     /// let mut x = Arc::new(String::new());

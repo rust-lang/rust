@@ -327,6 +327,43 @@ impl<T> Rc<T> {
         }))
     }
 
+    /// Construct a new Rc with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut five = Rc::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     Rc::assume_init(five)
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
+        let layout = Layout::new::<RcBox<mem::MaybeUninit<T>>>();
+        unsafe {
+            let mut ptr = Global.alloc(layout)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
+                .cast::<RcBox<mem::MaybeUninit<T>>>();
+            ptr::write(&mut ptr.as_mut().strong, Cell::new(1));
+            ptr::write(&mut ptr.as_mut().weak, Cell::new(1));
+            Rc {
+                ptr,
+                phantom: PhantomData,
+            }
+        }
+    }
+
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -373,6 +410,48 @@ impl<T> Rc<T> {
             }
         } else {
             Err(this)
+        }
+    }
+}
+
+impl<T> Rc<mem::MaybeUninit<T>> {
+    /// Convert to `Rc<T>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut five = Rc::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     Rc::assume_init(five)
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "0")]
+    #[inline]
+    pub unsafe fn assume_init(this: Self) -> Rc<T> {
+        let ptr = this.ptr.cast();
+        mem::forget(this);
+        Rc {
+            ptr,
+            phantom: PhantomData,
         }
     }
 }
@@ -582,6 +661,8 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(get_mut_unchecked)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let mut x = Rc::new(String::new());
