@@ -2088,11 +2088,11 @@ generator can be constructed.
 Erroneous code example:
 
 ```edition2018,compile-fail,E0698
-#![feature(futures_api, async_await, await_macro)]
+#![feature(async_await)]
 async fn bar<T>() -> () {}
 
 async fn foo() {
-  await!(bar());  // error: cannot infer type for `T`
+    bar().await; // error: cannot infer type for `T`
 }
 ```
 
@@ -2101,12 +2101,12 @@ To fix this you must bind `T` to a concrete type such as `String`
 so that a generator can then be constructed:
 
 ```edition2018
-#![feature(futures_api, async_await, await_macro)]
+#![feature(async_await)]
 async fn bar<T>() -> () {}
 
 async fn foo() {
-  await!(bar::<String>());
-  //          ^^^^^^^^ specify type explicitly
+  bar::<String>().await;
+  //   ^^^^^^^^ specify type explicitly
 }
 ```
 "##,
