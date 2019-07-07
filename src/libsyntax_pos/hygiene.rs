@@ -734,15 +734,16 @@ pub enum DesugaringKind {
 }
 
 impl DesugaringKind {
-    pub fn descr(self) -> &'static str {
+    /// The description wording should combine well with "desugaring of {}".
+    fn descr(self) -> &'static str {
         match self {
-            DesugaringKind::CondTemporary => "if and while condition",
-            DesugaringKind::Async => "async",
-            DesugaringKind::Await => "await",
-            DesugaringKind::QuestionMark => "?",
-            DesugaringKind::TryBlock => "try block",
-            DesugaringKind::ExistentialType => "existential type",
-            DesugaringKind::ForLoop => "for loop",
+            DesugaringKind::CondTemporary => "`if` or `while` condition",
+            DesugaringKind::Async => "`async` block or function",
+            DesugaringKind::Await => "`await` expression",
+            DesugaringKind::QuestionMark => "operator `?`",
+            DesugaringKind::TryBlock => "`try` block",
+            DesugaringKind::ExistentialType => "`existential type`",
+            DesugaringKind::ForLoop => "`for` loop",
         }
     }
 }

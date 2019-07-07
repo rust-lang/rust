@@ -442,7 +442,7 @@ impl Span {
             // Don't print recursive invocations.
             if !info.call_site.source_equal(&prev_span) {
                 let (pre, post) = match info.kind {
-                    ExpnKind::Desugaring(..) => ("desugaring of `", "`"),
+                    ExpnKind::Desugaring(..) => ("desugaring of ", ""),
                     ExpnKind::Macro(macro_kind, _) => match macro_kind {
                         MacroKind::Bang => ("", "!"),
                         MacroKind::Attr => ("#[", "]"),

@@ -372,7 +372,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         if let Some(k) = obligation.cause.span.desugaring_kind() {
             flags.push((sym::from_desugaring, None));
-            flags.push((sym::from_desugaring, Some(k.descr().to_string())));
+            flags.push((sym::from_desugaring, Some(format!("{:?}", k))));
         }
         let generics = self.tcx.generics_of(def_id);
         let self_ty = trait_ref.self_ty();
