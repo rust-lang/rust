@@ -2459,12 +2459,12 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
-    pub fn is_sorted_by_key<F, K>(&self, mut f: F) -> bool
+    pub fn is_sorted_by_key<F, K>(&self, f: F) -> bool
     where
         F: FnMut(&T) -> K,
         K: PartialOrd
     {
-        self.is_sorted_by(|a, b| f(a).partial_cmp(&f(b)))
+        self.iter().is_sorted_by_key(f)
     }
 }
 
