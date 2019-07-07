@@ -1,4 +1,4 @@
-error[E0658]: inline assembly is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature 'asm': inline assembly is not stable enough for use and is subject to change
   --> $DIR/feature-gate-asm.rs:3:9
    |
 LL |         asm!("");

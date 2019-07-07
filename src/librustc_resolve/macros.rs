@@ -9,10 +9,10 @@ use crate::resolve_imports::ImportResolver;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
-use rustc::{ty, lint};
-use rustc::{bug, span_bug};
+use rustc::middle::stability;
+use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, Ident};
-use syntax::attr;
+use syntax::attr::{self, StabilityLevel};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
@@ -230,16 +230,19 @@ impl<'a> base::Resolver for Resolver<'a> {
             Err(determinacy) => return Err(determinacy),
         };
 
+        let span = invoc.span();
+        let path = fast_print_path(path);
         let format = match kind {
-            MacroKind::Derive => format!("derive({})", fast_print_path(path)),
-            _ => fast_print_path(path),
+            MacroKind::Derive => format!("derive({})", path),
+            _ => path.clone(),
         };
-        invoc.expansion_data.mark.set_expn_info(ext.expn_info(invoc.span(), &format));
+        invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, &format));
+
+        self.check_stability_and_deprecation(&ext, &path, span);
 
         if let Res::Def(_, def_id) = res {
             if after_derive {
-                self.session.span_err(invoc.span(),
-                                      "macro attributes must be placed before `#[derive]`");
+                self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
             }
             self.macro_defs.insert(invoc.expansion_data.mark, def_id);
             let normal_module_def_id =
@@ -259,14 +262,10 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn check_unused_macros(&self) {
-        for did in self.unused_macros.iter() {
-            if let Some((id, span)) = self.macro_map[did].def_info {
-                let lint = lint::builtin::UNUSED_MACROS;
-                let msg = "unused macro definition";
-                self.session.buffer_lint(lint, id, span, msg);
-            } else {
-                bug!("attempted to create unused macro error, but span not available");
-            }
+        for (&node_id, &span) in self.unused_macros.iter() {
+            self.session.buffer_lint(
+                lint::builtin::UNUSED_MACROS, node_id, span, "unused macro definition"
+            );
         }
     }
 }
@@ -323,7 +322,9 @@ impl<'a> Resolver<'a> {
 
         match res {
             Res::Def(DefKind::Macro(macro_kind), def_id) => {
-                self.unused_macros.remove(&def_id);
+                if let Some(node_id) = self.definitions.as_local_node_id(def_id) {
+                    self.unused_macros.remove(&node_id);
+                }
                 if macro_kind == MacroKind::ProcMacroStub {
                     let msg = "can't use a procedural macro from the same crate that defines it";
                     self.session.span_err(path.span, msg);
@@ -1009,6 +1010,27 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, path: &str, span: Span) {
+        if let Some(stability) = &ext.stability {
+            if let StabilityLevel::Unstable { reason, issue } = stability.level {
+                let feature = stability.feature;
+                if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
+                    stability::report_unstable(self.session, feature, reason, issue, span);
+                }
+            }
+            if let Some(depr) = &stability.rustc_depr {
+                let (message, lint) = stability::rustc_deprecation_message(depr, path);
+                stability::early_report_deprecation(
+                    self.session, &message, depr.suggestion, lint, span
+                );
+            }
+        }
+        if let Some(depr) = &ext.deprecation {
+            let (message, lint) = stability::deprecation_message(depr, path);
+            stability::early_report_deprecation(self.session, &message, None, lint, span);
+        }
+    }
+
     fn prohibit_imported_non_macro_attrs(&self, binding: Option<&'a NameBinding<'a>>,
                                          res: Option<Res>, span: Span) {
         if let Some(Res::NonMacroAttr(kind)) = res {
@@ -1157,13 +1179,13 @@ impl<'a> Resolver<'a> {
                             (res, vis, item.span, expansion, IsMacroExport));
             } else {
                 self.check_reserved_macro_name(ident, res);
-                self.unused_macros.insert(def_id);
+                self.unused_macros.insert(item.id, item.span);
             }
         } else {
             let module = self.current_module;
             let vis = self.resolve_visibility(&item.vis);
             if vis != ty::Visibility::Public {
-                self.unused_macros.insert(def_id);
+                self.unused_macros.insert(item.id, item.span);
             }
             self.define(module, ident, MacroNS, (res, vis, item.span, expansion));
         }

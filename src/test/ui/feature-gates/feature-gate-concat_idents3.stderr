@@ -1,4 +1,4 @@
-error[E0658]: `concat_idents` is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature 'concat_idents': `concat_idents` is not stable enough for use and is subject to change
   --> $DIR/feature-gate-concat_idents3.rs:7:20
    |
 LL |     assert_eq!(10, concat_idents!(X, Y_1));
@@ -7,7 +7,7 @@ LL |     assert_eq!(10, concat_idents!(X, Y_1));
    = note: for more information, see https://github.com/rust-lang/rust/issues/29599
    = help: add #![feature(concat_idents)] to the crate attributes to enable
 
-error[E0658]: `concat_idents` is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature 'concat_idents': `concat_idents` is not stable enough for use and is subject to change
   --> $DIR/feature-gate-concat_idents3.rs:8:20
    |
 LL |     assert_eq!(20, concat_idents!(X, Y_2));

@@ -85,7 +85,6 @@
 use crate::deriving::{self, pathvec_std};
 use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
-use crate::deriving::warn_if_deprecated;
 
 use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
@@ -107,7 +106,6 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt<'_>,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
                                  push: &mut dyn FnMut(Annotatable)) {
-    warn_if_deprecated(cx, span, "Encodable");
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
 }
 

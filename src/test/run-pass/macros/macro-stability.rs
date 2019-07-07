@@ -1,7 +1,7 @@
 // run-pass
 // aux-build:unstable-macros.rs
 
-#![feature(unstable_macros)]
+#![feature(unstable_macros, local_unstable)]
 
 #[macro_use] extern crate unstable_macros;
 

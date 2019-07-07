@@ -1568,7 +1568,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     (sym::type_length_limit, CrateLevel, template!(NameValueStr: "N"), Ungated),
     (sym::test_runner, CrateLevel, template!(List: "path"), Gated(Stability::Unstable,
                     sym::custom_test_frameworks,
-                    EXPLAIN_CUSTOM_TEST_FRAMEWORKS,
+                    "custom test frameworks are an unstable feature",
                     cfg_fn!(custom_test_frameworks))),
 ];
 
@@ -1819,26 +1819,6 @@ const EXPLAIN_BOX_SYNTAX: &str =
 pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
     "attributes on expressions are experimental";
 
-pub const EXPLAIN_ASM: &str =
-    "inline assembly is not stable enough for use and is subject to change";
-
-pub const EXPLAIN_GLOBAL_ASM: &str =
-    "`global_asm!` is not stable enough for use and is subject to change";
-
-pub const EXPLAIN_CUSTOM_TEST_FRAMEWORKS: &str =
-    "custom test frameworks are an unstable feature";
-
-pub const EXPLAIN_LOG_SYNTAX: &str =
-    "`log_syntax!` is not stable enough for use and is subject to change";
-
-pub const EXPLAIN_CONCAT_IDENTS: &str =
-    "`concat_idents` is not stable enough for use and is subject to change";
-
-pub const EXPLAIN_FORMAT_ARGS_NL: &str =
-    "`format_args_nl` is only for internal language use and is subject to change";
-
-pub const EXPLAIN_TRACE_MACROS: &str =
-    "`trace_macros` is not stable enough for use and is subject to change";
 pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &str =
     "allow_internal_unstable side-steps feature gating and stability checks";
 pub const EXPLAIN_ALLOW_INTERNAL_UNSAFE: &str =

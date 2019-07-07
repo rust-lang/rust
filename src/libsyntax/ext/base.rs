@@ -1,5 +1,5 @@
 use crate::ast::{self, Attribute, Name, PatKind};
-use crate::attr::HasAttrs;
+use crate::attr::{HasAttrs, Stability, Deprecation};
 use crate::source_map::{SourceMap, Spanned, respan};
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
@@ -606,8 +606,8 @@ pub enum SyntaxExtensionKind {
 pub struct SyntaxExtension {
     /// A syntax extension kind.
     pub kind: SyntaxExtensionKind,
-    /// Some info about the macro's definition point.
-    pub def_info: Option<(ast::NodeId, Span)>,
+    /// Span of the macro definition.
+    pub span: Span,
     /// Hygienic properties of spans produced by this macro by default.
     pub default_transparency: Transparency,
     /// Whitelist of unstable features that are treated as stable inside this macro.
@@ -616,8 +616,10 @@ pub struct SyntaxExtension {
     pub allow_internal_unsafe: bool,
     /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
     pub local_inner_macros: bool,
-    /// The macro's feature name and tracking issue number if it is unstable.
-    pub unstable_feature: Option<(Symbol, u32)>,
+    /// The macro's stability info.
+    pub stability: Option<Stability>,
+    /// The macro's deprecation info.
+    pub deprecation: Option<Deprecation>,
     /// Names of helper attributes registered by this macro.
     pub helper_attrs: Vec<Symbol>,
     /// Edition of the crate in which this macro is defined.
@@ -657,12 +659,13 @@ impl SyntaxExtension {
     /// Constructs a syntax extension with default properties.
     pub fn default(kind: SyntaxExtensionKind, edition: Edition) -> SyntaxExtension {
         SyntaxExtension {
-            def_info: None,
+            span: DUMMY_SP,
             default_transparency: kind.default_transparency(),
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            unstable_feature: None,
+            stability: None,
+            deprecation: None,
             helper_attrs: Vec::new(),
             edition,
             kind,
@@ -681,7 +684,7 @@ impl SyntaxExtension {
         ExpnInfo {
             call_site,
             format: self.expn_format(Symbol::intern(format)),
-            def_site: self.def_info.map(|(_, span)| span),
+            def_site: Some(self.span),
             default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
             allow_internal_unsafe: self.allow_internal_unsafe,
@@ -738,7 +741,6 @@ pub struct ExpansionData {
     pub depth: usize,
     pub module: Rc<ModuleData>,
     pub directory_ownership: DirectoryOwnership,
-    pub crate_span: Option<Span>,
 }
 
 /// One of these is made during expansion and incrementally updated as we go;
@@ -768,7 +770,6 @@ impl<'a> ExtCtxt<'a> {
                 depth: 0,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
                 directory_ownership: DirectoryOwnership::Owned { relative: None },
-                crate_span: None,
             },
             expansions: FxHashMap::default(),
         }

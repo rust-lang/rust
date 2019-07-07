@@ -135,6 +135,19 @@ pub enum StabilityLevel {
     Stable { since: Symbol },
 }
 
+impl Stability {
+    pub fn unstable(feature: Symbol, reason: Option<Symbol>, issue: u32) -> Stability {
+        Stability {
+            level: StabilityLevel::Unstable { reason, issue },
+            feature,
+            rustc_depr: None,
+            const_stability: None,
+            promotable: false,
+            allow_const_fn_ptr: false,
+        }
+    }
+}
+
 impl StabilityLevel {
     pub fn is_unstable(&self) -> bool {
         if let StabilityLevel::Unstable {..} = *self {
@@ -171,7 +184,8 @@ pub fn contains_feature_attr(attrs: &[Attribute], feature_name: Symbol) -> bool 
     })
 }
 
-/// Finds the first stability attribute. `None` if none exists.
+/// Collects stability info from all stability attributes in `attrs`.
+/// Returns `None` if no stability attributes are found.
 pub fn find_stability(sess: &ParseSess, attrs: &[Attribute],
                       item_sp: Span) -> Option<Stability> {
     find_stability_generic(sess, attrs.iter(), item_sp)

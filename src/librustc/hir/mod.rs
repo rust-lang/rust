@@ -727,6 +727,8 @@ pub struct Crate {
     pub attrs: HirVec<Attribute>,
     pub span: Span,
     pub exported_macros: HirVec<MacroDef>,
+    // Attributes from non-exported macros, kept only for collecting the library feature list.
+    pub non_exported_macro_attrs: HirVec<Attribute>,
 
     // N.B., we use a BTreeMap here so that `visit_all_items` iterates
     // over the ids in increasing order. In principle it should not

@@ -9,7 +9,6 @@ use errors::Applicability;
 use syntax::ast;
 use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
-use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};
@@ -686,14 +685,16 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 }
 
-pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt<'_>,
-                               mut sp: Span,
-                               tts: &[tokenstream::TokenTree])
-                               -> Box<dyn base::MacResult + 'cx> {
+fn expand_format_args_impl<'cx>(
+    ecx: &'cx mut ExtCtxt<'_>,
+    mut sp: Span,
+    tts: &[tokenstream::TokenTree],
+    nl: bool,
+) -> Box<dyn base::MacResult + 'cx> {
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
         Ok((efmt, args, names)) => {
-            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, false))
+            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, nl))
         }
         Err(mut err) => {
             err.emit();
@@ -702,34 +703,20 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt<'_>,
     }
 }
 
-pub fn expand_format_args_nl<'cx>(
+pub fn expand_format_args<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
-    mut sp: Span,
+    sp: Span,
     tts: &[tokenstream::TokenTree],
 ) -> Box<dyn base::MacResult + 'cx> {
-    //if !ecx.ecfg.enable_allow_internal_unstable() {
+    expand_format_args_impl(ecx, sp, tts, false)
+}
 
-    // For some reason, the only one that actually works for `println` is the first check
-    if !sp.allows_unstable(sym::format_args_nl) // the span is marked `#[allow_insternal_unsable]`
-        && !ecx.ecfg.enable_allow_internal_unstable()  // NOTE: when is this enabled?
-        && !ecx.ecfg.enable_format_args_nl()  // enabled using `#[feature(format_args_nl]`
-    {
-        feature_gate::emit_feature_err(&ecx.parse_sess,
-                                       sym::format_args_nl,
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_FORMAT_ARGS_NL);
-    }
-    sp = sp.apply_mark(ecx.current_expansion.mark);
-    match parse_args(ecx, sp, tts) {
-        Ok((efmt, args, names)) => {
-            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, true))
-        }
-        Err(mut err) => {
-            err.emit();
-            DummyResult::expr(sp)
-        }
-    }
+pub fn expand_format_args_nl<'cx>(
+    ecx: &'cx mut ExtCtxt<'_>,
+    sp: Span,
+    tts: &[tokenstream::TokenTree],
+) -> Box<dyn base::MacResult + 'cx> {
+    expand_format_args_impl(ecx, sp, tts, true)
 }
 
 /// Take the various parts of `format_args!(efmt, args..., name=names...)`

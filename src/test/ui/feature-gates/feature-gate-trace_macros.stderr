@@ -1,4 +1,4 @@
-error[E0658]: `trace_macros` is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/feature-gate-trace_macros.rs:2:5
    |
 LL |     trace_macros!(true);

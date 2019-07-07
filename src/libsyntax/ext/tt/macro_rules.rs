@@ -422,8 +422,6 @@ pub fn compile(
                 })
         });
 
-    let allow_internal_unsafe = attr::contains_name(&def.attrs, sym::allow_internal_unsafe);
-
     let mut local_inner_macros = false;
     if let Some(macro_export) = attr::find_by_name(&def.attrs, sym::macro_export) {
         if let Some(l) = macro_export.meta_item_list() {
@@ -431,23 +429,15 @@ pub fn compile(
         }
     }
 
-    let unstable_feature =
-        attr::find_stability(&sess, &def.attrs, def.span).and_then(|stability| {
-            if let attr::StabilityLevel::Unstable { issue, .. } = stability.level {
-                Some((stability.feature, issue))
-            } else {
-                None
-            }
-        });
-
     SyntaxExtension {
         kind: SyntaxExtensionKind::LegacyBang(expander),
-        def_info: Some((def.id, def.span)),
+        span: def.span,
         default_transparency,
         allow_internal_unstable,
-        allow_internal_unsafe,
+        allow_internal_unsafe: attr::contains_name(&def.attrs, sym::allow_internal_unsafe),
         local_inner_macros,
-        unstable_feature,
+        stability: attr::find_stability(&sess, &def.attrs, def.span),
+        deprecation: attr::find_deprecation(&sess, &def.attrs, def.span),
         helper_attrs: Vec::new(),
         edition,
     }

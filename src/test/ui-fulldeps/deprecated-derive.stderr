@@ -1,6 +1,8 @@
-warning: derive(Encodable) is deprecated in favor of derive(RustcEncodable)
+warning: use of deprecated item 'Encodable': derive(Encodable) is deprecated in favor of derive(RustcEncodable)
   --> $DIR/deprecated-derive.rs:8:10
    |
 LL | #[derive(Encodable)]
    |          ^^^^^^^^^
+   |
+   = note: #[warn(deprecated)] on by default
 
