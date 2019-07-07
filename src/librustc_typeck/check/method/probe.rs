@@ -1230,7 +1230,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if nightly_options::is_nightly_build() {
             for (candidate, feature) in unstable_candidates {
                 diag.help(&format!(
-                    "add #![feature({})] to the crate attributes to enable `{}`",
+                    "add `#![feature({})]` to the crate attributes to enable `{}`",
                     feature,
                     self.tcx.def_path_str(candidate.item.def_id),
                 ));
@@ -1432,7 +1432,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// candidate method where the method name may have been misspelt. Similarly to other
     /// Levenshtein based suggestions, we provide at most one such suggestion.
     fn probe_for_lev_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
-        debug!("Probing for method names similar to {:?}",
+        debug!("probing for method names similar to {:?}",
                self.method_name);
 
         let steps = self.steps.clone();
