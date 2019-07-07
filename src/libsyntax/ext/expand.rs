@@ -327,7 +327,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
-                let fragment = self.expand_invoc(invoc, &ext);
+                let fragment = self.expand_invoc(invoc, &ext.kind);
                 self.collect_invocations(fragment, &[])
             } else if let InvocationKind::Attr { attr: None, traits, item, .. } = invoc.kind {
                 if !item.derive_allowed() {
@@ -474,12 +474,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtension) -> AstFragment {
-        if invoc.fragment_kind == AstFragmentKind::ForeignItems &&
-           !self.cx.ecfg.macros_in_extern() {
-            if let SyntaxExtensionKind::NonMacroAttr { .. } = ext.kind {} else {
+    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtensionKind) -> AstFragment {
+        let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
+        if fragment_kind == AstFragmentKind::ForeignItems && !self.cx.ecfg.macros_in_extern() {
+            if let SyntaxExtensionKind::NonMacroAttr { .. } = ext {} else {
                 emit_feature_err(&self.cx.parse_sess, sym::macros_in_extern,
-                                 invoc.span(), GateIssue::Language,
+                                 span, GateIssue::Language,
                                  "macro invocations in `extern {}` blocks are experimental");
             }
         }
@@ -499,58 +499,84 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         match invoc.kind {
-            InvocationKind::Bang { .. } => self.expand_bang_invoc(invoc, ext),
-            InvocationKind::Attr { .. } => self.expand_attr_invoc(invoc, ext),
-            InvocationKind::Derive { .. } => self.expand_derive_invoc(invoc, ext),
-        }
-    }
-
-    fn expand_attr_invoc(&mut self,
-                         invoc: Invocation,
-                         ext: &SyntaxExtension)
-                         -> AstFragment {
-        let (attr, mut item) = match invoc.kind {
-            InvocationKind::Attr { attr: Some(attr), item, .. } => (attr, item),
-            _ => unreachable!(),
-        };
-
-        match &ext.kind {
-            SyntaxExtensionKind::NonMacroAttr { mark_used } => {
-                attr::mark_known(&attr);
-                if *mark_used {
-                    attr::mark_used(&attr);
+            InvocationKind::Bang { mac, .. } => match ext {
+                SyntaxExtensionKind::Bang(expander) => {
+                    self.gate_proc_macro_expansion_kind(span, fragment_kind);
+                    let tok_result = expander.expand(self.cx, span, mac.node.stream());
+                    let result =
+                        self.parse_ast_fragment(tok_result, fragment_kind, &mac.node.path, span);
+                    self.gate_proc_macro_expansion(span, &result);
+                    result
                 }
-                item.visit_attrs(|attrs| attrs.push(attr));
-                invoc.fragment_kind.expect_from_annotatables(iter::once(item))
-            }
-            SyntaxExtensionKind::LegacyAttr(expander) => {
-                match attr.parse_meta(self.cx.parse_sess) {
-                    Ok(meta) => {
-                        let item = expander.expand(self.cx, attr.span, &meta, item);
-                        invoc.fragment_kind.expect_from_annotatables(item)
-                    }
-                    Err(mut err) => {
-                        err.emit();
-                        invoc.fragment_kind.dummy(attr.span)
+                SyntaxExtensionKind::LegacyBang(expander) => {
+                    let tok_result = expander.expand(self.cx, span, mac.node.stream());
+                    if let Some(result) = fragment_kind.make_from(tok_result) {
+                        result
+                    } else {
+                        let msg = format!("non-{kind} macro in {kind} position: {path}",
+                                          kind = fragment_kind.name(), path = mac.node.path);
+                        self.cx.span_err(span, &msg);
+                        self.cx.trace_macros_diag();
+                        fragment_kind.dummy(span)
                     }
                 }
+                _ => unreachable!()
             }
-            SyntaxExtensionKind::Attr(expander) => {
-                self.gate_proc_macro_attr_item(attr.span, &item);
-                let item_tok = TokenTree::token(token::Interpolated(Lrc::new(match item {
-                    Annotatable::Item(item) => token::NtItem(item),
-                    Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
-                    Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),
-                    Annotatable::ForeignItem(item) => token::NtForeignItem(item.into_inner()),
-                    Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
-                    Annotatable::Expr(expr) => token::NtExpr(expr),
-                })), DUMMY_SP).into();
-                let input = self.extract_proc_macro_attr_input(attr.tokens, attr.span);
-                let tok_result = expander.expand(self.cx, attr.span, input, item_tok);
-                let res = self.parse_ast_fragment(tok_result, invoc.fragment_kind,
-                                                  &attr.path, attr.span);
-                self.gate_proc_macro_expansion(attr.span, &res);
-                res
+            InvocationKind::Attr { attr: Some(attr), mut item, .. } => match ext {
+                SyntaxExtensionKind::Attr(expander) => {
+                    self.gate_proc_macro_attr_item(span, &item);
+                    let item_tok = TokenTree::token(token::Interpolated(Lrc::new(match item {
+                        Annotatable::Item(item) => token::NtItem(item),
+                        Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
+                        Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),
+                        Annotatable::ForeignItem(item) => token::NtForeignItem(item.into_inner()),
+                        Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
+                        Annotatable::Expr(expr) => token::NtExpr(expr),
+                    })), DUMMY_SP).into();
+                    let input = self.extract_proc_macro_attr_input(attr.tokens, span);
+                    let tok_result = expander.expand(self.cx, span, input, item_tok);
+                    let res = self.parse_ast_fragment(tok_result, fragment_kind, &attr.path, span);
+                    self.gate_proc_macro_expansion(span, &res);
+                    res
+                }
+                SyntaxExtensionKind::LegacyAttr(expander) => {
+                    match attr.parse_meta(self.cx.parse_sess) {
+                        Ok(meta) => {
+                            let item = expander.expand(self.cx, span, &meta, item);
+                            fragment_kind.expect_from_annotatables(item)
+                        }
+                        Err(mut err) => {
+                            err.emit();
+                            fragment_kind.dummy(span)
+                        }
+                    }
+                }
+                SyntaxExtensionKind::NonMacroAttr { mark_used } => {
+                    attr::mark_known(&attr);
+                    if *mark_used {
+                        attr::mark_used(&attr);
+                    }
+                    item.visit_attrs(|attrs| attrs.push(attr));
+                    fragment_kind.expect_from_annotatables(iter::once(item))
+                }
+                _ => unreachable!()
+            }
+            InvocationKind::Derive { path, item, item_with_markers } => match ext {
+                SyntaxExtensionKind::Derive(expander) |
+                SyntaxExtensionKind::LegacyDerive(expander) => {
+                    let (path, item) = match ext {
+                        SyntaxExtensionKind::LegacyDerive(..) => (path, item_with_markers),
+                        _ => (path, item),
+                    };
+                    if !item.derive_allowed() {
+                        return fragment_kind.dummy(span);
+                    }
+                    let meta = ast::MetaItem { node: ast::MetaItemKind::Word, span, path };
+                    let span = span.with_ctxt(self.cx.backtrace());
+                    let items = expander.expand(self.cx, span, &meta, item);
+                    fragment_kind.expect_from_annotatables(items)
+                }
+                _ => unreachable!()
             }
             _ => unreachable!()
         }
@@ -634,42 +660,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    /// Expand a macro invocation. Returns the resulting expanded AST fragment.
-    fn expand_bang_invoc(&mut self,
-                         invoc: Invocation,
-                         ext: &SyntaxExtension)
-                         -> AstFragment {
-        let kind = invoc.fragment_kind;
-        let (mac, span) = match invoc.kind {
-            InvocationKind::Bang { mac, span } => (mac, span),
-            _ => unreachable!(),
-        };
-        let path = &mac.node.path;
-
-        match &ext.kind {
-            SyntaxExtensionKind::Bang(expander) => {
-                self.gate_proc_macro_expansion_kind(span, kind);
-                let tok_result = expander.expand(self.cx, span, mac.node.stream());
-                let result = self.parse_ast_fragment(tok_result, kind, path, span);
-                self.gate_proc_macro_expansion(span, &result);
-                result
-            }
-            SyntaxExtensionKind::LegacyBang(expander) => {
-                let tok_result = expander.expand(self.cx, span, mac.node.stream());
-                if let Some(result) = kind.make_from(tok_result) {
-                    result
-                } else {
-                    let msg = format!("non-{kind} macro in {kind} position: {name}",
-                                    name = path.segments[0].ident.name, kind = kind.name());
-                    self.cx.span_err(path.span, &msg);
-                    self.cx.trace_macros_diag();
-                    kind.dummy(span)
-                }
-            }
-            _ => unreachable!()
-        }
-    }
-
     fn gate_proc_macro_expansion_kind(&self, span: Span, kind: AstFragmentKind) {
         let kind = match kind {
             AstFragmentKind::Expr => "expressions",
@@ -692,34 +682,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             GateIssue::Language,
             &format!("procedural macros cannot be expanded to {}", kind),
         );
-    }
-
-    /// Expand a derive invocation. Returns the resulting expanded AST fragment.
-    fn expand_derive_invoc(&mut self,
-                           invoc: Invocation,
-                           ext: &SyntaxExtension)
-                           -> AstFragment {
-        let (path, item) = match invoc.kind {
-            InvocationKind::Derive { path, item, item_with_markers } => match ext.kind {
-                SyntaxExtensionKind::LegacyDerive(..) => (path, item_with_markers),
-                _ => (path, item),
-            }
-            _ => unreachable!(),
-        };
-        if !item.derive_allowed() {
-            return invoc.fragment_kind.dummy(path.span);
-        }
-
-        match &ext.kind {
-            SyntaxExtensionKind::Derive(expander) |
-            SyntaxExtensionKind::LegacyDerive(expander) => {
-                let meta = ast::MetaItem { node: ast::MetaItemKind::Word, span: path.span, path };
-                let span = meta.span.with_ctxt(self.cx.backtrace());
-                let items = expander.expand(self.cx, span, &meta, item);
-                invoc.fragment_kind.expect_from_annotatables(items)
-            }
-            _ => unreachable!()
-        }
     }
 
     fn parse_ast_fragment(&mut self,
