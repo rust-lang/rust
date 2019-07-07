@@ -21,11 +21,13 @@ LL |     f[&s] = 10;
 LL |     drop(rs);
    |          -- mutable borrow later used here
 
-error[E0594]: cannot assign to data in a `&` reference
+error[E0594]: cannot assign to data in an index of `Bar`
   --> $DIR/borrowck-overloaded-index-ref-index.rs:56:5
    |
 LL |     s[2] = 20;
    |     ^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `Bar`
 
 error: aborting due to 3 previous errors
 

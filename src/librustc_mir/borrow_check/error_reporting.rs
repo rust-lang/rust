@@ -653,6 +653,26 @@ impl BorrowedContentSource<'tcx> {
         }
     }
 
+    pub(super) fn describe_for_immutable_place(&self) -> String {
+        match *self {
+            BorrowedContentSource::DerefRawPointer => format!("a `*const` pointer"),
+            BorrowedContentSource::DerefSharedRef => format!("a `&` reference"),
+            BorrowedContentSource::DerefMutableRef => {
+                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
+            },
+            BorrowedContentSource::OverloadedDeref(ty) => {
+                if ty.is_rc() {
+                   format!("an `Rc`")
+                } else if ty.is_arc() {
+                    format!("an `Arc`")
+                } else {
+                    format!("a dereference of `{}`", ty)
+                }
+            }
+            BorrowedContentSource::OverloadedIndex(ty) => format!("an index of `{}`", ty),
+        }
+    }
+
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
         match func.sty {
             ty::FnDef(def_id, substs) => {
