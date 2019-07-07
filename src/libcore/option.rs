@@ -263,7 +263,7 @@ impl<T> Option<T> {
     }
 
 
-    /// Converts from `Pin<&Option<T>>` to `Option<Pin<&T>>`
+    /// Converts from [`Pin`]`<&Option<T>>` to `Option<`[`Pin`]`<&T>>`.
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref<'a>(self: Pin<&'a Option<T>>) -> Option<Pin<&'a T>> {
@@ -272,7 +272,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Converts from `Pin<&mut Option<T>>` to `Option<Pin<&mut T>>`
+    /// Converts from [`Pin`]`<&mut Option<T>>` to `Option<`[`Pin`]`<&mut T>>`.
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut<'a>(self: Pin<&'a mut Option<T>>) -> Option<Pin<&'a mut T>> {
@@ -626,14 +626,14 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns `None` if the option is `None`, otherwise calls `predicate`
+    /// Returns [`None`] if the option is [`None`], otherwise calls `predicate`
     /// with the wrapped value and returns:
     ///
-    /// - `Some(t)` if `predicate` returns `true` (where `t` is the wrapped
+    /// - [`Some(t)`] if `predicate` returns `true` (where `t` is the wrapped
     ///   value), and
-    /// - `None` if `predicate` returns `false`.
+    /// - [`None`] if `predicate` returns `false`.
     ///
-    /// This function works similar to `Iterator::filter()`. You can imagine
+    /// This function works similar to [`Iterator::filter()`]. You can imagine
     /// the `Option<T>` being an iterator over one or zero elements. `filter()`
     /// lets you decide which elements to keep.
     ///
@@ -648,6 +648,10 @@ impl<T> Option<T> {
     /// assert_eq!(Some(3).filter(is_even), None);
     /// assert_eq!(Some(4).filter(is_even), Some(4));
     /// ```
+    ///
+    /// [`None`]: #variant.None
+    /// [`Some(t)`]: #variant.Some
+    /// [`Iterator::filter()`]: ../../std/iter/trait.Iterator.html#method.filter
     #[inline]
     #[stable(feature = "option_filter", since = "1.27.0")]
     pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
@@ -986,17 +990,25 @@ impl<T: Deref> Option<T> {
     /// Converts from `&Option<T>` to `Option<&T::Target>`.
     ///
     /// Leaves the original Option in-place, creating a new one with a reference
-    /// to the original one, additionally coercing the contents via `Deref`.
+    /// to the original one, additionally coercing the contents via [`Deref`].
+    ///
+    /// [`Deref`]: ../../std/ops/trait.Deref.html
     pub fn deref(&self) -> Option<&T::Target> {
         self.as_ref().map(|t| t.deref())
     }
 }
 
 impl<T, E> Option<Result<T, E>> {
-    /// Transposes an `Option` of a `Result` into a `Result` of an `Option`.
+    /// Transposes an `Option` of a [`Result`] into a [`Result`] of an `Option`.
     ///
-    /// `None` will be mapped to `Ok(None)`.
-    /// `Some(Ok(_))` and `Some(Err(_))` will be mapped to `Ok(Some(_))` and `Err(_)`.
+    /// [`None`] will be mapped to [`Ok`]`(`[`None`]`)`.
+    /// [`Some`]`(`[`Ok`]`(_))` and [`Some`]`(`[`Err`]`(_))` will be mapped to
+    /// [`Ok`]`(`[`Some`]`(_))` and [`Err`]`(_)`.
+    ///
+    /// [`None`]: #variant.None
+    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`Some`]: #variant.Some
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
