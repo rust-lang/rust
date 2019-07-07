@@ -129,10 +129,14 @@ where
 
     pub fn canonicalize_projection(
         mut self,
-        projection: ProjectionPredicate,
-    ) -> Canonicalized<ProjectionPredicate> {
-        let result = self.do_canonicalize_projection_predicate(projection);
-        self.into_canonicalized(result)
+        projection: InEnvironment<ProjectionPredicate>,
+    ) -> Canonicalized<InEnvironment<ProjectionPredicate>> {
+        let result = self.do_canonicalize_projection_predicate(projection.value);
+        // FIXME canonicalize env
+        self.into_canonicalized(InEnvironment {
+            value: result,
+            environment: projection.environment,
+        })
     }
 }
 

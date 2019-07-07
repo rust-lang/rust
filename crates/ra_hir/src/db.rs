@@ -224,7 +224,7 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     fn normalize(
         &self,
         krate: Crate,
-        goal: crate::ty::Canonical<crate::ty::ProjectionPredicate>,
+        goal: crate::ty::Canonical<crate::ty::InEnvironment<crate::ty::ProjectionPredicate>>,
     ) -> Option<crate::ty::traits::Solution>;
 }
 

@@ -356,7 +356,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     };
                 }
                 Obligation::Projection(pr) => {
-                    let canonicalized = self.canonicalizer().canonicalize_projection(pr.clone());
+                    let in_env = InEnvironment::new(self.trait_env.clone(), pr.clone());
+                    let canonicalized = self.canonicalizer().canonicalize_projection(in_env);
                     let solution = self
                         .db
                         .normalize(self.resolver.krate().unwrap(), canonicalized.value.clone());

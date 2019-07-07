@@ -3010,6 +3010,25 @@ fn test<T>(t: T) { t.foo()<|>; }
     assert_eq!(t, "{unknown}");
 }
 
+#[test]
+fn generic_param_env_deref() {
+    let t = type_at(
+        r#"
+//- /main.rs
+#[lang = "deref"]
+trait Deref {
+    type Target;
+}
+trait Trait {}
+impl<T> Deref for T where T: Trait {
+    type Target = i128;
+}
+fn test<T: Trait>(t: T) { (*t)<|>; }
+"#,
+    );
+    assert_eq!(t, "i128");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

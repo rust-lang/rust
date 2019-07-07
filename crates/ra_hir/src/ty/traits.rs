@@ -134,20 +134,9 @@ pub(crate) fn implements_query(
 pub(crate) fn normalize_query(
     db: &impl HirDatabase,
     krate: Crate,
-    projection: Canonical<ProjectionPredicate>,
+    projection: Canonical<InEnvironment<ProjectionPredicate>>,
 ) -> Option<Solution> {
-    let goal: chalk_ir::Goal = chalk_ir::Normalize {
-        projection: projection.value.projection_ty.to_chalk(db),
-        ty: projection.value.ty.to_chalk(db),
-    }
-    .cast();
-    debug!("goal: {:?}", goal);
-    // FIXME unify with `implements`
-    let env = chalk_ir::Environment::new();
-    let in_env = chalk_ir::InEnvironment::new(&env, goal);
-    let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
-    let canonical =
-        chalk_ir::Canonical { value: in_env, binders: vec![parameter; projection.num_vars] };
+    let canonical = projection.to_chalk(db).cast();
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };

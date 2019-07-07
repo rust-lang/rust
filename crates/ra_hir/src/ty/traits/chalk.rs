@@ -218,6 +218,21 @@ impl ToChalk for ProjectionTy {
     }
 }
 
+impl ToChalk for super::ProjectionPredicate {
+    type Chalk = chalk_ir::Normalize;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Normalize {
+        chalk_ir::Normalize {
+            projection: self.projection_ty.to_chalk(db),
+            ty: self.ty.to_chalk(db),
+        }
+    }
+
+    fn from_chalk(_db: &impl HirDatabase, _normalize: chalk_ir::Normalize) -> Self {
+        unimplemented!()
+    }
+}
+
 impl<T> ToChalk for Canonical<T>
 where
     T: ToChalk,
