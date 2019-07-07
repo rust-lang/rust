@@ -22,7 +22,7 @@ pub fn target() -> TargetResult {
         // Most of these settings are copied from the armv7_unknown_linux_gnueabihf
         // target.
         options: TargetOptions {
-            features: "+v7,+vfp3,+d16,+thumb2,-neon".to_string(),
+            features: "+v7,+vfp3,-d32,+thumb2,-neon".to_string(),
             cpu: "generic".to_string(),
             max_atomic_width: Some(64),
             abi_blacklist: super::arm_base::abi_blacklist(),

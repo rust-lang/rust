@@ -10,7 +10,7 @@ use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
-    base.features = "+v7,+thumb-mode,+thumb2,+vfp3,+d16,-neon".to_string();
+    base.features = "+v7,+thumb-mode,+thumb2,+vfp3,-d32,-neon".to_string();
     base.max_atomic_width = Some(64);
     base.pre_link_args
         .get_mut(&LinkerFlavor::Gcc).unwrap().push("-march=armv7-a".to_string());

@@ -22,7 +22,7 @@ pub fn target() -> TargetResult {
             // the FPU uses the FPv5 architecture, single-precision instructions
             // and 16 D registers.
             // These parameters map to the following LLVM features.
-            features: "+fp-armv8,+fp-only-sp,+d16".to_string(),
+            features: "+fp-armv8,-fp64,-d32".to_string(),
             max_atomic_width: Some(32),
             .. super::thumb_base::opts()
         },
