@@ -102,7 +102,7 @@ pub unsafe fn _mm_add_epi32(a: __m128i, b: __m128i) -> __m128i {
     transmute(simd_add(a.as_i32x4(), b.as_i32x4()))
 }
 
-/// Adds packed 64-bit integers in `a` and "b`.
+/// Adds packed 64-bit integers in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_add_epi64)
 #[inline]
