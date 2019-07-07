@@ -51,22 +51,82 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{check_completion, CompletionKind};
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use insta::assert_debug_snapshot_matches;
 
-    fn check_snippet_completion(test_name: &str, code: &str) {
-        check_completion(test_name, code, CompletionKind::Postfix);
+    fn do_postfix_completion(code: &str) -> Vec<CompletionItem> {
+        do_completion(code, CompletionKind::Postfix)
     }
 
     #[test]
     fn postfix_completion_works_for_trivial_path_expression() {
-        check_snippet_completion(
-            "postfix_completion_works_for_trivial_path_expression",
-            r#"
-            fn main() {
-                let bar = "a";
-                bar.<|>
-            }
-            "#,
+        assert_debug_snapshot_matches!(
+            do_postfix_completion(
+                r#"
+                fn main() {
+                    let bar = "a";
+                    bar.<|>
+                }
+                "#,
+            ),
+            @r###"[
+    CompletionItem {
+        label: "box",
+        source_range: [88; 88),
+        delete: [84; 88),
+        insert: "Box::new(bar)",
+        detail: "Box::new(expr)",
+    },
+    CompletionItem {
+        label: "dbg",
+        source_range: [88; 88),
+        delete: [84; 88),
+        insert: "dbg!(bar)",
+        detail: "dbg!(expr)",
+    },
+    CompletionItem {
+        label: "if",
+        source_range: [88; 88),
+        delete: [84; 88),
+        insert: "if bar {$0}",
+        detail: "if expr {}",
+    },
+    CompletionItem {
+        label: "match",
+        source_range: [88; 88),
+        delete: [84; 88),
+        insert: "match bar {\n    ${1:_} => {$0\\},\n}",
+        detail: "match expr {}",
+    },
+    CompletionItem {
+        label: "not",
+        source_range: [88; 88),
+        delete: [84; 88),
+        insert: "!bar",
+        detail: "!expr",
+    },
+    CompletionItem {
+        label: "ref",
+        source_range: [88; 88),
+        delete: [84; 88),
+        insert: "&bar",
+        detail: "&expr",
+    },
+    CompletionItem {
+        label: "refm",
+        source_range: [88; 88),
+        delete: [84; 88),
+        insert: "&mut bar",
+        detail: "&mut expr",
+    },
+    CompletionItem {
+        label: "while",
+        source_range: [88; 88),
+        delete: [84; 88),
+        insert: "while bar {\n$0\n}",
+        detail: "while expr {}",
+    },
+]"###
         );
     }
 }
