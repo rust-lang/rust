@@ -610,8 +610,9 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
             }
             TAG_EXPANSION_INFO_SHORTHAND => {
                 let pos = AbsoluteBytePos::decode(self)?;
-                if let Some(cached_ctxt) = self.synthetic_expansion_infos.borrow().get(&pos) {
-                    Span::new(lo, hi, *cached_ctxt)
+                let cached_ctxt = self.synthetic_expansion_infos.borrow().get(&pos).cloned();
+                if let Some(ctxt) = cached_ctxt {
+                    Span::new(lo, hi, ctxt)
                 } else {
                     let expn_info =
                         self.with_position(pos.to_usize(), |this| ExpnInfo::decode(this))?;
