@@ -1699,8 +1699,8 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         // Bounds in the type_params and lifetimes fields are repeated in the
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
-        let stripped_typarams = gens.params.iter().enumerate()
-            .filter_map(|(i, param)| match param.kind {
+        let stripped_typarams = gens.params.iter()
+            .filter_map(|param| match param.kind {
                 ty::GenericParamDefKind::Lifetime => None,
                 ty::GenericParamDefKind::Type { synthetic, .. } => {
                     if param.name.as_symbol() == kw::SelfUpper {
@@ -1708,7 +1708,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                         return None;
                     }
                     if synthetic == Some(hir::SyntheticTyParamKind::ImplTrait) {
-                        impl_trait.insert((i as u32).into(), vec![]);
+                        impl_trait.insert(param.index.into(), vec![]);
                         return None;
                     }
                     Some(param.clean(cx))
