@@ -715,6 +715,7 @@ extern "C" {
     // Operations on scalar constants
     pub fn LLVMConstInt(IntTy: &Type, N: c_ulonglong, SignExtend: Bool) -> &Value;
     pub fn LLVMConstIntOfArbitraryPrecision(IntTy: &Type, Wn: c_uint, Ws: *const u64) -> &Value;
+    pub fn LLVMConstReal(RealTy: &Type, N: f64) -> &Value;
     pub fn LLVMConstIntGetZExtValue(ConstantVal: &Value) -> c_ulonglong;
     pub fn LLVMRustConstInt128Get(ConstantVal: &Value, SExt: bool,
                                   high: &mut u64, low: &mut u64) -> bool;
