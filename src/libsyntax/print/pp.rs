@@ -521,9 +521,7 @@ impl Printer {
 
     fn print_end(&mut self) {
         debug!("print End -> pop End");
-        let print_stack = &mut self.print_stack;
-        assert!(!print_stack.is_empty());
-        print_stack.pop().unwrap();
+        self.print_stack.pop().unwrap();
     }
 
     fn print_break(&mut self, b: BreakToken, l: isize) {
