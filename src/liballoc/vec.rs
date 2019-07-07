@@ -2825,7 +2825,7 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
                         // to execute `pred`, so we just backshift all the unprocessed
                         // elements and tell the vec that they still exist. The backshift
                         // is required to prevent a double-drop of the last successfully
-                        // drained item following a panic in the predicate.
+                        // drained item prior to a panic in the predicate.
                         let ptr = self.drain.vec.as_mut_ptr();
                         let src = ptr.add(self.drain.idx);
                         let dst = src.sub(self.drain.del);
