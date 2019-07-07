@@ -445,20 +445,6 @@ pub trait PrintState<'a> {
 
     fn pclose(&mut self) { self.writer().word(")") }
 
-    fn is_begin(&mut self) -> bool {
-        match self.writer().last_token() {
-            pp::Token::Begin(_) => true,
-            _ => false,
-        }
-    }
-
-    fn is_end(&mut self) -> bool {
-        match self.writer().last_token() {
-            pp::Token::End => true,
-            _ => false,
-        }
-    }
-
     // is this the beginning of a line?
     fn is_bol(&mut self) -> bool {
         self.writer().last_token().is_eof() || self.writer().last_token().is_hardbreak_tok()
@@ -545,11 +531,13 @@ pub trait PrintState<'a> {
             }
             comments::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
-                let is_semi = match self.writer().last_token() {
+                let twice = match self.writer().last_token() {
                     pp::Token::String(s, _) => ";" == s,
+                    pp::Token::Begin(_) => true,
+                    pp::Token::End => true,
                     _ => false
                 };
-                if is_semi || self.is_begin() || self.is_end() {
+                if twice {
                     self.writer().hardbreak();
                 }
                 self.writer().hardbreak();
