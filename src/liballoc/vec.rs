@@ -2748,10 +2748,19 @@ pub struct DrainFilter<'a, T, F>
     where F: FnMut(&mut T) -> bool,
 {
     vec: &'a mut Vec<T>,
+    /// The index of the item that will be inspected by the next call to `next`.
     idx: usize,
+    /// The number of items that have been drained (removed) thus far.
     del: usize,
+    /// The original length of `vec` prior to draining.
     old_len: usize,
+    /// The filter test predicate.
     pred: F,
+    /// A flag that indicates a panic has occured in the filter test prodicate.
+    /// This is used as a hint in the drop implmentation to prevent consumption
+    /// of the remainder of the `DrainFilter`. Any unprocessed items will be
+    /// backshifted in the `vec`, but no further items will be dropped or
+    /// tested by the filter predicate.
     panic_flag: bool,
 }
 
@@ -2810,25 +2819,18 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
         {
             fn drop(&mut self) {
                 unsafe {
-                    // Backshift any unprocessed elements, preventing double-drop
-                    // of any element that *should* have been previously overwritten
-                    // but was not due to a panic in the filter predicate. This is
-                    // implemented via drop so that it's guaranteed to run even in
-                    // the event of a panic while consuming the remainder of the
-                    // DrainFilter.
-                    while self.drain.idx < self.drain.old_len {
-                        let i = self.drain.idx;
-                        self.drain.idx += 1;
-                        let v = slice::from_raw_parts_mut(
-                            self.drain.vec.as_mut_ptr(),
-                            self.drain.old_len,
-                        );
-                        if self.drain.del > 0 {
-                            let del = self.drain.del;
-                            let src: *const T = &v[i];
-                            let dst: *mut T = &mut v[i - del];
-                            ptr::copy_nonoverlapping(src, dst, 1);
-                        }
+                    if self.drain.idx < self.drain.old_len && self.drain.del > 0 {
+                        // This is a pretty messed up state, and there isn't really an
+                        // obviously right thing to do. We don't want to keep trying
+                        // to execute `pred`, so we just backshift all the unprocessed
+                        // elements and tell the vec that they still exist. The backshift
+                        // is required to prevent a double-drop of the last successfully
+                        // drained item following a panic in the predicate.
+                        let ptr = self.drain.vec.as_mut_ptr();
+                        let src = ptr.add(self.drain.idx);
+                        let dst = src.sub(self.drain.del);
+                        let tail_len = self.drain.old_len - self.drain.idx;
+                        src.copy_to(dst, tail_len);
                     }
                     self.drain.vec.set_len(self.drain.old_len - self.drain.del);
                 }
