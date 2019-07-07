@@ -243,7 +243,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         module.directory.pop();
         self.cx.root_path = module.directory.clone();
         self.cx.current_expansion.module = Rc::new(module);
-        self.cx.current_expansion.crate_span = Some(krate.span);
 
         let orig_mod_span = krate.module.inner;
 
@@ -488,7 +487,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtension) -> Option<AstFragment> {
         if invoc.fragment_kind == AstFragmentKind::ForeignItems &&
-           !self.cx.ecfg.macros_in_extern_enabled() {
+           !self.cx.ecfg.macros_in_extern() {
             if let SyntaxExtensionKind::NonMacroAttr { .. } = ext.kind {} else {
                 emit_feature_err(&self.cx.parse_sess, sym::macros_in_extern,
                                  invoc.span(), GateIssue::Language,
@@ -668,40 +667,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
         let path = &mac.node.path;
 
-        let validate = |this: &mut Self| {
-            // feature-gate the macro invocation
-            if let Some((feature, issue)) = ext.unstable_feature {
-                let crate_span = this.cx.current_expansion.crate_span.unwrap();
-                // don't stability-check macros in the same crate
-                // (the only time this is null is for syntax extensions registered as macros)
-                if ext.def_info.map_or(false, |(_, def_span)| !crate_span.contains(def_span))
-                    && !span.allows_unstable(feature)
-                    && this.cx.ecfg.features.map_or(true, |feats| {
-                    // macro features will count as lib features
-                    !feats.declared_lib_features.iter().any(|&(feat, _)| feat == feature)
-                }) {
-                    let explain = format!("macro {}! is unstable", path);
-                    emit_feature_err(this.cx.parse_sess, feature, span,
-                                     GateIssue::Library(Some(issue)), &explain);
-                    this.cx.trace_macros_diag();
-                }
-            }
-
-            Ok(())
-        };
-
         let opt_expanded = match &ext.kind {
+            SyntaxExtensionKind::Bang(expander) => {
+                self.gate_proc_macro_expansion_kind(span, kind);
+                let tok_result = expander.expand(self.cx, span, mac.node.stream());
+                let result = self.parse_ast_fragment(tok_result, kind, path, span);
+                self.gate_proc_macro_expansion(span, &result);
+                result
+            }
             SyntaxExtensionKind::LegacyBang(expander) => {
-                if let Err(dummy_span) = validate(self) {
-                    dummy_span
-                } else {
-                    kind.make_from(expander.expand(
-                        self.cx,
-                        span,
-                        mac.node.stream(),
-                        ext.def_info.map(|(_, s)| s),
-                    ))
-                }
+                let tok_result = expander.expand(self.cx, span, mac.node.stream(), Some(ext.span));
+                kind.make_from(tok_result)
             }
 
             SyntaxExtensionKind::Attr(..) |
@@ -717,14 +693,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 self.cx.span_err(path.span, &format!("`{}` is a derive macro", path));
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
-            }
-
-            SyntaxExtensionKind::Bang(expander) => {
-                self.gate_proc_macro_expansion_kind(span, kind);
-                let tok_result = expander.expand(self.cx, span, mac.node.stream());
-                let result = self.parse_ast_fragment(tok_result, kind, path, span);
-                self.gate_proc_macro_expansion(span, &result);
-                result
             }
         };
 
@@ -951,7 +919,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         })
                         .map(|i| attrs.remove(i));
         if let Some(attr) = &attr {
-            if !self.cx.ecfg.enable_custom_inner_attributes() &&
+            if !self.cx.ecfg.custom_inner_attributes() &&
                attr.style == ast::AttrStyle::Inner && attr.path != sym::test {
                 emit_feature_err(&self.cx.parse_sess, sym::custom_inner_attributes,
                                  attr.span, GateIssue::Language,
@@ -1464,19 +1432,6 @@ pub struct ExpansionConfig<'feat> {
     pub keep_macs: bool,
 }
 
-macro_rules! feature_tests {
-    ($( fn $getter:ident = $field:ident, )*) => {
-        $(
-            pub fn $getter(&self) -> bool {
-                match self.features {
-                    Some(&Features { $field: true, .. }) => true,
-                    _ => false,
-                }
-            }
-        )*
-    }
-}
-
 impl<'feat> ExpansionConfig<'feat> {
     pub fn default(crate_name: String) -> ExpansionConfig<'static> {
         ExpansionConfig {
@@ -1490,20 +1445,13 @@ impl<'feat> ExpansionConfig<'feat> {
         }
     }
 
-    feature_tests! {
-        fn enable_asm = asm,
-        fn enable_custom_test_frameworks = custom_test_frameworks,
-        fn enable_global_asm = global_asm,
-        fn enable_log_syntax = log_syntax,
-        fn enable_concat_idents = concat_idents,
-        fn enable_trace_macros = trace_macros,
-        fn enable_allow_internal_unstable = allow_internal_unstable,
-        fn enable_format_args_nl = format_args_nl,
-        fn macros_in_extern_enabled = macros_in_extern,
-        fn proc_macro_hygiene = proc_macro_hygiene,
+    fn macros_in_extern(&self) -> bool {
+        self.features.map_or(false, |features| features.macros_in_extern)
     }
-
-    fn enable_custom_inner_attributes(&self) -> bool {
+    fn proc_macro_hygiene(&self) -> bool {
+        self.features.map_or(false, |features| features.proc_macro_hygiene)
+    }
+    fn custom_inner_attributes(&self) -> bool {
         self.features.map_or(false, |features| features.custom_inner_attributes)
     }
 }

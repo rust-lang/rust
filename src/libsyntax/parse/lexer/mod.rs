@@ -613,7 +613,7 @@ impl<'a> StringReader<'a> {
         if num_digits == 0 {
             self.err_span_(start_bpos, self.pos, "no valid digits found for number");
 
-            return (token::Integer, Symbol::intern("0"));
+            return (token::Integer, sym::integer(0));
         }
 
         // might be a float, but don't be greedy if this is actually an

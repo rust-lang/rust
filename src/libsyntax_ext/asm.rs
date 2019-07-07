@@ -8,7 +8,6 @@ use errors::DiagnosticBuilder;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};
-use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
@@ -46,14 +45,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
                        -> Box<dyn base::MacResult + 'cx> {
-    if !cx.ecfg.enable_asm() {
-        feature_gate::emit_feature_err(&cx.parse_sess,
-                                       sym::asm,
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_ASM);
-    }
-
     let mut inline_asm = match parse_inline_asm(cx, sp, tts) {
         Ok(Some(inline_asm)) => inline_asm,
         Ok(None) => return DummyResult::expr(sp),

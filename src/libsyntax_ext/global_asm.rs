@@ -13,27 +13,15 @@ use errors::DiagnosticBuilder;
 use syntax::ast;
 use syntax::source_map::respan;
 use syntax::ext::base::{self, *};
-use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 use syntax::tokenstream;
 use smallvec::smallvec;
 
-pub const MACRO: Symbol = sym::global_asm;
-
 pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                               sp: Span,
                               tts: &[tokenstream::TokenTree]) -> Box<dyn base::MacResult + 'cx> {
-    if !cx.ecfg.enable_global_asm() {
-        feature_gate::emit_feature_err(&cx.parse_sess,
-                                       MACRO,
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_GLOBAL_ASM);
-    }
-
     match parse_global_asm(cx, sp, tts) {
         Ok(Some(global_asm)) => {
             MacEager::items(smallvec![P(ast::Item {
