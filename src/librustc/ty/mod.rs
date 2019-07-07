@@ -414,31 +414,30 @@ pub struct CReaderCacheKey {
 bitflags! {
     pub struct TypeFlags: u32 {
         const HAS_PARAMS         = 1 << 0;
-        const HAS_SELF           = 1 << 1;
-        const HAS_TY_INFER       = 1 << 2;
-        const HAS_RE_INFER       = 1 << 3;
-        const HAS_RE_PLACEHOLDER = 1 << 4;
+        const HAS_TY_INFER       = 1 << 1;
+        const HAS_RE_INFER       = 1 << 2;
+        const HAS_RE_PLACEHOLDER = 1 << 3;
 
         /// Does this have any `ReEarlyBound` regions? Used to
         /// determine whether substitition is required, since those
         /// represent regions that are bound in a `ty::Generics` and
         /// hence may be substituted.
-        const HAS_RE_EARLY_BOUND = 1 << 5;
+        const HAS_RE_EARLY_BOUND = 1 << 4;
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but `ReLateBound` and `ReErased`.
-        const HAS_FREE_REGIONS   = 1 << 6;
+        const HAS_FREE_REGIONS   = 1 << 5;
 
         /// Is an error type reachable?
-        const HAS_TY_ERR         = 1 << 7;
-        const HAS_PROJECTION     = 1 << 8;
+        const HAS_TY_ERR         = 1 << 6;
+        const HAS_PROJECTION     = 1 << 7;
 
         // FIXME: Rename this to the actual property since it's used for generators too
-        const HAS_TY_CLOSURE     = 1 << 9;
+        const HAS_TY_CLOSURE     = 1 << 8;
 
         /// `true` if there are "names" of types and regions and so forth
         /// that are local to a particular fn
-        const HAS_FREE_LOCAL_NAMES    = 1 << 10;
+        const HAS_FREE_LOCAL_NAMES    = 1 << 9;
 
         /// Present if the type belongs in a local type context.
         /// Only set for Infer other than Fresh.
@@ -458,14 +457,12 @@ bitflags! {
         const HAS_CT_PLACEHOLDER = 1 << 16;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
-                                   TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
 
         /// Flags representing the nominal content of a type,
         /// computed by FlagsComputation. If you add a new nominal
         /// flag, it should be added here too.
         const NOMINAL_FLAGS     = TypeFlags::HAS_PARAMS.bits |
-                                  TypeFlags::HAS_SELF.bits |
                                   TypeFlags::HAS_TY_INFER.bits |
                                   TypeFlags::HAS_RE_INFER.bits |
                                   TypeFlags::HAS_CT_INFER.bits |
@@ -1734,7 +1731,6 @@ impl<'tcx> ParamEnv<'tcx> {
                 if value.has_placeholders()
                     || value.needs_infer()
                     || value.has_param_types()
-                    || value.has_self_ty()
                 {
                     ParamEnvAnd {
                         param_env: self,

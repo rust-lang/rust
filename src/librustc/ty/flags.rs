@@ -86,13 +86,9 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::HAS_TY_ERR)
             }
 
-            &ty::Param(ref p) => {
+            &ty::Param(_) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
-                if p.is_self() {
-                    self.add_flags(TypeFlags::HAS_SELF);
-                } else {
-                    self.add_flags(TypeFlags::HAS_PARAMS);
-                }
+                self.add_flags(TypeFlags::HAS_PARAMS);
             }
 
             &ty::Generator(_, ref substs, _) => {

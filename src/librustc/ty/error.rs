@@ -239,13 +239,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
             ty::Projection(_) => "associated type".into(),
             ty::UnnormalizedProjection(_) => "non-normalized associated type".into(),
-            ty::Param(ref p) => {
-                if p.is_self() {
-                    "Self".into()
-                } else {
-                    "type parameter".into()
-                }
-            }
+            ty::Param(_) => "type parameter".into(),
             ty::Opaque(..) => "opaque type".into(),
             ty::Error => "type error".into(),
         }
