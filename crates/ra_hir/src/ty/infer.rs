@@ -40,7 +40,7 @@ use crate::{
         PatId, Statement, UnaryOp,
     },
     generics::{GenericParams, HasGenericParams},
-    name::{SELF_TYPE, INTO_ITERATOR, ITEM, ITER, STD},
+    name::{INTO_ITERATOR, ITEM, ITER, SELF_TYPE, STD},
     nameres::{Namespace, PerNs},
     path::{GenericArg, GenericArgs, PathKind, PathSegment},
     resolve::{
@@ -49,8 +49,8 @@ use crate::{
     },
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    AdtDef, ConstData, DefWithBody, FnData, Function, HirDatabase, ImplItem,
-    ModuleDef, Name, Path, StructField,
+    AdtDef, ConstData, DefWithBody, FnData, Function, HirDatabase, ImplItem, ModuleDef, Name, Path,
+    StructField,
 };
 
 mod unify;

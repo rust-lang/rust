@@ -19,7 +19,10 @@ use crate::{
         TypeAliasId,
     },
     impl_block::ImplBlock,
-    name::{BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, STR, U128, U16, U32, U64, U8, USIZE, SELF_TYPE},
+    name::{
+        BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, SELF_TYPE, STR, U128, U16, U32, U64,
+        U8, USIZE,
+    },
     nameres::{CrateModuleId, ImportId, ModuleScope, Namespace},
     resolve::Resolver,
     traits::{TraitData, TraitItem},

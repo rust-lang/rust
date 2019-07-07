@@ -112,7 +112,8 @@ pub(crate) const SELF_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(4, b
 pub(crate) const MACRO_RULES: Name = Name::new(SmolStr::new_inline_from_ascii(11, b"macro_rules"));
 pub(crate) const STD: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"std"));
 pub(crate) const ITER: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"iter"));
-pub(crate) const INTO_ITERATOR: Name = Name::new(SmolStr::new_inline_from_ascii(12, b"IntoIterator"));
+pub(crate) const INTO_ITERATOR: Name =
+    Name::new(SmolStr::new_inline_from_ascii(12, b"IntoIterator"));
 pub(crate) const ITEM: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"Item"));
 
 fn resolve_name(text: &SmolStr) -> SmolStr {

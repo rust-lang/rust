@@ -65,8 +65,8 @@ use test_utils::tested_by;
 
 use crate::{
     diagnostics::DiagnosticSink, either::Either, ids::MacroDefId,
-    nameres::diagnostics::DefDiagnostic, AstDatabase, AstId, BuiltinType, Crate,
-    DefDatabase, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
+    nameres::diagnostics::DefDiagnostic, AstDatabase, AstId, BuiltinType, Crate, DefDatabase,
+    HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
 };
 
 pub(crate) use self::raw::{ImportSourceMap, RawItems};
