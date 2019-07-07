@@ -181,15 +181,15 @@ fn main() {
         }
 
         unsafe fn uninitialized<T>() -> T {
-            intrinsics::uninit::<T>()
+            MaybeUninit { uninit: () }.value
         }
 
+        zeroed::<(u8, u8)>();
         #[allow(unreachable_code)]
         {
             if false {
                 zeroed::<!>();
                 zeroed::<Foo>();
-                zeroed::<(u8, u8)>();
                 uninitialized::<Foo>();
             }
         }

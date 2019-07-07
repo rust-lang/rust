@@ -5,7 +5,7 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::Const;
 use rustc_mir::interpret::{
-    InterpretCx, ImmTy, Machine, Memory, MemoryKind, OpTy, PlaceTy,
+    InterpCx, ImmTy, Machine, Memory, MemoryKind, OpTy, PlaceTy,
     StackPopCleanup,
 };
 
@@ -141,10 +141,11 @@ fn trans_const_place<'a, 'tcx: 'a>(
 ) -> CPlace<'tcx> {
     // Adapted from https://github.com/rust-lang/rust/pull/53671/files#diff-e0b58bb6712edaa8595ad7237542c958L551
     let result = || -> InterpResult<'tcx, &'tcx Allocation> {
-        let mut ecx = InterpretCx::new(
+        let mut ecx = InterpCx::new(
             fx.tcx.at(DUMMY_SP),
             ty::ParamEnv::reveal_all(),
             TransPlaceInterpreter,
+            (),
         );
         ecx.push_stack_frame(
             fx.instance,
@@ -242,7 +243,7 @@ fn define_all_allocs(
     module: &mut Module<impl Backend>,
     cx: &mut ConstantCx,
 ) {
-    let memory = Memory::<TransPlaceInterpreter>::new(tcx.at(DUMMY_SP));
+    let memory = Memory::<TransPlaceInterpreter>::new(tcx.at(DUMMY_SP), ());
 
     while let Some(todo_item) = pop_set(&mut cx.todo) {
         let (data_id, alloc) = match todo_item {
@@ -338,23 +339,25 @@ struct TransPlaceInterpreter;
 
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
     type MemoryKinds = !;
+    type ExtraFnVal = !;
     type PointerTag = ();
     type AllocExtra = ();
     type MemoryExtra = ();
     type FrameExtra = ();
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
+
     const STATIC_KIND: Option<!> = None;
 
-    fn enforce_validity(_: &InterpretCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false
     }
 
-    fn before_terminator(_: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn before_terminator(_: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         panic!();
     }
 
     fn find_fn(
-        _: &mut InterpretCx<'mir, 'tcx, Self>,
+        _: &mut InterpCx<'mir, 'tcx, Self>,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: Option<PlaceTy<'tcx>>,
@@ -364,7 +367,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
     }
 
     fn call_intrinsic(
-        _: &mut InterpretCx<'mir, 'tcx, Self>,
+        _: &mut InterpCx<'mir, 'tcx, Self>,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: PlaceTy<'tcx>,
@@ -373,14 +376,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
     }
 
     fn find_foreign_static(
+        _: TyCtxt<'tcx>,
         _: DefId,
-        _: ::rustc::ty::query::TyCtxtAt<'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
         panic!();
     }
 
     fn ptr_op(
-        _: &InterpretCx<'mir, 'tcx, Self>,
+        _: &InterpCx<'mir, 'tcx, Self>,
         _: mir::BinOp,
         _: ImmTy<'tcx>,
         _: ImmTy<'tcx>,
@@ -388,28 +391,38 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn box_alloc(_: &mut InterpretCx<'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> InterpResult<'tcx> {
+    fn box_alloc(_: &mut InterpCx<'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> InterpResult<'tcx> {
         panic!();
     }
 
     fn tag_allocation<'b>(
+        _: &(),
         _: AllocId,
         alloc: Cow<'b, Allocation>,
         _: Option<MemoryKind<!>>,
-        _: &Memory<'mir, 'tcx, Self>,
     ) -> (Cow<'b, Allocation<(), ()>>, ()) {
         (alloc, ())
     }
 
-    fn tag_static_base_pointer(_: AllocId, _: &Memory<'mir, 'tcx, Self>) -> Self::PointerTag {
+    fn tag_static_base_pointer(_: &(), _: AllocId) -> Self::PointerTag {
         ()
     }
 
-    fn stack_push(_: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn call_extra_fn(
+        _: &mut InterpCx<'mir, 'tcx, Self>,
+        _: !,
+        _: &[OpTy<'tcx, ()>],
+        _: Option<PlaceTy<'tcx, ()>>,
+        _: Option<BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        unreachable!();
+    }
+
+    fn stack_push(_: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
-    fn stack_pop(_: &mut InterpretCx<'mir, 'tcx, Self>, _: ()) -> InterpResult<'tcx> {
+    fn stack_pop(_: &mut InterpCx<'mir, 'tcx, Self>, _: ()) -> InterpResult<'tcx> {
         Ok(())
     }
 }

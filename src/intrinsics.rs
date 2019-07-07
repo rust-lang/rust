@@ -389,16 +389,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let dst_ptr = dst.load_scalar(fx);
             fx.bcx.call_memset(fx.module.target_config(), dst_ptr, val, count);
         };
-        uninit, <T> () {
-            if ret.layout().abi == Abi::Uninhabited {
-                crate::trap::trap_panic(fx, "[panic] Called intrinsic::uninit for uninhabited type.");
-                return;
-            }
-
-            let uninit_place = CPlace::new_stack_slot(fx, T);
-            let uninit_val = uninit_place.to_cvalue(fx);
-            ret.write_cvalue(fx, uninit_val);
-        };
         ctlz | ctlz_nonzero, <T> (v arg) {
             let res = CValue::by_val(fx.bcx.ins().clz(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);

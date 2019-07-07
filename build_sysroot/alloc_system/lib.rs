@@ -23,7 +23,6 @@
     feature(integer_atomics, stdsimd)
 )]
 #![cfg_attr(any(unix, target_os = "cloudabi", target_os = "redox"), feature(libc))]
-#![rustc_alloc_kind = "lib"]
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.
 #[cfg(all(any(target_arch = "x86",

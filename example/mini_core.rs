@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types)]
+#![feature(no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types, untagged_unions)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -371,6 +371,11 @@ pub trait Drop {
     fn drop(&mut self);
 }
 
+pub union MaybeUninit<T> {
+    pub uninit: (),
+    pub value: T,
+}
+
 pub mod intrinsics {
     extern "rust-intrinsic" {
         pub fn abort() -> !;
@@ -380,7 +385,6 @@ pub mod intrinsics {
         pub fn min_align_of_val<T: ?::Sized>(val: &T) -> usize;
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
-        pub fn uninit<T>() -> T;
         pub fn init<T>() -> T;
         pub fn ctlz_nonzero<T>(x: T) -> T;
         pub fn needs_drop<T>() -> bool;
