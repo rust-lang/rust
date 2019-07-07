@@ -28,24 +28,28 @@ use test_utils::tested_by;
 
 use super::{
     autoderef, method_resolution, op, primitive,
-    traits::{Guidance, Obligation, Solution},
-    ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypableDef, TypeCtor,
+    traits::{Guidance, Obligation, ProjectionPredicate, Solution},
+    ApplicationTy, CallableDef, ProjectionTy, Substs, TraitRef, Ty, TypableDef, TypeCtor,
 };
 use crate::{
     adt::VariantDef,
+    code_model::{ModuleDef::Trait, TypeAlias},
     diagnostics::DiagnosticSink,
     expr::{
         self, Array, BinaryOp, BindingAnnotation, Body, Expr, ExprId, FieldPat, Literal, Pat,
         PatId, Statement, UnaryOp,
     },
     generics::{GenericParams, HasGenericParams},
-    nameres::Namespace,
-    path::{GenericArg, GenericArgs},
-    resolve::{Resolution, Resolver},
+    nameres::{Namespace, PerNs},
+    path::{GenericArg, GenericArgs, PathKind, PathSegment},
+    resolve::{
+        Resolution::{self, Def},
+        Resolver,
+    },
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    AdtDef, ConstData, DefWithBody, FnData, Function, HirDatabase, ImplItem, ModuleDef, Name, Path,
-    StructField,
+    AdtDef, AsName, ConstData, DefWithBody, FnData, Function, HirDatabase, ImplItem, KnownName,
+    ModuleDef, Name, Path, StructField,
 };
 
 mod unify;
@@ -323,34 +327,53 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_obligations_as_possible(&mut self) {
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
-            let (solution, canonicalized) = match &obligation {
+            match &obligation {
                 Obligation::Trait(tr) => {
                     let canonicalized = self.canonicalizer().canonicalize_trait_ref(tr.clone());
-                    (
-                        self.db.implements(
-                            self.resolver.krate().unwrap(),
-                            canonicalized.value.clone(),
-                        ),
-                        canonicalized,
-                    )
+                    let solution = self
+                        .db
+                        .implements(self.resolver.krate().unwrap(), canonicalized.value.clone());
+                    match solution {
+                        Some(Solution::Unique(substs)) => {
+                            canonicalized.apply_solution(self, substs.0);
+                        }
+                        Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                            canonicalized.apply_solution(self, substs.0);
+                            self.obligations.push(obligation);
+                        }
+                        Some(_) => {
+                            // FIXME use this when trying to resolve everything at the end
+                            self.obligations.push(obligation);
+                        }
+                        None => {
+                            // FIXME obligation cannot be fulfilled => diagnostic
+                        }
+                    };
+                }
+                Obligation::Projection(pr) => {
+                    let canonicalized = self.canonicalizer().canonicalize_projection(pr.clone());
+                    let solution = self
+                        .db
+                        .normalize(self.resolver.krate().unwrap(), canonicalized.value.clone());
+
+                    match solution {
+                        Some(Solution::Unique(substs)) => {
+                            canonicalized.apply_solution(self, substs.0);
+                        }
+                        Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                            canonicalized.apply_solution(self, substs.0);
+                            self.obligations.push(obligation);
+                        }
+                        Some(_) => {
+                            // FIXME use this when trying to resolve everything at the end
+                            self.obligations.push(obligation);
+                        }
+                        None => {
+                            // FIXME obligation cannot be fulfilled => diagnostic
+                        }
+                    };
                 }
             };
-            match solution {
-                Some(Solution::Unique(substs)) => {
-                    canonicalized.apply_solution(self, substs.0);
-                }
-                Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                    canonicalized.apply_solution(self, substs.0);
-                    self.obligations.push(obligation);
-                }
-                Some(_) => {
-                    // FIXME use this when trying to resolve everything at the end
-                    self.obligations.push(obligation);
-                }
-                None => {
-                    // FIXME obligation cannot be fulfilled => diagnostic
-                }
-            }
         }
     }
 
@@ -967,8 +990,25 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::unit()
             }
             Expr::For { iterable, body, pat } => {
-                let _iterable_ty = self.infer_expr(*iterable, &Expectation::none());
-                self.infer_pat(*pat, &Ty::Unknown, BindingMode::default());
+                let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
+
+                let pat_ty = match self.resolve_into_iter_item() {
+                    Some(into_iter_item_alias) => {
+                        let pat_ty = self.new_type_var();
+                        let projection = ProjectionPredicate {
+                            ty: pat_ty.clone(),
+                            projection_ty: ProjectionTy {
+                                associated_ty: into_iter_item_alias,
+                                parameters: vec![iterable_ty].into(),
+                            },
+                        };
+                        self.obligations.push(Obligation::Projection(projection));
+                        self.resolve_ty_as_possible(&mut vec![], pat_ty)
+                    }
+                    None => Ty::Unknown,
+                };
+
+                self.infer_pat(*pat, &pat_ty, BindingMode::default());
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
@@ -1300,6 +1340,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn infer_body(&mut self) {
         self.infer_expr(self.body.body_expr(), &Expectation::has_type(self.return_ty.clone()));
+    }
+
+    fn resolve_into_iter_item(&self) -> Option<TypeAlias> {
+        let into_iter_path = Path {
+            kind: PathKind::Abs,
+            segments: vec![
+                PathSegment { name: KnownName::Std.as_name(), args_and_bindings: None },
+                PathSegment { name: KnownName::Iter.as_name(), args_and_bindings: None },
+                PathSegment { name: KnownName::IntoIterator.as_name(), args_and_bindings: None },
+            ],
+        };
+
+        match self.resolver.resolve_path_segments(self.db, &into_iter_path).into_fully_resolved() {
+            PerNs { types: Some(Def(Trait(trait_))), .. } => {
+                Some(trait_.associated_type_by_name(self.db, KnownName::Item.as_name())?)
+            }
+            _ => None,
+        }
     }
 }
 

@@ -21,6 +21,42 @@ use crate::{
 // update the snapshots.
 
 #[test]
+fn infer_for_loop() {
+    let (mut db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+struct Vec<T> {}
+impl<T> Vec<T> {
+    fn new() -> Self { Vec {} }
+    fn push(&mut self, t: T) { }
+}
+
+impl<T> ::std::iter::IntoIterator for Vec<T> {
+    type Item=T;
+}
+fn test() {
+    let v = Vec::new();
+    v.push("foo");
+    for x in v {
+        x<|>;
+    }
+}
+
+//- /lib.rs
+mod iter {
+    trait IntoIterator {
+        type Item;
+    }
+}
+"#,
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["std"]),
+        "std": ("/lib.rs", []),
+    });
+    assert_eq!("&str", type_at_pos(&db, pos));
+}
+#[test]
 fn infer_basics() {
     assert_snapshot_matches!(
         infer(r#"

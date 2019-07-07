@@ -86,6 +86,11 @@ impl Name {
             "Self" => KnownName::SelfType,
             "self" => KnownName::SelfParam,
             "macro_rules" => KnownName::MacroRules,
+
+            "std" => KnownName::Std,
+            "iter" => KnownName::Iter,
+            "IntoIterator" => KnownName::IntoIterator,
+            "Item" => KnownName::Item,
             _ => return None,
         };
         Some(name)
@@ -157,6 +162,11 @@ pub(crate) enum KnownName {
     SelfParam,
 
     MacroRules,
+
+    Std,
+    Iter,
+    IntoIterator,
+    Item,
 }
 
 impl AsName for KnownName {
@@ -182,6 +192,10 @@ impl AsName for KnownName {
             KnownName::SelfType => "Self",
             KnownName::SelfParam => "self",
             KnownName::MacroRules => "macro_rules",
+            KnownName::Std => "std",
+            KnownName::Iter => "iter",
+            KnownName::IntoIterator => "IntoIterator",
+            KnownName::Item => "Item",
         };
         Name::new(s.into())
     }
