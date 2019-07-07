@@ -1709,8 +1709,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             err.span_suggestion(
                 span,
                 "use fully-qualified syntax",
-                format!("<{} as {}>::{}", qself_ty, "Trait", assoc_ident),
-                Applicability::HasPlaceholders,
+                format!("<{} as {}>::{}", qself_ty, tcx.item_name(trait_did), assoc_ident),
+                Applicability::MachineApplicable,
             ).emit();
         }
 
