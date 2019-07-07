@@ -6,12 +6,13 @@ use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Kind, Subst, UnpackedKind};
-use crate::ty::layout::Size;
-use crate::mir::interpret::{ConstValue, sign_extend, Scalar};
+use crate::ty::layout::{Integer, IntegerExt, Size};
+use crate::mir::interpret::{ConstValue, sign_extend, Scalar, truncate};
 use syntax::ast;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_target::spec::abi::Abi;
+use syntax::attr::{SignedInt, UnsignedInt};
 use syntax::symbol::{kw, InternedString};
 
 use std::cell::Cell;
@@ -899,15 +900,31 @@ pub trait PrettyPrinter<'tcx>:
                     return Ok(self);
                 },
                 ty::Uint(ui) => {
-                    p!(write("{}{}", data, ui));
+                    let bit_size = Integer::from_attr(&self.tcx(), UnsignedInt(ui)).size();
+                    let max = truncate(u128::max_value(), bit_size);
+
+                    if data == max {
+                        p!(write("std::{}::MAX", ui))
+                    } else {
+                        p!(write("{}{}", data, ui))
+                    };
                     return Ok(self);
                 },
                 ty::Int(i) =>{
+                    let bit_size = Integer::from_attr(&self.tcx(), SignedInt(i))
+                        .size().bits() as u128;
+                    let min = 1u128 << (bit_size - 1);
+                    let max = min - 1;
+
                     let ty = self.tcx().lift_to_global(&ct.ty).unwrap();
                     let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
                         .unwrap()
                         .size;
-                    p!(write("{}{}", sign_extend(data, size) as i128, i));
+                    match data {
+                        d if d == min => p!(write("std::{}::MIN", i)),
+                        d if d == max => p!(write("std::{}::MAX", i)),
+                        _ => p!(write("{}{}", sign_extend(data, size) as i128, i))
+                    }
                     return Ok(self);
                 },
                 ty::Char => {
