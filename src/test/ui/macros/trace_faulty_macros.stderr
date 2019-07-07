@@ -45,8 +45,6 @@ LL |     my_recursive_macro!();
    = note: to `my_recursive_macro ! (  ) ;`
    = note: expanding `my_recursive_macro! {  }`
    = note: to `my_recursive_macro ! (  ) ;`
-   = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! (  ) ;`
 
 error: aborting due to 2 previous errors
 
