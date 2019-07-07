@@ -116,7 +116,7 @@ impl CrateImplBlocks {
 
 fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayVec<[Crate; 2]>> {
     // Types like slice can have inherent impls in several crates, (core and alloc).
-    // The correspoinding impls are marked with lang items, so we can use them to find the required crates.
+    // The corresponding impls are marked with lang items, so we can use them to find the required crates.
     macro_rules! lang_item_crate {
         ($db:expr, $cur_crate:expr, $($name:expr),+ $(,)?) => {{
             let mut v = ArrayVec::<[Crate; 2]>::new();

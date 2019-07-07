@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 use ra_db::FileId;
-use ra_syntax::ast;
+use ra_syntax::{ast, SmolStr};
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
@@ -508,11 +508,17 @@ where
                 }
                 .collect(&*items);
             }
-            // out of line module, resovle, parse and recurse
-            raw::ModuleData::Declaration { name, ast_id } => {
+            // out of line module, resolve, parse and recurse
+            raw::ModuleData::Declaration { name, ast_id, attr_path } => {
                 let ast_id = ast_id.with_file_id(self.file_id);
                 let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
-                match resolve_submodule(self.def_collector.db, self.file_id, name, is_root) {
+                match resolve_submodule(
+                    self.def_collector.db,
+                    self.file_id,
+                    name,
+                    is_root,
+                    attr_path.as_ref(),
+                ) {
                     Ok(file_id) => {
                         let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
                         let raw_items = self.def_collector.db.raw_items(file_id.into());
@@ -626,6 +632,7 @@ fn resolve_submodule(
     file_id: HirFileId,
     name: &Name,
     is_root: bool,
+    attr_path: Option<&SmolStr>,
 ) -> Result<FileId, RelativePathBuf> {
     // FIXME: handle submodules of inline modules properly
     let file_id = file_id.original_file(db);
@@ -639,7 +646,13 @@ fn resolve_submodule(
     let file_mod = dir_path.join(format!("{}.rs", name));
     let dir_mod = dir_path.join(format!("{}/mod.rs", name));
     let file_dir_mod = dir_path.join(format!("{}/{}.rs", mod_name, name));
-    let mut candidates = ArrayVec::<[_; 2]>::new();
+    let mut candidates = ArrayVec::<[_; 3]>::new();
+    let file_attr_mod = attr_path.map(|file_path| {
+        let file_attr_mod = dir_path.join(file_path.to_string());
+        candidates.push(file_attr_mod.clone());
+
+        file_attr_mod
+    });
     if is_dir_owner {
         candidates.push(file_mod.clone());
         candidates.push(dir_mod);
@@ -651,7 +664,13 @@ fn resolve_submodule(
     // FIXME: handle ambiguity
     match points_to.next() {
         Some(file_id) => Ok(file_id),
-        None => Err(if is_dir_owner { file_mod } else { file_dir_mod }),
+        None => {
+            if let Some(file_attr_mod) = file_attr_mod {
+                Err(file_attr_mod)
+            } else {
+                Err(if is_dir_owner { file_mod } else { file_dir_mod })
+            }
+        }
     }
 }
 

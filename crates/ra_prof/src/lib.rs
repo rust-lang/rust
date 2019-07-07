@@ -52,7 +52,7 @@ pub fn set_filter(f: Filter) {
 /// It supports nested profiling scopes in case when this function invoked multiple times at the execution stack. In this case the profiling information will be nested at the output.
 /// Profiling information is being printed in the stderr.
 ///
-/// #Example
+/// # Example
 /// ```
 /// use ra_prof::{profile, set_filter, Filter};
 ///

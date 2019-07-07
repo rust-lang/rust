@@ -3,7 +3,7 @@ use std::{ops::Index, sync::Arc};
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, AstPtr, SourceFile, TreeArc,
+    AstNode, AstPtr, SmolStr, SourceFile, TreeArc,
 };
 use test_utils::tested_by;
 
@@ -130,7 +130,7 @@ impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ModuleData {
-    Declaration { name: Name, ast_id: FileAstId<ast::Module> },
+    Declaration { name: Name, ast_id: FileAstId<ast::Module>, attr_path: Option<SmolStr> },
     Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
 
@@ -255,9 +255,12 @@ impl RawItemsCollector {
             Some(it) => it.as_name(),
             None => return,
         };
+
+        let attr_path = extract_mod_path_attribute(module);
         let ast_id = self.source_ast_id_map.ast_id(module);
         if module.has_semi() {
-            let item = self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id });
+            let item =
+                self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id, attr_path });
             self.push_item(current_module, RawItem::Module(item));
             return;
         }
@@ -338,4 +341,17 @@ impl RawItemsCollector {
         }
         .push(item)
     }
+}
+
+fn extract_mod_path_attribute(module: &ast::Module) -> Option<SmolStr> {
+    module.attrs().into_iter().find_map(|attr| {
+        attr.as_key_value().and_then(|(name, value)| {
+            let is_path = name == "path";
+            if is_path {
+                Some(value)
+            } else {
+                None
+            }
+        })
+    })
 }

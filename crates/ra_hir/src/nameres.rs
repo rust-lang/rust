@@ -1,6 +1,6 @@
 /// This module implements import-resolution/macro expansion algorithm.
 ///
-/// The result of this module is `CrateDefMap`: a datastructure which contains:
+/// The result of this module is `CrateDefMap`: a data structure which contains:
 ///
 ///   * a tree of modules for the crate
 ///   * for each module, a set of items visible in the module (directly declared
@@ -76,7 +76,7 @@ pub use self::{
     raw::ImportId,
 };
 
-/// Contans all top-level defs from a macro-expanded crate
+/// Contains all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateDefMap {
     krate: Crate,
