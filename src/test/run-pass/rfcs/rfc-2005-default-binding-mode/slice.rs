@@ -5,7 +5,7 @@ fn slice_pat() {
     let sl: &[u8] = b"foo";
 
     match sl {
-        [first, remainder..] => {
+        [first, remainder @ ..] => {
             let _: &u8 = first;
             assert_eq!(first, &b'f');
             assert_eq!(remainder, b"oo");
