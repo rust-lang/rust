@@ -1,0 +1,32 @@
+error: identifier contains non-ASCII characters
+  --> $DIR/lint-non-ascii-idents.rs:4:7
+   |
+LL | const חלודה: usize = 2;
+   |       ^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-non-ascii-idents.rs:2:9
+   |
+LL | #![deny(non_ascii_idents)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: identifier contains non-ASCII characters
+  --> $DIR/lint-non-ascii-idents.rs:6:4
+   |
+LL | fn coöperation() {}
+   |    ^^^^^^^^^^^
+
+error: identifier contains non-ASCII characters
+  --> $DIR/lint-non-ascii-idents.rs:9:9
+   |
+LL |     let naïveté = 2;
+   |         ^^^^^^^
+
+error: identifier contains non-ASCII characters
+  --> $DIR/lint-non-ascii-idents.rs:10:20
+   |
+LL |     println!("{}", naïveté);
+   |                    ^^^^^^^
+
+error: aborting due to 4 previous errors
+
