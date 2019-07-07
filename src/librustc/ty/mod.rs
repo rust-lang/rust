@@ -441,20 +441,16 @@ bitflags! {
 
         /// Present if the type belongs in a local type context.
         /// Only set for Infer other than Fresh.
-        const KEEP_IN_LOCAL_TCX  = 1 << 11;
-
-        // Is there a projection that does not involve a bound region?
-        // Currently we can't normalize projections w/ bound regions.
-        const HAS_NORMALIZABLE_PROJECTION = 1 << 12;
+        const KEEP_IN_LOCAL_TCX  = 1 << 10;
 
         /// Does this have any `ReLateBound` regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND = 1 << 13;
+        const HAS_RE_LATE_BOUND = 1 << 11;
 
-        const HAS_TY_PLACEHOLDER = 1 << 14;
+        const HAS_TY_PLACEHOLDER = 1 << 12;
 
-        const HAS_CT_INFER = 1 << 15;
-        const HAS_CT_PLACEHOLDER = 1 << 16;
+        const HAS_CT_INFER = 1 << 13;
+        const HAS_CT_PLACEHOLDER = 1 << 14;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
@@ -465,7 +461,6 @@ bitflags! {
         const NOMINAL_FLAGS     = TypeFlags::HAS_PARAMS.bits |
                                   TypeFlags::HAS_TY_INFER.bits |
                                   TypeFlags::HAS_RE_INFER.bits |
-                                  TypeFlags::HAS_CT_INFER.bits |
                                   TypeFlags::HAS_RE_PLACEHOLDER.bits |
                                   TypeFlags::HAS_RE_EARLY_BOUND.bits |
                                   TypeFlags::HAS_FREE_REGIONS.bits |
@@ -476,6 +471,7 @@ bitflags! {
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
                                   TypeFlags::HAS_RE_LATE_BOUND.bits |
                                   TypeFlags::HAS_TY_PLACEHOLDER.bits |
+                                  TypeFlags::HAS_CT_INFER.bits |
                                   TypeFlags::HAS_CT_PLACEHOLDER.bits;
     }
 }

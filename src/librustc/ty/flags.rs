@@ -1,5 +1,5 @@
 use crate::ty::subst::{SubstsRef, UnpackedKind};
-use crate::ty::{self, Ty, TypeFlags, TypeFoldable, InferConst};
+use crate::ty::{self, Ty, TypeFlags, InferConst};
 use crate::mir::interpret::ConstValue;
 
 #[derive(Debug)]
@@ -139,11 +139,6 @@ impl FlagComputation {
             }
 
             &ty::Projection(ref data) => {
-                // currently we can't normalize projections that
-                // include bound regions, so track those separately.
-                if !data.has_escaping_bound_vars() {
-                    self.add_flags(TypeFlags::HAS_NORMALIZABLE_PROJECTION);
-                }
                 self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_projection_ty(data);
             }
@@ -239,7 +234,7 @@ impl FlagComputation {
         match c.val {
             ConstValue::Unevaluated(_, substs) => {
                 self.add_substs(substs);
-                self.add_flags(TypeFlags::HAS_NORMALIZABLE_PROJECTION | TypeFlags::HAS_PROJECTION);
+                self.add_flags(TypeFlags::HAS_PROJECTION);
             },
             ConstValue::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_CT_INFER);
