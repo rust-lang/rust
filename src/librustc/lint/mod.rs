@@ -885,7 +885,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     };
 
     match info.kind {
-        ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
+        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
         ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             if info.def_site.is_dummy() {

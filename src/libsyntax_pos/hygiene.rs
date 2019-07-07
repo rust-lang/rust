@@ -59,6 +59,9 @@ pub struct Mark(u32);
 #[derive(Debug)]
 struct MarkData {
     parent: Mark,
+    /// Each mark should have an associated expansion info, but sometimes there's a delay between
+    /// creation of a mark and obtaining its info (e.g. macros are collected first and then
+    /// resolved later), so we use an `Option` here.
     expn_info: Option<ExpnInfo>,
 }
 
@@ -155,11 +158,11 @@ crate struct HygieneData {
 }
 
 impl HygieneData {
-    crate fn new() -> Self {
+    crate fn new(edition: Edition) -> Self {
         HygieneData {
             marks: vec![MarkData {
                 parent: Mark::root(),
-                expn_info: None,
+                expn_info: Some(ExpnInfo::default(ExpnKind::Root, DUMMY_SP, edition)),
             }],
             syntax_contexts: vec![SyntaxContextData {
                 outer_mark: Mark::root(),
@@ -183,7 +186,15 @@ impl HygieneData {
     }
 
     fn expn_info(&self, mark: Mark) -> Option<&ExpnInfo> {
-        self.marks[mark.0 as usize].expn_info.as_ref()
+        if mark != Mark::root() {
+            Some(self.marks[mark.0 as usize].expn_info.as_ref()
+                     .expect("no expansion info for a mark"))
+        } else {
+            // FIXME: Some code relies on `expn_info().is_none()` meaning "no expansion".
+            // Introduce a method for checking for "no expansion" instead and always return
+            // `ExpnInfo` from this function instead of the `Option`.
+            None
+        }
     }
 
     fn is_descendant_of(&self, mut mark: Mark, ancestor: Mark) -> bool {
@@ -670,6 +681,8 @@ impl ExpnInfo {
 /// Expansion kind.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum ExpnKind {
+    /// No expansion, aka root expansion. Only `Mark::root()` has this kind.
+    Root,
     /// Expansion produced by a macro.
     /// FIXME: Some code injected by the compiler before HIR lowering also gets this kind.
     Macro(MacroKind, Symbol),
@@ -680,6 +693,7 @@ pub enum ExpnKind {
 impl ExpnKind {
     pub fn descr(&self) -> Symbol {
         match *self {
+            ExpnKind::Root => kw::PathRoot,
             ExpnKind::Macro(_, descr) => descr,
             ExpnKind::Desugaring(kind) => Symbol::intern(kind.descr()),
         }

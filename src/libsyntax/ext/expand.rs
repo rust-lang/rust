@@ -5,7 +5,7 @@ use crate::source_map::{dummy_spanned, respan};
 use crate::config::StripUnconfigured;
 use crate::ext::base::*;
 use crate::ext::derive::{add_derived_markers, collect_derives};
-use crate::ext::hygiene::{Mark, SyntaxContext};
+use crate::ext::hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnKind};
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use crate::mut_visit::*;
@@ -847,7 +847,17 @@ struct InvocationCollector<'a, 'b> {
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
-        let mark = Mark::fresh(self.cx.current_expansion.mark, None);
+        // Expansion info for all the collected invocations is set upon their resolution,
+        // with exception of the "derive container" case which is not resolved and can get
+        // its expansion info immediately.
+        let expn_info = match &kind {
+            InvocationKind::Attr { attr: None, item, .. } => Some(ExpnInfo::default(
+                ExpnKind::Macro(MacroKind::Attr, sym::derive),
+                item.span(), self.cx.parse_sess.edition,
+            )),
+            _ => None,
+        };
+        let mark = Mark::fresh(self.cx.current_expansion.mark, expn_info);
         self.invocations.push(Invocation {
             kind,
             fragment_kind,

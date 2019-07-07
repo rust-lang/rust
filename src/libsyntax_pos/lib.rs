@@ -60,7 +60,7 @@ impl Globals {
         Globals {
             symbol_interner: Lock::new(symbol::Interner::fresh()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
-            hygiene_data: Lock::new(hygiene::HygieneData::new()),
+            hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
             edition,
         }
     }
@@ -442,6 +442,7 @@ impl Span {
             // Don't print recursive invocations.
             if !info.call_site.source_equal(&prev_span) {
                 let (pre, post) = match info.kind {
+                    ExpnKind::Root => break,
                     ExpnKind::Desugaring(..) => ("desugaring of ", ""),
                     ExpnKind::Macro(macro_kind, _) => match macro_kind {
                         MacroKind::Bang => ("", "!"),
