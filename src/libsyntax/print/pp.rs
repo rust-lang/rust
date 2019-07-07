@@ -452,26 +452,26 @@ impl Printer {
         }
     }
 
-    fn check_stack(&mut self, k: isize) {
+    fn check_stack(&mut self, k: usize) {
         if !self.scan_stack.is_empty() {
             let x = self.scan_top();
             match self.buf[x].token {
                 Token::Begin(_) => {
                     if k > 0 {
-                        let popped = self.scan_pop();
-                        self.buf[popped].size = self.buf[x].size + self.right_total;
+                        self.scan_pop();
+                        self.buf[x].size += self.right_total;
                         self.check_stack(k - 1);
                     }
                 }
                 Token::End => {
                     // paper says + not =, but that makes no sense.
-                    let popped = self.scan_pop();
-                    self.buf[popped].size = 1;
+                    self.scan_pop();
+                    self.buf[x].size = 1;
                     self.check_stack(k + 1);
                 }
                 _ => {
-                    let popped = self.scan_pop();
-                    self.buf[popped].size = self.buf[x].size + self.right_total;
+                    self.scan_pop();
+                    self.buf[x].size += self.right_total;
                     if k > 0 {
                         self.check_stack(k);
                     }
