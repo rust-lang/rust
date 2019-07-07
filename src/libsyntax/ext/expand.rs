@@ -199,9 +199,10 @@ pub enum InvocationKind {
         span: Span,
     },
     Attr {
-        attr: Option<ast::Attribute>,
-        traits: Vec<Path>,
+        attr: ast::Attribute,
         item: Annotatable,
+        // Required for resolving derive helper attributes.
+        derives: Vec<Path>,
         // We temporarily report errors for attribute macros placed after derives
         after_derive: bool,
     },
@@ -210,15 +211,22 @@ pub enum InvocationKind {
         item: Annotatable,
         item_with_markers: Annotatable,
     },
+    /// "Invocation" that contains all derives from an item,
+    /// broken into multiple `Derive` invocations when expanded.
+    /// FIXME: Find a way to remove it.
+    DeriveContainer {
+        derives: Vec<Path>,
+        item: Annotatable,
+    },
 }
 
 impl Invocation {
     pub fn span(&self) -> Span {
-        match self.kind {
-            InvocationKind::Bang { span, .. } => span,
-            InvocationKind::Attr { attr: Some(ref attr), .. } => attr.span,
-            InvocationKind::Attr { attr: None, .. } => DUMMY_SP,
-            InvocationKind::Derive { ref path, .. } => path.span,
+        match &self.kind {
+            InvocationKind::Bang { span, .. } => *span,
+            InvocationKind::Attr { attr, .. } => attr.span,
+            InvocationKind::Derive { path, .. } => path.span,
+            InvocationKind::DeriveContainer { item, .. } => item.span(),
         }
     }
 }
@@ -329,7 +337,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
                 let fragment = self.expand_invoc(invoc, &ext.kind);
                 self.collect_invocations(fragment, &[])
-            } else if let InvocationKind::Attr { attr: None, traits, item, .. } = invoc.kind {
+            } else if let InvocationKind::DeriveContainer { derives: traits, item } = invoc.kind {
                 if !item.derive_allowed() {
                     let attr = attr::find_by_name(item.attrs(), sym::derive)
                         .expect("`derive` attribute should exist");
@@ -522,7 +530,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!()
             }
-            InvocationKind::Attr { attr: Some(attr), mut item, .. } => match ext {
+            InvocationKind::Attr { attr, mut item, .. } => match ext {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_attr_item(span, &item);
                     let item_tok = TokenTree::token(token::Interpolated(Lrc::new(match item {
@@ -578,7 +586,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!()
             }
-            _ => unreachable!()
+            InvocationKind::DeriveContainer { .. } => unreachable!()
         }
     }
 
@@ -805,10 +813,10 @@ struct InvocationCollector<'a, 'b> {
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
         // Expansion info for all the collected invocations is set upon their resolution,
-        // with exception of the "derive container" case which is not resolved and can get
+        // with exception of the derive container case which is not resolved and can get
         // its expansion info immediately.
         let expn_info = match &kind {
-            InvocationKind::Attr { attr: None, item, .. } => Some(ExpnInfo::default(
+            InvocationKind::DeriveContainer { item, .. } => Some(ExpnInfo::default(
                 ExpnKind::Macro(MacroKind::Attr, sym::derive),
                 item.span(), self.cx.parse_sess.edition,
             )),
@@ -833,12 +841,15 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn collect_attr(&mut self,
                     attr: Option<ast::Attribute>,
-                    traits: Vec<Path>,
+                    derives: Vec<Path>,
                     item: Annotatable,
                     kind: AstFragmentKind,
                     after_derive: bool)
                     -> AstFragment {
-        self.collect(kind, InvocationKind::Attr { attr, traits, item, after_derive })
+        self.collect(kind, match attr {
+            Some(attr) => InvocationKind::Attr { attr, item, derives, after_derive },
+            None => InvocationKind::DeriveContainer { derives, item },
+        })
     }
 
     fn find_attr_invoc(&self, attrs: &mut Vec<ast::Attribute>, after_derive: &mut bool)

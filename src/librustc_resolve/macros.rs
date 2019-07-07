@@ -221,14 +221,14 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate> {
         let (path, kind, derives_in_scope, after_derive) = match invoc.kind {
-            InvocationKind::Attr { attr: None, .. } =>
-                return Ok(None),
-            InvocationKind::Attr { attr: Some(ref attr), ref traits, after_derive, .. } =>
-                (&attr.path, MacroKind::Attr, traits.clone(), after_derive),
+            InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
+                (&attr.path, MacroKind::Attr, derives.clone(), after_derive),
             InvocationKind::Bang { ref mac, .. } =>
                 (&mac.node.path, MacroKind::Bang, Vec::new(), false),
             InvocationKind::Derive { ref path, .. } =>
                 (path, MacroKind::Derive, Vec::new(), false),
+            InvocationKind::DeriveContainer { .. } =>
+                return Ok(None),
         };
 
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
