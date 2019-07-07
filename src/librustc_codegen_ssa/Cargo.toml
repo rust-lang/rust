@@ -7,7 +7,6 @@ edition = "2018"
 [lib]
 name = "rustc_codegen_ssa"
 path = "lib.rs"
-crate-type = ["dylib"]
 test = false
 
 [dependencies]

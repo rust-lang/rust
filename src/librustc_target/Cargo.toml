@@ -7,12 +7,10 @@ edition = "2018"
 [lib]
 name = "rustc_target"
 path = "lib.rs"
-crate-type = ["dylib"]
 
 [dependencies]
 bitflags = "1.0"
 log = "0.4"
-rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 serialize = { path = "../libserialize" }
 syntax_pos = { path = "../libsyntax_pos" }

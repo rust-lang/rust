@@ -6,7 +6,6 @@ edition = "2018"
 
 [lib]
 path = "lib.rs"
-crate-type = ["dylib"]
 test = false
 
 [dependencies]

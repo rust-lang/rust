@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "rustc_metadata"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
 flate2 = "1.0"
