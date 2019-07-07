@@ -8,11 +8,12 @@ use test_utils::tested_by;
 use crate::{
     either::Either,
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
+    name::MACRO_RULES,
     nameres::{
         diagnostics::DefDiagnostic, raw, CrateDefMap, CrateModuleId, ItemOrMacro, ModuleData,
         ModuleDef, PerNs, ReachedFixedPoint, Resolution, ResolveMode,
     },
-    AstId, Const, DefDatabase, Enum, Function, HirFileId, KnownName, MacroDef, Module, Name, Path,
+    AstId, Const, DefDatabase, Enum, Function, HirFileId, MacroDef, Module, Name, Path,
     Static, Struct, Trait, TypeAlias, Union,
 };
 
@@ -624,7 +625,7 @@ where
 }
 
 fn is_macro_rules(path: &Path) -> bool {
-    path.as_ident().and_then(Name::as_known_name) == Some(KnownName::MacroRules)
+    path.as_ident() == Some(&MACRO_RULES)
 }
 
 fn resolve_submodule(

@@ -9,6 +9,7 @@ use ra_syntax::ast::{self, DefaultTypeParamOwner, NameOwner, TypeBoundsOwner, Ty
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
+    name::SELF_TYPE,
     path::Path,
     type_ref::TypeRef,
     AdtDef, AsName, Container, Enum, EnumVariant, Function, HasSource, ImplBlock, Name, Struct,
@@ -83,7 +84,7 @@ impl GenericParams {
                 // traits get the Self type as an implicit first type parameter
                 generics.params.push(GenericParam {
                     idx: start,
-                    name: Name::self_type(),
+                    name: SELF_TYPE,
                     default: None,
                 });
                 generics.fill(&*it.source(db).ast, start + 1);

@@ -26,20 +26,12 @@ impl Name {
     /// Note: this is private to make creating name from random string hard.
     /// Hopefully, this should allow us to integrate hygiene cleaner in the
     /// future, and to switch to interned representation of names.
-    fn new(text: SmolStr) -> Name {
+    const fn new(text: SmolStr) -> Name {
         Name { text }
     }
 
     pub(crate) fn missing() -> Name {
         Name::new("[missing name]".into())
-    }
-
-    pub(crate) fn self_param() -> Name {
-        Name::new("self".into())
-    }
-
-    pub(crate) fn self_type() -> Name {
-        Name::new("Self".into())
     }
 
     pub(crate) fn tuple_field_name(idx: usize) -> Name {
@@ -62,38 +54,6 @@ impl Name {
     #[deprecated(note = "use to_string instead")]
     pub fn as_smolstr(&self) -> &SmolStr {
         &self.text
-    }
-
-    pub(crate) fn as_known_name(&self) -> Option<KnownName> {
-        let name = match self.text.as_str() {
-            "isize" => KnownName::Isize,
-            "i8" => KnownName::I8,
-            "i16" => KnownName::I16,
-            "i32" => KnownName::I32,
-            "i64" => KnownName::I64,
-            "i128" => KnownName::I128,
-            "usize" => KnownName::Usize,
-            "u8" => KnownName::U8,
-            "u16" => KnownName::U16,
-            "u32" => KnownName::U32,
-            "u64" => KnownName::U64,
-            "u128" => KnownName::U128,
-            "f32" => KnownName::F32,
-            "f64" => KnownName::F64,
-            "bool" => KnownName::Bool,
-            "char" => KnownName::Char,
-            "str" => KnownName::Str,
-            "Self" => KnownName::SelfType,
-            "self" => KnownName::SelfParam,
-            "macro_rules" => KnownName::MacroRules,
-
-            "std" => KnownName::Std,
-            "iter" => KnownName::Iter,
-            "IntoIterator" => KnownName::IntoIterator,
-            "Item" => KnownName::Item,
-            _ => return None,
-        };
-        Some(name)
     }
 }
 
@@ -130,76 +90,30 @@ impl AsName for ra_db::Dependency {
     }
 }
 
-// Ideally, should be replaced with
-// ```
-// const ISIZE: Name = Name::new("isize")
-// ```
-// but const-fn is not that powerful yet.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum KnownName {
-    Isize,
-    I8,
-    I16,
-    I32,
-    I64,
-    I128,
-
-    Usize,
-    U8,
-    U16,
-    U32,
-    U64,
-    U128,
-
-    F32,
-    F64,
-
-    Bool,
-    Char,
-    Str,
-
-    SelfType,
-    SelfParam,
-
-    MacroRules,
-
-    Std,
-    Iter,
-    IntoIterator,
-    Item,
-}
-
-impl AsName for KnownName {
-    fn as_name(&self) -> Name {
-        let s = match self {
-            KnownName::Isize => "isize",
-            KnownName::I8 => "i8",
-            KnownName::I16 => "i16",
-            KnownName::I32 => "i32",
-            KnownName::I64 => "i64",
-            KnownName::I128 => "i128",
-            KnownName::Usize => "usize",
-            KnownName::U8 => "u8",
-            KnownName::U16 => "u16",
-            KnownName::U32 => "u32",
-            KnownName::U64 => "u64",
-            KnownName::U128 => "u128",
-            KnownName::F32 => "f32",
-            KnownName::F64 => "f64",
-            KnownName::Bool => "bool",
-            KnownName::Char => "char",
-            KnownName::Str => "str",
-            KnownName::SelfType => "Self",
-            KnownName::SelfParam => "self",
-            KnownName::MacroRules => "macro_rules",
-            KnownName::Std => "std",
-            KnownName::Iter => "iter",
-            KnownName::IntoIterator => "IntoIterator",
-            KnownName::Item => "Item",
-        };
-        Name::new(s.into())
-    }
-}
+pub(crate) const ISIZE: Name = Name::new(SmolStr::new_inline_from_ascii(5, b"isize"));
+pub(crate) const I8: Name = Name::new(SmolStr::new_inline_from_ascii(2, b"i8"));
+pub(crate) const I16: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"i16"));
+pub(crate) const I32: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"i32"));
+pub(crate) const I64: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"i64"));
+pub(crate) const I128: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"i128"));
+pub(crate) const USIZE: Name = Name::new(SmolStr::new_inline_from_ascii(5, b"usize"));
+pub(crate) const U8: Name = Name::new(SmolStr::new_inline_from_ascii(2, b"u8"));
+pub(crate) const U16: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"u16"));
+pub(crate) const U32: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"u32"));
+pub(crate) const U64: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"u64"));
+pub(crate) const U128: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"u128"));
+pub(crate) const F32: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"f32"));
+pub(crate) const F64: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"f64"));
+pub(crate) const BOOL: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"bool"));
+pub(crate) const CHAR: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"char"));
+pub(crate) const STR: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"str"));
+pub(crate) const SELF_PARAM: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"self"));
+pub(crate) const SELF_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"Self"));
+pub(crate) const MACRO_RULES: Name = Name::new(SmolStr::new_inline_from_ascii(11, b"macro_rules"));
+pub(crate) const STD: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"std"));
+pub(crate) const ITER: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"iter"));
+pub(crate) const INTO_ITERATOR: Name = Name::new(SmolStr::new_inline_from_ascii(12, b"IntoIterator"));
+pub(crate) const ITEM: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"Item"));
 
 fn resolve_name(text: &SmolStr) -> SmolStr {
     let raw_start = "r#";

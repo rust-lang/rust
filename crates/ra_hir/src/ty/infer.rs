@@ -40,6 +40,7 @@ use crate::{
         PatId, Statement, UnaryOp,
     },
     generics::{GenericParams, HasGenericParams},
+    name::{SELF_TYPE, INTO_ITERATOR, ITEM, ITER, STD},
     nameres::{Namespace, PerNs},
     path::{GenericArg, GenericArgs, PathKind, PathSegment},
     resolve::{
@@ -48,7 +49,7 @@ use crate::{
     },
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    AdtDef, AsName, ConstData, DefWithBody, FnData, Function, HirDatabase, ImplItem, KnownName,
+    AdtDef, ConstData, DefWithBody, FnData, Function, HirDatabase, ImplItem,
     ModuleDef, Name, Path, StructField,
 };
 
@@ -842,7 +843,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // Parent arguments are unknown, except for the receiver type
         if let Some(parent_generics) = def_generics.and_then(|p| p.parent_params.clone()) {
             for param in &parent_generics.params {
-                if param.name.as_known_name() == Some(crate::KnownName::SelfType) {
+                if param.name == SELF_TYPE {
                     substs.push(receiver_ty.clone());
                 } else {
                     substs.push(Ty::Unknown);
@@ -1346,15 +1347,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let into_iter_path = Path {
             kind: PathKind::Abs,
             segments: vec![
-                PathSegment { name: KnownName::Std.as_name(), args_and_bindings: None },
-                PathSegment { name: KnownName::Iter.as_name(), args_and_bindings: None },
-                PathSegment { name: KnownName::IntoIterator.as_name(), args_and_bindings: None },
+                PathSegment { name: STD, args_and_bindings: None },
+                PathSegment { name: ITER, args_and_bindings: None },
+                PathSegment { name: INTO_ITERATOR, args_and_bindings: None },
             ],
         };
 
         match self.resolver.resolve_path_segments(self.db, &into_iter_path).into_fully_resolved() {
             PerNs { types: Some(Def(Trait(trait_))), .. } => {
-                Some(trait_.associated_type_by_name(self.db, KnownName::Item.as_name())?)
+                Some(trait_.associated_type_by_name(self.db, ITEM)?)
             }
             _ => None,
         }

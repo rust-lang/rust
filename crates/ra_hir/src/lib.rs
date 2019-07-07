@@ -49,7 +49,7 @@ mod marks;
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase, InternDatabase},
     ids::MacroFileKind,
-    name::{AsName, KnownName},
+    name::AsName,
     resolve::Resolver,
     source_id::{AstId, FileAstId},
 };
