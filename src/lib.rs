@@ -34,6 +34,7 @@ mod allocator;
 mod analyze;
 mod archive;
 mod base;
+mod codegen_i128;
 mod common;
 mod constant;
 mod debuginfo;

@@ -846,7 +846,7 @@ pub fn codegen_drop<'a, 'tcx: 'a>(
                 );
                 drop_place.write_place_ref(fx, arg_place);
                 let arg_value = arg_place.to_cvalue(fx);
-                crate::abi::codegen_call_inner(
+                codegen_call_inner(
                     fx,
                     None,
                     drop_fn_ty,

@@ -831,18 +831,8 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
         );
     }
 
-    if lhs.layout().ty == fx.tcx.types.u128 || lhs.layout().ty == fx.tcx.types.i128 {
-        if out_ty == fx.tcx.types.bool {
-            let layout = fx.layout_of(fx.tcx.types.bool);
-            let val = fx.bcx.ins().iconst(types::I8, 0);
-            return CValue::by_val(val, layout);
-        } else {
-            let layout = fx.layout_of(out_ty);
-            let a = fx.bcx.ins().iconst(types::I64, 42);
-            let b = fx.bcx.ins().iconst(types::I64, 0);
-            let val = fx.bcx.ins().iconcat(a, b);
-            return CValue::by_val(val, layout);
-        }
+    if let Some(res) = crate::codegen_i128::maybe_codegen(fx, bin_op, false, signed, lhs, rhs, out_ty) {
+        return res;
     }
 
     binop_match! {
@@ -894,79 +884,74 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
 
     let lhs = in_lhs.load_scalar(fx);
     let rhs = in_rhs.load_scalar(fx);
-    let (res, has_overflow) = if in_lhs.layout().ty == fx.tcx.types.u128 || in_lhs.layout().ty == fx.tcx.types.i128 {
-        match (bin_op, signed) {
-            _ => {
-                let a = fx.bcx.ins().iconst(types::I64, 42);
-                let b = fx.bcx.ins().iconst(types::I64, 0);
-                (fx.bcx.ins().iconcat(a, b), fx.bcx.ins().bconst(types::B1, false))
-            }
+
+    if let Some(res) = crate::codegen_i128::maybe_codegen(fx, bin_op, true, signed, in_lhs, in_rhs, out_ty) {
+        return res;
+    }
+
+    let (res, has_overflow) = match bin_op {
+        BinOp::Add => {
+            /*let (val, c_out) = fx.bcx.ins().iadd_cout(lhs, rhs);
+            (val, c_out)*/
+            // FIXME(CraneStation/cranelift#849) legalize iadd_cout for i8 and i16
+            let val = fx.bcx.ins().iadd(lhs, rhs);
+            let has_overflow = if !signed {
+                fx.bcx.ins().icmp(IntCC::UnsignedLessThan, val, lhs)
+            } else {
+                let rhs_is_negative = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, rhs, 0);
+                let slt = fx.bcx.ins().icmp(IntCC::SignedLessThan, val, lhs);
+                fx.bcx.ins().bxor(rhs_is_negative, slt)
+            };
+            (val, has_overflow)
         }
-    } else {
-        match bin_op {
-            BinOp::Add => {
-                /*let (val, c_out) = fx.bcx.ins().iadd_cout(lhs, rhs);
-                (val, c_out)*/
-                // FIXME(CraneStation/cranelift#849) legalize iadd_cout for i8 and i16
-                let val = fx.bcx.ins().iadd(lhs, rhs);
-                let has_overflow = if !signed {
-                    fx.bcx.ins().icmp(IntCC::UnsignedLessThan, val, lhs)
-                } else {
-                    let rhs_is_negative = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, rhs, 0);
-                    let slt = fx.bcx.ins().icmp(IntCC::SignedLessThan, val, lhs);
-                    fx.bcx.ins().bxor(rhs_is_negative, slt)
-                };
-                (val, has_overflow)
-            }
-            BinOp::Sub => {
-                /*let (val, b_out) = fx.bcx.ins().isub_bout(lhs, rhs);
-                (val, b_out)*/
-                // FIXME(CraneStation/cranelift#849) legalize isub_bout for i8 and i16
-                let val = fx.bcx.ins().isub(lhs, rhs);
-                let has_overflow = if !signed {
-                    fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, val, lhs)
-                } else {
-                    let rhs_is_negative = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, rhs, 0);
-                    let sgt = fx.bcx.ins().icmp(IntCC::SignedGreaterThan, val, lhs);
-                    fx.bcx.ins().bxor(rhs_is_negative, sgt)
-                };
-                (val, has_overflow)
-            }
-            BinOp::Mul => {
-                let val = fx.bcx.ins().imul(lhs, rhs);
-                /*let val_hi = if !signed {
-                    fx.bcx.ins().umulhi(lhs, rhs)
-                } else {
-                    fx.bcx.ins().smulhi(lhs, rhs)
-                };
-                let has_overflow = fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0);*/
-                // TODO: check for overflow
-                let has_overflow = fx.bcx.ins().bconst(types::B1, false);
-                (val, has_overflow)
-            }
-            BinOp::Shl => {
-                let val = fx.bcx.ins().ishl(lhs, rhs);
-                // TODO: check for overflow
-                let has_overflow = fx.bcx.ins().bconst(types::B1, false);
-                (val, has_overflow)
-            }
-            BinOp::Shr => {
-                let val = if !signed {
-                    fx.bcx.ins().ushr(lhs, rhs)
-                } else {
-                    fx.bcx.ins().sshr(lhs, rhs)
-                };
-                // TODO: check for overflow
-                let has_overflow = fx.bcx.ins().bconst(types::B1, false);
-                (val, has_overflow)
-            }
-            _ => bug!(
-                "binop {:?} on checked int/uint lhs: {:?} rhs: {:?}",
-                bin_op,
-                in_lhs,
-                in_rhs
-            ),
+        BinOp::Sub => {
+            /*let (val, b_out) = fx.bcx.ins().isub_bout(lhs, rhs);
+            (val, b_out)*/
+            // FIXME(CraneStation/cranelift#849) legalize isub_bout for i8 and i16
+            let val = fx.bcx.ins().isub(lhs, rhs);
+            let has_overflow = if !signed {
+                fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, val, lhs)
+            } else {
+                let rhs_is_negative = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, rhs, 0);
+                let sgt = fx.bcx.ins().icmp(IntCC::SignedGreaterThan, val, lhs);
+                fx.bcx.ins().bxor(rhs_is_negative, sgt)
+            };
+            (val, has_overflow)
         }
+        BinOp::Mul => {
+            let val = fx.bcx.ins().imul(lhs, rhs);
+            /*let val_hi = if !signed {
+                fx.bcx.ins().umulhi(lhs, rhs)
+            } else {
+                fx.bcx.ins().smulhi(lhs, rhs)
+            };
+            let has_overflow = fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0);*/
+            // TODO: check for overflow
+            let has_overflow = fx.bcx.ins().bconst(types::B1, false);
+            (val, has_overflow)
+        }
+        BinOp::Shl => {
+            let val = fx.bcx.ins().ishl(lhs, rhs);
+            // TODO: check for overflow
+            let has_overflow = fx.bcx.ins().bconst(types::B1, false);
+            (val, has_overflow)
+        }
+        BinOp::Shr => {
+            let val = if !signed {
+                fx.bcx.ins().ushr(lhs, rhs)
+            } else {
+                fx.bcx.ins().sshr(lhs, rhs)
+            };
+            // TODO: check for overflow
+            let has_overflow = fx.bcx.ins().bconst(types::B1, false);
+            (val, has_overflow)
+        }
+        _ => bug!(
+            "binop {:?} on checked int/uint lhs: {:?} rhs: {:?}",
+            bin_op,
+            in_lhs,
+            in_rhs
+        ),
     };
 
     let has_overflow = fx.bcx.ins().bint(types::I8, has_overflow);
