@@ -13,7 +13,7 @@ crossbeam-channel = "0.3.5"
 flexi_logger = "0.13.0"
 log = "0.4.3"
 url_serde = "0.2.0"
-lsp-types = { git = "https://github.com/kjeremy/languageserver-types", branch = "flatten", features = ["proposed"] }
+lsp-types = { version = "0.59.0", features = ["proposed"] }
 rustc-hash = "1.0"
 parking_lot = "0.8.0"
 

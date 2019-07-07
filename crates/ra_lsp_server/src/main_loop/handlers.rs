@@ -2,11 +2,11 @@ use std::{fmt::Write as _, io::Write as _};
 
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
-    CodeAction, CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeKind,
-    FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
-    PrepareRenameResponse, Range, RenameParams, SymbolInformation, TextDocumentIdentifier,
-    TextEdit, WorkspaceEdit,
+    CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
+    DiagnosticSeverity, DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
+    FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
+    MarkupKind, Position, PrepareRenameResponse, Range, RenameParams, SymbolInformation,
+    TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
     AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo,
@@ -212,7 +212,7 @@ pub fn handle_document_symbol(
         }
     }
 
-    Ok(Some(req::DocumentSymbolResponse::Nested(res)))
+    Ok(Some(res.into()))
 }
 
 pub fn handle_workspace_symbol(
@@ -275,7 +275,7 @@ pub fn handle_goto_definition(
         .map(|nav| RangeInfo::new(nav_range, nav))
         .map(|nav| to_location_link(&nav, &world, &line_index))
         .collect::<Result<Vec<_>>>()?;
-    Ok(Some(req::GotoDefinitionResponse::Link(res)))
+    Ok(Some(res.into()))
 }
 
 pub fn handle_goto_implementation(
@@ -295,7 +295,7 @@ pub fn handle_goto_implementation(
         .map(|nav| RangeInfo::new(nav_range, nav))
         .map(|nav| to_location_link(&nav, &world, &line_index))
         .collect::<Result<Vec<_>>>()?;
-    Ok(Some(req::GotoDefinitionResponse::Link(res)))
+    Ok(Some(res.into()))
 }
 
 pub fn handle_goto_type_definition(
@@ -315,7 +315,7 @@ pub fn handle_goto_type_definition(
         .map(|nav| RangeInfo::new(nav_range, nav))
         .map(|nav| to_location_link(&nav, &world, &line_index))
         .collect::<Result<Vec<_>>>()?;
-    Ok(Some(req::GotoDefinitionResponse::Link(res)))
+    Ok(Some(res.into()))
 }
 
 pub fn handle_parent_module(
@@ -433,9 +433,10 @@ pub fn handle_completion(
         Some(items) => items,
     };
     let line_index = world.analysis().file_line_index(position.file_id);
-    let items = items.into_iter().map(|item| item.conv_with(&line_index)).collect();
+    let items: Vec<CompletionItem> =
+        items.into_iter().map(|item| item.conv_with(&line_index)).collect();
 
-    Ok(Some(req::CompletionResponse::Array(items)))
+    Ok(Some(items.into()))
 }
 
 pub fn handle_folding_range(
