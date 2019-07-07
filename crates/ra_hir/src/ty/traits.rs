@@ -75,7 +75,7 @@ pub enum Obligation {
     /// Prove that a certain type implements a trait (the type is the `Self` type
     /// parameter to the `TraitRef`).
     Trait(TraitRef),
-    // Projection(ProjectionPredicate),
+    Projection(ProjectionPredicate),
 }
 
 impl Obligation {

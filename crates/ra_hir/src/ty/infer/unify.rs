@@ -2,7 +2,7 @@
 
 use super::InferenceContext;
 use crate::db::HirDatabase;
-use crate::ty::{Canonical, InferTy, TraitRef, Ty};
+use crate::ty::{Canonical, InferTy, ProjectionPredicate, ProjectionTy, TraitRef, Ty};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b, D>
@@ -86,6 +86,25 @@ where
         }
     }
 
+    fn do_canonicalize_projection_ty(&mut self, projection_ty: ProjectionTy) -> ProjectionTy {
+        let params = projection_ty
+            .parameters
+            .iter()
+            .map(|ty| self.do_canonicalize_ty(ty.clone()))
+            .collect::<Vec<_>>();
+        ProjectionTy { associated_ty: projection_ty.associated_ty, parameters: params.into() }
+    }
+
+    fn do_canonicalize_projection_predicate(
+        &mut self,
+        projection: ProjectionPredicate,
+    ) -> ProjectionPredicate {
+        let ty = self.do_canonicalize_ty(projection.ty);
+        let projection_ty = self.do_canonicalize_projection_ty(projection.projection_ty);
+
+        ProjectionPredicate { ty, projection_ty }
+    }
+
     pub fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
         let result = self.do_canonicalize_ty(ty);
         self.into_canonicalized(result)
@@ -93,6 +112,14 @@ where
 
     pub fn canonicalize_trait_ref(mut self, trait_ref: TraitRef) -> Canonicalized<TraitRef> {
         let result = self.do_canonicalize_trait_ref(trait_ref);
+        self.into_canonicalized(result)
+    }
+
+    pub fn canonicalize_projection(
+        mut self,
+        projection: ProjectionPredicate,
+    ) -> Canonicalized<ProjectionPredicate> {
+        let result = self.do_canonicalize_projection_predicate(projection);
         self.into_canonicalized(result)
     }
 }
