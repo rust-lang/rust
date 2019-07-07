@@ -199,6 +199,23 @@ pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)>
     None
 }
 
+/// Recover the essential nodes of a desugared while loop:
+/// `while cond { body }` becomes `(cond, body)`.
+pub fn while_loop(expr: &hir::Expr) -> Option<(&hir::Expr, &hir::Expr)> {
+    if_chain! {
+        if let hir::ExprKind::Loop(block, _, hir::LoopSource::While) = &expr.node;
+        if let hir::Block { expr: Some(expr), .. } = &**block;
+        if let hir::ExprKind::Match(cond, arms, hir::MatchSource::WhileDesugar) = &expr.node;
+        if let hir::ExprKind::DropTemps(cond) = &cond.node;
+        if let [arm, ..] = &arms[..];
+        if let hir::Arm { body, .. } = arm;
+        then {
+            return Some((cond, body));
+        }
+    }
+    None
+}
+
 /// Recover the essential nodes of a desugared if block
 /// `if cond { then } else { els }` becomes `(cond, then, Some(els))`
 pub fn if_block(expr: &hir::Expr) -> Option<(&hir::Expr, &hir::Expr, Option<&hir::Expr>)> {

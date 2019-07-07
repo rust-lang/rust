@@ -148,11 +148,6 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             (&ExprKind::Tup(ref l_tup), &ExprKind::Tup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
             (&ExprKind::Unary(l_op, ref le), &ExprKind::Unary(r_op, ref re)) => l_op == r_op && self.eq_expr(le, re),
             (&ExprKind::Array(ref l), &ExprKind::Array(ref r)) => self.eq_exprs(l, r),
-            (&ExprKind::While(ref lc, ref lb, ref ll), &ExprKind::While(ref rc, ref rb, ref rl)) => {
-                self.eq_expr(lc, rc)
-                    && self.eq_block(lb, rb)
-                    && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
-            },
             (&ExprKind::DropTemps(ref le), &ExprKind::DropTemps(ref re)) => self.eq_expr(le, re),
             _ => false,
         }
@@ -523,13 +518,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Unary(lop, ref le) => {
                 lop.hash(&mut self.s);
                 self.hash_expr(le);
-            },
-            ExprKind::While(ref cond, ref b, l) => {
-                self.hash_expr(cond);
-                self.hash_block(b);
-                if let Some(l) = l {
-                    self.hash_name(l.ident.name);
-                }
             },
         }
     }

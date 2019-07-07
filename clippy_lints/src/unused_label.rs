@@ -68,7 +68,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnusedLabelVisitor<'a, 'tcx> {
                     self.labels.remove(&label.ident.as_str());
                 }
             },
-            hir::ExprKind::Loop(_, Some(label), _) | hir::ExprKind::While(_, _, Some(label)) => {
+            hir::ExprKind::Loop(_, Some(label), _) => {
                 self.labels.insert(label.ident.as_str(), expr.span);
             },
             _ => (),
