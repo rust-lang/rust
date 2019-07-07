@@ -1011,13 +1011,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                         synthetic,
                         ..
                     } => {
-                        if param.name.ident().name == kw::SelfUpper {
-                            span_bug!(
-                                param.span,
-                                "`Self` should not be the name of a regular parameter"
-                            );
-                        }
-
                         if !allow_defaults && default.is_some() {
                             if !tcx.features().default_type_parameter_fallback {
                                 tcx.lint_hir(
@@ -1041,13 +1034,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                         }
                     }
                     GenericParamKind::Const { .. } => {
-                        if param.name.ident().name == kw::SelfUpper {
-                            span_bug!(
-                                param.span,
-                                "`Self` should not be the name of a regular parameter",
-                            );
-                        }
-
                         ty::GenericParamDefKind::Const
                     }
                     _ => return None,
@@ -1569,7 +1555,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     &format!(
                                         "defining opaque type use restricts opaque \
                                          type by using the generic parameter `{}` twice",
-                                        p.name
+                                        p,
                                     ),
                                 );
                                 return;
