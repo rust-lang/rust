@@ -1,0 +1,12 @@
+error[E0658]: `cfg(doctest)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg_doctest.rs:1:7
+   |
+LL | #[cfg(doctest)]
+   |       ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/62210
+   = help: add #![feature(cfg_doctest)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

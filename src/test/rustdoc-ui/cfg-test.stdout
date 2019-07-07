@@ -1,6 +1,7 @@
 
-running 1 test
-test $DIR/cfg-test.rs - Foo (line 18) ... ok
+running 2 tests
+test $DIR/cfg-test.rs - Bar (line 28) ... ok
+test $DIR/cfg-test.rs - Foo (line 20) ... ok
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
