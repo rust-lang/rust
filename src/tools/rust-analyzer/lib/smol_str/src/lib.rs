@@ -1,10 +1,4 @@
-use std::{
-    fmt, hash, iter,
-    borrow::Borrow,
-    cmp::Ordering,
-    ops::Deref,
-    sync::Arc,
-};
+use std::{borrow::Borrow, cmp::Ordering, fmt, hash, iter, ops::Deref, sync::Arc};
 
 /// A `SmolStr` is a string type that has the following properties:
 ///
@@ -25,6 +19,32 @@ use std::{
 pub struct SmolStr(Repr);
 
 impl SmolStr {
+    /// Constructs an inline variant of `SmolStr` at compile time.
+    ///
+    /// `len` must be short (<= 22), `bytes` must be ascii. If `len` is smaller
+    /// than the actual len of `bytes`, the string is truncated.
+    pub const fn new_inline_from_ascii(len: usize, bytes: &[u8]) -> SmolStr {
+        let _len_is_short = [(); INLINE_CAP + 1][len];
+
+        const ZEROS: &[u8] = &[0; INLINE_CAP];
+
+        let mut buf = [0; INLINE_CAP];
+        macro_rules! s {
+            ($($idx:literal),*) => ( $(s!(set $idx);)* );
+            (set $idx:literal) => ({
+                let src: &[u8] = [ZEROS, bytes][($idx < len) as usize];
+                let b = src[$idx];
+                let _is_ascii = [(); 128][b as usize];
+                buf[$idx] = b
+            });
+        }
+        s!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21);
+        SmolStr(Repr::Inline {
+            len: len as u8,
+            buf,
+        })
+    }
+
     pub fn new<T>(text: T) -> SmolStr
     where
         T: Into<String> + AsRef<str>,
@@ -56,7 +76,7 @@ impl SmolStr {
     pub fn is_heap_allocated(&self) -> bool {
         match self.0 {
             Repr::Heap(..) => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -178,11 +198,14 @@ impl iter::FromIterator<char> for SmolStr {
             ch.encode_utf8(&mut buf[len..]);
             len += size;
         }
-        SmolStr(Repr::Inline { len: len as u8, buf })
+        SmolStr(Repr::Inline {
+            len: len as u8,
+            buf,
+        })
     }
 }
 
-fn build_from_str_iter<T>(mut iter: impl Iterator<Item=T>) -> SmolStr
+fn build_from_str_iter<T>(mut iter: impl Iterator<Item = T>) -> SmolStr
 where
     T: AsRef<str>,
     String: iter::Extend<T>,
@@ -202,7 +225,10 @@ where
         (&mut buf[len..][..size]).copy_from_slice(slice.as_bytes());
         len += size;
     }
-    SmolStr(Repr::Inline { len: len as u8, buf })
+    SmolStr(Repr::Inline {
+        len: len as u8,
+        buf,
+    })
 }
 
 impl iter::FromIterator<String> for SmolStr {

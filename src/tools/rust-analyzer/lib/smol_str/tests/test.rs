@@ -27,6 +27,22 @@ fn conversions() {
     assert_eq!(s, "Hello, World!")
 }
 
+#[test]
+fn const_fn_ctor() {
+    const EMPTY: SmolStr = SmolStr::new_inline_from_ascii(0, b"");
+    const A: SmolStr = SmolStr::new_inline_from_ascii(1, b"A");
+    const HELLO: SmolStr = SmolStr::new_inline_from_ascii(5, b"HELLO");
+    const LONG: SmolStr = SmolStr::new_inline_from_ascii(22, b"ABCDEFGHIZKLMNOPQRSTUV");
+
+    // const TOO_LONG: SmolStr = SmolStr::new_inline_from_ascii(23, b"ABCDEFGHIZKLMNOPQRSTUVW");
+    // const NON_ASCII: SmolStr = SmolStr::new_inline_from_ascii(2, &[209, 139]);
+
+    assert_eq!(EMPTY, SmolStr::from(""));
+    assert_eq!(A, SmolStr::from("A"));
+    assert_eq!(HELLO, SmolStr::from("HELLO"));
+    assert_eq!(LONG, SmolStr::from("ABCDEFGHIZKLMNOPQRSTUV"));
+}
+
 fn check_props(std_str: &str, smol: SmolStr) -> Result<(), proptest::test_runner::TestCaseError> {
     prop_assert_eq!(smol.as_str(), std_str);
     prop_assert_eq!(smol.len(), std_str.len());
@@ -97,7 +113,6 @@ fn test_from_char_iterator() {
         ("if", false),
         ("for", false),
         ("impl", false),
-
         // Strings containing two-byte characters
         ("パーティーへ行かないか", true),
         ("パーティーへ行か", true),
@@ -105,7 +120,6 @@ fn test_from_char_iterator() {
         ("和製漢語", false),
         ("部落格", false),
         ("사회과학원 어학연구소", true),
-
         // String containing diverse characters
         ("表ポあA鷗ŒéＢ逍Üßªąñ丂㐀𠀀", true),
     ];
