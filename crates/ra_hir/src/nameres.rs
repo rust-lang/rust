@@ -1,6 +1,6 @@
 /// This module implements import-resolution/macro expansion algorithm.
 ///
-/// The result of this module is `CrateDefMap`: a datastructure which contains:
+/// The result of this module is `CrateDefMap`: a data structure which contains:
 ///
 ///   * a tree of modules for the crate
 ///   * for each module, a set of items visible in the module (directly declared
