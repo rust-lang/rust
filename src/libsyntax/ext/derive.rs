@@ -63,11 +63,11 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::P
 
     let span = span.with_ctxt(cx.backtrace());
     item.visit_attrs(|attrs| {
-        if names.contains(&Symbol::intern("Eq")) && names.contains(&Symbol::intern("PartialEq")) {
-            let meta = cx.meta_word(span, Symbol::intern("structural_match"));
+        if names.contains(&sym::Eq) && names.contains(&sym::PartialEq) {
+            let meta = cx.meta_word(span, sym::structural_match);
             attrs.push(cx.attribute(span, meta));
         }
-        if names.contains(&Symbol::intern("Copy")) {
+        if names.contains(&sym::Copy) {
             let meta = cx.meta_word(span, sym::rustc_copy_clone_marker);
             attrs.push(cx.attribute(span, meta));
         }

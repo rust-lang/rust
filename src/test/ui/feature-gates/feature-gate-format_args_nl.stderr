@@ -1,4 +1,4 @@
-error[E0658]: `format_args_nl` is only for internal language use and is subject to change
+error[E0658]: use of unstable library feature 'format_args_nl': `format_args_nl` is only for internal language use and is subject to change
   --> $DIR/feature-gate-format_args_nl.rs:2:5
    |
 LL |     format_args_nl!("");

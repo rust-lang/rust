@@ -103,8 +103,8 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! extern crate serialize;
-//! use serialize::json::{self, ToJson, Json};
+//! extern crate serialize as rustc_serialize;
+//! use rustc_serialize::json::{self, ToJson, Json};
 //!
 //! // A custom data structure
 //! struct ComplexNum {
@@ -120,7 +120,7 @@
 //! }
 //!
 //! // Only generate `RustcEncodable` trait implementation
-//! #[derive(Encodable)]
+//! #[derive(RustcEncodable)]
 //! pub struct ComplexNumRecord {
 //!     uid: u8,
 //!     dsc: String,
@@ -143,12 +143,12 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! extern crate serialize;
+//! extern crate serialize as rustc_serialize;
 //! use std::collections::BTreeMap;
-//! use serialize::json::{self, Json, ToJson};
+//! use rustc_serialize::json::{self, Json, ToJson};
 //!
-//! // Only generate `Decodable` trait implementation
-//! #[derive(Decodable)]
+//! // Only generate `RustcDecodable` trait implementation
+//! #[derive(RustcDecodable)]
 //! pub struct TestStruct {
 //!     data_int: u8,
 //!     data_str: String,

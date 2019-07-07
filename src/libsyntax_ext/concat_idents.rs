@@ -2,25 +2,16 @@ use rustc_data_structures::thin_vec::ThinVec;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};
-use syntax::feature_gate;
 use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
 use syntax_pos::Span;
-use syntax_pos::symbol::{Symbol, sym};
+use syntax_pos::symbol::Symbol;
 use syntax::tokenstream::TokenTree;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
                               sp: Span,
                               tts: &[TokenTree])
                               -> Box<dyn base::MacResult + 'cx> {
-    if !cx.ecfg.enable_concat_idents() {
-        feature_gate::emit_feature_err(&cx.parse_sess,
-                                       sym::concat_idents,
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_CONCAT_IDENTS);
-    }
-
     if tts.is_empty() {
         cx.span_err(sp, "concat_idents! takes 1 or more arguments.");
         return DummyResult::any(sp);

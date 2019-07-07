@@ -3,7 +3,6 @@
 use crate::deriving::{self, pathvec_std};
 use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
-use crate::deriving::warn_if_deprecated;
 
 use syntax::ast;
 use syntax::ast::{Expr, MetaItem, Mutability};
@@ -26,7 +25,6 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt<'_>,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
                                  push: &mut dyn FnMut(Annotatable)) {
-    warn_if_deprecated(cx, span, "Decodable");
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
 }
 

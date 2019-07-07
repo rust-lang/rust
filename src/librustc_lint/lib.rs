@@ -30,6 +30,7 @@ mod nonstandard_style;
 pub mod builtin;
 mod types;
 mod unused;
+mod non_ascii_idents;
 
 use rustc::lint;
 use rustc::lint::{EarlyContext, LateContext, LateLintPass, EarlyLintPass, LintPass, LintArray};
@@ -61,6 +62,7 @@ use nonstandard_style::*;
 use builtin::*;
 use types::*;
 use unused::*;
+use non_ascii_idents::*;
 use rustc::lint::internal::*;
 
 /// Useful for other parts of the compiler.
@@ -97,6 +99,7 @@ macro_rules! early_lint_passes {
             NonCamelCaseTypes: NonCamelCaseTypes,
             DeprecatedAttr: DeprecatedAttr::new(),
             WhileTrue: WhileTrue,
+            NonAsciiIdents: NonAsciiIdents,
         ]);
     )
 }

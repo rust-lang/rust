@@ -90,6 +90,7 @@ pub struct LoweringContext<'a> {
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
     bodies: BTreeMap<hir::BodyId, hir::Body>,
     exported_macros: Vec<hir::MacroDef>,
+    non_exported_macro_attrs: Vec<ast::Attribute>,
 
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
 
@@ -252,6 +253,7 @@ pub fn lower_crate(
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
         exported_macros: Vec::new(),
+        non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
@@ -662,6 +664,7 @@ impl<'a> LoweringContext<'a> {
             attrs,
             span: c.span,
             exported_macros: hir::HirVec::from(self.exported_macros),
+            non_exported_macro_attrs: hir::HirVec::from(self.non_exported_macro_attrs),
             items: self.items,
             trait_items: self.trait_items,
             impl_items: self.impl_items,
@@ -4022,6 +4025,8 @@ impl<'a> LoweringContext<'a> {
                     body,
                     legacy: def.legacy,
                 });
+            } else {
+                self.non_exported_macro_attrs.extend(attrs.into_iter());
             }
             return None;
         }

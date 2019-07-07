@@ -548,10 +548,10 @@ impl server::Literal for Rustc<'_> {
         self.lit(token::Float, Symbol::intern(n), None)
     }
     fn f32(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Float, Symbol::intern(n), Some(Symbol::intern("f32")))
+        self.lit(token::Float, Symbol::intern(n), Some(sym::f32))
     }
     fn f64(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Float, Symbol::intern(n), Some(Symbol::intern("f64")))
+        self.lit(token::Float, Symbol::intern(n), Some(sym::f64))
     }
     fn string(&mut self, string: &str) -> Self::Literal {
         let mut escaped = String::new();

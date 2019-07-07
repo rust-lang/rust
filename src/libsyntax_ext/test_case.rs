@@ -17,7 +17,6 @@ use syntax::source_map::respan;
 use syntax::symbol::sym;
 use syntax_pos::Span;
 use syntax::source_map::{ExpnInfo, MacroAttribute};
-use syntax::feature_gate;
 
 pub fn expand(
     ecx: &mut ExtCtxt<'_>,
@@ -25,14 +24,6 @@ pub fn expand(
     _meta_item: &ast::MetaItem,
     anno_item: Annotatable
 ) -> Vec<Annotatable> {
-    if !ecx.ecfg.enable_custom_test_frameworks() {
-        feature_gate::emit_feature_err(&ecx.parse_sess,
-                                       sym::custom_test_frameworks,
-                                       attr_sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_CUSTOM_TEST_FRAMEWORKS);
-    }
-
     if !ecx.ecfg.should_test { return vec![]; }
 
     let sp = {
