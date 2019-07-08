@@ -51,7 +51,7 @@ fn main_inner() -> Result<()> {
             .and_then(|v| InitializationOptions::deserialize(v).ok())
             .unwrap_or_default();
 
-        ra_lsp_server::main_loop(workspace_roots, opts, r, s)
+        ra_lsp_server::main_loop(workspace_roots, params.capabilities, opts, r, s)
     })?;
     log::info!("shutting down IO...");
     threads.join()?;

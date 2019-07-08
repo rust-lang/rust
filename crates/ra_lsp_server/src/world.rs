@@ -19,6 +19,13 @@ use crate::{
     LspError, Result,
 };
 
+#[derive(Debug, Clone)]
+pub struct Options {
+    pub publish_decorations: bool,
+    pub show_workspace_loaded: bool,
+    pub supports_location_link: bool,
+}
+
 /// `WorldState` is the primary mutable state of the language server
 ///
 /// The most interesting components are `vfs`, which stores a consistent
@@ -26,6 +33,7 @@ use crate::{
 /// incremental salsa database.
 #[derive(Debug)]
 pub struct WorldState {
+    pub options: Options,
     pub roots_to_scan: usize,
     pub roots: Vec<PathBuf>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
@@ -36,6 +44,7 @@ pub struct WorldState {
 
 /// An immutable snapshot of the world's state at a point in time.
 pub struct WorldSnapshot {
+    pub options: Options,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
     pub vfs: Arc<RwLock<Vfs>>,
@@ -47,6 +56,7 @@ impl WorldState {
         folder_roots: Vec<PathBuf>,
         workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
+        options: Options,
     ) -> WorldState {
         let mut change = AnalysisChange::new();
 
@@ -78,6 +88,7 @@ impl WorldState {
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
         WorldState {
+            options,
             roots_to_scan,
             roots: folder_roots,
             workspaces: Arc::new(workspaces),
@@ -140,6 +151,7 @@ impl WorldState {
 
     pub fn snapshot(&self) -> WorldSnapshot {
         WorldSnapshot {
+            options: self.options.clone(),
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),

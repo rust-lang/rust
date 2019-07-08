@@ -421,7 +421,15 @@ impl TryConvWith for (FileId, RangeInfo<Vec<NavigationTarget>>) {
             .into_iter()
             .map(|nav| (file_id, RangeInfo::new(range, nav)))
             .try_conv_with_to_vec(world)?;
-        Ok(links.into())
+        if world.options.supports_location_link {
+            Ok(links.into())
+        } else {
+            let locations: Vec<Location> = links
+                .into_iter()
+                .map(|link| Location { uri: link.target_uri, range: link.target_selection_range })
+                .collect();
+            Ok(locations.into())
+        }
     }
 }
 

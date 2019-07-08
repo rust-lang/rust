@@ -8,7 +8,7 @@ use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
 use gen_lsp_server::{
     handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
 };
-use lsp_types::NumberOrString;
+use lsp_types::{ClientCapabilities, NumberOrString};
 use ra_ide_api::{Canceled, FileId, LibraryData};
 use ra_prof::profile;
 use ra_vfs::VfsTask;
@@ -22,7 +22,7 @@ use crate::{
     },
     project_model::workspace_loader,
     req,
-    world::{WorldSnapshot, WorldState},
+    world::{Options, WorldSnapshot, WorldState},
     InitializationOptions, Result,
 };
 
@@ -51,6 +51,7 @@ impl Error for LspError {}
 
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
+    client_caps: ClientCapabilities,
     options: InitializationOptions,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
@@ -77,7 +78,20 @@ pub fn main_loop(
         loaded_workspaces
     };
 
-    let mut state = WorldState::new(ws_roots, workspaces, options.lru_capacity);
+    let mut state = WorldState::new(
+        ws_roots,
+        workspaces,
+        options.lru_capacity,
+        Options {
+            publish_decorations: options.publish_decorations,
+            show_workspace_loaded: options.show_workspace_loaded,
+            supports_location_link: client_caps
+                .text_document
+                .and_then(|it| it.definition)
+                .and_then(|it| it.link_support)
+                .unwrap_or(false),
+        },
+    );
 
     let pool = ThreadPool::new(THREADPOOL_SIZE);
     let (task_sender, task_receiver) = unbounded::<Task>();
@@ -85,7 +99,6 @@ pub fn main_loop(
 
     log::info!("server initialized, serving requests");
     let main_res = main_loop_inner(
-        options,
         &pool,
         msg_sender,
         msg_receiver,
@@ -159,7 +172,6 @@ impl fmt::Debug for Event {
 }
 
 fn main_loop_inner(
-    options: InitializationOptions,
     pool: &ThreadPool,
     msg_sender: &Sender<RawMessage>,
     msg_receiver: &Receiver<RawMessage>,
@@ -258,7 +270,7 @@ fn main_loop_inner(
             && in_flight_libraries == 0
         {
             let n_packages: usize = state.workspaces.iter().map(|it| it.count()).sum();
-            if options.show_workspace_loaded {
+            if state.options.show_workspace_loaded {
                 let msg = format!("workspace loaded, {} rust packages", n_packages);
                 show_message(req::MessageType::Info, msg, msg_sender);
             }
@@ -270,7 +282,7 @@ fn main_loop_inner(
             update_file_notifications_on_threadpool(
                 pool,
                 state.snapshot(),
-                options.publish_decorations,
+                state.options.publish_decorations,
                 task_sender.clone(),
                 subs.subscriptions(),
             )
