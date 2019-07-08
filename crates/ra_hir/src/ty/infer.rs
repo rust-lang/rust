@@ -40,7 +40,7 @@ use crate::{
         PatId, Statement, UnaryOp,
     },
     generics::{GenericParams, HasGenericParams},
-    name::{INTO_ITERATOR, ITEM, ITER, SELF_TYPE, STD},
+    name,
     nameres::{Namespace, PerNs},
     path::{GenericArg, GenericArgs, PathKind, PathSegment},
     resolve::{
@@ -843,7 +843,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // Parent arguments are unknown, except for the receiver type
         if let Some(parent_generics) = def_generics.and_then(|p| p.parent_params.clone()) {
             for param in &parent_generics.params {
-                if param.name == SELF_TYPE {
+                if param.name == name::SELF_TYPE {
                     substs.push(receiver_ty.clone());
                 } else {
                     substs.push(Ty::Unknown);
@@ -1362,35 +1362,33 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let into_iter_path = Path {
             kind: PathKind::Abs,
             segments: vec![
-                PathSegment { name: STD, args_and_bindings: None },
-                PathSegment { name: ITER, args_and_bindings: None },
-                PathSegment { name: INTO_ITERATOR, args_and_bindings: None },
+                PathSegment { name: name::STD, args_and_bindings: None },
+                PathSegment { name: name::ITER, args_and_bindings: None },
+                PathSegment { name: name::INTO_ITERATOR, args_and_bindings: None },
             ],
         };
 
         match self.resolver.resolve_path_segments(self.db, &into_iter_path).into_fully_resolved() {
             PerNs { types: Some(Def(Trait(trait_))), .. } => {
-                Some(trait_.associated_type_by_name(self.db, ITEM)?)
+                Some(trait_.associated_type_by_name(self.db, name::ITEM)?)
             }
             _ => None,
         }
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAlias> {
-        use crate::name::{OK, OPS, TRY};
-
         let ops_try_path = Path {
             kind: PathKind::Abs,
             segments: vec![
-                PathSegment { name: STD, args_and_bindings: None },
-                PathSegment { name: OPS, args_and_bindings: None },
-                PathSegment { name: TRY, args_and_bindings: None },
+                PathSegment { name: name::STD, args_and_bindings: None },
+                PathSegment { name: name::OPS, args_and_bindings: None },
+                PathSegment { name: name::TRY, args_and_bindings: None },
             ],
         };
 
         match self.resolver.resolve_path_segments(self.db, &ops_try_path).into_fully_resolved() {
             PerNs { types: Some(Def(Trait(trait_))), .. } => {
-                Some(trait_.associated_type_by_name(self.db, OK)?)
+                Some(trait_.associated_type_by_name(self.db, name::OK)?)
             }
             _ => None,
         }
