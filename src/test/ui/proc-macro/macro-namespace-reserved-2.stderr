@@ -83,7 +83,7 @@ LL | #[my_macro]
    |   ^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error: can't use a procedural macro from the same crate that defines it
   --> $DIR/macro-namespace-reserved-2.rs:39:3
