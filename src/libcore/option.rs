@@ -208,6 +208,32 @@ impl<T> Option<T> {
         !self.is_some()
     }
 
+    /// Returns `true` if the option is a [`Some`] value containing the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_result_contains)]
+    ///
+    /// let x: Option<u32> = Some(2);
+    /// assert_eq!(x.contains(&2), true);
+    ///
+    /// let x: Option<u32> = Some(3);
+    /// assert_eq!(x.contains(&2), false);
+    ///
+    /// let x: Option<u32> = None;
+    /// assert_eq!(x.contains(&2), false);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "option_result_contains", issue = "62358")]
+    pub fn contains<U>(&self, x: &U) -> bool where U: PartialEq<T> {
+        match self {
+            Some(y) => x == y,
+            None => false,
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Adapter for working with references
     /////////////////////////////////////////////////////////////////////////
