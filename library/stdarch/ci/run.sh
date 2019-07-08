@@ -10,7 +10,7 @@ set -ex
 #export RUST_TEST_NOCAPTURE=1
 #export RUST_TEST_THREADS=1
 
-RUSTFLAGS="$RUSTFLAGS --cfg stdarch_strict"
+RUSTFLAGS="$RUSTFLAGS -D warnings "
 
 case ${TARGET} in
     # On 32-bit use a static relocation model which avoids some extra
