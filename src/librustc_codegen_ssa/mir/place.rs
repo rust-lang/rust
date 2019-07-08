@@ -138,7 +138,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         //   * packed struct - there is no alignment padding
         match field.ty.sty {
             _ if self.llextra.is_none() => {
-                debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
+                debug!("unsized field `{}`, of `{:?}` has no metadata for adjustment",
                     ix, self.llval);
                 return simple();
             }
