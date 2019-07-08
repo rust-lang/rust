@@ -19,6 +19,10 @@ use crate::{
         TypeAliasId,
     },
     impl_block::ImplBlock,
+    name::{
+        BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, SELF_TYPE, STR, U128, U16, U32, U64,
+        U8, USIZE,
+    },
     nameres::{CrateModuleId, ImportId, ModuleScope, Namespace},
     resolve::Resolver,
     traits::{TraitData, TraitItem},
@@ -28,7 +32,7 @@ use crate::{
     },
     type_ref::Mutability,
     type_ref::TypeRef,
-    AsName, AstDatabase, AstId, DefDatabase, Either, HasSource, HirDatabase, KnownName, Name, Ty,
+    AsName, AstDatabase, AstId, DefDatabase, Either, HasSource, HirDatabase, Name, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -96,27 +100,27 @@ pub enum BuiltinType {
 
 impl BuiltinType {
     #[rustfmt::skip]
-    pub(crate) const ALL: &'static [(KnownName, BuiltinType)] = &[
-        (KnownName::Char, BuiltinType::Char),
-        (KnownName::Bool, BuiltinType::Bool),
-        (KnownName::Str, BuiltinType::Str),
+    pub(crate) const ALL: &'static [(Name, BuiltinType)] = &[
+        (CHAR, BuiltinType::Char),
+        (BOOL, BuiltinType::Bool),
+        (STR, BuiltinType::Str),
 
-        (KnownName::Isize, BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::Xsize })),
-        (KnownName::I8,    BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X8 })),
-        (KnownName::I16,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X16 })),
-        (KnownName::I32,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X32 })),
-        (KnownName::I64,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X64 })),
-        (KnownName::I128,  BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X128 })),
+        (ISIZE, BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::Xsize })),
+        (I8,    BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X8 })),
+        (I16,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X16 })),
+        (I32,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X32 })),
+        (I64,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X64 })),
+        (I128,  BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X128 })),
 
-        (KnownName::Usize, BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::Xsize })),
-        (KnownName::U8,    BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X8 })),
-        (KnownName::U16,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X16 })),
-        (KnownName::U32,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X32 })),
-        (KnownName::U64,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X64 })),
-        (KnownName::U128,  BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X128 })),
+        (USIZE, BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::Xsize })),
+        (U8,    BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X8 })),
+        (U16,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X16 })),
+        (U32,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X32 })),
+        (U64,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X64 })),
+        (U128,  BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X128 })),
 
-        (KnownName::F32, BuiltinType::Float(FloatTy { bitness: FloatBitness::X32 })),
-        (KnownName::F64, BuiltinType::Float(FloatTy { bitness: FloatBitness::X64 })),
+        (F32, BuiltinType::Float(FloatTy { bitness: FloatBitness::X32 })),
+        (F64, BuiltinType::Float(FloatTy { bitness: FloatBitness::X64 })),
     ];
 }
 
@@ -560,7 +564,7 @@ impl FnData {
                 let self_type = if let Some(type_ref) = self_param.ascribed_type() {
                     TypeRef::from_ast(type_ref)
                 } else {
-                    let self_type = TypeRef::Path(Name::self_type().into());
+                    let self_type = TypeRef::Path(SELF_TYPE.into());
                     match self_param.kind() {
                         ast::SelfParamKind::Owned => self_type,
                         ast::SelfParamKind::Ref => {

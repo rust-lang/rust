@@ -13,7 +13,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    name::AsName,
+    name::{AsName, SELF_PARAM},
     type_ref::{Mutability, TypeRef},
     DefWithBody, Either, HasSource, HirDatabase, HirFileId, MacroCallLoc, MacroFileKind, Name,
     Path, Resolver,
@@ -981,7 +981,7 @@ where
                 let ptr = AstPtr::new(self_param);
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
-                        name: Name::self_param(),
+                        name: SELF_PARAM,
                         mode: BindingAnnotation::Unannotated,
                         subpat: None,
                     },

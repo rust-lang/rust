@@ -65,8 +65,8 @@ use test_utils::tested_by;
 
 use crate::{
     diagnostics::DiagnosticSink, either::Either, ids::MacroDefId,
-    nameres::diagnostics::DefDiagnostic, AsName, AstDatabase, AstId, BuiltinType, Crate,
-    DefDatabase, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
+    nameres::diagnostics::DefDiagnostic, AstDatabase, AstId, BuiltinType, Crate, DefDatabase,
+    HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
 };
 
 pub(crate) use self::raw::{ImportSourceMap, RawItems};
@@ -138,8 +138,8 @@ pub struct ModuleScope {
 static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
     BuiltinType::ALL
         .iter()
-        .map(|&(known_name, ty)| {
-            (known_name.as_name(), Resolution { def: PerNs::types(ty.into()), import: None })
+        .map(|(name, ty)| {
+            (name.clone(), Resolution { def: PerNs::types(ty.clone().into()), import: None })
         })
         .collect()
 });

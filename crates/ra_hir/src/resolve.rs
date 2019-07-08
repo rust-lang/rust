@@ -13,7 +13,7 @@ use crate::{
     },
     generics::GenericParams,
     impl_block::ImplBlock,
-    name::{KnownName, Name},
+    name::{Name, SELF_PARAM, SELF_TYPE},
     nameres::{CrateDefMap, CrateModuleId, PerNs},
     path::Path,
     MacroDef, ModuleDef, Trait,
@@ -151,7 +151,7 @@ impl Resolver {
         if let Some(name) = path.as_ident() {
             PathResult::from_resolution(self.resolve_name(db, name))
         } else if path.is_self() {
-            PathResult::from_resolution(self.resolve_name(db, &Name::self_param()))
+            PathResult::from_resolution(self.resolve_name(db, &SELF_PARAM))
         } else {
             let (item_map, module) = match self.module() {
                 Some(it) => it,
@@ -270,7 +270,7 @@ impl Scope {
     fn resolve_name(&self, db: &impl HirDatabase, name: &Name) -> PerNs<Resolution> {
         match self {
             Scope::ModuleScope(m) => {
-                if let Some(KnownName::SelfParam) = name.as_known_name() {
+                if name == &SELF_PARAM {
                     PerNs::types(Resolution::Def(m.crate_def_map.mk_module(m.module_id).into()))
                 } else {
                     m.crate_def_map
@@ -283,7 +283,7 @@ impl Scope {
                 None => PerNs::none(),
             },
             Scope::ImplBlockScope(i) => {
-                if name.as_known_name() == Some(KnownName::SelfType) {
+                if name == &SELF_TYPE {
                     PerNs::types(Resolution::SelfType(*i))
                 } else {
                     PerNs::none()
@@ -329,7 +329,7 @@ impl Scope {
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(Name::self_type(), PerNs::types(Resolution::SelfType(*i)));
+                f(SELF_TYPE, PerNs::types(Resolution::SelfType(*i)));
             }
             Scope::ExprScope(e) => {
                 e.expr_scopes.entries(e.scope_id).iter().for_each(|e| {
