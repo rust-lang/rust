@@ -37,9 +37,11 @@ use std::collections::Spam;
     eprintln!("loading took    {:?}", project_start.elapsed());
     let completion_start = Instant::now();
     let res = server.send_request::<Completion>(CompletionParams {
-        text_document: server.doc_id("src/lib.rs"),
+        text_document_position: TextDocumentPositionParams::new(
+            server.doc_id("src/lib.rs"),
+            Position::new(0, 23),
+        ),
         context: None,
-        position: Position::new(0, 23),
     });
     assert!(format!("{}", res).contains("HashMap"));
     eprintln!("completion took {:?}", completion_start.elapsed());

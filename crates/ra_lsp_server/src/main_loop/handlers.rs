@@ -2,11 +2,11 @@ use std::{fmt::Write as _, io::Write as _};
 
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
-    CodeAction, CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeKind,
-    FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
-    PrepareRenameResponse, Range, RenameParams, SymbolInformation, TextDocumentIdentifier,
-    TextEdit, WorkspaceEdit,
+    CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
+    DiagnosticSeverity, DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
+    FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
+    MarkupKind, Position, PrepareRenameResponse, Range, RenameParams, SymbolInformation,
+    TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
     AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo,
@@ -153,14 +153,12 @@ pub fn handle_on_type_formatting(
     params: req::DocumentOnTypeFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
     let _p = profile("handle_on_type_formatting");
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let position = FilePosition {
-        file_id,
-        /// in `ra_ide_api`, the `on_type` invariant is that
-        /// `text.char_at(position) == typed_char`.
-        offset: params.position.conv_with(&line_index) - TextUnit::of_char('.'),
-    };
+    let mut position = params.text_document_position.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(position.file_id);
+
+    // in `ra_ide_api`, the `on_type` invariant is that
+    // `text.char_at(position) == typed_char`.
+    position.offset = position.offset - TextUnit::of_char('.');
 
     let edit = match params.ch.as_str() {
         "=" => world.analysis().on_eq_typed(position),
@@ -214,7 +212,7 @@ pub fn handle_document_symbol(
         }
     }
 
-    Ok(Some(req::DocumentSymbolResponse::Nested(res)))
+    Ok(Some(res.into()))
 }
 
 pub fn handle_workspace_symbol(
@@ -277,7 +275,7 @@ pub fn handle_goto_definition(
         .map(|nav| RangeInfo::new(nav_range, nav))
         .map(|nav| to_location_link(&nav, &world, &line_index))
         .collect::<Result<Vec<_>>>()?;
-    Ok(Some(req::GotoDefinitionResponse::Link(res)))
+    Ok(Some(res.into()))
 }
 
 pub fn handle_goto_implementation(
@@ -297,7 +295,7 @@ pub fn handle_goto_implementation(
         .map(|nav| RangeInfo::new(nav_range, nav))
         .map(|nav| to_location_link(&nav, &world, &line_index))
         .collect::<Result<Vec<_>>>()?;
-    Ok(Some(req::GotoDefinitionResponse::Link(res)))
+    Ok(Some(res.into()))
 }
 
 pub fn handle_goto_type_definition(
@@ -317,7 +315,7 @@ pub fn handle_goto_type_definition(
         .map(|nav| RangeInfo::new(nav_range, nav))
         .map(|nav| to_location_link(&nav, &world, &line_index))
         .collect::<Result<Vec<_>>>()?;
-    Ok(Some(req::GotoDefinitionResponse::Link(res)))
+    Ok(Some(res.into()))
 }
 
 pub fn handle_parent_module(
@@ -407,12 +405,7 @@ pub fn handle_completion(
     params: req::CompletionParams,
 ) -> Result<Option<req::CompletionResponse>> {
     let _p = profile("handle_completion");
-    let position = {
-        let file_id = params.text_document.try_conv_with(&world)?;
-        let line_index = world.analysis().file_line_index(file_id);
-        let offset = params.position.conv_with(&line_index);
-        FilePosition { file_id, offset }
-    };
+    let position = params.text_document_position.try_conv_with(&world)?;
     let completion_triggered_after_single_colon = {
         let mut res = false;
         if let Some(ctx) = params.context {
@@ -440,9 +433,10 @@ pub fn handle_completion(
         Some(items) => items,
     };
     let line_index = world.analysis().file_line_index(position.file_id);
-    let items = items.into_iter().map(|item| item.conv_with(&line_index)).collect();
+    let items: Vec<CompletionItem> =
+        items.into_iter().map(|item| item.conv_with(&line_index)).collect();
 
-    Ok(Some(req::CompletionResponse::Array(items)))
+    Ok(Some(items.into()))
 }
 
 pub fn handle_folding_range(
@@ -543,9 +537,7 @@ pub fn handle_prepare_rename(
 }
 
 pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
+    let position = params.text_document_position.try_conv_with(&world)?;
 
     if params.new_name.is_empty() {
         return Err(LspError::new(
@@ -555,8 +547,7 @@ pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Optio
         .into());
     }
 
-    let optional_change =
-        world.analysis().rename(FilePosition { file_id, offset }, &*params.new_name)?;
+    let optional_change = world.analysis().rename(position, &*params.new_name)?;
     let change = match optional_change {
         None => return Ok(None),
         Some(it) => it,
@@ -571,11 +562,10 @@ pub fn handle_references(
     world: WorldSnapshot,
     params: req::ReferenceParams,
 ) -> Result<Option<Vec<Location>>> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
+    let position = params.text_document_position.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(position.file_id);
 
-    let refs = match world.analysis().find_all_refs(FilePosition { file_id, offset })? {
+    let refs = match world.analysis().find_all_refs(position)? {
         None => return Ok(None),
         Some(refs) => refs,
     };
