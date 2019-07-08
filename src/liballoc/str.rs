@@ -71,9 +71,7 @@ pub use core::str::SplitAsciiWhitespace;
 #[stable(feature = "str_escape", since = "1.34.0")]
 pub use core::str::{EscapeDebug, EscapeDefault, EscapeUnicode};
 
-#[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist",
-           issue = "27747")]
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<S: Borrow<str>> SliceConcat<str> for S {
     type Output = String;
 

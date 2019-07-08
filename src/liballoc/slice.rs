@@ -595,9 +595,7 @@ pub trait SliceConcat<Separator: ?Sized>: Sized {
     fn join(slice: &[Self], sep: &Separator) -> Self::Output;
 }
 
-#[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist",
-           issue = "27747")]
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> SliceConcat<T> for V {
     type Output = Vec<T>;
 
