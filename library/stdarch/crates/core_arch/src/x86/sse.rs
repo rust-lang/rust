@@ -1817,7 +1817,7 @@ pub const _MM_HINT_NTA: i32 = 0;
 /// The `strategy` must be one of:
 ///
 /// * [`_MM_HINT_T0`](constant._MM_HINT_T0.html): Fetch into all levels of the
-///   cache hierachy.
+///   cache hierarchy.
 ///
 /// * [`_MM_HINT_T1`](constant._MM_HINT_T1.html): Fetch into L2 and higher.
 ///
