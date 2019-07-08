@@ -508,6 +508,7 @@ impl<T> [T] {
     /// ```
     /// assert_eq!(["hello", "world"].join(" "), "hello world");
     /// assert_eq!([[1, 2], [3, 4]].join(&0), [1, 2, 0, 3, 4]);
+    /// assert_eq!([[1, 2], [3, 4]].join(&[0, 0][..]), [1, 2, 0, 0, 3, 4]);
     /// ```
     #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
     pub fn join<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
@@ -654,12 +655,35 @@ impl<T: Clone, V: Borrow<[T]>> Join<&'_ T> for [V] {
             Some(first) => first,
             None => return vec![],
         };
-        let size = slice.iter().map(|slice| slice.borrow().len()).sum::<usize>() + slice.len() - 1;
+        let size = slice.iter().map(|v| v.borrow().len()).sum::<usize>() + slice.len() - 1;
         let mut result = Vec::with_capacity(size);
         result.extend_from_slice(first.borrow());
 
         for v in iter {
             result.push(sep.clone());
+            result.extend_from_slice(v.borrow())
+        }
+        result
+    }
+}
+
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<T: Clone, V: Borrow<[T]>> Join<&'_ [T]> for [V] {
+    type Output = Vec<T>;
+
+    fn join(slice: &Self, sep: &[T]) -> Vec<T> {
+        let mut iter = slice.iter();
+        let first = match iter.next() {
+            Some(first) => first,
+            None => return vec![],
+        };
+        let size = slice.iter().map(|v| v.borrow().len()).sum::<usize>() +
+            sep.len() * (slice.len() - 1);
+        let mut result = Vec::with_capacity(size);
+        result.extend_from_slice(first.borrow());
+
+        for v in iter {
+            result.extend_from_slice(sep);
             result.extend_from_slice(v.borrow())
         }
         result
