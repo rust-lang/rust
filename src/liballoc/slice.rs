@@ -510,7 +510,7 @@ impl<T> [T] {
     /// assert_eq!([[1, 2], [3, 4]].join(&0), [1, 2, 0, 3, 4]);
     /// ```
     #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
-    pub fn join<Separator: ?Sized>(&self, sep: &Separator) -> <Self as Join<Separator>>::Output
+    pub fn join<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
         where Self: Join<Separator>
     {
         Join::join(self, sep)
@@ -528,7 +528,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
-    pub fn connect<Separator: ?Sized>(&self, sep: &Separator) -> <Self as Join<Separator>>::Output
+    pub fn connect<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
         where Self: Join<Separator>
     {
         Join::join(self, sep)
@@ -620,14 +620,14 @@ pub trait Concat<Item: ?Sized> {
 
 /// Helper trait for [`[T]::join`](../../std/primitive.slice.html#method.join)
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
-pub trait Join<Separator: ?Sized> {
+pub trait Join<Separator> {
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
     type Output;
 
     /// Implementation of [`[T]::join`](../../std/primitive.slice.html#method.join)
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
-    fn join(slice: &Self, sep: &Separator) -> Self::Output;
+    fn join(slice: &Self, sep: Separator) -> Self::Output;
 }
 
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
@@ -645,7 +645,7 @@ impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
 }
 
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
-impl<T: Clone, V: Borrow<[T]>> Join<T> for [V] {
+impl<T: Clone, V: Borrow<[T]>> Join<&'_ T> for [V] {
     type Output = Vec<T>;
 
     fn join(slice: &Self, sep: &T) -> Vec<T> {
