@@ -2933,16 +2933,32 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 // Common traits
 ////////////////////////////////////////////////////////////////////////////////
 
+// Slices could just use rvalue static promotion, but making them ourselves
+// means we can skip the private const generation in LLVM and matches the
+// behaviour of `Vec::<T>::new()` and `Box::<[T]>::default()`.
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for &[T] {
     /// Creates an empty slice.
-    fn default() -> Self { &[] }
+    fn default() -> Self {
+        // SAFETY: using `dangling` for zero-length slices is mentioned
+        // explicitly in the safety documentation for `from_raw_parts`.
+        unsafe {
+            from_raw_parts(ptr::NonNull::dangling().as_ptr(), 0)
+        }
+    }
 }
 
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
 impl<T> Default for &mut [T] {
     /// Creates a mutable empty slice.
-    fn default() -> Self { &mut [] }
+    fn default() -> Self {
+        // SAFETY: using `dangling` for zero-length slices is mentioned
+        // explicitly in the safety documentation for `from_raw_parts`.
+        unsafe {
+            from_raw_parts_mut(ptr::NonNull::dangling().as_ptr(), 0)
+        }
+    }
 }
 
 //
