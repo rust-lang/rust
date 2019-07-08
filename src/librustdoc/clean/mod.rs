@@ -1716,7 +1716,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                 ty::GenericParamDefKind::Const { .. } => None,
             }).collect::<Vec<GenericParamDef>>();
 
-        // (param index, def id of trait) -> (name, type)
+        // param index -> [(DefId of trait, associated type name, type)]
         let mut impl_trait_proj =
             FxHashMap::<u32, Vec<(DefId, String, Ty<'tcx>)>>::default();
 
