@@ -37,7 +37,7 @@ use core::unicode::conversions;
 
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
-use crate::slice::{SliceConcatExt, SliceIndex};
+use crate::slice::{SliceConcat, SliceIndex};
 use crate::string::String;
 use crate::vec::Vec;
 
@@ -74,16 +74,16 @@ pub use core::str::{EscapeDebug, EscapeDefault, EscapeUnicode};
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
            issue = "27747")]
-impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
+impl<S: Borrow<str>> SliceConcat<str> for S {
     type Output = String;
 
-    fn concat(&self) -> String {
-        self.join("")
+    fn concat(slice: &[Self]) -> String {
+        Self::join(slice, "")
     }
 
-    fn join(&self, sep: &str) -> String {
+    fn join(slice: &[Self], sep: &str) -> String {
         unsafe {
-            String::from_utf8_unchecked( join_generic_copy(self, sep.as_bytes()) )
+            String::from_utf8_unchecked( join_generic_copy(slice, sep.as_bytes()) )
         }
     }
 }
@@ -126,7 +126,7 @@ macro_rules! copy_slice_and_advance {
 
 // Optimized join implementation that works for both Vec<T> (T: Copy) and String's inner vec
 // Currently (2018-05-13) there is a bug with type inference and specialization (see issue #36262)
-// For this reason SliceConcatExt<T> is not specialized for T: Copy and SliceConcatExt<str> is the
+// For this reason SliceConcat<T> is not specialized for T: Copy and SliceConcat<str> is the
 // only user of this function. It is left in place for the time when that is fixed.
 //
 // the bounds for String-join are S: Borrow<str> and for Vec-join Borrow<[T]>
