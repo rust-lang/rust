@@ -138,6 +138,9 @@ fn is_add(cx: &LateContext<'_, '_>, src: &Expr, target: &Expr) -> bool {
     }
 }
 
+// Max length a b"foo" string can take
+const MAX_LENGTH_BYTE_STRING_LIT: usize = 32;
+
 declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
@@ -173,7 +176,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                             );
                         } else if callsite == expanded
                             && lit_content.as_str().chars().all(|c| c.is_ascii())
-                            && lit_content.as_str().len() <= 32
+                            && lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT
                             && !in_macro_or_desugar(args[0].span)
                         {
                             span_lint_and_sugg(
