@@ -25,33 +25,41 @@ fn infer_try() {
     let (mut db, pos) = MockDatabase::with_position(
         r#"
 //- /main.rs
-enum Result<O, E> {
-    Ok(O),
-    Err(E)
-}
 
-impl<O, E> ::std::ops::Try for Result<O, E> {
-    type Ok = O;
-    type Error = E;
-}
 fn test() {
     let r: Result<i32, u64> = Result::Ok(1);
     let v = r?;
     v<|>;
 }
 
-//- /lib.rs
+//- /std.rs
+
+#[prelude_import] use ops::*;
 mod ops {
     trait Try {
         type Ok;
         type Error;
     }
 }
+
+#[prelude_import] use result::*;
+mod result {
+    enum Result<O, E> {
+        Ok(O),
+        Err(E)
+    }
+
+    impl<O, E> crate::ops::Try for Result<O, E> {
+        type Ok = O;
+        type Error = E;
+    }
+}
+
 "#,
     );
     db.set_crate_graph_from_fixture(crate_graph! {
         "main": ("/main.rs", ["std"]),
-        "std": ("/lib.rs", []),
+        "std": ("/std.rs", []),
     });
     assert_eq!("i32", type_at_pos(&db, pos));
 }
@@ -61,15 +69,9 @@ fn infer_for_loop() {
     let (mut db, pos) = MockDatabase::with_position(
         r#"
 //- /main.rs
-struct Vec<T> {}
-impl<T> Vec<T> {
-    fn new() -> Self { Vec {} }
-    fn push(&mut self, t: T) { }
-}
 
-impl<T> ::std::iter::IntoIterator for Vec<T> {
-    type Item=T;
-}
+use std::collections::Vec;
+
 fn test() {
     let v = Vec::new();
     v.push("foo");
@@ -78,17 +80,31 @@ fn test() {
     }
 }
 
-//- /lib.rs
+//- /std.rs
+
+#[prelude_import] use iter::*;
 mod iter {
     trait IntoIterator {
         type Item;
+    }
+}
+
+mod collections {
+    struct Vec<T> {}
+    impl<T> Vec<T> {
+        fn new() -> Self { Vec {} }
+        fn push(&mut self, t: T) { }
+    }
+
+    impl<T> crate::iter::IntoIterator for Vec<T> {
+        type Item=T;
     }
 }
 "#,
     );
     db.set_crate_graph_from_fixture(crate_graph! {
         "main": ("/main.rs", ["std"]),
-        "std": ("/lib.rs", []),
+        "std": ("/std.rs", []),
     });
     assert_eq!("&str", type_at_pos(&db, pos));
 }
