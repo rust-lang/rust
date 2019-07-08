@@ -51,10 +51,12 @@ impl Step for Std {
         let target = self.target;
         let compiler = builder.compiler(0, builder.config.build);
 
-        let mut core_cargo_invoc = builder.cargo(compiler, Mode::Std, target, cargo_subcommand(builder.kind));
+        let mut core_cargo_invoc = builder.cargo(compiler, Mode::Std, target,
+                                                 cargo_subcommand(builder.kind));
         core_cargo(builder, &compiler, target, &mut core_cargo_invoc);
 
-        let mut std_cargo_invoc = builder.cargo(compiler, Mode::Std, target, cargo_subcommand(builder.kind));
+        let mut std_cargo_invoc = builder.cargo(compiler, Mode::Std, target,
+                                                cargo_subcommand(builder.kind));
         std_cargo(builder, &compiler, target, &mut std_cargo_invoc);
 
         let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
@@ -269,7 +271,8 @@ impl Step for Rustdoc {
 
 /// Cargo's output path for the core library in a given stage, compiled
 /// by a particular compiler for the specified target.
-pub fn libcore_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>) -> PathBuf {
+pub fn libcore_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>
+) -> PathBuf {
     builder.cargo_out(compiler, Mode::Std, target).join(".libcore-check.stamp")
 }
 

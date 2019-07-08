@@ -958,7 +958,8 @@ fn copy_lld_to_sysroot(builder: &Builder<'_>,
 
 /// Cargo's output path for libcore in a given stage, compiled
 /// by a particular compiler for the specified target.
-pub fn libcore_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>) -> PathBuf {
+pub fn libcore_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>
+) -> PathBuf {
     builder.cargo_out(compiler, Mode::Std, target).join(".libcore.stamp")
 }
 
