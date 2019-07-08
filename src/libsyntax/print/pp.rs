@@ -131,7 +131,7 @@
 //! it.
 //!
 //! In this implementation (following the paper, again) the SCAN process is the
-//! methods called `Printer::pretty_print_*`, and the 'PRINT' process is the
+//! methods called `Printer::scan_*`, and the 'PRINT' process is the
 //! method called `Printer::print`.
 
 use std::collections::VecDeque;
@@ -310,14 +310,14 @@ impl Printer {
         self.buf[self.right].token = t;
     }
 
-    fn pretty_print_eof(&mut self) {
+    fn scan_eof(&mut self) {
         if !self.scan_stack.is_empty() {
             self.check_stack(0);
             self.advance_left();
         }
     }
 
-    fn pretty_print_begin(&mut self, b: BeginToken) {
+    fn scan_begin(&mut self, b: BeginToken) {
         if self.scan_stack.is_empty() {
             self.left_total = 1;
             self.right_total = 1;
@@ -331,7 +331,7 @@ impl Printer {
         self.scan_push(BufEntry { token: Token::Begin(b), size: -self.right_total });
     }
 
-    fn pretty_print_end(&mut self) {
+    fn scan_end(&mut self) {
         if self.scan_stack.is_empty() {
             debug!("pp End/print Vec<{},{}>", self.left, self.right);
             self.print_end();
@@ -342,7 +342,7 @@ impl Printer {
         }
     }
 
-    fn pretty_print_break(&mut self, b: BreakToken) {
+    fn scan_break(&mut self, b: BreakToken) {
         if self.scan_stack.is_empty() {
             self.left_total = 1;
             self.right_total = 1;
@@ -358,7 +358,7 @@ impl Printer {
         self.right_total += b.blank_space;
     }
 
-    fn pretty_print_string(&mut self, s: Cow<'static, str>, len: isize) {
+    fn scan_string(&mut self, s: Cow<'static, str>, len: isize) {
         if self.scan_stack.is_empty() {
             debug!("pp String('{}')/print Vec<{},{}>",
                    s, self.left, self.right);
@@ -594,7 +594,7 @@ impl Printer {
 
     /// "raw box"
     crate fn rbox(&mut self, indent: usize, b: Breaks) {
-        self.pretty_print_begin(BeginToken {
+        self.scan_begin(BeginToken {
             offset: indent as isize,
             breaks: b
         })
@@ -611,25 +611,25 @@ impl Printer {
     }
 
     pub fn break_offset(&mut self, n: usize, off: isize) {
-        self.pretty_print_break(BreakToken {
+        self.scan_break(BreakToken {
             offset: off,
             blank_space: n as isize
         })
     }
 
     crate fn end(&mut self) {
-        self.pretty_print_end()
+        self.scan_end()
     }
 
     pub fn eof(mut self) -> String {
-        self.pretty_print_eof();
+        self.scan_eof();
         self.out
     }
 
     pub fn word<S: Into<Cow<'static, str>>>(&mut self, wrd: S) {
         let s = wrd.into();
         let len = s.len() as isize;
-        self.pretty_print_string(s, len)
+        self.scan_string(s, len)
     }
 
     fn spaces(&mut self, n: usize) {
