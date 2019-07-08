@@ -86,7 +86,7 @@ declare_clippy_lint! {
 #[derive(PartialEq, Eq, Copy, Clone)]
 enum RetReplacement {
     Empty,
-    Unit,
+    Block,
 }
 
 declare_lint_pass!(Return => [NEEDLESS_RETURN, LET_AND_RETURN, UNUSED_UNIT]);
@@ -139,7 +139,7 @@ impl Return {
             // a match expr, check all arms
             ast::ExprKind::Match(_, ref arms) => {
                 for arm in arms {
-                    self.check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Unit);
+                    self.check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Block);
                 }
             },
             _ => (),
@@ -176,12 +176,12 @@ impl Return {
                         );
                     });
                 },
-                RetReplacement::Unit => {
+                RetReplacement::Block => {
                     span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
                         db.span_suggestion(
                             ret_span,
-                            "replace `return` with the unit type",
-                            "()".to_string(),
+                            "replace `return` with an empty block",
+                            "{}".to_string(),
                             Applicability::MachineApplicable,
                         );
                     });
