@@ -750,6 +750,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(debug_map_key_value)]
     /// use std::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
@@ -813,6 +814,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(debug_map_key_value)]
     /// use std::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
