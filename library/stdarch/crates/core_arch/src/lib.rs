@@ -5,6 +5,7 @@
 #![feature(
     const_fn,
     const_fn_union,
+    custom_inner_attributes,
     link_llvm_intrinsics,
     platform_intrinsics,
     repr_simd,
@@ -75,4 +76,4 @@ mod core_arch;
 pub use self::core_arch::arch::*;
 
 #[allow(unused_imports)]
-use core::{ffi, hint, intrinsics, marker, mem, ptr, sync};
+use core::{ffi, hint, intrinsics, marker, mem, ops, ptr, sync};

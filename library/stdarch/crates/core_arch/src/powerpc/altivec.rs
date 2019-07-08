@@ -285,7 +285,7 @@ impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, f32x4 }
 
 macro_rules! impl_neg {
     ($s: ident : $zero: expr) => {
-        impl core::ops::Neg for s_t_l!($s) {
+        impl crate::ops::Neg for s_t_l!($s) {
             type Output = s_t_l!($s);
             fn neg(self) -> Self::Output {
                 let zero = $s::splat($zero);
