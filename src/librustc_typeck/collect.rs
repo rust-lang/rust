@@ -2256,7 +2256,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                            tcx.hir().hir_to_pretty_string(ast_ty.hir_id)
                        ),
                    )
-                   .help("add #![feature(simd_ffi)] to the crate attributes to enable")
+                   .help("add `#![feature(simd_ffi)]` to the crate attributes to enable")
                    .emit();
             }
         };
@@ -2479,7 +2479,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             }
         } else if attr.check_name(sym::target_feature) {
             if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
-                let msg = "#[target_feature(..)] can only be applied to `unsafe` functions";
+                let msg = "`#[target_feature(..)]` can only be applied to `unsafe` functions";
                 tcx.sess.struct_span_err(attr.span, msg)
                     .span_label(attr.span, "can only be applied to `unsafe` functions")
                     .span_label(tcx.def_span(id), "not an `unsafe` function")
@@ -2593,8 +2593,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             if let Some(span) = inline_span {
                 tcx.sess.span_err(
                     span,
-                    "cannot use #[inline(always)] with \
-                     #[target_feature]",
+                    "cannot use `#[inline(always)]` with \
+                     `#[target_feature]`",
                 );
             }
         }

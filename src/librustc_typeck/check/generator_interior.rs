@@ -130,7 +130,7 @@ pub fn resolve_interior<'a, 'tcx>(
     // if a Sync generator contains an &'α T, we need to check whether &'α T: Sync),
     // so knowledge of the exact relationships between them isn't particularly important.
 
-    debug!("Types in generator {:?}, span = {:?}", type_list, body.value.span);
+    debug!("types in generator {:?}, span = {:?}", type_list, body.value.span);
 
     // Replace all regions inside the generator interior with late bound regions
     // Note that each region slot in the types gets a new fresh late bound region,
@@ -144,7 +144,7 @@ pub fn resolve_interior<'a, 'tcx>(
 
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
-    debug!("Types in generator after region replacement {:?}, span = {:?}",
+    debug!("types in generator after region replacement {:?}, span = {:?}",
             witness, body.value.span);
 
     // Unify the type variable inside the generator with the new witness

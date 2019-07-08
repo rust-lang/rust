@@ -64,7 +64,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 let old_value = self.solutions[inferred];
                 let new_value = glb(variance, old_value);
                 if old_value != new_value {
-                    debug!("Updating inferred {} \
+                    debug!("updating inferred {} \
                             from {:?} to {:?} due to {:?}",
                            inferred,
                            old_value,
