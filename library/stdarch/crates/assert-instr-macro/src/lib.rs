@@ -112,7 +112,10 @@ pub fn assert_instr(
             // generate some code that's hopefully very tight in terms of
             // codegen but is otherwise unique to prevent code from being
             // folded.
-            ::stdsimd_test::_DONT_DEDUP = #shim_name_str;
+            ::stdsimd_test::_DONT_DEDUP.store(
+                std::mem::transmute(#shim_name_str.as_bytes().as_ptr()),
+                std::sync::atomic::Ordering::Relaxed,
+            );
             #name(#(#input_vals),*)
         }
     };

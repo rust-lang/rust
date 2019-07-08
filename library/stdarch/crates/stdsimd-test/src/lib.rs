@@ -3,6 +3,8 @@
 //! This basically just disassembles the current executable and then parses the
 //! output once globally and then provides the `assert` function which makes
 //! assertions about the disassembly of a function.
+#![feature(const_str_as_bytes)]
+#![feature(const_transmute)]
 #![allow(clippy::missing_docs_in_private_items, clippy::print_stdout)]
 
 extern crate assert_instr_macro;
@@ -17,7 +19,7 @@ extern crate cfg_if;
 
 pub use assert_instr_macro::*;
 pub use simd_test_macro::*;
-use std::{collections::HashMap, env, str};
+use std::{collections::HashMap, env, str, sync::atomic::AtomicPtr};
 
 // `println!` doesn't work on wasm32 right now, so shadow the compiler's `println!`
 // macro with our own shim that redirects to `console.log`.
@@ -237,4 +239,4 @@ pub fn assert_skip_test_ok(name: &str) {
 }
 
 // See comment in `assert-instr-macro` crate for why this exists
-pub static mut _DONT_DEDUP: &'static str = "";
+pub static _DONT_DEDUP: AtomicPtr<u8> = AtomicPtr::new(unsafe { std::mem::transmute("".as_bytes().as_ptr()) });
