@@ -1,6 +1,6 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use crate::compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, rustc_cargo_env,
+use crate::compile::{run_cargo, core_cargo, std_cargo, test_cargo, rustc_cargo, rustc_cargo_env,
                      add_to_sysroot};
 use crate::builder::{RunConfig, Builder, Kind, ShouldRun, Step};
 use crate::tool::{prepare_tool_cargo, SourceType};

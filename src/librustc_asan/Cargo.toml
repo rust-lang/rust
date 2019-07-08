@@ -13,6 +13,3 @@ test = false
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 cmake = "0.1.38"
-
-[dependencies]
-alloc_system = { path = "../liballoc_system" }

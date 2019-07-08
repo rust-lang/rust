@@ -87,7 +87,7 @@ impl Step for Std {
             copy_third_party_objects(builder, &compiler, target);
 
             builder.ensure(CoreLink {
-                compiler: from,
+                compiler: compiler_to_use,
                 target_compiler: compiler,
                 target,
             });
@@ -140,12 +140,6 @@ impl Step for Std {
                 target,
             });
         }
-
-        builder.ensure(tool::CleanTools {
-            compiler,
-            target,
-            cause: Mode::Std,
-        });
     }
 }
 
@@ -370,11 +364,8 @@ impl Step for StdLink {
             // for reason why the sanitizers are not built in stage0.
             copy_apple_sanitizer_dylibs(builder, &builder.native_dir(target), "osx", &libdir);
         }
-<<<<<<< HEAD
 
         builder.cargo(target_compiler, Mode::ToolStd, target, "clean");
-=======
->>>>>>> Introduce a function to reduce duplication
     }
 }
 
@@ -517,12 +508,6 @@ impl Step for Test {
             return;
         }
 
-<<<<<<< HEAD
-=======
-        let out_dir = builder.cargo_out(compiler, Mode::Test, target);
-        builder.clear_if_dirty(&out_dir, &libcore_stamp(builder, compiler, target));
-        builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
->>>>>>> Introduce a function to reduce duplication
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "build");
         test_cargo(builder, &compiler, target, &mut cargo);
 
@@ -653,13 +638,6 @@ impl Step for Rustc {
             compiler: builder.compiler(self.compiler.stage, builder.config.build),
             target: builder.config.build,
         });
-<<<<<<< HEAD
-=======
-        let cargo_out = builder.cargo_out(compiler, Mode::Rustc, target);
-        builder.clear_if_dirty(&cargo_out, &libcore_stamp(builder, compiler, target));
-        builder.clear_if_dirty(&cargo_out, &libstd_stamp(builder, compiler, target));
-        builder.clear_if_dirty(&cargo_out, &libtest_stamp(builder, compiler, target));
->>>>>>> Introduce a function to reduce duplication
 
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "build");
         rustc_cargo(builder, &mut cargo);
@@ -1122,28 +1100,12 @@ impl Step for Assemble {
         // link to these. (FIXME: Is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
-<<<<<<< HEAD
         builder.ensure(Rustc {
             compiler: build_compiler,
             target: target_compiler.host,
         });
         for &backend in builder.config.rust_codegen_backends.iter() {
             builder.ensure(CodegenBackend {
-=======
-        if builder.config.keep_stage.map_or(false, |s| target_compiler.stage <= s) {
-            builder.verbose("skipping compilation of compiler due to --keep-stage");
-            let compiler = build_compiler;
-            for stage in 0..min(target_compiler.stage, builder.config.keep_stage.unwrap()) {
-                let target_compiler = builder.compiler(stage, target_compiler.host);
-                let target = target_compiler.host;
-                builder.ensure(CoreLink { compiler, target_compiler, target });
-                builder.ensure(StdLink { compiler, target_compiler, target });
-                builder.ensure(TestLink { compiler, target_compiler, target });
-                builder.ensure(RustcLink { compiler, target_compiler, target });
-            }
-        } else {
-            builder.ensure(Rustc {
->>>>>>> Introduce a function to reduce duplication
                 compiler: build_compiler,
                 target: target_compiler.host,
                 backend,
