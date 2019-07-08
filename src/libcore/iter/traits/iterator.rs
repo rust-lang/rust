@@ -2069,15 +2069,14 @@ pub trait Iterator {
         Self: Sized,
         P: FnMut(Self::Item) -> bool,
     {
-        // The addition might panic on overflow
         #[inline]
-        #[rustc_inherit_overflow_checks]
         fn check<T>(
             mut predicate: impl FnMut(T) -> bool,
         ) -> impl FnMut(usize, T) -> LoopState<usize, usize> {
+            // The addition might panic on overflow
             move |i, x| {
                 if predicate(x) { LoopState::Break(i) }
-                else { LoopState::Continue(i + 1) }
+                else { LoopState::Continue(Add::add(i, 1)) }
             }
         }
 
