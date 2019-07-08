@@ -13,7 +13,8 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     notification::{Notification, ShowMessage},
     request::{Request, Shutdown},
-    DidOpenTextDocumentParams, TextDocumentIdentifier, TextDocumentItem, Url,
+    ClientCapabilities, DidOpenTextDocumentParams, GotoCapability, TextDocumentClientCapabilities,
+    TextDocumentIdentifier, TextDocumentItem, Url,
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
@@ -92,8 +93,25 @@ impl Server {
             "test server",
             128,
             move |msg_receiver, msg_sender| {
-                main_loop(roots, InitializationOptions::default(), &msg_receiver, &msg_sender)
-                    .unwrap()
+                main_loop(
+                    roots,
+                    ClientCapabilities {
+                        workspace: None,
+                        text_document: Some(TextDocumentClientCapabilities {
+                            definition: Some(GotoCapability {
+                                dynamic_registration: None,
+                                link_support: Some(true),
+                            }),
+                            ..Default::default()
+                        }),
+                        window: None,
+                        experimental: None,
+                    },
+                    InitializationOptions::default(),
+                    &msg_receiver,
+                    &msg_sender,
+                )
+                .unwrap()
             },
         );
         let res = Server { req_id: Cell::new(1), dir, messages: Default::default(), worker };
