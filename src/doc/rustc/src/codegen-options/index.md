@@ -221,13 +221,13 @@ This flag allows for creating instrumented binaries that will collect
 profiling data for use with profile-guided optimization (PGO). The flag takes
 an optional argument which is the path to a directory into which the
 instrumented binary will emit the collected data. See the chapter on
-[profile-guided optimization](profile-guided-optimization.html) for more
-information.
+[profile-guided optimization] for more information.
 
 ## profile-use
 
 This flag specifies the profiling data file to be used for profile-guided
 optimization (PGO). The flag takes a mandatory argument which is the path
 to a valid `.profdata` file. See the chapter on
-[profile-guided optimization](profile-guided-optimization.html) for more
-information.
+[profile-guided optimization] for more information.
+
+[profile-guided optimization]: ../profile-guided-optimization.md
