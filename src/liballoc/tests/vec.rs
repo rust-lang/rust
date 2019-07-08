@@ -945,6 +945,115 @@ fn drain_filter_complex() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support catching panics
+fn drain_filter_consumed_panic() {
+    use std::rc::Rc;
+    use std::sync::Mutex;
+
+    struct Check {
+        index: usize,
+        drop_counts: Rc<Mutex<Vec<usize>>>,
+    };
+
+    impl Drop for Check {
+        fn drop(&mut self) {
+            self.drop_counts.lock().unwrap()[self.index] += 1;
+            println!("drop: {}", self.index);
+        }
+    }
+
+    let check_count = 10;
+    let drop_counts = Rc::new(Mutex::new(vec![0_usize; check_count]));
+    let mut data: Vec<Check> = (0..check_count)
+        .map(|index| Check { index, drop_counts: Rc::clone(&drop_counts) })
+        .collect();
+
+    let _ = std::panic::catch_unwind(move || {
+        let filter = |c: &mut Check| {
+            if c.index == 2 {
+                panic!("panic at index: {}", c.index);
+            }
+            // Verify that if the filter could panic again on another element
+            // that it would not cause a double panic and all elements of the
+            // vec would still be dropped exactly once.
+            if c.index == 4 {
+                panic!("panic at index: {}", c.index);
+            }
+            c.index < 6
+        };
+        let drain = data.drain_filter(filter);
+
+        // NOTE: The DrainFilter is explictly consumed
+        drain.for_each(drop);
+    });
+
+    let drop_counts = drop_counts.lock().unwrap();
+    assert_eq!(check_count, drop_counts.len());
+
+    for (index, count) in drop_counts.iter().cloned().enumerate() {
+        assert_eq!(1, count, "unexpected drop count at index: {} (count: {})", index, count);
+    }
+}
+
+#[test]
+#[cfg(not(miri))] // Miri does not support catching panics
+fn drain_filter_unconsumed_panic() {
+    use std::rc::Rc;
+    use std::sync::Mutex;
+
+    struct Check {
+        index: usize,
+        drop_counts: Rc<Mutex<Vec<usize>>>,
+    };
+
+    impl Drop for Check {
+        fn drop(&mut self) {
+            self.drop_counts.lock().unwrap()[self.index] += 1;
+            println!("drop: {}", self.index);
+        }
+    }
+
+    let check_count = 10;
+    let drop_counts = Rc::new(Mutex::new(vec![0_usize; check_count]));
+    let mut data: Vec<Check> = (0..check_count)
+        .map(|index| Check { index, drop_counts: Rc::clone(&drop_counts) })
+        .collect();
+
+    let _ = std::panic::catch_unwind(move || {
+        let filter = |c: &mut Check| {
+            if c.index == 2 {
+                panic!("panic at index: {}", c.index);
+            }
+            // Verify that if the filter could panic again on another element
+            // that it would not cause a double panic and all elements of the
+            // vec would still be dropped exactly once.
+            if c.index == 4 {
+                panic!("panic at index: {}", c.index);
+            }
+            c.index < 6
+        };
+        let _drain = data.drain_filter(filter);
+
+        // NOTE: The DrainFilter is dropped without being consumed
+    });
+
+    let drop_counts = drop_counts.lock().unwrap();
+    assert_eq!(check_count, drop_counts.len());
+
+    for (index, count) in drop_counts.iter().cloned().enumerate() {
+        assert_eq!(1, count, "unexpected drop count at index: {} (count: {})", index, count);
+    }
+}
+
+#[test]
+fn drain_filter_unconsumed() {
+    let mut vec = vec![1, 2, 3, 4];
+    let drain = vec.drain_filter(|&mut x| x % 2 != 0);
+    drop(drain);
+    assert_eq!(vec, [2, 4]);
+}
+
+#[test]
 fn test_reserve_exact() {
     // This is all the same as test_reserve
 
