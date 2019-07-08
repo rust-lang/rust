@@ -1166,8 +1166,13 @@ fn create_mono_items_for_default_impls<'tcx>(
                         }
                     });
 
+                    let param_env = ty::ParamEnv::reveal_all();
+                    let substs = tcx.normalize_erasing_regions(
+                        param_env,
+                        substs,
+                    );
                     let instance = ty::Instance::resolve(tcx,
-                                                         ty::ParamEnv::reveal_all(),
+                                                         param_env,
                                                          method.def_id,
                                                          substs).unwrap();
 
