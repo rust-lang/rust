@@ -1,4 +1,5 @@
 #![allow(bad_style)]
+#![allow(unused)]
 #![allow(
     clippy::shadow_reuse,
     clippy::cast_lossless,

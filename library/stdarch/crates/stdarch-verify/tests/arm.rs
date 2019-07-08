@@ -1,5 +1,5 @@
 #![allow(bad_style)]
-
+#![allow(unused)]
 use std::{collections::HashMap, rc::Rc};
 
 use html5ever::{
