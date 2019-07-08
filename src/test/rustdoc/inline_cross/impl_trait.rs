@@ -8,10 +8,16 @@ extern crate impl_trait_aux;
 pub use impl_trait_aux::func;
 
 // @has impl_trait/fn.func2.html
+// @has - '//pre[@class="rust fn"]' "func2<T>("
 // @has - '//pre[@class="rust fn"]' "_x: impl Deref<Target = Option<T>> + Iterator<Item = T>,"
 // @has - '//pre[@class="rust fn"]' "_y: impl Iterator<Item = u8>)"
 // @!has - '//pre[@class="rust fn"]' 'where'
 pub use impl_trait_aux::func2;
+
+// @has impl_trait/fn.func3.html
+// @has - '//pre[@class="rust fn"]' "func3(_x: impl Clone + Iterator<Item = impl Iterator<Item = u8>>)"
+// @!has - '//pre[@class="rust fn"]' 'where'
+pub use impl_trait_aux::func3;
 
 // @has impl_trait/struct.Foo.html
 // @has - '//code[@id="method.v"]' "pub fn method<'a>(_x: impl Clone + Into<Vec<u8>> + 'a)"

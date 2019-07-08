@@ -1720,11 +1720,13 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                 ty::GenericParamDefKind::Const { .. } => None,
             }).collect::<Vec<GenericParamDef>>();
 
-        // (param index, def id of trait) -> (name, type)
-        let mut impl_trait_proj = FxHashMap::<(u32, DefId), Vec<(String, Type)>>::default();
+        // param index -> [(DefId of trait, associated type name, type)]
+        let mut impl_trait_proj =
+            FxHashMap::<u32, Vec<(DefId, String, Ty<'tcx>)>>::default();
 
         let mut where_predicates = preds.predicates.iter()
             .flat_map(|(p, _)| {
+                let mut projection = None;
                 let param_idx = (|| {
                     if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
                         if let ty::Param(param) = trait_ref.self_ty().sty {
@@ -1734,8 +1736,9 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                         if let ty::Param(param) = outlives.skip_binder().0.sty {
                             return Some(param.index);
                         }
-                    } else if let ty::Predicate::Projection(proj) = p {
-                        if let ty::Param(param) = proj.skip_binder().projection_ty.self_ty().sty {
+                    } else if let ty::Predicate::Projection(p) = p {
+                        if let ty::Param(param) = p.skip_binder().projection_ty.self_ty().sty {
+                            projection = Some(p);
                             return Some(param.index);
                         }
                     }
@@ -1755,16 +1758,15 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                                 .filter(|b| !b.is_sized_bound(cx))
                         );
 
-                        let proj = match &p {
-                            WherePredicate::EqPredicate { lhs, rhs } => Some((lhs, rhs))
-                                .and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs))),
-                            _ => None,
-                        };
-                        if let Some(((_, trait_did, name), rhs)) = proj {
+                        let proj = projection
+                            .map(|p| (p.skip_binder().projection_ty.clean(cx), p.skip_binder().ty));
+                        if let Some(((_, trait_did, name), rhs)) =
+                            proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
+                        {
                             impl_trait_proj
-                                .entry((param_idx, trait_did))
+                                .entry(param_idx)
                                 .or_default()
-                                .push((name.to_string(), rhs.clone()));
+                                .push((trait_did, name.to_string(), rhs));
                         }
 
                         return None;
@@ -1775,18 +1777,6 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             })
             .collect::<Vec<_>>();
 
-        for ((param_idx, trait_did), bounds) in impl_trait_proj {
-            for (name, rhs) in bounds {
-                simplify::merge_bounds(
-                    cx,
-                    impl_trait.get_mut(&param_idx.into()).unwrap(),
-                    trait_did,
-                    &name,
-                    &rhs,
-                );
-            }
-        }
-
         // Move `TraitPredicate`s to the front.
         for (_, bounds) in impl_trait.iter_mut() {
             bounds.sort_by_key(|b| if let GenericBound::TraitBound(..) = b {
@@ -1796,7 +1786,25 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             });
         }
 
-        cx.impl_trait_bounds.borrow_mut().extend(impl_trait);
+        for (param, mut bounds) in impl_trait {
+            if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
+                if let Some(proj) = impl_trait_proj.remove(&idx) {
+                    for (trait_did, name, rhs) in proj {
+                        simplify::merge_bounds(
+                            cx,
+                            &mut bounds,
+                            trait_did,
+                            &name,
+                            &rhs.clean(cx),
+                        );
+                    }
+                }
+            } else {
+                unreachable!();
+            }
+
+            cx.impl_trait_bounds.borrow_mut().insert(param, bounds);
+        }
 
         // Type parameters and have a Sized bound by default unless removed with
         // ?Sized. Scan through the predicates and mark any type parameter with
