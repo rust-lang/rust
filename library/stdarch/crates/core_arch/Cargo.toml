@@ -8,8 +8,8 @@ authors = [
 ]
 description = "`core::arch` - Rust's core library architecture-specific intrinsics."
 documentation = "https://docs.rs/core_arch"
-homepage = "https://github.com/rust-lang-nursery/stdsimd"
-repository = "https://github.com/rust-lang-nursery/stdsimd"
+homepage = "https://github.com/rust-lang/stdarch"
+repository = "https://github.com/rust-lang/stdarch"
 readme = "README.md"
 keywords = ["core", "simd", "arch", "intrinsics"]
 categories = ["hardware-support", "no-std"]
@@ -18,14 +18,14 @@ build = "build.rs"
 edition = "2018"
 
 [badges]
-travis-ci = { repository = "rust-lang-nursery/stdsimd" }
-appveyor = { repository = "rust-lang-nursery/stdsimd"  }
-is-it-maintained-issue-resolution = { repository = "rust-lang-nursery/stdsimd" }
-is-it-maintained-open-issues = { repository = "rust-lang-nursery/stdsimd" }
+travis-ci = { repository = "rust-lang/stdarch" }
+appveyor = { repository = "rust-lang/stdarch"  }
+is-it-maintained-issue-resolution = { repository = "rust-lang/stdarch" }
+is-it-maintained-open-issues = { repository = "rust-lang/stdarch" }
 maintenance = { status = "experimental" }
 
 [dev-dependencies]
-stdsimd-test = { version = "0.*", path = "../stdsimd-test" }
+stdarch-test = { version = "0.*", path = "../stdarch-test" }
 std_detect = { version = "0.*", path = "../std_detect" }
 
 [target.wasm32-unknown-unknown.dev-dependencies]

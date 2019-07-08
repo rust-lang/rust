@@ -1,7 +1,7 @@
 use crate::sync::atomic::Ordering;
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Compares and exchange 16 bytes (128 bits) of data atomically.
 ///

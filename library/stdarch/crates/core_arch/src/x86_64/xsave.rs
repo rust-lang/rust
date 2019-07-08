@@ -3,7 +3,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -124,16 +124,16 @@ pub unsafe fn _xrstors64(mem_addr: *const u8, rs_mask: u64) {
     xrstors64(mem_addr, (rs_mask >> 32) as u32, rs_mask as u32);
 }
 
-// FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/209
+// FIXME: https://github.com/rust-lang/stdarch/issues/209
 // All these tests fail with Intel SDE.
 /*
 #[cfg(test)]
 mod tests {
     use crate::core_arch::x86::x86_64::xsave;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
     use std::fmt;
 
-    // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/209
+    // FIXME: https://github.com/rust-lang/stdarch/issues/209
     #[repr(align(64))]
     struct XsaveArea {
         // max size for 256-bit registers is 800 bytes:

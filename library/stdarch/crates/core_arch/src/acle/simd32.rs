@@ -63,7 +63,7 @@
 //! - \[x\] __smusdx
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 use crate::{core_arch::acle::dsp::int16x2_t, mem::transmute};
 
@@ -465,7 +465,7 @@ pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
 mod tests {
     use crate::core_arch::simd::{i16x2, i8x4, u8x4};
     use std::{i16, i8, mem::transmute};
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[test]
     fn qadd8() {

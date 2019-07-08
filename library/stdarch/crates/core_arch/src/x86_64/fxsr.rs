@@ -1,7 +1,7 @@
 //! FXSR floating-point context fast save and restor.
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -59,7 +59,7 @@ pub unsafe fn _fxrstor64(mem_addr: *const u8) {
 mod tests {
     use crate::core_arch::x86_64::*;
     use std::{cmp::PartialEq, fmt};
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[repr(align(16))]
     struct FxsaveArea {

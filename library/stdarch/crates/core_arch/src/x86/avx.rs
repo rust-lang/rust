@@ -21,7 +21,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Adds packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`.
@@ -54,7 +54,7 @@ pub unsafe fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx")]
 // FIXME: Should be 'vandpd' instuction.
-// See https://github.com/rust-lang-nursery/stdsimd/issues/71
+// See https://github.com/rust-lang/stdarch/issues/71
 #[cfg_attr(test, assert_instr(vandps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -84,7 +84,7 @@ pub unsafe fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx")]
 // FIXME: should be `vorpd` instuction.
-// See <https://github.com/rust-lang-nursery/stdsimd/issues/71>.
+// See <https://github.com/rust-lang/stdarch/issues/71>.
 #[cfg_attr(test, assert_instr(vorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -3309,7 +3309,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use crate::hint::black_box;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

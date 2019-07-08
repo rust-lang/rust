@@ -10,7 +10,7 @@ set -ex
 #export RUST_TEST_NOCAPTURE=1
 #export RUST_TEST_THREADS=1
 
-RUSTFLAGS="$RUSTFLAGS --cfg stdsimd_strict"
+RUSTFLAGS="$RUSTFLAGS --cfg stdarch_strict"
 
 case ${TARGET} in
     # On 32-bit use a static relocation model which avoids some extra
@@ -33,8 +33,8 @@ esac
 echo "RUSTFLAGS=${RUSTFLAGS}"
 echo "FEATURES=${FEATURES}"
 echo "OBJDUMP=${OBJDUMP}"
-echo "STDSIMD_DISABLE_ASSERT_INSTR=${STDSIMD_DISABLE_ASSERT_INSTR}"
-echo "STDSIMD_TEST_EVERYTHING=${STDSIMD_TEST_EVERYTHING}"
+echo "STDARCH_DISABLE_ASSERT_INSTR=${STDARCH_DISABLE_ASSERT_INSTR}"
+echo "STDARCH_TEST_EVERYTHING=${STDARCH_TEST_EVERYTHING}"
 
 cargo_test() {
     cmd="cargo"
@@ -49,7 +49,7 @@ cargo_test() {
 
 CORE_ARCH="--manifest-path=crates/core_arch/Cargo.toml"
 STD_DETECT="--manifest-path=crates/std_detect/Cargo.toml"
-STDSIMD_EXAMPLES="--manifest-path=examples/Cargo.toml"
+STDARCH_EXAMPLES="--manifest-path=examples/Cargo.toml"
 cargo_test "${CORE_ARCH} --release"
 
 if [ "$NOSTD" != "1" ]; then
@@ -61,14 +61,14 @@ if [ "$NOSTD" != "1" ]; then
     cargo_test "${STD_DETECT} --no-default-features --features=std_detect_dlsym_getauxval"
     cargo_test "${STD_DETECT} --no-default-features --features=std_detect_dlsym_getauxval,std_detect_file_io"
 
-    cargo_test "${STDSIMD_EXAMPLES}"
-    cargo_test "${STDSIMD_EXAMPLES} --release"
+    cargo_test "${STDARCH_EXAMPLES}"
+    cargo_test "${STDARCH_EXAMPLES} --release"
 fi
 
 # Test targets compiled with extra features.
 case ${TARGET} in
     x86*)
-        export STDSIMD_DISABLE_ASSERT_INSTR=1
+        export STDARCH_DISABLE_ASSERT_INSTR=1
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
         cargo_test "--release"
         ;;

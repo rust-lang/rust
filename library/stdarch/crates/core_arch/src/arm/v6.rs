@@ -7,7 +7,7 @@
 //! html
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Reverse the order of the bytes.
 #[inline]

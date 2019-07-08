@@ -519,14 +519,14 @@ pub use self::bmi1::*;
 mod bmi2;
 pub use self::bmi2::*;
 
-#[cfg(not(stdsimd_intel_sde))]
+#[cfg(not(stdarch_intel_sde))]
 mod sse4a;
-#[cfg(not(stdsimd_intel_sde))]
+#[cfg(not(stdarch_intel_sde))]
 pub use self::sse4a::*;
 
-#[cfg(not(stdsimd_intel_sde))]
+#[cfg(not(stdarch_intel_sde))]
 mod tbm;
-#[cfg(not(stdsimd_intel_sde))]
+#[cfg(not(stdarch_intel_sde))]
 pub use self::tbm::*;
 
 mod mmx;
@@ -548,7 +548,7 @@ mod adx;
 pub use self::adx::*;
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Generates the trap instruction `UD2`
 #[cfg_attr(test, assert_instr(ud2))]

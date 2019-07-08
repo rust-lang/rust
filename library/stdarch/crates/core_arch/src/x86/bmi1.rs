@@ -10,7 +10,7 @@
 //! [wikipedia_bmi]: https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#ABM_.28Advanced_Bit_Manipulation.29
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
@@ -118,7 +118,7 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

@@ -8,7 +8,7 @@ set -ex
 run() {
     target=$(echo "${1}" | sed 's/-emulated//')
     echo "Building docker container for TARGET=${1}"
-    docker build -t stdsimd -f "ci/docker/${1}/Dockerfile" ci/
+    docker build -t stdarch -f "ci/docker/${1}/Dockerfile" ci/
     mkdir -p target
     echo "Running docker"
     # shellcheck disable=SC2016
@@ -20,18 +20,18 @@ run() {
       --env CARGO_HOME=/cargo-h \
       --volume "$(rustc --print sysroot)":/rust:ro \
       --env TARGET="${target}" \
-      --env STDSIMD_TEST_EVERYTHING \
-      --env STDSIMD_ASSERT_INSTR_IGNORE \
-      --env STDSIMD_DISABLE_ASSERT_INSTR \
+      --env STDARCH_TEST_EVERYTHING \
+      --env STDARCH_ASSERT_INSTR_IGNORE \
+      --env STDARCH_DISABLE_ASSERT_INSTR \
       --env NOSTD \
       --env NORUN \
       --env RUSTFLAGS \
-      --env STDSIMD_TEST_NORUN \
+      --env STDARCH_TEST_NORUN \
       --volume "$(pwd)":/checkout:ro \
       --volume "$(pwd)"/target:/checkout/target \
       --workdir /checkout \
       --privileged \
-      stdsimd \
+      stdarch \
       bash \
       -c 'PATH=/rust/bin:$PATH exec ci/run.sh'
 }

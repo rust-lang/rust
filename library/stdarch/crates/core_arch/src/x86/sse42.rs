@@ -3,7 +3,7 @@
 //! Extends SSE4.1 with STTNI (String and Text New Instructions).
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 use crate::{
     core_arch::{simd::*, simd_llvm::*, x86::*},
@@ -707,7 +707,7 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
     use std::ptr;

@@ -3,7 +3,7 @@
 use crate::core_arch::x86::*;
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -72,7 +72,7 @@ pub unsafe fn _mm_cvtsi64_ss(a: __m128, b: i64) -> __m128 {
 mod tests {
     use crate::core_arch::arch::x86_64::*;
     use std::{f32::NAN, i64::MIN};
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_cvtss_si64() {

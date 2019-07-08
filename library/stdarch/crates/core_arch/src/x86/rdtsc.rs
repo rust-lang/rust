@@ -1,7 +1,7 @@
 //! RDTSC instructions.
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Reads the current value of the processor’s time-stamp counter.
 ///
@@ -60,7 +60,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::x86::*;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "sse2")]
     unsafe fn _rdtsc() {

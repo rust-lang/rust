@@ -35,7 +35,7 @@ extern "C" {
 }
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// AES single round encryption.
 #[inline]
@@ -165,7 +165,7 @@ pub unsafe fn vsha256su1q_u32(
 mod tests {
     use crate::core_arch::{aarch64::*, simd::*};
     use std::mem;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vaeseq_u8() {

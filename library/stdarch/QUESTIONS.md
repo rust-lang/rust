@@ -2,10 +2,10 @@ This program emits `psllw` instead of `pslliw` instruction. `pslliw` should be
 usable here since `imm8` is a constant:
 
 ```rust
-extern crate stdsimd;
+extern crate stdarch;
 
 use std::env;
-use stdsimd as s;
+use stdarch as s;
 
 fn main() {
     let imm8: i32 = env::args().nth(1).unwrap().parse().unwrap();

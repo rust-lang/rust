@@ -1,12 +1,12 @@
 [package]
-name = "stdsimd_examples"
+name = "stdarch_examples"
 version = "0.0.0"
 authors = [
     "Alex Crichton <alex@alexcrichton.com>",
     "Andrew Gallant <jamslam@gmail.com>",
     "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
 ]
-description = "Examples of the stdsimd crate."
+description = "Examples of the stdarch crate."
 
 [dependencies]
 core_arch = { path = "../crates/core_arch" }

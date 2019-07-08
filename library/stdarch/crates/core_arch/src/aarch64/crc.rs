@@ -19,7 +19,7 @@ extern "C" {
 }
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// CRC32 single round checksum for bytes (8 bits).
 #[inline]
@@ -89,7 +89,7 @@ pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
 mod tests {
     use crate::core_arch::{aarch64::*, simd::*};
     use std::mem;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "crc")]
     unsafe fn test_crc32b() {

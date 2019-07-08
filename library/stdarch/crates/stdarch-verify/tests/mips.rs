@@ -6,7 +6,7 @@
 // https://gcc.gnu.org/onlinedocs//gcc/MIPS-SIMD-Architecture-Built-in-Functions.html
 static HEADER: &str = include_str!("../mips-msa.h");
 
-stdsimd_verify::mips_functions!(static FUNCTIONS);
+stdarch_verify::mips_functions!(static FUNCTIONS);
 
 struct Function {
     name: &'static str,

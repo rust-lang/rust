@@ -39,14 +39,14 @@ are:
 * [How to get started][contrib]
 * [How to help implement intrinsics][help-implement]
 
-[contrib]: https://github.com/rust-lang-nursery/stdsimd/blob/master/CONTRIBUTING.md
-[help-implement]: https://github.com/rust-lang-nursery/stdsimd/issues/40
-[i686]: https://rust-lang-nursery.github.io/stdsimd/i686/core_arch/
-[x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/core_arch/
-[arm]: https://rust-lang-nursery.github.io/stdsimd/arm/core_arch/
-[aarch64]: https://rust-lang-nursery.github.io/stdsimd/aarch64/core_arch/
-[powerpc]: https://rust-lang-nursery.github.io/stdsimd/powerpc/core_arch/
-[powerpc64]: https://rust-lang-nursery.github.io/stdsimd/powerpc64/core_arch/
+[contrib]: https://github.com/rust-lang/stdarch/blob/master/CONTRIBUTING.md
+[help-implement]: https://github.com/rust-lang/stdarch/issues/40
+[i686]: https://rust-lang.github.io/stdarch/i686/core_arch/
+[x86_64]: https://rust-lang.github.io/stdarch/x86_64/core_arch/
+[arm]: https://rust-lang.github.io/stdarch/arm/core_arch/
+[aarch64]: https://rust-lang.github.io/stdarch/aarch64/core_arch/
+[powerpc]: https://rust-lang.github.io/stdarch/powerpc/core_arch/
+[powerpc64]: https://rust-lang.github.io/stdarch/powerpc64/core_arch/
 
 # License
 
@@ -62,9 +62,9 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `core_arch` by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
 
-[travis]: https://travis-ci.com/rust-lang-nursery/stdsimd
-[Travis-CI Status]: https://travis-ci.com/rust-lang-nursery/stdsimd.svg?branch=master
-[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master
+[travis]: https://travis-ci.com/rust-lang/stdarch
+[Travis-CI Status]: https://travis-ci.com/rust-lang/stdarch.svg?branch=master
+[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdarch/branch/master
 [Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
 [core_arch_crate_badge]: https://img.shields.io/crates/v/core_arch.svg
 [core_arch_crate_link]: https://crates.io/crates/core_arch

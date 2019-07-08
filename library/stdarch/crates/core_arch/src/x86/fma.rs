@@ -21,7 +21,7 @@
 use crate::core_arch::x86::*;
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Multiplies packed double-precision (64-bit) floating-point elements in `a`
 /// and `b`, and add the intermediate result to packed elements in `c`.
@@ -508,7 +508,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use std;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

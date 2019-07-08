@@ -14,7 +14,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Constructs a 64-bit integer vector initialized to zero.
 #[inline]
@@ -532,7 +532,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::x86::*;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "mmx")]
     unsafe fn test_mm_setzero_si64() {

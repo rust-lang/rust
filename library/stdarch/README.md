@@ -1,4 +1,4 @@
-stdsimd - Rust's standard library SIMD components
+stdarch - Rust's standard library SIMD components
 =======
 
 [![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] 
@@ -29,9 +29,9 @@ To do a release of the `core_arch` and `std_detect` crates,
   https://github.com/rust-lang/cargo/issues/4242),
 * publish the crates.
 
-[travis]: https://travis-ci.com/rust-lang-nursery/stdsimd
-[Travis-CI Status]: https://travis-ci.com/rust-lang-nursery/stdsimd.svg?branch=master
-[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master
+[travis]: https://travis-ci.com/rust-lang/stdarch
+[Travis-CI Status]: https://travis-ci.com/rust-lang/stdarch.svg?branch=master
+[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdarch/branch/master
 [Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
 [core_arch_crate_badge]: https://img.shields.io/crates/v/core_arch.svg
 [core_arch_crate_link]: https://crates.io/crates/core_arch

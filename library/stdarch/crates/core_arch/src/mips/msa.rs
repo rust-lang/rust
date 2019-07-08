@@ -6,7 +6,7 @@
 //! [msa_ref]: http://cdn2.imgtec.com/documentation/MD00866-2B-MSA32-AFP-01.12.pdf
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 use crate::mem;
 
@@ -9235,7 +9235,7 @@ mod tests {
         mem,
     };
     use std::{f32, f64};
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_add_a_b() {

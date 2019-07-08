@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Computes the absolute value of packed 8-bit signed integers in `a` and
 /// return the unsigned results.
@@ -560,7 +560,7 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

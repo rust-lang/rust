@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -84,7 +84,7 @@ pub unsafe fn _mm_stream_ss(p: *mut f32, a: __m128) {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::x86::*;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "sse4a")]
     unsafe fn test_mm_extract_si64() {

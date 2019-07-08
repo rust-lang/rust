@@ -9,7 +9,7 @@
 #![cfg(any(target_feature = "atomics", dox))]
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 #[cfg(test)]
 use wasm_bindgen_test::wasm_bindgen_test;
 

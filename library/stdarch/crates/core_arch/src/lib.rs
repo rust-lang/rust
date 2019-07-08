@@ -1,5 +1,4 @@
 #![doc(include = "core_arch_docs.md")]
-#![cfg_attr(stdsimd_strict, deny(warnings))]
 #![allow(dead_code)]
 #![allow(unused_features)]
 #![feature(
@@ -65,7 +64,7 @@ extern crate std;
 #[macro_use]
 extern crate std_detect;
 #[cfg(test)]
-extern crate stdsimd_test;
+extern crate stdarch_test;
 
 #[cfg(all(test, target_arch = "wasm32"))]
 extern crate wasm_bindgen_test;

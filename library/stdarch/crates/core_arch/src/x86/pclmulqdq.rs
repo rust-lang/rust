@@ -8,7 +8,7 @@
 use crate::core_arch::x86::__m128i;
 
 #[cfg(test)]
-use crate::stdsimd_test::assert_instr;
+use crate::stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -48,7 +48,7 @@ mod tests {
     // __m128i happens to be defined in terms of signed integers.
     #![allow(overflowing_literals)]
 
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

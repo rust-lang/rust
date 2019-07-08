@@ -12,7 +12,7 @@ use crate::core_arch::arm::*;
 
 use crate::core_arch::simd::*;
 use std::mem;
-use stdsimd_test::simd_test;
+use stdarch_test::simd_test;
 
 macro_rules! test_vtbl {
     ($test_name:ident => $fn_id:ident:

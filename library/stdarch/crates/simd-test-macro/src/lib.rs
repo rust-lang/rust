@@ -126,7 +126,7 @@ pub fn simd_test(
                 #emms
                 return v;
             } else {
-                ::stdsimd_test::assert_skip_test_ok(stringify!(#name));
+                ::stdarch_test::assert_skip_test_ok(stringify!(#name));
             }
 
             #[target_feature(enable = #enable_feature)]

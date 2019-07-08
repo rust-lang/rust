@@ -2,7 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Result of the `cpuid` instruction.
 #[allow(clippy::missing_inline_in_public_items)]

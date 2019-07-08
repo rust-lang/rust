@@ -4,7 +4,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Computes the absolute values of packed 32-bit integers in `a`.
 ///
@@ -97,7 +97,7 @@ pub unsafe fn _mm512_set1_epi64(a: i64) -> __m512i {
 #[cfg(test)]
 mod tests {
     use std;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

@@ -24,7 +24,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Computes the absolute values of packed 32-bit integers in `a`.
 ///
@@ -4057,7 +4057,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use std;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

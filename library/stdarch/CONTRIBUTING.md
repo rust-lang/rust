@@ -1,11 +1,11 @@
-# Contributing to stdsimd
+# Contributing to stdarch
 
-The `stdsimd` crate is more than willing to accept contributions! First you'll
+The `stdarch` crate is more than willing to accept contributions! First you'll
 probably want to check out the repository and make sure that tests pass for you:
 
 ```
-$ git clone https://github.com/rust-lang-nursery/stdsimd
-$ cd stdsimd
+$ git clone https://github.com/rust-lang/stdarch
+$ cd stdarch
 $ cargo +nightly test
 ```
 
@@ -29,7 +29,7 @@ around! Feel free to ping either @BurntSushi or @alexcrichton with questions.
 
 [gitter]: https://gitter.im/rust-impl-period/WG-libs-simd
 
-# How to write examples for stdsimd intrinsics
+# How to write examples for stdarch intrinsics
 
 There are a few features that must be enabled for the given intrinsic to work
 properly and the example must only be run by `cargo test --doc` when the feature
@@ -44,9 +44,9 @@ to ensure your example works as expected.
 /// # // We need target_feature for the intrinsic to work
 /// # #![feature(target_feature)]
 /// #
-/// # // rustdoc by default uses `extern crate stdsimd`, but we need the
+/// # // rustdoc by default uses `extern crate stdarch`, but we need the
 /// # // `#[macro_use]`
-/// # #[macro_use] extern crate stdsimd;
+/// # #[macro_use] extern crate stdarch;
 /// #
 /// # // The real main function
 /// # fn main() {
@@ -69,12 +69,12 @@ to ensure your example works as expected.
 If some of the above syntax does not look familiar, the [Documentation as tests] section
 of the [Rust Book] describes the `rustdoc` syntax quite well. As always, feel free
 to [join us on gitter][gitter] and ask us if you hit any snags, and thank you for helping
-to improve the documentation of `stdsimd`!
+to improve the documentation of `stdarch`!
 
-[new]: https://github.com/rust-lang-nursery/stdsimd/issues/new
-[issues]: https://github.com/rust-lang-nursery/stdsimd/issues
-[help]: https://github.com/rust-lang-nursery/stdsimd/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22
-[impl]: https://github.com/rust-lang-nursery/stdsimd/issues?q=is%3Aissue+is%3Aopen+label%3Aimpl-period
-[vendor]: https://github.com/rust-lang-nursery/stdsimd/issues/40
+[new]: https://github.com/rust-lang/stdarch/issues/new
+[issues]: https://github.com/rust-lang/stdarch/issues
+[help]: https://github.com/rust-lang/stdarch/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22
+[impl]: https://github.com/rust-lang/stdarch/issues?q=is%3Aissue+is%3Aopen+label%3Aimpl-period
+[vendor]: https://github.com/rust-lang/stdarch/issues/40
 [Documentation as tests]: https://doc.rust-lang.org/book/first-edition/documentation.html#documentation-as-tests
 [Rust Book]: https://doc.rust-lang.org/book/first-edition

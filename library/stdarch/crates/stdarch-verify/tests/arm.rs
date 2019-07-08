@@ -167,7 +167,7 @@ enum Type {
     Never,
 }
 
-stdsimd_verify::arm_functions!(static FUNCTIONS);
+stdarch_verify::arm_functions!(static FUNCTIONS);
 
 macro_rules! bail {
     ($($t:tt)*) => (return Err(format!($($t)*)))

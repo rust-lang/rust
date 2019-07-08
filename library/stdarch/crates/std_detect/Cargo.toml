@@ -8,8 +8,8 @@ authors = [
 ]
 description = "`std::detect` - Rust's standard library run-time CPU feature detection."
 documentation = "https://docs.rs/std_detect"
-homepage = "https://github.com/rust-lang-nursery/stdsimd"
-repository = "https://github.com/rust-lang-nursery/stdsimd"
+homepage = "https://github.com/rust-lang/stdarch"
+repository = "https://github.com/rust-lang/stdarch"
 readme = "README.md"
 keywords = ["std", "run-time", "feature", "detection"]
 categories = ["hardware-support"]
@@ -17,10 +17,10 @@ license = "MIT/Apache-2.0"
 edition = "2015"
 
 [badges]
-travis-ci = { repository = "rust-lang-nursery/stdsimd" }
-appveyor = { repository = "rust-lang-nursery/stdsimd"  }
-is-it-maintained-issue-resolution = { repository = "rust-lang-nursery/stdsimd" }
-is-it-maintained-open-issues = { repository = "rust-lang-nursery/stdsimd" }
+travis-ci = { repository = "rust-lang/stdarch" }
+appveyor = { repository = "rust-lang/stdarch"  }
+is-it-maintained-issue-resolution = { repository = "rust-lang/stdarch" }
+is-it-maintained-open-issues = { repository = "rust-lang/stdarch" }
 maintenance = { status = "experimental" }
 
 [dependencies]

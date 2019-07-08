@@ -13,7 +13,7 @@ extern "unadjusted" {
 }
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Read a hardware generated 64-bit random value and store the result in val.
 /// Returns 1 if a random value was generated, and 0 otherwise.

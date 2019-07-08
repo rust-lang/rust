@@ -2,7 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -165,7 +165,7 @@ mod tests {
     use std::{fmt, prelude::v1::*};
 
     use crate::core_arch::x86::*;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[repr(align(64))]
     struct XsaveArea {
@@ -209,7 +209,7 @@ mod tests {
         }
     }
 
-    // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/209
+    // FIXME: https://github.com/rust-lang/stdarch/issues/209
     /*
     #[simd_test(enable = "xsave")]
     unsafe fn xsave() {
@@ -237,7 +237,7 @@ mod tests {
         assert_eq!(xcr, xcr_cpy);
     }
 
-    // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/209
+    // FIXME: https://github.com/rust-lang/stdarch/issues/209
     /*
     #[simd_test(enable = "xsave,xsaveopt")]
     unsafe fn xsaveopt() {
@@ -253,7 +253,7 @@ mod tests {
     */
 
     // FIXME: this looks like a bug in Intel's SDE:
-    #[cfg(not(stdsimd_intel_sde))]
+    #[cfg(not(stdarch_intel_sde))]
     #[simd_test(enable = "xsave,xsavec")]
     unsafe fn xsavec() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
@@ -266,7 +266,7 @@ mod tests {
         assert_eq!(a, b);
     }
 
-    // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/209
+    // FIXME: https://github.com/rust-lang/stdarch/issues/209
     /*
     #[simd_test(enable = "xsave,xsaves")]
     unsafe fn xsaves() {

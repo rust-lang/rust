@@ -108,7 +108,7 @@ fn parse(output: &str) -> HashSet<Function> {
     let mut functions = HashSet::new();
     let mut cached_header = None;
     while let Some(header) = cached_header.take().or_else(|| lines.next()) {
-        if !header.ends_with(':') || !header.contains("stdsimd_test_shim") {
+        if !header.ends_with(':') || !header.contains("stdarch_test_shim") {
             continue
         }
         let symbol = normalize(header);

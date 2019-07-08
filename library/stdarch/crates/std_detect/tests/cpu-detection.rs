@@ -1,5 +1,4 @@
 #![feature(stdsimd)]
-#![cfg_attr(stdsimd_strict, deny(warnings))]
 #![allow(clippy::option_unwrap_used, clippy::use_debug, clippy::print_stdout)]
 
 #[cfg(any(

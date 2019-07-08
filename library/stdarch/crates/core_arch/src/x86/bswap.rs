@@ -2,7 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Returns an integer with the reversed byte order of x
 ///

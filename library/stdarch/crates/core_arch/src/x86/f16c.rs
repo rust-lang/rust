@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "unadjusted" {
@@ -110,7 +110,7 @@ pub unsafe fn _mm256_cvtps_ph(a: __m256, imm_rounding: i32) -> __m128i {
 #[cfg(test)]
 mod tests {
     use crate::{core_arch::x86::*, mem::transmute};
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "f16c")]
     unsafe fn test_mm_cvtph_ps() {

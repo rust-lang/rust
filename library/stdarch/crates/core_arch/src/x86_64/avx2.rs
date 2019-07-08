@@ -36,7 +36,7 @@ pub unsafe fn _mm256_extract_epi64(a: __m256i, imm8: i32) -> i64 {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::arch::x86_64::*;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_extract_epi64() {

@@ -1,7 +1,7 @@
 //! `x86_64`'s Streaming SIMD Extensions 4.2 (SSE4.2)
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -25,7 +25,7 @@ pub unsafe fn _mm_crc32_u64(crc: u64, v: u64) -> u64 {
 mod tests {
     use crate::core_arch::arch::x86_64::*;
 
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_crc32_u64() {

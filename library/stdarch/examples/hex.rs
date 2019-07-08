@@ -171,7 +171,7 @@ fn hex_encode_fallback<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usi
     unsafe { Ok(str::from_utf8_unchecked(&dst[..src.len() * 2])) }
 }
 
-// Run these with `cargo +nightly test --example hex -p stdsimd`
+// Run these with `cargo +nightly test --example hex -p stdarch`
 #[cfg(test)]
 mod tests {
     use std::iter;
@@ -271,7 +271,7 @@ mod tests {
     }
 }
 
-// Run these with `cargo +nightly bench --example hex -p stdsimd`
+// Run these with `cargo +nightly bench --example hex -p stdarch`
 #[cfg(test)]
 mod benches {
     extern crate rand;

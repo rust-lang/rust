@@ -10,13 +10,13 @@
 pub use super::v6::*;
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Count Leading Zeros.
 #[inline]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
-// FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/382
+// FIXME: https://github.com/rust-lang/stdarch/issues/382
 // #[cfg_attr(all(test, target_arch = "arm"), assert_instr(clz))]
 pub unsafe fn _clz_u8(x: u8) -> u8 {
     x.leading_zeros() as u8
@@ -26,7 +26,7 @@ pub unsafe fn _clz_u8(x: u8) -> u8 {
 #[inline]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
-// FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/382
+// FIXME: https://github.com/rust-lang/stdarch/issues/382
 // #[cfg_attr(all(test, target_arch = "arm"), assert_instr(clz))]
 pub unsafe fn _clz_u16(x: u16) -> u16 {
     x.leading_zeros() as u16
@@ -36,7 +36,7 @@ pub unsafe fn _clz_u16(x: u16) -> u16 {
 #[inline]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
-// FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/382
+// FIXME: https://github.com/rust-lang/stdarch/issues/382
 // #[cfg_attr(all(test, target_arch = "arm"), assert_instr(clz))]
 pub unsafe fn _clz_u32(x: u32) -> u32 {
     x.leading_zeros() as u32

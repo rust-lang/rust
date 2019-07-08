@@ -14,7 +14,7 @@
 //! [intel_consid]: https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-intel-transactional-synchronization-extensions-intel-tsx-programming-considerations
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 extern "C" {
     #[link_name = "llvm.x86.xbegin"]
@@ -107,7 +107,7 @@ pub const fn _xabort_code(status: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

@@ -1,7 +1,7 @@
 //! Streaming SIMD Extensions 2 (SSE2)
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 use crate::{
     core_arch::{simd::*, simd_llvm::*, x86::*},
@@ -3193,7 +3193,7 @@ mod tests {
         i32,
         mem::{self, transmute},
     };
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[test]
     fn test_mm_pause() {

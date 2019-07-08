@@ -1,6 +1,6 @@
 //! Implementation of the `#[assert_instr]` macro
 //!
-//! This macro is used when testing the `stdsimd` crate and is used to generate
+//! This macro is used when testing the `stdarch` crate and is used to generate
 //! test cases to assert that functions do indeed contain the instructions that
 //! we're expecting them to contain.
 //!
@@ -41,7 +41,7 @@ pub fn assert_instr(
     // Disable assert_instr for x86 targets compiled with avx enabled, which
     // causes LLVM to generate different intrinsics that the ones we are
     // testing for.
-    let disable_assert_instr = std::env::var("STDSIMD_DISABLE_ASSERT_INSTR").is_ok();
+    let disable_assert_instr = std::env::var("STDARCH_DISABLE_ASSERT_INSTR").is_ok();
 
     // If instruction tests are disabled avoid emitting this shim at all, just
     // return the original item without our attribute.
@@ -57,7 +57,7 @@ pub fn assert_instr(
     let assert_name = syn::Ident::new(&format!("assert_{}_{}", name, instr_str), name.span());
     // These name has to be unique enough for us to find it in the disassembly later on:
     let shim_name = syn::Ident::new(
-        &format!("stdsimd_test_shim_{}_{}", name, instr_str),
+        &format!("stdarch_test_shim_{}_{}", name, instr_str),
         name.span(),
     );
     let mut inputs = Vec::new();
@@ -123,7 +123,7 @@ pub fn assert_instr(
             // generate some code that's hopefully very tight in terms of
             // codegen but is otherwise unique to prevent code from being
             // folded.
-            ::stdsimd_test::_DONT_DEDUP.store(
+            ::stdarch_test::_DONT_DEDUP.store(
                 std::mem::transmute(#shim_name_str.as_bytes().as_ptr()),
                 std::sync::atomic::Ordering::Relaxed,
             );
@@ -142,7 +142,7 @@ pub fn assert_instr(
             // code:
             unsafe { asm!("" : : "r"(#shim_name as usize) : "memory" : "volatile") };
 
-            ::stdsimd_test::assert(#shim_name as usize,
+            ::stdarch_test::assert(#shim_name as usize,
                                    stringify!(#shim_name),
                                    #instr);
         }

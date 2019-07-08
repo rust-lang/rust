@@ -7,7 +7,7 @@
 //! [arm_comp_ref]: https://developer.arm.com/docs/100067/0610
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Inserts a breakpoint instruction.
 ///

@@ -10,7 +10,7 @@ mod simd;
 
 #[cfg_attr(
     bootstrap,
-    doc(include = "../stdsimd/crates/core_arch/src/core_arch_docs.md")
+    doc(include = "../stdarch/crates/core_arch/src/core_arch_docs.md")
 )]
 #[cfg_attr(not(bootstrap), doc(include = "core_arch_docs.md"))]
 #[stable(feature = "simd_arch", since = "1.27.0")]

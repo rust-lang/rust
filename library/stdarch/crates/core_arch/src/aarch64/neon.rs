@@ -9,7 +9,7 @@ use crate::{
     mem::{transmute, zeroed},
 };
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 types! {
     /// ARM-specific 64-bit wide vector of one packed `f64`.
@@ -1546,7 +1546,7 @@ pub unsafe fn vqtbx4q_p8(a: poly8x16_t, t: poly8x16x4_t, idx: uint8x16_t) -> pol
 mod tests {
     use crate::core_arch::{aarch64::*, simd::*};
     use std::mem::transmute;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vadd_f64() {

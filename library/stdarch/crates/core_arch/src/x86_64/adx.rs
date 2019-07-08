@@ -1,5 +1,5 @@
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "unadjusted" {
@@ -48,7 +48,7 @@ pub unsafe fn _subborrow_u64(c_in: u8, a: u64, b: u64, out: &mut u64) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86_64::*;
 

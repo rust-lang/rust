@@ -78,7 +78,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
             function.name = function.name[1..].to_string()
         }
 
-        if !function.name.contains("stdsimd_test_shim") {
+        if !function.name.contains("stdarch_test_shim") {
             continue;
         }
 

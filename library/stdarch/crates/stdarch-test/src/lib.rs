@@ -1,4 +1,4 @@
-//! Runtime support needed for testing the stdsimd crate.
+//! Runtime support needed for testing the stdarch crate.
 //!
 //! This basically just disassembles the current executable and then parses the
 //! output once globally and then provides the `assert` function which makes
@@ -104,7 +104,7 @@ pub fn assert(_fnptr: usize, fnname: &str, expected: &str) {
         s[0].contains("call") && (!cfg!(target_arch = "x86") || s[1].contains("pop"))
     });
 
-    let instruction_limit = std::env::var("STDSIMD_ASSERT_INSTR_LIMIT")
+    let instruction_limit = std::env::var("STDARCH_ASSERT_INSTR_LIMIT")
         .ok()
         .map_or_else(
             || match expected {
@@ -168,7 +168,7 @@ pub fn assert(_fnptr: usize, fnname: &str, expected: &str) {
 }
 
 pub fn assert_skip_test_ok(name: &str) {
-    if env::var("STDSIMD_TEST_EVERYTHING").is_err() {
+    if env::var("STDARCH_TEST_EVERYTHING").is_err() {
         return;
     }
     panic!("skipped test `{}` when it shouldn't be skipped", name);

@@ -6,7 +6,7 @@
 //! ddi0487a.k_10775/index.html
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Reverse the order of the bytes.
 #[inline]

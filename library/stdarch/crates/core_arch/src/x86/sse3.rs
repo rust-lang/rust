@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Alternatively add and subtract packed single-precision (32-bit)
 /// floating-point elements in `a` to/from packed elements in `b`.
@@ -165,7 +165,7 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

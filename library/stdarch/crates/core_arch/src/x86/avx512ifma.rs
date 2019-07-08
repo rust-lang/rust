@@ -1,7 +1,7 @@
 use crate::core_arch::x86::*;
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Multiply packed unsigned 52-bit integers in each 64-bit element of
 /// `b` and `c` to form a 104-bit intermediate result. Add the high 52-bit
@@ -106,7 +106,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use std;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 

@@ -75,9 +75,9 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `std_detect` by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
 
-[travis]: https://travis-ci.com/rust-lang-nursery/stdsimd
-[Travis-CI Status]: https://travis-ci.com/rust-lang-nursery/stdsimd.svg?branch=master
-[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master
+[travis]: https://travis-ci.com/rust-lang/stdarch
+[Travis-CI Status]: https://travis-ci.com/rust-lang/stdarch.svg?branch=master
+[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdarch/branch/master
 [Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
 [std_detect_crate_badge]: https://img.shields.io/crates/v/std_detect.svg
 [std_detect_crate_link]: https://crates.io/crates/std_detect

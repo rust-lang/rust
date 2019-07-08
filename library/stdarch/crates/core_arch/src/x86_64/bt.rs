@@ -1,5 +1,5 @@
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Returns the bit in position `b` of the memory addressed by `p`.
 #[inline]

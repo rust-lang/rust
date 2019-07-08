@@ -21,7 +21,7 @@
 //! - \[x\] __smlawt
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 use crate::mem::transmute;
 
@@ -241,7 +241,7 @@ mod tests {
         simd::{i16x2, i8x4, u8x4},
     };
     use std::{i32, mem::transmute};
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[test]
     fn smulbb() {

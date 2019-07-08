@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 types! {
     /// PowerPC-specific 128-bit wide vector of sixteen packed `i8`
@@ -1714,7 +1714,7 @@ mod tests {
     use std::mem::transmute;
 
     use crate::core_arch::simd::*;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     macro_rules! test_vec_2 {
         { $name: ident, $fn:ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {

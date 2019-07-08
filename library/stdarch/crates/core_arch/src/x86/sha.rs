@@ -22,7 +22,7 @@ extern "C" {
 }
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Performs an intermediate calculation for the next four SHA1 message values
 /// (unsigned 32-bit integers) using previous message values from `a` and `b`,
@@ -141,7 +141,7 @@ mod tests {
         core_arch::{simd::*, x86::*},
         hint::black_box,
     };
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]

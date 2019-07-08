@@ -13,14 +13,14 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
       install: true
     - name: "x86_64-unknown-linux-gnu-emulated (runs all assert_instr tests)"
-      env: TARGET=x86_64-unknown-linux-gnu-emulated STDSIMD_TEST_EVERYTHING=1 RUSTFLAGS="--cfg stdsimd_intel_sde"
+      env: TARGET=x86_64-unknown-linux-gnu-emulated STDARCH_TEST_EVERYTHING=1 RUSTFLAGS="--cfg stdarch_intel_sde"
       install: true
     - name: "x86_64-linux-android - no assert_instr"
-      env: TARGET=x86_64-linux-android STDSIMD_DISABLE_ASSERT_INSTR=1
+      env: TARGET=x86_64-linux-android STDARCH_DISABLE_ASSERT_INSTR=1
     - name: "arm-unknown-linux-gnueabihf"
       env: TARGET=arm-unknown-linux-gnueabihf
     - name: "arm-linux-androideabi - no assert_instr"
-      env: TARGET=arm-linux-androideabi STDSIMD_DISABLE_ASSERT_INSTR=1
+      env: TARGET=arm-linux-androideabi STDARCH_DISABLE_ASSERT_INSTR=1
     - name: "armv7-unknown-linux-gnueabihf - NEON"
       env: TARGET=armv7-unknown-linux-gnueabihf RUSTFLAGS="-C target-feature=+neon"
     - name: "aarch64-unknown-linux-gnu"
@@ -34,13 +34,13 @@ matrix:
     - name: "mips64el-unknown-linux-gnuabi64 - build-only"
       env: TARGET=mips64el-unknown-linux-gnuabi64 NORUN=1
     - name: "aarch64-linux-android - no assert_instr"
-      env: TARGET=aarch64-linux-android STDSIMD_DISABLE_ASSERT_INSTR=1
+      env: TARGET=aarch64-linux-android STDARCH_DISABLE_ASSERT_INSTR=1
     - name: "powerpc-unknown-linux-gnu - no assert_instr"
-      env: TARGET=powerpc-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
+      env: TARGET=powerpc-unknown-linux-gnu STDARCH_DISABLE_ASSERT_INSTR=1
     - name: "powerpc64-unknown-linux-gnu - no assert_instr"
-      env: TARGET=powerpc64-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
+      env: TARGET=powerpc64-unknown-linux-gnu STDARCH_DISABLE_ASSERT_INSTR=1
     - name: "powerpc64le-unknown-linux-gnu - no assert_instr"
-      env: TARGET=powerpc64le-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
+      env: TARGET=powerpc64le-unknown-linux-gnu STDARCH_DISABLE_ASSERT_INSTR=1
     - name: "s390x-unknown-linux-gnu"
       env: TARGET=s390x-unknown-linux-gnu
     - name: "i686-apple-darwin"
@@ -90,7 +90,7 @@ matrix:
       install: true
       script: ci/dox.sh
     - name: "Automatic verification: x86 / x86_64 / arm / aarch64 / mips*"
-      script: cargo test --manifest-path crates/stdsimd-verify/Cargo.toml
+      script: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
       install: true
     - name: "rustfmt"
       install: true

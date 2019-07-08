@@ -11,7 +11,7 @@
 use crate::core_arch::simd_llvm::*;
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 use crate::mem;
 
@@ -93,7 +93,7 @@ mod tests {
 
     use super::mem;
     use crate::core_arch::simd::*;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     macro_rules! test_vec_xxpermdi {
         {$name:ident, $shorttype:ident, $longtype:ident, [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {

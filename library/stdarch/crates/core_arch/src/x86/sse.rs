@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Adds the first component of `a` and `b`, the other components are copied
 /// from `a`.
@@ -978,7 +978,7 @@ pub unsafe fn _mm_setzero_ps() -> __m128 {
 /// permute intrinsics.
 #[inline]
 #[allow(non_snake_case)]
-#[unstable(feature = "stdsimd", issue = "27731")]
+#[unstable(feature = "stdarch", issue = "27731")]
 pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
     ((z << 6) | (y << 4) | (x << 2) | w) as i32
 }
@@ -2499,7 +2499,7 @@ pub unsafe fn _mm_cvtps_pi8(a: __m128) -> __m64 {
 mod tests {
     use crate::{hint::black_box, mem::transmute};
     use std::{boxed, f32::NAN};
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     use crate::core_arch::{simd::*, x86::*};
 

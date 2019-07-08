@@ -2,7 +2,7 @@
 
 use crate::{core_arch::simd_llvm::*, mem::transmute};
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 types! {
     /// ARM-specific 64-bit wide vector of eight packed `i8`.
@@ -978,7 +978,7 @@ pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t 
 mod tests {
     use crate::core_arch::{arm::*, simd::*};
     use std::{i16, i32, i8, mem::transmute, u16, u32, u8};
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vadd_s8() {

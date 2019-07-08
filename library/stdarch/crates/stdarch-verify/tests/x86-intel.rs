@@ -81,7 +81,7 @@ enum Type {
     Ordering,
 }
 
-stdsimd_verify::x86_functions!(static FUNCTIONS);
+stdarch_verify::x86_functions!(static FUNCTIONS);
 
 #[derive(Deserialize)]
 struct Data {
@@ -142,7 +142,7 @@ fn verify_all_signatures() {
         match rust.name {
             // These aren't defined by Intel but they're defined by what appears
             // to be all other compilers. For more information see
-            // rust-lang-nursery/stdsimd#307, and otherwise these signatures
+            // rust-lang/stdarch#307, and otherwise these signatures
             // have all been manually verified.
             "__readeflags" |
             "__writeeflags" |
@@ -299,7 +299,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             // The XML file names IFMA as "avx512ifma52", while Rust calls
             // it "avx512ifma".
             "avx512ifma52" => String::from("avx512ifma"),
-            // See: https://github.com/rust-lang-nursery/stdsimd/issues/738
+            // See: https://github.com/rust-lang/stdarch/issues/738
             // The intrinsics guide calls `f16c` `fp16c` in disagreement with
             // Intel's architecture manuals.
             "fp16c" => String::from("f16c"),
@@ -509,7 +509,7 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::MutPtr(&Type::M128), "__m128") if intrinsic == "_MM_TRANSPOSE4_PS" => {}
 
         // The _rdtsc intrinsic uses a __int64 return type, but this is a bug in
-        // the intrinsics guide: https://github.com/rust-lang-nursery/stdsimd/issues/559
+        // the intrinsics guide: https://github.com/rust-lang/stdarch/issues/559
         // We have manually fixed the bug by changing the return type to `u64`.
         (&Type::PrimUnsigned(64), "__int64") if intrinsic == "_rdtsc" => {}
 

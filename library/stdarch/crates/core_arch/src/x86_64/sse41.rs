@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[cfg(test)]
-use stdsimd_test::assert_instr;
+use stdarch_test::assert_instr;
 
 /// Extracts an 64-bit integer from `a` selected with `imm8`
 ///
@@ -37,7 +37,7 @@ pub unsafe fn _mm_insert_epi64(a: __m128i, i: i64, imm8: i32) -> __m128i {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::arch::x86_64::*;
-    use stdsimd_test::simd_test;
+    use stdarch_test::simd_test;
 
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_extract_epi64() {
