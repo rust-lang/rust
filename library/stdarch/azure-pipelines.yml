@@ -118,6 +118,24 @@ jobs:
           TARGET: i686-apple-darwin
           NO_DOCKER: 1
 
+  #- job: Windows
+  #  pool:
+  #    vmImage: vs2017-win2016
+  #  steps:
+  #    - template: ci/azure-install-rust.yml
+  #    - bash: sh ./ci/run.sh $TARGET
+  #      displayName: Execute run.sh
+  #  strategy:
+  #    matrix:
+  #      x86_64-pc-windows-gnu:
+  #        TARGET: x86_64-pc-windows-gnu
+  #        NO_DOCKER: 1
+  #        TOOLCHAIN: nightly
+  #      x86_64-pc-windows-msvc:
+  #        TARGET: x86_64-pc-windows-gnu
+  #        NO_DOCKER: 1
+  #        TOOLCHAIN: nightly
+    
   - job: StyleAndDocs
     pool:
       vmImage: ubuntu-16.04

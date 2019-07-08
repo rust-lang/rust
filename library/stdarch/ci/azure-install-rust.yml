@@ -15,10 +15,12 @@ steps:
     displayName: Install rust (unix)
     condition: ne( variables['Agent.OS'], 'Windows_NT' )
   - script: |
+      @echo on
       if not defined TOOLCHAIN set TOOLCHAIN=nightly
+      echo %TOOLCHAIN%
       curl -sSf -o rustup-init.exe https://win.rustup.rs
       rustup-init.exe -y --default-toolchain %TOOLCHAIN%-%TARGET%
-      echo ##vso[task.prependpath]%USERPROFILE%\.cargo\bin
+      echo "##vso[task.setvariable variable=PATH;]%PATH%;%USERPROFILE%\.cargo\bin"
     displayName: Install rust (windows)
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
   - script: |
@@ -28,10 +30,12 @@ steps:
       fi
     condition: ne( variables['Agent.OS'], 'Windows_NT' )
     displayName: Install target (unix)
-  - script: if defined TARGET rustup target add %TARGET%
+  - script: |
+      @echo on
+      if defined TARGET rustup target add %TARGET%
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
     displayName: Install target (windows)
-  - script: |
+  - bash: |
         set -ex
         rustc -Vv
         cargo -V
@@ -41,7 +45,7 @@ steps:
         which cargo
         which rustup
     displayName: Query rust and cargo versions
-  - script: |
+  - bash: |
       set -ex
       cargo generate-lockfile
     displayName: Generate lockfiles
