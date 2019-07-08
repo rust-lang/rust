@@ -412,6 +412,19 @@ impl TryConvWith for (FileId, RangeInfo<NavigationTarget>) {
     }
 }
 
+impl TryConvWith for (FileId, RangeInfo<Vec<NavigationTarget>>) {
+    type Ctx = WorldSnapshot;
+    type Output = req::GotoDefinitionResponse;
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<req::GotoTypeDefinitionResponse> {
+        let (file_id, RangeInfo { range, info: navs }) = self;
+        let links = navs
+            .into_iter()
+            .map(|nav| (file_id, RangeInfo::new(range, nav)))
+            .try_conv_with_to_vec(world)?;
+        Ok(links.into())
+    }
+}
+
 pub fn to_location(
     file_id: FileId,
     range: TextRange,

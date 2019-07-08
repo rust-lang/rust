@@ -9,8 +9,7 @@ use lsp_types::{
     TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
-    AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo,
-    RunnableKind, Severity,
+    AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
@@ -267,13 +266,8 @@ pub fn handle_goto_definition(
         None => return Ok(None),
         Some(it) => it,
     };
-    let nav_range = nav_info.range;
-    let res = nav_info
-        .info
-        .into_iter()
-        .map(|nav| (position.file_id, RangeInfo::new(nav_range, nav)))
-        .try_conv_with_to_vec(&world)?;
-    Ok(Some(res.into()))
+    let res = (position.file_id, nav_info).try_conv_with(&world)?;
+    Ok(Some(res))
 }
 
 pub fn handle_goto_implementation(
@@ -285,13 +279,8 @@ pub fn handle_goto_implementation(
         None => return Ok(None),
         Some(it) => it,
     };
-    let nav_range = nav_info.range;
-    let res = nav_info
-        .info
-        .into_iter()
-        .map(|nav| (position.file_id, RangeInfo::new(nav_range, nav)))
-        .try_conv_with_to_vec(&world)?;
-    Ok(Some(res.into()))
+    let res = (position.file_id, nav_info).try_conv_with(&world)?;
+    Ok(Some(res))
 }
 
 pub fn handle_goto_type_definition(
@@ -303,13 +292,8 @@ pub fn handle_goto_type_definition(
         None => return Ok(None),
         Some(it) => it,
     };
-    let nav_range = nav_info.range;
-    let res = nav_info
-        .info
-        .into_iter()
-        .map(|nav| (position.file_id, RangeInfo::new(nav_range, nav)))
-        .try_conv_with_to_vec(&world)?;
-    Ok(Some(res.into()))
+    let res = (position.file_id, nav_info).try_conv_with(&world)?;
+    Ok(Some(res))
 }
 
 pub fn handle_parent_module(
