@@ -2572,13 +2572,13 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
-    fn is_sorted_by_key<F, K>(self, mut f: F) -> bool
+    fn is_sorted_by_key<F, K>(self, f: F) -> bool
     where
         Self: Sized,
-        F: FnMut(&Self::Item) -> K,
+        F: FnMut(Self::Item) -> K,
         K: PartialOrd
     {
-        self.is_sorted_by(|a, b| f(a).partial_cmp(&f(b)))
+        self.map(f).is_sorted()
     }
 }
 
