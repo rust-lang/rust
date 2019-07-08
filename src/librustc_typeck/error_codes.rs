@@ -4848,6 +4848,6 @@ register_diagnostics! {
     E0641, // cannot cast to/from a pointer with an unknown kind
     E0645, // trait aliases not finished
     E0719, // duplicate values for associated type binding
-    E0722, // Malformed #[optimize] attribute
+    E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
 }

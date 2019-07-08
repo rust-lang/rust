@@ -799,7 +799,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         debug!("callee_region={:?}", callee_region);
 
         for arg_expr in arg_exprs {
-            debug!("Argument: {:?}", arg_expr);
+            debug!("argument: {:?}", arg_expr);
 
             // ensure that any regions appearing in the argument type are
             // valid for at least the lifetime of the function:

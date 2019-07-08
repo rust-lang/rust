@@ -146,7 +146,7 @@ fn inline_asm_call(
     unsafe {
         // Ask LLVM to verify that the constraints are well-formed.
         let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr());
-        debug!("Constraint verification result: {:?}", constraints_ok);
+        debug!("constraint verification result: {:?}", constraints_ok);
         if constraints_ok {
             let v = llvm::LLVMRustInlineAsm(
                 fty,
