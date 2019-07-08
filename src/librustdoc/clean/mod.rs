@@ -1698,7 +1698,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
 
         // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
         // since `Clean for ty::Predicate` would consume them.
-        let mut impl_trait = FxHashMap::<ImplTraitParam, Vec<_>>::default();
+        let mut impl_trait = FxHashMap::<ImplTraitParam, Vec<GenericBound>>::default();
 
         // Bounds in the type_params and lifetimes fields are repeated in the
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
@@ -1720,40 +1720,72 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                 ty::GenericParamDefKind::Const { .. } => None,
             }).collect::<Vec<GenericParamDef>>();
 
+        // (param index, def id of trait) -> (name, type)
+        let mut impl_trait_proj = FxHashMap::<(u32, DefId), Vec<(String, Type)>>::default();
+
         let mut where_predicates = preds.predicates.iter()
             .flat_map(|(p, _)| {
-                let param_idx = if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
-                    if let ty::Param(param) = trait_ref.self_ty().sty {
-                        Some(param.index)
-                    } else {
-                        None
+                let param_idx = (|| {
+                    if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
+                        if let ty::Param(param) = trait_ref.self_ty().sty {
+                            return Some(param.index);
+                        }
+                    } else if let Some(outlives) = p.to_opt_type_outlives() {
+                        if let ty::Param(param) = outlives.skip_binder().0.sty {
+                            return Some(param.index);
+                        }
+                    } else if let ty::Predicate::Projection(proj) = p {
+                        if let ty::Param(param) = proj.skip_binder().projection_ty.self_ty().sty {
+                            return Some(param.index);
+                        }
                     }
-                } else if let Some(outlives) = p.to_opt_type_outlives() {
-                    if let ty::Param(param) = outlives.skip_binder().0.sty {
-                        Some(param.index)
-                    } else {
-                        None
-                    }
-                } else {
+
                     None
-                };
+                })();
 
                 let p = p.clean(cx)?;
 
-                if let Some(b) = param_idx.and_then(|i| impl_trait.get_mut(&i.into())) {
-                    b.extend(
-                        p.get_bounds()
-                            .into_iter()
-                            .flatten()
-                            .cloned()
-                            .filter(|b| !b.is_sized_bound(cx))
-                    );
-                    return None;
+                if let Some(param_idx) = param_idx {
+                    if let Some(b) = impl_trait.get_mut(&param_idx.into()) {
+                        b.extend(
+                            p.get_bounds()
+                                .into_iter()
+                                .flatten()
+                                .cloned()
+                                .filter(|b| !b.is_sized_bound(cx))
+                        );
+
+                        let proj = match &p {
+                            WherePredicate::EqPredicate { lhs, rhs } => Some((lhs, rhs))
+                                .and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs))),
+                            _ => None,
+                        };
+                        if let Some(((_, trait_did, name), rhs)) = proj {
+                            impl_trait_proj
+                                .entry((param_idx, trait_did))
+                                .or_default()
+                                .push((name.to_string(), rhs.clone()));
+                        }
+
+                        return None;
+                    }
                 }
 
                 Some(p)
             })
             .collect::<Vec<_>>();
+
+        for ((param_idx, trait_did), bounds) in impl_trait_proj {
+            for (name, rhs) in bounds {
+                simplify::merge_bounds(
+                    cx,
+                    impl_trait.get_mut(&param_idx.into()).unwrap(),
+                    trait_did,
+                    &name,
+                    &rhs,
+                );
+            }
+        }
 
         // Move `TraitPredicate`s to the front.
         for (_, bounds) in impl_trait.iter_mut() {
@@ -2664,6 +2696,21 @@ impl Type {
             _ => false,
         }
     }
+
+    pub fn projection(&self) -> Option<(&Type, DefId, &str)> {
+        let (self_, trait_, name) = match self {
+            QPath { ref self_type, ref trait_, ref name } => {
+                (self_type, trait_, name)
+            }
+            _ => return None,
+        };
+        let trait_did = match **trait_ {
+            ResolvedPath { did, .. } => did,
+            _ => return None,
+        };
+        Some((&self_, trait_did, name))
+    }
+
 }
 
 impl GetDefId for Type {
