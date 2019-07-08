@@ -12,7 +12,7 @@ use chalk_rust_ir::{AssociatedTyDatum, ImplDatum, StructDatum, TraitDatum};
 use ra_db::salsa::{InternId, InternKey};
 use test_utils::tested_by;
 
-use super::{Canonical, ChalkContext};
+use super::{Canonical, ChalkContext, Obligation};
 use crate::{
     db::HirDatabase,
     generics::GenericDef,
@@ -229,6 +229,21 @@ impl ToChalk for super::ProjectionPredicate {
     }
 
     fn from_chalk(_db: &impl HirDatabase, _normalize: chalk_ir::Normalize) -> Self {
+        unimplemented!()
+    }
+}
+
+impl ToChalk for Obligation {
+    type Chalk = chalk_ir::DomainGoal;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::DomainGoal {
+        match self {
+            Obligation::Trait(tr) => tr.to_chalk(db).cast(),
+            Obligation::Projection(pr) => pr.to_chalk(db).cast(),
+        }
+    }
+
+    fn from_chalk(_db: &impl HirDatabase, _goal: chalk_ir::DomainGoal) -> Self {
         unimplemented!()
     }
 }

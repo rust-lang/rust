@@ -93,7 +93,7 @@ impl<T> InEnvironment<T> {
 /// Something that needs to be proven (by Chalk) during type checking, e.g. that
 /// a certain type implements a certain trait. Proving the Obligation might
 /// result in additional information about inference variables.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Obligation {
     /// Prove that a certain type implements a trait (the type is the `Self` type
     /// parameter to the `TraitRef`).
@@ -116,27 +116,14 @@ pub struct ProjectionPredicate {
     pub ty: Ty,
 }
 
-/// Check using Chalk whether trait is implemented for given parameters including `Self` type.
-pub(crate) fn implements_query(
+/// Solve a trait goal using Chalk.
+pub(crate) fn solve_query(
     db: &impl HirDatabase,
     krate: Crate,
-    trait_ref: Canonical<InEnvironment<TraitRef>>,
+    trait_ref: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
     let _p = profile("implements_query");
     let canonical = trait_ref.to_chalk(db).cast();
-    // We currently don't deal with universes (I think / hope they're not yet
-    // relevant for our use cases?)
-    let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
-    let solution = solve(db, krate, &u_canonical);
-    solution.map(|solution| solution_from_chalk(db, solution))
-}
-
-pub(crate) fn normalize_query(
-    db: &impl HirDatabase,
-    krate: Crate,
-    projection: Canonical<InEnvironment<ProjectionPredicate>>,
-) -> Option<Solution> {
-    let canonical = projection.to_chalk(db).cast();
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };

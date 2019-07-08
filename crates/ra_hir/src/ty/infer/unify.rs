@@ -1,6 +1,6 @@
 //! Unification and canonicalization logic.
 
-use super::InferenceContext;
+use super::{InferenceContext, Obligation};
 use crate::db::HirDatabase;
 use crate::ty::{
     Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, TraitRef, Ty,
@@ -110,32 +110,24 @@ where
     // FIXME: add some point, we need to introduce a `Fold` trait that abstracts
     // over all the things that can be canonicalized (like Chalk and rustc have)
 
-    pub fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
+    pub(crate) fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
         let result = self.do_canonicalize_ty(ty);
         self.into_canonicalized(result)
     }
 
-    pub fn canonicalize_trait_ref(
+    pub(crate) fn canonicalize_obligation(
         mut self,
-        trait_ref_in_env: InEnvironment<TraitRef>,
-    ) -> Canonicalized<InEnvironment<TraitRef>> {
-        let result = self.do_canonicalize_trait_ref(trait_ref_in_env.value);
-        // FIXME canonicalize env
+        obligation: InEnvironment<Obligation>,
+    ) -> Canonicalized<InEnvironment<Obligation>> {
+        let result = match obligation.value {
+            Obligation::Trait(tr) => Obligation::Trait(self.do_canonicalize_trait_ref(tr)),
+            Obligation::Projection(pr) => {
+                Obligation::Projection(self.do_canonicalize_projection_predicate(pr))
+            }
+        };
         self.into_canonicalized(InEnvironment {
             value: result,
-            environment: trait_ref_in_env.environment,
-        })
-    }
-
-    pub fn canonicalize_projection(
-        mut self,
-        projection: InEnvironment<ProjectionPredicate>,
-    ) -> Canonicalized<InEnvironment<ProjectionPredicate>> {
-        let result = self.do_canonicalize_projection_predicate(projection.value);
-        // FIXME canonicalize env
-        self.into_canonicalized(InEnvironment {
-            value: result,
-            environment: projection.environment,
+            environment: obligation.environment,
         })
     }
 }

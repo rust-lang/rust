@@ -213,18 +213,11 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     #[salsa::invoke(crate::ty::traits::chalk::impl_datum_query)]
     fn impl_datum(&self, krate: Crate, impl_id: chalk_ir::ImplId) -> Arc<chalk_rust_ir::ImplDatum>;
 
-    #[salsa::invoke(crate::ty::traits::implements_query)]
-    fn implements(
+    #[salsa::invoke(crate::ty::traits::solve_query)]
+    fn solve(
         &self,
         krate: Crate,
-        goal: crate::ty::Canonical<crate::ty::InEnvironment<crate::ty::TraitRef>>,
-    ) -> Option<crate::ty::traits::Solution>;
-
-    #[salsa::invoke(crate::ty::traits::normalize_query)]
-    fn normalize(
-        &self,
-        krate: Crate,
-        goal: crate::ty::Canonical<crate::ty::InEnvironment<crate::ty::ProjectionPredicate>>,
+        goal: crate::ty::Canonical<crate::ty::InEnvironment<crate::ty::Obligation>>,
     ) -> Option<crate::ty::traits::Solution>;
 }
 

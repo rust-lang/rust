@@ -331,53 +331,25 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_obligations_as_possible(&mut self) {
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
-            match &obligation {
-                Obligation::Trait(tr) => {
-                    let in_env = InEnvironment::new(self.trait_env.clone(), tr.clone());
-                    let canonicalized = self.canonicalizer().canonicalize_trait_ref(in_env);
-                    let solution = self
-                        .db
-                        .implements(self.resolver.krate().unwrap(), canonicalized.value.clone());
-                    match solution {
-                        Some(Solution::Unique(substs)) => {
-                            canonicalized.apply_solution(self, substs.0);
-                        }
-                        Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                            canonicalized.apply_solution(self, substs.0);
-                            self.obligations.push(obligation);
-                        }
-                        Some(_) => {
-                            // FIXME use this when trying to resolve everything at the end
-                            self.obligations.push(obligation);
-                        }
-                        None => {
-                            // FIXME obligation cannot be fulfilled => diagnostic
-                        }
-                    };
-                }
-                Obligation::Projection(pr) => {
-                    let in_env = InEnvironment::new(self.trait_env.clone(), pr.clone());
-                    let canonicalized = self.canonicalizer().canonicalize_projection(in_env);
-                    let solution = self
-                        .db
-                        .normalize(self.resolver.krate().unwrap(), canonicalized.value.clone());
+            let in_env = InEnvironment::new(self.trait_env.clone(), obligation.clone());
+            let canonicalized = self.canonicalizer().canonicalize_obligation(in_env);
+            let solution =
+                self.db.solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
 
-                    match solution {
-                        Some(Solution::Unique(substs)) => {
-                            canonicalized.apply_solution(self, substs.0);
-                        }
-                        Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                            canonicalized.apply_solution(self, substs.0);
-                            self.obligations.push(obligation);
-                        }
-                        Some(_) => {
-                            // FIXME use this when trying to resolve everything at the end
-                            self.obligations.push(obligation);
-                        }
-                        None => {
-                            // FIXME obligation cannot be fulfilled => diagnostic
-                        }
-                    };
+            match solution {
+                Some(Solution::Unique(substs)) => {
+                    canonicalized.apply_solution(self, substs.0);
+                }
+                Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                    canonicalized.apply_solution(self, substs.0);
+                    self.obligations.push(obligation);
+                }
+                Some(_) => {
+                    // FIXME use this when trying to resolve everything at the end
+                    self.obligations.push(obligation);
+                }
+                None => {
+                    // FIXME obligation cannot be fulfilled => diagnostic
                 }
             };
         }

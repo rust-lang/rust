@@ -62,11 +62,13 @@ fn deref_by_trait(
         },
     };
 
-    let in_env = super::traits::InEnvironment { value: projection, environment: env };
+    let obligation = super::Obligation::Projection(projection);
+
+    let in_env = super::traits::InEnvironment { value: obligation, environment: env };
 
     let canonical = super::Canonical { num_vars: 1 + ty.num_vars, value: in_env };
 
-    let solution = db.normalize(krate, canonical)?;
+    let solution = db.solve(krate, canonical)?;
 
     match &solution {
         Solution::Unique(vars) => {

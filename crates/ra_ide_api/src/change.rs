@@ -295,8 +295,7 @@ impl RootDatabase {
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
             hir::db::ImplDatumQuery
-            hir::db::ImplementsQuery
-            hir::db::NormalizeQuery
+            hir::db::SolveQuery
         ];
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));
         acc
