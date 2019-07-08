@@ -21,7 +21,7 @@ use url_serde::Ser;
 
 use crate::{
     cargo_target_spec::{runnable_args, CargoTargetSpec},
-    conv::{to_location, to_location_link, Conv, ConvWith, MapConvWith, TryConvWith},
+    conv::{to_location, Conv, ConvWith, MapConvWith, TryConvWith, TryConvWithToVec},
     req::{self, Decoration},
     world::WorldSnapshot,
     LspError, Result,
@@ -263,7 +263,6 @@ pub fn handle_goto_definition(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let position = params.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(position.file_id);
     let nav_info = match world.analysis().goto_definition(position)? {
         None => return Ok(None),
         Some(it) => it,
@@ -272,9 +271,8 @@ pub fn handle_goto_definition(
     let res = nav_info
         .info
         .into_iter()
-        .map(|nav| RangeInfo::new(nav_range, nav))
-        .map(|nav| to_location_link(&nav, &world, &line_index))
-        .collect::<Result<Vec<_>>>()?;
+        .map(|nav| (position.file_id, RangeInfo::new(nav_range, nav)))
+        .try_conv_with_to_vec(&world)?;
     Ok(Some(res.into()))
 }
 
@@ -283,7 +281,6 @@ pub fn handle_goto_implementation(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoImplementationResponse>> {
     let position = params.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(position.file_id);
     let nav_info = match world.analysis().goto_implementation(position)? {
         None => return Ok(None),
         Some(it) => it,
@@ -292,9 +289,8 @@ pub fn handle_goto_implementation(
     let res = nav_info
         .info
         .into_iter()
-        .map(|nav| RangeInfo::new(nav_range, nav))
-        .map(|nav| to_location_link(&nav, &world, &line_index))
-        .collect::<Result<Vec<_>>>()?;
+        .map(|nav| (position.file_id, RangeInfo::new(nav_range, nav)))
+        .try_conv_with_to_vec(&world)?;
     Ok(Some(res.into()))
 }
 
@@ -303,7 +299,6 @@ pub fn handle_goto_type_definition(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoTypeDefinitionResponse>> {
     let position = params.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(position.file_id);
     let nav_info = match world.analysis().goto_type_definition(position)? {
         None => return Ok(None),
         Some(it) => it,
@@ -312,9 +307,8 @@ pub fn handle_goto_type_definition(
     let res = nav_info
         .info
         .into_iter()
-        .map(|nav| RangeInfo::new(nav_range, nav))
-        .map(|nav| to_location_link(&nav, &world, &line_index))
-        .collect::<Result<Vec<_>>>()?;
+        .map(|nav| (position.file_id, RangeInfo::new(nav_range, nav)))
+        .try_conv_with_to_vec(&world)?;
     Ok(Some(res.into()))
 }
 
@@ -323,12 +317,7 @@ pub fn handle_parent_module(
     params: req::TextDocumentPositionParams,
 ) -> Result<Vec<Location>> {
     let position = params.try_conv_with(&world)?;
-    world
-        .analysis()
-        .parent_module(position)?
-        .into_iter()
-        .map(|nav| nav.try_conv_with(&world))
-        .collect::<Result<Vec<_>>>()
+    world.analysis().parent_module(position)?.iter().try_conv_with_to_vec(&world)
 }
 
 pub fn handle_runnables(

@@ -384,27 +384,32 @@ impl TryConvWith for &NavigationTarget {
     }
 }
 
-pub fn to_location_link(
-    target: &RangeInfo<NavigationTarget>,
-    world: &WorldSnapshot,
-    // line index for original range file
-    line_index: &LineIndex,
-) -> Result<LocationLink> {
-    let target_uri = target.info.file_id().try_conv_with(world)?;
-    let tgt_line_index = world.analysis().file_line_index(target.info.file_id());
+impl TryConvWith for (FileId, RangeInfo<NavigationTarget>) {
+    type Ctx = WorldSnapshot;
+    type Output = LocationLink;
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<LocationLink> {
+        let (src_file_id, target) = self;
 
-    let target_range = target.info.full_range().conv_with(&tgt_line_index);
+        let target_uri = target.info.file_id().try_conv_with(world)?;
+        let src_line_index = world.analysis().file_line_index(src_file_id);
+        let tgt_line_index = world.analysis().file_line_index(target.info.file_id());
 
-    let target_selection_range =
-        target.info.focus_range().map(|it| it.conv_with(&tgt_line_index)).unwrap_or(target_range);
+        let target_range = target.info.full_range().conv_with(&tgt_line_index);
 
-    let res = LocationLink {
-        origin_selection_range: Some(target.range.conv_with(line_index)),
-        target_uri,
-        target_range,
-        target_selection_range,
-    };
-    Ok(res)
+        let target_selection_range = target
+            .info
+            .focus_range()
+            .map(|it| it.conv_with(&tgt_line_index))
+            .unwrap_or(target_range);
+
+        let res = LocationLink {
+            origin_selection_range: Some(target.range.conv_with(&src_line_index)),
+            target_uri,
+            target_range,
+            target_selection_range,
+        };
+        Ok(res)
+    }
 }
 
 pub fn to_location(
@@ -450,5 +455,25 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().map(|item| item.conv_with(self.ctx))
+    }
+}
+
+pub trait TryConvWithToVec<'a>: Sized + 'a {
+    type Ctx;
+    type Output;
+
+    fn try_conv_with_to_vec(self, ctx: &'a Self::Ctx) -> Result<Vec<Self::Output>>;
+}
+
+impl<'a, I> TryConvWithToVec<'a> for I
+where
+    I: Iterator + 'a,
+    I::Item: TryConvWith,
+{
+    type Ctx = <I::Item as TryConvWith>::Ctx;
+    type Output = <I::Item as TryConvWith>::Output;
+
+    fn try_conv_with_to_vec(self, ctx: &'a Self::Ctx) -> Result<Vec<Self::Output>> {
+        self.map(|it| it.try_conv_with(ctx)).collect()
     }
 }
