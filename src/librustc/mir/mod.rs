@@ -1915,17 +1915,17 @@ impl<'tcx> Place<'tcx> {
 
     /// Recursively "iterates" over place components, generating a `PlaceBase` and
     /// `Projections` list and invoking `op` with a `ProjectionsIter`.
-    pub fn iterate<R>(
-        &self,
-        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
+    pub fn iterate<'a, R: 'a>(
+        &'a self,
+        op: impl FnOnce(&'a PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
         Place::iterate_over(&self.base, &self.projection, op)
     }
 
-    pub fn iterate_over<R>(
-        place_base: &PlaceBase<'tcx>,
+    pub fn iterate_over<'a, R: 'a>(
+        place_base: &'a PlaceBase<'tcx>,
         place_projection: &Option<Box<Projection<'tcx>>>,
-        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
+        op: impl FnOnce(&'a PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
         fn iterate_over2<'tcx, R>(
             place_base: &PlaceBase<'tcx>,
