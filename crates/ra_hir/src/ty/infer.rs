@@ -1140,8 +1140,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.insert_type_vars(ty)
             }
             Expr::Try { expr } => {
-                let _inner_ty = self.infer_expr(*expr, &Expectation::none());
-                Ty::Unknown
+                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let ty = match self.resolve_ops_try_ok() {
+                    Some(ops_try_ok_alias) => {
+                        let ty = self.new_type_var();
+                        let projection = ProjectionPredicate {
+                            ty: ty.clone(),
+                            projection_ty: ProjectionTy {
+                                associated_ty: ops_try_ok_alias,
+                                parameters: vec![inner_ty].into(),
+                            },
+                        };
+                        self.obligations.push(Obligation::Projection(projection));
+                        self.resolve_ty_as_possible(&mut vec![], ty)
+                    }
+                    None => Ty::Unknown,
+                };
+                ty
             }
             Expr::Cast { expr, type_ref } => {
                 let _inner_ty = self.infer_expr(*expr, &Expectation::none());
@@ -1356,6 +1371,26 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match self.resolver.resolve_path_segments(self.db, &into_iter_path).into_fully_resolved() {
             PerNs { types: Some(Def(Trait(trait_))), .. } => {
                 Some(trait_.associated_type_by_name(self.db, ITEM)?)
+            }
+            _ => None,
+        }
+    }
+
+    fn resolve_ops_try_ok(&self) -> Option<TypeAlias> {
+        use crate::name::{OK, OPS, TRY};
+
+        let ops_try_path = Path {
+            kind: PathKind::Abs,
+            segments: vec![
+                PathSegment { name: STD, args_and_bindings: None },
+                PathSegment { name: OPS, args_and_bindings: None },
+                PathSegment { name: TRY, args_and_bindings: None },
+            ],
+        };
+
+        match self.resolver.resolve_path_segments(self.db, &ops_try_path).into_fully_resolved() {
+            PerNs { types: Some(Def(Trait(trait_))), .. } => {
+                Some(trait_.associated_type_by_name(self.db, OK)?)
             }
             _ => None,
         }

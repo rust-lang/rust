@@ -21,6 +21,42 @@ use crate::{
 // update the snapshots.
 
 #[test]
+fn infer_try() {
+    let (mut db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+enum Result<O, E> {
+    Ok(O),
+    Err(E)
+}
+
+impl<O, E> ::std::ops::Try for Result<O, E> {
+    type Ok = O;
+    type Error = E;
+}
+fn test() {
+    let r: Result<i32, u64> = Result::Ok(1);
+    let v = r?;
+    v<|>;
+}
+
+//- /lib.rs
+mod ops {
+    trait Try {
+        type Ok;
+        type Error;
+    }
+}
+"#,
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["std"]),
+        "std": ("/lib.rs", []),
+    });
+    assert_eq!("i32", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_for_loop() {
     let (mut db, pos) = MockDatabase::with_position(
         r#"
@@ -56,6 +92,7 @@ mod iter {
     });
     assert_eq!("&str", type_at_pos(&db, pos));
 }
+
 #[test]
 fn infer_basics() {
     assert_snapshot_matches!(
