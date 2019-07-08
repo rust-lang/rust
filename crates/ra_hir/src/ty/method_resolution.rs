@@ -14,7 +14,7 @@ use crate::{
     nameres::CrateModuleId,
     resolve::Resolver,
     traits::TraitItem,
-    ty::primitive::{UncertainFloatTy, UncertainIntTy},
+    ty::primitive::{FloatBitness, UncertainFloatTy, UncertainIntTy},
     ty::{Ty, TypeCtor},
     Crate, Function, HirDatabase, Module, Name, Trait,
 };
@@ -132,9 +132,11 @@ fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayV
             TypeCtor::Adt(def_id) => Some(std::iter::once(def_id.krate(db)?).collect()),
             TypeCtor::Bool => lang_item_crate!(db, cur_crate, "bool"),
             TypeCtor::Char => lang_item_crate!(db, cur_crate, "char"),
-            TypeCtor::Float(UncertainFloatTy::Known(f)) => {
-                lang_item_crate!(db, cur_crate, f.ty_to_string())
-            }
+            TypeCtor::Float(UncertainFloatTy::Known(f)) => match f.bitness {
+                // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
+                FloatBitness::X32 => lang_item_crate!(db, cur_crate, "f32", "f32_runtime"),
+                FloatBitness::X64 => lang_item_crate!(db, cur_crate, "f64", "f64_runtime"),
+            },
             TypeCtor::Int(UncertainIntTy::Known(i)) => {
                 lang_item_crate!(db, cur_crate, i.ty_to_string())
             }
