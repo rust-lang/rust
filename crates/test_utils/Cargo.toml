@@ -6,6 +6,5 @@ authors = ["rust-analyzer developers"]
 
 [dependencies]
 difference = "2.0.0"
-itertools = "0.8.0"
 text_unit = "0.1.2"
 serde_json = "1.0.34"
