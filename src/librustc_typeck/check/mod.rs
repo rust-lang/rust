@@ -983,7 +983,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         };
         self.assign(local.span, local.hir_id, local_ty);
 
-        debug!("Local variable {:?} is assigned type {}",
+        debug!("local variable {:?} is assigned type {}",
                local.pat,
                self.fcx.ty_to_string(
                    self.fcx.locals.borrow().get(&local.hir_id).unwrap().clone().decl_ty));
@@ -1000,7 +1000,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                                                traits::VariableType(p.hir_id));
             }
 
-            debug!("Pattern binding {} is assigned to {} with type {:?}",
+            debug!("pattern binding {} is assigned to {} with type {:?}",
                    ident,
                    self.fcx.ty_to_string(
                        self.fcx.locals.borrow().get(&p.hir_id).unwrap().clone().decl_ty),
@@ -4462,7 +4462,7 @@ pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, t
 
     for leaf_ty in ty.walk() {
         if let ty::Param(ty::ParamTy { index, .. }) = leaf_ty.sty {
-            debug!("Found use of ty param num {}", index);
+            debug!("found use of ty param num {}", index);
             types_used[index as usize - own_counts.lifetimes] = true;
         } else if let ty::Error = leaf_ty.sty {
             // If there is already another error, do not emit

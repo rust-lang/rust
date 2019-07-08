@@ -646,7 +646,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let n_ty = self.fcx.node_ty(hir_id);
         let n_ty = self.resolve(&n_ty, &span);
         self.write_ty_to_tables(hir_id, n_ty);
-        debug!("Node {:?} has type {:?}", hir_id, n_ty);
+        debug!("node {:?} has type {:?}", hir_id, n_ty);
 
         // Resolve any substitutions
         if let Some(substs) = self.fcx.tables.borrow().node_substs_opt(hir_id) {
@@ -665,13 +665,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             .remove(hir_id);
         match adjustment {
             None => {
-                debug!("No adjustments for node {:?}", hir_id);
+                debug!("no adjustments for node {:?}", hir_id);
             }
 
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(&adjustment, &span);
                 debug!(
-                    "Adjustments for node {:?}: {:?}",
+                    "adjustments for node {:?}: {:?}",
                     hir_id, resolved_adjustment
                 );
                 self.tables
@@ -689,7 +689,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             .remove(hir_id);
         match adjustment {
             None => {
-                debug!("No pat_adjustments for node {:?}", hir_id);
+                debug!("no pat_adjustments for node {:?}", hir_id);
             }
 
             Some(adjustment) => {

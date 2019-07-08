@@ -459,7 +459,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let (unsize_did, coerce_unsized_did) = if let (Some(u), Some(cu)) = traits {
             (u, cu)
         } else {
-            debug!("Missing Unsize or CoerceUnsized traits");
+            debug!("missing Unsize or CoerceUnsized traits");
             return Err(TypeError::Mismatch);
         };
 
