@@ -1,0 +1,170 @@
+trigger:
+  - master
+
+jobs:
+  - job: DockerLinux
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-install-rust.yml
+      - bash: |
+          if [ "${NO_DOCKER}" = "1" ]; then
+              ci/run.sh $TARGET
+          else
+              ci/run-docker.sh $TARGET
+          fi
+        displayName: Execute run-docker.sh
+    strategy:
+      matrix:
+        i586-unknown-linux-gnu:
+          TARGET: i586-unknown-linux-gnu
+        i686-unknown-linux-gnu:
+          TARGET: i686-unknown-linux-gnu
+        x86_64-unknown-linux-gnu:
+          TARGET: x86_64-unknown-linux-gnu
+        x86_64-unknown-linux-gnu-emulated:
+          TARGET: x86_64-unknown-linux-gnu-emulated
+          STDARCH_TEST_EVERYTHING: 1
+          RUSTFLAGS: --cfg stdarch_intel_sde
+        x86_64-linux-android:
+          TARGET: x86_64-linux-android
+          STDARCH_DISABLE_ASSERT_INSTR: 1
+        arm-unknown-linux-gnueabihf:
+          TARGET: arm-unknown-linux-gnueabihf
+        arm-linux-androideabi:
+          TARGET: arm-linux-androideabi
+          STDARCH_DISABLE_ASSERT_INSTR: 1
+        armv7-unknown-linux-gnueabihf:
+          TARGET: armv7-unknown-linux-gnueabihf
+          RUSTFLAGS: -C target-feature=+neon
+        aarch64-unknown-linux-gnu:
+          TARGET: aarch64-unknown-linux-gnu
+        mips-unknown-linux-gnu:
+          TARGET: mips-unknown-linux-gnu
+          NORUN: 1
+        mipsel-unknown-linux-musl:
+          TARGET: mipsel-unknown-linux-musl
+          NORUN: 1
+        mips64-unknown-linux-gnuabi64:
+          TARGET: mips64-unknown-linux-gnuabi64
+          NORUN: 1
+        mips64el-unknown-linux-gnuabi64:
+          TARGET: mips64el-unknown-linux-gnuabi64
+          NORUN: 1
+        aarch64-linux-android:
+          TARGET: aarch64-linux-android
+          STDARCH_DISABLE_ASSERT_INSTR: 1
+        #powerpc-unknown-linux-gnu:
+        #  TARGET: powerpc-unknown-linux-gnu
+        #  STDARCH_DISABLE_ASSERT_INSTR: 1
+        #powerpc64-unknown-linux-gnu:
+        #  TARGET: powerpc64-unknown-linux-gnu
+        #  STDARCH_DISABLE_ASSERT_INSTR: 1
+        powerpc64le-unknown-linux-gnu:
+          TARGET: powerpc64le-unknown-linux-gnu
+          STDARCH_DISABLE_ASSERT_INSTR: 1
+        s390x-unknown-linux-gnu:
+          TARGET: s390x-unknown-linux-gnu
+        wasm32-unknown-unknown:
+          TARGET: wasm32-unknown-unknown
+        nvptx64-nvidia-cuda:
+          TARGET: nvptx64-nvidia-cuda
+          NORUN: 1
+          NOSTD: 1
+        thumbv6m-none-eabi:
+          TARGET: thumbv6m-none-eabi
+          NORUN: 1
+          NOSTD: 1
+          NO_DOCKER: 1
+        thumbv7m-none-eabi:
+          TARGET: thumbv7m-none-eabi
+          NORUN: 1
+          NOSTD: 1
+          NO_DOCKER: 1
+        thumbv7em-none-eabi:
+          TARGET: thumbv7em-none-eabi
+          NORUN: 1
+          NOSTD: 1
+          NO_DOCKER: 1
+        thumbv7em-none-eabihf:
+          TARGET: thumbv7em-none-eabihf
+          NORUN: 1
+          NOSTD: 1
+          NO_DOCKER: 1
+
+  - job: DockerOSX64
+    pool:
+      vmImage: macos-10.14
+    steps:
+      - template: ci/azure-install-rust.yml
+      - bash: sh ./ci/run.sh $TARGET
+        displayName: Execute run.sh
+    strategy:
+      matrix:
+        x86_64-apple-darwin:
+          TARGET: x86_64-apple-darwin
+          NO_DOCKER: 1
+
+  - job: DockerOSX32
+    pool:
+      vmImage: macos-10.13
+    steps:
+      - template: ci/azure-install-rust.yml
+      - bash: sh ./ci/run.sh $TARGET
+        displayName: Execute run.sh
+    strategy:
+      matrix:
+        i686-apple-darwin:
+          TARGET: i686-apple-darwin
+          NO_DOCKER: 1
+
+  - job: StyleAndDocs
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-install-rust.yml
+      - script: sh ci/style.sh
+        displayName: Check style
+      - script: sh ci/dox.sh
+        displayName: Generate and upload documentation
+    variables:
+      CI: 1
+
+  - job: AutomaticVerification
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-install-rust.yml
+      - script: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
+        displayName: Automatic verification  
+
+  - job: GameBoyAdvance
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-install-rust.yml
+      - script: rustup component add rust-src
+        displayName: Add rust-src
+      - script: (test -x $HOME/.cargo/bin/cargo-xbuild || cargo install cargo-xbuild)
+        displayName: Add cargo-xbuild
+      # Obtain the devkitPro tools, using `target/` as a temp directory. This
+      # is required because we need to use their linker. `lld` uses the `BLX`
+      # instruction, which was not available in thumb state code until ARMv5.
+      - script: |
+          mkdir -p target
+          cd target
+          wget https://github.com/devkitPro/pacman/releases/download/devkitpro-pacman-1.0.1/devkitpro-pacman.deb
+          sudo dpkg -i devkitpro-pacman.deb
+          sudo dkp-pacman -Sy
+          sudo dkp-pacman -Syu
+          sudo dkp-pacman -S -v --noconfirm gba-tools devkitARM
+          export PATH="$PATH:/opt/devkitpro/devkitARM/bin"
+          export PATH="$PATH:/opt/devkitpro/tools/bin"
+          cd ..
+          # Pull the target spec up into the current directory and then build
+          mv ci/gba.json gba.json
+          cargo xbuild -p core_arch --target gba.json
+    variables:
+      NORUN: 1
+      NOSTD: 1
+      NO_DOCKER: 1

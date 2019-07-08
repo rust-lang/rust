@@ -1,0 +1,48 @@
+steps:
+  - bash: |
+      set -ex
+      toolchain=$TOOLCHAIN
+      if [ "$toolchain" = "" ]; then
+        toolchain=nightly
+      fi
+      if command -v rustup; then
+        rustup update $toolchain
+        rustup default $toolchain
+      else
+        curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $toolchain
+        echo "##vso[task.prependpath]$HOME/.cargo/bin"
+      fi
+    displayName: Install rust (unix)
+    condition: ne( variables['Agent.OS'], 'Windows_NT' )
+  - script: |
+      if not defined TOOLCHAIN set TOOLCHAIN=nightly
+      curl -sSf -o rustup-init.exe https://win.rustup.rs
+      rustup-init.exe -y --default-toolchain %TOOLCHAIN%-%TARGET%
+      echo ##vso[task.prependpath]%USERPROFILE%\.cargo\bin
+    displayName: Install rust (windows)
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
+  - script: |
+      set -ex
+      if [ -n "${TARGET}" ] && [ "${TARGET}" != "x86_64-unknown-linux-gnu-emulated" ]; then
+        rustup target add $TARGET
+      fi
+    condition: ne( variables['Agent.OS'], 'Windows_NT' )
+    displayName: Install target (unix)
+  - script: if defined TARGET rustup target add %TARGET%
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
+    displayName: Install target (windows)
+  - script: |
+        set -ex
+        rustc -Vv
+        cargo -V
+        rustup -Vv
+        rustup show
+        which rustc
+        which cargo
+        which rustup
+    displayName: Query rust and cargo versions
+  - script: |
+      set -ex
+      cargo generate-lockfile
+    displayName: Generate lockfiles
+

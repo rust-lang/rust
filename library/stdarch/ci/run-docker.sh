@@ -13,12 +13,10 @@ run() {
     echo "Running docker"
     # shellcheck disable=SC2016
     docker run \
-      --user "$(id -u)":"$(id -g)" \
       --rm \
-      --init \
-      --volume "${HOME}"/.cargo:/cargo-h \
-      --env CARGO_HOME=/cargo-h \
-      --volume "$(rustc --print sysroot)":/rust:ro \
+      --user "$(id -u)":"$(id -g)" \
+      --env CARGO_HOME=/cargo \
+      --env CARGO_TARGET_DIR=/checkout/target \
       --env TARGET="${target}" \
       --env STDARCH_TEST_EVERYTHING \
       --env STDARCH_ASSERT_INSTR_IGNORE \
@@ -27,13 +25,15 @@ run() {
       --env NORUN \
       --env RUSTFLAGS \
       --env STDARCH_TEST_NORUN \
+      --volume "$(dirname "$(dirname "$(command -v cargo)")")":/cargo \
+      --volume "$(rustc --print sysroot)":/rust:ro \
       --volume "$(pwd)":/checkout:ro \
       --volume "$(pwd)"/target:/checkout/target \
+      --init \
       --workdir /checkout \
       --privileged \
       stdarch \
-      bash \
-      -c 'PATH=/rust/bin:$PATH exec ci/run.sh'
+      sh -c "HOME=/tmp PATH=\$PATH:/rust/bin exec ci/run.sh ${1}"
 }
 
 if [ -z "$1" ]; then
