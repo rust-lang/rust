@@ -1,3 +1,4 @@
+use std::env;
 use std::io;
 use std::process::Command;
 use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
@@ -27,7 +28,9 @@ impl Arch {
 }
 
 pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
-    let res = Command::new("xcrun")
+    let xcrun_path = env::var("RUSTC_XCRUN_PATH");
+    let xcrun = xcrun_path.as_ref().map(String::as_str).unwrap_or("xcrun");
+    let res = Command::new(xcrun)
                       .arg("--show-sdk-path")
                       .arg("-sdk")
                       .arg(sdk_name)
