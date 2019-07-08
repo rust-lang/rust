@@ -1,5 +1,5 @@
 use crate::cmp::Ordering;
-use crate::ops::Try;
+use crate::ops::{Add, Try};
 
 use super::super::LoopState;
 use super::super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
@@ -236,11 +236,10 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn count(self) -> usize where Self: Sized {
-        // Might overflow.
         #[inline]
-        #[rustc_inherit_overflow_checks]
         fn add1<T>(count: usize, _: T) -> usize {
-            count + 1
+            // Might overflow.
+            Add::add(count, 1)
         }
 
         self.fold(0, add1)
