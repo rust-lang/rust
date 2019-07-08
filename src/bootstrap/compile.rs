@@ -191,7 +191,7 @@ fn mac_os_deployment_env_var(cargo: &mut Command) {
 
 /// Configure cargo to compile a few no_std crates like core,
 /// adding appropriate env vars and such.
-pub fn core_cargo(builder: &Builder,
+pub fn core_cargo(builder: &Builder<'_>,
                   _compiler: &Compiler,
                   _target: Interned<String>,
                   cargo: &mut Command) {
@@ -295,7 +295,7 @@ struct CoreLink {
 impl Step for CoreLink {
     type Output = ();
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
 
@@ -307,7 +307,7 @@ impl Step for CoreLink {
     /// Note that this assumes that `compiler` has already generated the
     /// libraries for `target`, and this method will find them in the relevant
     /// output directory.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target_compiler = self.target_compiler;
         let target = self.target;
@@ -318,7 +318,8 @@ impl Step for CoreLink {
                 target_compiler.host,
                 target));
         let libdir = builder.sysroot_libdir(target_compiler, target);
-        add_to_sysroot(builder, &libdir, &libcore_stamp(builder, compiler, target));
+        let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
+        add_to_sysroot(builder, &libdir, &hostdir, &libcore_stamp(builder, compiler, target));
     }
 }
 
@@ -957,7 +958,7 @@ fn copy_lld_to_sysroot(builder: &Builder<'_>,
 
 /// Cargo's output path for libcore in a given stage, compiled
 /// by a particular compiler for the specified target.
-pub fn libcore_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
+pub fn libcore_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>) -> PathBuf {
     builder.cargo_out(compiler, Mode::Std, target).join(".libcore.stamp")
 }
 

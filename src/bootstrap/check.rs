@@ -59,19 +59,20 @@ impl Step for Std {
 
         let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
         let libdir = builder.sysroot_libdir(compiler, target);
+        let hostdir = builder.sysroot_libdir(compiler, compiler.host);
         builder.info(&format!("Checking std artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut core_cargo_invoc,
                   args(builder.kind),
                   &libcore_stamp(builder, compiler, target),
                   true);
-        add_to_sysroot(&builder, &libdir, &libcore_stamp(builder, compiler, target));
+        add_to_sysroot(&builder, &libdir, &hostdir, &libcore_stamp(builder, compiler, target));
         run_cargo(builder,
                   &mut std_cargo_invoc,
+                  args(builder.kind),
                   &libstd_stamp(builder, compiler, target),
                   true);
 
-        let hostdir = builder.sysroot_libdir(compiler, compiler.host);
         add_to_sysroot(&builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
     }
 }
@@ -268,7 +269,7 @@ impl Step for Rustdoc {
 
 /// Cargo's output path for the core library in a given stage, compiled
 /// by a particular compiler for the specified target.
-pub fn libcore_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
+pub fn libcore_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>) -> PathBuf {
     builder.cargo_out(compiler, Mode::Std, target).join(".libcore-check.stamp")
 }
 
