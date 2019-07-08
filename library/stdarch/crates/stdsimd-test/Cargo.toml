@@ -6,14 +6,13 @@ authors = ["Alex Crichton <alex@alexcrichton.com>"]
 [dependencies]
 assert-instr-macro = { path = "../assert-instr-macro" }
 simd-test-macro = { path = "../simd-test-macro" }
-backtrace = "0.3"
 cc = "1.0"
 lazy_static = "1.0"
 rustc-demangle = "0.1.8"
 cfg-if = "0.1"
 
 [target.wasm32-unknown-unknown.dependencies]
-wasm-bindgen = "0.2.39"
+wasm-bindgen = "0.2.47"
 js-sys = "0.3"
 console_error_panic_hook = "0.1"
 

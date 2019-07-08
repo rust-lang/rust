@@ -43,13 +43,23 @@ pub fn assert_instr(
     // testing for.
     let disable_assert_instr = std::env::var("STDSIMD_DISABLE_ASSERT_INSTR").is_ok();
 
+    // If instruction tests are disabled avoid emitting this shim at all, just
+    // return the original item without our attribute.
+    if !cfg!(optimized) || disable_assert_instr {
+        return (quote! { #item }).into();
+    }
+
     let instr_str = instr
         .replace('.', "_")
         .replace('/', "_")
         .replace(':', "_")
         .replace(char::is_whitespace, "");
     let assert_name = syn::Ident::new(&format!("assert_{}_{}", name, instr_str), name.span());
-    let shim_name = syn::Ident::new(&format!("{}_shim_{}", name, instr_str), name.span());
+    // These name has to be unique enough for us to find it in the disassembly later on:
+    let shim_name = syn::Ident::new(
+        &format!("stdsimd_test_shim_{}_{}", name, instr_str),
+        name.span(),
+    );
     let mut inputs = Vec::new();
     let mut input_vals = Vec::new();
     let ret = &func.decl.output;
@@ -100,7 +110,8 @@ pub fn assert_instr(
     let to_test = quote! {
         #attrs
         #[no_mangle]
-        unsafe extern #abi fn #shim_name(#(#inputs),*) #ret {
+        #[inline(never)]
+        pub unsafe extern #abi fn #shim_name(#(#inputs),*) #ret {
             // The compiler in optimized mode by default runs a pass called
             // "mergefunc" where it'll merge functions that look identical.
             // Turns out some intrinsics produce identical code and they're
@@ -120,18 +131,16 @@ pub fn assert_instr(
         }
     };
 
-    // If instruction tests are disabled avoid emitting this shim at all, just
-    // return the original item without our attribute.
-    if !cfg!(optimized) || disable_assert_instr {
-        return (quote! { #item }).into();
-    }
-
     let tts: TokenStream = quote! {
         #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
         #[cfg_attr(not(target_arch = "wasm32"), test)]
         #[allow(non_snake_case)]
         fn #assert_name() {
             #to_test
+
+            // Make sure that the shim is not removed by leaking it to unknown
+            // code:
+            unsafe { asm!("" : : "r"(#shim_name as usize) : "memory" : "volatile") };
 
             ::stdsimd_test::assert(#shim_name as usize,
                                    stringify!(#shim_name),

@@ -8,7 +8,6 @@
 #![allow(clippy::missing_docs_in_private_items, clippy::print_stdout)]
 
 extern crate assert_instr_macro;
-extern crate backtrace;
 extern crate cc;
 #[macro_use]
 extern crate lazy_static;
@@ -19,7 +18,7 @@ extern crate cfg_if;
 
 pub use assert_instr_macro::*;
 pub use simd_test_macro::*;
-use std::{collections::HashMap, env, str, sync::atomic::AtomicPtr};
+use std::{cmp, collections::HashSet, env, hash, str, sync::atomic::AtomicPtr};
 
 // `println!` doesn't work on wasm32 right now, so shadow the compiler's `println!`
 // macro with our own shim that redirects to `console.log`.
@@ -27,7 +26,7 @@ use std::{collections::HashMap, env, str, sync::atomic::AtomicPtr};
 #[cfg(target_arch = "wasm32")]
 #[macro_export]
 macro_rules! println {
-    ($($args:tt)*) => (wasm::js_console_log(&format!($($args)*)))
+    ($($args:tt)*) => (crate::wasm::js_console_log(&format!($($args)*)))
 }
 
 cfg_if! {
@@ -43,92 +42,67 @@ cfg_if! {
 }
 
 lazy_static! {
-    static ref DISASSEMBLY: HashMap<String, Vec<Function>> = disassemble_myself();
+    static ref DISASSEMBLY: HashSet<Function> = disassemble_myself();
 }
 
+#[derive(Debug)]
 struct Function {
-    addr: Option<usize>,
-    instrs: Vec<Instruction>,
+    name: String,
+    instrs: Vec<String>,
 }
-
-struct Instruction {
-    parts: Vec<String>,
-}
-
-fn normalize(symbol: &str) -> String {
-    let symbol = rustc_demangle::demangle(symbol).to_string();
-    let mut ret = match symbol.rfind("::h") {
-        Some(i) => symbol[..i].to_string(),
-        None => symbol.to_string(),
-    };
-    // Normalize to no leading underscore to handle platforms that may
-    // inject extra ones in symbol names.
-    while ret.starts_with('_') {
-        ret.remove(0);
+impl Function {
+    fn new(n: &str) -> Self {
+        Self {
+            name: n.to_string(),
+            instrs: Vec::new(),
+        }
     }
-    ret
+}
+
+impl cmp::PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+impl cmp::Eq for Function {}
+
+impl hash::Hash for Function {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state)
+    }
 }
 
 /// Main entry point for this crate, called by the `#[assert_instr]` macro.
 ///
 /// This asserts that the function at `fnptr` contains the instruction
 /// `expected` provided.
-pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
-    let mut fnname = fnname.to_string();
-    let functions = get_functions(fnptr, &mut fnname);
-    assert_eq!(functions.len(), 1);
-    let function = &functions[0];
+pub fn assert(_fnptr: usize, fnname: &str, expected: &str) {
+    //eprintln!("shim name: {}", fnname);
+    let function = &DISASSEMBLY
+        .get(&Function::new(fnname))
+        .unwrap_or_else(|| panic!("function \"{}\" not found in the disassembly", fnname));
+    //eprintln!("  function: {:?}", function);
 
     let mut instrs = &function.instrs[..];
-    while instrs.last().map_or(false, |s| s.parts == ["nop"]) {
+    while instrs.last().map_or(false, |s| s == "nop") {
         instrs = &instrs[..instrs.len() - 1];
     }
 
     // Look for `expected` as the first part of any instruction in this
-    // function, returning if we do indeed find it.
-    let mut found = false;
-    for instr in instrs {
-        // Get the first instruction, e.g., tzcntl in tzcntl %rax,%rax.
-        if let Some(part) = instr.parts.get(0) {
-            // Truncate the instruction with the length of the expected
-            // instruction: tzcntl => tzcnt and compares that.
-            if part.starts_with(expected) {
-                found = true;
-                break;
-            }
-        }
-    }
+    // function, e.g., tzcntl in tzcntl %rax,%rax.
+    let found = instrs.iter().any(|s| s.contains(expected));
 
     // Look for `call` instructions in the disassembly to detect whether
     // inlining failed: all intrinsics are `#[inline(always)]`, so
     // calling one intrinsic from another should not generate `call`
     // instructions.
-    let mut inlining_failed = false;
-    for (i, instr) in instrs.iter().enumerate() {
-        let part = match instr.parts.get(0) {
-            Some(part) => part,
-            None => continue,
-        };
-        if !part.contains("call") {
-            continue;
-        }
-
+    let inlining_failed = instrs.windows(2).any(|s| {
         // On 32-bit x86 position independent code will call itself and be
         // immediately followed by a `pop` to learn about the current address.
         // Let's not take that into account when considering whether a function
         // failed inlining something.
-        let followed_by_pop = function
-            .instrs
-            .get(i + 1)
-            .and_then(|i| i.parts.get(0))
-            .map_or(false, |s| s.contains("pop"));
-        if followed_by_pop && cfg!(target_arch = "x86") {
-            continue;
-        }
-
-        inlining_failed = true;
-        break;
-    }
+        s[0].contains("call") && (!cfg!(target_arch = "x86") || s[1].contains("pop"))
+    });
 
     let instruction_limit = std::env::var("STDSIMD_ASSERT_INSTR_LIMIT")
         .ok()
@@ -170,12 +144,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     // didn't find the instruction.
     println!("disassembly for {}: ", fnname,);
     for (i, instr) in instrs.iter().enumerate() {
-        let mut s = format!("\t{:2}: ", i);
-        for part in &instr.parts {
-            s.push_str(part);
-            s.push_str(" ");
-        }
-        println!("{}", s);
+        println!("\t{:2}: {}", i, instr);
     }
 
     if !found {
@@ -198,39 +167,6 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     }
 }
 
-fn get_functions(fnptr: usize, fnname: &mut String) -> &'static [Function] {
-    // Translate this function pointer to a symbolic name that we'd have found
-    // in the disassembly.
-    let mut sym = None;
-    backtrace::resolve(fnptr as *mut _, |name| {
-        sym = name.name().and_then(|s| s.as_str()).map(normalize);
-    });
-
-    if let Some(sym) = &sym {
-        if let Some(s) = DISASSEMBLY.get(sym) {
-            *fnname = sym.to_string();
-            return s;
-        }
-    }
-
-    let exact_match = DISASSEMBLY
-        .iter()
-        .find(|(_, list)| list.iter().any(|f| f.addr == Some(fnptr)));
-    if let Some((name, list)) = exact_match {
-        *fnname = name.to_string();
-        return list;
-    }
-
-    if let Some(sym) = sym {
-        println!("assumed symbol name: `{}`", sym);
-    }
-    println!("maybe related functions");
-    for f in DISASSEMBLY.keys().filter(|k| k.contains(&**fnname)) {
-        println!("\t- {}", f);
-    }
-    panic!("failed to find disassembly of {:#x} ({})", fnptr, fnname);
-}
-
 pub fn assert_skip_test_ok(name: &str) {
     if env::var("STDSIMD_TEST_EVERYTHING").is_err() {
         return;
@@ -239,4 +175,4 @@ pub fn assert_skip_test_ok(name: &str) {
 }
 
 // See comment in `assert-instr-macro` crate for why this exists
-pub static _DONT_DEDUP: AtomicPtr<u8> = AtomicPtr::new(unsafe { std::mem::transmute("".as_bytes().as_ptr()) });
+pub static _DONT_DEDUP: AtomicPtr<u8> = AtomicPtr::new(b"".as_ptr() as *mut _);

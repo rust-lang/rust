@@ -1,8 +1,8 @@
 //! Disassembly calling function for `wasm32` targets.
 use wasm_bindgen::prelude::*;
 
-use crate::{Function, Instruction};
-use std::collections::HashMap;
+use crate::Function;
+use std::collections::HashSet;
 
 #[wasm_bindgen(module = "child_process")]
 extern "C" {
@@ -25,7 +25,7 @@ extern "C" {
     pub fn js_console_log(s: &str);
 }
 
-pub(crate) fn disassemble_myself() -> HashMap<String, Vec<Function>> {
+pub(crate) fn disassemble_myself() -> HashSet<Function> {
     use std::path::Path;
     ::console_error_panic_hook::set_once();
     // Our wasm module in the wasm-bindgen test harness is called
@@ -46,35 +46,17 @@ pub(crate) fn disassemble_myself() -> HashMap<String, Vec<Function>> {
         .unwrap();
     let output = exec_file_sync("wasm2wat", &args, &opts).to_string();
 
-    let mut ret: HashMap<String, Vec<Function>> = HashMap::new();
+    let mut ret: HashSet<Function> = HashSet::new();
     let mut lines = output.lines().map(|s| s.trim());
     while let Some(line) = lines.next() {
-        // If we found the table of function pointers, fill in the known
-        // address for all our `Function` instances
-        if line.starts_with("(elem") {
-            let mut parts = line.split_whitespace().skip(3);
-            let offset = parts.next()
-                .unwrap()
-                .trim_end_matches(")")
-                .parse::<usize>()
-                .unwrap();
-            for (i, name) in parts.enumerate() {
-                let name = name.trim_end_matches(")");
-                for f in ret.get_mut(name).expect("ret.get_mut(name) failed") {
-                    f.addr = Some(i + offset);
-                }
-            }
-            continue;
-        }
-
         // If this isn't a function, we don't care about it.
         if !line.starts_with("(func ") {
             continue;
         }
 
         let mut function = Function {
+            name: String::new(),
             instrs: Vec::new(),
-            addr: None,
         };
 
         // Empty functions will end in `))` so there's nothing to do, otherwise
@@ -83,23 +65,24 @@ pub(crate) fn disassemble_myself() -> HashMap<String, Vec<Function>> {
         // Lines that have an imbalanced `)` mark the end of a function.
         if !line.ends_with("))") {
             while let Some(line) = lines.next() {
-                function.instrs.push(Instruction {
-                    parts: line
-                        .split_whitespace()
-                        .map(|s| s.to_string())
-                        .collect(),
-                });
+                function.instrs.push(line.to_string());
                 if !line.starts_with("(") && line.ends_with(")") {
                     break;
                 }
             }
         }
-
         // The second element here split on whitespace should be the name of
         // the function, skipping the type/params/results
-        ret.entry(line.split_whitespace().nth(1).unwrap().to_string())
-            .or_insert(Vec::new())
-            .push(function);
+        function.name = line.split_whitespace().nth(1).unwrap().to_string();
+        if function.name.starts_with("$") {
+            function.name = function.name[1..].to_string()
+        }
+
+        if !function.name.contains("stdsimd_test_shim") {
+            continue;
+        }
+
+        assert!(ret.insert(function));
     }
     return ret;
 }

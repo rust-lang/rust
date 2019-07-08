@@ -8,6 +8,7 @@ set -ex
 # having only one thread increases debuggability to be worth it.
 #export RUST_BACKTRACE=full
 #export RUST_TEST_NOCAPTURE=1
+#export RUST_TEST_THREADS=1
 
 RUSTFLAGS="$RUSTFLAGS --cfg stdsimd_strict"
 
@@ -49,7 +50,6 @@ cargo_test() {
 CORE_ARCH="--manifest-path=crates/core_arch/Cargo.toml"
 STD_DETECT="--manifest-path=crates/std_detect/Cargo.toml"
 STDSIMD_EXAMPLES="--manifest-path=examples/Cargo.toml"
-cargo_test "${CORE_ARCH}"
 cargo_test "${CORE_ARCH} --release"
 
 if [ "$NOSTD" != "1" ]; then
