@@ -1,3 +1,11 @@
+variables:
+  - group: secrets
+resources:
+  repositories:
+    - repository: rustinfra
+      type: github
+      name: rust-lang/simpleinfra
+      endpoint: rust-lang
 trigger: ["master"]
 pr: ["master"]
 
@@ -144,7 +152,10 @@ jobs:
       - script: sh ci/style.sh
         displayName: Check style
       - script: sh ci/dox.sh
-        displayName: Generate and upload documentation
+        displayName: Generate documentation
+      - template: azure-configs/static-websites.yml@rustinfra
+        parameters:
+          deploy_dir: target/doc
     variables:
       CI: 1
 

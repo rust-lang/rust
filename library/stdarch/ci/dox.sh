@@ -51,10 +51,3 @@ dox powerpc64le powerpc64le-unknown-linux-gnu
 dox mips mips-unknown-linux-gnu
 dox mips64 mips64-unknown-linux-gnuabi64
 dox wasm32 wasm32-unknown-unknown
-
-# If we're on travis, not a PR, and on the right branch, publish!
-if [ "$TRAVIS_PULL_REQUEST" = "false" ] && [ "$TRAVIS_BRANCH" = "master" ]; then
-  pip install ghp_import --install-option="--prefix=$HOME/.local"
-  "${HOME}/.local/bin/ghp-import" -n target/doc
-  git push -qf "https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git" gh-pages
-fi
