@@ -4173,30 +4173,8 @@ impl<'a> LoweringContext<'a> {
         let node = match p.node {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
-                match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
-                    // `None` can occur in body-less function signatures
-                    res @ None | res @ Some(Res::Local(_)) => {
-                        let canonical_id = match res {
-                            Some(Res::Local(id)) => id,
-                            _ => p.id,
-                        };
-
-                        hir::PatKind::Binding(
-                            self.lower_binding_mode(binding_mode),
-                            self.lower_node_id(canonical_id),
-                            ident,
-                            sub.as_ref().map(|x| self.lower_pat(x)),
-                        )
-                    }
-                    Some(res) => hir::PatKind::Path(hir::QPath::Resolved(
-                        None,
-                        P(hir::Path {
-                            span: ident.span,
-                            res: self.lower_res(res),
-                            segments: hir_vec![hir::PathSegment::from_ident(ident)],
-                        }),
-                    )),
-                }
+                let lower_sub = |this: &mut Self| sub.as_ref().map(|x| this.lower_pat(x));
+                self.lower_pat_ident(p, binding_mode, ident, lower_sub)
             }
             PatKind::Lit(ref e) => hir::PatKind::Lit(P(self.lower_expr(e))),
             PatKind::TupleStruct(ref path, ref pats) => {
@@ -4258,11 +4236,7 @@ impl<'a> LoweringContext<'a> {
                 P(self.lower_expr(e2)),
                 self.lower_range_end(end),
             ),
-            PatKind::Slice(ref before, ref slice, ref after) => hir::PatKind::Slice(
-                before.iter().map(|x| self.lower_pat(x)).collect(),
-                slice.as_ref().map(|x| self.lower_pat(x)),
-                after.iter().map(|x| self.lower_pat(x)).collect(),
-            ),
+            PatKind::Slice(ref pats) => self.lower_pat_slice(pats),
             PatKind::Rest => {
                 // If we reach here the `..` pattern is not semantically allowed.
                 self.ban_illegal_rest_pat(p.span)
@@ -4271,11 +4245,7 @@ impl<'a> LoweringContext<'a> {
             PatKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
-        P(hir::Pat {
-            hir_id: self.lower_node_id(p.id),
-            node,
-            span: p.span,
-        })
+        self.pat_bound(p, node)
     }
 
     fn lower_pat_tuple(
@@ -4307,6 +4277,102 @@ impl<'a> LoweringContext<'a> {
         }
 
         (elems.into(), rest.map(|(ddpos, _)| ddpos))
+    }
+
+    fn lower_pat_slice(&mut self, pats: &[AstP<Pat>]) -> hir::PatKind {
+        let mut before = Vec::new();
+        let mut after = Vec::new();
+        let mut slice = None;
+        let mut prev_rest_span = None;
+
+        let mut iter = pats.iter();
+        while let Some(pat) = iter.next() {
+            // Interpret the first `((ref mut?)? x @)? ..` pattern as a subslice pattern.
+            match pat.node {
+                PatKind::Rest => {
+                    prev_rest_span = Some(pat.span);
+                    slice = Some(self.pat_bound_wild(pat));
+                    break;
+                },
+                PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
+                    prev_rest_span = Some(sub.span);
+                    let lower_sub = |this: &mut Self| Some(this.pat_bound_wild(sub));
+                    let node = self.lower_pat_ident(pat, bm, ident, lower_sub);
+                    slice = Some(self.pat_bound(pat, node));
+                    break;
+                },
+                _ => {}
+            }
+
+            // It was not a subslice pattern so lower it normally.
+            before.push(self.lower_pat(pat));
+        }
+
+        while let Some(pat) = iter.next() {
+            // There was a previous subslice pattern; make sure we don't allow more.
+            let rest_span = match pat.node {
+                PatKind::Rest => Some(pat.span),
+                PatKind::Ident(.., Some(ref sub)) if sub.is_rest() => {
+                    // The `HirValidator` is merciless; add a `_` pattern to avoid ICEs.
+                    after.push(self.pat_bound_wild(pat));
+                    Some(sub.span)
+                },
+                _ => None,
+            };
+            if let Some(rest_span) = rest_span {
+                self.ban_extra_rest_pat(rest_span, prev_rest_span.unwrap(), "slice");
+            } else {
+                after.push(self.lower_pat(pat));
+            }
+        }
+
+        hir::PatKind::Slice(before.into(), slice, after.into())
+    }
+
+    fn lower_pat_ident(
+        &mut self,
+        p: &Pat,
+        binding_mode: &BindingMode,
+        ident: Ident,
+        lower_sub: impl FnOnce(&mut Self) -> Option<P<hir::Pat>>,
+    ) -> hir::PatKind {
+        match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
+            // `None` can occur in body-less function signatures
+            res @ None | res @ Some(Res::Local(_)) => {
+                let canonical_id = match res {
+                    Some(Res::Local(id)) => id,
+                    _ => p.id,
+                };
+
+                hir::PatKind::Binding(
+                    self.lower_binding_mode(binding_mode),
+                    self.lower_node_id(canonical_id),
+                    ident,
+                    lower_sub(self),
+                )
+            }
+            Some(res) => hir::PatKind::Path(hir::QPath::Resolved(
+                None,
+                P(hir::Path {
+                    span: ident.span,
+                    res: self.lower_res(res),
+                    segments: hir_vec![hir::PathSegment::from_ident(ident)],
+                }),
+            )),
+        }
+    }
+
+    fn pat_bound_wild(&mut self, p: &Pat) -> P<hir::Pat> {
+        self.pat_bound(p, hir::PatKind::Wild)
+    }
+
+    /// Construct a `Pat` with the `HirId` of `p.id` lowered.
+    fn pat_bound(&mut self, p: &Pat, node: hir::PatKind) -> P<hir::Pat> {
+        P(hir::Pat {
+            hir_id: self.lower_node_id(p.id),
+            node,
+            span: p.span,
+        })
     }
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
