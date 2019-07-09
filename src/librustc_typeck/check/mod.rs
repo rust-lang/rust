@@ -4458,7 +4458,7 @@ pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, t
         return;
     }
 
-    // Make a vector of booleans initially false, set to true when used.
+    // Make a vector of booleans initially `false`; set to `true` when used.
     let mut types_used = vec![false; own_counts.types];
 
     for leaf_ty in ty.walk() {
@@ -4467,7 +4467,7 @@ pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, t
             types_used[index as usize - own_counts.lifetimes] = true;
         } else if let ty::Error = leaf_ty.sty {
             // If there is already another error, do not emit
-            // an error for not using a type Parameter.
+            // an error for not using a type parameter.
             assert!(tcx.sess.has_errors());
             return;
         }

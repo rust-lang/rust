@@ -5,7 +5,7 @@ LL | static S : u64 = { { panic!("foo"); 0 } };
    |                      ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51999
-   = help: add #![feature(const_panic)] to the crate attributes to enable
+   = help: add `#![feature(const_panic)]` to the crate attributes to enable
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error

@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are 
 LL |         let add = std::intrinsics::unchecked_add(x, y);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(core_intrinsics)] to the crate attributes to enable
+   = help: add `#![feature(core_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are unlikely to ever be stabilized, instead they should be used through stabilized interfaces in the rest of the standard library
   --> $DIR/unchecked_math_unstable.rs:5:19
@@ -12,7 +12,7 @@ error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are 
 LL |         let sub = std::intrinsics::unchecked_sub(x, y);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(core_intrinsics)] to the crate attributes to enable
+   = help: add `#![feature(core_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are unlikely to ever be stabilized, instead they should be used through stabilized interfaces in the rest of the standard library
   --> $DIR/unchecked_math_unstable.rs:6:19
@@ -20,7 +20,7 @@ error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are 
 LL |         let mul = std::intrinsics::unchecked_mul(x, y);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(core_intrinsics)] to the crate attributes to enable
+   = help: add `#![feature(core_intrinsics)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

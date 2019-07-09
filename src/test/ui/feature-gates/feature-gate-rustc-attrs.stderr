@@ -5,7 +5,7 @@ LL | #[rustc::unknown]
    |   ^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: macro `rustc::unknown` may not be used in attributes
   --> $DIR/feature-gate-rustc-attrs.rs:8:1
@@ -20,7 +20,7 @@ LL | #[unknown::rustc]
    |            ^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: macro `unknown::rustc` may not be used in attributes
   --> $DIR/feature-gate-rustc-attrs.rs:13:1
@@ -35,7 +35,7 @@ LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error[E0658]: The attribute `rustc_unknown` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-rustc-attrs.rs:20:3
@@ -44,7 +44,7 @@ LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error[E0658]: used by the test suite
   --> $DIR/feature-gate-rustc-attrs.rs:18:1
@@ -53,7 +53,7 @@ LL | #[rustc_dummy]
    | ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: aborting due to 7 previous errors
 

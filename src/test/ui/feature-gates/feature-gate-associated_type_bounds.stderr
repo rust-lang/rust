@@ -5,7 +5,7 @@ LL |     type A: Iterator<Item: Copy>;
    |                      ^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:15:22
@@ -14,7 +14,7 @@ LL |     type B: Iterator<Item: 'static>;
    |                      ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:19:20
@@ -23,7 +23,7 @@ LL | struct _St1<T: Tr1<As1: Tr2>> {
    |                    ^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:26:18
@@ -32,7 +32,7 @@ LL | enum _En1<T: Tr1<As1: Tr2>> {
    |                  ^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:33:19
@@ -41,7 +41,7 @@ LL | union _Un1<T: Tr1<As1: Tr2>> {
    |                   ^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:40:37
@@ -50,7 +50,7 @@ LL | type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
    |                                     ^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:43:22
@@ -59,7 +59,7 @@ LL | fn _apit(_: impl Tr1<As1: Copy>) {}
    |                      ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:45:26
@@ -68,7 +68,7 @@ LL | fn _apit_dyn(_: &dyn Tr1<As1: Copy>) {}
    |                          ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:48:24
@@ -77,7 +77,7 @@ LL | fn _rpit() -> impl Tr1<As1: Copy> { S1 }
    |                        ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:51:31
@@ -86,7 +86,7 @@ LL | fn _rpit_dyn() -> Box<dyn Tr1<As1: Copy>> { Box::new(S1) }
    |                               ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:54:23
@@ -95,7 +95,7 @@ LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |                       ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:60:24
@@ -104,7 +104,7 @@ LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |                        ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:67:21
@@ -113,7 +113,7 @@ LL |     let _: impl Tr1<As1: Copy> = S1;
    |                     ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
-   = help: add #![feature(associated_type_bounds)] to the crate attributes to enable
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/feature-gate-associated_type_bounds.rs:54:14

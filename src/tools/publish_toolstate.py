@@ -28,7 +28,7 @@ MAINTAINERS = {
         '@ryankurte @thejpster @therealprof'
     ),
     'edition-guide': '@ehuss @Centril @steveklabnik',
-    'rustc-guide': '@mark-i-m'
+    'rustc-guide': '@mark-i-m @spastorino'
 }
 
 REPOS = {

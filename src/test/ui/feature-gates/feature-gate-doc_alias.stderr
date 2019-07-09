@@ -1,11 +1,11 @@
-error[E0658]: #[doc(alias = "...")] is experimental
+error[E0658]: `#[doc(alias = "...")]` is experimental
   --> $DIR/feature-gate-doc_alias.rs:1:1
    |
 LL | #[doc(alias = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/50146
-   = help: add #![feature(doc_alias)] to the crate attributes to enable
+   = help: add `#![feature(doc_alias)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

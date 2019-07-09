@@ -8,7 +8,7 @@ LL |     B(usize)
    |     -------- tuple variant defined here
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/60553
-   = help: add #![feature(arbitrary_enum_discriminant)] to the crate attributes to enable
+   = help: add `#![feature(arbitrary_enum_discriminant)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

@@ -5,7 +5,7 @@ LL |   Tuple() = 2,
    |             ^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/60553
-   = help: add #![feature(arbitrary_enum_discriminant)] to the crate attributes to enable
+   = help: add `#![feature(arbitrary_enum_discriminant)]` to the crate attributes to enable
 
 error[E0658]: discriminants on non-unit variants are experimental
   --> $DIR/feature-gate-arbitrary_enum_discriminant.rs:8:14
@@ -14,7 +14,7 @@ LL |   Struct{} = 3,
    |              ^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/60553
-   = help: add #![feature(arbitrary_enum_discriminant)] to the crate attributes to enable
+   = help: add `#![feature(arbitrary_enum_discriminant)]` to the crate attributes to enable
 
 error[E0658]: custom discriminant values are not allowed in enums with tuple or struct variants
   --> $DIR/feature-gate-arbitrary_enum_discriminant.rs:4:10
@@ -29,7 +29,7 @@ LL |   Struct{} = 3,
    |   ------------ struct variant defined here
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/60553
-   = help: add #![feature(arbitrary_enum_discriminant)] to the crate attributes to enable
+   = help: add `#![feature(arbitrary_enum_discriminant)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

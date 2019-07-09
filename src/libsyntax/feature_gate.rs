@@ -1465,7 +1465,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         cfg_fn!(dropck_eyepatch))),
     (sym::unwind, Whitelisted, template!(List: "allowed|aborts"), Gated(Stability::Unstable,
                                 sym::unwind_attributes,
-                                "#[unwind] is experimental",
+                                "`#[unwind]` is experimental",
                                 cfg_fn!(unwind_attributes))),
     (sym::used, Whitelisted, template!(Word), Ungated),
 
@@ -1551,13 +1551,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     (sym::alloc_error_handler, Normal, template!(Word), Gated(Stability::Unstable,
                         sym::alloc_error_handler,
-                        "#[alloc_error_handler] is an unstable feature",
+                        "`#[alloc_error_handler]` is an unstable feature",
                         cfg_fn!(alloc_error_handler))),
 
     // RFC 2412
     (sym::optimize, Whitelisted, template!(List: "size|speed"), Gated(Stability::Unstable,
                             sym::optimize_attribute,
-                            "#[optimize] attribute is an unstable feature",
+                            "`#[optimize]` attribute is an unstable feature",
                             cfg_fn!(optimize_attribute))),
 
     // Crate level attributes
@@ -1674,7 +1674,7 @@ impl<'a> Context<'a> {
                 if let Some(content) = attr.meta_item_list() {
                     if content.iter().any(|c| c.check_name(sym::include)) {
                         gate_feature!(self, external_doc, attr.span,
-                            "#[doc(include = \"...\")] is experimental"
+                            "`#[doc(include = \"...\")]` is experimental"
                         );
                     }
                 }
@@ -1803,7 +1803,7 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.unstable_features.is_nightly_build() {
-        err.help(&format!("add #![feature({})] to the crate attributes to enable", feature));
+        err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feature));
     }
 
     // If we're on stable and only emitting a "soft" warning, add a note to
@@ -1985,23 +1985,23 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             if let Some(content) = attr.meta_item_list() {
                 if content.len() == 1 && content[0].check_name(sym::cfg) {
                     gate_feature_post!(&self, doc_cfg, attr.span,
-                        "#[doc(cfg(...))] is experimental"
+                        "`#[doc(cfg(...))]` is experimental"
                     );
                 } else if content.iter().any(|c| c.check_name(sym::masked)) {
                     gate_feature_post!(&self, doc_masked, attr.span,
-                        "#[doc(masked)] is experimental"
+                        "`#[doc(masked)]` is experimental"
                     );
                 } else if content.iter().any(|c| c.check_name(sym::spotlight)) {
                     gate_feature_post!(&self, doc_spotlight, attr.span,
-                        "#[doc(spotlight)] is experimental"
+                        "`#[doc(spotlight)]` is experimental"
                     );
                 } else if content.iter().any(|c| c.check_name(sym::alias)) {
                     gate_feature_post!(&self, doc_alias, attr.span,
-                        "#[doc(alias = \"...\")] is experimental"
+                        "`#[doc(alias = \"...\")]` is experimental"
                     );
                 } else if content.iter().any(|c| c.check_name(sym::keyword)) {
                     gate_feature_post!(&self, doc_keyword, attr.span,
-                        "#[doc(keyword = \"...\")] is experimental"
+                        "`#[doc(keyword = \"...\")]` is experimental"
                     );
                 }
             }
@@ -2044,13 +2044,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 if attr::contains_name(&i.attrs[..], sym::start) {
                     gate_feature_post!(&self, start, i.span,
-                                      "a #[start] function is an experimental \
+                                      "a `#[start]` function is an experimental \
                                        feature whose signature may change \
                                        over time");
                 }
                 if attr::contains_name(&i.attrs[..], sym::main) {
                     gate_feature_post!(&self, main, i.span,
-                                       "declaration of a nonstandard #[main] \
+                                       "declaration of a non-standard `#[main]` \
                                         function may change over time, for now \
                                         a top-level `fn main()` is required");
                 }
@@ -2638,7 +2638,7 @@ fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate,
             if attr.check_name(sym::feature) {
                 let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
                 span_err!(span_handler, attr.span, E0554,
-                          "#![feature] may not be used on the {} release channel",
+                          "`#![feature]` may not be used on the {} release channel",
                           release_channel);
             }
         }

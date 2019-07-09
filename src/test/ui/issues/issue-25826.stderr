@@ -5,7 +5,7 @@ LL |     const A: bool = unsafe { id::<u8> as *const () < id::<u16> as *const ()
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/53020
-   = help: add #![feature(const_compare_raw_pointers)] to the crate attributes to enable
+   = help: add `#![feature(const_compare_raw_pointers)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

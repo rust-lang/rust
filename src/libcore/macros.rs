@@ -145,11 +145,11 @@ macro_rules! assert_ne {
 /// # Uses
 ///
 /// Unlike [`assert!`], `debug_assert!` statements are only enabled in non
-/// optimized builds by default. An optimized build will omit all
+/// optimized builds by default. An optimized build will not execute
 /// `debug_assert!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
-/// development.
+/// development. The result of expanding `debug_assert!` is always type checked.
 ///
 /// An unchecked assertion allows a program in an inconsistent state to keep
 /// running, which might have unexpected consequences but does not introduce
@@ -190,11 +190,11 @@ macro_rules! debug_assert {
 /// debug representations.
 ///
 /// Unlike [`assert_eq!`], `debug_assert_eq!` statements are only enabled in non
-/// optimized builds by default. An optimized build will omit all
+/// optimized builds by default. An optimized build will not execute
 /// `debug_assert_eq!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert_eq!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
-/// development.
+/// development. The result of expanding `debug_assert_eq!` is always type checked.
 ///
 /// [`assert_eq!`]: ../std/macro.assert_eq.html
 ///
@@ -217,11 +217,11 @@ macro_rules! debug_assert_eq {
 /// debug representations.
 ///
 /// Unlike [`assert_ne!`], `debug_assert_ne!` statements are only enabled in non
-/// optimized builds by default. An optimized build will omit all
+/// optimized builds by default. An optimized build will not execute
 /// `debug_assert_ne!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert_ne!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
-/// development.
+/// development. The result of expanding `debug_assert_ne!` is always type checked.
 ///
 /// [`assert_ne!`]: ../std/macro.assert_ne.html
 ///

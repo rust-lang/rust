@@ -5,7 +5,7 @@ LL | trait Foo = Default;
    | ^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/41517
-   = help: add #![feature(trait_alias)] to the crate attributes to enable
+   = help: add `#![feature(trait_alias)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

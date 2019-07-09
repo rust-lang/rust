@@ -5,7 +5,7 @@ LL | #[allow_fail]
    | ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/46488
-   = help: add #![feature(allow_fail)] to the crate attributes to enable
+   = help: add `#![feature(allow_fail)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

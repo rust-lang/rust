@@ -1,17 +1,17 @@
 error: only `u8` can be cast into `char`
-  --> $DIR/cast_char.rs:4:23
+  --> $DIR/cast-char.rs:4:23
    |
 LL |     const XYZ: char = 0x1F888 as char;
    |                       ^^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{1F888}'`
    |
 note: lint level defined here
-  --> $DIR/cast_char.rs:1:9
+  --> $DIR/cast-char.rs:1:9
    |
 LL | #![deny(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: only `u8` can be cast into `char`
-  --> $DIR/cast_char.rs:6:22
+  --> $DIR/cast-char.rs:6:22
    |
 LL |     const XY: char = 129160 as char;
    |                      ^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{1F888}'`

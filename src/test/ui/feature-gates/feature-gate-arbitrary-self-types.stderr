@@ -5,7 +5,7 @@ LL |     fn foo(self: Ptr<Self>);
    |                  ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44874
-   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
+   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error[E0658]: `Ptr<Bar>` cannot be used as the type of `self` without the `arbitrary_self_types` feature
@@ -15,7 +15,7 @@ LL |     fn foo(self: Ptr<Self>) {}
    |                  ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44874
-   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
+   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error[E0658]: `std::boxed::Box<Ptr<Bar>>` cannot be used as the type of `self` without the `arbitrary_self_types` feature
@@ -25,7 +25,7 @@ LL |     fn bar(self: Box<Ptr<Self>>) {}
    |                  ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44874
-   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
+   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error: aborting due to 3 previous errors

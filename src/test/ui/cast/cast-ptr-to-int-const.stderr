@@ -5,7 +5,7 @@ LL |         main as u32
    |         ^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51910
-   = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
 error[E0658]: casting pointers to integers in constants is unstable
   --> $DIR/cast-ptr-to-int-const.rs:9:9
@@ -14,7 +14,7 @@ LL |         &Y as *const u32 as u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51910
-   = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

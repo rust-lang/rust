@@ -1707,7 +1707,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "",
             "Add a directory to the library search path. The
                              optional KIND can be one of dependency, crate, native,
-                             framework or all (the default).",
+                             framework, or all (the default).",
             "[KIND=]PATH",
         ),
         opt::multi_s(
@@ -1715,8 +1715,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "",
             "Link the generated crate(s) to the specified native
                              library NAME. The optional KIND can be one of
-                             static, dylib, or framework. If omitted, dylib is
-                             assumed.",
+                             static, framework, or dylib (the default).",
             "[KIND=]NAME",
         ),
         opt::multi_s(
