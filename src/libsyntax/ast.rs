@@ -519,21 +519,28 @@ impl fmt::Debug for Pat {
 }
 
 impl Pat {
+    /// Attempt reparsing the pattern as a type.
+    /// This is intended for use by diagnostics.
     pub(super) fn to_ty(&self) -> Option<P<Ty>> {
         let node = match &self.node {
+            // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
+            // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
             PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) => {
                 TyKind::Path(None, Path::from_ident(*ident))
             }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
+            // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
             PatKind::Ref(pat, mutbl) => pat
                 .to_ty()
                 .map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
-            PatKind::Slice(pats, None, _) if pats.len() == 1 => {
-                pats[0].to_ty().map(TyKind::Slice)?
-            }
-            PatKind::Tuple(pats, None) => {
+            // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
+            // when `P` can be reparsed as a type `T`.
+            PatKind::Slice(pats) if pats.len() == 1 => pats[0].to_ty().map(TyKind::Slice)?,
+            // A tuple pattern `(P0, .., Pn)` can be reparsed as `(T0, .., Tn)`
+            // assuming `T0` to `Tn` are all syntactically valid as types.
+            PatKind::Tuple(pats) => {
                 let mut tys = Vec::with_capacity(pats.len());
                 // FIXME(#48994) - could just be collected into an Option<Vec>
                 for pat in pats {
