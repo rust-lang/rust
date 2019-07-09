@@ -122,7 +122,7 @@ pub(crate) fn solve_query(
     krate: Crate,
     trait_ref: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
-    let _p = profile("implements_query");
+    let _p = profile("solve_query");
     let canonical = trait_ref.to_chalk(db).cast();
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
