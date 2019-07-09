@@ -2369,22 +2369,10 @@ impl<'a> State<'a> {
                     self.print_pat(p);
                 }
             }
-            PatKind::TupleStruct(ref path, ref elts, ddpos) => {
+            PatKind::TupleStruct(ref path, ref elts) => {
                 self.print_path(path, true, 0);
                 self.popen();
-                if let Some(ddpos) = ddpos {
-                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(p));
-                    if ddpos != 0 {
-                        self.word_space(",");
-                    }
-                    self.s.word("..");
-                    if ddpos != elts.len() {
-                        self.s.word(",");
-                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(p));
-                    }
-                } else {
-                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
-                }
+                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
                 self.pclose();
             }
             PatKind::Path(None, ref path) => {
@@ -2416,23 +2404,11 @@ impl<'a> State<'a> {
                 self.s.space();
                 self.s.word("}");
             }
-            PatKind::Tuple(ref elts, ddpos) => {
+            PatKind::Tuple(ref elts) => {
                 self.popen();
-                if let Some(ddpos) = ddpos {
-                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(p));
-                    if ddpos != 0 {
-                        self.word_space(",");
-                    }
-                    self.s.word("..");
-                    if ddpos != elts.len() {
-                        self.s.word(",");
-                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(p));
-                    }
-                } else {
-                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
-                    if elts.len() == 1 {
-                        self.s.word(",");
-                    }
+                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
+                if elts.len() == 1 {
+                    self.s.word(",");
                 }
                 self.pclose();
             }
@@ -2458,24 +2434,9 @@ impl<'a> State<'a> {
                 }
                 self.print_expr(end);
             }
-            PatKind::Slice(ref before, ref slice, ref after) => {
+            PatKind::Slice(ref elts) => {
                 self.s.word("[");
-                self.commasep(Inconsistent,
-                                   &before[..],
-                                   |s, p| s.print_pat(p));
-                if let Some(ref p) = *slice {
-                    if !before.is_empty() { self.word_space(","); }
-                    if let PatKind::Wild = p.node {
-                        // Print nothing
-                    } else {
-                        self.print_pat(p);
-                    }
-                    self.s.word("..");
-                    if !after.is_empty() { self.word_space(","); }
-                }
-                self.commasep(Inconsistent,
-                                   &after[..],
-                                   |s, p| s.print_pat(p));
+                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
                 self.s.word("]");
             }
             PatKind::Rest => self.s.word(".."),
