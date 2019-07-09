@@ -20,6 +20,12 @@ pub use impl_trait_aux::func2;
 // @!has - '//pre[@class="rust fn"]' 'where'
 pub use impl_trait_aux::func3;
 
+
+// @has impl_trait/fn.func4.html
+// @has - '//pre[@class="rust fn"]' "func4<T>("
+// @has - '//pre[@class="rust fn"]' "T: Iterator<Item = impl Clone>,"
+pub use impl_trait_aux::func4;
+
 // @has impl_trait/struct.Foo.html
 // @has - '//code[@id="method.v"]' "pub fn method<'a>(_x: impl Clone + Into<Vec<u8>> + 'a)"
 // @!has - '//code[@id="method.v"]' 'where'

@@ -1725,7 +1725,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         let mut impl_trait_proj =
             FxHashMap::<u32, Vec<(DefId, String, Ty<'tcx>)>>::default();
 
-        let mut where_predicates = preds.predicates.iter()
+        let where_predicates = preds.predicates.iter()
             .flat_map(|(p, _)| {
                 let mut projection = None;
                 let param_idx = (|| {
@@ -1747,10 +1747,10 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                     None
                 })();
 
-                let p = p.clean(cx)?;
-
                 if let Some(param_idx) = param_idx {
                     if let Some(b) = impl_trait.get_mut(&param_idx.into()) {
+                        let p = p.clean(cx)?;
+
                         b.extend(
                             p.get_bounds()
                                 .into_iter()
@@ -1804,6 +1804,13 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
 
             cx.impl_trait_bounds.borrow_mut().insert(param, bounds);
         }
+
+        // Now that `cx.impl_trait_bounds` is populated, we can process
+        // remaining predicates which could contain `impl Trait`.
+        let mut where_predicates = where_predicates
+            .into_iter()
+            .flat_map(|p| p.clean(cx))
+            .collect::<Vec<_>>();
 
         // Type parameters and have a Sized bound by default unless removed with
         // ?Sized. Scan through the predicates and mark any type parameter with

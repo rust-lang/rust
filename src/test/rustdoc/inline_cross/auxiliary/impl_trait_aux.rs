@@ -9,6 +9,8 @@ pub fn func2<T>(
 
 pub fn func3(_x: impl Iterator<Item = impl Iterator<Item = u8>> + Clone) {}
 
+pub fn func4<T: Iterator<Item = impl Clone>>(_x: T) {}
+
 pub struct Foo;
 
 impl Foo {
