@@ -149,7 +149,7 @@ macro_rules! assert_ne {
 /// `debug_assert!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
-/// development. `debug_assert!` statements are always type checked.
+/// development. The result of expanding `debug_assert!` is always type checked.
 ///
 /// An unchecked assertion allows a program in an inconsistent state to keep
 /// running, which might have unexpected consequences but does not introduce
@@ -194,7 +194,7 @@ macro_rules! debug_assert {
 /// `debug_assert_eq!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert_eq!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
-/// development. `debug_assert_eq!` statements are always type checked.
+/// development. The result of expanding `debug_assert_eq!` is always type checked.
 ///
 /// [`assert_eq!`]: ../std/macro.assert_eq.html
 ///
@@ -221,7 +221,7 @@ macro_rules! debug_assert_eq {
 /// `debug_assert_ne!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert_ne!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
-/// development. `debug_assert_ne!` statements are always type checked.
+/// development. The result of expanding `debug_assert_ne!` is always type checked.
 ///
 /// [`assert_ne!`]: ../std/macro.assert_ne.html
 ///
