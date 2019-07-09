@@ -60,12 +60,12 @@ cargo = { path = "src/tools/cargo" }
 # that we're shipping as well (to ensure that the rustfmt in RLS and the
 # `rustfmt` executable are the same exact version).
 rustfmt-nightly = { path = "src/tools/rustfmt" }
-cfg-if = { path = "/home/aaron/repos/cfg-if" }
-backtrace = { path = "/home/aaron/repos/backtrace-rs" }
-libc = { path = "/home/aaron/repos/libc" }
-dlmalloc = { path = "/home/aaron/repos/dlmalloc-rs" }
+#cfg-if = { path = "/home/aaron/repos/cfg-if" }
+#backtrace = { path = "/home/aaron/repos/backtrace-rs" }
+#libc = { path = "/home/aaron/repos/libc" }
+#dlmalloc = { path = "/home/aaron/repos/dlmalloc-rs" }
 hashbrown = { path = "/home/aaron/repos/hashbrown" }
-compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins", features = ["rustc-dep-of-std"] }
+#compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins", features = ["rustc-dep-of-std"] }
 
 # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on
 # here

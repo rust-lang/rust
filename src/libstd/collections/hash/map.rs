@@ -2545,7 +2545,7 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> CollectionAllocErr {
     match err {
         hashbrown::CollectionAllocErr::CapacityOverflow => CollectionAllocErr::CapacityOverflow,
-        hashbrown::CollectionAllocErr::AllocErr => CollectionAllocErr::AllocErr,
+        hashbrown::CollectionAllocErr::AllocErr { .. } => CollectionAllocErr::AllocErr,
     }
 }
 
