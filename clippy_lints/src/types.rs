@@ -789,7 +789,8 @@ declare_clippy_lint! {
     /// **Why is this bad?** Dereferencing the resulting pointer may be undefined
     /// behavior.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Using `std::ptr::read_unaligned` and `std::ptr::write_unaligned` or similar
+    /// on the resulting pointer is fine.
     ///
     /// **Example:**
     /// ```rust
