@@ -1002,6 +1002,26 @@ impl<'a> Parser<'a> {
         Ok((result, trailing))
     }
 
+    fn parse_delim_comma_seq<T>(
+        &mut self,
+        delim: DelimToken,
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool)> {
+        self.parse_unspanned_seq(
+            &token::OpenDelim(delim),
+            &token::CloseDelim(delim),
+            SeqSep::trailing_allowed(token::Comma),
+            f,
+        )
+    }
+
+    fn parse_paren_comma_seq<T>(
+        &mut self,
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool)> {
+        self.parse_delim_comma_seq(token::Paren, f)
+    }
+
     /// Advance the parser by one token
     pub fn bump(&mut self) {
         if self.prev_token_kind == PrevTokenKind::Eof {
@@ -2626,6 +2646,10 @@ impl<'a> Parser<'a> {
             }
         }
         return Ok(e);
+    }
+
+    fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
+        self.parse_paren_comma_seq(|p| p.parse_expr()).map(|(r, _)| r)
     }
 
     crate fn process_potential_macro_variable(&mut self) {
