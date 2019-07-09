@@ -18,7 +18,7 @@ use std::task::{Context, Poll};
 use arc_wake::ArcWake;
 use wake_once::wake_and_yield_once;
 
-pub struct Counter {
+struct Counter {
     wakes: AtomicUsize,
 }
 
