@@ -445,13 +445,8 @@ pub trait PrintState<'a> {
 
     fn pclose(&mut self) { self.writer().word(")") }
 
-    // is this the beginning of a line?
-    fn is_bol(&mut self) -> bool {
-        self.writer().last_token().is_eof() || self.writer().last_token().is_hardbreak_tok()
-    }
-
     fn hardbreak_if_not_bol(&mut self) {
-        if !self.is_bol() {
+        if !self.writer().is_beginning_of_line() {
             self.writer().hardbreak()
         }
     }
@@ -512,7 +507,7 @@ pub trait PrintState<'a> {
                 }
             }
             comments::Trailing => {
-                if !self.is_bol() {
+                if !self.writer().is_beginning_of_line() {
                     self.writer().word(" ");
                 }
                 if cmnt.lines.len() == 1 {
@@ -735,7 +730,7 @@ pub trait PrintState<'a> {
     }
 
     fn space_if_not_bol(&mut self) {
-        if !self.is_bol() { self.writer().space(); }
+        if !self.writer().is_beginning_of_line() { self.writer().space(); }
     }
 
     fn nbsp(&mut self) { self.writer().word(" ") }
@@ -793,7 +788,7 @@ impl<'a> State<'a> {
 
     crate fn break_offset_if_not_bol(&mut self, n: usize,
                                    off: isize) {
-        if !self.is_bol() {
+        if !self.s.is_beginning_of_line() {
             self.s.break_offset(n, off)
         } else {
             if off != 0 && self.s.last_token().is_hardbreak_tok() {

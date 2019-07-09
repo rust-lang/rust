@@ -301,7 +301,7 @@ impl Default for BufEntry {
 }
 
 impl Printer {
-    pub fn last_token(&mut self) -> Token {
+    pub fn last_token(&self) -> Token {
         self.buf[self.right].token.clone()
     }
 
@@ -649,6 +649,10 @@ impl Printer {
 
     pub fn hardbreak(&mut self) {
         self.spaces(SIZE_INFINITY as usize)
+    }
+
+    pub fn is_beginning_of_line(&self) -> bool {
+        self.last_token().is_eof() || self.last_token().is_hardbreak_tok()
     }
 
     pub fn hardbreak_tok_offset(off: isize) -> Token {

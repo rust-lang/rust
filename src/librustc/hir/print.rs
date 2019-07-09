@@ -187,13 +187,13 @@ impl<'a> State<'a> {
     }
 
     pub fn space_if_not_bol(&mut self) {
-        if !self.is_bol() {
+        if !self.s.is_beginning_of_line() {
             self.s.space();
         }
     }
 
     pub fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
-        if !self.is_bol() {
+        if !self.s.is_beginning_of_line() {
             self.s.break_offset(n, off)
         } else {
             if off != 0 && self.s.last_token().is_hardbreak_tok() {
