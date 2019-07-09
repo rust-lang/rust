@@ -27,6 +27,7 @@ pub enum AnnNode<'a> {
     SubItem(hir::HirId),
     Expr(&'a hir::Expr),
     Pat(&'a hir::Pat),
+    Arm(&'a hir::Arm),
 }
 
 pub enum Nested {
@@ -1821,6 +1822,7 @@ impl<'a> State<'a> {
             self.s.space();
         }
         self.cbox(indent_unit);
+        self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
         self.print_outer_attributes(&arm.attrs);
         let mut first = true;
@@ -1865,6 +1867,7 @@ impl<'a> State<'a> {
                 self.s.word(",");
             }
         }
+        self.ann.post(self, AnnNode::Arm(arm));
         self.end() // close enclosing cbox
     }
 

@@ -387,28 +387,28 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             pprust_hir::AnnNode::Name(_) => {},
             pprust_hir::AnnNode::Item(item) => {
                 s.s.space();
-                s.synth_comment(format!("hir_id: {} hir local_id: {}",
-                                        item.hir_id, item.hir_id.local_id.as_u32()))
+                s.synth_comment(format!("hir_id: {}", item.hir_id));
             }
             pprust_hir::AnnNode::SubItem(id) => {
                 s.s.space();
-                s.synth_comment(id.to_string())
+                s.synth_comment(id.to_string());
             }
             pprust_hir::AnnNode::Block(blk) => {
                 s.s.space();
-                s.synth_comment(format!("block hir_id: {} hir local_id: {}",
-                                        blk.hir_id, blk.hir_id.local_id.as_u32()))
+                s.synth_comment(format!("block hir_id: {}", blk.hir_id));
             }
             pprust_hir::AnnNode::Expr(expr) => {
                 s.s.space();
-                s.synth_comment(format!("expr hir_id: {} hir local_id: {}",
-                                        expr.hir_id, expr.hir_id.local_id.as_u32()));
-                s.pclose()
+                s.synth_comment(format!("expr hir_id: {}", expr.hir_id));
+                s.pclose();
             }
             pprust_hir::AnnNode::Pat(pat) => {
                 s.s.space();
-                s.synth_comment(format!("pat hir_id: {} hir local_id: {}",
-                                        pat.hir_id, pat.hir_id.local_id.as_u32()))
+                s.synth_comment(format!("pat hir_id: {}", pat.hir_id));
+            }
+            pprust_hir::AnnNode::Arm(arm) => {
+                s.s.space();
+                s.synth_comment(format!("arm hir_id: {}", arm.hir_id));
             }
         }
     }

@@ -109,7 +109,8 @@ impl<'tcx, O: DataFlowOperator> pprust::PpAnn for DataFlowContext<'tcx, O> {
             pprust::AnnNode::Block(blk) => blk.hir_id.local_id,
             pprust::AnnNode::Item(_) |
             pprust::AnnNode::SubItem(_) => return,
-            pprust::AnnNode::Pat(pat) => pat.hir_id.local_id
+            pprust::AnnNode::Pat(pat) => pat.hir_id.local_id,
+            pprust::AnnNode::Arm(arm) => arm.hir_id.local_id,
         };
 
         if !self.has_bitset_for_local_id(id) {

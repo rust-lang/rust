@@ -371,7 +371,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         let expr_exit = self.add_ast_node(id, &[]);
 
         // Keep track of the previous guard expressions
-        let mut prev_guards = Vec::new();
+        let mut prev_guard = None;
+        let match_scope = region::Scope { id, data: region::ScopeData::Node };
 
         for arm in arms {
             // Add an exit node for when we've visited all the
@@ -389,7 +390,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     let guard_start = self.add_dummy_node(&[pat_exit]);
                     // Visit the guard expression
                     let guard_exit = match guard {
-                        hir::Guard::If(ref e) => self.expr(e, guard_start),
+                        hir::Guard::If(ref e) => (&**e, self.expr(e, guard_start)),
                     };
                     // #47295: We used to have very special case code
                     // here for when a pair of arms are both formed
@@ -397,15 +398,15 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     // edges.  But this was not actually sound without
                     // other constraints that we stopped enforcing at
                     // some point.
-                    while let Some(prev) = prev_guards.pop() {
-                        self.add_contained_edge(prev, guard_start);
+                    if let Some((prev_guard, prev_index)) = prev_guard.take() {
+                        self.add_exiting_edge(prev_guard, prev_index, match_scope, guard_start);
                     }
 
                     // Push the guard onto the list of previous guards
-                    prev_guards.push(guard_exit);
+                    prev_guard = Some(guard_exit);
 
                     // Update the exit node for the pattern
-                    pat_exit = guard_exit;
+                    pat_exit = guard_exit.1;
                 }
 
                 // Add an edge from the exit of this pattern to the
