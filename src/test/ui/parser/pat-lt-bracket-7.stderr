@@ -4,5 +4,18 @@ error: expected one of `)`, `,`, or `@`, found `[`
 LL |     for thing(x[]) in foo {}
    |                ^ expected one of `)`, `,`, or `@` here
 
-error: aborting due to previous error
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/pat-lt-bracket-7.rs:2:23
+   |
+LL |     for thing(x[]) in foo {}
+   |                       ^^^ not found in this scope
 
+error[E0531]: cannot find tuple struct/variant `thing` in this scope
+  --> $DIR/pat-lt-bracket-7.rs:2:9
+   |
+LL |     for thing(x[]) in foo {}
+   |         ^^^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
