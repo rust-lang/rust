@@ -70,10 +70,6 @@ rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
 # here
 rustc-std-workspace-core = { path = 'src/tools/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'src/tools/rustc-std-workspace-alloc' }
-core = { path = "src/libcore" }
-
-[patch."https://github.com/rust-lang-nursery/compiler-builtins"]
-core = { path = "src/libcore" }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
