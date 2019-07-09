@@ -35,4 +35,5 @@ serde_test = "1.0"
 [features]
 default = []
 nightly = []
-rustc-dep-of-std = ["nightly", "core", "compiler_builtins", "alloc"]
+rustc-internal-api = []
+rustc-dep-of-std = ["nightly", "core", "compiler_builtins", "alloc", "rustc-internal-api"]
