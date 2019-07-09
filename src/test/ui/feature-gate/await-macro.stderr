@@ -5,7 +5,7 @@ LL |     await!(bar());
    |     ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/50547
-   = help: add #![feature(await_macro)] to the crate attributes to enable
+   = help: add `#![feature(await_macro)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

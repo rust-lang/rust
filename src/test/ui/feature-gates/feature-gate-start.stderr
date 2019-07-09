@@ -1,11 +1,11 @@
-error[E0658]: a #[start] function is an experimental feature whose signature may change over time
+error[E0658]: a `#[start]` function is an experimental feature whose signature may change over time
   --> $DIR/feature-gate-start.rs:2:1
    |
 LL | fn foo(_: isize, _: *const *const u8) -> isize { 0 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29633
-   = help: add #![feature(start)] to the crate attributes to enable
+   = help: add `#![feature(start)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

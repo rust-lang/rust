@@ -5,7 +5,7 @@ LL |             #[empty_helper]
    |               ^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/derive-helper-shadowing.rs:8:3

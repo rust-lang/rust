@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'local_unstable'
 LL |     local_unstable!();
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(local_unstable)] to the crate attributes to enable
+   = help: add `#![feature(local_unstable)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'local_unstable'
   --> $DIR/macro-stability.rs:20:5
@@ -12,7 +12,7 @@ error[E0658]: use of unstable library feature 'local_unstable'
 LL |     local_unstable_modern!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(local_unstable)] to the crate attributes to enable
+   = help: add `#![feature(local_unstable)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_macros'
   --> $DIR/macro-stability.rs:21:5
@@ -20,7 +20,7 @@ error[E0658]: use of unstable library feature 'unstable_macros'
 LL |     unstable_macro!();
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(unstable_macros)] to the crate attributes to enable
+   = help: add `#![feature(unstable_macros)]` to the crate attributes to enable
 
 warning: use of deprecated item 'deprecated_macro': deprecation reason
   --> $DIR/macro-stability.rs:24:5

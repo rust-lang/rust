@@ -23,7 +23,7 @@ LL |     /// Comment
    |     ^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/60406
-   = help: add #![feature(param_attrs)] to the crate attributes to enable
+   = help: add `#![feature(param_attrs)]` to the crate attributes to enable
 
 error[E0658]: attributes on function parameters are unstable
   --> $DIR/fn-arg-doc-comment.rs:8:5
@@ -32,7 +32,7 @@ LL |     /// Other
    |     ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/60406
-   = help: add #![feature(param_attrs)] to the crate attributes to enable
+   = help: add `#![feature(param_attrs)]` to the crate attributes to enable
 
 error[E0308]: mismatched types
   --> $DIR/fn-arg-doc-comment.rs:22:7

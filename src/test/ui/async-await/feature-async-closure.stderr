@@ -5,7 +5,7 @@ LL |     let _ = async || {};
    |             ^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/62290
-   = help: add #![feature(async_closure)] to the crate attributes to enable
+   = help: add `#![feature(async_closure)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

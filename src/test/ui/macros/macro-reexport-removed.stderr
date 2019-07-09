@@ -17,7 +17,7 @@ LL | #[macro_reexport(macro_one)]
    |   ^^^^^^^^^^^^^^ help: a built-in attribute with a similar name exists: `macro_export`
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
