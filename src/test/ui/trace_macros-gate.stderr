@@ -5,7 +5,7 @@ LL |     trace_macros!();
    |     ^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29598
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
+   = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
 error: trace_macros! accepts only `true` or `false`
   --> $DIR/trace_macros-gate.rs:4:5
@@ -20,7 +20,7 @@ LL |     trace_macros!(true);
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29598
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
+   = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:7:5
@@ -29,7 +29,7 @@ LL |     trace_macros!(false);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29598
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
+   = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:10:26
@@ -41,7 +41,7 @@ LL |     expando!(true);
    |     --------------- in this macro invocation
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29598
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
+   = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
 error: aborting due to 5 previous errors
 

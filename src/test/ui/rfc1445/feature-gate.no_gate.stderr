@@ -5,7 +5,7 @@ LL | #[structural_match]
    | ^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/31434
-   = help: add #![feature(structural_match)] to the crate attributes to enable
+   = help: add `#![feature(structural_match)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

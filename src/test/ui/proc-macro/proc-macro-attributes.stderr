@@ -5,7 +5,7 @@ LL | #[C]
    |   ^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/proc-macro-attributes.rs:6:3

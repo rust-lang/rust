@@ -6,7 +6,7 @@ LL | |             fn atomic_fence();
 LL | |         }
    | |_________^
    |
-   = help: add #![feature(intrinsics)] to the crate attributes to enable
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'ptr_internals': use NonNull inste
 LL | #[allow(unused_imports)] use core::ptr::Unique;
    |                              ^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(ptr_internals)] to the crate attributes to enable
+   = help: add `#![feature(ptr_internals)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

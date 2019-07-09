@@ -5,7 +5,7 @@ LL | #[cfg(rustdoc)]
    |       ^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/43781
-   = help: add #![feature(doc_cfg)] to the crate attributes to enable
+   = help: add `#![feature(doc_cfg)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
