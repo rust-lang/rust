@@ -1513,6 +1513,7 @@ pub trait Iterator {
 
     /// Reorder the elements of this iterator *in-place* according to the given predicate,
     /// such that all those that return `true` precede all those that return `false`.
+    /// Returns the number of `true` elements found.
     ///
     /// The relative order of partitioned items is not maintained.
     ///
@@ -1529,25 +1530,53 @@ pub trait Iterator {
     /// let mut a = [1, 2, 3, 4, 5, 6, 7];
     ///
     /// // Partition in-place between evens and odds
-    /// a.iter_mut().partition_in_place(|&n| n % 2 == 0);
+    /// let i = a.iter_mut().partition_in_place(|&n| n % 2 == 0);
     ///
-    /// assert!(a[..3].iter().all(|&n| n % 2 == 0)); // evens
-    /// assert!(a[3..].iter().all(|&n| n % 2 == 1)); // odds
+    /// assert_eq!(i, 3);
+    /// assert!(a[..i].iter().all(|&n| n % 2 == 0)); // evens
+    /// assert!(a[i..].iter().all(|&n| n % 2 == 1)); // odds
     /// ```
     #[unstable(feature = "iter_partition_in_place", reason = "new API", issue = "0")]
-    fn partition_in_place<'a, T: 'a, P>(mut self, mut predicate: P)
+    fn partition_in_place<'a, T: 'a, P>(mut self, ref mut predicate: P) -> usize
     where
         Self: Sized + DoubleEndedIterator<Item = &'a mut T>,
         P: FnMut(&T) -> bool,
     {
+        // FIXME: should we worry about the count overflowing? The only way to have more than
+        // `usize::MAX` mutable references is with ZSTs, which aren't useful to partition...
+
+        // These closure "factory" functions exist to avoid genericity in `Self`.
+
+        #[inline]
+        fn is_false<'a, T>(
+            predicate: &'a mut impl FnMut(&T) -> bool,
+            true_count: &'a mut usize,
+        ) -> impl FnMut(&&mut T) -> bool + 'a {
+            move |x| {
+                let p = predicate(&**x);
+                *true_count += p as usize;
+                !p
+            }
+        }
+
+        #[inline]
+        fn is_true<T>(
+            predicate: &mut impl FnMut(&T) -> bool
+        ) -> impl FnMut(&&mut T) -> bool + '_ {
+            move |x| predicate(&**x)
+        }
+
         // Repeatedly find the first `false` and swap it with the last `true`.
-        while let Some(head) = self.find(|x| !predicate(x)) {
-            if let Some(tail) = self.rfind(|x| predicate(x)) {
+        let mut true_count = 0;
+        while let Some(head) = self.find(is_false(predicate, &mut true_count)) {
+            if let Some(tail) = self.rfind(is_true(predicate)) {
                 crate::mem::swap(head, tail);
+                true_count += 1;
             } else {
                 break;
             }
         }
+        true_count
     }
 
     /// Checks if the elements of this iterator are partitioned according to the given predicate,
