@@ -2460,3 +2460,39 @@ fn test_is_sorted() {
     assert!(!["c", "bb", "aaa"].iter().is_sorted());
     assert!(["c", "bb", "aaa"].iter().is_sorted_by_key(|s| s.len()));
 }
+
+#[test]
+fn test_partition() {
+    fn check(xs: &mut [i32], ref p: impl Fn(&i32) -> bool, expected: usize) {
+        let i = xs.iter_mut().partition_in_place(p);
+        assert_eq!(expected, i);
+        assert!(xs[..i].iter().all(p));
+        assert!(!xs[i..].iter().any(p));
+        assert!(xs.iter().is_partitioned(p));
+        if i == 0 || i == xs.len() {
+            assert!(xs.iter().rev().is_partitioned(p));
+        } else {
+            assert!(!xs.iter().rev().is_partitioned(p));
+        }
+    }
+
+    check(&mut [], |_| true, 0);
+    check(&mut [], |_| false, 0);
+
+    check(&mut [0], |_| true, 1);
+    check(&mut [0], |_| false, 0);
+
+    check(&mut [-1, 1], |&x| x > 0, 1);
+    check(&mut [-1, 1], |&x| x < 0, 1);
+
+    let ref mut xs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    check(xs, |_| true, 10);
+    check(xs, |_| false, 0);
+    check(xs, |&x| x % 2 == 0, 5); // evens
+    check(xs, |&x| x % 2 == 1, 5); // odds
+    check(xs, |&x| x % 3 == 0, 4); // multiple of 3
+    check(xs, |&x| x % 4 == 0, 3); // multiple of 4
+    check(xs, |&x| x % 5 == 0, 2); // multiple of 5
+    check(xs, |&x| x < 3, 3); // small
+    check(xs, |&x| x > 6, 3); // large
+}
