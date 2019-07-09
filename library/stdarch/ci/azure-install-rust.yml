@@ -17,10 +17,8 @@ steps:
   - script: |
       @echo on
       if not defined TOOLCHAIN set TOOLCHAIN=nightly
-      echo %TOOLCHAIN%
-      curl -sSf -o rustup-init.exe https://win.rustup.rs
-      rustup-init.exe -y --default-toolchain %TOOLCHAIN%-%TARGET%
-      echo "##vso[task.setvariable variable=PATH;]%PATH%;%USERPROFILE%\.cargo\bin"
+      rustup update %TOOLCHAIN%-%TARGET%
+      rustup default %TOOLCHAIN%-%TARGET%
     displayName: Install rust (windows)
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
   - script: |

@@ -57,7 +57,8 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(output.status.success());
-        String::from_utf8(output.stdout)
+        // Windows does not return valid UTF-8 output:
+        Ok(String::from_utf8_lossy(&output.stderr).to_string())
     } else if cfg!(target_os = "windows") {
         panic!("disassembly unimplemented")
     } else if cfg!(target_os = "macos") {
@@ -101,6 +102,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
 fn parse(output: &str) -> HashSet<Function> {
     let mut lines = output.lines();
 
+    println!("First 100 lines of the disassembly input containing {} lines:", lines.clone().count());
     for line in output.lines().take(100) {
         println!("{}", line);
     }
@@ -111,7 +113,9 @@ fn parse(output: &str) -> HashSet<Function> {
         if !header.ends_with(':') || !header.contains("stdarch_test_shim") {
             continue
         }
+        eprintln!("header: {}", header);
         let symbol = normalize(header);
+        eprintln!("normalized symbol: {}", symbol);
         let mut instructions = Vec::new();
         while let Some(instruction) = lines.next() {
             if instruction.ends_with(':') {
@@ -178,5 +182,11 @@ fn parse(output: &str) -> HashSet<Function> {
         };
         assert!(functions.insert(function));
     }
+
+    eprintln!("all found functions dump:");
+    for k in &functions {
+        eprintln!("  f: {}", k.name);
+    }
+
     functions
 }

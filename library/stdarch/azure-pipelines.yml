@@ -1,5 +1,5 @@
-trigger:
-  - master
+trigger: ["master"]
+pr: ["master"]
 
 jobs:
   - job: DockerLinux
@@ -118,23 +118,23 @@ jobs:
           TARGET: i686-apple-darwin
           NO_DOCKER: 1
 
-  #- job: Windows
-  #  pool:
-  #    vmImage: vs2017-win2016
-  #  steps:
-  #    - template: ci/azure-install-rust.yml
-  #    - bash: sh ./ci/run.sh $TARGET
-  #      displayName: Execute run.sh
-  #  strategy:
-  #    matrix:
-  #      x86_64-pc-windows-gnu:
-  #        TARGET: x86_64-pc-windows-gnu
-  #        NO_DOCKER: 1
-  #        TOOLCHAIN: nightly
-  #      x86_64-pc-windows-msvc:
-  #        TARGET: x86_64-pc-windows-gnu
-  #        NO_DOCKER: 1
-  #        TOOLCHAIN: nightly
+  - job: Windows
+    pool:
+      vmImage: vs2017-win2016
+    steps:
+      - template: ci/azure-install-rust.yml
+      - bash: sh ./ci/run.sh $TARGET
+        displayName: Execute run.sh
+    strategy:
+      matrix:
+        x86_64-pc-windows-gnu:
+          TARGET: x86_64-pc-windows-gnu
+        x86_64-pc-windows-msvc:
+          TARGET: x86_64-pc-windows-msvc
+        i686-pc-windows-gnu:
+          TARGET: i686-pc-windows-gnu
+        i686-pc-windows-msvc:
+          TARGET: i686-pc-windows-msvc
     
   - job: StyleAndDocs
     pool:
