@@ -96,8 +96,7 @@ impl<'a> PrintState<'a> for State<'a> {
     }
 }
 
-#[allow(non_upper_case_globals)]
-pub const indent_unit: usize = 4;
+pub const INDENT_UNIT: usize = 4;
 
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
@@ -168,7 +167,7 @@ impl<'a> State<'a> {
     pub fn head<S: Into<Cow<'static, str>>>(&mut self, w: S) {
         let w = w.into();
         // outer-box is consistent
-        self.cbox(indent_unit);
+        self.cbox(INDENT_UNIT);
         // head-box is inconsistent
         self.ibox(w.len() + 1);
         // keyword that starts the head
@@ -196,7 +195,7 @@ impl<'a> State<'a> {
     }
 
     pub fn bclose(&mut self, span: syntax_pos::Span) {
-        self.bclose_maybe_open(span, indent_unit, true)
+        self.bclose_maybe_open(span, INDENT_UNIT, true)
     }
 
     pub fn space_if_not_bol(&mut self) {
@@ -732,7 +731,7 @@ impl<'a> State<'a> {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
             self.print_outer_attributes(&v.node.attrs);
-            self.ibox(indent_unit);
+            self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.s.word(",");
             self.end();
@@ -919,10 +918,10 @@ impl<'a> State<'a> {
         decl: impl Fn(&mut Self)
     ) {
         self.space_if_not_bol();
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.word_nbsp("let");
 
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         decl(self);
         self.end();
 
@@ -964,7 +963,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_block_unclosed(&mut self, blk: &hir::Block) {
-        self.print_block_unclosed_indent(blk, indent_unit)
+        self.print_block_unclosed_indent(blk, INDENT_UNIT)
     }
 
     pub fn print_block_unclosed_indent(&mut self,
@@ -978,7 +977,7 @@ impl<'a> State<'a> {
                                   blk: &hir::Block,
                                   attrs: &[ast::Attribute])
                                   {
-        self.print_block_maybe_unclosed(blk, indent_unit, attrs, true)
+        self.print_block_maybe_unclosed(blk, INDENT_UNIT, attrs, true)
     }
 
     pub fn print_block_maybe_unclosed(&mut self,
@@ -1055,7 +1054,7 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_vec(&mut self, exprs: &[hir::Expr]) {
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.commasep_exprs(Inconsistent, exprs);
         self.s.word("]");
@@ -1063,7 +1062,7 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_repeat(&mut self, element: &hir::Expr, count: &hir::AnonConst) {
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.print_expr(element);
         self.word_space(";");
@@ -1082,7 +1081,7 @@ impl<'a> State<'a> {
         self.commasep_cmnt(Consistent,
                            &fields[..],
                            |s, field| {
-                               s.ibox(indent_unit);
+                               s.ibox(INDENT_UNIT);
                                if !field.is_shorthand {
                                     s.print_ident(field.ident);
                                     s.word_space(":");
@@ -1093,7 +1092,7 @@ impl<'a> State<'a> {
                            |f| f.span);
         match *wth {
             Some(ref expr) => {
-                self.ibox(indent_unit);
+                self.ibox(INDENT_UNIT);
                 if !fields.is_empty() {
                     self.s.word(",");
                     self.s.space();
@@ -1198,7 +1197,7 @@ impl<'a> State<'a> {
     pub fn print_expr(&mut self, expr: &hir::Expr) {
         self.maybe_print_comment(expr.span.lo());
         self.print_outer_attributes(&expr.attrs);
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.node {
             hir::ExprKind::Box(ref expr) => {
@@ -1250,7 +1249,7 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::DropTemps(ref init) => {
                 // Print `{`:
-                self.cbox(indent_unit);
+                self.cbox(INDENT_UNIT);
                 self.ibox(0);
                 self.bopen();
 
@@ -1264,7 +1263,7 @@ impl<'a> State<'a> {
                 self.print_ident(temp);
 
                 // Print `}`:
-                self.bclose_maybe_open(expr.span, indent_unit, true);
+                self.bclose_maybe_open(expr.span, INDENT_UNIT, true);
             }
             hir::ExprKind::Loop(ref blk, opt_label, _) => {
                 if let Some(label) = opt_label {
@@ -1276,7 +1275,7 @@ impl<'a> State<'a> {
                 self.print_block(&blk);
             }
             hir::ExprKind::Match(ref expr, ref arms, _) => {
-                self.cbox(indent_unit);
+                self.cbox(INDENT_UNIT);
                 self.ibox(4);
                 self.word_nbsp("match");
                 self.print_expr_as_cond(&expr);
@@ -1308,7 +1307,7 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // containing cbox, will be closed by print-block at }
-                self.cbox(indent_unit);
+                self.cbox(INDENT_UNIT);
                 // head-box, will be closed by print-block after {
                 self.ibox(0);
                 self.print_block(&blk);
@@ -1678,7 +1677,7 @@ impl<'a> State<'a> {
                 self.commasep_cmnt(Consistent,
                                    &fields[..],
                                    |s, f| {
-                                       s.cbox(indent_unit);
+                                       s.cbox(INDENT_UNIT);
                                        if !f.node.is_shorthand {
                                            s.print_ident(f.node.ident);
                                            s.word_nbsp(":");
@@ -1787,7 +1786,7 @@ impl<'a> State<'a> {
         if arm.attrs.is_empty() {
             self.s.space();
         }
-        self.cbox(indent_unit);
+        self.cbox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
         self.print_outer_attributes(&arm.attrs);
@@ -1820,7 +1819,7 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // the block will close the pattern's ibox
-                self.print_block_unclosed_indent(&blk, indent_unit);
+                self.print_block_unclosed_indent(&blk, INDENT_UNIT);
 
                 // If it is a user-provided unsafe block, print a comma after it
                 if let hir::UnsafeBlock(hir::UserProvided) = blk.rules {
@@ -1859,7 +1858,7 @@ impl<'a> State<'a> {
         // Make sure we aren't supplied *both* `arg_names` and `body_id`.
         assert!(arg_names.is_empty() || body_id.is_none());
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
-            s.ibox(indent_unit);
+            s.ibox(INDENT_UNIT);
             if let Some(arg_name) = arg_names.get(i) {
                 s.s.word(arg_name.as_str().to_string());
                 s.s.word(":");
@@ -1886,7 +1885,7 @@ impl<'a> State<'a> {
         self.s.word("|");
         let mut i = 0;
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
-            s.ibox(indent_unit);
+            s.ibox(INDENT_UNIT);
 
             s.ann.nested(s, Nested::BodyArgPat(body_id, i));
             i += 1;
@@ -2085,7 +2084,7 @@ impl<'a> State<'a> {
         }
 
         self.space_if_not_bol();
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.word_space("->");
         match decl.output {
             hir::DefaultReturn(..) => unreachable!(),
@@ -2107,7 +2106,7 @@ impl<'a> State<'a> {
                        generic_params: &[hir::GenericParam],
                        arg_names: &[ast::Ident])
                        {
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         if !generic_params.is_empty() {
             self.s.word("for");
             self.print_generic_params(generic_params);
