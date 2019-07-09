@@ -10,6 +10,10 @@ name = "rustc_tsan"
 path = "lib.rs"
 test = false
 
+[dependencies]
+alloc = { path = "../liballoc" }
+compiler_builtins = "0.1.0"
+
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 cmake = "0.1.38"

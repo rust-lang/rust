@@ -16,6 +16,7 @@ bench = false
 doc = false
 
 [dependencies]
+compiler_builtins = "0.1.0"
 libc = { version = "0.2.43", features = ['rustc-dep-of-std'], default-features = false }
 cfg-if = "0.1.8"
 

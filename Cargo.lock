@@ -2067,6 +2067,7 @@ dependencies = [
 name = "panic_abort"
 version = "0.0.0"
 dependencies = [
+ "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2074,7 +2075,9 @@ dependencies = [
 name = "panic_unwind"
 version = "0.0.0"
 dependencies = [
+ "alloc 0.0.0",
  "cfg-if 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "unwind 0.0.0",
 ]
@@ -2934,6 +2937,7 @@ version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
  "cmake 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3153,6 +3157,7 @@ version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
  "cmake 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3213,6 +3218,7 @@ version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
  "cmake 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3326,8 +3332,10 @@ dependencies = [
 name = "rustc_tsan"
 version = "0.0.0"
 dependencies = [
+ "alloc 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3633,6 +3641,7 @@ dependencies = [
  "backtrace 0.3.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "dlmalloc 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "fortanix-sgx-abi 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4293,6 +4302,7 @@ version = "0.0.0"
 dependencies = [
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
