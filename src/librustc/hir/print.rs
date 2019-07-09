@@ -87,10 +87,6 @@ impl std::ops::DerefMut for State<'_> {
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn writer(&mut self) -> &mut pp::Printer {
-        &mut self.s
-    }
-
     fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
     }
@@ -1182,7 +1178,7 @@ impl<'a> State<'a> {
 
     fn print_literal(&mut self, lit: &hir::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.writer().word(lit.node.to_lit_token().to_string())
+        self.word(lit.node.to_lit_token().to_string())
     }
 
     pub fn print_expr(&mut self, expr: &hir::Expr) {

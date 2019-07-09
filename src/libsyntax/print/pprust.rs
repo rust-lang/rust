@@ -446,7 +446,6 @@ impl std::ops::DerefMut for State<'_> {
 }
 
 pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefMut {
-    fn writer(&mut self) -> &mut pp::Printer;
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
 
     fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F)
@@ -476,9 +475,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         match cmnt.style {
             comments::Mixed => {
                 assert_eq!(cmnt.lines.len(), 1);
-                self.writer().zerobreak();
-                self.writer().word(cmnt.lines[0].clone());
-                self.writer().zerobreak()
+                self.zerobreak();
+                self.word(cmnt.lines[0].clone());
+                self.zerobreak()
             }
             comments::Isolated => {
                 self.hardbreak_if_not_bol();
@@ -486,41 +485,41 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                     // Don't print empty lines because they will end up as trailing
                     // whitespace
                     if !line.is_empty() {
-                        self.writer().word(line.clone());
+                        self.word(line.clone());
                     }
-                    self.writer().hardbreak();
+                    self.hardbreak();
                 }
             }
             comments::Trailing => {
-                if !self.writer().is_beginning_of_line() {
-                    self.writer().word(" ");
+                if !self.is_beginning_of_line() {
+                    self.word(" ");
                 }
                 if cmnt.lines.len() == 1 {
-                    self.writer().word(cmnt.lines[0].clone());
-                    self.writer().hardbreak()
+                    self.word(cmnt.lines[0].clone());
+                    self.hardbreak()
                 } else {
                     self.ibox(0);
                     for line in &cmnt.lines {
                         if !line.is_empty() {
-                            self.writer().word(line.clone());
+                            self.word(line.clone());
                         }
-                        self.writer().hardbreak();
+                        self.hardbreak();
                     }
                     self.end();
                 }
             }
             comments::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
-                let twice = match self.writer().last_token() {
+                let twice = match self.last_token() {
                     pp::Token::String(s) => ";" == s,
                     pp::Token::Begin(_) => true,
                     pp::Token::End => true,
                     _ => false
                 };
                 if twice {
-                    self.writer().hardbreak();
+                    self.hardbreak();
                 }
-                self.writer().hardbreak();
+                self.hardbreak();
             }
         }
         if let Some(cm) = self.comments() {
@@ -534,7 +533,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
 
     fn print_literal(&mut self, lit: &ast::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.writer().word(lit.token.to_string())
+        self.word(lit.token.to_string())
     }
 
     fn print_string(&mut self, st: &str,
@@ -549,7 +548,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                          string=st))
             }
         };
-        self.writer().word(st)
+        self.word(st)
     }
 
     fn print_inner_attributes(&mut self,
@@ -601,10 +600,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
     fn print_attribute_path(&mut self, path: &ast::Path) {
         for (i, segment) in path.segments.iter().enumerate() {
             if i > 0 {
-                self.writer().word("::");
+                self.word("::");
             }
             if segment.ident.name != kw::PathRoot {
-                self.writer().word(ident_to_string(segment.ident, segment.ident.is_raw_guess()));
+                self.word(ident_to_string(segment.ident, segment.ident.is_raw_guess()));
             }
         }
     }
@@ -620,21 +619,21 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         }
         self.maybe_print_comment(attr.span.lo());
         if attr.is_sugared_doc {
-            self.writer().word(attr.value_str().unwrap().as_str().to_string());
-            self.writer().hardbreak()
+            self.word(attr.value_str().unwrap().as_str().to_string());
+            self.hardbreak()
         } else {
             match attr.style {
-                ast::AttrStyle::Inner => self.writer().word("#!["),
-                ast::AttrStyle::Outer => self.writer().word("#["),
+                ast::AttrStyle::Inner => self.word("#!["),
+                ast::AttrStyle::Outer => self.word("#["),
             }
             if let Some(mi) = attr.meta() {
                 self.print_meta_item(&mi);
             } else {
                 self.print_attribute_path(&attr.path);
-                self.writer().space();
+                self.space();
                 self.print_tts(attr.tokens.clone());
             }
-            self.writer().word("]");
+            self.word("]");
         }
     }
 
@@ -655,7 +654,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             ast::MetaItemKind::Word => self.print_attribute_path(&item.path),
             ast::MetaItemKind::NameValue(ref value) => {
                 self.print_attribute_path(&item.path);
-                self.writer().space();
+                self.space();
                 self.word_space("=");
                 self.print_literal(value);
             }
@@ -681,20 +680,20 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
     fn print_tt(&mut self, tt: tokenstream::TokenTree, convert_dollar_crate: bool) {
         match tt {
             TokenTree::Token(ref token) => {
-                self.writer().word(token_to_string_ext(&token, convert_dollar_crate));
+                self.word(token_to_string_ext(&token, convert_dollar_crate));
                 match token.kind {
                     token::DocComment(..) => {
-                        self.writer().hardbreak()
+                        self.hardbreak()
                     }
                     _ => {}
                 }
             }
             TokenTree::Delimited(_, delim, tts) => {
-                self.writer().word(token_kind_to_string(&token::OpenDelim(delim)));
-                self.writer().space();
+                self.word(token_kind_to_string(&token::OpenDelim(delim)));
+                self.space();
                 self.print_tts(tts);
-                self.writer().space();
-                self.writer().word(token_kind_to_string(&token::CloseDelim(delim)))
+                self.space();
+                self.word(token_kind_to_string(&token::CloseDelim(delim)))
             },
         }
     }
@@ -707,7 +706,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         self.ibox(0);
         for (i, tt) in tts.into_trees().enumerate() {
             if i != 0 {
-                self.writer().space();
+                self.space();
             }
             self.print_tt(tt, convert_dollar_crate);
         }
@@ -716,10 +715,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn writer(&mut self) -> &mut pp::Printer {
-        &mut self.s
-    }
-
     fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
     }
