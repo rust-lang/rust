@@ -1817,15 +1817,7 @@ impl<'a> Parser<'a> {
                 AngleBracketedArgs { args, constraints, span }.into()
             } else {
                 // `(T, U) -> R`
-                self.bump(); // `(`
-                let (inputs, recovered) = self.parse_seq_to_before_tokens(
-                    &[&token::CloseDelim(token::Paren)],
-                    SeqSep::trailing_allowed(token::Comma),
-                    TokenExpectType::Expect,
-                    |p| p.parse_ty())?;
-                if !recovered {
-                    self.bump(); // `)`
-                }
+                let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
                 let span = lo.to(self.prev_span);
                 let output = if self.eat(&token::RArrow) {
                     Some(self.parse_ty_common(false, false, false)?)
@@ -2529,12 +2521,7 @@ impl<'a> Parser<'a> {
         Ok(match self.token.kind {
             token::OpenDelim(token::Paren) => {
                 // Method call `expr.f()`
-                let mut args = self.parse_unspanned_seq(
-                    &token::OpenDelim(token::Paren),
-                    &token::CloseDelim(token::Paren),
-                    SeqSep::trailing_allowed(token::Comma),
-                    |p| Ok(p.parse_expr()?)
-                )?;
+                let mut args = self.parse_paren_expr_seq()?;
                 args.insert(0, self_arg);
 
                 let span = lo.to(self.prev_span);
@@ -2619,12 +2606,7 @@ impl<'a> Parser<'a> {
             match self.token.kind {
                 // expr(...)
                 token::OpenDelim(token::Paren) => {
-                    let seq = self.parse_unspanned_seq(
-                        &token::OpenDelim(token::Paren),
-                        &token::CloseDelim(token::Paren),
-                        SeqSep::trailing_allowed(token::Comma),
-                        |p| Ok(p.parse_expr()?)
-                    ).map(|es| {
+                    let seq = self.parse_paren_expr_seq().map(|es| {
                         let nd = self.mk_call(e, es);
                         let hi = self.prev_span;
                         self.mk_expr(lo.to(hi), nd, ThinVec::new())
@@ -5376,59 +5358,48 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_args(&mut self, named_args: bool, allow_c_variadic: bool)
                      -> PResult<'a, (Vec<Arg> , bool)> {
-        self.expect(&token::OpenDelim(token::Paren))?;
-
         let sp = self.token.span;
         let mut c_variadic = false;
-        let (args, recovered): (Vec<Option<Arg>>, bool) =
-            self.parse_seq_to_before_end(
-                &token::CloseDelim(token::Paren),
-                SeqSep::trailing_allowed(token::Comma),
-                |p| {
-                    let do_not_enforce_named_arguments_for_c_variadic =
-                        |token: &token::Token| -> bool {
-                            if token == &token::DotDotDot {
-                                false
-                            } else {
-                                named_args
-                            }
-                        };
-                    match p.parse_arg_general(
-                        false,
-                        allow_c_variadic,
-                        do_not_enforce_named_arguments_for_c_variadic
-                    ) {
-                        Ok(arg) => {
-                            if let TyKind::CVarArgs = arg.ty.node {
-                                c_variadic = true;
-                                if p.token != token::CloseDelim(token::Paren) {
-                                    let span = p.token.span;
-                                    p.span_err(span,
-                                        "`...` must be the last argument of a C-variadic function");
-                                    Ok(None)
-                                } else {
-                                    Ok(Some(arg))
-                                }
-                            } else {
-                                Ok(Some(arg))
-                            }
-                        },
-                        Err(mut e) => {
-                            e.emit();
-                            let lo = p.prev_span;
-                            // Skip every token until next possible arg or end.
-                            p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
-                            // Create a placeholder argument for proper arg count (issue #34264).
-                            let span = lo.to(p.prev_span);
-                            Ok(Some(dummy_arg(Ident::new(kw::Invalid, span))))
-                        }
+        let (args, _): (Vec<Option<Arg>>, _) = self.parse_paren_comma_seq(|p| {
+            let do_not_enforce_named_arguments_for_c_variadic =
+                |token: &token::Token| -> bool {
+                    if token == &token::DotDotDot {
+                        false
+                    } else {
+                        named_args
                     }
+                };
+            match p.parse_arg_general(
+                false,
+                allow_c_variadic,
+                do_not_enforce_named_arguments_for_c_variadic
+            ) {
+                Ok(arg) => {
+                    if let TyKind::CVarArgs = arg.ty.node {
+                        c_variadic = true;
+                        if p.token != token::CloseDelim(token::Paren) {
+                            let span = p.token.span;
+                            p.span_err(span,
+                                "`...` must be the last argument of a C-variadic function");
+                            Ok(None)
+                        } else {
+                            Ok(Some(arg))
+                        }
+                    } else {
+                        Ok(Some(arg))
+                    }
+                },
+                Err(mut e) => {
+                    e.emit();
+                    let lo = p.prev_span;
+                    // Skip every token until next possible arg or end.
+                    p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
+                    // Create a placeholder argument for proper arg count (issue #34264).
+                    let span = lo.to(p.prev_span);
+                    Ok(Some(dummy_arg(Ident::new(kw::Invalid, span))))
                 }
-            )?;
-
-        if !recovered {
-            self.eat(&token::CloseDelim(token::Paren));
-        }
+            }
+        })?;
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
 
@@ -5590,7 +5561,7 @@ impl<'a> Parser<'a> {
                 (vec![self_arg], false)
             } else if self.eat(&token::Comma) {
                 let mut fn_inputs = vec![self_arg];
-                let (mut input, recovered) = self.parse_seq_to_before_end(
+                let (mut input, _, recovered) = self.parse_seq_to_before_end(
                     &token::CloseDelim(token::Paren), sep, parse_arg_fn)?;
                 fn_inputs.append(&mut input);
                 (fn_inputs, recovered)
@@ -5601,7 +5572,9 @@ impl<'a> Parser<'a> {
                 }
             }
         } else {
-            self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?
+            let (input, _, recovered) =
+                self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?;
+            (input, recovered)
         };
 
         if !recovered {
@@ -6202,26 +6175,20 @@ impl<'a> Parser<'a> {
     fn parse_tuple_struct_body(&mut self) -> PResult<'a, Vec<StructField>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
-        let fields = self.parse_unspanned_seq(
-            &token::OpenDelim(token::Paren),
-            &token::CloseDelim(token::Paren),
-            SeqSep::trailing_allowed(token::Comma),
-            |p| {
-                let attrs = p.parse_outer_attributes()?;
-                let lo = p.token.span;
-                let vis = p.parse_visibility(true)?;
-                let ty = p.parse_ty()?;
-                Ok(StructField {
-                    span: lo.to(ty.span),
-                    vis,
-                    ident: None,
-                    id: ast::DUMMY_NODE_ID,
-                    ty,
-                    attrs,
-                })
-            })?;
-
-        Ok(fields)
+        self.parse_paren_comma_seq(|p| {
+            let attrs = p.parse_outer_attributes()?;
+            let lo = p.token.span;
+            let vis = p.parse_visibility(true)?;
+            let ty = p.parse_ty()?;
+            Ok(StructField {
+                span: lo.to(ty.span),
+                vis,
+                ident: None,
+                id: ast::DUMMY_NODE_ID,
+                ty,
+                attrs,
+            })
+        }).map(|(r, _)| r)
     }
 
     /// Parses a structure field declaration.
@@ -7803,11 +7770,8 @@ impl<'a> Parser<'a> {
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, Vec<(UseTree, ast::NodeId)>> {
-        self.parse_unspanned_seq(&token::OpenDelim(token::Brace),
-                                 &token::CloseDelim(token::Brace),
-                                 SeqSep::trailing_allowed(token::Comma), |this| {
-            Ok((this.parse_use_tree()?, ast::DUMMY_NODE_ID))
-        })
+        self.parse_delim_comma_seq(token::Brace, |p| Ok((p.parse_use_tree()?, ast::DUMMY_NODE_ID)))
+            .map(|(r, _)| r)
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
