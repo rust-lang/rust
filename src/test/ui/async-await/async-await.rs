@@ -2,12 +2,13 @@
 
 // edition:2018
 // aux-build:arc_wake.rs
+// aux-build:wake_once.rs
 
 #![feature(async_await)]
 
 extern crate arc_wake;
+extern crate wake_once;
 
-use std::pin::Pin;
 use std::future::Future;
 use std::sync::{
     Arc,
@@ -15,8 +16,9 @@ use std::sync::{
 };
 use std::task::{Context, Poll};
 use arc_wake::ArcWake;
+use wake_once::wake_and_yield_once;
 
-struct Counter {
+pub struct Counter {
     wakes: AtomicUsize,
 }
 
@@ -26,23 +28,6 @@ impl ArcWake for Counter {
     }
     fn wake_by_ref(arc_self: &Arc<Self>) {
         arc_self.wakes.fetch_add(1, atomic::Ordering::SeqCst);
-    }
-}
-
-struct WakeOnceThenComplete(bool);
-
-fn wake_and_yield_once() -> WakeOnceThenComplete { WakeOnceThenComplete(false) }
-
-impl Future for WakeOnceThenComplete {
-    type Output = ();
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-        if self.0 {
-            Poll::Ready(())
-        } else {
-            cx.waker().wake_by_ref();
-            self.0 = true;
-            Poll::Pending
-        }
     }
 }
 
@@ -115,29 +100,6 @@ fn async_fn_with_internal_borrow(y: u8) -> impl Future<Output = u8> {
     }
 }
 
-async unsafe fn unsafe_async_fn(x: u8) -> u8 {
-    wake_and_yield_once().await;
-    x
-}
-
-struct Foo;
-
-trait Bar {
-    fn foo() {}
-}
-
-impl Foo {
-    async fn async_assoc_item(x: u8) -> u8 {
-        unsafe {
-            unsafe_async_fn(x).await
-        }
-    }
-
-    async unsafe fn async_unsafe_assoc_item(x: u8) -> u8 {
-        unsafe_async_fn(x).await
-    }
-}
-
 fn test_future_yields_once_then_returns<F, Fut>(f: F)
 where
     F: FnOnce(u8) -> Fut,
@@ -176,17 +138,6 @@ fn main() {
         async_fn,
         generic_async_fn,
         async_fn_with_internal_borrow,
-        Foo::async_assoc_item,
-        |x| {
-            async move {
-                unsafe { unsafe_async_fn(x).await }
-            }
-        },
-        |x| {
-            async move {
-                unsafe { Foo::async_unsafe_assoc_item(x).await }
-            }
-        },
     }
     test_with_borrow! {
         async_block_with_borrow_named_lifetime,
