@@ -668,7 +668,7 @@ impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
 }
 
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
-impl<T: Clone, V: Borrow<[T]>> Join<&'_ [T]> for [V] {
+impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
     type Output = Vec<T>;
 
     fn join(slice: &Self, sep: &[T]) -> Vec<T> {
