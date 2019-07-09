@@ -3730,6 +3730,13 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Is the current token suitable as the start of a range patterns end?
+    fn is_pat_range_end_start(&self) -> bool {
+        self.token.is_path_start() // e.g. `MY_CONST`;
+            || self.token == token::Dot // e.g. `.5` for recovery;
+            || self.token.can_begin_literal_or_bool() // e.g. `42`.
+    }
+
     // helper function to decide whether to parse as ident binding or to try to do
     // something more complex like range patterns
     fn parse_as_ident(&mut self) -> bool {
@@ -3802,6 +3809,26 @@ impl<'a> Parser<'a> {
         self.parse_pat_with_range_pat(true, expected)
     }
 
+    /// Parse a range-to pattern, e.g. `..X` and `..=X` for recovery.
+    fn parse_pat_range_to(&mut self, re: RangeEnd, form: &str) -> PResult<'a, PatKind> {
+        let lo = self.prev_span;
+        let end = self.parse_pat_range_end()?;
+        let range_span = lo.to(end.span);
+        let begin = self.mk_expr(range_span, ExprKind::Err, ThinVec::new());
+
+        self.diagnostic()
+            .struct_span_err(range_span, &format!("`{}X` range patterns are not supported", form))
+            .span_suggestion(
+                range_span,
+                "try using the minimum value for the type",
+                format!("MIN{}{}", form, pprust::expr_to_string(&end)),
+                Applicability::HasPlaceholders,
+            )
+            .emit();
+
+        Ok(PatKind::Range(begin, end, respan(lo, re)))
+    }
+
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
     /// allowed).
     fn parse_pat_with_range_pat(
@@ -3843,9 +3870,24 @@ impl<'a> Parser<'a> {
                 pat = PatKind::Slice(slice);
             }
             token::DotDot => {
-                // Parse `..`.
                 self.bump();
-                pat = PatKind::Rest;
+                pat = if self.is_pat_range_end_start() {
+                    // Parse `..42` for recovery.
+                    self.parse_pat_range_to(RangeEnd::Excluded, "..")?
+                } else {
+                    // A rest pattern `..`.
+                    PatKind::Rest
+                };
+            }
+            token::DotDotEq => {
+                // Parse `..=42` for recovery.
+                self.bump();
+                pat = self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotEq), "..=")?;
+            }
+            token::DotDotDot => {
+                // Parse `...42` for recovery.
+                self.bump();
+                pat = self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotDot), "...")?;
             }
             // At this point, token != &, &&, (, [
             _ => if self.eat_keyword(kw::Underscore) {
@@ -3915,8 +3957,7 @@ impl<'a> Parser<'a> {
                         let begin = self.mk_expr(span, ExprKind::Path(qself, path), ThinVec::new());
                         self.bump();
                         let end = self.parse_pat_range_end()?;
-                        let op = Spanned { span: op_span, node: end_kind };
-                        pat = PatKind::Range(begin, end, op);
+                        pat = PatKind::Range(begin, end, respan(op_span, end_kind));
                     }
                     token::OpenDelim(token::Brace) => {
                         if qself.is_some() {
@@ -3966,8 +4007,7 @@ impl<'a> Parser<'a> {
                                         on a range-operator token")
                             };
                             let end = self.parse_pat_range_end()?;
-                            let op = Spanned { span: op_span, node: end_kind };
-                            pat = PatKind::Range(begin, end, op);
+                            pat = PatKind::Range(begin, end, respan(op_span, end_kind))
                         } else {
                             pat = PatKind::Lit(begin);
                         }
