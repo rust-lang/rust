@@ -42,7 +42,7 @@ mod external_trait_impls;
 mod fx;
 mod map;
 mod raw;
-#[cfg(feature = "rustc-dep-of-std")]
+#[cfg(feature = "rustc-internal-api")]
 mod rustc_entry;
 mod scopeguard;
 mod set;
@@ -51,7 +51,7 @@ pub mod hash_map {
     //! A hash map implemented with quadratic probing and SIMD lookup.
     pub use crate::map::*;
 
-    #[cfg(feature = "rustc-dep-of-std")]
+    #[cfg(feature = "rustc-internal-api")]
     pub use crate::rustc_entry::*;
 
     #[cfg(feature = "rayon")]
