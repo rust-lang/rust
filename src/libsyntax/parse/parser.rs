@@ -3535,122 +3535,6 @@ impl<'a> Parser<'a> {
         };
     }
 
-    // Parses a parenthesized list of patterns like
-    // `()`, `(p)`, `(p,)`, `(p, q)`, or `(p, .., q)`. Returns:
-    // - a vector of the patterns that were parsed
-    // - an option indicating the index of the `..` element
-    // - a boolean indicating whether a trailing comma was present.
-    // Trailing commas are significant because (p) and (p,) are different patterns.
-    fn parse_parenthesized_pat_list(&mut self) -> PResult<'a, (Vec<P<Pat>>, Option<usize>, bool)> {
-        self.expect(&token::OpenDelim(token::Paren))?;
-        let result = match self.parse_pat_list() {
-            Ok(result) => result,
-            Err(mut err) => { // recover from parse error in tuple pattern list
-                err.emit();
-                self.consume_block(token::Paren);
-                return Ok((vec![], Some(0), false));
-            }
-        };
-        self.expect(&token::CloseDelim(token::Paren))?;
-        Ok(result)
-    }
-
-    fn parse_pat_list(&mut self) -> PResult<'a, (Vec<P<Pat>>, Option<usize>, bool)> {
-        let mut fields = Vec::new();
-        let mut ddpos = None;
-        let mut prev_dd_sp = None;
-        let mut trailing_comma = false;
-        loop {
-            if self.eat(&token::DotDot) {
-                if ddpos.is_none() {
-                    ddpos = Some(fields.len());
-                    prev_dd_sp = Some(self.prev_span);
-                } else {
-                    // Emit a friendly error, ignore `..` and continue parsing
-                    let mut err = self.struct_span_err(
-                        self.prev_span,
-                        "`..` can only be used once per tuple or tuple struct pattern",
-                    );
-                    err.span_label(self.prev_span, "can only be used once per pattern");
-                    if let Some(sp) = prev_dd_sp {
-                        err.span_label(sp, "previously present here");
-                    }
-                    err.emit();
-                }
-            } else if !self.check(&token::CloseDelim(token::Paren)) {
-                fields.push(self.parse_pat(None)?);
-            } else {
-                break
-            }
-
-            trailing_comma = self.eat(&token::Comma);
-            if !trailing_comma {
-                break
-            }
-        }
-
-        if ddpos == Some(fields.len()) && trailing_comma {
-            // `..` needs to be followed by `)` or `, pat`, `..,)` is disallowed.
-            let msg = "trailing comma is not permitted after `..`";
-            self.struct_span_err(self.prev_span, msg)
-                .span_label(self.prev_span, msg)
-                .emit();
-        }
-
-        Ok((fields, ddpos, trailing_comma))
-    }
-
-    fn parse_pat_vec_elements(
-        &mut self,
-    ) -> PResult<'a, (Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>)> {
-        let mut before = Vec::new();
-        let mut slice = None;
-        let mut after = Vec::new();
-        let mut first = true;
-        let mut before_slice = true;
-
-        while self.token != token::CloseDelim(token::Bracket) {
-            if first {
-                first = false;
-            } else {
-                self.expect(&token::Comma)?;
-
-                if self.token == token::CloseDelim(token::Bracket)
-                        && (before_slice || !after.is_empty()) {
-                    break
-                }
-            }
-
-            if before_slice {
-                if self.eat(&token::DotDot) {
-
-                    if self.check(&token::Comma) ||
-                            self.check(&token::CloseDelim(token::Bracket)) {
-                        slice = Some(P(Pat {
-                            id: ast::DUMMY_NODE_ID,
-                            node: PatKind::Wild,
-                            span: self.prev_span,
-                        }));
-                        before_slice = false;
-                    }
-                    continue
-                }
-            }
-
-            let subpat = self.parse_pat(None)?;
-            if before_slice && self.eat(&token::DotDot) {
-                slice = Some(subpat);
-                before_slice = false;
-            } else if before_slice {
-                before.push(subpat);
-            } else {
-                after.push(subpat);
-            }
-        }
-
-        Ok((before, slice, after))
-    }
-
     fn parse_pat_field(
         &mut self,
         lo: Span,
@@ -3862,6 +3746,17 @@ impl<'a> Parser<'a> {
         }))
     }
 
+    /// Parse a parentesized comma separated sequence of patterns until `delim` is reached.
+    fn parse_recover_pat_list(&mut self) -> PResult<'a, ()> {
+        while !self.check(&token::CloseDelim(token::Paren)) {
+            self.parse_pat(None)?;
+            if !self.eat(&token::Comma) {
+                return Ok(())
+            }
+        }
+        Ok(())
+    }
+
     /// A wrapper around `parse_pat` with some special error handling for the
     /// "top-level" patterns in a match arm, `for` loop, `let`, &c. (in contrast
     /// to subpatterns within such).
@@ -3875,7 +3770,7 @@ impl<'a> Parser<'a> {
             // later.
             let comma_span = self.token.span;
             self.bump();
-            if let Err(mut err) = self.parse_pat_list() {
+            if let Err(mut err) = self.parse_recover_pat_list() {
                 // We didn't expect this to work anyway; we just wanted
                 // to advance to the end of the comma-sequence so we know
                 // the span to suggest parenthesizing
@@ -3933,20 +3828,24 @@ impl<'a> Parser<'a> {
                 pat = PatKind::Ref(subpat, mutbl);
             }
             token::OpenDelim(token::Paren) => {
-                // Parse (pat,pat,pat,...) as tuple pattern
-                let (fields, ddpos, trailing_comma) = self.parse_parenthesized_pat_list()?;
-                pat = if fields.len() == 1 && ddpos.is_none() && !trailing_comma {
+                // Parse `(pat, pat, pat, ...)` as tuple pattern.
+                let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
+
+                pat = if fields.len() == 1 && !(trailing_comma || fields[0].is_rest()) {
                     PatKind::Paren(fields.into_iter().nth(0).unwrap())
                 } else {
-                    PatKind::Tuple(fields, ddpos)
+                    PatKind::Tuple(fields)
                 };
             }
             token::OpenDelim(token::Bracket) => {
-                // Parse [pat,pat,...] as slice pattern
+                // Parse `[pat, pat,...]` as a slice pattern.
+                let (slice, _) = self.parse_delim_comma_seq(token::Bracket, |p| p.parse_pat(None))?;
+                pat = PatKind::Slice(slice);
+            }
+            token::DotDot => {
+                // Parse `..`.
                 self.bump();
-                let (before, slice, after) = self.parse_pat_vec_elements()?;
-                self.expect(&token::CloseDelim(token::Bracket))?;
-                pat = PatKind::Slice(before, slice, after);
+                pat = PatKind::Rest;
             }
             // At this point, token != &, &&, (, [
             _ => if self.eat_keyword(kw::Underscore) {
@@ -4044,8 +3943,8 @@ impl<'a> Parser<'a> {
                             return Err(err);
                         }
                         // Parse tuple struct or enum pattern
-                        let (fields, ddpos, _) = self.parse_parenthesized_pat_list()?;
-                        pat = PatKind::TupleStruct(path, fields, ddpos)
+                        let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
+                        pat = PatKind::TupleStruct(path, fields)
                     }
                     _ => pat = PatKind::Path(qself, path),
                 }
