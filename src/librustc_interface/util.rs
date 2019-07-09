@@ -80,6 +80,10 @@ pub fn add_configuration(
     if sess.crt_static_feature() {
         cfg.insert((tf, Some(Symbol::intern("crt-static"))));
     }
+
+    if sess.crt_debug_feature() {
+        cfg.insert((tf, Some(Symbol::intern("crt-debug"))));
+    }
 }
 
 pub fn create_session(

@@ -678,6 +678,13 @@ impl Session {
         }
     }
 
+    pub fn crt_debug_feature(&self) -> bool {
+        // Since the debug crt is opt-in only, checking for the negative feature
+        // does not make sense.
+        let requested_features = self.opts.cg.target_feature.split(',');
+        requested_features.clone().any(|r| r == "+crt-debug")
+    }
+
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
         // "mcount" function relies on stack pointer.
         // See https://sourceware.org/binutils/docs/gprof/Implementation.html
