@@ -5,7 +5,7 @@ LL | unsafe impl<#[may_dangle] A> Drop for Pt<A> {
    |             ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/34761
-   = help: add #![feature(dropck_eyepatch)] to the crate attributes to enable
+   = help: add `#![feature(dropck_eyepatch)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

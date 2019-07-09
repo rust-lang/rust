@@ -5,7 +5,7 @@ LL | pub unsafe extern "C" fn test(_: i32, ap: ...) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44930
-   = help: add #![feature(c_variadic)] to the crate attributes to enable
+   = help: add `#![feature(c_variadic)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

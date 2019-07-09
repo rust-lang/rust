@@ -5,7 +5,7 @@ LL | #[attr_proc_macra]
    |   ^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error[E0658]: The attribute `FooWithLongNan` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/resolve-error.rs:31:3
@@ -14,7 +14,7 @@ LL | #[FooWithLongNan]
    |   ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error: cannot find derive macro `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:22:10

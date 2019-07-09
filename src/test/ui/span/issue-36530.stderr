@@ -5,7 +5,7 @@ LL | #[foo]
    |   ^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error[E0658]: non-builtin inner attributes are unstable
   --> $DIR/issue-36530.rs:5:5
@@ -14,7 +14,7 @@ LL |     #![foo]
    |     ^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54726
-   = help: add #![feature(custom_inner_attributes)] to the crate attributes to enable
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
 
 error[E0658]: The attribute `foo` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/issue-36530.rs:5:8
@@ -23,7 +23,7 @@ LL |     #![foo]
    |        ^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

@@ -5,7 +5,7 @@ LL | #[marco_use] // typo
    |   ^^^^^^^^^ help: a built-in attribute with a similar name exists: `macro_use`
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error: cannot find macro `bar!` in this scope
   --> $DIR/issue-49074.rs:12:4

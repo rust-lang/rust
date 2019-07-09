@@ -5,7 +5,7 @@ LL | auto trait AutoDummyTrait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/13231
-   = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
+   = help: add `#![feature(optin_builtin_traits)]` to the crate attributes to enable
 
 error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now
   --> $DIR/feature-gate-optin-builtin-traits.rs:9:1
@@ -14,7 +14,7 @@ LL | impl !AutoDummyTrait for DummyStruct {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/13231
-   = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
+   = help: add `#![feature(optin_builtin_traits)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

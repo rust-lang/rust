@@ -5,7 +5,7 @@ LL | #[marker] trait ExplicitMarker {}
    | ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29864
-   = help: add #![feature(marker_trait_attr)] to the crate attributes to enable
+   = help: add `#![feature(marker_trait_attr)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

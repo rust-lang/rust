@@ -5,7 +5,7 @@ LL | #[rustfmt]
    |   ^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error: cannot find derive macro `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:4:10
