@@ -67,10 +67,33 @@ fn solve(
     solution
 }
 
+/// A set of clauses that we assume to be true. E.g. if we are inside this function:
+/// ```rust
+/// fn foo<T: Default>(t: T) {}
+/// ```
+/// we assume that `T: Default`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Environment {
+    pub predicates: Vec<GenericPredicate>,
+}
+
+/// Something (usually a goal), along with an environment.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct InEnvironment<T> {
+    pub environment: Arc<Environment>,
+    pub value: T,
+}
+
+impl<T> InEnvironment<T> {
+    pub fn new(environment: Arc<Environment>, value: T) -> InEnvironment<T> {
+        InEnvironment { environment, value }
+    }
+}
+
 /// Something that needs to be proven (by Chalk) during type checking, e.g. that
 /// a certain type implements a certain trait. Proving the Obligation might
 /// result in additional information about inference variables.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Obligation {
     /// Prove that a certain type implements a trait (the type is the `Self` type
     /// parameter to the `TraitRef`).
@@ -93,44 +116,14 @@ pub struct ProjectionPredicate {
     pub ty: Ty,
 }
 
-/// Check using Chalk whether trait is implemented for given parameters including `Self` type.
-pub(crate) fn implements_query(
+/// Solve a trait goal using Chalk.
+pub(crate) fn solve_query(
     db: &impl HirDatabase,
     krate: Crate,
-    trait_ref: Canonical<TraitRef>,
+    trait_ref: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
     let _p = profile("implements_query");
-    let goal: chalk_ir::Goal = trait_ref.value.to_chalk(db).cast();
-    debug!("goal: {:?}", goal);
-    let env = chalk_ir::Environment::new();
-    let in_env = chalk_ir::InEnvironment::new(&env, goal);
-    let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
-    let canonical =
-        chalk_ir::Canonical { value: in_env, binders: vec![parameter; trait_ref.num_vars] };
-    // We currently don't deal with universes (I think / hope they're not yet
-    // relevant for our use cases?)
-    let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
-    let solution = solve(db, krate, &u_canonical);
-    solution.map(|solution| solution_from_chalk(db, solution))
-}
-
-pub(crate) fn normalize_query(
-    db: &impl HirDatabase,
-    krate: Crate,
-    projection: Canonical<ProjectionPredicate>,
-) -> Option<Solution> {
-    let goal: chalk_ir::Goal = chalk_ir::Normalize {
-        projection: projection.value.projection_ty.to_chalk(db),
-        ty: projection.value.ty.to_chalk(db),
-    }
-    .cast();
-    debug!("goal: {:?}", goal);
-    // FIXME unify with `implements`
-    let env = chalk_ir::Environment::new();
-    let in_env = chalk_ir::InEnvironment::new(&env, goal);
-    let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
-    let canonical =
-        chalk_ir::Canonical { value: in_env, binders: vec![parameter; projection.num_vars] };
+    let canonical = trait_ref.to_chalk(db).cast();
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };

@@ -12,7 +12,7 @@ use chalk_rust_ir::{AssociatedTyDatum, ImplDatum, StructDatum, TraitDatum};
 use ra_db::salsa::{InternId, InternKey};
 use test_utils::tested_by;
 
-use super::ChalkContext;
+use super::{Canonical, ChalkContext, Obligation};
 use crate::{
     db::HirDatabase,
     generics::GenericDef,
@@ -214,6 +214,103 @@ impl ToChalk for ProjectionTy {
         ProjectionTy {
             associated_ty: from_chalk(db, projection_ty.associated_ty_id),
             parameters: from_chalk(db, projection_ty.parameters),
+        }
+    }
+}
+
+impl ToChalk for super::ProjectionPredicate {
+    type Chalk = chalk_ir::Normalize;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Normalize {
+        chalk_ir::Normalize {
+            projection: self.projection_ty.to_chalk(db),
+            ty: self.ty.to_chalk(db),
+        }
+    }
+
+    fn from_chalk(_db: &impl HirDatabase, _normalize: chalk_ir::Normalize) -> Self {
+        unimplemented!()
+    }
+}
+
+impl ToChalk for Obligation {
+    type Chalk = chalk_ir::DomainGoal;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::DomainGoal {
+        match self {
+            Obligation::Trait(tr) => tr.to_chalk(db).cast(),
+            Obligation::Projection(pr) => pr.to_chalk(db).cast(),
+        }
+    }
+
+    fn from_chalk(_db: &impl HirDatabase, _goal: chalk_ir::DomainGoal) -> Self {
+        unimplemented!()
+    }
+}
+
+impl<T> ToChalk for Canonical<T>
+where
+    T: ToChalk,
+{
+    type Chalk = chalk_ir::Canonical<T::Chalk>;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Canonical<T::Chalk> {
+        let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
+        let value = self.value.to_chalk(db);
+        let canonical = chalk_ir::Canonical { value, binders: vec![parameter; self.num_vars] };
+        canonical
+    }
+
+    fn from_chalk(db: &impl HirDatabase, canonical: chalk_ir::Canonical<T::Chalk>) -> Canonical<T> {
+        Canonical { num_vars: canonical.binders.len(), value: from_chalk(db, canonical.value) }
+    }
+}
+
+impl ToChalk for Arc<super::Environment> {
+    type Chalk = Arc<chalk_ir::Environment>;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> Arc<chalk_ir::Environment> {
+        let mut clauses = Vec::new();
+        for pred in &self.predicates {
+            if pred.is_error() {
+                // for env, we just ignore errors
+                continue;
+            }
+            if let GenericPredicate::Implemented(trait_ref) = pred {
+                if blacklisted_trait(db, trait_ref.trait_) {
+                    continue;
+                }
+            }
+            clauses.push(pred.clone().to_chalk(db).cast());
+        }
+        chalk_ir::Environment::new().add_clauses(clauses)
+    }
+
+    fn from_chalk(
+        _db: &impl HirDatabase,
+        _env: Arc<chalk_ir::Environment>,
+    ) -> Arc<super::Environment> {
+        unimplemented!()
+    }
+}
+
+impl<T: ToChalk> ToChalk for super::InEnvironment<T> {
+    type Chalk = chalk_ir::InEnvironment<T::Chalk>;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::InEnvironment<T::Chalk> {
+        chalk_ir::InEnvironment {
+            environment: self.environment.to_chalk(db),
+            goal: self.value.to_chalk(db),
+        }
+    }
+
+    fn from_chalk(
+        db: &impl HirDatabase,
+        in_env: chalk_ir::InEnvironment<T::Chalk>,
+    ) -> super::InEnvironment<T> {
+        super::InEnvironment {
+            environment: from_chalk(db, in_env.environment),
+            value: from_chalk(db, in_env.goal),
         }
     }
 }

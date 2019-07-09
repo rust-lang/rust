@@ -1,8 +1,10 @@
 //! Unification and canonicalization logic.
 
-use super::InferenceContext;
+use super::{InferenceContext, Obligation};
 use crate::db::HirDatabase;
-use crate::ty::{Canonical, InferTy, ProjectionPredicate, ProjectionTy, TraitRef, Ty};
+use crate::ty::{
+    Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, TraitRef, Ty,
+};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b, D>
@@ -105,22 +107,28 @@ where
         ProjectionPredicate { ty, projection_ty }
     }
 
-    pub fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
+    // FIXME: add some point, we need to introduce a `Fold` trait that abstracts
+    // over all the things that can be canonicalized (like Chalk and rustc have)
+
+    pub(crate) fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
         let result = self.do_canonicalize_ty(ty);
         self.into_canonicalized(result)
     }
 
-    pub fn canonicalize_trait_ref(mut self, trait_ref: TraitRef) -> Canonicalized<TraitRef> {
-        let result = self.do_canonicalize_trait_ref(trait_ref);
-        self.into_canonicalized(result)
-    }
-
-    pub fn canonicalize_projection(
+    pub(crate) fn canonicalize_obligation(
         mut self,
-        projection: ProjectionPredicate,
-    ) -> Canonicalized<ProjectionPredicate> {
-        let result = self.do_canonicalize_projection_predicate(projection);
-        self.into_canonicalized(result)
+        obligation: InEnvironment<Obligation>,
+    ) -> Canonicalized<InEnvironment<Obligation>> {
+        let result = match obligation.value {
+            Obligation::Trait(tr) => Obligation::Trait(self.do_canonicalize_trait_ref(tr)),
+            Obligation::Projection(pr) => {
+                Obligation::Projection(self.do_canonicalize_projection_predicate(pr))
+            }
+        };
+        self.into_canonicalized(InEnvironment {
+            value: result,
+            environment: obligation.environment,
+        })
     }
 }
 

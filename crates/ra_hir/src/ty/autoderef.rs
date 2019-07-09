@@ -52,6 +52,8 @@ fn deref_by_trait(
 
     // FIXME make the Canonical handling nicer
 
+    let env = super::lower::trait_env(db, resolver);
+
     let projection = super::traits::ProjectionPredicate {
         ty: Ty::Bound(0),
         projection_ty: super::ProjectionTy {
@@ -60,9 +62,13 @@ fn deref_by_trait(
         },
     };
 
-    let canonical = super::Canonical { num_vars: 1 + ty.num_vars, value: projection };
+    let obligation = super::Obligation::Projection(projection);
 
-    let solution = db.normalize(krate, canonical)?;
+    let in_env = super::traits::InEnvironment { value: obligation, environment: env };
+
+    let canonical = super::Canonical { num_vars: 1 + ty.num_vars, value: in_env };
+
+    let solution = db.solve(krate, canonical)?;
 
     match &solution {
         Solution::Unique(vars) => {

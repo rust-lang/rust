@@ -27,9 +27,10 @@ use ra_prof::profile;
 use test_utils::tested_by;
 
 use super::{
-    autoderef, method_resolution, op, primitive,
+    autoderef, lower, method_resolution, op, primitive,
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, CallableDef, ProjectionTy, Substs, TraitRef, Ty, TypableDef, TypeCtor,
+    ApplicationTy, CallableDef, Environment, InEnvironment, ProjectionTy, Substs, TraitRef, Ty,
+    TypableDef, TypeCtor,
 };
 use crate::{
     adt::VariantDef,
@@ -165,6 +166,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     body: Arc<Body>,
     resolver: Resolver,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
+    trait_env: Arc<Environment>,
     obligations: Vec<Obligation>,
     method_resolutions: FxHashMap<ExprId, Function>,
     field_resolutions: FxHashMap<ExprId, StructField>,
@@ -188,6 +190,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             var_unification_table: InPlaceUnificationTable::new(),
             obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
+            trait_env: lower::trait_env(db, &resolver),
             db,
             body,
             resolver,
@@ -328,51 +331,25 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_obligations_as_possible(&mut self) {
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
-            match &obligation {
-                Obligation::Trait(tr) => {
-                    let canonicalized = self.canonicalizer().canonicalize_trait_ref(tr.clone());
-                    let solution = self
-                        .db
-                        .implements(self.resolver.krate().unwrap(), canonicalized.value.clone());
-                    match solution {
-                        Some(Solution::Unique(substs)) => {
-                            canonicalized.apply_solution(self, substs.0);
-                        }
-                        Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                            canonicalized.apply_solution(self, substs.0);
-                            self.obligations.push(obligation);
-                        }
-                        Some(_) => {
-                            // FIXME use this when trying to resolve everything at the end
-                            self.obligations.push(obligation);
-                        }
-                        None => {
-                            // FIXME obligation cannot be fulfilled => diagnostic
-                        }
-                    };
-                }
-                Obligation::Projection(pr) => {
-                    let canonicalized = self.canonicalizer().canonicalize_projection(pr.clone());
-                    let solution = self
-                        .db
-                        .normalize(self.resolver.krate().unwrap(), canonicalized.value.clone());
+            let in_env = InEnvironment::new(self.trait_env.clone(), obligation.clone());
+            let canonicalized = self.canonicalizer().canonicalize_obligation(in_env);
+            let solution =
+                self.db.solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
 
-                    match solution {
-                        Some(Solution::Unique(substs)) => {
-                            canonicalized.apply_solution(self, substs.0);
-                        }
-                        Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                            canonicalized.apply_solution(self, substs.0);
-                            self.obligations.push(obligation);
-                        }
-                        Some(_) => {
-                            // FIXME use this when trying to resolve everything at the end
-                            self.obligations.push(obligation);
-                        }
-                        None => {
-                            // FIXME obligation cannot be fulfilled => diagnostic
-                        }
-                    };
+            match solution {
+                Some(Solution::Unique(substs)) => {
+                    canonicalized.apply_solution(self, substs.0);
+                }
+                Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                    canonicalized.apply_solution(self, substs.0);
+                    self.obligations.push(obligation);
+                }
+                Some(_) => {
+                    // FIXME use this when trying to resolve everything at the end
+                    self.obligations.push(obligation);
+                }
+                None => {
+                    // FIXME obligation cannot be fulfilled => diagnostic
                 }
             };
         }

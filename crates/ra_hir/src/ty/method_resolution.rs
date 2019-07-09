@@ -7,7 +7,7 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
 
-use super::{autoderef, Canonical, TraitRef};
+use super::{autoderef, lower, Canonical, Environment, InEnvironment, TraitRef};
 use crate::{
     generics::HasGenericParams,
     impl_block::{ImplBlock, ImplId, ImplItem},
@@ -200,6 +200,8 @@ fn iterate_trait_method_candidates<T>(
     mut callback: impl FnMut(&Ty, Function) -> Option<T>,
 ) -> Option<T> {
     let krate = resolver.krate()?;
+    // FIXME: maybe put the trait_env behind a query (need to figure out good input parameters for that)
+    let env = lower::trait_env(db, resolver);
     'traits: for t in resolver.traits_in_scope(db) {
         let data = t.trait_data(db);
         // we'll be lazy about checking whether the type implements the
@@ -211,8 +213,8 @@ fn iterate_trait_method_candidates<T>(
                 let data = m.data(db);
                 if name.map_or(true, |name| data.name() == name) && data.has_self_param() {
                     if !known_implemented {
-                        let trait_ref = canonical_trait_ref(db, t, ty.clone());
-                        if db.implements(krate, trait_ref).is_none() {
+                        let goal = generic_implements_goal(db, env.clone(), t, ty.clone());
+                        if db.solve(krate, goal).is_none() {
                             continue 'traits;
                         }
                     }
@@ -279,11 +281,12 @@ impl Ty {
 
 /// This creates Substs for a trait with the given Self type and type variables
 /// for all other parameters, to query Chalk with it.
-fn canonical_trait_ref(
+fn generic_implements_goal(
     db: &impl HirDatabase,
+    env: Arc<Environment>,
     trait_: Trait,
     self_ty: Canonical<Ty>,
-) -> Canonical<TraitRef> {
+) -> Canonical<InEnvironment<super::Obligation>> {
     let mut substs = Vec::new();
     let generics = trait_.generic_params(db);
     let num_vars = self_ty.num_vars;
@@ -296,8 +299,8 @@ fn canonical_trait_ref(
             .enumerate()
             .map(|(i, _p)| Ty::Bound((i + num_vars) as u32)),
     );
-    Canonical {
-        num_vars: substs.len() - 1 + self_ty.num_vars,
-        value: TraitRef { trait_, substs: substs.into() },
-    }
+    let num_vars = substs.len() - 1 + self_ty.num_vars;
+    let trait_ref = TraitRef { trait_, substs: substs.into() };
+    let obligation = super::Obligation::Trait(trait_ref);
+    Canonical { num_vars, value: InEnvironment::new(env, obligation) }
 }
