@@ -83,7 +83,7 @@ impl<S: Borrow<str>> Concat<str> for [S] {
 }
 
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
-impl<S: Borrow<str>> Join<&'_ str> for [S] {
+impl<S: Borrow<str>> Join<&str> for [S] {
     type Output = String;
 
     fn join(slice: &Self, sep: &str) -> String {
