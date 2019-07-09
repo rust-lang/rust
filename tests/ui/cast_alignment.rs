@@ -22,4 +22,6 @@ fn main() {
     // For c_void, we should trust the user. See #2677
     (&1u32 as *const u32 as *const std::os::raw::c_void) as *const u32;
     (&1u32 as *const u32 as *const libc::c_void) as *const u32;
+    // For ZST, we should trust the user. See #4256
+    (&1u32 as *const u32 as *const ()) as *const u32;
 }
