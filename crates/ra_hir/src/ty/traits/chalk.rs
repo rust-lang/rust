@@ -266,7 +266,7 @@ where
     }
 }
 
-impl ToChalk for Arc<super::Environment> {
+impl ToChalk for Arc<super::TraitEnvironment> {
     type Chalk = Arc<chalk_ir::Environment>;
 
     fn to_chalk(self, db: &impl HirDatabase) -> Arc<chalk_ir::Environment> {
@@ -289,7 +289,7 @@ impl ToChalk for Arc<super::Environment> {
     fn from_chalk(
         _db: &impl HirDatabase,
         _env: Arc<chalk_ir::Environment>,
-    ) -> Arc<super::Environment> {
+    ) -> Arc<super::TraitEnvironment> {
         unimplemented!()
     }
 }

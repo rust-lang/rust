@@ -68,7 +68,7 @@ fn deref_by_trait(
 
     let canonical = super::Canonical { num_vars: 1 + ty.num_vars, value: in_env };
 
-    let solution = db.solve(krate, canonical)?;
+    let solution = db.trait_solve(krate, canonical)?;
 
     match &solution {
         Solution::Unique(vars) => {

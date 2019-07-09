@@ -189,9 +189,9 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     /// because Chalk does its own internal caching, the solver is wrapped in a
     /// Mutex and the query is marked volatile, to make sure the cached state is
     /// thrown away when input facts change.
-    #[salsa::invoke(crate::ty::traits::solver_query)]
+    #[salsa::invoke(crate::ty::traits::trait_solver_query)]
     #[salsa::volatile]
-    fn solver(&self, krate: Crate) -> Arc<Mutex<crate::ty::traits::Solver>>;
+    fn trait_solver(&self, krate: Crate) -> Arc<Mutex<crate::ty::traits::Solver>>;
 
     #[salsa::invoke(crate::ty::traits::chalk::associated_ty_data_query)]
     fn associated_ty_data(&self, id: chalk_ir::TypeId) -> Arc<chalk_rust_ir::AssociatedTyDatum>;
@@ -213,8 +213,8 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     #[salsa::invoke(crate::ty::traits::chalk::impl_datum_query)]
     fn impl_datum(&self, krate: Crate, impl_id: chalk_ir::ImplId) -> Arc<chalk_rust_ir::ImplDatum>;
 
-    #[salsa::invoke(crate::ty::traits::solve_query)]
-    fn solve(
+    #[salsa::invoke(crate::ty::traits::trait_solve_query)]
+    fn trait_solve(
         &self,
         krate: Crate,
         goal: crate::ty::Canonical<crate::ty::InEnvironment<crate::ty::Obligation>>,

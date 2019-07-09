@@ -7,7 +7,7 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
 
-use super::{autoderef, lower, Canonical, Environment, InEnvironment, TraitRef};
+use super::{autoderef, lower, Canonical, InEnvironment, TraitEnvironment, TraitRef};
 use crate::{
     generics::HasGenericParams,
     impl_block::{ImplBlock, ImplId, ImplItem},
@@ -214,7 +214,7 @@ fn iterate_trait_method_candidates<T>(
                 if name.map_or(true, |name| data.name() == name) && data.has_self_param() {
                     if !known_implemented {
                         let goal = generic_implements_goal(db, env.clone(), t, ty.clone());
-                        if db.solve(krate, goal).is_none() {
+                        if db.trait_solve(krate, goal).is_none() {
                             continue 'traits;
                         }
                     }
@@ -283,7 +283,7 @@ impl Ty {
 /// for all other parameters, to query Chalk with it.
 fn generic_implements_goal(
     db: &impl HirDatabase,
-    env: Arc<Environment>,
+    env: Arc<TraitEnvironment>,
     trait_: Trait,
     self_ty: Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::Obligation>> {

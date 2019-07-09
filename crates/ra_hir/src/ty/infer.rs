@@ -29,8 +29,8 @@ use test_utils::tested_by;
 use super::{
     autoderef, lower, method_resolution, op, primitive,
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, CallableDef, Environment, InEnvironment, ProjectionTy, Substs, TraitRef, Ty,
-    TypableDef, TypeCtor,
+    ApplicationTy, CallableDef, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef,
+    Ty, TypableDef, TypeCtor,
 };
 use crate::{
     adt::VariantDef,
@@ -170,7 +170,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     body: Arc<Body>,
     resolver: Resolver,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
-    trait_env: Arc<Environment>,
+    trait_env: Arc<TraitEnvironment>,
     obligations: Vec<Obligation>,
     method_resolutions: FxHashMap<ExprId, Function>,
     field_resolutions: FxHashMap<ExprId, StructField>,
@@ -345,7 +345,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let in_env = InEnvironment::new(self.trait_env.clone(), obligation.clone());
             let canonicalized = self.canonicalizer().canonicalize_obligation(in_env);
             let solution =
-                self.db.solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
+                self.db.trait_solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
 
             match solution {
                 Some(Solution::Unique(substs)) => {

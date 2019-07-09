@@ -317,7 +317,10 @@ pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     Ty::from_hir(db, &resolver, type_ref)
 }
 
-pub(crate) fn trait_env(db: &impl HirDatabase, resolver: &Resolver) -> Arc<super::Environment> {
+pub(crate) fn trait_env(
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+) -> Arc<super::TraitEnvironment> {
     let predicates = resolver
         .where_predicates_in_scope()
         .map(|pred| {
@@ -326,7 +329,7 @@ pub(crate) fn trait_env(db: &impl HirDatabase, resolver: &Resolver) -> Arc<super
         })
         .collect::<Vec<_>>();
 
-    Arc::new(super::Environment { predicates })
+    Arc::new(super::TraitEnvironment { predicates })
 }
 
 /// Resolve the where clause(s) of an item with generics.
