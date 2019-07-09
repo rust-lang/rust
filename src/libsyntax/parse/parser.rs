@@ -890,14 +890,13 @@ impl<'a> Parser<'a> {
     /// Parses a sequence, including the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_seq_to_end<T, F>(&mut self,
-                                  ket: &TokenKind,
-                                  sep: SeqSep,
-                                  f: F)
-                                  -> PResult<'a, Vec<T>> where
-        F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
-    {
-        let (val, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
+    pub fn parse_seq_to_end<T>(
+        &mut self,
+        ket: &TokenKind,
+        sep: SeqSep,
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
+    ) -> PResult<'a, Vec<T>> {
+        let (val, _, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
         if !recovered {
             self.bump();
         }
@@ -907,39 +906,39 @@ impl<'a> Parser<'a> {
     /// Parses a sequence, not including the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_seq_to_before_end<T, F>(
+    pub fn parse_seq_to_before_end<T>(
         &mut self,
         ket: &TokenKind,
         sep: SeqSep,
-        f: F,
-    ) -> PResult<'a, (Vec<T>, bool)>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>
-    {
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool, bool)> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
 
-    crate fn parse_seq_to_before_tokens<T, F>(
+    fn expect_any_with_type(&mut self, kets: &[&TokenKind], expect: TokenExpectType) -> bool {
+        kets.iter().any(|k| {
+            match expect {
+                TokenExpectType::Expect => self.check(k),
+                TokenExpectType::NoExpect => self.token == **k,
+            }
+        })
+    }
+
+    crate fn parse_seq_to_before_tokens<T>(
         &mut self,
         kets: &[&TokenKind],
         sep: SeqSep,
         expect: TokenExpectType,
-        mut f: F,
-    ) -> PResult<'a, (Vec<T>, bool /* recovered */)>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>
-    {
+        mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool /* trailing */, bool /* recovered */)> {
         let mut first = true;
         let mut recovered = false;
+        let mut trailing = false;
         let mut v = vec![];
-        while !kets.iter().any(|k| {
-                match expect {
-                    TokenExpectType::Expect => self.check(k),
-                    TokenExpectType::NoExpect => self.token == **k,
-                }
-            }) {
-            match self.token.kind {
-                token::CloseDelim(..) | token::Eof => break,
-                _ => {}
-            };
+        while !self.expect_any_with_type(kets, expect) {
+            if let token::CloseDelim(..) | token::Eof = self.token.kind {
+                break
+            }
             if let Some(ref t) = sep.sep {
                 if first {
                     first = false;
@@ -973,12 +972,8 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            if sep.trailing_sep_allowed && kets.iter().any(|k| {
-                match expect {
-                    TokenExpectType::Expect => self.check(k),
-                    TokenExpectType::NoExpect => self.token == **k,
-                }
-            }) {
+            if sep.trailing_sep_allowed && self.expect_any_with_type(kets, expect) {
+                trailing = true;
                 break;
             }
 
@@ -986,27 +981,25 @@ impl<'a> Parser<'a> {
             v.push(t);
         }
 
-        Ok((v, recovered))
+        Ok((v, trailing, recovered))
     }
 
     /// Parses a sequence, including the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    fn parse_unspanned_seq<T, F>(
+    fn parse_unspanned_seq<T>(
         &mut self,
         bra: &TokenKind,
         ket: &TokenKind,
         sep: SeqSep,
-        f: F,
-    ) -> PResult<'a, Vec<T>> where
-        F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    {
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool)> {
         self.expect(bra)?;
-        let (result, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
+        let (result, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
         if !recovered {
             self.eat(ket);
         }
-        Ok(result)
+        Ok((result, trailing))
     }
 
     /// Advance the parser by one token
