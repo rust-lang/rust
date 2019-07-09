@@ -1,8 +1,40 @@
-error: unexpected token: `)`
-  --> $DIR/pat-tuple-5.rs:3:16
+error: `X..` range patterns are not supported
+  --> $DIR/pat-tuple-5.rs:3:10
    |
 LL |         (pat ..) => {}
-   |                ^
+   |          ^^^^^^ help: try using the maximum value for the type: `pat..MAX`
 
-error: aborting due to previous error
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/pat-tuple-5.rs:3:10
+   |
+LL |         (pat ..) => {}
+   |          ^^^^^^
 
+error[E0425]: cannot find value `pat` in this scope
+  --> $DIR/pat-tuple-5.rs:3:10
+   |
+LL |         (pat ..) => {}
+   |          ^^^ not found in this scope
+
+error[E0658]: exclusive range pattern syntax is experimental
+  --> $DIR/pat-tuple-5.rs:3:10
+   |
+LL |         (pat ..) => {}
+   |          ^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/37854
+   = help: add #![feature(exclusive_range_pattern)] to the crate attributes to enable
+
+error[E0029]: only char and numeric types are allowed in range patterns
+  --> $DIR/pat-tuple-5.rs:3:10
+   |
+LL |         (pat ..) => {}
+   |          ^^^^^^ ranges require char or numeric types
+   |
+   = note: start type: [type error]
+   = note: end type: [type error]
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0029, E0425, E0658.
+For more information about an error, try `rustc --explain E0029`.
