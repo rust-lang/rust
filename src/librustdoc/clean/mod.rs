@@ -1693,12 +1693,13 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                                     &'a &'tcx ty::GenericPredicates<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> Generics {
         use self::WherePredicate as WP;
+        use std::collections::BTreeMap;
 
         let (gens, preds) = *self;
 
         // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
         // since `Clean for ty::Predicate` would consume them.
-        let mut impl_trait = FxHashMap::<ImplTraitParam, Vec<GenericBound>>::default();
+        let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
 
         // Bounds in the type_params and lifetimes fields are repeated in the
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
@@ -1777,16 +1778,14 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             })
             .collect::<Vec<_>>();
 
-        // Move `TraitPredicate`s to the front.
-        for (_, bounds) in impl_trait.iter_mut() {
+        for (param, mut bounds) in impl_trait {
+            // Move trait bounds to the front.
             bounds.sort_by_key(|b| if let GenericBound::TraitBound(..) = b {
                 false
             } else {
                 true
             });
-        }
 
-        for (param, mut bounds) in impl_trait {
             if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
                 if let Some(proj) = impl_trait_proj.remove(&idx) {
                     for (trait_did, name, rhs) in proj {
