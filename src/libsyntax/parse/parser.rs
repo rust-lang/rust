@@ -3737,20 +3737,15 @@ impl<'a> Parser<'a> {
             || self.token.can_begin_literal_or_bool() // e.g. `42`.
     }
 
-    // helper function to decide whether to parse as ident binding or to try to do
-    // something more complex like range patterns
+    // Helper function to decide whether to parse as ident binding
+    // or to try to do something more complex like range patterns.
     fn parse_as_ident(&mut self) -> bool {
         self.look_ahead(1, |t| match t.kind {
             token::OpenDelim(token::Paren) | token::OpenDelim(token::Brace) |
-            token::DotDotDot | token::DotDotEq | token::ModSep | token::Not => Some(false),
-            // ensure slice patterns [a, b.., c] and [a, b, c..] don't go into the
-            // range pattern branch
-            token::DotDot => None,
-            _ => Some(true),
-        }).unwrap_or_else(|| self.look_ahead(2, |t| match t.kind {
-            token::Comma | token::CloseDelim(token::Bracket) => true,
-            _ => false,
-        }))
+            token::DotDotDot | token::DotDotEq | token::DotDot |
+            token::ModSep | token::Not => false,
+            _ => true,
+        })
     }
 
     /// Parse a parentesized comma separated sequence of patterns until `delim` is reached.
@@ -3827,6 +3822,33 @@ impl<'a> Parser<'a> {
             .emit();
 
         Ok(PatKind::Range(begin, end, respan(lo, re)))
+    }
+
+    /// Parse the end of a `X..Y`, `X..=Y`, or `X...Y` range pattern  or recover
+    /// if that end is missing treating it as `X..`, `X..=`, or `X...` respectively.
+    fn parse_pat_range_end_opt(&mut self, begin: &Expr, form: &str) -> PResult<'a, P<Expr>> {
+        if self.is_pat_range_end_start() {
+            // Parsing e.g. `X..=Y`.
+            self.parse_pat_range_end()
+        } else {
+            // Parsing e.g. `X..`.
+            let range_span = begin.span.to(self.prev_span);
+
+            self.diagnostic()
+                .struct_span_err(
+                    range_span,
+                    &format!("`X{}` range patterns are not supported", form),
+                )
+                .span_suggestion(
+                    range_span,
+                    "try using the maximum value for the type",
+                    format!("{}{}MAX", pprust::expr_to_string(&begin), form),
+                    Applicability::HasPlaceholders,
+                )
+                .emit();
+
+            Ok(self.mk_expr(range_span, ExprKind::Err, ThinVec::new()))
+        }
     }
 
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
@@ -3944,10 +3966,10 @@ impl<'a> Parser<'a> {
                         pat = PatKind::Mac(mac);
                     }
                     token::DotDotDot | token::DotDotEq | token::DotDot => {
-                        let end_kind = match self.token.kind {
-                            token::DotDot => RangeEnd::Excluded,
-                            token::DotDotDot => RangeEnd::Included(RangeSyntax::DotDotDot),
-                            token::DotDotEq => RangeEnd::Included(RangeSyntax::DotDotEq),
+                        let (end_kind, form) = match self.token.kind {
+                            token::DotDot => (RangeEnd::Excluded, ".."),
+                            token::DotDotDot => (RangeEnd::Included(RangeSyntax::DotDotDot), "..."),
+                            token::DotDotEq => (RangeEnd::Included(RangeSyntax::DotDotEq), "..="),
                             _ => panic!("can only parse `..`/`...`/`..=` for ranges \
                                          (checked above)"),
                         };
@@ -3956,7 +3978,7 @@ impl<'a> Parser<'a> {
                         let span = lo.to(self.prev_span);
                         let begin = self.mk_expr(span, ExprKind::Path(qself, path), ThinVec::new());
                         self.bump();
-                        let end = self.parse_pat_range_end()?;
+                        let end = self.parse_pat_range_end_opt(&begin, form)?;
                         pat = PatKind::Range(begin, end, respan(op_span, end_kind));
                     }
                     token::OpenDelim(token::Brace) => {
@@ -3996,17 +4018,17 @@ impl<'a> Parser<'a> {
                         let op_span = self.token.span;
                         if self.check(&token::DotDot) || self.check(&token::DotDotEq) ||
                                 self.check(&token::DotDotDot) {
-                            let end_kind = if self.eat(&token::DotDotDot) {
-                                RangeEnd::Included(RangeSyntax::DotDotDot)
+                            let (end_kind, form) = if self.eat(&token::DotDotDot) {
+                                (RangeEnd::Included(RangeSyntax::DotDotDot), "...")
                             } else if self.eat(&token::DotDotEq) {
-                                RangeEnd::Included(RangeSyntax::DotDotEq)
+                                (RangeEnd::Included(RangeSyntax::DotDotEq), "..=")
                             } else if self.eat(&token::DotDot) {
-                                RangeEnd::Excluded
+                                (RangeEnd::Excluded, "..")
                             } else {
                                 panic!("impossible case: we already matched \
                                         on a range-operator token")
                             };
-                            let end = self.parse_pat_range_end()?;
+                            let end = self.parse_pat_range_end_opt(&begin, form)?;
                             pat = PatKind::Range(begin, end, respan(op_span, end_kind))
                         } else {
                             pat = PatKind::Lit(begin);
