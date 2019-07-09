@@ -60,9 +60,6 @@ pub use crate::boxed::Box;
 pub use crate::borrow::ToOwned;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
-pub use crate::slice::SliceConcatExt;
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)]
 pub use crate::string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]

@@ -15,7 +15,6 @@ graphviz = { path = "../libgraphviz" }
 log = "0.4"
 env_logger = { version = "0.5", default-features = false }
 rayon = { version = "0.2.0", package = "rustc-rayon" }
-scoped-tls = "1.0"
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
 rustc_target = { path = "../librustc_target" }

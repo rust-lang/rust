@@ -484,6 +484,56 @@ impl<T> [T] {
         }
         buf
     }
+
+    /// Flattens a slice of `T` into a single value `Self::Output`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(["hello", "world"].concat(), "helloworld");
+    /// assert_eq!([[1, 2], [3, 4]].concat(), [1, 2, 3, 4]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn concat<Separator: ?Sized>(&self) -> T::Output
+        where T: SliceConcat<Separator>
+    {
+        SliceConcat::concat(self)
+    }
+
+    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
+    /// given separator between each.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(["hello", "world"].join(" "), "hello world");
+    /// assert_eq!([[1, 2], [3, 4]].join(&0), [1, 2, 0, 3, 4]);
+    /// ```
+    #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
+    pub fn join<Separator: ?Sized>(&self, sep: &Separator) -> T::Output
+        where T: SliceConcat<Separator>
+    {
+        SliceConcat::join(self, sep)
+    }
+
+    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
+    /// given separator between each.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![allow(deprecated)]
+    /// assert_eq!(["hello", "world"].connect(" "), "hello world");
+    /// assert_eq!([[1, 2], [3, 4]].connect(&0), [1, 2, 0, 3, 4]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
+    pub fn connect<Separator: ?Sized>(&self, sep: &Separator) -> T::Output
+        where T: SliceConcat<Separator>
+    {
+        SliceConcat::join(self, sep)
+    }
+
 }
 
 #[lang = "slice_u8_alloc"]
@@ -527,87 +577,46 @@ impl [u8] {
 ////////////////////////////////////////////////////////////////////////////////
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
-#[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist",
-           issue = "27747")]
-/// An extension trait for concatenating slices
-///
-/// While this trait is unstable, the methods are stable. `SliceConcatExt` is
-/// included in the [standard library prelude], so you can use [`join()`] and
-/// [`concat()`] as if they existed on `[T]` itself.
-///
-/// [standard library prelude]: ../../std/prelude/index.html
-/// [`join()`]: #tymethod.join
-/// [`concat()`]: #tymethod.concat
-pub trait SliceConcatExt<T: ?Sized> {
-    #[unstable(feature = "slice_concat_ext",
-               reason = "trait should not have to exist",
-               issue = "27747")]
+
+/// Helper trait for [`[T]::concat`](../../std/primitive.slice.html#method.concat)
+/// and [`[T]::join`](../../std/primitive.slice.html#method.join)
+#[unstable(feature = "slice_concat_trait", issue = "27747")]
+pub trait SliceConcat<Separator: ?Sized>: Sized {
+    #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
     type Output;
 
-    /// Flattens a slice of `T` into a single value `Self::Output`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert_eq!(["hello", "world"].concat(), "helloworld");
-    /// assert_eq!([[1, 2], [3, 4]].concat(), [1, 2, 3, 4]);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn concat(&self) -> Self::Output;
+    /// Implementation of [`[T]::concat`](../../std/primitive.slice.html#method.concat)
+    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    fn concat(slice: &[Self]) -> Self::Output;
 
-    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
-    /// given separator between each.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert_eq!(["hello", "world"].join(" "), "hello world");
-    /// assert_eq!([[1, 2], [3, 4]].join(&0), [1, 2, 0, 3, 4]);
-    /// ```
-    #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
-    fn join(&self, sep: &T) -> Self::Output;
-
-    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
-    /// given separator between each.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// assert_eq!(["hello", "world"].connect(" "), "hello world");
-    /// assert_eq!([[1, 2], [3, 4]].connect(&0), [1, 2, 0, 3, 4]);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
-    fn connect(&self, sep: &T) -> Self::Output {
-        self.join(sep)
-    }
+    /// Implementation of [`[T]::join`](../../std/primitive.slice.html#method.join)
+    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    fn join(slice: &[Self], sep: &Separator) -> Self::Output;
 }
 
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
            issue = "27747")]
-impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
+impl<T: Clone, V: Borrow<[T]>> SliceConcat<T> for V {
     type Output = Vec<T>;
 
-    fn concat(&self) -> Vec<T> {
-        let size = self.iter().map(|slice| slice.borrow().len()).sum();
+    fn concat(slice: &[Self]) -> Vec<T> {
+        let size = slice.iter().map(|slice| slice.borrow().len()).sum();
         let mut result = Vec::with_capacity(size);
-        for v in self {
+        for v in slice {
             result.extend_from_slice(v.borrow())
         }
         result
     }
 
-    fn join(&self, sep: &T) -> Vec<T> {
-        let mut iter = self.iter();
+    fn join(slice: &[Self], sep: &T) -> Vec<T> {
+        let mut iter = slice.iter();
         let first = match iter.next() {
             Some(first) => first,
             None => return vec![],
         };
-        let size = self.iter().map(|slice| slice.borrow().len()).sum::<usize>() + self.len() - 1;
+        let size = slice.iter().map(|slice| slice.borrow().len()).sum::<usize>() + slice.len() - 1;
         let mut result = Vec::with_capacity(size);
         result.extend_from_slice(first.borrow());
 
