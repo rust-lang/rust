@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `impl std::future::Future: std::marker::Copy` is not satisfied
+  --> $DIR/issue-55872-2.rs:12:5
+   |
+LL |     existential type E: Copy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `impl std::future::Future`
+   |
+   = note: the return type of a function must have a statically known size
+
+error: type parameter `T` is part of concrete type but not used in parameter list for existential type
+  --> $DIR/issue-55872-2.rs:14:28
+   |
+LL |       fn foo<T>() -> Self::E {
+   |  ____________________________^
+LL | |
+LL | |         async {}
+LL | |     }
+   | |_____^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

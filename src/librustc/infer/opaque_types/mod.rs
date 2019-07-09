@@ -4,6 +4,7 @@ use crate::hir::Node;
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::middle::region;
+use crate::mir::interpret::ConstValue;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{InternalSubsts, Kind, SubstsRef, UnpackedKind};
@@ -553,6 +554,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         def_id: DefId,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         instantiated_ty: Ty<'tcx>,
+        span: Span,
     ) -> Ty<'tcx> {
         debug!(
             "infer_opaque_definition_from_instantiation(def_id={:?}, instantiated_ty={:?})",
@@ -584,6 +586,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             def_id,
             map,
             instantiated_ty,
+            span,
         ));
         debug!("infer_opaque_definition_from_instantiation: definition_ty={:?}", definition_ty);
 
@@ -761,6 +764,9 @@ struct ReverseMapper<'tcx> {
 
     /// initially `Some`, set to `None` once error has been reported
     hidden_ty: Option<Ty<'tcx>>,
+
+    /// Span of function being checked.
+    span: Span,
 }
 
 impl ReverseMapper<'tcx> {
@@ -770,6 +776,7 @@ impl ReverseMapper<'tcx> {
         opaque_type_def_id: DefId,
         map: FxHashMap<Kind<'tcx>, Kind<'tcx>>,
         hidden_ty: Ty<'tcx>,
+        span: Span,
     ) -> Self {
         Self {
             tcx,
@@ -778,6 +785,7 @@ impl ReverseMapper<'tcx> {
             map,
             map_missing_regions_to_empty: false,
             hidden_ty: Some(hidden_ty),
+            span,
         }
     }
 
@@ -812,10 +820,11 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
             _ => { }
         }
 
+        let generics = self.tcx().generics_of(self.opaque_type_def_id);
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(UnpackedKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
-            None => {
+            None if generics.parent.is_some() => {
                 if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
                     if let Some(hidden_ty) = self.hidden_ty.take() {
                         unexpected_hidden_region_diagnostic(
@@ -829,6 +838,21 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 }
                 self.tcx.lifetimes.re_empty
             }
+            None => {
+                self.tcx.sess
+                    .struct_span_err(
+                        self.span,
+                        "non-defining existential type use in defining scope"
+                    )
+                    .span_label(
+                        self.span,
+                        format!("lifetime `{}` is part of concrete type but not used in \
+                                 parameter list of existential type", r),
+                    )
+                    .emit();
+
+                self.tcx().global_tcx().mk_region(ty::ReStatic)
+            },
         }
     }
 
@@ -890,7 +914,57 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 self.tcx.mk_generator(def_id, ty::GeneratorSubsts { substs }, movability)
             }
 
+            ty::Param(..) => {
+                // Look it up in the substitution list.
+                match self.map.get(&ty.into()).map(|k| k.unpack()) {
+                    // Found it in the substitution list; replace with the parameter from the
+                    // existential type.
+                    Some(UnpackedKind::Type(t1)) => t1,
+                    Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
+                    None => {
+                        self.tcx.sess
+                            .struct_span_err(
+                                self.span,
+                                &format!("type parameter `{}` is part of concrete type but not \
+                                          used in parameter list for existential type", ty),
+                            )
+                            .emit();
+
+                        self.tcx().types.err
+                    }
+                }
+            }
+
             _ => ty.super_fold_with(self),
+        }
+    }
+
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        trace!("checking const {:?}", ct);
+        // Find a const parameter
+        match ct.val {
+            ConstValue::Param(..) => {
+                // Look it up in the substitution list.
+                match self.map.get(&ct.into()).map(|k| k.unpack()) {
+                    // Found it in the substitution list, replace with the parameter from the
+                    // existential type.
+                    Some(UnpackedKind::Const(c1)) => c1,
+                    Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
+                    None => {
+                        self.tcx.sess
+                            .struct_span_err(
+                                self.span,
+                                &format!("const parameter `{}` is part of concrete type but not \
+                                          used in parameter list for existential type", ct)
+                            )
+                            .emit();
+
+                        self.tcx().consts.err
+                    }
+                }
+            }
+
+            _ => ct,
         }
     }
 }
