@@ -16,7 +16,7 @@ bench = false
 doc = false
 
 [dependencies]
-libc = { version = "0.2.43", features = ['rustc-dep-of-std'], default-features = false }
+libc = { version = "0.2.43", features = ['align'], default-features = false }
 cfg-if = "0.1.8"
 
 [build-dependencies]

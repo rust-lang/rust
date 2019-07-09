@@ -479,9 +479,13 @@ impl Step for Std {
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
 
-        let run_cargo_rustdoc_for = |package: &str| {
+        let run_cargo_rustdoc_for = |package: &str, std: bool| {
             let mut cargo = builder.cargo(compiler, Mode::Std, target, "rustdoc");
-            compile::std_cargo(builder, &compiler, target, &mut cargo);
+            if std {
+                compile::std_cargo(builder, &compiler, target, &mut cargo);
+            } else {
+                compile::core_cargo(builder, &compiler, target, &mut cargo);
+            }
 
             // Keep a whitelist so we do not build internal stdlib crates, these will be
             // build by the rustc step later if enabled.
@@ -501,9 +505,13 @@ impl Step for Std {
             builder.run(&mut cargo);
             builder.cp_r(&my_out, &out);
         };
-        for krate in &["alloc", "core", "std"] {
+
+        run_cargo_rustdoc_for("alloc", true);
+        run_cargo_rustdoc_for("core", false);
+        run_cargo_rustdoc_for("std", true);
+        /*for krate in &["alloc", "core", "std"] {
             run_cargo_rustdoc_for(krate);
-        }
+        }*/
     }
 }
 

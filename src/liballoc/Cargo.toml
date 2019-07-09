@@ -11,7 +11,7 @@ name = "alloc"
 path = "lib.rs"
 
 [dependencies]
-core = { path = "../libcore" }
+#core = { path = "../libcore" }
 
 [dev-dependencies]
 rand = "0.6"
