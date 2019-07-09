@@ -58,6 +58,7 @@ use std::mem;
 use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast;
+use syntax::ptr::P as AstP;
 use syntax::ast::*;
 use syntax::errors;
 use syntax::ext::hygiene::ExpnId;
@@ -468,7 +469,7 @@ impl<'a> LoweringContext<'a> {
             fn visit_pat(&mut self, p: &'tcx Pat) {
                 match p.node {
                     // Doesn't generate a HIR node
-                    PatKind::Paren(..) => {},
+                    PatKind::Paren(..) | PatKind::Rest => {},
                     _ => {
                         if let Some(owner) = self.hir_id_owner {
                             self.lctx.lower_node_id_with_owner(p.id, owner);
@@ -4198,7 +4199,7 @@ impl<'a> LoweringContext<'a> {
                 }
             }
             PatKind::Lit(ref e) => hir::PatKind::Lit(P(self.lower_expr(e))),
-            PatKind::TupleStruct(ref path, ref pats, ddpos) => {
+            PatKind::TupleStruct(ref path, ref pats) => {
                 let qpath = self.lower_qpath(
                     p.id,
                     &None,
@@ -4206,11 +4207,8 @@ impl<'a> LoweringContext<'a> {
                     ParamMode::Optional,
                     ImplTraitContext::disallowed(),
                 );
-                hir::PatKind::TupleStruct(
-                    qpath,
-                    pats.iter().map(|x| self.lower_pat(x)).collect(),
-                    ddpos,
-                )
+                let (pats, ddpos) = self.lower_pat_tuple(&*pats, "tuple struct");
+                hir::PatKind::TupleStruct(qpath, pats, ddpos)
             }
             PatKind::Path(ref qself, ref path) => {
                 let qpath = self.lower_qpath(
@@ -4247,8 +4245,9 @@ impl<'a> LoweringContext<'a> {
                     .collect();
                 hir::PatKind::Struct(qpath, fs, etc)
             }
-            PatKind::Tuple(ref elts, ddpos) => {
-                hir::PatKind::Tuple(elts.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
+            PatKind::Tuple(ref pats) => {
+                let (pats, ddpos) = self.lower_pat_tuple(&*pats, "tuple");
+                hir::PatKind::Tuple(pats, ddpos)
             }
             PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
             PatKind::Ref(ref inner, mutbl) => {
@@ -4277,6 +4276,46 @@ impl<'a> LoweringContext<'a> {
             node,
             span: p.span,
         })
+    }
+
+    fn lower_pat_tuple(
+        &mut self,
+        pats: &[AstP<Pat>],
+        ctx: &str,
+    ) -> (HirVec<P<hir::Pat>>, Option<usize>) {
+        let mut elems = Vec::with_capacity(pats.len());
+        let mut rest = None;
+
+        let mut iter = pats.iter().enumerate();
+        while let Some((idx, pat)) = iter.next() {
+            // Interpret the first `..` pattern as a subtuple pattern.
+            if pat.is_rest() {
+                rest = Some((idx, pat.span));
+                break;
+            }
+            // It was not a subslice pattern so lower it normally.
+            elems.push(self.lower_pat(pat));
+        }
+
+        while let Some((_, pat)) = iter.next() {
+            // There was a previous subtuple pattern; make sure we don't allow more.
+            if pat.is_rest() {
+                self.ban_extra_rest_pat(pat.span, rest.unwrap().1, ctx);
+            } else {
+                elems.push(self.lower_pat(pat));
+            }
+        }
+
+        (elems.into(), rest.map(|(ddpos, _)| ddpos))
+    }
+
+    /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
+    fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
+        self.diagnostic()
+            .struct_span_err(sp, &format!("`..` can only be used once per {} pattern", ctx))
+            .span_label(sp, &format!("can only be used once per {} pattern", ctx))
+            .span_label(prev_sp, "previously used here")
+            .emit();
     }
 
     /// Used to ban the `..` pattern in places it shouldn't be semantically.
