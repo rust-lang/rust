@@ -115,6 +115,9 @@ pub(crate) const ITER: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"iter
 pub(crate) const INTO_ITERATOR: Name =
     Name::new(SmolStr::new_inline_from_ascii(12, b"IntoIterator"));
 pub(crate) const ITEM: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"Item"));
+pub(crate) const OPS: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"ops"));
+pub(crate) const TRY: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"Try"));
+pub(crate) const OK: Name = Name::new(SmolStr::new_inline_from_ascii(2, b"Ok"));
 
 fn resolve_name(text: &SmolStr) -> SmolStr {
     let raw_start = "r#";
