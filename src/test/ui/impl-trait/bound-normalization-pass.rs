@@ -43,12 +43,18 @@ mod lifetimes {
     }
 
     /// Like above.
-    fn foo2_pass<'a, T: Trait<'a, Assoc=()> + 'a>() -> impl FooLike<Output=T::Assoc> + 'a {
+    ///
+    /// FIXME(#51525) -- the shorter notation `T::Assoc` winds up referencing `'static` here
+    fn foo2_pass<'a, T: Trait<'a, Assoc=()> + 'a>(
+    ) -> impl FooLike<Output=<T as Trait<'a>>::Assoc> + 'a {
         Foo(())
     }
 
     /// Normalization to type containing bound region.
-    fn foo2_pass2<'a, T: Trait<'a, Assoc=&'a ()> + 'a>() -> impl FooLike<Output=T::Assoc> + 'a {
+    ///
+    /// FIXME(#51525) -- the shorter notation `T::Assoc` winds up referencing `'static` here
+    fn foo2_pass2<'a, T: Trait<'a, Assoc=&'a ()> + 'a>(
+    ) -> impl FooLike<Output=<T as Trait<'a>>::Assoc> + 'a {
         Foo(&())
     }
 }
