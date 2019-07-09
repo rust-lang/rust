@@ -183,11 +183,10 @@ impl<'a> State<'a> {
 
     pub fn bclose_maybe_open(&mut self,
                              span: syntax_pos::Span,
-                             indented: usize,
                              close_box: bool)
                              {
         self.maybe_print_comment(span.hi());
-        self.break_offset_if_not_bol(1, -(indented as isize));
+        self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
         self.s.word("}");
         if close_box {
             self.end(); // close the outer-box
@@ -195,7 +194,7 @@ impl<'a> State<'a> {
     }
 
     pub fn bclose(&mut self, span: syntax_pos::Span) {
-        self.bclose_maybe_open(span, INDENT_UNIT, true)
+        self.bclose_maybe_open(span, true)
     }
 
     pub fn space_if_not_bol(&mut self) {
@@ -963,26 +962,18 @@ impl<'a> State<'a> {
     }
 
     pub fn print_block_unclosed(&mut self, blk: &hir::Block) {
-        self.print_block_unclosed_indent(blk, INDENT_UNIT)
-    }
-
-    pub fn print_block_unclosed_indent(&mut self,
-                                       blk: &hir::Block,
-                                       indented: usize)
-                                       {
-        self.print_block_maybe_unclosed(blk, indented, &[], false)
+        self.print_block_maybe_unclosed(blk, &[], false)
     }
 
     pub fn print_block_with_attrs(&mut self,
                                   blk: &hir::Block,
                                   attrs: &[ast::Attribute])
                                   {
-        self.print_block_maybe_unclosed(blk, INDENT_UNIT, attrs, true)
+        self.print_block_maybe_unclosed(blk, attrs, true)
     }
 
     pub fn print_block_maybe_unclosed(&mut self,
                                       blk: &hir::Block,
-                                      indented: usize,
                                       attrs: &[ast::Attribute],
                                       close_box: bool)
                                       {
@@ -1006,7 +997,7 @@ impl<'a> State<'a> {
             self.print_expr(&expr);
             self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
         }
-        self.bclose_maybe_open(blk.span, indented, close_box);
+        self.bclose_maybe_open(blk.span, close_box);
         self.ann.post(self, AnnNode::Block(blk))
     }
 
@@ -1263,7 +1254,7 @@ impl<'a> State<'a> {
                 self.print_ident(temp);
 
                 // Print `}`:
-                self.bclose_maybe_open(expr.span, INDENT_UNIT, true);
+                self.bclose_maybe_open(expr.span, true);
             }
             hir::ExprKind::Loop(ref blk, opt_label, _) => {
                 if let Some(label) = opt_label {
@@ -1819,7 +1810,7 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // the block will close the pattern's ibox
-                self.print_block_unclosed_indent(&blk, INDENT_UNIT);
+                self.print_block_unclosed(&blk);
 
                 // If it is a user-provided unsafe block, print a comma after it
                 if let hir::UnsafeBlock(hir::UserProvided) = blk.rules {

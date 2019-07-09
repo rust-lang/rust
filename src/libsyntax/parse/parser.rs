@@ -4591,7 +4591,7 @@ impl<'a> Parser<'a> {
                         s.ibox(INDENT_UNIT);
                         s.bopen();
                         s.print_stmt(&stmt);
-                        s.bclose_maybe_open(stmt.span, INDENT_UNIT, false)
+                        s.bclose_maybe_open(stmt.span, false)
                     });
                     e.span_suggestion(
                         stmt_span,

@@ -743,17 +743,16 @@ impl<'a> State<'a> {
         self.end(); // close the head-box
     }
 
-    crate fn bclose_maybe_open(&mut self, span: syntax_pos::Span,
-                             indented: usize, close_box: bool) {
+    crate fn bclose_maybe_open(&mut self, span: syntax_pos::Span, close_box: bool) {
         self.maybe_print_comment(span.hi());
-        self.break_offset_if_not_bol(1, -(indented as isize));
+        self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
         self.s.word("}");
         if close_box {
             self.end(); // close the outer-box
         }
     }
     crate fn bclose(&mut self, span: syntax_pos::Span) {
-        self.bclose_maybe_open(span, INDENT_UNIT, true)
+        self.bclose_maybe_open(span, true)
     }
 
     crate fn break_offset_if_not_bol(&mut self, n: usize,
@@ -1559,20 +1558,18 @@ impl<'a> State<'a> {
         self.print_block_with_attrs(blk, &[])
     }
 
-    crate fn print_block_unclosed_indent(&mut self, blk: &ast::Block,
-                                       indented: usize) {
-        self.print_block_maybe_unclosed(blk, indented, &[], false)
+    crate fn print_block_unclosed_indent(&mut self, blk: &ast::Block) {
+        self.print_block_maybe_unclosed(blk, &[], false)
     }
 
     crate fn print_block_with_attrs(&mut self,
                                   blk: &ast::Block,
                                   attrs: &[ast::Attribute]) {
-        self.print_block_maybe_unclosed(blk, INDENT_UNIT, attrs, true)
+        self.print_block_maybe_unclosed(blk, attrs, true)
     }
 
     crate fn print_block_maybe_unclosed(&mut self,
                                       blk: &ast::Block,
-                                      indented: usize,
                                       attrs: &[ast::Attribute],
                                       close_box: bool) {
         match blk.rules {
@@ -1597,7 +1594,7 @@ impl<'a> State<'a> {
             }
         }
 
-        self.bclose_maybe_open(blk.span, indented, close_box);
+        self.bclose_maybe_open(blk.span, close_box);
         self.ann.post(self, AnnNode::Block(blk))
     }
 
@@ -2519,7 +2516,7 @@ impl<'a> State<'a> {
                 }
 
                 // the block will close the pattern's ibox
-                self.print_block_unclosed_indent(blk, INDENT_UNIT);
+                self.print_block_unclosed_indent(blk);
 
                 // If it is a user-provided unsafe block, print a comma after it
                 if let BlockCheckMode::Unsafe(ast::UserProvided) = blk.rules {
