@@ -1111,6 +1111,12 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         let predicates_of = tcx.predicates_of(def_id);
         debug!("instantiate_opaque_types: predicates={:#?}", predicates_of,);
         let bounds = predicates_of.instantiate(tcx, substs);
+
+        let param_env = tcx.param_env(def_id);
+        let InferOk { value: bounds, obligations } =
+            infcx.partially_normalize_associated_types_in(span, self.body_id, param_env, &bounds);
+        self.obligations.extend(obligations);
+
         debug!("instantiate_opaque_types: bounds={:?}", bounds);
 
         let required_region_bounds = tcx.required_region_bounds(ty, bounds.predicates.clone());
