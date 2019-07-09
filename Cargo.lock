@@ -125,30 +125,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "backtrace"
 version = "0.3.32"
-dependencies = [
- "backtrace-sys 0.1.30",
- "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "backtrace"
-version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "backtrace-sys 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "backtrace-sys"
-version = "0.1.30"
-dependencies = [
- "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3635,7 +3617,7 @@ name = "std"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
- "backtrace 0.3.32",
+ "backtrace 0.3.32 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",

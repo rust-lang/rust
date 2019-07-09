@@ -10,9 +10,6 @@ name = "rustc_lsan"
 path = "lib.rs"
 test = false
 
-[dependencies]
-#compiler_builtins = "0.1.0"
-
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 cmake = "0.1.38"

@@ -20,9 +20,6 @@ path = "../libcore/tests/lib.rs"
 name = "corebenches"
 path = "../libcore/benches/lib.rs"
 
-[dependencies]
-#compiler_builtins = "0.1.0"
-
 [dev-dependencies]
 rand = "0.6"
 

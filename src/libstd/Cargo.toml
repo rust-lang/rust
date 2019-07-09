@@ -26,7 +26,6 @@ hashbrown = { version = "0.5.0", features = ['rustc-internal-api', 'nightly', 'a
 
 [dependencies.backtrace]
 version = "0.3.29"
-path = "/home/aaron/repos/backtrace-rs"
 default-features = false # don't use coresymbolication on OSX
 features = [
   "dbghelp",          # backtrace/symbolize on MSVC

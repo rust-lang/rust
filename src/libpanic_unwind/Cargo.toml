@@ -12,7 +12,6 @@ doc = false
 
 [dependencies]
 alloc = { path = "../liballoc" }
-#compiler_builtins = "0.1.0"
 libc = { version = "0.2", default-features = false }
 unwind = { path = "../libunwind" }
 cfg-if = "0.1.8"
