@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "src/bootstrap",
+  "src/compiler_builtins_shim",
   "src/rustc",
   "src/libstd",
   "src/libtest",
@@ -59,6 +60,8 @@ cargo = { path = "src/tools/cargo" }
 # that we're shipping as well (to ensure that the rustfmt in RLS and the
 # `rustfmt` executable are the same exact version).
 rustfmt-nightly = { path = "src/tools/rustfmt" }
+backtrace = { path = "/home/aaron/repos/backtrace-rs", features = ["rustc-dep-of-std"] }
+compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins", features = ["rustc-dep-of-std"] }
 
 # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on
 # here
@@ -68,6 +71,10 @@ rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
 # here
 rustc-std-workspace-core = { path = 'src/tools/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'src/tools/rustc-std-workspace-alloc' }
+core = { path = "src/libcore" }
+
+[patch."https://github.com/rust-lang-nursery/compiler-builtins"]
+core = { path = "src/libcore" }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }

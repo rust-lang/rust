@@ -11,7 +11,7 @@ path = "lib.rs"
 test = false
 
 [dependencies]
-compiler_builtins = "0.1.0"
+#compiler_builtins = "0.1.0"
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }

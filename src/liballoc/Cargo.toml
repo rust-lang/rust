@@ -12,7 +12,8 @@ path = "lib.rs"
 
 [dependencies]
 core = { path = "../libcore" }
-compiler_builtins = { version = "0.1.10", features = ['rustc-dep-of-std'] }
+#compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
+#compiler_builtins = { version = "0.1.10", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
 rand = "0.6"
@@ -32,5 +33,7 @@ path = "../liballoc/benches/vec_deque_append.rs"
 harness = false
 
 [features]
-compiler-builtins-mem = ['compiler_builtins/mem']
-compiler-builtins-c = ["compiler_builtins/c"]
+compiler-builtins-mem=[]
+compiler-builtins-c=[]
+#compiler-builtins-mem = ['compiler_builtins/mem']
+#compiler-builtins-c = ["compiler_builtins/c"]

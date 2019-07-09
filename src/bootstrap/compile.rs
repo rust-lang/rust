@@ -225,7 +225,7 @@ pub fn core_cargo(builder: &Builder<'_>,
 
     cargo
         .arg("--manifest-path")
-        .arg(builder.src.join("src/libcore/Cargo.toml"));
+        .arg(builder.src.join("src/compiler_builtins_shim/Cargo.toml"));
 
     //let compiler_builtins_c_feature = compiler_builtins_config(builder, cargo);
 
