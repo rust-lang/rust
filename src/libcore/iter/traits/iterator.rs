@@ -1595,7 +1595,7 @@ pub trait Iterator {
     /// assert!("Iterator".chars().is_partitioned(char::is_uppercase));
     /// assert!(!"IntoIterator".chars().is_partitioned(char::is_uppercase));
     /// ```
-    #[unstable(feature = "iter_is_partitioned", reason = "new API", issue = "0")]
+    #[unstable(feature = "iter_is_partitioned", reason = "new API", issue = "62544")]
     fn is_partitioned<P>(mut self, mut predicate: P) -> bool
     where
         Self: Sized,
