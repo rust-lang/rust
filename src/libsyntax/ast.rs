@@ -559,18 +559,13 @@ impl Pat {
             return false;
         }
 
-        match self.node {
-            PatKind::Ident(_, _, Some(ref p)) => p.walk(it),
-            PatKind::Struct(_, ref fields, _) => fields.iter().all(|field| field.node.pat.walk(it)),
-            PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
+        match &self.node {
+            PatKind::Ident(_, _, Some(p)) => p.walk(it),
+            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.node.pat.walk(it)),
+            PatKind::TupleStruct(_, s) | PatKind::Tuple(s) | PatKind::Slice(s) => {
                 s.iter().all(|p| p.walk(it))
             }
-            PatKind::Box(ref s) | PatKind::Ref(ref s, _) | PatKind::Paren(ref s) => s.walk(it),
-            PatKind::Slice(ref before, ref slice, ref after) => {
-                before.iter().all(|p| p.walk(it))
-                    && slice.iter().all(|p| p.walk(it))
-                    && after.iter().all(|p| p.walk(it))
-            }
+            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => s.walk(it),
             PatKind::Wild
             | PatKind::Rest
             | PatKind::Lit(_)
@@ -639,9 +634,7 @@ pub enum PatKind {
     Struct(Path, Vec<Spanned<FieldPat>>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
-    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
-    /// `0 <= position <= subpats.len()`.
-    TupleStruct(Path, Vec<P<Pat>>, Option<usize>),
+    TupleStruct(Path, Vec<P<Pat>>),
 
     /// A possibly qualified path pattern.
     /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
@@ -650,9 +643,7 @@ pub enum PatKind {
     Path(Option<QSelf>, Path),
 
     /// A tuple pattern (`(a, b)`).
-    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
-    /// `0 <= position <= subpats.len()`.
-    Tuple(Vec<P<Pat>>, Option<usize>),
+    Tuple(Vec<P<Pat>>),
 
     /// A `box` pattern.
     Box(P<Pat>),
@@ -666,9 +657,8 @@ pub enum PatKind {
     /// A range pattern (e.g., `1...2`, `1..=2` or `1..2`).
     Range(P<Expr>, P<Expr>, Spanned<RangeEnd>),
 
-    /// `[a, b, ..i, y, z]` is represented as:
-    ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
-    Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+    /// A slice pattern `[a, b, c]`.
+    Slice(Vec<P<Pat>>),
 
     /// A rest pattern `..`.
     ///
