@@ -2523,17 +2523,7 @@ impl<'a> Resolver<'a> {
         debug!("(resolving item) resolving {} ({:?})", name, item.node);
 
         match item.node {
-            ItemKind::Ty(_, ref generics) => {
-                self.with_current_self_item(item, |this| {
-                    this.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
-                        let item_def_id = this.definitions.local_def_id(item.id);
-                        this.with_self_rib(Res::SelfTy(Some(item_def_id), None), |this| {
-                            visit::walk_item(this, item)
-                        })
-                    })
-                });
-            }
-
+            ItemKind::Ty(_, ref generics) |
             ItemKind::Existential(_, ref generics) |
             ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_generic_param_rib(
