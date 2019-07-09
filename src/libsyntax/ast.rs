@@ -580,6 +580,14 @@ impl Pat {
             | PatKind::Mac(_) => true,
         }
     }
+
+    /// Is this a `..` pattern?
+    pub fn is_rest(&self) -> bool {
+        match self.node {
+            PatKind::Rest => true,
+            _ => false,
+        }
+    }
 }
 
 /// A single field in a struct pattern
