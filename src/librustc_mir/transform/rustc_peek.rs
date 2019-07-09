@@ -13,6 +13,8 @@ use crate::dataflow::{self, do_dataflow, DebugFormatted};
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::BitDenotation;
 use crate::dataflow::DataflowResults;
+use crate::dataflow::HaveBeenBorrowedLocals;
+use crate::dataflow::{ReachingDefinitions, UseDefChain};
 use crate::dataflow::{
     DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces
 };
@@ -51,6 +53,17 @@ impl MirPass for SanityCheck {
                         DefinitelyInitializedPlaces::new(tcx, body, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
 
+        let flow_borrowed_locals =
+            do_dataflow(tcx, body, def_id, &attributes, &dead_unwinds,
+                        HaveBeenBorrowedLocals::new(body),
+                        |_bd, i| DebugFormatted::new(&i));
+        let flow_reaching_defs =
+            do_dataflow(tcx, body, def_id, &attributes, &dead_unwinds,
+                        ReachingDefinitions::new(body),
+                        |bd, i| DebugFormatted::new(&bd.get(i).location));
+        let flow_use_def_chain =
+            UseDefChain::new(body, &flow_reaching_defs, &flow_borrowed_locals);
+
         if has_rustc_mir_with(&attributes, sym::rustc_peek_maybe_init).is_some() {
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_inits);
         }
@@ -59,6 +72,9 @@ impl MirPass for SanityCheck {
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_definite_init).is_some() {
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_def_inits);
+        }
+        if has_rustc_mir_with(&attributes, sym::rustc_peek_use_def_chain).is_some() {
+            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_use_def_chain);
         }
         if has_rustc_mir_with(&attributes, sym::stop_after_dataflow).is_some() {
             tcx.sess.fatal("stop_after_dataflow ended compilation");
@@ -87,7 +103,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, O>(
     body: &Body<'tcx>,
     def_id: DefId,
     _attributes: &[ast::Attribute],
-    results: &DataflowResults<'tcx, O>,
+    results: &O,
 ) where O: RustcPeekAt<'tcx> {
     debug!("sanity_check_via_rustc_peek def_id: {:?}", def_id);
 
@@ -214,27 +230,32 @@ impl PeekCall {
     }
 }
 
-pub trait RustcPeekAt<'tcx>: BitDenotation<'tcx> {
+pub trait RustcPeekAt<'tcx> {
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,
+        body: &mir::Body<'tcx>,
         place: &mir::Place<'tcx>,
-        flow_state: &BitSet<Self::Idx>,
+        location: Location,
         call: PeekCall,
     );
 }
 
-impl<'tcx, O> RustcPeekAt<'tcx> for O
+impl<'tcx, O> RustcPeekAt<'tcx> for DataflowResults<'tcx, O>
     where O: BitDenotation<'tcx, Idx = MovePathIndex> + HasMoveData<'tcx>,
 {
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,
+        body: &mir::Body<'tcx>,
         place: &mir::Place<'tcx>,
-        flow_state: &BitSet<Self::Idx>,
+        location: Location,
         call: PeekCall,
     ) {
-        match self.move_data().rev_lookup.find(place) {
+        let operator = self.operator();
+        let flow_state = dataflow::state_for_location(location, operator, self, body);
+
+        match operator.move_data().rev_lookup.find(place) {
             LookupResult::Exact(peek_mpi) => {
                 let bit_state = flow_state.contains(peek_mpi);
                 debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
@@ -247,5 +268,59 @@ impl<'tcx, O> RustcPeekAt<'tcx> for O
                 tcx.sess.span_err(call.span, "rustc_peek: argument untracked");
             }
         }
+    }
+}
+
+impl<'tcx> RustcPeekAt<'tcx> for UseDefChain<'_, 'tcx> {
+    fn peek_at(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        body: &mir::Body<'tcx>,
+        place: &mir::Place<'tcx>,
+        location: Location,
+        call: PeekCall,
+    ) {
+
+        let base_local = place
+            .base_direct()
+            .expect("Deref in argument to `rustc_peek`")
+            .local()
+            .expect("Argument to `rustc_peek` must be a local variable");
+
+        let mut defs: Vec<_> = self
+            .defs_for_use(base_local, location)
+            .map(|def| {
+                let span = def
+                    .location
+                    .map(|loc| {
+                        let block = &body.basic_blocks()[loc.block];
+                        block.statements
+                            .get(loc.statement_index)
+                            .map(|stmt| stmt.source_info)
+                            .unwrap_or(block.terminator().source_info)
+                            .span
+                    })
+                    .unwrap_or_else(|| {
+                        // `def` represents the value of a parameter on function entry.
+                        let local = def.kind.direct().unwrap();
+                        body.local_decls[local].source_info.span
+                    });
+
+                let src = tcx.sess.source_map();
+                let snippet = src.span_to_snippet(span).unwrap();
+                let line_index = src.span_to_lines(span).unwrap().lines[0].line_index;
+                let line_no = line_index + 1;
+
+                (line_no, snippet)
+            })
+            .collect();
+
+        defs.sort_by_key(|(line_no, _)| *line_no);
+        let defs: Vec<_> = defs.into_iter()
+            .map(|(line_no, snippet)| format!("{}: \"{}\"", line_no, snippet))
+            .collect();
+
+        let msg = format!("rustc_peek: [{}]", defs.join(", "));
+        tcx.sess.span_err(call.span, &msg);
     }
 }
