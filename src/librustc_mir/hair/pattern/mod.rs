@@ -1145,6 +1145,30 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 }
 
+/// This method traverses the structure of `ty`, trying to find an
+/// instance of an ADT (i.e. struct or enum) that was declared without
+/// the `#[structural_match]` attribute.
+///
+/// The "structure of a type" includes all components that would be
+/// considered when doing a pattern match on a constant of that
+/// type.
+///
+///  * This means this method descends into fields of structs/enums,
+///    and also descends into the inner type `T` of `&T` and `&mut T`
+///
+///  * The traversal doesn't dereference unsafe pointers (`*const T`,
+///    `*mut T`), and it does not visit the type arguments of an
+///    instantiated generic like `PhantomData<T>`.
+///
+/// The reason we do this search is Rust currently require all ADT's
+/// reachable from a constant's type to be annotated with
+/// `#[structural_match]`, an attribute which essentially says that
+/// the implementation of `PartialEq::eq` behaves *equivalently* to a
+/// comparison against the unfolded structure.
+///
+/// For more background on why Rust has this requirement, and issues
+/// that arose when the requirement was not enforced completely, see
+/// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
 fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
                                                  ty: Ty<'tcx>)
                                                  -> Option<&'tcx AdtDef>
