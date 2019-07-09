@@ -1976,7 +1976,7 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::Match(ref expr, ref arms) => {
                 self.cbox(INDENT_UNIT);
-                self.ibox(4);
+                self.ibox(INDENT_UNIT);
                 self.word_nbsp("match");
                 self.print_expr_as_cond(expr);
                 self.s.space();

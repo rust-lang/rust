@@ -1267,7 +1267,7 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Match(ref expr, ref arms, _) => {
                 self.cbox(INDENT_UNIT);
-                self.ibox(4);
+                self.ibox(INDENT_UNIT);
                 self.word_nbsp("match");
                 self.print_expr_as_cond(&expr);
                 self.s.space();
