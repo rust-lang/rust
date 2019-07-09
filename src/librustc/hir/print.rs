@@ -169,10 +169,6 @@ impl<'a> State<'a> {
         self.end(); // close the head-box
     }
 
-    pub fn bclose_(&mut self, span: syntax_pos::Span, indented: usize) {
-        self.bclose_maybe_open(span, indented, true)
-    }
-
     pub fn bclose_maybe_open(&mut self,
                              span: syntax_pos::Span,
                              indented: usize,
@@ -187,7 +183,7 @@ impl<'a> State<'a> {
     }
 
     pub fn bclose(&mut self, span: syntax_pos::Span) {
-        self.bclose_(span, indent_unit)
+        self.bclose_maybe_open(span, indent_unit, true)
     }
 
     pub fn space_if_not_bol(&mut self) {
@@ -1276,7 +1272,7 @@ impl<'a> State<'a> {
                 for arm in arms {
                     self.print_arm(arm);
                 }
-                self.bclose_(expr.span, indent_unit);
+                self.bclose(expr.span);
             }
             hir::ExprKind::Closure(capture_clause, ref decl, body, _fn_decl_span, _gen) => {
                 self.print_capture_clause(capture_clause);

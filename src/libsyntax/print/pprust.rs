@@ -778,10 +778,6 @@ impl<'a> State<'a> {
         self.end(); // close the head-box
     }
 
-    crate fn bclose_(&mut self, span: syntax_pos::Span,
-                   indented: usize) {
-        self.bclose_maybe_open(span, indented, true)
-    }
     crate fn bclose_maybe_open(&mut self, span: syntax_pos::Span,
                              indented: usize, close_box: bool) {
         self.maybe_print_comment(span.hi());
@@ -792,7 +788,7 @@ impl<'a> State<'a> {
         }
     }
     crate fn bclose(&mut self, span: syntax_pos::Span) {
-        self.bclose_(span, INDENT_UNIT)
+        self.bclose_maybe_open(span, INDENT_UNIT, true)
     }
 
     crate fn break_offset_if_not_bol(&mut self, n: usize,
@@ -2027,7 +2023,7 @@ impl<'a> State<'a> {
                 for arm in arms {
                     self.print_arm(arm);
                 }
-                self.bclose_(expr.span, INDENT_UNIT);
+                self.bclose(expr.span);
             }
             ast::ExprKind::Closure(
                 capture_clause, asyncness, movability, ref decl, ref body, _) => {
