@@ -5690,11 +5690,16 @@ impl<'a> Parser<'a> {
         let is_const_fn = self.eat_keyword(kw::Const);
         let const_span = self.prev_span;
         let asyncness = self.parse_asyncness();
-        if let IsAsync::Async { .. } = asyncness {
+        let async_span = self.prev_span;
+        if asyncness.is_async() {
             self.ban_async_in_2015(self.prev_span);
         }
-        let asyncness = respan(self.prev_span, asyncness);
         let unsafety = self.parse_unsafety();
+        if asyncness.is_async() && unsafety == Unsafety::Unsafe {
+            // Feature gate `async unsafe` functions.
+            self.sess.async_unsafe_spans.borrow_mut().push(self.prev_span);
+        }
+        let asyncness = respan(async_span, asyncness);
         let (constness, unsafety, abi) = if is_const_fn {
             (respan(const_span, Constness::Const), unsafety, Abi::Rust)
         } else {
@@ -7196,6 +7201,10 @@ impl<'a> Parser<'a> {
                 // ASYNC FUNCTION ITEM
                 self.bump(); // `async`
                 let unsafety = self.parse_unsafety(); // `unsafe`?
+                if unsafety == Unsafety::Unsafe {
+                    // Feature gate `async unsafe` functions.
+                    self.sess.async_unsafe_spans.borrow_mut().push(self.prev_span);
+                }
                 self.expect_keyword(kw::Fn)?; // `fn`
                 let fn_span = self.prev_span;
                 let (ident, item_, extra_attrs) =

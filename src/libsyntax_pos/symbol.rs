@@ -148,6 +148,7 @@ symbols! {
         associated_types,
         async_await,
         async_closure,
+        async_unsafe,
         attr,
         attributes,
         attr_literals,

@@ -1388,6 +1388,7 @@ mod tests {
             param_attr_spans: Lock::new(Vec::new()),
             let_chains_spans: Lock::new(Vec::new()),
             async_closure_spans: Lock::new(Vec::new()),
+            async_unsafe_spans: Lock::new(Vec::new()),
         }
     }
 

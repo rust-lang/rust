@@ -1,0 +1,21 @@
+error[E0658]: async unsafe functions are unstable
+  --> $DIR/feature-async-unsafe.rs:7:25
+   |
+LL |     #[cfg(FALSE)] async unsafe fn f() {}
+   |                         ^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/62501
+   = help: add #![feature(async_unsafe)] to the crate attributes to enable
+
+error[E0658]: async unsafe functions are unstable
+  --> $DIR/feature-async-unsafe.rs:10:21
+   |
+LL | #[cfg(FALSE)] async unsafe fn g() {}
+   |                     ^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/62501
+   = help: add #![feature(async_unsafe)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

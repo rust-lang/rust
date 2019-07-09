@@ -580,6 +580,9 @@ declare_features! (
     // Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests
     (active, cfg_doctest, "1.37.0", Some(62210), None),
 
+    // Allows `async unsafe` functions.
+    (active, async_unsafe, "1.38.0", Some(62501), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -2583,6 +2586,13 @@ pub fn check_crate(krate: &ast::Crate,
         async_closure,
         *span,
         "async closures are unstable"
+    ));
+
+    for_each_in_lock(&sess.async_unsafe_spans, |span| gate_feature!(
+        &ctx,
+        async_unsafe,
+        *span,
+        "async unsafe functions are unstable"
     ));
 
     let visitor = &mut PostExpansionVisitor {
