@@ -432,37 +432,22 @@ fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
     format!("{}{}", to_string(|s| s.print_visibility(vis)), s)
 }
 
-pub trait PrintState<'a> {
+impl std::ops::Deref for State<'_> {
+    type Target = pp::Printer;
+    fn deref(&self) -> &Self::Target {
+        &self.s
+    }
+}
+
+impl std::ops::DerefMut for State<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.s
+    }
+}
+
+pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefMut {
     fn writer(&mut self) -> &mut pp::Printer;
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
-
-    fn word_space<S: Into<Cow<'static, str>>>(&mut self, w: S) {
-        self.writer().word(w);
-        self.writer().space()
-    }
-
-    fn popen(&mut self) { self.writer().word("(") }
-
-    fn pclose(&mut self) { self.writer().word(")") }
-
-    fn hardbreak_if_not_bol(&mut self) {
-        if !self.writer().is_beginning_of_line() {
-            self.writer().hardbreak()
-        }
-    }
-
-    // "raw box"
-    fn rbox(&mut self, u: usize, b: pp::Breaks) {
-        self.writer().rbox(u, b)
-    }
-
-    fn ibox(&mut self, u: usize) {
-        self.writer().ibox(u);
-    }
-
-    fn end(&mut self) {
-        self.writer().end()
-    }
 
     fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F)
         where F: FnMut(&mut Self, &T),
@@ -728,12 +713,6 @@ pub trait PrintState<'a> {
         }
         self.end();
     }
-
-    fn space_if_not_bol(&mut self) {
-        if !self.writer().is_beginning_of_line() { self.writer().space(); }
-    }
-
-    fn nbsp(&mut self) { self.writer().word(" ") }
 }
 
 impl<'a> PrintState<'a> for State<'a> {
@@ -747,15 +726,6 @@ impl<'a> PrintState<'a> for State<'a> {
 }
 
 impl<'a> State<'a> {
-    pub fn cbox(&mut self, u: usize) {
-        self.s.cbox(u);
-    }
-
-    crate fn word_nbsp<S: Into<Cow<'static, str>>>(&mut self, w: S) {
-        self.s.word(w);
-        self.nbsp()
-    }
-
     crate fn head<S: Into<Cow<'static, str>>>(&mut self, w: S) {
         let w = w.into();
         // outer-box is consistent

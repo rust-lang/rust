@@ -19,7 +19,6 @@ use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 use syntax::ast;
 use syntax::mut_visit::MutVisitor;
 use syntax::print::{pprust};
-use syntax::print::pprust::PrintState;
 use syntax_pos::FileName;
 
 use graphviz as dot;

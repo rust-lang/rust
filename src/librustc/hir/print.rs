@@ -73,6 +73,19 @@ pub struct State<'a> {
     ann: &'a (dyn PpAnn + 'a),
 }
 
+impl std::ops::Deref for State<'_> {
+    type Target = pp::Printer;
+    fn deref(&self) -> &Self::Target {
+        &self.s
+    }
+}
+
+impl std::ops::DerefMut for State<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.s
+    }
+}
+
 impl<'a> PrintState<'a> for State<'a> {
     fn writer(&mut self) -> &mut pp::Printer {
         &mut self.s

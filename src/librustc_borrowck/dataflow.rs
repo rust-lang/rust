@@ -8,7 +8,6 @@ use rustc::cfg::CFGIndex;
 use rustc::ty::TyCtxt;
 use std::mem;
 use std::usize;
-use syntax::print::pprust::PrintState;
 use log::debug;
 
 use rustc_data_structures::graph::implementation::OUTGOING;

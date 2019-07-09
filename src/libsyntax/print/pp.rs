@@ -597,7 +597,7 @@ impl Printer {
     // Convenience functions to talk to the printer.
 
     /// "raw box"
-    crate fn rbox(&mut self, indent: usize, b: Breaks) {
+    pub fn rbox(&mut self, indent: usize, b: Breaks) {
         self.scan_begin(BeginToken {
             offset: indent as isize,
             breaks: b
@@ -605,7 +605,7 @@ impl Printer {
     }
 
     /// Inconsistent breaking box
-    crate fn ibox(&mut self, indent: usize) {
+    pub fn ibox(&mut self, indent: usize) {
         self.rbox(indent, Breaks::Inconsistent)
     }
 
@@ -621,7 +621,7 @@ impl Printer {
         })
     }
 
-    crate fn end(&mut self) {
+    pub fn end(&mut self) {
         self.scan_end()
     }
 
