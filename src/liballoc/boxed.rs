@@ -63,6 +63,28 @@
 //! T` obtained from `Box::<T>::into_raw` may be deallocated using the
 //! [`Global`] allocator with `Layout::for_value(&*value)`.
 //!
+//! `Box<T>` has the same representation as `*mut T`. In particular, when
+//! `T: Sized`, this means that `Box<T>` has the same representation as
+//! a C pointer, making the following code valid in FFI:
+//!
+//! ```c
+//! /* C header */
+//! struct Foo* foo(); /* Returns ownership */
+//! void bar(struct Foo*); /* `bar` takes ownership */
+//! ```
+//!
+//! ```
+//! #[repr(C)]
+//! pub struct Foo;
+//!
+//! #[no_mangle]
+//! pub extern "C" fn foo() -> Box<Foo> {
+//!     Box::new(Foo)
+//! }
+//!
+//! #[no_mangle]
+//! pub extern "C" fn bar(_: Option<Box<Foo>>) {}
+//! ```
 //!
 //! [dereferencing]: ../../std/ops/trait.Deref.html
 //! [`Box`]: struct.Box.html
