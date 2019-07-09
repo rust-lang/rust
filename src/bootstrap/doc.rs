@@ -509,9 +509,6 @@ impl Step for Std {
         run_cargo_rustdoc_for("alloc", true);
         run_cargo_rustdoc_for("core", false);
         run_cargo_rustdoc_for("std", true);
-        /*for krate in &["alloc", "core", "std"] {
-            run_cargo_rustdoc_for(krate);
-        }*/
     }
 }
 
