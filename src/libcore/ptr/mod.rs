@@ -669,6 +669,22 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///
 /// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
 // FIXME: Update docs based on outcome of RFC #2582 and friends.
+///
+/// # Examples
+///
+/// Read an usize value from a byte buffer:
+///
+/// ```
+/// use std::mem;
+///
+/// fn read_usize(x: &[u8]) -> usize {
+///     assert!(x.len() >= mem::size_of::<usize>());
+///
+///     let ptr = x.as_ptr() as *const usize;
+///
+///     unsafe { ptr.read_unaligned() }
+/// }
+/// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
@@ -839,6 +855,22 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
 // FIXME: Update docs based on outcome of RFC #2582 and friends.
+///
+/// # Examples
+///
+/// Write an usize value to a byte buffer:
+///
+/// ```
+/// use std::mem;
+///
+/// fn write_usize(x: &mut [u8], val: usize) {
+///     assert!(x.len() >= mem::size_of::<usize>());
+///
+///     let ptr = x.as_mut_ptr() as *mut usize;
+///
+///     unsafe { ptr.write_unaligned(val) }
+/// }
+/// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
