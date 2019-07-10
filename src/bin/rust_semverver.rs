@@ -29,7 +29,7 @@ fn show_version() {
 ///
 /// Find the sysroot before passing our args to the custom compiler driver we register.
 fn main() {
-    rustc_driver::init_rustc_env_logger();
+    env_logger::init_from_env("RUSTC_LOG");
 
     debug!("running rust-semverver compiler driver");
     exit(
