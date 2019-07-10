@@ -41,7 +41,6 @@ use super::{k_cos, k_sin, rem_pio2};
 // Accuracy:
 //      TRIG(x) returns trig(x) nearly rounded
 //
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn cos(x: f64) -> f64 {
     let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;

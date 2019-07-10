@@ -30,7 +30,6 @@ const P2: f32 = -2.7667332906e-3; /* -0xb55215.0p-32 */
 ///
 /// Calculate the exponential of `x`, that is, *e* raised to the power `x`
 /// (where *e* is the base of the natural system of logarithms, approximately 2.71828).
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn expf(mut x: f32) -> f32 {
     let x1p127 = f32::from_bits(0x7f000000); // 0x1p127f === 2 ^ 127

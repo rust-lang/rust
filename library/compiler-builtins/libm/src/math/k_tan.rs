@@ -58,7 +58,6 @@ static T: [f64; 13] = [
 const PIO4: f64 = 7.85398163397448278999e-01; /* 3FE921FB, 54442D18 */
 const PIO4_LO: f64 = 3.06161699786838301793e-17; /* 3C81A626, 33145C07 */
 
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub(crate) fn k_tan(mut x: f64, mut y: f64, odd: i32) -> f64 {
     let hx = (f64::to_bits(x) >> 32) as u32;
@@ -101,7 +100,6 @@ pub(crate) fn k_tan(mut x: f64, mut y: f64, odd: i32) -> f64 {
     a0 + a * (1.0 + a0 * w0 + a0 * v)
 }
 
-#[inline]
 fn zero_low_word(x: f64) -> f64 {
     f64::from_bits(f64::to_bits(x) & 0xFFFF_FFFF_0000_0000)
 }

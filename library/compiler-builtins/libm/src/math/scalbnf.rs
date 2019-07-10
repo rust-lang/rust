@@ -1,4 +1,3 @@
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn scalbnf(mut x: f32, mut n: i32) -> f32 {
     let x1p127 = f32::from_bits(0x7f000000); // 0x1p127f === 2 ^ 127

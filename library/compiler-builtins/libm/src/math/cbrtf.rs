@@ -25,7 +25,6 @@ const B2: u32 = 642849266; /* B2 = (127-127.0/3-24/3-0.03306235651)*2**23 */
 /// Cube root (f32)
 ///
 /// Computes the cube root of the argument.
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn cbrtf(x: f32) -> f32 {
     let x1p24 = f32::from_bits(0x4b800000); // 0x1p24f === 2 ^ 24
