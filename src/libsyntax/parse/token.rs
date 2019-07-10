@@ -80,6 +80,34 @@ pub struct Lit {
     pub suffix: Option<Symbol>,
 }
 
+impl fmt::Display for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Lit { kind, symbol, suffix } = *self;
+        match kind {
+            Byte          => write!(f, "b'{}'", symbol)?,
+            Char          => write!(f, "'{}'", symbol)?,
+            Str           => write!(f, "\"{}\"", symbol)?,
+            StrRaw(n)     => write!(f, "r{delim}\"{string}\"{delim}",
+                                     delim="#".repeat(n as usize),
+                                     string=symbol)?,
+            ByteStr       => write!(f, "b\"{}\"", symbol)?,
+            ByteStrRaw(n) => write!(f, "br{delim}\"{string}\"{delim}",
+                                     delim="#".repeat(n as usize),
+                                     string=symbol)?,
+            Integer       |
+            Float         |
+            Bool          |
+            Err           => write!(f, "{}", symbol)?,
+        }
+
+        if let Some(suffix) = suffix {
+            write!(f, "{}", suffix)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl LitKind {
     /// An English article for the literal token kind.
     crate fn article(self) -> &'static str {
@@ -788,7 +816,7 @@ fn prepend_attrs(sess: &ParseSess,
         assert_eq!(attr.style, ast::AttrStyle::Outer,
                    "inner attributes should prevent cached tokens from existing");
 
-        let source = pprust::attr_to_string(attr);
+        let source = pprust::attribute_to_string(attr);
         let macro_filename = FileName::macro_expansion_source_code(&source);
         if attr.is_sugared_doc {
             let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
