@@ -61,6 +61,10 @@ impl<'a> SyntaxText<'a> {
         self.range.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.range.is_empty()
+    }
+
     /// NB, the offsets here are absolute, and this probably doesn't make sense!
     pub fn slice(&self, range: impl ops::RangeBounds<TextUnit>) -> SyntaxText<'a> {
         let start = match range.start_bound() {
