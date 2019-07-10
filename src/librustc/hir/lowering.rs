@@ -97,7 +97,7 @@ pub struct LoweringContext<'a> {
 
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
 
-    modules: BTreeMap<NodeId, hir::ModuleItems>,
+    modules: BTreeMap<hir::HirId, hir::ModuleItems>,
 
     generator_kind: Option<hir::GeneratorKind>,
 
@@ -141,7 +141,7 @@ pub struct LoweringContext<'a> {
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
 
-    current_module: NodeId,
+    current_module: hir::HirId,
 
     type_def_lifetime_params: DefIdMap<usize>,
 
@@ -262,7 +262,7 @@ pub fn lower_crate(
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: Default::default(),
-        current_module: CRATE_NODE_ID,
+        current_module: hir::CRATE_HIR_ID,
         current_hir_id_owner: vec![(CRATE_DEF_INDEX, 0)],
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),

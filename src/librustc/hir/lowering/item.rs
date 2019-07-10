@@ -45,14 +45,16 @@ impl<'tcx, 'interner> ItemLowerer<'tcx, 'interner> {
 
 impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
     fn visit_mod(&mut self, m: &'tcx Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
-        self.lctx.modules.insert(n, hir::ModuleItems {
+        let hir_id = self.lctx.lower_node_id(n);
+
+        self.lctx.modules.insert(hir_id, hir::ModuleItems {
             items: BTreeSet::new(),
             trait_items: BTreeSet::new(),
             impl_items: BTreeSet::new(),
         });
 
         let old = self.lctx.current_module;
-        self.lctx.current_module = n;
+        self.lctx.current_module = hir_id;
         visit::walk_mod(self, m);
         self.lctx.current_module = old;
     }

@@ -767,7 +767,7 @@ pub struct Crate {
 
     /// A list of modules written out in the order in which they
     /// appear in the crate. This includes the main crate module.
-    pub modules: BTreeMap<NodeId, ModuleItems>,
+    pub modules: BTreeMap<HirId, ModuleItems>,
 }
 
 impl Crate {

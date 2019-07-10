@@ -54,7 +54,7 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
     for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id_from_node_id(module));
+        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module));
     }
 }
 
