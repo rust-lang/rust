@@ -105,20 +105,34 @@ impl TargetDataLayout {
         let mut dl = TargetDataLayout::default();
         let mut i128_align_src = 64;
         for spec in target.data_layout.split('-') {
-            match spec.split(':').collect::<Vec<_>>()[..] {
+            let spec_parts = spec.split(':').collect::<Vec<_>>();
+
+            match &*spec_parts {
                 ["e"] => dl.endian = Endian::Little,
                 ["E"] => dl.endian = Endian::Big,
                 [p] if p.starts_with("P") => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
-                ["a", ref a..] => dl.aggregate_align = align(a, "a")?,
-                ["f32", ref a..] => dl.f32_align = align(a, "f32")?,
-                ["f64", ref a..] => dl.f64_align = align(a, "f64")?,
-                [p @ "p", s, ref a..] | [p @ "p0", s, ref a..] => {
+                // FIXME: Ping cfg(bootstrap) -- Use `ref a @ ..` with new bootstrap compiler.
+                ["a", ..] => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    dl.aggregate_align = align(a, "a")?
+                }
+                ["f32", ..] => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    dl.f32_align = align(a, "f32")?
+                }
+                ["f64", ..] => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    dl.f64_align = align(a, "f64")?
+                }
+                [p @ "p", s, ..] | [p @ "p0", s, ..] => {
+                    let a = &spec_parts[2..]; // FIXME inline into pattern.
                     dl.pointer_size = size(s, p)?;
                     dl.pointer_align = align(a, p)?;
                 }
-                [s, ref a..] if s.starts_with("i") => {
+                [s, ..] if s.starts_with("i") => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
                     let bits = match s[1..].parse::<u64>() {
                         Ok(bits) => bits,
                         Err(_) => {
@@ -142,7 +156,8 @@ impl TargetDataLayout {
                         dl.i128_align = a;
                     }
                 }
-                [s, ref a..] if s.starts_with("v") => {
+                [s, ..] if s.starts_with("v") => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
                     let v_size = size(&s[1..], "v")?;
                     let a = align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
