@@ -429,6 +429,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(MUTABLE_BORROW_RESERVATION_CONFLICT),
             reference: "issue #59159 <https://github.com/rust-lang/rust/issues/59159>",
             edition: None,
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(INDIRECT_STRUCTURAL_MATCH),
+            reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
+            edition: None,
         }
         ]);
 

@@ -170,6 +170,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                     let mut patcx = PatternContext::new(self.tcx,
                                                         self.param_env.and(self.identity_substs),
                                                         self.tables);
+                    patcx.include_lint_checks();
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
                         patcx.report_inlining_errors(pat.span);
@@ -266,6 +267,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
                                                 self.tables);
+            patcx.include_lint_checks();
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
             let pats: Matrix<'_, '_> = vec![smallvec![

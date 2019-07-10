@@ -1,0 +1,10 @@
+warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/cant-hide-behind-doubly-indirect-embedded.rs:24:9
+   |
+LL |         WRAP_DOUBLY_INDIRECT_INLINE => { panic!("WRAP_DOUBLY_INDIRECT_INLINE matched itself"); }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(indirect_structural_match)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+

@@ -348,6 +348,12 @@ declare_lint! {
     "outlives requirements can be inferred"
 }
 
+declare_lint! {
+    pub INDIRECT_STRUCTURAL_MATCH,
+    Warn,
+    "pattern with const indirectly referencing non-`#[structural_match]` type"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
