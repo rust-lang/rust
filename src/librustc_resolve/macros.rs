@@ -17,12 +17,11 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::{self, Mark};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{feature_err, emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::{AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES};
 use syntax::symbol::{Symbol, kw, sym};
-use syntax::visit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
 use errors::Applicability;
@@ -146,24 +145,14 @@ impl<'a> base::Resolver for Resolver<'a> {
         mark
     }
 
-    fn resolve_dollar_crates(&mut self, fragment: &AstFragment) {
-        struct ResolveDollarCrates<'a, 'b> {
-            resolver: &'a mut Resolver<'b>
-        }
-        impl<'a> Visitor<'a> for ResolveDollarCrates<'a, '_> {
-            fn visit_ident(&mut self, ident: Ident) {
-                if ident.name == kw::DollarCrate {
-                    let name = match self.resolver.resolve_crate_root(ident).kind {
-                        ModuleKind::Def(.., name) if name != kw::Invalid => name,
-                        _ => kw::Crate,
-                    };
-                    ident.span.ctxt().set_dollar_crate_name(name);
-                }
+    fn resolve_dollar_crates(&mut self) {
+        hygiene::update_dollar_crate_names(|ctxt| {
+            let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
+            match self.resolve_crate_root(ident).kind {
+                ModuleKind::Def(.., name) if name != kw::Invalid => name,
+                _ => kw::Crate,
             }
-            fn visit_mac(&mut self, _: &ast::Mac) {}
-        }
-
-        fragment.visit_with(&mut ResolveDollarCrates { resolver: self });
+        });
     }
 
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,

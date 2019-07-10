@@ -701,7 +701,7 @@ pub trait Resolver {
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark;
 
-    fn resolve_dollar_crates(&mut self, fragment: &AstFragment);
+    fn resolve_dollar_crates(&mut self);
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
                                             derives: &[Mark]);
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);

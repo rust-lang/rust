@@ -33,7 +33,7 @@ use crate::symbol::{kw, Symbol};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use std::{fmt, mem};
+use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
 #[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
@@ -387,6 +387,23 @@ pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {
     HygieneData::with(|data| data.walk_chain(span, to))
 }
 
+pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symbol) {
+    // The new contexts that need updating are at the end of the list and have `$crate` as a name.
+    let (len, to_update) = HygieneData::with(|data| (
+        data.syntax_contexts.len(),
+        data.syntax_contexts.iter().rev()
+            .take_while(|scdata| scdata.dollar_crate_name == kw::DollarCrate).count()
+    ));
+    // The callback must be called from outside of the `HygieneData` lock,
+    // since it will try to acquire it too.
+    let range_to_update = len - to_update .. len;
+    let names: Vec<_> =
+        range_to_update.clone().map(|idx| get_name(SyntaxContext::from_u32(idx as u32))).collect();
+    HygieneData::with(|data| range_to_update.zip(names.into_iter()).for_each(|(idx, name)| {
+        data.syntax_contexts[idx].dollar_crate_name = name;
+    }))
+}
+
 impl SyntaxContext {
     #[inline]
     pub const fn empty() -> Self {
@@ -613,17 +630,6 @@ impl SyntaxContext {
 
     pub fn dollar_crate_name(self) -> Symbol {
         HygieneData::with(|data| data.syntax_contexts[self.0 as usize].dollar_crate_name)
-    }
-
-    pub fn set_dollar_crate_name(self, dollar_crate_name: Symbol) {
-        HygieneData::with(|data| {
-            let prev_dollar_crate_name = mem::replace(
-                &mut data.syntax_contexts[self.0 as usize].dollar_crate_name, dollar_crate_name
-            );
-            assert!(dollar_crate_name == prev_dollar_crate_name ||
-                    prev_dollar_crate_name == kw::DollarCrate,
-                    "$crate name is reset for a syntax context");
-        })
     }
 }
 

@@ -14,3 +14,9 @@ macro_rules! external {
         struct D($crate::S);
     };
 }
+
+#[macro_export]
+macro_rules! issue_62325 { () => {
+    #[print_attr]
+    struct B(identity!($crate::S));
+}}
