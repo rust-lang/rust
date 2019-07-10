@@ -108,7 +108,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         ecx.machine.argc = Some(argc_place.ptr.to_ptr()?);
     }
 
-    // FIXME: extract main source file path.
     // Third argument (`argv`): created from `config.args`.
     let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
     // For Windows, construct a command string with all the aguments.
