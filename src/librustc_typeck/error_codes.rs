@@ -3497,8 +3497,8 @@ Example of erroneous code:
 
 let r = &[1, 2];
 match r {
-    &[a, b, c, rest..] => { // error: pattern requires at least 3
-                            //        elements but array has 2
+    &[a, b, c, rest @ ..] => { // error: pattern requires at least 3
+                               //        elements but array has 2
         println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
     }
 }
@@ -3512,7 +3512,7 @@ requires. You can match an arbitrary number of remaining elements with `..`:
 
 let r = &[1, 2, 3, 4, 5];
 match r {
-    &[a, b, c, rest..] => { // ok!
+    &[a, b, c, rest @ ..] => { // ok!
         // prints `a=1, b=2, c=3 rest=[4, 5]`
         println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
     }
