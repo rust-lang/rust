@@ -23,7 +23,7 @@ LL |         (pat ..) => {}
    |          ^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/37854
-   = help: add #![feature(exclusive_range_pattern)] to the crate attributes to enable
+   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/pat-tuple-5.rs:3:10
