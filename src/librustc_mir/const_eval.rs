@@ -109,7 +109,7 @@ fn op_to_const<'tcx>(
                 // `Immediate` is when we are called from `const_field`, and that `Immediate`
                 // comes from a constant so it can happen have `Undef`, because the indirect
                 // memory that was read had undefined bytes.
-                let mplace = op.to_mem_place();
+                let mplace = op.assert_mem_place();
                 let ptr = mplace.ptr.to_ptr().unwrap();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                 ConstValue::ByRef { offset: ptr.offset, align: mplace.align, alloc }
@@ -661,7 +661,7 @@ pub fn const_eval_raw_provider<'tcx>(
         |body| eval_body_using_ecx(&mut ecx, cid, body, key.param_env)
     ).and_then(|place| {
         Ok(RawConst {
-            alloc_id: place.to_ptr().expect("we allocated this ptr!").alloc_id,
+            alloc_id: place.ptr.assert_ptr().alloc_id,
             ty: place.layout.ty
         })
     }).map_err(|error| {

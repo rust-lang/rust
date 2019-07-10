@@ -122,21 +122,6 @@ impl<Tag> MemPlace<Tag> {
         Self::from_scalar_ptr(ptr.into(), align)
     }
 
-    #[inline(always)]
-    pub fn to_scalar_ptr_align(self) -> (Scalar<Tag>, Align) {
-        assert!(self.meta.is_none());
-        (self.ptr, self.align)
-    }
-
-    /// metact the ptr part of the mplace
-    #[inline(always)]
-    pub fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
-        // At this point, we forget about the alignment information --
-        // the place has been turned into a reference, and no matter where it came from,
-        // it now must be aligned.
-        self.to_scalar_ptr_align().0.to_ptr()
-    }
-
     /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
     /// This is the inverse of `ref_to_mplace`.
     #[inline(always)]
@@ -230,6 +215,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     }
 }
 
+// These are defined here because they produce a place.
 impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
     pub fn try_as_mplace(self) -> Result<MPlaceTy<'tcx, Tag>, ImmTy<'tcx, Tag>> {
@@ -240,12 +226,12 @@ impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     }
 
     #[inline(always)]
-    pub fn to_mem_place(self) -> MPlaceTy<'tcx, Tag> {
+    pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Tag> {
         self.try_as_mplace().unwrap()
     }
 }
 
-impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
+impl<Tag: ::std::fmt::Debug> Place<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
     pub fn null(cx: &impl HasDataLayout) -> Self {
@@ -263,29 +249,19 @@ impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
     }
 
     #[inline]
-    pub fn to_mem_place(self) -> MemPlace<Tag> {
+    pub fn assert_mem_place(self) -> MemPlace<Tag> {
         match self {
             Place::Ptr(mplace) => mplace,
-            _ => bug!("to_mem_place: expected Place::Ptr, got {:?}", self),
+            _ => bug!("assert_mem_place: expected Place::Ptr, got {:?}", self),
 
         }
-    }
-
-    #[inline]
-    pub fn to_scalar_ptr_align(self) -> (Scalar<Tag>, Align) {
-        self.to_mem_place().to_scalar_ptr_align()
-    }
-
-    #[inline]
-    pub fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
-        self.to_mem_place().to_ptr()
     }
 }
 
 impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
     #[inline]
-    pub fn to_mem_place(self) -> MPlaceTy<'tcx, Tag> {
-        MPlaceTy { mplace: self.place.to_mem_place(), layout: self.layout }
+    pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Tag> {
+        MPlaceTy { mplace: self.place.assert_mem_place(), layout: self.layout }
     }
 }
 
@@ -301,8 +277,6 @@ where
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
-    /// This does NOT call the "deref" machine hook, so it does NOT count as a
-    /// deref as far as Stacked Borrows is concerned.  Use `deref_operand` for that!
     pub fn ref_to_mplace(
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
@@ -322,8 +296,8 @@ where
         Ok(MPlaceTy { mplace, layout })
     }
 
-    // Take an operand, representing a pointer, and dereference it to a place -- that
-    // will always be a MemPlace.  Lives in `place.rs` because it creates a place.
+    /// Take an operand, representing a pointer, and dereference it to a place -- that
+    /// will always be a MemPlace.  Lives in `place.rs` because it creates a place.
     pub fn deref_operand(
         &self,
         src: OpTy<'tcx, M::PointerTag>,
@@ -331,6 +305,36 @@ where
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
         self.ref_to_mplace(val)
+    }
+
+    /// Check if the given place is good for memory access with the given
+    /// size, falling back to the layout's size if `None` (in the latter case,
+    /// this must be a statically sized type).
+    ///
+    /// On success, returns `None` for zero-sized accesses (where nothing else is
+    /// left to do) and a `Pointer` to use for the actual access otherwise.
+    #[inline]
+    pub fn check_mplace_access(
+        &self,
+        place: MPlaceTy<'tcx, M::PointerTag>,
+        size: Option<Size>,
+    ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
+        let size = size.unwrap_or_else(|| {
+            assert!(!place.layout.is_unsized());
+            assert!(place.meta.is_none());
+            place.layout.size
+        });
+        self.memory.check_ptr_access(place.ptr, size, place.align)
+    }
+
+    /// Force `place.ptr` to a `Pointer`.
+    /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
+    pub fn force_mplace_ptr(
+        &self,
+        mut place: MPlaceTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        place.mplace.ptr = self.force_ptr(place.mplace.ptr)?.into();
+        Ok(place)
     }
 
     /// Offset a pointer to project to a field. Unlike `place_field`, this is always
@@ -741,14 +745,12 @@ where
         value: Immediate<M::PointerTag>,
         dest: MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let (ptr, ptr_align) = dest.to_scalar_ptr_align();
         // Note that it is really important that the type here is the right one, and matches the
         // type things are read at. In case `src_val` is a `ScalarPair`, we don't do any magic here
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
-        assert!(!dest.layout.is_unsized());
 
-        let ptr = match self.memory.check_ptr_access(ptr, dest.layout.size, ptr_align)? {
+        let ptr = match self.check_mplace_access(dest, None)? {
             Some(ptr) => ptr,
             None => return Ok(()), // zero-sized access
         };
@@ -850,14 +852,21 @@ where
             dest.layout.size
         });
         assert_eq!(src.meta, dest.meta, "Can only copy between equally-sized instances");
+
+        let src = self.check_mplace_access(src, Some(size))?;
+        let dest = self.check_mplace_access(dest, Some(size))?;
+        let (src_ptr, dest_ptr) = match (src, dest) {
+            (Some(src_ptr), Some(dest_ptr)) => (src_ptr, dest_ptr),
+            (None, None) => return Ok(()), // zero-sized copy
+            _ => bug!("The pointers should both be Some or both None"),
+        };
+
         self.memory.copy(
-            src.ptr, src.align,
-            dest.ptr, dest.align,
+            src_ptr,
+            dest_ptr,
             size,
             /*nonoverlapping*/ true,
-        )?;
-
-        Ok(())
+        )
     }
 
     /// Copies the data from an operand to a place. The layouts may disagree, but they must

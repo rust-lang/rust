@@ -123,23 +123,23 @@ pub enum Operand<Tag=(), Id=AllocId> {
 
 impl<Tag> Operand<Tag> {
     #[inline]
-    pub fn to_mem_place(self) -> MemPlace<Tag>
+    pub fn assert_mem_place(self) -> MemPlace<Tag>
         where Tag: ::std::fmt::Debug
     {
         match self {
             Operand::Indirect(mplace) => mplace,
-            _ => bug!("to_mem_place: expected Operand::Indirect, got {:?}", self),
+            _ => bug!("assert_mem_place: expected Operand::Indirect, got {:?}", self),
 
         }
     }
 
     #[inline]
-    pub fn to_immediate(self) -> Immediate<Tag>
+    pub fn assert_immediate(self) -> Immediate<Tag>
         where Tag: ::std::fmt::Debug
     {
         match self {
             Operand::Immediate(imm) => imm,
-            _ => bug!("to_immediate: expected Operand::Immediate, got {:?}", self),
+            _ => bug!("assert_immediate: expected Operand::Immediate, got {:?}", self),
 
         }
     }
@@ -214,6 +214,19 @@ pub(super) fn from_known_layout<'tcx>(
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+    /// Normalice `place.ptr` to a `Pointer` if this is a place and not a ZST.
+    /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
+    #[inline]
+    pub fn force_op_ptr(
+        &self,
+        op: OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        match op.try_as_mplace() {
+            Ok(mplace) => Ok(self.force_mplace_ptr(mplace)?.into()),
+            Err(imm) => Ok(imm.into()), // Nothing to cast/force
+        }
+    }
+
     /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
     fn try_read_immediate_from_mplace(
@@ -224,9 +237,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Don't touch unsized
             return Ok(None);
         }
-        let (ptr, ptr_align) = mplace.to_scalar_ptr_align();
 
-        let ptr = match self.memory.check_ptr_access(ptr, mplace.layout.size, ptr_align)? {
+        let ptr = match self.check_mplace_access(mplace, None)? {
             Some(ptr) => ptr,
             None => return Ok(Some(ImmTy { // zero-sized type
                 imm: Immediate::Scalar(Scalar::zst().into()),
@@ -396,7 +408,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             } else {
                 // The rest should only occur as mplace, we do not use Immediates for types
                 // allowing such operations.  This matches place_projection forcing an allocation.
-                let mplace = base.to_mem_place();
+                let mplace = base.assert_mem_place();
                 self.mplace_projection(mplace, proj_elem)?.into()
             }
         })

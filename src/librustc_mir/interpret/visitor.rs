@@ -242,7 +242,7 @@ macro_rules! make_value_visitor {
                 match v.layout().ty.sty {
                     ty::Dynamic(..) => {
                         // immediate trait objects are not a thing
-                        let dest = v.to_op(self.ecx())?.to_mem_place();
+                        let dest = v.to_op(self.ecx())?.assert_mem_place();
                         let inner = self.ecx().unpack_dyn_trait(dest)?.1;
                         trace!("walk_value: dyn object layout: {:#?}", inner.layout);
                         // recurse with the inner type
@@ -316,7 +316,7 @@ macro_rules! make_value_visitor {
                             MPlaceTy::dangling(v.layout(), self.ecx())
                         } else {
                             // non-ZST array/slice/str cannot be immediate
-                            v.to_op(self.ecx())?.to_mem_place()
+                            v.to_op(self.ecx())?.assert_mem_place()
                         };
                         // Now we can go over all the fields.
                         let iter = self.ecx().mplace_array_fields(mplace)?

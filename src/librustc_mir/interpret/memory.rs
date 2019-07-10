@@ -214,10 +214,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             None => Size::from_bytes(self.get(ptr.alloc_id)?.bytes.len() as u64),
         };
         self.copy(
-            ptr.into(),
-            Align::from_bytes(1).unwrap(), // old_align anyway gets checked below by `deallocate`
-            new_ptr.into(),
-            new_align,
+            ptr,
+            new_ptr,
             old_size.min(new_size),
             /*nonoverlapping*/ true,
         )?;
@@ -310,6 +308,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// `Pointer` they need. And even if you already have a `Pointer`, call this method
     /// to make sure it is sufficiently aligned and not dangling.  Not doing that may
     /// cause ICEs.
+    ///
+    /// Most of the time you should use `check_mplace_access`, but when you just have a pointer,
+    /// this method is still appropriate.
     pub fn check_ptr_access(
         &self,
         sptr: Scalar<M::PointerTag>,
@@ -751,39 +752,26 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         self.get(ptr.alloc_id)?.read_c_str(self, ptr)
     }
 
-    /// Performs appropriate bounds checks.
+    /// Expects the caller to have checked bounds and alignment.
     pub fn copy(
         &mut self,
-        src: Scalar<M::PointerTag>,
-        src_align: Align,
-        dest: Scalar<M::PointerTag>,
-        dest_align: Align,
+        src: Pointer<M::PointerTag>,
+        dest: Pointer<M::PointerTag>,
         size: Size,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
-        self.copy_repeatedly(src, src_align, dest, dest_align, size, 1, nonoverlapping)
+        self.copy_repeatedly(src, dest, size, 1, nonoverlapping)
     }
 
-    /// Performs appropriate bounds checks.
+    /// Expects the caller to have checked bounds and alignment.
     pub fn copy_repeatedly(
         &mut self,
-        src: Scalar<M::PointerTag>,
-        src_align: Align,
-        dest: Scalar<M::PointerTag>,
-        dest_align: Align,
+        src: Pointer<M::PointerTag>,
+        dest: Pointer<M::PointerTag>,
         size: Size,
         length: u64,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
-        // We need to check *both* before early-aborting due to the size being 0.
-        let (src, dest) = match (self.check_ptr_access(src, size, src_align)?,
-                self.check_ptr_access(dest, size * length, dest_align)?)
-        {
-            (Some(src), Some(dest)) => (src, dest),
-            // One of the two sizes is 0.
-            _ => return Ok(()),
-        };
-
         // first copy the relocations to a temporary buffer, because
         // `get_bytes_mut` will clear the relocations, which is correct,
         // since we don't want to keep any relocations at the target.
