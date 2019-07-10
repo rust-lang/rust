@@ -5,7 +5,7 @@ use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
 
 use crate::{
-    PlaceTy, OpTy, ImmTy, Immediate, Scalar, ScalarMaybeUndef, Tag,
+    PlaceTy, OpTy, ImmTy, Immediate, Scalar, Tag,
     OperatorEvalContextExt
 };
 

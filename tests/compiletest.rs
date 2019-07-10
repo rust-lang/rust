@@ -1,8 +1,7 @@
-#![feature(slice_concat_ext, custom_test_frameworks)]
+#![feature(custom_test_frameworks)]
 // Custom test runner, to avoid libtest being wrapped around compiletest which wraps libtest.
 #![test_runner(test_runner)]
 
-use std::slice::SliceConcatExt;
 use std::path::PathBuf;
 use std::env;
 
