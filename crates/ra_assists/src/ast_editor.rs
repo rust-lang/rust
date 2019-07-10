@@ -85,10 +85,6 @@ impl AstEditor<ast::NamedFieldList> {
         self.insert_field(InsertPosition::Last, field)
     }
 
-    pub fn make_multiline(&mut self) {
-        self.do_make_multiline()
-    }
-
     pub fn insert_field(
         &mut self,
         position: InsertPosition<&'_ ast::NamedField>,
@@ -161,8 +157,12 @@ impl AstEditor<ast::NamedFieldList> {
 }
 
 impl AstEditor<ast::ItemList> {
-    pub fn make_multiline(&mut self) {
-        self.do_make_multiline()
+    pub fn append_items<'a>(&mut self, items: impl Iterator<Item = &'a ast::ImplItem>) {
+        let n_existing_items = self.ast().impl_items().count();
+        if n_existing_items == 0 {
+            self.do_make_multiline();
+        }
+        items.for_each(|it| self.append_item(it));
     }
 
     pub fn append_item(&mut self, item: &ast::ImplItem) {
