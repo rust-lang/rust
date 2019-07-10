@@ -20,14 +20,12 @@ jobs:
       mingw-check:
         IMAGE: mingw-check
 
-# TODO: enable this job if the commit message matches this regex, need tools
-# figure out how to get the current commit message on azure and stick it in a
-# condition somewhere
-#     if: commit_message =~ /(?i:^update.*\b(rls|rustfmt|clippy|miri|cargo)\b)/
-# - job: Linux-x86_64-gnu-tools
-#   pool:
-#     vmImage: ubuntu-16.04
-#   steps:
-#     - template: steps/run.yml
-#   variables:
-#     IMAGE: x86_64-gnu-tools
+- job: LinuxTools
+  pool:
+    vmImage: ubuntu-16.04
+  steps:
+    - template: steps/run.yml
+      parameters:
+        only_on_updated_submodules: 'yes'
+  variables:
+    IMAGE: x86_64-gnu-tools
