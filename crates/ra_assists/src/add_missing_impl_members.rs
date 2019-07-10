@@ -78,26 +78,24 @@ fn add_missing_impl_members_inner(
 
     ctx.add_action(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
-        let mut ast_editor = AstEditor::new(impl_item_list);
-        if n_existing_items == 0 {
-            ast_editor.make_multiline();
-        }
-
-        for item in missing_items {
-            let it = match item.kind() {
+        let items: Vec<_> = missing_items
+            .into_iter()
+            .map(|it| match it.kind() {
                 ImplItemKind::FnDef(def) => {
                     strip_docstring(ImplItem::cast(add_body(def).syntax()).unwrap())
                 }
-                _ => strip_docstring(item),
-            };
-            ast_editor.append_item(&it)
-        }
+                _ => strip_docstring(it),
+            })
+            .collect();
+        let mut ast_editor = AstEditor::new(impl_item_list);
+
+        ast_editor.append_items(items.iter().map(|it| &**it));
 
         let first_new_item = ast_editor.ast().impl_items().nth(n_existing_items).unwrap();
-        let cursor_poisition = first_new_item.syntax().range().start();
+        let cursor_position = first_new_item.syntax().range().start();
         ast_editor.into_text_edit(edit.text_edit_builder());
 
-        edit.set_cursor(cursor_poisition);
+        edit.set_cursor(cursor_position);
     });
 
     ctx.build()
