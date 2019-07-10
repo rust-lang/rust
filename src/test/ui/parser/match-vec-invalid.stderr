@@ -11,7 +11,7 @@ LL |         [1, tail @ .., tail @ ..] => {},
    |             ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/62254
-   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+   = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: subslice patterns are unstable
   --> $DIR/match-vec-invalid.rs:4:24
@@ -20,7 +20,7 @@ LL |         [1, tail @ .., tail @ ..] => {},
    |                        ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/62254
-   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+   = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error: `..` can only be used once per slice pattern
   --> $DIR/match-vec-invalid.rs:4:31
