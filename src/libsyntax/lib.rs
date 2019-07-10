@@ -162,6 +162,7 @@ pub mod visit;
 pub mod print {
     pub mod pp;
     pub mod pprust;
+    mod helpers;
 }
 
 pub mod ext {

@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
 use crate::ast::{Attribute, MacDelimiter, GenericArg};
@@ -21,7 +19,6 @@ use syntax_pos::{self, BytePos};
 use syntax_pos::{DUMMY_SP, FileName, Span};
 
 use std::borrow::Cow;
-use std::io::Read;
 
 pub enum AnnNode<'a> {
     Ident(&'a ast::Ident),
@@ -43,12 +40,53 @@ pub struct NoAnn;
 
 impl PpAnn for NoAnn {}
 
+pub struct Comments<'a> {
+    cm: &'a SourceMap,
+    comments: Vec<comments::Comment>,
+    current: usize,
+}
+
+impl<'a> Comments<'a> {
+    pub fn new(
+        cm: &'a SourceMap,
+        sess: &ParseSess,
+        filename: FileName,
+        input: String,
+    ) -> Comments<'a> {
+        let comments = comments::gather_comments(sess, filename, input);
+        Comments {
+            cm,
+            comments,
+            current: 0,
+        }
+    }
+
+    pub fn next(&self) -> Option<comments::Comment> {
+        self.comments.get(self.current).cloned()
+    }
+
+    pub fn trailing_comment(
+        &mut self,
+        span: syntax_pos::Span,
+        next_pos: Option<BytePos>,
+    ) -> Option<comments::Comment> {
+        if let Some(cmnt) = self.next() {
+            if cmnt.style != comments::Trailing { return None; }
+            let span_line = self.cm.lookup_char_pos(span.hi());
+            let comment_line = self.cm.lookup_char_pos(cmnt.pos);
+            let next = next_pos.unwrap_or_else(|| cmnt.pos + BytePos(1));
+            if span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
+                return Some(cmnt);
+            }
+        }
+
+        None
+    }
+}
+
 pub struct State<'a> {
-    pub s: pp::Printer<'a>,
-    cm: Option<&'a SourceMap>,
-    comments: Option<Vec<comments::Comment>>,
-    cur_cmnt: usize,
-    boxes: Vec<pp::Breaks>,
+    pub s: pp::Printer,
+    comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn+'a),
     is_expanded: bool
 }
@@ -61,11 +99,15 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
                        krate: &ast::Crate,
                        filename: FileName,
-                       input: &mut dyn Read,
-                       out: &mut String,
+                       input: String,
                        ann: &'a dyn PpAnn,
-                       is_expanded: bool) {
-    let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
+                       is_expanded: bool) -> String {
+    let mut s = State {
+        s: pp::mk_printer(),
+        comments: Some(Comments::new(cm, sess, filename, input)),
+        ann,
+        is_expanded,
+    };
 
     if is_expanded && std_inject::injected_crate_name().is_some() {
         // We need to print `#![no_std]` (and its feature gate) so that
@@ -91,53 +133,17 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
     s.s.eof()
 }
 
-impl<'a> State<'a> {
-    pub fn new_from_input(cm: &'a SourceMap,
-                          sess: &ParseSess,
-                          filename: FileName,
-                          input: &mut dyn Read,
-                          out: &'a mut String,
-                          ann: &'a dyn PpAnn,
-                          is_expanded: bool) -> State<'a> {
-        let comments = comments::gather_comments(sess, filename, input);
-        State::new(cm, out, ann, Some(comments), is_expanded)
-    }
-
-    pub fn new(cm: &'a SourceMap,
-               out: &'a mut String,
-               ann: &'a dyn PpAnn,
-               comments: Option<Vec<comments::Comment>>,
-               is_expanded: bool) -> State<'a> {
-        State {
-            s: pp::mk_printer(out),
-            cm: Some(cm),
-            comments,
-            cur_cmnt: 0,
-            boxes: Vec::new(),
-            ann,
-            is_expanded,
-        }
-    }
-}
-
 pub fn to_string<F>(f: F) -> String where
     F: FnOnce(&mut State<'_>),
 {
-    let mut wr = String::new();
-    {
-        let mut printer = State {
-            s: pp::mk_printer(&mut wr),
-            cm: None,
-            comments: None,
-            cur_cmnt: 0,
-            boxes: Vec::new(),
-            ann: &NoAnn,
-            is_expanded: false
-        };
-        f(&mut printer);
-        printer.s.eof();
-    }
-    wr
+    let mut printer = State {
+        s: pp::mk_printer(),
+        comments: None,
+        ann: &NoAnn,
+        is_expanded: false
+    };
+    f(&mut printer);
+    printer.s.eof()
 }
 
 fn binop_to_string(op: BinOpToken) -> &'static str {
@@ -322,16 +328,8 @@ pub fn pat_to_string(pat: &ast::Pat) -> String {
     to_string(|s| s.print_pat(pat))
 }
 
-pub fn arm_to_string(arm: &ast::Arm) -> String {
-    to_string(|s| s.print_arm(arm))
-}
-
 pub fn expr_to_string(e: &ast::Expr) -> String {
     to_string(|s| s.print_expr(e))
-}
-
-pub fn lifetime_to_string(lt: &ast::Lifetime) -> String {
-    to_string(|s| s.print_lifetime(*lt))
 }
 
 pub fn tt_to_string(tt: tokenstream::TokenTree) -> String {
@@ -350,32 +348,20 @@ pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
     to_string(|s| s.print_stmt(stmt))
 }
 
-pub fn attr_to_string(attr: &ast::Attribute) -> String {
-    to_string(|s| s.print_attribute(attr))
-}
-
 pub fn item_to_string(i: &ast::Item) -> String {
     to_string(|s| s.print_item(i))
 }
 
-pub fn impl_item_to_string(i: &ast::ImplItem) -> String {
+fn impl_item_to_string(i: &ast::ImplItem) -> String {
     to_string(|s| s.print_impl_item(i))
 }
 
-pub fn trait_item_to_string(i: &ast::TraitItem) -> String {
+fn trait_item_to_string(i: &ast::TraitItem) -> String {
     to_string(|s| s.print_trait_item(i))
 }
 
 pub fn generic_params_to_string(generic_params: &[ast::GenericParam]) -> String {
     to_string(|s| s.print_generic_params(generic_params))
-}
-
-pub fn where_clause_to_string(i: &ast::WhereClause) -> String {
-    to_string(|s| s.print_where_clause(i))
-}
-
-pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
-    to_string(|s| s.print_fn_block_args(p))
 }
 
 pub fn path_to_string(p: &ast::Path) -> String {
@@ -390,7 +376,8 @@ pub fn vis_to_string(v: &ast::Visibility) -> String {
     to_string(|s| s.print_visibility(v))
 }
 
-pub fn fun_to_string(decl: &ast::FnDecl,
+#[cfg(test)]
+fn fun_to_string(decl: &ast::FnDecl,
                      header: ast::FnHeader,
                      name: ast::Ident,
                      generics: &ast::Generics)
@@ -404,7 +391,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
     })
 }
 
-pub fn block_to_string(blk: &ast::Block) -> String {
+fn block_to_string(blk: &ast::Block) -> String {
     to_string(|s| {
         // containing cbox, will be closed by print-block at }
         s.cbox(INDENT_UNIT);
@@ -426,11 +413,8 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
     to_string(|s| s.print_attribute(attr))
 }
 
-pub fn lit_to_string(l: &ast::Lit) -> String {
-    to_string(|s| s.print_literal(l))
-}
-
-pub fn variant_to_string(var: &ast::Variant) -> String {
+#[cfg(test)]
+fn variant_to_string(var: &ast::Variant) -> String {
     to_string(|s| s.print_variant(var))
 }
 
@@ -438,73 +422,29 @@ pub fn arg_to_string(arg: &ast::Arg) -> String {
     to_string(|s| s.print_arg(arg, false))
 }
 
-pub fn mac_to_string(arg: &ast::Mac) -> String {
-    to_string(|s| s.print_mac(arg))
-}
-
-pub fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
+fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
     to_string(|s| s.print_foreign_item(arg))
 }
 
-pub fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
+fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
     format!("{}{}", to_string(|s| s.print_visibility(vis)), s)
 }
 
-pub trait PrintState<'a> {
-    fn writer(&mut self) -> &mut pp::Printer<'a>;
-    fn boxes(&mut self) -> &mut Vec<pp::Breaks>;
-    fn comments(&mut self) -> &mut Option<Vec<comments::Comment>>;
-    fn cur_cmnt(&mut self) -> &mut usize;
-
-    fn word_space<S: Into<Cow<'static, str>>>(&mut self, w: S) {
-        self.writer().word(w);
-        self.writer().space()
+impl std::ops::Deref for State<'_> {
+    type Target = pp::Printer;
+    fn deref(&self) -> &Self::Target {
+        &self.s
     }
+}
 
-    fn popen(&mut self) { self.writer().word("(") }
-
-    fn pclose(&mut self) { self.writer().word(")") }
-
-    fn is_begin(&mut self) -> bool {
-        match self.writer().last_token() {
-            pp::Token::Begin(_) => true,
-            _ => false,
-        }
+impl std::ops::DerefMut for State<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.s
     }
+}
 
-    fn is_end(&mut self) -> bool {
-        match self.writer().last_token() {
-            pp::Token::End => true,
-            _ => false,
-        }
-    }
-
-    // is this the beginning of a line?
-    fn is_bol(&mut self) -> bool {
-        self.writer().last_token().is_eof() || self.writer().last_token().is_hardbreak_tok()
-    }
-
-    fn hardbreak_if_not_bol(&mut self) {
-        if !self.is_bol() {
-            self.writer().hardbreak()
-        }
-    }
-
-    // "raw box"
-    fn rbox(&mut self, u: usize, b: pp::Breaks) {
-        self.boxes().push(b);
-        self.writer().rbox(u, b)
-    }
-
-    fn ibox(&mut self, u: usize) {
-        self.boxes().push(pp::Breaks::Inconsistent);
-        self.writer().ibox(u);
-    }
-
-    fn end(&mut self) {
-        self.boxes().pop().unwrap();
-        self.writer().end()
-    }
+pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefMut {
+    fn comments(&mut self) -> &mut Option<Comments<'a>>;
 
     fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F)
         where F: FnMut(&mut Self, &T),
@@ -533,9 +473,9 @@ pub trait PrintState<'a> {
         match cmnt.style {
             comments::Mixed => {
                 assert_eq!(cmnt.lines.len(), 1);
-                self.writer().zerobreak();
-                self.writer().word(cmnt.lines[0].clone());
-                self.writer().zerobreak()
+                self.zerobreak();
+                self.word(cmnt.lines[0].clone());
+                self.zerobreak()
             }
             comments::Isolated => {
                 self.hardbreak_if_not_bol();
@@ -543,61 +483,55 @@ pub trait PrintState<'a> {
                     // Don't print empty lines because they will end up as trailing
                     // whitespace
                     if !line.is_empty() {
-                        self.writer().word(line.clone());
+                        self.word(line.clone());
                     }
-                    self.writer().hardbreak();
+                    self.hardbreak();
                 }
             }
             comments::Trailing => {
-                if !self.is_bol() {
-                    self.writer().word(" ");
+                if !self.is_beginning_of_line() {
+                    self.word(" ");
                 }
                 if cmnt.lines.len() == 1 {
-                    self.writer().word(cmnt.lines[0].clone());
-                    self.writer().hardbreak()
+                    self.word(cmnt.lines[0].clone());
+                    self.hardbreak()
                 } else {
                     self.ibox(0);
                     for line in &cmnt.lines {
                         if !line.is_empty() {
-                            self.writer().word(line.clone());
+                            self.word(line.clone());
                         }
-                        self.writer().hardbreak();
+                        self.hardbreak();
                     }
                     self.end();
                 }
             }
             comments::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
-                let is_semi = match self.writer().last_token() {
-                    pp::Token::String(s, _) => ";" == s,
+                let twice = match self.last_token() {
+                    pp::Token::String(s) => ";" == s,
+                    pp::Token::Begin(_) => true,
+                    pp::Token::End => true,
                     _ => false
                 };
-                if is_semi || self.is_begin() || self.is_end() {
-                    self.writer().hardbreak();
+                if twice {
+                    self.hardbreak();
                 }
-                self.writer().hardbreak();
+                self.hardbreak();
             }
         }
-        *self.cur_cmnt() = *self.cur_cmnt() + 1;
+        if let Some(cm) = self.comments() {
+            cm.current += 1;
+        }
     }
 
     fn next_comment(&mut self) -> Option<comments::Comment> {
-        let cur_cmnt = *self.cur_cmnt();
-        match *self.comments() {
-            Some(ref cmnts) => {
-                if cur_cmnt < cmnts.len() {
-                    Some(cmnts[cur_cmnt].clone())
-                } else {
-                    None
-                }
-            }
-            _ => None
-        }
+        self.comments().as_mut().and_then(|c| c.next())
     }
 
     fn print_literal(&mut self, lit: &ast::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.writer().word(literal_to_string(lit.token))
+        self.word(lit.token.to_string())
     }
 
     fn print_string(&mut self, st: &str,
@@ -612,7 +546,7 @@ pub trait PrintState<'a> {
                          string=st))
             }
         };
-        self.writer().word(st)
+        self.word(st)
     }
 
     fn print_inner_attributes(&mut self,
@@ -664,10 +598,10 @@ pub trait PrintState<'a> {
     fn print_attribute_path(&mut self, path: &ast::Path) {
         for (i, segment) in path.segments.iter().enumerate() {
             if i > 0 {
-                self.writer().word("::");
+                self.word("::");
             }
             if segment.ident.name != kw::PathRoot {
-                self.writer().word(ident_to_string(segment.ident, segment.ident.is_raw_guess()));
+                self.word(ident_to_string(segment.ident, segment.ident.is_raw_guess()));
             }
         }
     }
@@ -683,21 +617,21 @@ pub trait PrintState<'a> {
         }
         self.maybe_print_comment(attr.span.lo());
         if attr.is_sugared_doc {
-            self.writer().word(attr.value_str().unwrap().as_str().to_string());
-            self.writer().hardbreak()
+            self.word(attr.value_str().unwrap().as_str().to_string());
+            self.hardbreak()
         } else {
             match attr.style {
-                ast::AttrStyle::Inner => self.writer().word("#!["),
-                ast::AttrStyle::Outer => self.writer().word("#["),
+                ast::AttrStyle::Inner => self.word("#!["),
+                ast::AttrStyle::Outer => self.word("#["),
             }
             if let Some(mi) = attr.meta() {
                 self.print_meta_item(&mi);
             } else {
                 self.print_attribute_path(&attr.path);
-                self.writer().space();
+                self.space();
                 self.print_tts(attr.tokens.clone());
             }
-            self.writer().word("]");
+            self.word("]");
         }
     }
 
@@ -718,7 +652,7 @@ pub trait PrintState<'a> {
             ast::MetaItemKind::Word => self.print_attribute_path(&item.path),
             ast::MetaItemKind::NameValue(ref value) => {
                 self.print_attribute_path(&item.path);
-                self.writer().space();
+                self.space();
                 self.word_space("=");
                 self.print_literal(value);
             }
@@ -744,20 +678,20 @@ pub trait PrintState<'a> {
     fn print_tt(&mut self, tt: tokenstream::TokenTree, convert_dollar_crate: bool) {
         match tt {
             TokenTree::Token(ref token) => {
-                self.writer().word(token_to_string_ext(&token, convert_dollar_crate));
+                self.word(token_to_string_ext(&token, convert_dollar_crate));
                 match token.kind {
                     token::DocComment(..) => {
-                        self.writer().hardbreak()
+                        self.hardbreak()
                     }
                     _ => {}
                 }
             }
             TokenTree::Delimited(_, delim, tts) => {
-                self.writer().word(token_kind_to_string(&token::OpenDelim(delim)));
-                self.writer().space();
+                self.word(token_kind_to_string(&token::OpenDelim(delim)));
+                self.space();
                 self.print_tts(tts);
-                self.writer().space();
-                self.writer().word(token_kind_to_string(&token::CloseDelim(delim)))
+                self.space();
+                self.word(token_kind_to_string(&token::CloseDelim(delim)))
             },
         }
     }
@@ -770,49 +704,21 @@ pub trait PrintState<'a> {
         self.ibox(0);
         for (i, tt) in tts.into_trees().enumerate() {
             if i != 0 {
-                self.writer().space();
+                self.space();
             }
             self.print_tt(tt, convert_dollar_crate);
         }
         self.end();
     }
-
-    fn space_if_not_bol(&mut self) {
-        if !self.is_bol() { self.writer().space(); }
-    }
-
-    fn nbsp(&mut self) { self.writer().word(" ") }
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn writer(&mut self) -> &mut pp::Printer<'a> {
-        &mut self.s
-    }
-
-    fn boxes(&mut self) -> &mut Vec<pp::Breaks> {
-        &mut self.boxes
-    }
-
-    fn comments(&mut self) -> &mut Option<Vec<comments::Comment>> {
+    fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
-    }
-
-    fn cur_cmnt(&mut self) -> &mut usize {
-        &mut self.cur_cmnt
     }
 }
 
 impl<'a> State<'a> {
-    pub fn cbox(&mut self, u: usize) {
-        self.boxes.push(pp::Breaks::Consistent);
-        self.s.cbox(u);
-    }
-
-    crate fn word_nbsp<S: Into<Cow<'static, str>>>(&mut self, w: S) {
-        self.s.word(w);
-        self.nbsp()
-    }
-
     crate fn head<S: Into<Cow<'static, str>>>(&mut self, w: S) {
         let w = w.into();
         // outer-box is consistent
@@ -830,26 +736,21 @@ impl<'a> State<'a> {
         self.end(); // close the head-box
     }
 
-    crate fn bclose_(&mut self, span: syntax_pos::Span,
-                   indented: usize) {
-        self.bclose_maybe_open(span, indented, true)
-    }
-    crate fn bclose_maybe_open(&mut self, span: syntax_pos::Span,
-                             indented: usize, close_box: bool) {
+    crate fn bclose_maybe_open(&mut self, span: syntax_pos::Span, close_box: bool) {
         self.maybe_print_comment(span.hi());
-        self.break_offset_if_not_bol(1, -(indented as isize));
+        self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
         self.s.word("}");
         if close_box {
             self.end(); // close the outer-box
         }
     }
     crate fn bclose(&mut self, span: syntax_pos::Span) {
-        self.bclose_(span, INDENT_UNIT)
+        self.bclose_maybe_open(span, true)
     }
 
     crate fn break_offset_if_not_bol(&mut self, n: usize,
                                    off: isize) {
-        if !self.is_bol() {
+        if !self.s.is_beginning_of_line() {
             self.s.break_offset(n, off)
         } else {
             if off != 0 && self.s.last_token().is_hardbreak_tok() {
@@ -1650,20 +1551,18 @@ impl<'a> State<'a> {
         self.print_block_with_attrs(blk, &[])
     }
 
-    crate fn print_block_unclosed_indent(&mut self, blk: &ast::Block,
-                                       indented: usize) {
-        self.print_block_maybe_unclosed(blk, indented, &[], false)
+    crate fn print_block_unclosed_indent(&mut self, blk: &ast::Block) {
+        self.print_block_maybe_unclosed(blk, &[], false)
     }
 
     crate fn print_block_with_attrs(&mut self,
                                   blk: &ast::Block,
                                   attrs: &[ast::Attribute]) {
-        self.print_block_maybe_unclosed(blk, INDENT_UNIT, attrs, true)
+        self.print_block_maybe_unclosed(blk, attrs, true)
     }
 
     crate fn print_block_maybe_unclosed(&mut self,
                                       blk: &ast::Block,
-                                      indented: usize,
                                       attrs: &[ast::Attribute],
                                       close_box: bool) {
         match blk.rules {
@@ -1688,7 +1587,7 @@ impl<'a> State<'a> {
             }
         }
 
-        self.bclose_maybe_open(blk.span, indented, close_box);
+        self.bclose_maybe_open(blk.span, close_box);
         self.ann.post(self, AnnNode::Block(blk))
     }
 
@@ -2070,7 +1969,7 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::Match(ref expr, ref arms) => {
                 self.cbox(INDENT_UNIT);
-                self.ibox(4);
+                self.ibox(INDENT_UNIT);
                 self.word_nbsp("match");
                 self.print_expr_as_cond(expr);
                 self.s.space();
@@ -2079,7 +1978,7 @@ impl<'a> State<'a> {
                 for arm in arms {
                     self.print_arm(arm);
                 }
-                self.bclose_(expr.span, INDENT_UNIT);
+                self.bclose(expr.span);
             }
             ast::ExprKind::Closure(
                 capture_clause, asyncness, movability, ref decl, ref body, _) => {
@@ -2610,7 +2509,7 @@ impl<'a> State<'a> {
                 }
 
                 // the block will close the pattern's ibox
-                self.print_block_unclosed_indent(blk, INDENT_UNIT);
+                self.print_block_unclosed_indent(blk);
 
                 // If it is a user-provided unsafe block, print a comma after it
                 if let BlockCheckMode::Unsafe(ast::UserProvided) = blk.rules {
@@ -2963,18 +2862,10 @@ impl<'a> State<'a> {
 
     crate fn maybe_print_trailing_comment(&mut self, span: syntax_pos::Span,
                                         next_pos: Option<BytePos>)
-        {
-        let cm = match self.cm {
-            Some(cm) => cm,
-            _ => return,
-        };
-        if let Some(ref cmnt) = self.next_comment() {
-            if cmnt.style != comments::Trailing { return; }
-            let span_line = cm.lookup_char_pos(span.hi());
-            let comment_line = cm.lookup_char_pos(cmnt.pos);
-            let next = next_pos.unwrap_or_else(|| cmnt.pos + BytePos(1));
-            if span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
-                self.print_comment(cmnt);
+    {
+        if let Some(cmnts) = self.comments() {
+            if let Some(cmnt) = cmnts.trailing_comment(span, next_pos) {
+                self.print_comment(&cmnt);
             }
         }
     }

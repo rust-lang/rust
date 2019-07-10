@@ -8,7 +8,6 @@ use rustc::cfg::CFGIndex;
 use rustc::ty::TyCtxt;
 use std::mem;
 use std::usize;
-use syntax::print::pprust::PrintState;
 use log::debug;
 
 use rustc_data_structures::graph::implementation::OUTGOING;
@@ -530,7 +529,7 @@ impl<'tcx, O: DataFlowOperator + Clone + 'static> DataFlowContext<'tcx, O> {
 
         debug!("Dataflow result for {}:", self.analysis_name);
         debug!("{}", pprust::to_string(self, |s| {
-            s.cbox(pprust::indent_unit);
+            s.cbox(pprust::INDENT_UNIT);
             s.ibox(0);
             s.print_expr(&body.value)
         }));

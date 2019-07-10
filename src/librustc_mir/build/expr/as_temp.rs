@@ -3,6 +3,7 @@
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::scope::DropKind;
 use crate::hair::*;
+use rustc::hir;
 use rustc::middle::region;
 use rustc::mir::*;
 
@@ -66,32 +67,46 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
         let temp_place = &Place::from(temp);
 
-        if !expr_ty.is_never() {
-            this.cfg.push(
-                block,
-                Statement {
-                    source_info,
-                    kind: StatementKind::StorageLive(temp),
-                },
-            );
-
-            // In constants, `temp_lifetime` is `None` for temporaries that live for the
-            // `'static` lifetime. Thus we do not drop these temporaries and simply leak them.
-            // This is equivalent to what `let x = &foo();` does in functions. The temporary
-            // is lifted to their surrounding scope. In a function that means the temporary lives
-            // until just before the function returns. In constants that means it outlives the
-            // constant's initialization value computation. Anything outliving a constant
-            // must have the `'static` lifetime and live forever.
-            // Anything with a shorter lifetime (e.g the `&foo()` in `bar(&foo())` or anything
-            // within a block will keep the regular drops just like runtime code.
-            if let Some(temp_lifetime) = temp_lifetime {
-                this.schedule_drop(
-                    expr_span,
-                    temp_lifetime,
-                    temp,
-                    expr_ty,
-                    DropKind::Storage,
+        match expr.kind {
+            // Don't bother with StorageLive and Dead for these temporaries,
+            // they are never assigned.
+            ExprKind::Break { .. } |
+            ExprKind::Continue { .. } |
+            ExprKind::Return { .. } => (),
+            ExprKind::Block {
+                body: hir::Block { expr: None, targeted_by_break: false, .. }
+            } if expr_ty.is_never() => (),
+            _ => {
+                this.cfg.push(
+                    block,
+                    Statement {
+                        source_info,
+                        kind: StatementKind::StorageLive(temp),
+                    },
                 );
+
+                // In constants, `temp_lifetime` is `None` for temporaries that
+                // live for the `'static` lifetime. Thus we do not drop these
+                // temporaries and simply leak them.
+                // This is equivalent to what `let x = &foo();` does in
+                // functions. The temporary is lifted to their surrounding
+                // scope. In a function that means the temporary lives until
+                // just before the function returns. In constants that means it
+                // outlives the constant's initialization value computation.
+                // Anything outliving a constant must have the `'static`
+                // lifetime and live forever.
+                // Anything with a shorter lifetime (e.g the `&foo()` in
+                // `bar(&foo())` or anything within a block will keep the
+                // regular drops just like runtime code.
+                if let Some(temp_lifetime) = temp_lifetime {
+                    this.schedule_drop(
+                        expr_span,
+                        temp_lifetime,
+                        temp,
+                        expr_ty,
+                        DropKind::Storage,
+                    );
+                }
             }
         }
 

@@ -2,10 +2,9 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::source_map::{SourceMap, Spanned};
 use syntax::parse::ParseSess;
-use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pprust::{self, PrintState};
+use syntax::print::pprust::{Comments, PrintState};
 use syntax::symbol::kw;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
@@ -17,7 +16,6 @@ use crate::hir::ptr::P;
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::io::Read;
 use std::vec;
 
 pub enum AnnNode<'a> {
@@ -70,34 +68,31 @@ impl PpAnn for hir::Crate {
 }
 
 pub struct State<'a> {
-    pub s: pp::Printer<'a>,
-    cm: Option<&'a SourceMap>,
-    comments: Option<Vec<comments::Comment>>,
-    cur_cmnt: usize,
-    boxes: Vec<pp::Breaks>,
+    pub s: pp::Printer,
+    comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
 }
 
-impl<'a> PrintState<'a> for State<'a> {
-    fn writer(&mut self) -> &mut pp::Printer<'a> {
-        &mut self.s
-    }
-
-    fn boxes(&mut self) -> &mut Vec<pp::Breaks> {
-        &mut self.boxes
-    }
-
-    fn comments(&mut self) -> &mut Option<Vec<comments::Comment>> {
-        &mut self.comments
-    }
-
-    fn cur_cmnt(&mut self) -> &mut usize {
-        &mut self.cur_cmnt
+impl std::ops::Deref for State<'_> {
+    type Target = pp::Printer;
+    fn deref(&self) -> &Self::Target {
+        &self.s
     }
 }
 
-#[allow(non_upper_case_globals)]
-pub const indent_unit: usize = 4;
+impl std::ops::DerefMut for State<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.s
+    }
+}
+
+impl<'a> PrintState<'a> for State<'a> {
+    fn comments(&mut self) -> &mut Option<Comments<'a>> {
+        &mut self.comments
+    }
+}
+
+pub const INDENT_UNIT: usize = 4;
 
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
@@ -105,11 +100,9 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
                        krate: &hir::Crate,
                        filename: FileName,
-                       input: &mut dyn Read,
-                       out: &'a mut String,
-                       ann: &'a dyn PpAnn)
-                       {
-    let mut s = State::new_from_input(cm, sess, filename, input, out, ann);
+                       input: String,
+                       ann: &'a dyn PpAnn) -> String {
+    let mut s = State::new_from_input(cm, sess, filename, input, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -123,25 +116,12 @@ impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a SourceMap,
                           sess: &ParseSess,
                           filename: FileName,
-                          input: &mut dyn Read,
-                          out: &'a mut String,
+                          input: String,
                           ann: &'a dyn PpAnn)
                           -> State<'a> {
-        let comments = comments::gather_comments(sess, filename, input);
-        State::new(cm, out, ann, Some(comments))
-    }
-
-    pub fn new(cm: &'a SourceMap,
-               out: &'a mut String,
-               ann: &'a dyn PpAnn,
-               comments: Option<Vec<comments::Comment>>)
-               -> State<'a> {
         State {
-            s: pp::mk_printer(out),
-            cm: Some(cm),
-            comments,
-            cur_cmnt: 0,
-            boxes: Vec::new(),
+            s: pp::mk_printer(),
+            comments: Some(Comments::new(cm, sess, filename, input)),
             ann,
         }
     }
@@ -150,20 +130,13 @@ impl<'a> State<'a> {
 pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
     where F: FnOnce(&mut State<'_>)
 {
-    let mut wr = String::new();
-    {
-        let mut printer = State {
-            s: pp::mk_printer(&mut wr),
-            cm: None,
-            comments: None,
-            cur_cmnt: 0,
-            boxes: Vec::new(),
-            ann,
-        };
-        f(&mut printer);
-        printer.s.eof();
-    }
-    wr
+    let mut printer = State {
+        s: pp::mk_printer(),
+        comments: None,
+        ann,
+    };
+    f(&mut printer);
+    printer.s.eof()
 }
 
 pub fn visibility_qualified<S: Into<Cow<'static, str>>>(vis: &hir::Visibility, w: S) -> String {
@@ -175,7 +148,6 @@ pub fn visibility_qualified<S: Into<Cow<'static, str>>>(vis: &hir::Visibility, w
 
 impl<'a> State<'a> {
     pub fn cbox(&mut self, u: usize) {
-        self.boxes.push(pp::Breaks::Consistent);
         self.s.cbox(u);
     }
 
@@ -191,7 +163,7 @@ impl<'a> State<'a> {
     pub fn head<S: Into<Cow<'static, str>>>(&mut self, w: S) {
         let w = w.into();
         // outer-box is consistent
-        self.cbox(indent_unit);
+        self.cbox(INDENT_UNIT);
         // head-box is inconsistent
         self.ibox(w.len() + 1);
         // keyword that starts the head
@@ -205,17 +177,12 @@ impl<'a> State<'a> {
         self.end(); // close the head-box
     }
 
-    pub fn bclose_(&mut self, span: syntax_pos::Span, indented: usize) {
-        self.bclose_maybe_open(span, indented, true)
-    }
-
     pub fn bclose_maybe_open(&mut self,
                              span: syntax_pos::Span,
-                             indented: usize,
                              close_box: bool)
                              {
         self.maybe_print_comment(span.hi());
-        self.break_offset_if_not_bol(1, -(indented as isize));
+        self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
         self.s.word("}");
         if close_box {
             self.end(); // close the outer-box
@@ -223,24 +190,17 @@ impl<'a> State<'a> {
     }
 
     pub fn bclose(&mut self, span: syntax_pos::Span) {
-        self.bclose_(span, indent_unit)
-    }
-
-    pub fn in_cbox(&self) -> bool {
-        match self.boxes.last() {
-            Some(&last_box) => last_box == pp::Breaks::Consistent,
-            None => false,
-        }
+        self.bclose_maybe_open(span, true)
     }
 
     pub fn space_if_not_bol(&mut self) {
-        if !self.is_bol() {
+        if !self.s.is_beginning_of_line() {
             self.s.space();
         }
     }
 
     pub fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
-        if !self.is_bol() {
+        if !self.s.is_beginning_of_line() {
             self.s.break_offset(n, off)
         } else {
             if off != 0 && self.s.last_token().is_hardbreak_tok() {
@@ -766,7 +726,7 @@ impl<'a> State<'a> {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
             self.print_outer_attributes(&v.node.attrs);
-            self.ibox(indent_unit);
+            self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.s.word(",");
             self.end();
@@ -953,10 +913,10 @@ impl<'a> State<'a> {
         decl: impl Fn(&mut Self)
     ) {
         self.space_if_not_bol();
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.word_nbsp("let");
 
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         decl(self);
         self.end();
 
@@ -998,26 +958,18 @@ impl<'a> State<'a> {
     }
 
     pub fn print_block_unclosed(&mut self, blk: &hir::Block) {
-        self.print_block_unclosed_indent(blk, indent_unit)
-    }
-
-    pub fn print_block_unclosed_indent(&mut self,
-                                       blk: &hir::Block,
-                                       indented: usize)
-                                       {
-        self.print_block_maybe_unclosed(blk, indented, &[], false)
+        self.print_block_maybe_unclosed(blk, &[], false)
     }
 
     pub fn print_block_with_attrs(&mut self,
                                   blk: &hir::Block,
                                   attrs: &[ast::Attribute])
                                   {
-        self.print_block_maybe_unclosed(blk, indent_unit, attrs, true)
+        self.print_block_maybe_unclosed(blk, attrs, true)
     }
 
     pub fn print_block_maybe_unclosed(&mut self,
                                       blk: &hir::Block,
-                                      indented: usize,
                                       attrs: &[ast::Attribute],
                                       close_box: bool)
                                       {
@@ -1041,7 +993,7 @@ impl<'a> State<'a> {
             self.print_expr(&expr);
             self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
         }
-        self.bclose_maybe_open(blk.span, indented, close_box);
+        self.bclose_maybe_open(blk.span, close_box);
         self.ann.post(self, AnnNode::Block(blk))
     }
 
@@ -1089,7 +1041,7 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_vec(&mut self, exprs: &[hir::Expr]) {
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.commasep_exprs(Inconsistent, exprs);
         self.s.word("]");
@@ -1097,7 +1049,7 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_repeat(&mut self, element: &hir::Expr, count: &hir::AnonConst) {
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.print_expr(element);
         self.word_space(";");
@@ -1116,7 +1068,7 @@ impl<'a> State<'a> {
         self.commasep_cmnt(Consistent,
                            &fields[..],
                            |s, field| {
-                               s.ibox(indent_unit);
+                               s.ibox(INDENT_UNIT);
                                if !field.is_shorthand {
                                     s.print_ident(field.ident);
                                     s.word_space(":");
@@ -1127,7 +1079,7 @@ impl<'a> State<'a> {
                            |f| f.span);
         match *wth {
             Some(ref expr) => {
-                self.ibox(indent_unit);
+                self.ibox(INDENT_UNIT);
                 if !fields.is_empty() {
                     self.s.word(",");
                     self.s.space();
@@ -1226,13 +1178,13 @@ impl<'a> State<'a> {
 
     fn print_literal(&mut self, lit: &hir::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.writer().word(pprust::literal_to_string(lit.node.to_lit_token()))
+        self.word(lit.node.to_lit_token().to_string())
     }
 
     pub fn print_expr(&mut self, expr: &hir::Expr) {
         self.maybe_print_comment(expr.span.lo());
         self.print_outer_attributes(&expr.attrs);
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.node {
             hir::ExprKind::Box(ref expr) => {
@@ -1284,7 +1236,7 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::DropTemps(ref init) => {
                 // Print `{`:
-                self.cbox(indent_unit);
+                self.cbox(INDENT_UNIT);
                 self.ibox(0);
                 self.bopen();
 
@@ -1298,7 +1250,7 @@ impl<'a> State<'a> {
                 self.print_ident(temp);
 
                 // Print `}`:
-                self.bclose_maybe_open(expr.span, indent_unit, true);
+                self.bclose_maybe_open(expr.span, true);
             }
             hir::ExprKind::Loop(ref blk, opt_label, _) => {
                 if let Some(label) = opt_label {
@@ -1310,8 +1262,8 @@ impl<'a> State<'a> {
                 self.print_block(&blk);
             }
             hir::ExprKind::Match(ref expr, ref arms, _) => {
-                self.cbox(indent_unit);
-                self.ibox(4);
+                self.cbox(INDENT_UNIT);
+                self.ibox(INDENT_UNIT);
                 self.word_nbsp("match");
                 self.print_expr_as_cond(&expr);
                 self.s.space();
@@ -1319,7 +1271,7 @@ impl<'a> State<'a> {
                 for arm in arms {
                     self.print_arm(arm);
                 }
-                self.bclose_(expr.span, indent_unit);
+                self.bclose(expr.span);
             }
             hir::ExprKind::Closure(capture_clause, ref decl, body, _fn_decl_span, _gen) => {
                 self.print_capture_clause(capture_clause);
@@ -1342,7 +1294,7 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // containing cbox, will be closed by print-block at }
-                self.cbox(indent_unit);
+                self.cbox(INDENT_UNIT);
                 // head-box, will be closed by print-block after {
                 self.ibox(0);
                 self.print_block(&blk);
@@ -1712,7 +1664,7 @@ impl<'a> State<'a> {
                 self.commasep_cmnt(Consistent,
                                    &fields[..],
                                    |s, f| {
-                                       s.cbox(indent_unit);
+                                       s.cbox(INDENT_UNIT);
                                        if !f.node.is_shorthand {
                                            s.print_ident(f.node.ident);
                                            s.word_nbsp(":");
@@ -1821,7 +1773,7 @@ impl<'a> State<'a> {
         if arm.attrs.is_empty() {
             self.s.space();
         }
-        self.cbox(indent_unit);
+        self.cbox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
         self.print_outer_attributes(&arm.attrs);
@@ -1854,7 +1806,7 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // the block will close the pattern's ibox
-                self.print_block_unclosed_indent(&blk, indent_unit);
+                self.print_block_unclosed(&blk);
 
                 // If it is a user-provided unsafe block, print a comma after it
                 if let hir::UnsafeBlock(hir::UserProvided) = blk.rules {
@@ -1893,7 +1845,7 @@ impl<'a> State<'a> {
         // Make sure we aren't supplied *both* `arg_names` and `body_id`.
         assert!(arg_names.is_empty() || body_id.is_none());
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
-            s.ibox(indent_unit);
+            s.ibox(INDENT_UNIT);
             if let Some(arg_name) = arg_names.get(i) {
                 s.s.word(arg_name.as_str().to_string());
                 s.s.word(":");
@@ -1920,7 +1872,7 @@ impl<'a> State<'a> {
         self.s.word("|");
         let mut i = 0;
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
-            s.ibox(indent_unit);
+            s.ibox(INDENT_UNIT);
 
             s.ann.nested(s, Nested::BodyArgPat(body_id, i));
             i += 1;
@@ -2119,7 +2071,7 @@ impl<'a> State<'a> {
         }
 
         self.space_if_not_bol();
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         self.word_space("->");
         match decl.output {
             hir::DefaultReturn(..) => unreachable!(),
@@ -2141,7 +2093,7 @@ impl<'a> State<'a> {
                        generic_params: &[hir::GenericParam],
                        arg_names: &[ast::Ident])
                        {
-        self.ibox(indent_unit);
+        self.ibox(INDENT_UNIT);
         if !generic_params.is_empty() {
             self.s.word("for");
             self.print_generic_params(generic_params);
@@ -2174,23 +2126,9 @@ impl<'a> State<'a> {
                                         span: syntax_pos::Span,
                                         next_pos: Option<BytePos>)
                                         {
-        let cm = match self.cm {
-            Some(cm) => cm,
-            _ => return,
-        };
-        if let Some(ref cmnt) = self.next_comment() {
-            if (*cmnt).style != comments::Trailing {
-                return;
-            }
-            let span_line = cm.lookup_char_pos(span.hi());
-            let comment_line = cm.lookup_char_pos((*cmnt).pos);
-            let mut next = (*cmnt).pos + BytePos(1);
-            if let Some(p) = next_pos {
-                next = p;
-            }
-            if span.hi() < (*cmnt).pos && (*cmnt).pos < next &&
-               span_line.line == comment_line.line {
-                self.print_comment(cmnt);
+        if let Some(cmnts) = self.comments() {
+            if let Some(cmnt) = cmnts.trailing_comment(span, next_pos) {
+                self.print_comment(&cmnt);
             }
         }
     }

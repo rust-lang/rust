@@ -2571,7 +2571,6 @@ impl<'a> Parser<'a> {
                               None => continue,
                           };
                           let sugg = pprust::to_string(|s| {
-                              use crate::print::pprust::PrintState;
                               s.popen();
                               s.print_expr(&e);
                               s.s.word( ".");
@@ -4588,11 +4587,11 @@ impl<'a> Parser<'a> {
                         stmt_span = stmt_span.with_hi(self.prev_span.hi());
                     }
                     let sugg = pprust::to_string(|s| {
-                        use crate::print::pprust::{PrintState, INDENT_UNIT};
+                        use crate::print::pprust::INDENT_UNIT;
                         s.ibox(INDENT_UNIT);
                         s.bopen();
                         s.print_stmt(&stmt);
-                        s.bclose_maybe_open(stmt.span, INDENT_UNIT, false)
+                        s.bclose_maybe_open(stmt.span, false)
                     });
                     e.span_suggestion(
                         stmt_span,

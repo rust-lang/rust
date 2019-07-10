@@ -9,10 +9,21 @@ impl Drop for FakeNeedsDrop {
 // ok
 const X: FakeNeedsDrop = { let x = FakeNeedsDrop; x };
 
+// ok (used to incorrectly error, see #62273)
+const X2: FakeNeedsDrop = { let x; x = FakeNeedsDrop; x };
+
 // error
 const Y: FakeNeedsDrop = { let mut x = FakeNeedsDrop; x = FakeNeedsDrop; x };
-//~^ ERROR constant contains unimplemented expression type
+//~^ ERROR destructors cannot be evaluated at compile-time
+
+// error
+const Y2: FakeNeedsDrop = { let mut x; x = FakeNeedsDrop; x = FakeNeedsDrop; x };
+//~^ ERROR destructors cannot be evaluated at compile-time
 
 // error
 const Z: () = { let mut x = None; x = Some(FakeNeedsDrop); };
-//~^ ERROR constant contains unimplemented expression type
+//~^ ERROR destructors cannot be evaluated at compile-time
+
+// error
+const Z2: () = { let mut x; x = None; x = Some(FakeNeedsDrop); };
+//~^ ERROR destructors cannot be evaluated at compile-time
