@@ -249,6 +249,10 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.const_uint(self.type_i8(), i as u64)
     }
 
+    fn const_real(&self, t: &'ll Type, val: f64) -> &'ll Value {
+        unsafe { llvm::LLVMConstReal(t, val) }
+    }
+
     fn const_struct(
         &self,
         elts: &[&'ll Value],

@@ -429,7 +429,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn collect_invocations(&mut self, mut fragment: AstFragment, derives: &[Mark])
                            -> (AstFragment, Vec<Invocation>) {
         // Resolve `$crate`s in the fragment for pretty-printing.
-        self.cx.resolver.resolve_dollar_crates(&fragment);
+        self.cx.resolver.resolve_dollar_crates();
 
         let invocations = {
             let mut collector = InvocationCollector {

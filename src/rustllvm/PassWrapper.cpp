@@ -913,7 +913,10 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
                               GlobalValue::LinkageTypes NewLinkage) {
     ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
-#if LLVM_VERSION_GE(8, 0)
+#if LLVM_VERSION_GE(9, 0)
+  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage,
+                                  Ret->GUIDPreservedSymbols);
+#elif LLVM_VERSION_GE(8, 0)
   thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage);
 #else
   thinLTOResolveWeakForLinkerInIndex(Ret->Index, isPrevailing, recordNewLinkage);
