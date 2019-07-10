@@ -38,9 +38,7 @@ impl<'a> SyntaxText<'a> {
     }
 
     pub fn to_smol_string(&self) -> SmolStr {
-        // FIXME: use `self.chunks().collect()` here too once
-        // https://github.com/matklad/smol_str/pull/12 is merged and published
-        self.to_string().into()
+        self.chunks().collect()
     }
 
     pub fn contains(&self, c: char) -> bool {
@@ -61,6 +59,10 @@ impl<'a> SyntaxText<'a> {
 
     pub fn len(&self) -> TextUnit {
         self.range.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.range.is_empty()
     }
 
     /// NB, the offsets here are absolute, and this probably doesn't make sense!
