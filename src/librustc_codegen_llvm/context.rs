@@ -1,5 +1,6 @@
 use crate::attributes;
 use crate::llvm;
+use crate::llvm_util;
 use crate::debuginfo;
 use crate::value::Value;
 use rustc::dep_graph::DepGraphSafe;
@@ -140,6 +141,11 @@ pub fn is_pie_binary(sess: &Session) -> bool {
     !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
+fn strip_function_ptr_alignment(data_layout: String) -> String {
+    // FIXME: Make this more general.
+    data_layout.replace("-Fi8-", "-")
+}
+
 pub unsafe fn create_module(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
@@ -149,14 +155,19 @@ pub unsafe fn create_module(
     let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
+    let mut target_data_layout = sess.target.target.data_layout.clone();
+    if llvm_util::get_major_version() < 9 {
+        target_data_layout = strip_function_ptr_alignment(target_data_layout);
+    }
+
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
         let tm = crate::back::write::create_informational_target_machine(&tcx.sess, false);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 
-        let data_layout = llvm::LLVMGetDataLayout(llmod);
-        let data_layout = str::from_utf8(CStr::from_ptr(data_layout).to_bytes())
+        let llvm_data_layout = llvm::LLVMGetDataLayout(llmod);
+        let llvm_data_layout = str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
             .ok().expect("got a non-UTF8 data-layout from LLVM");
 
         // Unfortunately LLVM target specs change over time, and right now we
@@ -177,16 +188,16 @@ pub unsafe fn create_module(
         let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
         let custom_llvm_used = cfg_llvm_root.trim() != "";
 
-        if !custom_llvm_used && sess.target.target.data_layout != data_layout {
+        if !custom_llvm_used && target_data_layout != llvm_data_layout {
             bug!("data-layout for builtin `{}` target, `{}`, \
                   differs from LLVM default, `{}`",
                  sess.target.target.llvm_target,
-                 sess.target.target.data_layout,
-                 data_layout);
+                 target_data_layout,
+                 llvm_data_layout);
         }
     }
 
-    let data_layout = SmallCStr::new(&sess.target.target.data_layout);
+    let data_layout = SmallCStr::new(&target_data_layout);
     llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
 
     let llvm_target = SmallCStr::new(&sess.target.target.llvm_target);
