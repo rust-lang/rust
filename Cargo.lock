@@ -269,16 +269,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cargo"
-version = "0.38.0"
+version = "0.39.0"
 dependencies = [
  "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "bufstream 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytesize 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo-test-macro 0.1.0",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "core-foundation 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "crates-io 0.26.0",
+ "crates-io 0.27.0",
  "crossbeam-utils 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "crypto-hash 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "curl 0.4.21 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -578,7 +577,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "crates-io"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "curl 0.4.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2563,7 +2562,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "rls"
 version = "1.37.0"
 dependencies = [
- "cargo 0.38.0",
+ "cargo 0.39.0",
  "cargo_metadata 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy_lints 0.0.212",
  "crossbeam-channel 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
