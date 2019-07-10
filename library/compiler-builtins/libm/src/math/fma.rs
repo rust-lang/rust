@@ -126,8 +126,8 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
     } else {
         /* r -= z */
         let t = rlo;
-        rlo -= zlo;
-        rhi = rhi - zhi - (t < rlo) as u64;
+        rlo = rlo.wrapping_sub(zlo);
+        rhi = rhi.wrapping_sub(zhi.wrapping_sub((t < rlo) as u64));
         if (rhi >> 63) != 0 {
             rlo = (-(rlo as i64)) as u64;
             rhi = (-(rhi as i64)) as u64 - (rlo != 0) as u64;
