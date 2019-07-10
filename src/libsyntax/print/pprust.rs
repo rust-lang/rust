@@ -689,7 +689,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             TokenTree::Delimited(_, delim, tts) => {
                 self.word(token_kind_to_string(&token::OpenDelim(delim)));
                 self.space();
-                self.print_tts(tts);
+                self.print_tts(tts, convert_dollar_crate);
                 self.space();
                 self.word(token_kind_to_string(&token::CloseDelim(delim)))
             },
