@@ -1370,11 +1370,9 @@ impl<T> [T] {
     /// let mut s = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let num = 14;
     ///
-    /// match s.binary_search(&num) {
-    ///     Ok(_) => {}
-    ///     Err(pos) => {
-    ///         s.insert(pos, num);
-    ///     }
+    /// let idx = s.binary_search(&num);
+    /// if let Ok(idx) | Err(idx) {
+    ///    s.insert(idx, num)
     /// };
     ///
     /// assert_eq!(s[10], num)
