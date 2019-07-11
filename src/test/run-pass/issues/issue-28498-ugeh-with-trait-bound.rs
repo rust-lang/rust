@@ -22,9 +22,8 @@ struct Foo<T: fmt::Debug>(u32, T);
 
 unsafe impl<#[may_dangle] T: fmt::Debug> Drop for Foo<T> {
     fn drop(&mut self) {
-        // Use of `may_dangle` is sound,
-        // because destructor never accesses the `Debug::fmt` method
-        // of `T`, despite having it available.
+        // Use of `may_dangle` is sound, because destructor never accesses
+        // the `Debug::fmt` method of `T`, despite having it available.
         println!("Dropping Foo({}, _)", self.0);
     }
 }

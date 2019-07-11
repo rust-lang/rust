@@ -25,9 +25,8 @@ struct Foo<T>(u32, T, Box<for <'r> fn(&'r T) -> String>);
 
 unsafe impl<#[may_dangle] T> Drop for Foo<T> {
     fn drop(&mut self) {
-        // Use of `may_dangle` is sound,
-        // because destructor never passes a `self.1` to the callback
-        // (in `self.2`) despite having it available.
+        // Use of `may_dangle` is sound, because destructor never passes a `self.1`
+        // to the callback (in `self.2`) despite having it available.
         println!("Dropping Foo({}, _)", self.0);
     }
 }

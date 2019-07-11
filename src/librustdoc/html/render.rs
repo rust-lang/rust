@@ -3809,7 +3809,6 @@ const ATTRIBUTE_WHITELIST: &'static [Symbol] = &[
     sym::must_use,
     sym::no_mangle,
     sym::repr,
-    sym::unsafe_destructor_blind_to_params,
     sym::non_exhaustive
 ];
 

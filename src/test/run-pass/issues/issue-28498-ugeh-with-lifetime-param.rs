@@ -20,8 +20,7 @@ struct Foo<'a>(u32, &'a ScribbleOnDrop);
 
 unsafe impl<#[may_dangle] 'a> Drop for Foo<'a> {
     fn drop(&mut self) {
-        // Use of `may_dangle` is sound,
-        // because destructor never accesses `self.1`.
+        // Use of `may_dangle` is sound, because destructor never accesses `self.1`.
         println!("Dropping Foo({}, _)", self.0);
     }
 }
