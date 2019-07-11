@@ -312,23 +312,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            Res::NonMacroAttr(attr_kind) => {
-                if attr_kind == NonMacroAttrKind::Custom {
-                    assert!(path.segments.len() == 1);
-                    if !features.custom_attribute {
-                        let msg = format!("The attribute `{}` is currently unknown to the \
-                                            compiler and may have meaning added to it in the \
-                                            future", path);
-                        self.report_unknown_attribute(
-                            path.span,
-                            &path.segments[0].ident.as_str(),
-                            &msg,
-                            sym::custom_attribute,
-                        );
-                    }
-                }
-            }
-            Res::Err => {}
+            Res::NonMacroAttr(..) | Res::Err => {}
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
         };
 
@@ -721,7 +705,8 @@ impl<'a> Resolver<'a> {
         }
 
         let determinacy = Determinacy::determined(determinacy == Determinacy::Determined || force);
-        if determinacy == Determinacy::Determined && macro_kind == Some(MacroKind::Attr) {
+        if determinacy == Determinacy::Determined && macro_kind == Some(MacroKind::Attr) &&
+           self.session.features_untracked().custom_attribute {
             // For single-segment attributes interpret determinate "no resolution" as a custom
             // attribute. (Lexical resolution implies the first segment and attr kind should imply
             // the last segment, so we are certainly working with a single-segment attribute here.)

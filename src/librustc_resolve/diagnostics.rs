@@ -11,7 +11,6 @@ use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
 use syntax::ext::base::MacroKind;
-use syntax::feature_gate::{feature_err, AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES};
 use syntax::symbol::{Symbol, kw};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{BytePos, Span};
@@ -902,60 +901,6 @@ impl<'a> Resolver<'a> {
                 err.help("have you added the `#[macro_use]` on the module/import?");
             }
         }
-    }
-
-    crate fn report_unknown_attribute(&self, span: Span, name: &str, msg: &str, feature: Symbol) {
-        let mut err = feature_err(
-            &self.session.parse_sess,
-            feature,
-            span,
-            GateIssue::Language,
-            &msg,
-        );
-
-        let features = self.session.features_untracked();
-
-        let attr_candidates = BUILTIN_ATTRIBUTES
-            .iter()
-            .filter_map(|&(name, _, _, ref gate)| {
-                if name.as_str().starts_with("rustc_") && !features.rustc_attrs {
-                    return None;
-                }
-
-                match gate {
-                    AttributeGate::Gated(Stability::Unstable, ..)
-                        if self.session.opts.unstable_features.is_nightly_build() =>
-                    {
-                        Some(name)
-                    }
-                    AttributeGate::Gated(Stability::Deprecated(..), ..) => Some(name),
-                    AttributeGate::Ungated => Some(name),
-                    _ => None,
-                }
-            })
-            .chain(
-                // Add built-in macro attributes as well.
-                self.builtin_macros.iter().filter_map(|(name, binding)| {
-                    match binding.macro_kind() {
-                        Some(MacroKind::Attr) => Some(*name),
-                        _ => None,
-                    }
-                }),
-            )
-            .collect::<Vec<_>>();
-
-        let lev_suggestion = find_best_match_for_name(attr_candidates.iter(), &name, None);
-
-        if let Some(suggestion) = lev_suggestion {
-            err.span_suggestion(
-                span,
-                "a built-in attribute with a similar name exists",
-                suggestion.to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        }
-
-        err.emit();
     }
 }
 
