@@ -65,6 +65,13 @@ const TEST_REPOS: &'static [Test] = &[
         lock: None,
         packages: &[],
     },
+    Test {
+        name: "serde",
+        repo: "https://github.com/serde-rs/serde",
+        sha: "ce89adecc12b909e32548b1b929d443d62647029",
+        lock: None,
+        packages: &[],
+    },
 ];
 
 fn main() {
