@@ -85,9 +85,7 @@ mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
 
-fn is_known_tool(name: Name) -> bool {
-    ["clippy", "rustfmt"].contains(&&*name.as_str())
-}
+const KNOWN_TOOLS: &[Name] = &[sym::clippy, sym::rustfmt];
 
 enum Weak {
     Yes,
@@ -1498,11 +1496,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
-        match self.res() {
-            Res::Def(DefKind::Macro(kind), _) => Some(kind),
-            Res::NonMacroAttr(..) => Some(MacroKind::Attr),
-            _ => None,
-        }
+        self.res().macro_kind()
     }
 
     fn descr(&self) -> &'static str {
@@ -2390,7 +2384,7 @@ impl<'a> Resolver<'a> {
                     return Some(LexicalScopeBinding::Item(binding));
                 }
             }
-            if ns == TypeNS && is_known_tool(ident.name) {
+            if ns == TypeNS && KNOWN_TOOLS.contains(&ident.name) {
                 let binding = (Res::ToolMod, ty::Visibility::Public,
                                DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
                 return Some(LexicalScopeBinding::Item(binding));

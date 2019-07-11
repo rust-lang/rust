@@ -3,8 +3,6 @@ error: cannot find macro `print!` in this scope
    |
 LL |         print!();
    |         ^^^^^
-   |
-   = help: have you added the `#[macro_use]` on the module/import?
 
 error: aborting due to previous error
 

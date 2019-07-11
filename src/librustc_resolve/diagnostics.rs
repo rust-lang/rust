@@ -2,7 +2,7 @@ use std::cmp::Reverse;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
-use rustc::hir::def::{self, DefKind, CtorKind};
+use rustc::hir::def::{self, DefKind, CtorKind, NonMacroAttrKind};
 use rustc::hir::def::Namespace::{self, *};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::PrimTy;
@@ -11,14 +11,15 @@ use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
 use syntax::ext::base::MacroKind;
+use syntax::feature_gate::BUILTIN_ATTRIBUTES;
 use syntax::symbol::{Symbol, kw};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{BytePos, Span};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
-use crate::{is_self_type, is_self_value, path_names_to_string};
-use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{PathResult, PathSource, ParentScope, Resolver, RibKind, Segment};
+use crate::{is_self_type, is_self_value, path_names_to_string, KNOWN_TOOLS};
+use crate::{CrateLint, LegacyScope, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{PathResult, PathSource, ParentScope, Resolver, RibKind, Scope, ScopeSet, Segment};
 
 type Res = def::Res<ast::NodeId>;
 
@@ -42,10 +43,42 @@ struct TypoSuggestion {
     article: &'static str,
 }
 
+impl TypoSuggestion {
+    fn from_res(candidate: Symbol, res: Res) -> TypoSuggestion {
+        TypoSuggestion { candidate, kind: res.descr(), article: res.article() }
+    }
+}
+
 /// A free importable items suggested in case of resolution failure.
 crate struct ImportSuggestion {
     did: Option<DefId>,
     pub path: Path,
+}
+
+fn add_typo_suggestion(
+    err: &mut DiagnosticBuilder<'_>, suggestion: Option<TypoSuggestion>, span: Span
+) -> bool {
+    if let Some(suggestion) = suggestion {
+        let msg = format!("{} {} with a similar name exists", suggestion.article, suggestion.kind);
+        err.span_suggestion(
+            span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
+        );
+        return true;
+    }
+    false
+}
+
+fn add_module_candidates(
+    module: Module<'_>, names: &mut Vec<TypoSuggestion>, filter_fn: &impl Fn(Res) -> bool
+) {
+    for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
+        if let Some(binding) = resolution.borrow().binding {
+            let res = binding.res();
+            if filter_fn(res) {
+                names.push(TypoSuggestion::from_res(ident.name, res));
+            }
+        }
+    }
 }
 
 impl<'a> Resolver<'a> {
@@ -234,24 +267,10 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let mut levenshtein_worked = false;
-
         // Try Levenshtein algorithm.
-        let suggestion = self.lookup_typo_candidate(path, ns, is_expected, span);
-        if let Some(suggestion) = suggestion {
-            let msg = format!(
-                "{} {} with a similar name exists",
-                suggestion.article, suggestion.kind
-            );
-            err.span_suggestion(
-                ident_span,
-                &msg,
-                suggestion.candidate.to_string(),
-                Applicability::MaybeIncorrect,
-            );
-
-            levenshtein_worked = true;
-        }
+        let levenshtein_worked = add_typo_suggestion(
+            &mut err, self.lookup_typo_candidate(path, ns, is_expected, span), ident_span
+        );
 
         // Try context-dependent help if relaxed lookup didn't work.
         if let Some(res) = res {
@@ -538,30 +557,169 @@ impl<'a> Resolver<'a> {
         None
     }
 
-    fn lookup_typo_candidate<FilterFn>(
+    /// Lookup typo candidate in scope for a macro or import.
+    fn early_lookup_typo_candidate(
+        &mut self,
+        scope_set: ScopeSet,
+        parent_scope: &ParentScope<'a>,
+        orig_ident: Ident,
+        filter_fn: &impl Fn(Res) -> bool,
+    ) -> Option<TypoSuggestion> {
+        let ident = orig_ident.modern();
+        let rust_2015 = orig_ident.span.rust_2015();
+        let is_absolute_path = match scope_set {
+            ScopeSet::AbsolutePath(..) => true,
+            _ => false,
+        };
+
+        let mut suggestions = Vec::new();
+        let mut use_prelude = !parent_scope.module.no_implicit_prelude;
+
+        self.visit_scopes(scope_set, parent_scope, ident, |this, scope, _| {
+            match scope {
+                Scope::DeriveHelpers => {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
+                    if filter_fn(res) {
+                        for derive in &parent_scope.derives {
+                            let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
+                            if let Ok((Some(ext), _)) = this.resolve_macro_path(
+                                derive, MacroKind::Derive, &parent_scope, true, true
+                            ) {
+                                suggestions.extend(ext.helper_attrs.iter().map(|name| {
+                                    TypoSuggestion::from_res(*name, res)
+                                }));
+                            }
+                        }
+                    }
+                }
+                Scope::MacroRules(legacy_scope) => {
+                    if let LegacyScope::Binding(legacy_binding) = legacy_scope {
+                        let res = legacy_binding.binding.res();
+                        if filter_fn(res) {
+                            suggestions.push(
+                                TypoSuggestion::from_res(legacy_binding.ident.name, res)
+                            )
+                        }
+                    }
+                }
+                Scope::CrateRoot => {
+                    let root_ident = Ident::new(kw::PathRoot, orig_ident.span);
+                    let root_module = this.resolve_crate_root(root_ident);
+                    add_module_candidates(root_module, &mut suggestions, filter_fn);
+                }
+                Scope::Module(module) => {
+                    use_prelude = !module.no_implicit_prelude;
+                    add_module_candidates(module, &mut suggestions, filter_fn);
+                }
+                Scope::MacroUsePrelude => {
+                    if use_prelude || rust_2015 {
+                        let macro_use_prelude = &this.macro_use_prelude;
+                        suggestions.extend(macro_use_prelude.iter().filter_map(|(name, binding)| {
+                            let res = binding.res();
+                            if filter_fn(res) {
+                                Some(TypoSuggestion::from_res(*name, res))
+                            } else {
+                                None
+                            }
+                        }));
+                    }
+                }
+                Scope::BuiltinMacros => {
+                    suggestions.extend(this.builtin_macros.iter().filter_map(|(name, binding)| {
+                        let res = binding.res();
+                        if filter_fn(res) {
+                            Some(TypoSuggestion::from_res(*name, res))
+                        } else {
+                            None
+                        }
+                    }));
+                }
+                Scope::BuiltinAttrs => {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin);
+                    if filter_fn(res) {
+                        suggestions.extend(BUILTIN_ATTRIBUTES.iter().map(|(name, ..)| {
+                            TypoSuggestion::from_res(*name, res)
+                        }));
+                    }
+                }
+                Scope::LegacyPluginHelpers => {
+                    if use_prelude || rust_2015 {
+                        let res = Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
+                        if filter_fn(res) {
+                            let plugin_attributes = this.session.plugin_attributes.borrow();
+                            suggestions.extend(plugin_attributes.iter().map(|(name, _)| {
+                                TypoSuggestion::from_res(*name, res)
+                            }));
+                        }
+                    }
+                }
+                Scope::ExternPrelude => {
+                    if use_prelude || is_absolute_path {
+                        suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
+                            let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
+                            if filter_fn(res) {
+                                Some(TypoSuggestion::from_res(ident.name, res))
+                            } else {
+                                None
+                            }
+                        }));
+                    }
+                }
+                Scope::ToolPrelude => {
+                    if use_prelude {
+                        let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
+                        suggestions.extend(KNOWN_TOOLS.iter().map(|name| {
+                            TypoSuggestion::from_res(*name, res)
+                        }));
+                    }
+                }
+                Scope::StdLibPrelude => {
+                    if use_prelude {
+                        if let Some(prelude) = this.prelude {
+                            add_module_candidates(prelude, &mut suggestions, filter_fn);
+                        }
+                    }
+                }
+                Scope::BuiltinTypes => {
+                    let primitive_types = &this.primitive_type_table.primitive_types;
+                    suggestions.extend(
+                        primitive_types.iter().flat_map(|(name, prim_ty)| {
+                            let res = Res::PrimTy(*prim_ty);
+                            if filter_fn(res) {
+                                Some(TypoSuggestion::from_res(*name, res))
+                            } else {
+                                None
+                            }
+                        })
+                    )
+                }
+            }
+
+            None::<()>
+        });
+
+        // Make sure error reporting is deterministic.
+        suggestions.sort_by_cached_key(|suggestion| suggestion.candidate.as_str());
+
+        match find_best_match_for_name(
+            suggestions.iter().map(|suggestion| &suggestion.candidate),
+            &ident.as_str(),
+            None,
+        ) {
+            Some(found) if found != ident.name => suggestions
+                .into_iter()
+                .find(|suggestion| suggestion.candidate == found),
+            _ => None,
+        }
+    }
+
+    fn lookup_typo_candidate(
         &mut self,
         path: &[Segment],
         ns: Namespace,
-        filter_fn: FilterFn,
+        filter_fn: &impl Fn(Res) -> bool,
         span: Span,
-    ) -> Option<TypoSuggestion>
-    where
-        FilterFn: Fn(Res) -> bool,
-    {
-        let add_module_candidates = |module: Module<'_>, names: &mut Vec<TypoSuggestion>| {
-            for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
-                if let Some(binding) = resolution.borrow().binding {
-                    if filter_fn(binding.res()) {
-                        names.push(TypoSuggestion {
-                            candidate: ident.name,
-                            article: binding.res().article(),
-                            kind: binding.res().descr(),
-                        });
-                    }
-                }
-            }
-        };
-
+    ) -> Option<TypoSuggestion> {
         let mut names = Vec::new();
         if path.len() == 1 {
             // Search in lexical scope.
@@ -570,17 +728,13 @@ impl<'a> Resolver<'a> {
                 // Locals and type parameters
                 for (ident, &res) in &rib.bindings {
                     if filter_fn(res) {
-                        names.push(TypoSuggestion {
-                            candidate: ident.name,
-                            article: res.article(),
-                            kind: res.descr(),
-                        });
+                        names.push(TypoSuggestion::from_res(ident.name, res));
                     }
                 }
                 // Items in scope
                 if let RibKind::ModuleRibKind(module) = rib.kind {
                     // Items from this module
-                    add_module_candidates(module, &mut names);
+                    add_module_candidates(module, &mut names, &filter_fn);
 
                     if let ModuleKind::Block(..) = module.kind {
                         // We can see through blocks
@@ -612,7 +766,7 @@ impl<'a> Resolver<'a> {
                             }));
 
                             if let Some(prelude) = self.prelude {
-                                add_module_candidates(prelude, &mut names);
+                                add_module_candidates(prelude, &mut names, &filter_fn);
                             }
                         }
                         break;
@@ -622,12 +776,8 @@ impl<'a> Resolver<'a> {
             // Add primitive types to the mix
             if filter_fn(Res::PrimTy(PrimTy::Bool)) {
                 names.extend(
-                    self.primitive_type_table.primitive_types.iter().map(|(name, _)| {
-                        TypoSuggestion {
-                            candidate: *name,
-                            article: "a",
-                            kind: "primitive type",
-                        }
+                    self.primitive_type_table.primitive_types.iter().map(|(name, prim_ty)| {
+                        TypoSuggestion::from_res(*name, Res::PrimTy(*prim_ty))
                     })
                 )
             }
@@ -638,7 +788,7 @@ impl<'a> Resolver<'a> {
                 mod_path, Some(TypeNS), false, span, CrateLint::No
             ) {
                 if let ModuleOrUniformRoot::Module(module) = module {
-                    add_module_candidates(module, &mut names);
+                    add_module_candidates(module, &mut names, &filter_fn);
                 }
             }
         }
@@ -844,62 +994,26 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    crate fn suggest_macro_name(
-        &mut self, name: Symbol, kind: MacroKind, err: &mut DiagnosticBuilder<'a>, span: Span
+    crate fn unresolved_macro_suggestions(
+        &mut self,
+        err: &mut DiagnosticBuilder<'a>,
+        macro_kind: MacroKind,
+        parent_scope: &ParentScope<'a>,
+        ident: Ident,
     ) {
-        if kind == MacroKind::Derive && (name.as_str() == "Send" || name.as_str() == "Sync") {
-            let msg = format!("unsafe traits like `{}` should be implemented explicitly", name);
-            err.span_note(span, &msg);
-            return;
+        let is_expected = &|res: Res| res.macro_kind() == Some(macro_kind);
+        let suggestion = self.early_lookup_typo_candidate(
+            ScopeSet::Macro(macro_kind), &parent_scope, ident, is_expected
+        );
+        add_typo_suggestion(err, suggestion, ident.span);
+
+        if macro_kind == MacroKind::Derive &&
+           (ident.as_str() == "Send" || ident.as_str() == "Sync") {
+            let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
+            err.span_note(ident.span, &msg);
         }
-
-        // First check if this is a locally-defined bang macro.
-        let suggestion = if let MacroKind::Bang = kind {
-            find_best_match_for_name(
-                self.macro_names.iter().map(|ident| &ident.name), &name.as_str(), None)
-        } else {
-            None
-        // Then check global macros.
-        }.or_else(|| {
-            let names = self.builtin_macros.iter().chain(self.macro_use_prelude.iter())
-                                                  .filter_map(|(name, binding)| {
-                if binding.macro_kind() == Some(kind) { Some(name) } else { None }
-            });
-            find_best_match_for_name(names, &name.as_str(), None)
-        // Then check modules.
-        }).or_else(|| {
-            let is_macro = |res| {
-                if let Res::Def(DefKind::Macro(def_kind), _) = res {
-                    def_kind == kind
-                } else {
-                    false
-                }
-            };
-            let ident = Ident::new(name, span);
-            self.lookup_typo_candidate(&[Segment::from_ident(ident)], MacroNS, is_macro, span)
-                .map(|suggestion| suggestion.candidate)
-        });
-
-        if let Some(suggestion) = suggestion {
-            if suggestion != name {
-                if let MacroKind::Bang = kind {
-                    err.span_suggestion(
-                        span,
-                        "you could try the macro",
-                        suggestion.to_string(),
-                        Applicability::MaybeIncorrect
-                    );
-                } else {
-                    err.span_suggestion(
-                        span,
-                        "try",
-                        suggestion.to_string(),
-                        Applicability::MaybeIncorrect
-                    );
-                }
-            } else {
-                err.help("have you added the `#[macro_use]` on the module/import?");
-            }
+        if self.macro_names.contains(&ident.modern()) {
+            err.help("have you added the `#[macro_use]` on the module/import?");
         }
     }
 }

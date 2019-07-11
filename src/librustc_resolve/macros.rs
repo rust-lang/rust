@@ -1,7 +1,7 @@
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc, Determinacy};
 use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, Weak};
 use crate::{Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
-use crate::{is_known_tool, resolve_error};
+use crate::{resolve_error, KNOWN_TOOLS};
 use crate::ModuleOrUniformRoot;
 use crate::Namespace::*;
 use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
@@ -57,10 +57,10 @@ impl<'a> InvocationData<'a> {
 /// Not modularized, can shadow previous legacy bindings, etc.
 #[derive(Debug)]
 pub struct LegacyBinding<'a> {
-    binding: &'a NameBinding<'a>,
+    crate binding: &'a NameBinding<'a>,
     /// Legacy scope into which the `macro_rules` item was planted.
     crate parent_legacy_scope: LegacyScope<'a>,
-    ident: Ident,
+    crate ident: Ident,
 }
 
 /// The scope introduced by a `macro_rules!` macro.
@@ -582,7 +582,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::ToolPrelude => {
-                    if use_prelude && is_known_tool(ident.name) {
+                    if use_prelude && KNOWN_TOOLS.contains(&ident.name) {
                         let binding = (Res::ToolMod, ty::Visibility::Public,
                                        DUMMY_SP, Mark::root()).to_name_binding(this.arenas);
                         Ok((binding, Flags::PRELUDE))
@@ -805,7 +805,7 @@ impl<'a> Resolver<'a> {
                     let msg =
                         format!("cannot find {} `{}{}` in this scope", kind.descr(), ident, bang);
                     let mut err = self.session.struct_span_err(ident.span, &msg);
-                    self.suggest_macro_name(ident.name, kind, &mut err, ident.span);
+                    self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident);
                     err.emit();
                 }
             }

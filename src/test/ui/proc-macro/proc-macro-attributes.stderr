@@ -2,7 +2,7 @@ error: cannot find attribute macro `C` in this scope
   --> $DIR/proc-macro-attributes.rs:7:3
    |
 LL | #[C]
-   |   ^
+   |   ^ help: a derive helper attribute with a similar name exists: `B`
 
 error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/proc-macro-attributes.rs:6:3

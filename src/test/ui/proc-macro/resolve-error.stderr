@@ -2,13 +2,13 @@ error: cannot find derive macro `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:22:10
    |
 LL | #[derive(FooWithLongNan)]
-   |          ^^^^^^^^^^^^^^ help: try: `FooWithLongName`
+   |          ^^^^^^^^^^^^^^ help: a derive macro with a similar name exists: `FooWithLongName`
 
 error: cannot find attribute macro `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:27:3
    |
 LL | #[attr_proc_macra]
-   |   ^^^^^^^^^^^^^^^ help: try: `attr_proc_macro`
+   |   ^^^^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `attr_proc_macro`
 
 error: cannot find attribute macro `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:31:3
@@ -20,13 +20,13 @@ error: cannot find derive macro `Dlone` in this scope
   --> $DIR/resolve-error.rs:34:10
    |
 LL | #[derive(Dlone)]
-   |          ^^^^^ help: try: `Clone`
+   |          ^^^^^ help: a derive macro with a similar name exists: `Clone`
 
 error: cannot find derive macro `Dlona` in this scope
   --> $DIR/resolve-error.rs:38:10
    |
 LL | #[derive(Dlona)]
-   |          ^^^^^ help: try: `Clona`
+   |          ^^^^^ help: a derive macro with a similar name exists: `Clona`
 
 error: cannot find derive macro `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:42:10
@@ -38,13 +38,13 @@ error: cannot find macro `FooWithLongNama!` in this scope
   --> $DIR/resolve-error.rs:47:5
    |
 LL |     FooWithLongNama!();
-   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `FooWithLongNam`
+   |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `FooWithLongNam`
 
 error: cannot find macro `attr_proc_macra!` in this scope
   --> $DIR/resolve-error.rs:50:5
    |
 LL |     attr_proc_macra!();
-   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `attr_proc_mac`
+   |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `attr_proc_mac`
 
 error: cannot find macro `Dlona!` in this scope
   --> $DIR/resolve-error.rs:53:5
@@ -56,7 +56,7 @@ error: cannot find macro `bang_proc_macrp!` in this scope
   --> $DIR/resolve-error.rs:56:5
    |
 LL |     bang_proc_macrp!();
-   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `bang_proc_macro`
+   |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `bang_proc_macro`
 
 error: aborting due to 10 previous errors
 
