@@ -77,11 +77,12 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     }
 
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        if ty.is_sized(self.tcx().at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
+        let param_env = ty::ParamEnv::reveal_all();
+        if ty.is_sized(self.tcx().at(DUMMY_SP), param_env) {
             return false;
         }
 
-        let tail = self.tcx().struct_tail(ty);
+        let tail = self.tcx().struct_tail_erasing_lifetimes(ty, param_env);
         match tail.sty {
             ty::Foreign(..) => false,
             ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,

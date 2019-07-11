@@ -361,7 +361,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     "uninitialized data in fat pointer metadata", self.path);
                 let layout = self.ecx.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
                 if layout.is_unsized() {
-                    let tail = self.ecx.tcx.struct_tail(layout.ty);
+                    let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(layout.ty,
+                                                                          self.ecx.param_env);
                     match tail.sty {
                         ty::Dynamic(..) => {
                             let vtable = meta.unwrap();
