@@ -228,8 +228,27 @@ pub trait PrettyPrinter<'tcx>:
     /// from at least one local module and returns true. If the crate defining `def_id` is
     /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
     fn try_print_visible_def_path(
+        self,
+        def_id: DefId,
+    ) -> Result<(Self, bool), Self::Error> {
+        let mut callers = Vec::new();
+        self.try_print_visible_def_path_recur(def_id, &mut callers)
+    }
+
+    /// Does the work of `try_print_visible_def_path`, building the
+    /// full definition path recursively before attempting to
+    /// post-process it into the valid and visible version that
+    /// accounts for re-exports.
+    ///
+    /// This method should only be callled by itself or
+    /// `try_print_visible_def_path`.
+    ///
+    /// `callers` is a chain of visible_parent's leading to `def_id`,
+    /// to support cycle detection during recursion.
+    fn try_print_visible_def_path_recur(
         mut self,
         def_id: DefId,
+        callers: &mut Vec<DefId>,
     ) -> Result<(Self, bool), Self::Error> {
         define_scoped_cx!(self);
 
@@ -302,14 +321,19 @@ pub trait PrettyPrinter<'tcx>:
             Some(parent) => parent,
             None => return Ok((self, false)),
         };
+        if callers.contains(&visible_parent) {
+            return Ok((self, false));
+        }
+        callers.push(visible_parent);
         // HACK(eddyb) this bypasses `path_append`'s prefix printing to avoid
         // knowing ahead of time whether the entire path will succeed or not.
         // To support printers that do not implement `PrettyPrinter`, a `Vec` or
         // linked list on the stack would need to be built, before any printing.
-        match self.try_print_visible_def_path(visible_parent)? {
+        match self.try_print_visible_def_path_recur(visible_parent, callers)? {
             (cx, false) => return Ok((cx, false)),
             (cx, true) => self = cx,
         }
+        callers.pop();
         let actual_parent = self.tcx().parent(def_id);
         debug!(
             "try_print_visible_def_path: visible_parent={:?} actual_parent={:?}",
