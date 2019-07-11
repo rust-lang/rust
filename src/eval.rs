@@ -108,7 +108,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         ecx.machine.argc = Some(argc_place.ptr.to_ptr()?);
     }
 
-    // FIXME: extract main source file path.
     // Third argument (`argv`): created from `config.args`.
     let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
     // For Windows, construct a command string with all the aguments.
@@ -136,7 +135,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let place = ecx.mplace_field(argvs_place, idx as u64)?;
         ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
     }
-    ecx.memory_mut().mark_immutable(argvs_place.to_ptr()?.alloc_id)?;
+    ecx.memory_mut().mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
     // Write a pointer to that place as the argument.
     let argv = argvs_place.ptr;
     ecx.write_scalar(argv, dest)?;

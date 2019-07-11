@@ -166,17 +166,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let elem_size = elem_layout.size.bytes();
                 let count = this.read_scalar(args[2])?.to_usize(this)?;
                 let elem_align = elem_layout.align.abi;
-                // erase tags: this is a raw ptr operation
+
+                let size = Size::from_bytes(count * elem_size);
                 let src = this.read_scalar(args[0])?.not_undef()?;
+                let src = this.memory().check_ptr_access(src, size, elem_align)?;
                 let dest = this.read_scalar(args[1])?.not_undef()?;
-                this.memory_mut().copy(
-                    src,
-                    elem_align,
-                    dest,
-                    elem_align,
-                    Size::from_bytes(count * elem_size),
-                    intrinsic_name.ends_with("_nonoverlapping"),
-                )?;
+                let dest = this.memory().check_ptr_access(dest, size, elem_align)?;
+
+                if let (Some(src), Some(dest)) = (src, dest) {
+                    this.memory_mut().copy(
+                        src,
+                        dest,
+                        size,
+                        intrinsic_name.ends_with("_nonoverlapping"),
+                    )?;
+                }
             }
 
             "discriminant_value" => {

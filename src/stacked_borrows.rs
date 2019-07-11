@@ -587,6 +587,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Nothing to do for ZSTs.
             return Ok(*val);
         }
+        let place = this.force_mplace_ptr(place)?;
 
         // Compute new borrow.
         let new_tag = match kind {
