@@ -1011,7 +1011,7 @@ impl<T: fmt::Debug> Option<T> {
     #[unstable(feature = "option_expect_none", reason = "newly added", issue = "0")]
     pub fn expect_none(self, msg: &str) {
         if let Some(val) = self {
-            expect_none_failed(msg, val);
+            expect_none_failed(msg, &val);
         }
     }
 
@@ -1053,7 +1053,7 @@ impl<T: fmt::Debug> Option<T> {
     #[unstable(feature = "option_unwrap_none", reason = "newly added", issue = "0")]
     pub fn unwrap_none(self) {
         if let Some(val) = self {
-            expect_none_failed("called `Option::unwrap_none()` on a `Some` value", val);
+            expect_none_failed("called `Option::unwrap_none()` on a `Some` value", &val);
         }
     }
 }
@@ -1153,7 +1153,7 @@ fn expect_failed(msg: &str) -> ! {
 // This is a separate function to reduce the code size of .expect_none() itself.
 #[inline(never)]
 #[cold]
-fn expect_none_failed<T: fmt::Debug>(msg: &str, value: T) -> ! {
+fn expect_none_failed(msg: &str, value: &dyn fmt::Debug) -> ! {
     panic!("{}: {:?}", msg, value)
 }
 
