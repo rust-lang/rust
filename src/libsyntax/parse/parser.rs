@@ -6666,12 +6666,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Reads a module from a source file.
-    fn eval_src_mod(&mut self,
-                    path: PathBuf,
-                    directory_ownership: DirectoryOwnership,
-                    name: String,
-                    id_sp: Span)
-                    -> PResult<'a, (ast::Mod, Vec<Attribute> )> {
+    fn eval_src_mod(
+        &mut self,
+        path: PathBuf,
+        directory_ownership: DirectoryOwnership,
+        name: String,
+        id_sp: Span,
+    ) -> PResult<'a, (ast::Mod, Vec<Attribute>)> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
             let mut err = String::from("circular modules: ");
