@@ -2225,24 +2225,50 @@ where
 struct Niche {
     offset: Size,
     scalar: Scalar,
-    available: u128,
 }
 
 impl Niche {
-    fn reserve<'tcx>(
-        &self,
-        cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
-        count: u128,
-    ) -> Option<(u128, Scalar)> {
-        if count > self.available {
-            return None;
-        }
+    fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
         let Scalar { value, valid_range: ref v } = self.scalar;
         let bits = value.size(cx).bits();
         assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
+
+        // Find out how many values are outside the valid range.
+        let niche = v.end().wrapping_add(1)..*v.start();
+        niche.end.wrapping_sub(niche.start) & max_value
+    }
+
+    fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
+        assert!(count > 0);
+
+        let Scalar { value, valid_range: ref v } = self.scalar;
+        let bits = value.size(cx).bits();
+        assert!(bits <= 128);
+        let max_value = !0u128 >> (128 - bits);
+
+        if count > max_value {
+            return None;
+        }
+
+        // Compute the range of invalid values being reserved.
         let start = v.end().wrapping_add(1) & max_value;
         let end = v.end().wrapping_add(count) & max_value;
+
+        // If the `end` of our range is inside the valid range,
+        // then we ran out of invalid values.
+        // FIXME(eddyb) abstract this with a wraparound range type.
+        let valid_range_contains = |x| {
+            if v.start() <= v.end() {
+                *v.start() <= x && x <= *v.end()
+            } else {
+                *v.start() <= x || x <= *v.end()
+            }
+        };
+        if valid_range_contains(end) {
+            return None;
+        }
+
         Some((start, Scalar { value, valid_range: *v.start()..=end }))
     }
 }
@@ -2253,25 +2279,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     // FIXME(eddyb) traverse already optimized enums.
     fn find_niche(&self, layout: TyLayout<'tcx>) -> Result<Option<Niche>, LayoutError<'tcx>> {
         let scalar_niche = |scalar: &Scalar, offset| {
-            let Scalar { value, valid_range: ref v } = *scalar;
-
-            let bits = value.size(self).bits();
-            assert!(bits <= 128);
-            let max_value = !0u128 >> (128 - bits);
-
-            // Find out how many values are outside the valid range.
-            let available = if v.start() <= v.end() {
-                v.start() + (max_value - v.end())
+            let niche = Niche { offset, scalar: scalar.clone() };
+            if niche.available(self) > 0 {
+                Some(niche)
             } else {
-                v.start() - v.end() - 1
-            };
-
-            // Give up if there is no niche value available.
-            if available == 0 {
-                return None;
+                None
             }
-
-            Some(Niche { offset, scalar: scalar.clone(), available })
         };
 
         // Locals variables which live across yields are stored
@@ -2293,7 +2306,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 )
                     .chain(iter::once((a, Size::ZERO)))
                     .filter_map(|(scalar, offset)| scalar_niche(scalar, offset))
-                    .max_by_key(|niche| niche.available);
+                    .max_by_key(|niche| niche.available(self));
                 return Ok(niche);
             }
             Abi::Vector { ref element, .. } => {
@@ -2325,8 +2338,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let mut available = 0;
         for i in 0..layout.fields.count() {
             if let Some(mut c) = self.find_niche(layout.field(self, i)?)? {
-                if c.available > available {
-                    available = c.available;
+                let c_available = c.available(self);
+                if c_available > available {
+                    available = c_available;
                     c.offset += layout.fields.offset(i);
                     niche = Some(c);
                 }
