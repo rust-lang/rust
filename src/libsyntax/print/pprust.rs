@@ -341,7 +341,7 @@ pub fn tts_to_string(tts: &[tokenstream::TokenTree]) -> String {
 }
 
 pub fn tokens_to_string(tokens: TokenStream) -> String {
-    to_string(|s| s.print_tts_ext(tokens, false))
+    to_string(|s| s.print_tts(tokens, false))
 }
 
 pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
@@ -629,7 +629,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             } else {
                 self.print_attribute_path(&attr.path);
                 self.space();
-                self.print_tts(attr.tokens.clone());
+                self.print_tts(attr.tokens.clone(), true);
             }
             self.word("]");
         }
@@ -696,11 +696,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         }
     }
 
-    fn print_tts(&mut self, tts: tokenstream::TokenStream) {
-        self.print_tts_ext(tts, true)
-    }
-
-    fn print_tts_ext(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
+    fn print_tts(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
         self.ibox(0);
         for (i, tt) in tts.into_trees().enumerate() {
             if i != 0 {
@@ -1247,7 +1243,7 @@ impl<'a> State<'a> {
                     self.print_ident(item.ident);
                     self.cbox(INDENT_UNIT);
                     self.popen();
-                    self.print_tts(mac.node.stream());
+                    self.print_tts(mac.node.stream(), true);
                     self.pclose();
                     self.s.word(";");
                     self.end();
@@ -1258,7 +1254,7 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident);
                 self.cbox(INDENT_UNIT);
                 self.popen();
-                self.print_tts(tts.stream());
+                self.print_tts(tts.stream(), true);
                 self.pclose();
                 self.s.word(";");
                 self.end();
@@ -1659,7 +1655,7 @@ impl<'a> State<'a> {
                 self.bopen();
             }
         }
-        self.print_tts(m.node.stream());
+        self.print_tts(m.node.stream(), true);
         match m.node.delim {
             MacDelimiter::Parenthesis => self.pclose(),
             MacDelimiter::Bracket => self.s.word("]"),
