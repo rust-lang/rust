@@ -120,7 +120,7 @@ pub fn run(options: Options) -> i32 {
     testing::test_main(
         &test_args,
         tests,
-        testing::Options::new().display_output(display_warnings)
+        Some(testing::Options::new().display_output(display_warnings))
     );
 
     0

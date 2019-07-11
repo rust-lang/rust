@@ -154,6 +154,6 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> i32 {
 
     options.test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&options.test_args, collector.tests,
-                       testing::Options::new().display_output(options.display_warnings));
+                       Some(testing::Options::new().display_output(options.display_warnings)));
     0
 }

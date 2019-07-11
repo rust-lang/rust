@@ -272,7 +272,7 @@ impl Options {
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
-pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
+pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Options>) {
     let mut opts = match parse_opts(args) {
         Some(Ok(o)) => o,
         Some(Err(msg)) => {
@@ -281,8 +281,9 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
         }
         None => return,
     };
-
-    opts.options = options;
+    if let Some(options) = options {
+        opts.options = options;
+    }
     if opts.list {
         if let Err(e) = list_tests_console(&opts, tests) {
             eprintln!("error: io error when listing tests: {:?}", e);
@@ -323,7 +324,7 @@ pub fn test_main_static(tests: &[&TestDescAndFn]) {
             _ => panic!("non-static tests passed to test::test_main_static"),
         })
         .collect();
-    test_main(&args, owned_tests, Options::new())
+    test_main(&args, owned_tests, None)
 }
 
 /// Invoked when unit tests terminate. Should panic if the unit
@@ -467,6 +468,11 @@ fn optgroups() -> getopts::Options {
             terse  = Display one character per test;
             json   = Output a json document",
             "pretty|terse|json",
+        )
+        .optflag(
+            "",
+            "show-output",
+            "Show captured stdout of successful tests"
         )
         .optopt(
             "Z",
@@ -667,7 +673,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         format,
         test_threads,
         skip: matches.opt_strs("skip"),
-        options: Options::new(),
+        options: Options::new().display_output(matches.opt_present("show-output")),
     };
 
     Some(Ok(test_opts))
