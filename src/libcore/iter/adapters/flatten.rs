@@ -229,7 +229,7 @@ where
                 if let elt@Some(_) = inner.next() { return elt }
             }
             match self.iter.next() {
-                None => return self.backiter.as_mut().and_then(|it| it.next()),
+                None => return self.backiter.as_mut()?.next(),
                 Some(inner) => self.frontiter = Some(inner.into_iter()),
             }
         }
@@ -237,8 +237,8 @@ where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
-        let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
+        let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), U::size_hint);
+        let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), U::size_hint);
         let lo = flo.saturating_add(blo);
         match (self.iter.size_hint(), fhi, bhi) {
             ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
@@ -250,20 +250,25 @@ where
     fn try_fold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
+        #[inline]
+        fn flatten<'a, T: IntoIterator, Acc, R: Try<Ok = Acc>>(
+            frontiter: &'a mut Option<T::IntoIter>,
+            fold: &'a mut impl FnMut(Acc, T::Item) -> R,
+        ) -> impl FnMut(Acc, T) -> R + 'a {
+            move |acc, x| {
+                let mut mid = x.into_iter();
+                let r = mid.try_fold(acc, &mut *fold);
+                *frontiter = Some(mid);
+                r
+            }
+        }
+
         if let Some(ref mut front) = self.frontiter {
             init = front.try_fold(init, &mut fold)?;
         }
         self.frontiter = None;
 
-        {
-            let frontiter = &mut self.frontiter;
-            init = self.iter.try_fold(init, |acc, x| {
-                let mut mid = x.into_iter();
-                let r = mid.try_fold(acc, &mut fold);
-                *frontiter = Some(mid);
-                r
-            })?;
-        }
+        init = self.iter.try_fold(init, flatten(&mut self.frontiter, &mut fold))?;
         self.frontiter = None;
 
         if let Some(ref mut back) = self.backiter {
@@ -275,13 +280,20 @@ where
     }
 
     #[inline]
-    fn fold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn fold<Acc, Fold>(self, init: Acc, ref mut fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
+        #[inline]
+        fn flatten<U: Iterator, Acc>(
+            fold: &mut impl FnMut(Acc, U::Item) -> Acc,
+        ) -> impl FnMut(Acc, U) -> Acc + '_ {
+            move |acc, iter| iter.fold(acc, &mut *fold)
+        }
+
         self.frontiter.into_iter()
             .chain(self.iter.map(IntoIterator::into_iter))
             .chain(self.backiter)
-            .fold(init, |acc, iter| iter.fold(acc, &mut fold))
+            .fold(init, flatten(fold))
     }
 }
 
@@ -297,7 +309,7 @@ where
                 if let elt@Some(_) = inner.next_back() { return elt }
             }
             match self.iter.next_back() {
-                None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
+                None => return self.frontiter.as_mut()?.next_back(),
                 next => self.backiter = next.map(IntoIterator::into_iter),
             }
         }
@@ -307,20 +319,27 @@ where
     fn try_rfold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
+        #[inline]
+        fn flatten<'a, T: IntoIterator, Acc, R: Try<Ok = Acc>>(
+            backiter: &'a mut Option<T::IntoIter>,
+            fold: &'a mut impl FnMut(Acc, T::Item) -> R,
+        ) -> impl FnMut(Acc, T) -> R + 'a where
+            T::IntoIter: DoubleEndedIterator,
+        {
+            move |acc, x| {
+                let mut mid = x.into_iter();
+                let r = mid.try_rfold(acc, &mut *fold);
+                *backiter = Some(mid);
+                r
+            }
+        }
+
         if let Some(ref mut back) = self.backiter {
             init = back.try_rfold(init, &mut fold)?;
         }
         self.backiter = None;
 
-        {
-            let backiter = &mut self.backiter;
-            init = self.iter.try_rfold(init, |acc, x| {
-                let mut mid = x.into_iter();
-                let r = mid.try_rfold(acc, &mut fold);
-                *backiter = Some(mid);
-                r
-            })?;
-        }
+        init = self.iter.try_rfold(init, flatten(&mut self.backiter, &mut fold))?;
         self.backiter = None;
 
         if let Some(ref mut front) = self.frontiter {
@@ -332,12 +351,19 @@ where
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, init: Acc, ref mut fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
+        #[inline]
+        fn flatten<U: DoubleEndedIterator, Acc>(
+            fold: &mut impl FnMut(Acc, U::Item) -> Acc,
+        ) -> impl FnMut(Acc, U) -> Acc + '_ {
+            move |acc, iter| iter.rfold(acc, &mut *fold)
+        }
+
         self.frontiter.into_iter()
             .chain(self.iter.map(IntoIterator::into_iter))
             .chain(self.backiter)
-            .rfold(init, |acc, iter| iter.rfold(acc, &mut fold))
+            .rfold(init, flatten(fold))
     }
 }
