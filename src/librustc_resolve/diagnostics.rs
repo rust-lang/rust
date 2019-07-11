@@ -16,11 +16,10 @@ use syntax::symbol::{Symbol, kw};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{BytePos, Span};
 
-use crate::macros::ParentScope;
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::{is_self_type, is_self_value, path_names_to_string};
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{PathResult, PathSource, Resolver, RibKind, Segment};
+use crate::{PathResult, PathSource, ParentScope, Resolver, RibKind, Segment};
 
 type Res = def::Res<ast::NodeId>;
 

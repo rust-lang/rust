@@ -72,7 +72,7 @@ use smallvec::SmallVec;
 use diagnostics::{Suggestion, ImportSuggestion};
 use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
-use macros::{InvocationData, LegacyBinding, ParentScope};
+use macros::{InvocationData, LegacyBinding, LegacyScope};
 
 type Res = def::Res<NodeId>;
 
@@ -106,11 +106,45 @@ impl Determinacy {
     }
 }
 
+/// A specific scope in which a name can be looked up.
+/// This enum is currently used only for early resolution (imports and macros),
+/// but not for late resolution yet.
+enum Scope<'a> {
+    DeriveHelpers,
+    MacroRules(LegacyScope<'a>),
+    CrateRoot,
+    Module(Module<'a>),
+    MacroUsePrelude,
+    BuiltinMacros,
+    BuiltinAttrs,
+    LegacyPluginHelpers,
+    ExternPrelude,
+    ToolPrelude,
+    StdLibPrelude,
+    BuiltinTypes,
+}
+
+/// Names from different contexts may want to visit different subsets of all specific scopes
+/// with different restrictions when looking up the resolution.
+/// This enum is currently used only for early resolution (imports and macros),
+/// but not for late resolution yet.
 enum ScopeSet {
     Import(Namespace),
     AbsolutePath(Namespace),
     Macro(MacroKind),
     Module,
+}
+
+/// Everything you need to know about a name's location to resolve it.
+/// Serves as a starting point for the scope visitor.
+/// This struct is currently used only for early resolution (imports and macros),
+/// but not for late resolution yet.
+#[derive(Clone, Debug)]
+pub struct ParentScope<'a> {
+    module: Module<'a>,
+    expansion: Mark,
+    legacy: LegacyScope<'a>,
+    derives: Vec<ast::Path>,
 }
 
 #[derive(Eq)]

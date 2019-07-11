@@ -1,5 +1,5 @@
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc, Determinacy};
-use crate::{CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
+use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, Weak};
 use crate::{Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
 use crate::{is_known_tool, resolve_error};
 use crate::ModuleOrUniformRoot;
@@ -77,15 +77,6 @@ pub enum LegacyScope<'a> {
     /// The scope introduced by a macro invocation that can potentially
     /// create a `macro_rules!` macro definition.
     Invocation(&'a InvocationData<'a>),
-}
-
-/// Everything you need to resolve a macro or import path.
-#[derive(Clone, Debug)]
-pub struct ParentScope<'a> {
-    crate module: Module<'a>,
-    crate expansion: Mark,
-    crate legacy: LegacyScope<'a>,
-    crate derives: Vec<ast::Path>,
 }
 
 // Macro namespace is separated into two sub-namespaces, one for bang macros and
@@ -474,21 +465,6 @@ impl<'a> Resolver<'a> {
         //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
         //    in prelude, not sure where exactly (creates ambiguities with any other prelude names).
 
-        enum WhereToResolve<'a> {
-            DeriveHelpers,
-            MacroRules(LegacyScope<'a>),
-            CrateRoot,
-            Module(Module<'a>),
-            MacroUsePrelude,
-            BuiltinMacros,
-            BuiltinAttrs,
-            LegacyPluginHelpers,
-            ExternPrelude,
-            ToolPrelude,
-            StdLibPrelude,
-            BuiltinTypes,
-        }
-
         bitflags::bitflags! {
             struct Flags: u8 {
                 const MACRO_RULES        = 1 << 0;
@@ -530,15 +506,15 @@ impl<'a> Resolver<'a> {
             ScopeSet::Module => (TypeNS, None, false, false),
         };
         let mut where_to_resolve = match ns {
-            _ if is_absolute_path => WhereToResolve::CrateRoot,
-            TypeNS | ValueNS => WhereToResolve::Module(parent_scope.module),
-            MacroNS => WhereToResolve::DeriveHelpers,
+            _ if is_absolute_path => Scope::CrateRoot,
+            TypeNS | ValueNS => Scope::Module(parent_scope.module),
+            MacroNS => Scope::DeriveHelpers,
         };
         let mut use_prelude = !parent_scope.module.no_implicit_prelude;
         let mut determinacy = Determinacy::Determined;
         loop {
             let result = match where_to_resolve {
-                WhereToResolve::DeriveHelpers => {
+                Scope::DeriveHelpers => {
                     let mut result = Err(Determinacy::Determined);
                     for derive in &parent_scope.derives {
                         let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
@@ -558,14 +534,14 @@ impl<'a> Resolver<'a> {
                     }
                     result
                 }
-                WhereToResolve::MacroRules(legacy_scope) => match legacy_scope {
+                Scope::MacroRules(legacy_scope) => match legacy_scope {
                     LegacyScope::Binding(legacy_binding) if ident == legacy_binding.ident =>
                         Ok((legacy_binding.binding, Flags::MACRO_RULES)),
                     LegacyScope::Invocation(invoc) if invoc.output_legacy_scope.get().is_none() =>
                         Err(Determinacy::Undetermined),
                     _ => Err(Determinacy::Determined),
                 }
-                WhereToResolve::CrateRoot => {
+                Scope::CrateRoot => {
                     let root_ident = Ident::new(kw::PathRoot, orig_ident.span);
                     let root_module = self.resolve_crate_root(root_ident);
                     let binding = self.resolve_ident_in_module_ext(
@@ -585,7 +561,7 @@ impl<'a> Resolver<'a> {
                         Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                     }
                 }
-                WhereToResolve::Module(module) => {
+                Scope::Module(module) => {
                     let orig_current_module = mem::replace(&mut self.current_module, module);
                     let binding = self.resolve_ident_in_module_unadjusted_ext(
                         ModuleOrUniformRoot::Module(module),
@@ -615,7 +591,7 @@ impl<'a> Resolver<'a> {
                         Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                     }
                 }
-                WhereToResolve::MacroUsePrelude => {
+                Scope::MacroUsePrelude => {
                     if use_prelude || rust_2015 {
                         match self.macro_use_prelude.get(&ident.name).cloned() {
                             Some(binding) =>
@@ -628,13 +604,13 @@ impl<'a> Resolver<'a> {
                         Err(Determinacy::Determined)
                     }
                 }
-                WhereToResolve::BuiltinMacros => {
+                Scope::BuiltinMacros => {
                     match self.builtin_macros.get(&ident.name).cloned() {
                         Some(binding) => Ok((binding, Flags::PRELUDE)),
                         None => Err(Determinacy::Determined),
                     }
                 }
-                WhereToResolve::BuiltinAttrs => {
+                Scope::BuiltinAttrs => {
                     if is_builtin_attr_name(ident.name) {
                         let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
                                        ty::Visibility::Public, DUMMY_SP, Mark::root())
@@ -644,7 +620,7 @@ impl<'a> Resolver<'a> {
                         Err(Determinacy::Determined)
                     }
                 }
-                WhereToResolve::LegacyPluginHelpers => {
+                Scope::LegacyPluginHelpers => {
                     if (use_prelude || rust_2015) &&
                        self.session.plugin_attributes.borrow().iter()
                                                      .any(|(name, _)| ident.name == *name) {
@@ -656,7 +632,7 @@ impl<'a> Resolver<'a> {
                         Err(Determinacy::Determined)
                     }
                 }
-                WhereToResolve::ExternPrelude => {
+                Scope::ExternPrelude => {
                     if use_prelude || is_absolute_path {
                         match self.extern_prelude_get(ident, !record_used) {
                             Some(binding) => Ok((binding, Flags::PRELUDE)),
@@ -668,7 +644,7 @@ impl<'a> Resolver<'a> {
                         Err(Determinacy::Determined)
                     }
                 }
-                WhereToResolve::ToolPrelude => {
+                Scope::ToolPrelude => {
                     if use_prelude && is_known_tool(ident.name) {
                         let binding = (Res::ToolMod, ty::Visibility::Public,
                                        DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
@@ -677,7 +653,7 @@ impl<'a> Resolver<'a> {
                         Err(Determinacy::Determined)
                     }
                 }
-                WhereToResolve::StdLibPrelude => {
+                Scope::StdLibPrelude => {
                     let mut result = Err(Determinacy::Determined);
                     if use_prelude {
                         if let Some(prelude) = self.prelude {
@@ -694,7 +670,7 @@ impl<'a> Resolver<'a> {
                     }
                     result
                 }
-                WhereToResolve::BuiltinTypes => {
+                Scope::BuiltinTypes => {
                     match self.primitive_type_table.primitive_types.get(&ident.name).cloned() {
                         Some(prim_ty) => {
                             let binding = (Res::PrimTy(prim_ty), ty::Visibility::Public,
@@ -780,51 +756,51 @@ impl<'a> Resolver<'a> {
             }
 
             where_to_resolve = match where_to_resolve {
-                WhereToResolve::DeriveHelpers =>
-                    WhereToResolve::MacroRules(parent_scope.legacy),
-                WhereToResolve::MacroRules(legacy_scope) => match legacy_scope {
-                    LegacyScope::Binding(binding) => WhereToResolve::MacroRules(
+                Scope::DeriveHelpers =>
+                    Scope::MacroRules(parent_scope.legacy),
+                Scope::MacroRules(legacy_scope) => match legacy_scope {
+                    LegacyScope::Binding(binding) => Scope::MacroRules(
                         binding.parent_legacy_scope
                     ),
-                    LegacyScope::Invocation(invoc) => WhereToResolve::MacroRules(
+                    LegacyScope::Invocation(invoc) => Scope::MacroRules(
                         invoc.output_legacy_scope.get().unwrap_or(invoc.parent_legacy_scope)
                     ),
-                    LegacyScope::Empty => WhereToResolve::Module(parent_scope.module),
+                    LegacyScope::Empty => Scope::Module(parent_scope.module),
                 }
-                WhereToResolve::CrateRoot => match ns {
+                Scope::CrateRoot => match ns {
                     TypeNS => {
                         ident.span.adjust(Mark::root());
-                        WhereToResolve::ExternPrelude
+                        Scope::ExternPrelude
                     }
                     ValueNS | MacroNS => break,
                 }
-                WhereToResolve::Module(module) => {
+                Scope::Module(module) => {
                     match self.hygienic_lexical_parent(module, &mut ident.span) {
-                        Some(parent_module) => WhereToResolve::Module(parent_module),
+                        Some(parent_module) => Scope::Module(parent_module),
                         None => {
                             ident.span.adjust(Mark::root());
                             use_prelude = !module.no_implicit_prelude;
                             match ns {
-                                TypeNS => WhereToResolve::ExternPrelude,
-                                ValueNS => WhereToResolve::StdLibPrelude,
-                                MacroNS => WhereToResolve::MacroUsePrelude,
+                                TypeNS => Scope::ExternPrelude,
+                                ValueNS => Scope::StdLibPrelude,
+                                MacroNS => Scope::MacroUsePrelude,
                             }
                         }
                     }
                 }
-                WhereToResolve::MacroUsePrelude => WhereToResolve::StdLibPrelude,
-                WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
-                WhereToResolve::BuiltinAttrs => WhereToResolve::LegacyPluginHelpers,
-                WhereToResolve::LegacyPluginHelpers => break, // nowhere else to search
-                WhereToResolve::ExternPrelude if is_absolute_path => break,
-                WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
-                WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
-                WhereToResolve::StdLibPrelude => match ns {
-                    TypeNS => WhereToResolve::BuiltinTypes,
+                Scope::MacroUsePrelude => Scope::StdLibPrelude,
+                Scope::BuiltinMacros => Scope::BuiltinAttrs,
+                Scope::BuiltinAttrs => Scope::LegacyPluginHelpers,
+                Scope::LegacyPluginHelpers => break, // nowhere else to search
+                Scope::ExternPrelude if is_absolute_path => break,
+                Scope::ExternPrelude => Scope::ToolPrelude,
+                Scope::ToolPrelude => Scope::StdLibPrelude,
+                Scope::StdLibPrelude => match ns {
+                    TypeNS => Scope::BuiltinTypes,
                     ValueNS => break, // nowhere else to search
-                    MacroNS => WhereToResolve::BuiltinMacros,
+                    MacroNS => Scope::BuiltinMacros,
                 }
-                WhereToResolve::BuiltinTypes => break, // nowhere else to search
+                Scope::BuiltinTypes => break, // nowhere else to search
             };
 
             continue;
