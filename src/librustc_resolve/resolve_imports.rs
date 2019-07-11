@@ -2,6 +2,7 @@ use ImportDirectiveSubclass::*;
 
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, Weak};
+use crate::Determinacy::{self, *};
 use crate::Namespace::{self, TypeNS, MacroNS};
 use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use crate::{Resolver, Segment};
@@ -27,7 +28,6 @@ use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
 
 use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
-use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;

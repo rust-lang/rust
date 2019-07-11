@@ -15,13 +15,13 @@ use smallvec::{smallvec, SmallVec};
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
 
 use crate::attr::{self, HasAttrs};
-use crate::source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned, respan};
+use crate::source_map::{self, SourceMap, ExpnInfo, ExpnKind, dummy_spanned, respan};
 use crate::config;
 use crate::entry::{self, EntryPointType};
 use crate::ext::base::{ExtCtxt, Resolver};
 use crate::ext::build::AstBuilder;
 use crate::ext::expand::ExpansionConfig;
-use crate::ext::hygiene::{self, Mark, SyntaxContext};
+use crate::ext::hygiene::{self, Mark, SyntaxContext, MacroKind};
 use crate::mut_visit::{*, ExpectOne};
 use crate::feature_gate::Features;
 use crate::util::map_in_place::MapInPlace;
@@ -43,7 +43,6 @@ struct TestCtxt<'a> {
     test_cases: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
     is_libtest: bool,
-    ctxt: SyntaxContext,
     features: &'a Features,
     test_runner: Option<ast::Path>,
 
@@ -259,8 +258,6 @@ fn generate_test_harness(sess: &ParseSess,
     let mut cleaner = EntryPointCleaner { depth: 0 };
     cleaner.visit_crate(krate);
 
-    let mark = Mark::fresh(Mark::root());
-
     let mut econfig = ExpansionConfig::default("test".to_string());
     econfig.features = Some(features);
 
@@ -274,28 +271,15 @@ fn generate_test_harness(sess: &ParseSess,
         is_libtest: attr::find_crate_name(&krate.attrs)
             .map(|s| s == sym::test).unwrap_or(false),
         toplevel_reexport: None,
-        ctxt: SyntaxContext::empty().apply_mark(mark),
         features,
         test_runner
     };
-
-    mark.set_expn_info(ExpnInfo::with_unstable(
-        MacroAttribute(sym::test_case), DUMMY_SP, sess.edition,
-        &[sym::main, sym::test, sym::rustc_attrs],
-    ));
 
     TestHarnessGenerator {
         cx,
         tests: Vec::new(),
         tested_submods: Vec::new(),
     }.visit_crate(krate);
-}
-
-/// Craft a span that will be ignored by the stability lint's
-/// call to source_map's `is_internal` check.
-/// The expanded code calls some unstable functions in the test crate.
-fn ignored_span(cx: &TestCtxt<'_>, sp: Span) -> Span {
-    sp.with_ctxt(cx.ctxt)
 }
 
 enum HasTestSignature {
@@ -314,12 +298,15 @@ enum BadTestSignature {
 /// Creates a function item for use as the main function of a test build.
 /// This function will call the `test_runner` as specified by the crate attribute
 fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
-    // Writing this out by hand with 'ignored_span':
+    // Writing this out by hand:
     //        pub fn main() {
     //            #![main]
     //            test::test_main_static(&[..tests]);
     //        }
-    let sp = ignored_span(cx, DUMMY_SP);
+    let sp = DUMMY_SP.fresh_expansion(Mark::root(), ExpnInfo::allow_unstable(
+        ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, cx.ext_cx.parse_sess.edition,
+        [sym::main, sym::test, sym::rustc_attrs][..].into(),
+    ));
     let ecx = &cx.ext_cx;
     let test_id = Ident::with_empty_ctxt(sym::test);
 

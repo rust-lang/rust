@@ -588,41 +588,41 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
 
         let expn_info_tag = u8::decode(self)?;
 
-        let ctxt = match expn_info_tag {
+        // FIXME(mw): This method does not restore `MarkData::parent` or
+        // `SyntaxContextData::prev_ctxt` or `SyntaxContextData::opaque`. These things
+        // don't seem to be used after HIR lowering, so everything should be fine
+        // as long as incremental compilation does not kick in before that.
+        let location = || Span::new(lo, hi, SyntaxContext::empty());
+        let recover_from_expn_info = |this: &Self, expn_info, pos| {
+            let span = location().fresh_expansion(Mark::root(), expn_info);
+            this.synthetic_expansion_infos.borrow_mut().insert(pos, span.ctxt());
+            span
+        };
+        Ok(match expn_info_tag {
             TAG_NO_EXPANSION_INFO => {
-                SyntaxContext::empty()
+                location()
             }
             TAG_EXPANSION_INFO_INLINE => {
-                let pos = AbsoluteBytePos::new(self.opaque.position());
-                let expn_info: ExpnInfo = Decodable::decode(self)?;
-                let ctxt = SyntaxContext::allocate_directly(expn_info);
-                self.synthetic_expansion_infos.borrow_mut().insert(pos, ctxt);
-                ctxt
+                let expn_info = Decodable::decode(self)?;
+                recover_from_expn_info(
+                    self, expn_info, AbsoluteBytePos::new(self.opaque.position())
+                )
             }
             TAG_EXPANSION_INFO_SHORTHAND => {
                 let pos = AbsoluteBytePos::decode(self)?;
-                let cached_ctxt = self.synthetic_expansion_infos
-                                      .borrow()
-                                      .get(&pos)
-                                      .cloned();
-
+                let cached_ctxt = self.synthetic_expansion_infos.borrow().get(&pos).cloned();
                 if let Some(ctxt) = cached_ctxt {
-                    ctxt
+                    Span::new(lo, hi, ctxt)
                 } else {
-                    let expn_info = self.with_position(pos.to_usize(), |this| {
-                         ExpnInfo::decode(this)
-                    })?;
-                    let ctxt = SyntaxContext::allocate_directly(expn_info);
-                    self.synthetic_expansion_infos.borrow_mut().insert(pos, ctxt);
-                    ctxt
+                    let expn_info =
+                        self.with_position(pos.to_usize(), |this| ExpnInfo::decode(this))?;
+                    recover_from_expn_info(self, expn_info, pos)
                 }
             }
             _ => {
                 unreachable!()
             }
-        };
-
-        Ok(Span::new(lo, hi, ctxt))
+        })
     }
 }
 

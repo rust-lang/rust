@@ -1244,12 +1244,14 @@ mod builtin {
 
     /// Attribute macro applied to a function to turn it into a unit test.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
     #[rustc_macro_transparency = "semitransparent"]
     pub macro test($item:item) { /* compiler built-in */ }
 
     /// Attribute macro applied to a function to turn it into a benchmark test.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
     #[rustc_macro_transparency = "semitransparent"]
     pub macro bench($item:item) { /* compiler built-in */ }
@@ -1257,6 +1259,7 @@ mod builtin {
     /// An implementation detail of the `#[test]` and `#[bench]` macros.
     #[unstable(feature = "custom_test_frameworks", issue = "50297",
                reason = "custom test frameworks are an unstable feature")]
+    #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
     #[rustc_macro_transparency = "semitransparent"]
     pub macro test_case($item:item) { /* compiler built-in */ }

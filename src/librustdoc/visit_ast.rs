@@ -406,11 +406,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                 // Struct and variant constructors and proc macro stubs always show up alongside
                 // their definitions, we've already processed them so just discard these.
-                match path.res {
-                    Res::Def(DefKind::Ctor(..), _)
-                    | Res::SelfCtor(..)
-                    | Res::Def(DefKind::Macro(MacroKind::ProcMacroStub), _) => return,
-                    _ => {}
+                if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = path.res {
+                    return;
                 }
 
                 // If there was a private module in the current path then don't bother inlining

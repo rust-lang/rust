@@ -3,13 +3,12 @@
 
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
-use syntax::ext::hygiene::{Mark, SyntaxContext};
+use syntax::ext::hygiene::SyntaxContext;
 use syntax::attr;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
-use syntax::source_map::{ExpnInfo, MacroAttribute};
 use std::iter;
 
 pub fn expand_test(
@@ -60,15 +59,8 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    let (sp, attr_sp) = {
-        let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo::with_unstable(
-            MacroAttribute(sym::test), attr_sp, cx.parse_sess.edition,
-            &[sym::rustc_attrs, sym::test],
-        ));
-        (item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark)),
-         attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(mark)))
-    };
+    let ctxt = SyntaxContext::empty().apply_mark(cx.current_expansion.mark);
+    let (sp, attr_sp) = (item.span.with_ctxt(ctxt), attr_sp.with_ctxt(ctxt));
 
     // Gensym "test" so we can extern crate without conflicting with any local names
     let test_id = cx.ident_of("test").gensym();

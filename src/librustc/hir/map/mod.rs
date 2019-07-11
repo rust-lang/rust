@@ -1,5 +1,5 @@
 use self::collector::NodeCollector;
-pub use self::def_collector::{DefCollector, MacroInvocationData};
+pub use self::def_collector::DefCollector;
 pub use self::definitions::{
     Definitions, DefKey, DefPath, DefPathData, DisambiguatedDefPathData, DefPathHash
 };

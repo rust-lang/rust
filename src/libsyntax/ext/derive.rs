@@ -1,14 +1,13 @@
 use crate::attr::HasAttrs;
 use crate::ast;
-use crate::source_map::{ExpnInfo, ExpnFormat};
-use crate::ext::base::ExtCtxt;
+use crate::source_map::{ExpnInfo, ExpnKind};
+use crate::ext::base::{ExtCtxt, MacroKind};
 use crate::ext::build::AstBuilder;
 use crate::parse::parser::PathStyle;
 use crate::symbol::{Symbol, sym};
 use crate::errors::Applicability;
 
 use syntax_pos::Span;
-
 use rustc_data_structures::fx::FxHashSet;
 
 pub fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
@@ -46,7 +45,7 @@ pub fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) ->
 pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::Path], item: &mut T)
     where T: HasAttrs,
 {
-    let (mut names, mut pretty_name) = (FxHashSet::default(), "derive(".to_owned());
+    let (mut names, mut pretty_name) = (FxHashSet::default(), String::new());
     for (i, path) in traits.iter().enumerate() {
         if i > 0 {
             pretty_name.push_str(", ");
@@ -54,14 +53,12 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::P
         pretty_name.push_str(&path.to_string());
         names.insert(unwrap_or!(path.segments.get(0), continue).ident.name);
     }
-    pretty_name.push(')');
 
-    cx.current_expansion.mark.set_expn_info(ExpnInfo::with_unstable(
-        ExpnFormat::MacroAttribute(Symbol::intern(&pretty_name)), span, cx.parse_sess.edition,
-        &[sym::rustc_attrs, sym::structural_match],
+    let span = span.fresh_expansion(cx.current_expansion.mark, ExpnInfo::allow_unstable(
+        ExpnKind::Macro(MacroKind::Derive, Symbol::intern(&pretty_name)), span,
+        cx.parse_sess.edition, cx.allow_derive_markers.clone(),
     ));
 
-    let span = span.with_ctxt(cx.backtrace());
     item.visit_attrs(|attrs| {
         if names.contains(&sym::Eq) && names.contains(&sym::PartialEq) {
             let meta = cx.meta_word(span, sym::structural_match);

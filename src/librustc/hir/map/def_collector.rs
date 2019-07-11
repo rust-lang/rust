@@ -1,6 +1,5 @@
 use crate::hir::map::definitions::*;
-use crate::hir::def_id::{CRATE_DEF_INDEX, DefIndex};
-use crate::session::CrateDisambiguator;
+use crate::hir::def_id::DefIndex;
 
 use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
@@ -12,33 +11,14 @@ use syntax_pos::Span;
 /// Creates `DefId`s for nodes in the AST.
 pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
-    parent_def: Option<DefIndex>,
+    parent_def: DefIndex,
     expansion: Mark,
-    pub visit_macro_invoc: Option<&'a mut dyn FnMut(MacroInvocationData)>,
-}
-
-pub struct MacroInvocationData {
-    pub mark: Mark,
-    pub def_index: DefIndex,
 }
 
 impl<'a> DefCollector<'a> {
     pub fn new(definitions: &'a mut Definitions, expansion: Mark) -> Self {
-        DefCollector {
-            definitions,
-            expansion,
-            parent_def: None,
-            visit_macro_invoc: None,
-        }
-    }
-
-    pub fn collect_root(&mut self,
-                        crate_name: &str,
-                        crate_disambiguator: CrateDisambiguator) {
-        let root = self.definitions.create_root_def(crate_name,
-                                                    crate_disambiguator);
-        assert_eq!(root, CRATE_DEF_INDEX);
-        self.parent_def = Some(root);
+        let parent_def = definitions.invocation_parent(expansion);
+        DefCollector { definitions, parent_def, expansion }
     }
 
     fn create_def(&mut self,
@@ -46,17 +26,15 @@ impl<'a> DefCollector<'a> {
                   data: DefPathData,
                   span: Span)
                   -> DefIndex {
-        let parent_def = self.parent_def.unwrap();
+        let parent_def = self.parent_def;
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
-        self.definitions
-            .create_def_with_parent(parent_def, node_id, data, self.expansion, span)
+        self.definitions.create_def_with_parent(parent_def, node_id, data, self.expansion, span)
     }
 
     pub fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {
-        let parent = self.parent_def;
-        self.parent_def = Some(parent_def);
+        let orig_parent_def = std::mem::replace(&mut self.parent_def, parent_def);
         f(self);
-        self.parent_def = parent;
+        self.parent_def = orig_parent_def;
     }
 
     fn visit_async_fn(
@@ -97,12 +75,7 @@ impl<'a> DefCollector<'a> {
     }
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
-        if let Some(ref mut visit) = self.visit_macro_invoc {
-            visit(MacroInvocationData {
-                mark: id.placeholder_to_mark(),
-                def_index: self.parent_def.unwrap(),
-            })
-        }
+        self.definitions.set_invocation_parent(id.placeholder_to_mark(), self.parent_def);
     }
 }
 
@@ -275,36 +248,24 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        let parent_def = self.parent_def;
-
-        match expr.node {
+        let parent_def = match expr.node {
             ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id),
             ExprKind::Closure(_, asyncness, ..) => {
-                let closure_def = self.create_def(expr.id,
-                                          DefPathData::ClosureExpr,
-                                          expr.span);
-                self.parent_def = Some(closure_def);
-
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
-                if let IsAsync::Async { closure_id, .. } = asyncness {
-                    let async_def = self.create_def(closure_id,
-                                                    DefPathData::ClosureExpr,
-                                                    expr.span);
-                    self.parent_def = Some(async_def);
+                let closure_def = self.create_def(expr.id, DefPathData::ClosureExpr, expr.span);
+                match asyncness {
+                    IsAsync::Async { closure_id, .. } =>
+                        self.create_def(closure_id, DefPathData::ClosureExpr, expr.span),
+                    IsAsync::NotAsync => closure_def,
                 }
             }
-            ExprKind::Async(_, async_id, _) => {
-                let async_def = self.create_def(async_id,
-                                                DefPathData::ClosureExpr,
-                                                expr.span);
-                self.parent_def = Some(async_def);
-            }
-            _ => {}
+            ExprKind::Async(_, async_id, _) =>
+                self.create_def(async_id, DefPathData::ClosureExpr, expr.span),
+            _ => self.parent_def,
         };
 
-        visit::walk_expr(self, expr);
-        self.parent_def = parent_def;
+        self.with_parent(parent_def, |this| visit::walk_expr(this, expr));
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {

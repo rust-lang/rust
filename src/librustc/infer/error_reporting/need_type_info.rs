@@ -5,7 +5,7 @@ use crate::infer::InferCtxt;
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::ty::{self, Ty, Infer, TyVar};
 use crate::ty::print::Print;
-use syntax::source_map::CompilerDesugaringKind;
+use syntax::source_map::DesugaringKind;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
@@ -194,12 +194,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ));
         } else if let Some(pattern) = local_visitor.found_local_pattern {
             if let Some(simple_ident) = pattern.simple_ident() {
-                match pattern.span.compiler_desugaring_kind() {
+                match pattern.span.desugaring_kind() {
                     None => labels.push((
                         pattern.span,
                         format!("consider giving `{}` {}", simple_ident, suffix),
                     )),
-                    Some(CompilerDesugaringKind::ForLoop) => labels.push((
+                    Some(DesugaringKind::ForLoop) => labels.push((
                         pattern.span,
                         "the element type for this iterator is not specified".to_owned(),
                     )),

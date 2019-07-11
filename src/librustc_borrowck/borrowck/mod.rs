@@ -33,7 +33,7 @@ use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
-use syntax::source_map::CompilerDesugaringKind;
+use syntax::source_map::DesugaringKind;
 use syntax_pos::{MultiSpan, Span};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
@@ -734,8 +734,8 @@ impl BorrowckCtxt<'_, 'tcx> {
                 },
                 moved_lp.ty));
         }
-        if let (Some(CompilerDesugaringKind::ForLoop), Ok(snippet)) = (
-            move_span.compiler_desugaring_kind(),
+        if let (Some(DesugaringKind::ForLoop), Ok(snippet)) = (
+            move_span.desugaring_kind(),
             self.tcx.sess.source_map().span_to_snippet(move_span),
          ) {
             if !snippet.starts_with("&") {

@@ -2,7 +2,7 @@ error[E0658]: use of unstable library feature '__rust_unstable_column': internal
   --> $DIR/rust-unstable-column-gated.rs:2:20
    |
 LL |     println!("{}", __rust_unstable_column!());
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(__rust_unstable_column)]` to the crate attributes to enable
 

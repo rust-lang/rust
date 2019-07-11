@@ -15,11 +15,12 @@
 
 pub use rustc::hir::def::{Namespace, PerNS};
 
+use Determinacy::*;
 use GenericParameters::*;
 use RibKind::*;
 use smallvec::smallvec;
 
-use rustc::hir::map::{Definitions, DefCollector};
+use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
@@ -40,8 +41,7 @@ use rustc_metadata::cstore::CStore;
 use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
-use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
-use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
+use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::MacroKind;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -91,6 +91,18 @@ fn is_known_tool(name: Name) -> bool {
 enum Weak {
     Yes,
     No,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum Determinacy {
+    Determined,
+    Undetermined,
+}
+
+impl Determinacy {
+    fn determined(determined: bool) -> Determinacy {
+        if determined { Determinacy::Determined } else { Determinacy::Undetermined }
+    }
 }
 
 enum ScopeSet {
@@ -1663,10 +1675,13 @@ pub struct Resolver<'a> {
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
     pub all_macros: FxHashMap<Name, Res>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
+    dummy_ext_bang: Lrc<SyntaxExtension>,
+    dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
     macro_defs: FxHashMap<Mark, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
     unused_macros: NodeMap<Span>,
+    proc_macro_stubs: NodeSet,
 
     /// Maps the `Mark` of an expansion to its containing module or block.
     invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
@@ -1901,8 +1916,7 @@ impl<'a> Resolver<'a> {
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
 
         let mut definitions = Definitions::default();
-        DefCollector::new(&mut definitions, Mark::root())
-            .collect_root(crate_name, session.local_crate_disambiguator());
+        definitions.create_root_def(crate_name, session.local_crate_disambiguator());
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> =
             session.opts.externs.iter().map(|kv| (Ident::from_str(kv.0), Default::default()))
@@ -1926,9 +1940,8 @@ impl<'a> Resolver<'a> {
         macro_defs.insert(Mark::root(), root_def_id);
 
         let features = session.features_untracked();
-        let non_macro_attr = |mark_used| Lrc::new(SyntaxExtension::default(
-            SyntaxExtensionKind::NonMacroAttr { mark_used }, session.edition()
-        ));
+        let non_macro_attr =
+            |mark_used| Lrc::new(SyntaxExtension::non_macro_attr(mark_used, session.edition()));
 
         Resolver {
             session,
@@ -2003,6 +2016,8 @@ impl<'a> Resolver<'a> {
             macro_use_prelude: FxHashMap::default(),
             all_macros: FxHashMap::default(),
             macro_map: FxHashMap::default(),
+            dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(session.edition())),
+            dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(session.edition())),
             non_macro_attrs: [non_macro_attr(false), non_macro_attr(true)],
             invocations,
             macro_defs,
@@ -2011,6 +2026,7 @@ impl<'a> Resolver<'a> {
             potentially_unused_imports: Vec::new(),
             struct_constructors: Default::default(),
             unused_macros: Default::default(),
+            proc_macro_stubs: Default::default(),
             current_type_ascription: Vec::new(),
             injected_crate: None,
             active_features:
@@ -2026,6 +2042,14 @@ impl<'a> Resolver<'a> {
 
     fn non_macro_attr(&self, mark_used: bool) -> Lrc<SyntaxExtension> {
         self.non_macro_attrs[mark_used as usize].clone()
+    }
+
+    fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {
+        match macro_kind {
+            MacroKind::Bang => self.dummy_ext_bang.clone(),
+            MacroKind::Derive => self.dummy_ext_derive.clone(),
+            MacroKind::Attr => self.non_macro_attr(true),
+        }
     }
 
     /// Runs the function on each namespace.
@@ -2223,6 +2247,7 @@ impl<'a> Resolver<'a> {
         }
 
         if !module.no_implicit_prelude {
+            ident.span.adjust(Mark::root());
             if ns == TypeNS {
                 if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
                     return Some(LexicalScopeBinding::Item(binding));

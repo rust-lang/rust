@@ -2471,7 +2471,6 @@ impl<'a> fmt::Display for Item<'a> {
                 MacroKind::Bang => write!(fmt, "Macro ")?,
                 MacroKind::Attr => write!(fmt, "Attribute Macro ")?,
                 MacroKind::Derive => write!(fmt, "Derive Macro ")?,
-                MacroKind::ProcMacroStub => unreachable!(),
             }
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
             clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
@@ -5092,7 +5091,6 @@ fn item_proc_macro(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item, m
             }
             write!(w, "</pre>")?;
         }
-        _ => {}
     }
     document(w, cx, it)
 }
