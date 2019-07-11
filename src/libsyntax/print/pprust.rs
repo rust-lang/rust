@@ -187,8 +187,9 @@ pub fn literal_to_string(lit: token::Lit) -> String {
     out
 }
 
-fn ident_to_string(ident: ast::Ident, is_raw: bool) -> String {
-    ident_to_string_ext(ident.name, is_raw, Some(ident.span))
+/// Print an ident from AST, `$crate` is converted into its respective crate name.
+fn ast_ident_to_string(ident: ast::Ident, is_raw: bool) -> String {
+    ident_to_string(ident.name, is_raw, Some(ident.span))
 }
 
 // AST pretty-printer is used as a fallback for turning AST structures into token streams for
@@ -202,9 +203,7 @@ fn ident_to_string(ident: ast::Ident, is_raw: bool) -> String {
 // but not otherwise. Pretty-printing is the only way for proc macros to discover token contents,
 // so we should not perform this lossy conversion if the top level call to the pretty-printer was
 // done for a token stream or a single token.
-fn ident_to_string_ext(
-    name: ast::Name, is_raw: bool, convert_dollar_crate: Option<Span>
-) -> String {
+fn ident_to_string(name: ast::Name, is_raw: bool, convert_dollar_crate: Option<Span>) -> String {
     if is_raw {
         format!("r#{}", name)
     } else {
@@ -222,6 +221,7 @@ fn ident_to_string_ext(
     }
 }
 
+/// Print the token kind precisely, without converting `$crate` into its respective crate name.
 pub fn token_kind_to_string(tok: &TokenKind) -> String {
     token_kind_to_string_ext(tok, None)
 }
@@ -272,7 +272,7 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
         token::Literal(lit) => literal_to_string(lit),
 
         /* Name components */
-        token::Ident(s, is_raw)     => ident_to_string_ext(s, is_raw, convert_dollar_crate),
+        token::Ident(s, is_raw)     => ident_to_string(s, is_raw, convert_dollar_crate),
         token::Lifetime(s)          => s.to_string(),
 
         /* Other */
@@ -286,6 +286,7 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
     }
 }
 
+/// Print the token precisely, without converting `$crate` into its respective crate name.
 pub fn token_to_string(token: &Token) -> String {
     token_to_string_ext(token, false)
 }
@@ -305,7 +306,7 @@ crate fn nonterminal_to_string(nt: &Nonterminal) -> String {
         token::NtBlock(ref e)       => block_to_string(e),
         token::NtStmt(ref e)        => stmt_to_string(e),
         token::NtPat(ref e)         => pat_to_string(e),
-        token::NtIdent(e, is_raw)   => ident_to_string(e, is_raw),
+        token::NtIdent(e, is_raw)   => ast_ident_to_string(e, is_raw),
         token::NtLifetime(e)        => e.to_string(),
         token::NtLiteral(ref e)     => expr_to_string(e),
         token::NtTT(ref tree)       => tt_to_string(tree.clone()),
@@ -341,7 +342,7 @@ pub fn tts_to_string(tts: &[tokenstream::TokenTree]) -> String {
 }
 
 pub fn tokens_to_string(tokens: TokenStream) -> String {
-    to_string(|s| s.print_tts_ext(tokens, false))
+    to_string(|s| s.print_tts(tokens, false))
 }
 
 pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
@@ -601,7 +602,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                 self.word("::");
             }
             if segment.ident.name != kw::PathRoot {
-                self.word(ident_to_string(segment.ident, segment.ident.is_raw_guess()));
+                self.word(ast_ident_to_string(segment.ident, segment.ident.is_raw_guess()));
             }
         }
     }
@@ -629,7 +630,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             } else {
                 self.print_attribute_path(&attr.path);
                 self.space();
-                self.print_tts(attr.tokens.clone());
+                self.print_tts(attr.tokens.clone(), true);
             }
             self.word("]");
         }
@@ -689,18 +690,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             TokenTree::Delimited(_, delim, tts) => {
                 self.word(token_kind_to_string(&token::OpenDelim(delim)));
                 self.space();
-                self.print_tts(tts);
+                self.print_tts(tts, convert_dollar_crate);
                 self.space();
                 self.word(token_kind_to_string(&token::CloseDelim(delim)))
             },
         }
     }
 
-    fn print_tts(&mut self, tts: tokenstream::TokenStream) {
-        self.print_tts_ext(tts, true)
-    }
-
-    fn print_tts_ext(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
+    fn print_tts(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
         self.ibox(0);
         for (i, tt) in tts.into_trees().enumerate() {
             if i != 0 {
@@ -1247,7 +1244,7 @@ impl<'a> State<'a> {
                     self.print_ident(item.ident);
                     self.cbox(INDENT_UNIT);
                     self.popen();
-                    self.print_tts(mac.node.stream());
+                    self.print_tts(mac.node.stream(), true);
                     self.pclose();
                     self.s.word(";");
                     self.end();
@@ -1258,7 +1255,7 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident);
                 self.cbox(INDENT_UNIT);
                 self.popen();
-                self.print_tts(tts.stream());
+                self.print_tts(tts.stream(), true);
                 self.pclose();
                 self.s.word(";");
                 self.end();
@@ -1659,7 +1656,7 @@ impl<'a> State<'a> {
                 self.bopen();
             }
         }
-        self.print_tts(m.node.stream());
+        self.print_tts(m.node.stream(), true);
         match m.node.delim {
             MacDelimiter::Parenthesis => self.pclose(),
             MacDelimiter::Bracket => self.s.word("]"),
@@ -2209,7 +2206,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_ident(&mut self, ident: ast::Ident) {
-        self.s.word(ident_to_string(ident, ident.is_raw_guess()));
+        self.s.word(ast_ident_to_string(ident, ident.is_raw_guess()));
         self.ann.post(self, AnnNode::Ident(&ident))
     }
 

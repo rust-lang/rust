@@ -1,4 +1,4 @@
-PRINT-BANG INPUT (DISPLAY): struct M ( crate :: S ) ;
+PRINT-BANG INPUT (DISPLAY): struct M ( $crate :: S ) ;
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -39,7 +39,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct A(crate::S);
-PRINT-ATTR RE-COLLECTED (DISPLAY): struct A ( crate :: S ) ;
+PRINT-ATTR RE-COLLECTED (DISPLAY): struct A ( $crate :: S ) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
