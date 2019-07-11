@@ -1,8 +1,8 @@
 use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
-    DocumentOnTypeFormattingOptions, ExecuteCommandOptions, FoldingRangeProviderCapability,
-    GenericCapability, ImplementationProviderCapability, RenameOptions, RenameProviderCapability,
-    ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
+    DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability, GenericCapability,
+    ImplementationProviderCapability, RenameOptions, RenameProviderCapability, ServerCapabilities,
+    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextDocumentSyncOptions, TypeDefinitionProviderCapability,
 };
 
@@ -44,9 +44,7 @@ pub fn server_capabilities() -> ServerCapabilities {
             prepare_provider: Some(true),
         })),
         color_provider: None,
-        execute_command_provider: Some(ExecuteCommandOptions {
-            commands: vec!["apply_code_action".to_string()],
-        }),
+        execute_command_provider: None,
         workspace: None,
     }
 }

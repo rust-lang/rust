@@ -5,10 +5,11 @@ use url_serde;
 
 pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,
-    CodeLensParams, CompletionParams, CompletionResponse, DocumentOnTypeFormattingParams,
-    DocumentSymbolParams, DocumentSymbolResponse, ExecuteCommandParams, Hover, InitializeResult,
-    MessageType, PublishDiagnosticsParams, ReferenceParams, ShowMessageParams, SignatureHelp,
-    TextDocumentEdit, TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
+    CodeLensParams, CompletionParams, CompletionResponse, DidChangeConfigurationParams,
+    DocumentOnTypeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse, Hover,
+    InitializeResult, MessageType, PublishDiagnosticsParams, ReferenceParams, ShowMessageParams,
+    SignatureHelp, TextDocumentEdit, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
+    WorkspaceSymbolParams,
 };
 
 pub enum AnalyzerStatus {}

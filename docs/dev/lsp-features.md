@@ -16,8 +16,6 @@ This list documents LSP features, supported by rust-analyzer.
 - [ ] [workspace/configuration](https://microsoft.github.io/language-server-protocol/specification#workspace_configuration)
 - [x] [workspace/didChangeWatchedFiles](https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeWatchedFiles)
 - [x] [workspace/symbol](https://microsoft.github.io/language-server-protocol/specification#workspace_symbol)
-- [x] [workspace/executeCommand](https://microsoft.github.io/language-server-protocol/specification#workspace_executeCommand)
- - `apply_code_action`
 - [ ] [workspace/applyEdit](https://microsoft.github.io/language-server-protocol/specification#workspace_applyEdit)
 
 ## Text Synchronization
