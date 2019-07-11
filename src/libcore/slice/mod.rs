@@ -84,7 +84,9 @@ impl<T> [T] {
         self.len() == 0
     }
 
-    /// Returns the first element of the slice, or `None` if it is empty.
+    /// Returns the first element of the slice, or [`None`] if it is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -101,7 +103,9 @@ impl<T> [T] {
         self.get(0)
     }
 
-    /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
+    /// Returns a mutable pointer to the first element of the slice, or [`None`] if it is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -119,7 +123,9 @@ impl<T> [T] {
         self.get_mut(0)
     }
 
-    /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
+    /// Returns the first and all the rest of the elements of the slice, or [`None`] if it is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -137,7 +143,9 @@ impl<T> [T] {
         if self.is_empty() { None } else { Some((&self[0], &self[1..])) }
     }
 
-    /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
+    /// Returns the first and all the rest of the elements of the slice, or [`None`] if it is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -160,7 +168,9 @@ impl<T> [T] {
         }
     }
 
-    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
+    /// Returns the last and all the rest of the elements of the slice, or [`None`] if it is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -179,7 +189,9 @@ impl<T> [T] {
         if len == 0 { None } else { Some((&self[len - 1], &self[..(len - 1)])) }
     }
 
-    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
+    /// Returns the last and all the rest of the elements of the slice, or [`None`] if it is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -204,7 +216,9 @@ impl<T> [T] {
 
     }
 
-    /// Returns the last element of the slice, or `None` if it is empty.
+    /// Returns the last element of the slice, or [`None`] if it is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -245,9 +259,11 @@ impl<T> [T] {
     /// index.
     ///
     /// - If given a position, returns a reference to the element at that
-    ///   position or `None` if out of bounds.
+    ///   position or [`None`] if out of bounds.
     /// - If given a range, returns the subslice corresponding to that range,
-    ///   or `None` if out of bounds.
+    ///   or [`None`] if out of bounds.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -267,9 +283,10 @@ impl<T> [T] {
     }
 
     /// Returns a mutable reference to an element or subslice depending on the
-    /// type of index (see [`get`]) or `None` if the index is out of bounds.
+    /// type of index (see [`get`]) or [`None`] if the index is out of bounds.
     ///
     /// [`get`]: #method.get
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
