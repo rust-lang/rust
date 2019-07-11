@@ -2,21 +2,53 @@ use std::cmp::Reverse;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
-use rustc::hir::def::{self, DefKind, CtorKind, Namespace::*};
+use rustc::hir::def::{self, DefKind, CtorKind};
+use rustc::hir::def::Namespace::{self, *};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::PrimTy;
 use rustc::session::{Session, config::nightly_options};
-use syntax::ast::{self, Expr, ExprKind, Ident};
+use rustc::ty::{self, DefIdTree};
+use rustc::util::nodemap::FxHashSet;
+use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
 use syntax::ext::base::MacroKind;
+use syntax::feature_gate::{feature_err, AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES};
 use syntax::symbol::{Symbol, kw};
+use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{BytePos, Span};
-
-type Res = def::Res<ast::NodeId>;
 
 use crate::macros::ParentScope;
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
-use crate::{import_candidate_to_enum_paths, is_self_type, is_self_value, path_names_to_string};
-use crate::{AssocSuggestion, CrateLint, ImportSuggestion, ModuleOrUniformRoot, PathResult,
-            PathSource, Resolver, Segment, Suggestion};
+use crate::{is_self_type, is_self_value, path_names_to_string};
+use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{PathResult, PathSource, Resolver, RibKind, Segment};
+
+type Res = def::Res<ast::NodeId>;
+
+/// A vector of spans and replacements, a message and applicability.
+crate type Suggestion = (Vec<(Span, String)>, String, Applicability);
+
+/// A field or associated item from self type suggested in case of resolution failure.
+enum AssocSuggestion {
+    Field,
+    MethodWithSelf,
+    AssocItem,
+}
+
+struct TypoSuggestion {
+    candidate: Symbol,
+
+    /// The kind of the binding ("crate", "module", etc.)
+    kind: &'static str,
+
+    /// An appropriate article to refer to the binding ("a", "an", etc.)
+    article: &'static str,
+}
+
+/// A free importable items suggested in case of resolution failure.
+crate struct ImportSuggestion {
+    did: Option<DefId>,
+    pub path: Path,
+}
 
 impl<'a> Resolver<'a> {
     /// Handles error reporting for `smart_resolve_path_fragment` function.
@@ -438,6 +470,493 @@ impl<'a> Resolver<'a> {
             _ => return false,
         }
         true
+    }
+
+    fn lookup_assoc_candidate<FilterFn>(&mut self,
+                                        ident: Ident,
+                                        ns: Namespace,
+                                        filter_fn: FilterFn)
+                                        -> Option<AssocSuggestion>
+        where FilterFn: Fn(Res) -> bool
+    {
+        fn extract_node_id(t: &Ty) -> Option<NodeId> {
+            match t.node {
+                TyKind::Path(None, _) => Some(t.id),
+                TyKind::Rptr(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
+                // This doesn't handle the remaining `Ty` variants as they are not
+                // that commonly the self_type, it might be interesting to provide
+                // support for those in future.
+                _ => None,
+            }
+        }
+
+        // Fields are generally expected in the same contexts as locals.
+        if filter_fn(Res::Local(ast::DUMMY_NODE_ID)) {
+            if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
+                // Look for a field with the same name in the current self_type.
+                if let Some(resolution) = self.partial_res_map.get(&node_id) {
+                    match resolution.base_res() {
+                        Res::Def(DefKind::Struct, did) | Res::Def(DefKind::Union, did)
+                                if resolution.unresolved_segments() == 0 => {
+                            if let Some(field_names) = self.field_names.get(&did) {
+                                if field_names.iter().any(|&field_name| ident.name == field_name) {
+                                    return Some(AssocSuggestion::Field);
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        for assoc_type_ident in &self.current_trait_assoc_types {
+            if *assoc_type_ident == ident {
+                return Some(AssocSuggestion::AssocItem);
+            }
+        }
+
+        // Look for associated items in the current trait.
+        if let Some((module, _)) = self.current_trait_ref {
+            if let Ok(binding) = self.resolve_ident_in_module(
+                    ModuleOrUniformRoot::Module(module),
+                    ident,
+                    ns,
+                    None,
+                    false,
+                    module.span,
+                ) {
+                let res = binding.res();
+                if filter_fn(res) {
+                    return Some(if self.has_self.contains(&res.def_id()) {
+                        AssocSuggestion::MethodWithSelf
+                    } else {
+                        AssocSuggestion::AssocItem
+                    });
+                }
+            }
+        }
+
+        None
+    }
+
+    fn lookup_typo_candidate<FilterFn>(
+        &mut self,
+        path: &[Segment],
+        ns: Namespace,
+        filter_fn: FilterFn,
+        span: Span,
+    ) -> Option<TypoSuggestion>
+    where
+        FilterFn: Fn(Res) -> bool,
+    {
+        let add_module_candidates = |module: Module<'_>, names: &mut Vec<TypoSuggestion>| {
+            for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
+                if let Some(binding) = resolution.borrow().binding {
+                    if filter_fn(binding.res()) {
+                        names.push(TypoSuggestion {
+                            candidate: ident.name,
+                            article: binding.res().article(),
+                            kind: binding.res().descr(),
+                        });
+                    }
+                }
+            }
+        };
+
+        let mut names = Vec::new();
+        if path.len() == 1 {
+            // Search in lexical scope.
+            // Walk backwards up the ribs in scope and collect candidates.
+            for rib in self.ribs[ns].iter().rev() {
+                // Locals and type parameters
+                for (ident, &res) in &rib.bindings {
+                    if filter_fn(res) {
+                        names.push(TypoSuggestion {
+                            candidate: ident.name,
+                            article: res.article(),
+                            kind: res.descr(),
+                        });
+                    }
+                }
+                // Items in scope
+                if let RibKind::ModuleRibKind(module) = rib.kind {
+                    // Items from this module
+                    add_module_candidates(module, &mut names);
+
+                    if let ModuleKind::Block(..) = module.kind {
+                        // We can see through blocks
+                    } else {
+                        // Items from the prelude
+                        if !module.no_implicit_prelude {
+                            names.extend(self.extern_prelude.clone().iter().flat_map(|(ident, _)| {
+                                self.crate_loader
+                                    .maybe_process_path_extern(ident.name, ident.span)
+                                    .and_then(|crate_id| {
+                                        let crate_mod = Res::Def(
+                                            DefKind::Mod,
+                                            DefId {
+                                                krate: crate_id,
+                                                index: CRATE_DEF_INDEX,
+                                            },
+                                        );
+
+                                        if filter_fn(crate_mod) {
+                                            Some(TypoSuggestion {
+                                                candidate: ident.name,
+                                                article: "a",
+                                                kind: "crate",
+                                            })
+                                        } else {
+                                            None
+                                        }
+                                    })
+                            }));
+
+                            if let Some(prelude) = self.prelude {
+                                add_module_candidates(prelude, &mut names);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            // Add primitive types to the mix
+            if filter_fn(Res::PrimTy(PrimTy::Bool)) {
+                names.extend(
+                    self.primitive_type_table.primitive_types.iter().map(|(name, _)| {
+                        TypoSuggestion {
+                            candidate: *name,
+                            article: "a",
+                            kind: "primitive type",
+                        }
+                    })
+                )
+            }
+        } else {
+            // Search in module.
+            let mod_path = &path[..path.len() - 1];
+            if let PathResult::Module(module) = self.resolve_path_without_parent_scope(
+                mod_path, Some(TypeNS), false, span, CrateLint::No
+            ) {
+                if let ModuleOrUniformRoot::Module(module) = module {
+                    add_module_candidates(module, &mut names);
+                }
+            }
+        }
+
+        let name = path[path.len() - 1].ident.name;
+        // Make sure error reporting is deterministic.
+        names.sort_by_cached_key(|suggestion| suggestion.candidate.as_str());
+
+        match find_best_match_for_name(
+            names.iter().map(|suggestion| &suggestion.candidate),
+            &name.as_str(),
+            None,
+        ) {
+            Some(found) if found != name => names
+                .into_iter()
+                .find(|suggestion| suggestion.candidate == found),
+            _ => None,
+        }
+    }
+
+    fn lookup_import_candidates_from_module<FilterFn>(&mut self,
+                                          lookup_ident: Ident,
+                                          namespace: Namespace,
+                                          start_module: Module<'a>,
+                                          crate_name: Ident,
+                                          filter_fn: FilterFn)
+                                          -> Vec<ImportSuggestion>
+        where FilterFn: Fn(Res) -> bool
+    {
+        let mut candidates = Vec::new();
+        let mut seen_modules = FxHashSet::default();
+        let not_local_module = crate_name.name != kw::Crate;
+        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
+
+        while let Some((in_module,
+                        path_segments,
+                        in_module_is_extern)) = worklist.pop() {
+            self.populate_module_if_necessary(in_module);
+
+            // We have to visit module children in deterministic order to avoid
+            // instabilities in reported imports (#43552).
+            in_module.for_each_child_stable(|ident, ns, name_binding| {
+                // avoid imports entirely
+                if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
+                // avoid non-importable candidates as well
+                if !name_binding.is_importable() { return; }
+
+                // collect results based on the filter function
+                if ident.name == lookup_ident.name && ns == namespace {
+                    let res = name_binding.res();
+                    if filter_fn(res) {
+                        // create the path
+                        let mut segms = path_segments.clone();
+                        if lookup_ident.span.rust_2018() {
+                            // crate-local absolute paths start with `crate::` in edition 2018
+                            // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
+                            segms.insert(
+                                0, ast::PathSegment::from_ident(crate_name)
+                            );
+                        }
+
+                        segms.push(ast::PathSegment::from_ident(ident));
+                        let path = Path {
+                            span: name_binding.span,
+                            segments: segms,
+                        };
+                        // the entity is accessible in the following cases:
+                        // 1. if it's defined in the same crate, it's always
+                        // accessible (since private entities can be made public)
+                        // 2. if it's defined in another crate, it's accessible
+                        // only if both the module is public and the entity is
+                        // declared as public (due to pruning, we don't explore
+                        // outside crate private modules => no need to check this)
+                        if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
+                            let did = match res {
+                                Res::Def(DefKind::Ctor(..), did) => self.parent(did),
+                                _ => res.opt_def_id(),
+                            };
+                            candidates.push(ImportSuggestion { did, path });
+                        }
+                    }
+                }
+
+                // collect submodules to explore
+                if let Some(module) = name_binding.module() {
+                    // form the path
+                    let mut path_segments = path_segments.clone();
+                    path_segments.push(ast::PathSegment::from_ident(ident));
+
+                    let is_extern_crate_that_also_appears_in_prelude =
+                        name_binding.is_extern_crate() &&
+                        lookup_ident.span.rust_2018();
+
+                    let is_visible_to_user =
+                        !in_module_is_extern || name_binding.vis == ty::Visibility::Public;
+
+                    if !is_extern_crate_that_also_appears_in_prelude && is_visible_to_user {
+                        // add the module to the lookup
+                        let is_extern = in_module_is_extern || name_binding.is_extern_crate();
+                        if seen_modules.insert(module.def_id().unwrap()) {
+                            worklist.push((module, path_segments, is_extern));
+                        }
+                    }
+                }
+            })
+        }
+
+        candidates
+    }
+
+    /// When name resolution fails, this method can be used to look up candidate
+    /// entities with the expected name. It allows filtering them using the
+    /// supplied predicate (which should be used to only accept the types of
+    /// definitions expected, e.g., traits). The lookup spans across all crates.
+    ///
+    /// N.B., the method does not look into imports, but this is not a problem,
+    /// since we report the definitions (thus, the de-aliased imports).
+    crate fn lookup_import_candidates<FilterFn>(
+        &mut self, lookup_ident: Ident, namespace: Namespace, filter_fn: FilterFn
+    ) -> Vec<ImportSuggestion>
+        where FilterFn: Fn(Res) -> bool
+    {
+        let mut suggestions = self.lookup_import_candidates_from_module(
+            lookup_ident, namespace, self.graph_root, Ident::with_empty_ctxt(kw::Crate), &filter_fn
+        );
+
+        if lookup_ident.span.rust_2018() {
+            let extern_prelude_names = self.extern_prelude.clone();
+            for (ident, _) in extern_prelude_names.into_iter() {
+                if let Some(crate_id) = self.crate_loader.maybe_process_path_extern(ident.name,
+                                                                                    ident.span) {
+                    let crate_root = self.get_module(DefId {
+                        krate: crate_id,
+                        index: CRATE_DEF_INDEX,
+                    });
+                    self.populate_module_if_necessary(&crate_root);
+
+                    suggestions.extend(self.lookup_import_candidates_from_module(
+                        lookup_ident, namespace, crate_root, ident, &filter_fn));
+                }
+            }
+        }
+
+        suggestions
+    }
+
+    fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
+        let mut result = None;
+        let mut seen_modules = FxHashSet::default();
+        let mut worklist = vec![(self.graph_root, Vec::new())];
+
+        while let Some((in_module, path_segments)) = worklist.pop() {
+            // abort if the module is already found
+            if result.is_some() { break; }
+
+            self.populate_module_if_necessary(in_module);
+
+            in_module.for_each_child_stable(|ident, _, name_binding| {
+                // abort if the module is already found or if name_binding is private external
+                if result.is_some() || !name_binding.vis.is_visible_locally() {
+                    return
+                }
+                if let Some(module) = name_binding.module() {
+                    // form the path
+                    let mut path_segments = path_segments.clone();
+                    path_segments.push(ast::PathSegment::from_ident(ident));
+                    let module_def_id = module.def_id().unwrap();
+                    if module_def_id == def_id {
+                        let path = Path {
+                            span: name_binding.span,
+                            segments: path_segments,
+                        };
+                        result = Some((module, ImportSuggestion { did: Some(def_id), path }));
+                    } else {
+                        // add the module to the lookup
+                        if seen_modules.insert(module_def_id) {
+                            worklist.push((module, path_segments));
+                        }
+                    }
+                }
+            });
+        }
+
+        result
+    }
+
+    fn collect_enum_variants(&mut self, def_id: DefId) -> Option<Vec<Path>> {
+        self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
+            self.populate_module_if_necessary(enum_module);
+
+            let mut variants = Vec::new();
+            enum_module.for_each_child_stable(|ident, _, name_binding| {
+                if let Res::Def(DefKind::Variant, _) = name_binding.res() {
+                    let mut segms = enum_import_suggestion.path.segments.clone();
+                    segms.push(ast::PathSegment::from_ident(ident));
+                    variants.push(Path {
+                        span: name_binding.span,
+                        segments: segms,
+                    });
+                }
+            });
+            variants
+        })
+    }
+
+    crate fn suggest_macro_name(
+        &mut self, name: Symbol, kind: MacroKind, err: &mut DiagnosticBuilder<'a>, span: Span
+    ) {
+        if kind == MacroKind::Derive && (name.as_str() == "Send" || name.as_str() == "Sync") {
+            let msg = format!("unsafe traits like `{}` should be implemented explicitly", name);
+            err.span_note(span, &msg);
+            return;
+        }
+
+        // First check if this is a locally-defined bang macro.
+        let suggestion = if let MacroKind::Bang = kind {
+            find_best_match_for_name(
+                self.macro_names.iter().map(|ident| &ident.name), &name.as_str(), None)
+        } else {
+            None
+        // Then check global macros.
+        }.or_else(|| {
+            let names = self.builtin_macros.iter().chain(self.macro_use_prelude.iter())
+                                                  .filter_map(|(name, binding)| {
+                if binding.macro_kind() == Some(kind) { Some(name) } else { None }
+            });
+            find_best_match_for_name(names, &name.as_str(), None)
+        // Then check modules.
+        }).or_else(|| {
+            let is_macro = |res| {
+                if let Res::Def(DefKind::Macro(def_kind), _) = res {
+                    def_kind == kind
+                } else {
+                    false
+                }
+            };
+            let ident = Ident::new(name, span);
+            self.lookup_typo_candidate(&[Segment::from_ident(ident)], MacroNS, is_macro, span)
+                .map(|suggestion| suggestion.candidate)
+        });
+
+        if let Some(suggestion) = suggestion {
+            if suggestion != name {
+                if let MacroKind::Bang = kind {
+                    err.span_suggestion(
+                        span,
+                        "you could try the macro",
+                        suggestion.to_string(),
+                        Applicability::MaybeIncorrect
+                    );
+                } else {
+                    err.span_suggestion(
+                        span,
+                        "try",
+                        suggestion.to_string(),
+                        Applicability::MaybeIncorrect
+                    );
+                }
+            } else {
+                err.help("have you added the `#[macro_use]` on the module/import?");
+            }
+        }
+    }
+
+    crate fn report_unknown_attribute(&self, span: Span, name: &str, msg: &str, feature: Symbol) {
+        let mut err = feature_err(
+            &self.session.parse_sess,
+            feature,
+            span,
+            GateIssue::Language,
+            &msg,
+        );
+
+        let features = self.session.features_untracked();
+
+        let attr_candidates = BUILTIN_ATTRIBUTES
+            .iter()
+            .filter_map(|&(name, _, _, ref gate)| {
+                if name.as_str().starts_with("rustc_") && !features.rustc_attrs {
+                    return None;
+                }
+
+                match gate {
+                    AttributeGate::Gated(Stability::Unstable, ..)
+                        if self.session.opts.unstable_features.is_nightly_build() =>
+                    {
+                        Some(name)
+                    }
+                    AttributeGate::Gated(Stability::Deprecated(..), ..) => Some(name),
+                    AttributeGate::Ungated => Some(name),
+                    _ => None,
+                }
+            })
+            .chain(
+                // Add built-in macro attributes as well.
+                self.builtin_macros.iter().filter_map(|(name, binding)| {
+                    match binding.macro_kind() {
+                        Some(MacroKind::Attr) => Some(*name),
+                        _ => None,
+                    }
+                }),
+            )
+            .collect::<Vec<_>>();
+
+        let lev_suggestion = find_best_match_for_name(attr_candidates.iter(), &name, None);
+
+        if let Some(suggestion) = lev_suggestion {
+            err.span_suggestion(
+                span,
+                "a built-in attribute with a similar name exists",
+                suggestion.to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+
+        err.emit();
     }
 }
 
@@ -870,4 +1389,71 @@ fn find_span_immediately_after_crate_name(
     let next_left_bracket = source_map.span_through_char(from_second_colon, '{');
 
     (next_left_bracket == after_second_colon, from_second_colon)
+}
+
+/// Gets the stringified path for an enum from an `ImportSuggestion` for an enum variant.
+fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, String) {
+    let variant_path = &suggestion.path;
+    let variant_path_string = path_names_to_string(variant_path);
+
+    let path_len = suggestion.path.segments.len();
+    let enum_path = ast::Path {
+        span: suggestion.path.span,
+        segments: suggestion.path.segments[0..path_len - 1].to_vec(),
+    };
+    let enum_path_string = path_names_to_string(&enum_path);
+
+    (variant_path_string, enum_path_string)
+}
+
+/// When an entity with a given name is not available in scope, we search for
+/// entities with that name in all crates. This method allows outputting the
+/// results of this search in a programmer-friendly way
+crate fn show_candidates(
+    err: &mut DiagnosticBuilder<'_>,
+    // This is `None` if all placement locations are inside expansions
+    span: Option<Span>,
+    candidates: &[ImportSuggestion],
+    better: bool,
+    found_use: bool,
+) {
+    // we want consistent results across executions, but candidates are produced
+    // by iterating through a hash map, so make sure they are ordered:
+    let mut path_strings: Vec<_> =
+        candidates.into_iter().map(|c| path_names_to_string(&c.path)).collect();
+    path_strings.sort();
+
+    let better = if better { "better " } else { "" };
+    let msg_diff = match path_strings.len() {
+        1 => " is found in another module, you can import it",
+        _ => "s are found in other modules, you can import them",
+    };
+    let msg = format!("possible {}candidate{} into scope", better, msg_diff);
+
+    if let Some(span) = span {
+        for candidate in &mut path_strings {
+            // produce an additional newline to separate the new use statement
+            // from the directly following item.
+            let additional_newline = if found_use {
+                ""
+            } else {
+                "\n"
+            };
+            *candidate = format!("use {};\n{}", candidate, additional_newline);
+        }
+
+        err.span_suggestions(
+            span,
+            &msg,
+            path_strings.into_iter(),
+            Applicability::Unspecified,
+        );
+    } else {
+        let mut msg = msg;
+        msg.push(':');
+        for candidate in path_strings {
+            msg.push('\n');
+            msg.push_str(&candidate);
+        }
+    }
 }

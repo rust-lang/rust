@@ -7,8 +7,9 @@ use crate::Namespace::{self, TypeNS, MacroNS};
 use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use crate::{Resolver, Segment};
 use crate::{names_to_string, module_to_string};
-use crate::{resolve_error, ResolutionError, Suggestion};
+use crate::{resolve_error, ResolutionError};
 use crate::ModuleKind;
+use crate::diagnostics::Suggestion;
 use crate::macros::ParentScope;
 
 use errors::Applicability;

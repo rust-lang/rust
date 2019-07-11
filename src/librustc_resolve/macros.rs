@@ -13,18 +13,15 @@ use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, Ident, ItemKind};
 use syntax::attr::{self, StabilityLevel};
-use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Indeterminate};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark, ExpnInfo, ExpnKind};
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{feature_err, emit_feature_err, is_builtin_attr_name};
-use syntax::feature_gate::{AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES};
+use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
+use syntax::feature_gate::GateIssue;
 use syntax::symbol::{Symbol, kw, sym};
-use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
-use errors::Applicability;
 
 use std::cell::Cell;
 use std::{mem, ptr};
@@ -357,60 +354,6 @@ impl<'a> Resolver<'a> {
         } else {
             (ext, res)
         })
-    }
-
-    fn report_unknown_attribute(&self, span: Span, name: &str, msg: &str, feature: Symbol) {
-        let mut err = feature_err(
-            &self.session.parse_sess,
-            feature,
-            span,
-            GateIssue::Language,
-            &msg,
-        );
-
-        let features = self.session.features_untracked();
-
-        let attr_candidates = BUILTIN_ATTRIBUTES
-            .iter()
-            .filter_map(|&(name, _, _, ref gate)| {
-                if name.as_str().starts_with("rustc_") && !features.rustc_attrs {
-                    return None;
-                }
-
-                match gate {
-                    AttributeGate::Gated(Stability::Unstable, ..)
-                        if self.session.opts.unstable_features.is_nightly_build() =>
-                    {
-                        Some(name)
-                    }
-                    AttributeGate::Gated(Stability::Deprecated(..), ..) => Some(name),
-                    AttributeGate::Ungated => Some(name),
-                    _ => None,
-                }
-            })
-            .chain(
-                // Add built-in macro attributes as well.
-                self.builtin_macros.iter().filter_map(|(name, binding)| {
-                    match binding.macro_kind() {
-                        Some(MacroKind::Attr) => Some(*name),
-                        _ => None,
-                    }
-                }),
-            )
-            .collect::<Vec<_>>();
-
-        let lev_suggestion = find_best_match_for_name(attr_candidates.iter(), &name, None);
-
-        if let Some(suggestion) = lev_suggestion {
-            err.span_suggestion(
-                span,
-                "a built-in attribute with a similar name exists",
-                suggestion.to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        }
-
-        err.emit();
     }
 
     pub fn resolve_macro_path(
@@ -1038,64 +981,6 @@ impl<'a> Resolver<'a> {
                     err.span_note(binding.span, &format!("the {} imported here", kind.descr()));
                 }
                 err.emit();
-            }
-        }
-    }
-
-    fn suggest_macro_name(&mut self, name: Symbol, kind: MacroKind,
-                          err: &mut DiagnosticBuilder<'a>, span: Span) {
-        if kind == MacroKind::Derive && (name.as_str() == "Send" || name.as_str() == "Sync") {
-            let msg = format!("unsafe traits like `{}` should be implemented explicitly", name);
-            err.span_note(span, &msg);
-            return;
-        }
-
-        // First check if this is a locally-defined bang macro.
-        let suggestion = if let MacroKind::Bang = kind {
-            find_best_match_for_name(
-                self.macro_names.iter().map(|ident| &ident.name), &name.as_str(), None)
-        } else {
-            None
-        // Then check global macros.
-        }.or_else(|| {
-            let names = self.builtin_macros.iter().chain(self.macro_use_prelude.iter())
-                                                  .filter_map(|(name, binding)| {
-                if binding.macro_kind() == Some(kind) { Some(name) } else { None }
-            });
-            find_best_match_for_name(names, &name.as_str(), None)
-        // Then check modules.
-        }).or_else(|| {
-            let is_macro = |res| {
-                if let Res::Def(DefKind::Macro(def_kind), _) = res {
-                    def_kind == kind
-                } else {
-                    false
-                }
-            };
-            let ident = Ident::new(name, span);
-            self.lookup_typo_candidate(&[Segment::from_ident(ident)], MacroNS, is_macro, span)
-                .map(|suggestion| suggestion.candidate)
-        });
-
-        if let Some(suggestion) = suggestion {
-            if suggestion != name {
-                if let MacroKind::Bang = kind {
-                    err.span_suggestion(
-                        span,
-                        "you could try the macro",
-                        suggestion.to_string(),
-                        Applicability::MaybeIncorrect
-                    );
-                } else {
-                    err.span_suggestion(
-                        span,
-                        "try",
-                        suggestion.to_string(),
-                        Applicability::MaybeIncorrect
-                    );
-                }
-            } else {
-                err.help("have you added the `#[macro_use]` on the module/import?");
             }
         }
     }
