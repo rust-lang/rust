@@ -448,14 +448,24 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let inner_hint = self.iter.size_hint();
+        #[inline]
+        fn first_size(step: usize) -> impl Fn(usize) -> usize {
+            move |n| if n == 0 { 0 } else { 1 + (n - 1) / (step + 1) }
+        }
+
+        #[inline]
+        fn other_size(step: usize) -> impl Fn(usize) -> usize {
+            move |n| n / (step + 1)
+        }
+
+        let (low, high) = self.iter.size_hint();
 
         if self.first_take {
-            let f = |n| if n == 0 { 0 } else { 1 + (n-1)/(self.step+1) };
-            (f(inner_hint.0), inner_hint.1.map(f))
+            let f = first_size(self.step);
+            (f(low), high.map(f))
         } else {
-            let f = |n| n / (self.step+1);
-            (f(inner_hint.0), inner_hint.1.map(f))
+            let f = other_size(self.step);
+            (f(low), high.map(f))
         }
     }
 
