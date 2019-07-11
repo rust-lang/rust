@@ -59,7 +59,7 @@ impl<'a> InvocationData<'a> {
 pub struct LegacyBinding<'a> {
     binding: &'a NameBinding<'a>,
     /// Legacy scope into which the `macro_rules` item was planted.
-    parent_legacy_scope: LegacyScope<'a>,
+    crate parent_legacy_scope: LegacyScope<'a>,
     ident: Ident,
 }
 
@@ -421,50 +421,6 @@ impl<'a> Resolver<'a> {
         force: bool,
         path_span: Span,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
-        // General principles:
-        // 1. Not controlled (user-defined) names should have higher priority than controlled names
-        //    built into the language or standard library. This way we can add new names into the
-        //    language or standard library without breaking user code.
-        // 2. "Closed set" below means new names cannot appear after the current resolution attempt.
-        // Places to search (in order of decreasing priority):
-        // (Type NS)
-        // 1. FIXME: Ribs (type parameters), there's no necessary infrastructure yet
-        //    (open set, not controlled).
-        // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
-        //    (open, not controlled).
-        // 3. Extern prelude (closed, not controlled).
-        // 4. Tool modules (closed, controlled right now, but not in the future).
-        // 5. Standard library prelude (de-facto closed, controlled).
-        // 6. Language prelude (closed, controlled).
-        // (Value NS)
-        // 1. FIXME: Ribs (local variables), there's no necessary infrastructure yet
-        //    (open set, not controlled).
-        // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
-        //    (open, not controlled).
-        // 3. Standard library prelude (de-facto closed, controlled).
-        // (Macro NS)
-        // 1-3. Derive helpers (open, not controlled). All ambiguities with other names
-        //    are currently reported as errors. They should be higher in priority than preludes
-        //    and probably even names in modules according to the "general principles" above. They
-        //    also should be subject to restricted shadowing because are effectively produced by
-        //    derives (you need to resolve the derive first to add helpers into scope), but they
-        //    should be available before the derive is expanded for compatibility.
-        //    It's mess in general, so we are being conservative for now.
-        // 1-3. `macro_rules` (open, not controlled), loop through legacy scopes. Have higher
-        //    priority than prelude macros, but create ambiguities with macros in modules.
-        // 1-3. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
-        //    (open, not controlled). Have higher priority than prelude macros, but create
-        //    ambiguities with `macro_rules`.
-        // 4. `macro_use` prelude (open, the open part is from macro expansions, not controlled).
-        // 4a. User-defined prelude from macro-use
-        //    (open, the open part is from macro expansions, not controlled).
-        // 4b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
-        // 5. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
-        // 6. Language prelude: builtin attributes (closed, controlled).
-        // 4-6. Legacy plugin helpers (open, not controlled). Similar to derive helpers,
-        //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
-        //    in prelude, not sure where exactly (creates ambiguities with any other prelude names).
-
         bitflags::bitflags! {
             struct Flags: u8 {
                 const MACRO_RULES        = 1 << 0;
@@ -477,12 +433,20 @@ impl<'a> Resolver<'a> {
         }
 
         assert!(force || !record_used); // `record_used` implies `force`
-        let mut ident = orig_ident.modern();
+        let ident = orig_ident.modern();
 
         // Make sure `self`, `super` etc produce an error when passed to here.
         if ident.is_path_segment_keyword() {
             return Err(Determinacy::Determined);
         }
+
+        let rust_2015 = orig_ident.span.rust_2015();
+        let (ns, macro_kind, is_import, is_absolute_path) = match scope_set {
+            ScopeSet::Import(ns) => (ns, None, true, false),
+            ScopeSet::AbsolutePath(ns) => (ns, None, false, true),
+            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false, false),
+            ScopeSet::Module => (TypeNS, None, false, false),
+        };
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
         // However, sometimes this result is "weak" because it comes from a glob import or
@@ -496,34 +460,22 @@ impl<'a> Resolver<'a> {
         // So we have to save the innermost solution and continue searching in outer scopes
         // to detect potential ambiguities.
         let mut innermost_result: Option<(&NameBinding<'_>, Flags)> = None;
-
-        // Go through all the scopes and try to resolve the name.
-        let rust_2015 = orig_ident.span.rust_2015();
-        let (ns, macro_kind, is_import, is_absolute_path) = match scope_set {
-            ScopeSet::Import(ns) => (ns, None, true, false),
-            ScopeSet::AbsolutePath(ns) => (ns, None, false, true),
-            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false, false),
-            ScopeSet::Module => (TypeNS, None, false, false),
-        };
-        let mut where_to_resolve = match ns {
-            _ if is_absolute_path => Scope::CrateRoot,
-            TypeNS | ValueNS => Scope::Module(parent_scope.module),
-            MacroNS => Scope::DeriveHelpers,
-        };
         let mut use_prelude = !parent_scope.module.no_implicit_prelude;
         let mut determinacy = Determinacy::Determined;
-        loop {
-            let result = match where_to_resolve {
+
+        // Go through all the scopes and try to resolve the name.
+        let break_result = self.visit_scopes(scope_set, parent_scope, ident, |this, scope, ident| {
+            let result = match scope {
                 Scope::DeriveHelpers => {
                     let mut result = Err(Determinacy::Determined);
                     for derive in &parent_scope.derives {
                         let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
-                        match self.resolve_macro_path(derive, MacroKind::Derive,
+                        match this.resolve_macro_path(derive, MacroKind::Derive,
                                                       &parent_scope, true, force) {
                             Ok((Some(ext), _)) => if ext.helper_attrs.contains(&ident.name) {
                                 let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
                                                ty::Visibility::Public, derive.span, Mark::root())
-                                               .to_name_binding(self.arenas);
+                                               .to_name_binding(this.arenas);
                                 result = Ok((binding, Flags::empty()));
                                 break;
                             }
@@ -543,8 +495,8 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::CrateRoot => {
                     let root_ident = Ident::new(kw::PathRoot, orig_ident.span);
-                    let root_module = self.resolve_crate_root(root_ident);
-                    let binding = self.resolve_ident_in_module_ext(
+                    let root_module = this.resolve_crate_root(root_ident);
+                    let binding = this.resolve_ident_in_module_ext(
                         ModuleOrUniformRoot::Module(root_module),
                         orig_ident,
                         ns,
@@ -555,15 +507,16 @@ impl<'a> Resolver<'a> {
                     match binding {
                         Ok(binding) => Ok((binding, Flags::MODULE | Flags::MISC_SUGGEST_CRATE)),
                         Err((Determinacy::Undetermined, Weak::No)) =>
-                            return Err(Determinacy::determined(force)),
+                            return Some(Err(Determinacy::determined(force))),
                         Err((Determinacy::Undetermined, Weak::Yes)) =>
                             Err(Determinacy::Undetermined),
                         Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                     }
                 }
                 Scope::Module(module) => {
-                    let orig_current_module = mem::replace(&mut self.current_module, module);
-                    let binding = self.resolve_ident_in_module_unadjusted_ext(
+                    use_prelude = !module.no_implicit_prelude;
+                    let orig_current_module = mem::replace(&mut this.current_module, module);
+                    let binding = this.resolve_ident_in_module_unadjusted_ext(
                         ModuleOrUniformRoot::Module(module),
                         ident,
                         ns,
@@ -572,10 +525,10 @@ impl<'a> Resolver<'a> {
                         record_used,
                         path_span,
                     );
-                    self.current_module = orig_current_module;
+                    this.current_module = orig_current_module;
                     match binding {
                         Ok(binding) => {
-                            let misc_flags = if ptr::eq(module, self.graph_root) {
+                            let misc_flags = if ptr::eq(module, this.graph_root) {
                                 Flags::MISC_SUGGEST_CRATE
                             } else if module.is_normal() {
                                 Flags::MISC_SUGGEST_SELF
@@ -585,7 +538,7 @@ impl<'a> Resolver<'a> {
                             Ok((binding, Flags::MODULE | misc_flags))
                         }
                         Err((Determinacy::Undetermined, Weak::No)) =>
-                            return Err(Determinacy::determined(force)),
+                            return Some(Err(Determinacy::determined(force))),
                         Err((Determinacy::Undetermined, Weak::Yes)) =>
                             Err(Determinacy::Undetermined),
                         Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
@@ -593,11 +546,11 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::MacroUsePrelude => {
                     if use_prelude || rust_2015 {
-                        match self.macro_use_prelude.get(&ident.name).cloned() {
+                        match this.macro_use_prelude.get(&ident.name).cloned() {
                             Some(binding) =>
                                 Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE)),
                             None => Err(Determinacy::determined(
-                                self.graph_root.unresolved_invocations.borrow().is_empty()
+                                this.graph_root.unresolved_invocations.borrow().is_empty()
                             ))
                         }
                     } else {
@@ -605,7 +558,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::BuiltinMacros => {
-                    match self.builtin_macros.get(&ident.name).cloned() {
+                    match this.builtin_macros.get(&ident.name).cloned() {
                         Some(binding) => Ok((binding, Flags::PRELUDE)),
                         None => Err(Determinacy::Determined),
                     }
@@ -614,7 +567,7 @@ impl<'a> Resolver<'a> {
                     if is_builtin_attr_name(ident.name) {
                         let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
                                        ty::Visibility::Public, DUMMY_SP, Mark::root())
-                                       .to_name_binding(self.arenas);
+                                       .to_name_binding(this.arenas);
                         Ok((binding, Flags::PRELUDE))
                     } else {
                         Err(Determinacy::Determined)
@@ -622,11 +575,11 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::LegacyPluginHelpers => {
                     if (use_prelude || rust_2015) &&
-                       self.session.plugin_attributes.borrow().iter()
+                       this.session.plugin_attributes.borrow().iter()
                                                      .any(|(name, _)| ident.name == *name) {
                         let binding = (Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
                                        ty::Visibility::Public, DUMMY_SP, Mark::root())
-                                       .to_name_binding(self.arenas);
+                                       .to_name_binding(this.arenas);
                         Ok((binding, Flags::PRELUDE))
                     } else {
                         Err(Determinacy::Determined)
@@ -634,10 +587,10 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::ExternPrelude => {
                     if use_prelude || is_absolute_path {
-                        match self.extern_prelude_get(ident, !record_used) {
+                        match this.extern_prelude_get(ident, !record_used) {
                             Some(binding) => Ok((binding, Flags::PRELUDE)),
                             None => Err(Determinacy::determined(
-                                self.graph_root.unresolved_invocations.borrow().is_empty()
+                                this.graph_root.unresolved_invocations.borrow().is_empty()
                             )),
                         }
                     } else {
@@ -647,7 +600,7 @@ impl<'a> Resolver<'a> {
                 Scope::ToolPrelude => {
                     if use_prelude && is_known_tool(ident.name) {
                         let binding = (Res::ToolMod, ty::Visibility::Public,
-                                       DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
+                                       DUMMY_SP, Mark::root()).to_name_binding(this.arenas);
                         Ok((binding, Flags::PRELUDE))
                     } else {
                         Err(Determinacy::Determined)
@@ -656,8 +609,8 @@ impl<'a> Resolver<'a> {
                 Scope::StdLibPrelude => {
                     let mut result = Err(Determinacy::Determined);
                     if use_prelude {
-                        if let Some(prelude) = self.prelude {
-                            if let Ok(binding) = self.resolve_ident_in_module_unadjusted(
+                        if let Some(prelude) = this.prelude {
+                            if let Ok(binding) = this.resolve_ident_in_module_unadjusted(
                                 ModuleOrUniformRoot::Module(prelude),
                                 ident,
                                 ns,
@@ -671,10 +624,10 @@ impl<'a> Resolver<'a> {
                     result
                 }
                 Scope::BuiltinTypes => {
-                    match self.primitive_type_table.primitive_types.get(&ident.name).cloned() {
+                    match this.primitive_type_table.primitive_types.get(&ident.name).cloned() {
                         Some(prim_ty) => {
                             let binding = (Res::PrimTy(prim_ty), ty::Visibility::Public,
-                                           DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
+                                           DUMMY_SP, Mark::root()).to_name_binding(this.arenas);
                             Ok((binding, Flags::PRELUDE))
                         }
                         None => Err(Determinacy::Determined)
@@ -685,7 +638,7 @@ impl<'a> Resolver<'a> {
             match result {
                 Ok((binding, flags)) if sub_namespace_match(binding.macro_kind(), macro_kind) => {
                     if !record_used {
-                        return Ok(binding);
+                        return Some(Ok(binding));
                     }
 
                     if let Some((innermost_binding, innermost_flags)) = innermost_result {
@@ -710,11 +663,11 @@ impl<'a> Resolver<'a> {
                                 Some(AmbiguityKind::LegacyHelperVsPrelude)
                             } else if innermost_flags.contains(Flags::MACRO_RULES) &&
                                       flags.contains(Flags::MODULE) &&
-                                      !self.disambiguate_legacy_vs_modern(innermost_binding,
+                                      !this.disambiguate_legacy_vs_modern(innermost_binding,
                                                                           binding) ||
                                       flags.contains(Flags::MACRO_RULES) &&
                                       innermost_flags.contains(Flags::MODULE) &&
-                                      !self.disambiguate_legacy_vs_modern(binding,
+                                      !this.disambiguate_legacy_vs_modern(binding,
                                                                           innermost_binding) {
                                 Some(AmbiguityKind::LegacyVsModern)
                             } else if innermost_binding.is_glob_import() {
@@ -735,7 +688,7 @@ impl<'a> Resolver<'a> {
                                 } else {
                                     AmbiguityErrorMisc::None
                                 };
-                                self.ambiguity_errors.push(AmbiguityError {
+                                this.ambiguity_errors.push(AmbiguityError {
                                     kind,
                                     ident: orig_ident,
                                     b1: innermost_binding,
@@ -743,7 +696,7 @@ impl<'a> Resolver<'a> {
                                     misc1: misc(innermost_flags),
                                     misc2: misc(flags),
                                 });
-                                return Ok(innermost_binding);
+                                return Some(Ok(innermost_binding));
                             }
                         }
                     } else {
@@ -755,55 +708,11 @@ impl<'a> Resolver<'a> {
                 Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined
             }
 
-            where_to_resolve = match where_to_resolve {
-                Scope::DeriveHelpers =>
-                    Scope::MacroRules(parent_scope.legacy),
-                Scope::MacroRules(legacy_scope) => match legacy_scope {
-                    LegacyScope::Binding(binding) => Scope::MacroRules(
-                        binding.parent_legacy_scope
-                    ),
-                    LegacyScope::Invocation(invoc) => Scope::MacroRules(
-                        invoc.output_legacy_scope.get().unwrap_or(invoc.parent_legacy_scope)
-                    ),
-                    LegacyScope::Empty => Scope::Module(parent_scope.module),
-                }
-                Scope::CrateRoot => match ns {
-                    TypeNS => {
-                        ident.span.adjust(Mark::root());
-                        Scope::ExternPrelude
-                    }
-                    ValueNS | MacroNS => break,
-                }
-                Scope::Module(module) => {
-                    match self.hygienic_lexical_parent(module, &mut ident.span) {
-                        Some(parent_module) => Scope::Module(parent_module),
-                        None => {
-                            ident.span.adjust(Mark::root());
-                            use_prelude = !module.no_implicit_prelude;
-                            match ns {
-                                TypeNS => Scope::ExternPrelude,
-                                ValueNS => Scope::StdLibPrelude,
-                                MacroNS => Scope::MacroUsePrelude,
-                            }
-                        }
-                    }
-                }
-                Scope::MacroUsePrelude => Scope::StdLibPrelude,
-                Scope::BuiltinMacros => Scope::BuiltinAttrs,
-                Scope::BuiltinAttrs => Scope::LegacyPluginHelpers,
-                Scope::LegacyPluginHelpers => break, // nowhere else to search
-                Scope::ExternPrelude if is_absolute_path => break,
-                Scope::ExternPrelude => Scope::ToolPrelude,
-                Scope::ToolPrelude => Scope::StdLibPrelude,
-                Scope::StdLibPrelude => match ns {
-                    TypeNS => Scope::BuiltinTypes,
-                    ValueNS => break, // nowhere else to search
-                    MacroNS => Scope::BuiltinMacros,
-                }
-                Scope::BuiltinTypes => break, // nowhere else to search
-            };
+            None
+        });
 
-            continue;
+        if let Some(break_result) = break_result {
+            return break_result;
         }
 
         // The first found solution was the only one, return it.

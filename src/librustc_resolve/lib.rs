@@ -109,6 +109,7 @@ impl Determinacy {
 /// A specific scope in which a name can be looked up.
 /// This enum is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
+#[derive(Clone, Copy)]
 enum Scope<'a> {
     DeriveHelpers,
     MacroRules(LegacyScope<'a>),
@@ -2141,6 +2142,128 @@ impl<'a> Resolver<'a> {
         if directive.is_glob() {
             self.glob_map.entry(directive.id).or_default().insert(ident.name);
         }
+    }
+
+    /// A generic scope visitor.
+    /// Visits scopes in order to resolve some identifier in them or perform other actions.
+    /// If the callback returns `Some` result, we stop visiting scopes and return it.
+    fn visit_scopes<T>(
+        &mut self,
+        scope_set: ScopeSet,
+        parent_scope: &ParentScope<'a>,
+        mut ident: Ident,
+        mut visitor: impl FnMut(&mut Self, Scope<'a>, Ident) -> Option<T>,
+    ) -> Option<T> {
+        // General principles:
+        // 1. Not controlled (user-defined) names should have higher priority than controlled names
+        //    built into the language or standard library. This way we can add new names into the
+        //    language or standard library without breaking user code.
+        // 2. "Closed set" below means new names cannot appear after the current resolution attempt.
+        // Places to search (in order of decreasing priority):
+        // (Type NS)
+        // 1. FIXME: Ribs (type parameters), there's no necessary infrastructure yet
+        //    (open set, not controlled).
+        // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled).
+        // 3. Extern prelude (open, the open part is from macro expansions, not controlled).
+        // 4. Tool modules (closed, controlled right now, but not in the future).
+        // 5. Standard library prelude (de-facto closed, controlled).
+        // 6. Language prelude (closed, controlled).
+        // (Value NS)
+        // 1. FIXME: Ribs (local variables), there's no necessary infrastructure yet
+        //    (open set, not controlled).
+        // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled).
+        // 3. Standard library prelude (de-facto closed, controlled).
+        // (Macro NS)
+        // 1-3. Derive helpers (open, not controlled). All ambiguities with other names
+        //    are currently reported as errors. They should be higher in priority than preludes
+        //    and probably even names in modules according to the "general principles" above. They
+        //    also should be subject to restricted shadowing because are effectively produced by
+        //    derives (you need to resolve the derive first to add helpers into scope), but they
+        //    should be available before the derive is expanded for compatibility.
+        //    It's mess in general, so we are being conservative for now.
+        // 1-3. `macro_rules` (open, not controlled), loop through legacy scopes. Have higher
+        //    priority than prelude macros, but create ambiguities with macros in modules.
+        // 1-3. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled). Have higher priority than prelude macros, but create
+        //    ambiguities with `macro_rules`.
+        // 4. `macro_use` prelude (open, the open part is from macro expansions, not controlled).
+        // 4a. User-defined prelude from macro-use
+        //    (open, the open part is from macro expansions, not controlled).
+        // 4b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
+        // 5. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
+        // 6. Language prelude: builtin attributes (closed, controlled).
+        // 4-6. Legacy plugin helpers (open, not controlled). Similar to derive helpers,
+        //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
+        //    in prelude, not sure where exactly (creates ambiguities with any other prelude names).
+
+        let (ns, is_absolute_path) = match scope_set {
+            ScopeSet::Import(ns) => (ns, false),
+            ScopeSet::AbsolutePath(ns) => (ns, true),
+            ScopeSet::Macro(_) => (MacroNS, false),
+            ScopeSet::Module => (TypeNS, false),
+        };
+        let mut scope = match ns {
+            _ if is_absolute_path => Scope::CrateRoot,
+            TypeNS | ValueNS => Scope::Module(parent_scope.module),
+            MacroNS => Scope::DeriveHelpers,
+        };
+
+        loop {
+            if let break_result @ Some(..) = visitor(self, scope, ident) {
+                return break_result;
+            }
+
+            scope = match scope {
+                Scope::DeriveHelpers =>
+                    Scope::MacroRules(parent_scope.legacy),
+                Scope::MacroRules(legacy_scope) => match legacy_scope {
+                    LegacyScope::Binding(binding) => Scope::MacroRules(
+                        binding.parent_legacy_scope
+                    ),
+                    LegacyScope::Invocation(invoc) => Scope::MacroRules(
+                        invoc.output_legacy_scope.get().unwrap_or(invoc.parent_legacy_scope)
+                    ),
+                    LegacyScope::Empty => Scope::Module(parent_scope.module),
+                }
+                Scope::CrateRoot => match ns {
+                    TypeNS => {
+                        ident.span.adjust(Mark::root());
+                        Scope::ExternPrelude
+                    }
+                    ValueNS | MacroNS => break,
+                }
+                Scope::Module(module) => {
+                    match self.hygienic_lexical_parent(module, &mut ident.span) {
+                        Some(parent_module) => Scope::Module(parent_module),
+                        None => {
+                            ident.span.adjust(Mark::root());
+                            match ns {
+                                TypeNS => Scope::ExternPrelude,
+                                ValueNS => Scope::StdLibPrelude,
+                                MacroNS => Scope::MacroUsePrelude,
+                            }
+                        }
+                    }
+                }
+                Scope::MacroUsePrelude => Scope::StdLibPrelude,
+                Scope::BuiltinMacros => Scope::BuiltinAttrs,
+                Scope::BuiltinAttrs => Scope::LegacyPluginHelpers,
+                Scope::LegacyPluginHelpers => break, // nowhere else to search
+                Scope::ExternPrelude if is_absolute_path => break,
+                Scope::ExternPrelude => Scope::ToolPrelude,
+                Scope::ToolPrelude => Scope::StdLibPrelude,
+                Scope::StdLibPrelude => match ns {
+                    TypeNS => Scope::BuiltinTypes,
+                    ValueNS => break, // nowhere else to search
+                    MacroNS => Scope::BuiltinMacros,
+                }
+                Scope::BuiltinTypes => break, // nowhere else to search
+            };
+        }
+
+        None
     }
 
     /// This resolves the identifier `ident` in the namespace `ns` in the current lexical scope.
