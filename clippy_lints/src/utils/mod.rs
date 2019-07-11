@@ -43,7 +43,7 @@ use rustc_errors::Applicability;
 use smallvec::SmallVec;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
-use syntax::ext::hygiene::ExpnFormat;
+use syntax::ext::hygiene::ExpnKind;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol::{kw, Symbol};
 
@@ -100,7 +100,7 @@ pub fn in_macro_or_desugar(span: Span) -> bool {
 /// Returns `true` if this `expn_info` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
     if let Some(info) = span.ctxt().outer_expn_info() {
-        if let ExpnFormat::CompilerDesugaring(..) = info.format {
+        if let ExpnKind::Desugaring(..) = info.kind {
             false
         } else {
             true
@@ -686,7 +686,7 @@ pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = span.ctxt().outer_expn_info().map(|ei| (ei.format.name(), ei.call_site));
+        let span_name_span = span.ctxt().outer_expn_info().map(|ei| (ei.kind.descr(), ei.call_site));
 
         match span_name_span {
             Some((mac_name, new_span)) if mac_name.as_str() == name => return Some(new_span),
@@ -706,7 +706,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `bar!` by
 /// `is_direct_expn_of`.
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
-    let span_name_span = span.ctxt().outer_expn_info().map(|ei| (ei.format.name(), ei.call_site));
+    let span_name_span = span.ctxt().outer_expn_info().map(|ei| (ei.kind.descr(), ei.call_site));
 
     match span_name_span {
         Some((mac_name, new_span)) if mac_name.as_str() == name => Some(new_span),

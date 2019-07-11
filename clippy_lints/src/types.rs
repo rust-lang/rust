@@ -621,9 +621,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
 }
 
 fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
-    use syntax_pos::hygiene::CompilerDesugaringKind;
+    use syntax_pos::hygiene::DesugaringKind;
     if let ExprKind::Call(ref callee, _) = expr.node {
-        callee.span.is_compiler_desugaring(CompilerDesugaringKind::QuestionMark)
+        callee.span.is_desugaring(DesugaringKind::QuestionMark)
     } else {
         false
     }
