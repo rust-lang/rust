@@ -11,12 +11,11 @@
 
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
-use syntax::ext::hygiene::{Mark, SyntaxContext};
+use syntax::ext::hygiene::SyntaxContext;
 use syntax::ast;
 use syntax::source_map::respan;
 use syntax::symbol::sym;
 use syntax_pos::Span;
-use syntax::source_map::{ExpnInfo, MacroAttribute};
 
 pub fn expand(
     ecx: &mut ExtCtxt<'_>,
@@ -26,17 +25,8 @@ pub fn expand(
 ) -> Vec<Annotatable> {
     if !ecx.ecfg.should_test { return vec![]; }
 
-    let sp = {
-        let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo::with_unstable(
-            MacroAttribute(sym::test_case), attr_sp, ecx.parse_sess.edition,
-            &[sym::test, sym::rustc_attrs],
-        ));
-        attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
-    };
-
+    let sp = attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(ecx.current_expansion.mark));
     let mut item = anno_item.expect_item();
-
     item = item.map(|mut item| {
         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
         item.ident = item.ident.gensym();

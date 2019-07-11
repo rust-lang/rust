@@ -2,7 +2,7 @@ error[E0658]: use of unstable library feature 'global_asm': `global_asm!` is not
   --> $DIR/feature-gate-global_asm.rs:1:1
    |
 LL | global_asm!("");
-   | ^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/35119
    = help: add `#![feature(global_asm)]` to the crate attributes to enable

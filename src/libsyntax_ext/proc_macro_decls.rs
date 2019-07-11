@@ -4,8 +4,8 @@ use crate::deriving;
 
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::source_map::{ExpnInfo, MacroAttribute, respan};
-use syntax::ext::base::ExtCtxt;
+use syntax::source_map::{ExpnInfo, ExpnKind, respan};
+use syntax::ext::base::{ExtCtxt, MacroKind};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::ext::hygiene::Mark;
@@ -346,12 +346,10 @@ fn mk_decls(
     custom_attrs: &[ProcMacroDef],
     custom_macros: &[ProcMacroDef],
 ) -> P<ast::Item> {
-    let mark = Mark::fresh(Mark::root());
-    mark.set_expn_info(ExpnInfo::with_unstable(
-        MacroAttribute(sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
-        &[sym::rustc_attrs, Symbol::intern("proc_macro_internals")],
+    let span = DUMMY_SP.fresh_expansion(Mark::root(), ExpnInfo::allow_unstable(
+        ExpnKind::Macro(MacroKind::Attr, sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
+        [sym::rustc_attrs, sym::proc_macro_internals][..].into(),
     ));
-    let span = DUMMY_SP.apply_mark(mark);
 
     let hidden = cx.meta_list_item_word(span, sym::hidden);
     let doc = cx.meta_list(span, sym::doc, vec![hidden]);

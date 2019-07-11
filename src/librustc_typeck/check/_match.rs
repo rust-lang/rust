@@ -15,7 +15,7 @@ use syntax::ast;
 use syntax::source_map::Spanned;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
-use syntax_pos::hygiene::CompilerDesugaringKind;
+use syntax_pos::hygiene::DesugaringKind;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
@@ -184,7 +184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // In the case of `if`- and `while`-expressions we've already checked
                             // that `scrutinee: bool`. We know that the pattern is `true`,
                             // so an error here would be a duplicate and from the wrong POV.
-                            s.is_compiler_desugaring(CompilerDesugaringKind::CondTemporary)
+                            s.is_desugaring(DesugaringKind::CondTemporary)
                         })
                         .is_some());
                 }

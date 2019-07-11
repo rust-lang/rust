@@ -8,13 +8,13 @@ use syntax::{
     },
     attr,
     source_map::{
-        respan, ExpnInfo, MacroAttribute,
+        respan, ExpnInfo, ExpnKind,
     },
     ext::{
-        base::{ExtCtxt, Resolver},
+        base::{ExtCtxt, MacroKind, Resolver},
         build::AstBuilder,
         expand::ExpansionConfig,
-        hygiene::{Mark, SyntaxContext},
+        hygiene::Mark,
     },
     mut_visit::{self, MutVisitor},
     parse::ParseSess,
@@ -84,14 +84,11 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
         }
         self.found = true;
 
-        // Create a fresh Mark for the new macro expansion we are about to do
-        let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo::with_unstable(
-            MacroAttribute(sym::global_allocator), item.span, self.sess.edition, &[sym::rustc_attrs]
+        // Create a new expansion for the generated allocator code.
+        let span = item.span.fresh_expansion(Mark::root(), ExpnInfo::allow_unstable(
+            ExpnKind::Macro(MacroKind::Attr, sym::global_allocator), item.span, self.sess.edition,
+            [sym::rustc_attrs][..].into(),
         ));
-
-        // Tie the span to the macro expansion info we just created
-        let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
 
         // Create an expansion config
         let ecfg = ExpansionConfig::default(self.crate_name.take().unwrap());

@@ -7,10 +7,8 @@
 //! within the SourceMap, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
-
 pub use syntax_pos::*;
-pub use syntax_pos::hygiene::{ExpnFormat, ExpnInfo};
-pub use ExpnFormat::*;
+pub use syntax_pos::hygiene::{ExpnKind, ExpnInfo};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;

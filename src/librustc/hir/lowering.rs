@@ -60,10 +60,9 @@ use syntax::attr;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::errors;
-use syntax::ext::hygiene::{Mark, SyntaxContext};
+use syntax::ext::hygiene::Mark;
 use syntax::print::pprust;
-use syntax::source_map::{self, respan, ExpnInfo, CompilerDesugaringKind, Spanned};
-use syntax::source_map::CompilerDesugaringKind::CondTemporary;
+use syntax::source_map::{respan, ExpnInfo, ExpnKind, DesugaringKind, Spanned};
 use syntax::std_inject;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
@@ -872,17 +871,15 @@ impl<'a> LoweringContext<'a> {
     /// allowed inside this span.
     fn mark_span_with_reason(
         &self,
-        reason: CompilerDesugaringKind,
+        reason: DesugaringKind,
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo {
-            def_site: Some(span),
+        span.fresh_expansion(Mark::root(), ExpnInfo {
+            def_site: span,
             allow_internal_unstable,
-            ..ExpnInfo::default(source_map::CompilerDesugaring(reason), span, self.sess.edition())
-        });
-        span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
+            ..ExpnInfo::default(ExpnKind::Desugaring(reason), span, self.sess.edition())
+        })
     }
 
     fn with_anonymous_lifetime_mode<R>(
@@ -1188,7 +1185,7 @@ impl<'a> LoweringContext<'a> {
         };
 
         let unstable_span = self.mark_span_with_reason(
-            CompilerDesugaringKind::Async,
+            DesugaringKind::Async,
             span,
             self.allow_gen_future.clone(),
         );
@@ -1733,7 +1730,7 @@ impl<'a> LoweringContext<'a> {
         // Not tracking it makes lints in rustc and clippy very fragile, as
         // frequently opened issues show.
         let exist_ty_span = self.mark_span_with_reason(
-            CompilerDesugaringKind::ExistentialType,
+            DesugaringKind::ExistentialType,
             span,
             None,
         );
@@ -2603,7 +2600,7 @@ impl<'a> LoweringContext<'a> {
         let span = output.span();
 
         let exist_ty_span = self.mark_span_with_reason(
-            CompilerDesugaringKind::Async,
+            DesugaringKind::Async,
             span,
             None,
         );
@@ -3275,7 +3272,7 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 let desugared_span =
-                    this.mark_span_with_reason(CompilerDesugaringKind::Async, span, None);
+                    this.mark_span_with_reason(DesugaringKind::Async, span, None);
 
                 // Construct an argument representing `__argN: <ty>` to replace the argument of the
                 // async function.
@@ -4410,7 +4407,9 @@ impl<'a> LoweringContext<'a> {
                     _ => {
                         // Lower condition:
                         let cond = self.lower_expr(cond);
-                        let span_block = self.mark_span_with_reason(CondTemporary, cond.span, None);
+                        let span_block = self.mark_span_with_reason(
+                            DesugaringKind::CondTemporary, cond.span, None
+                        );
                         // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
                         // to preserve drop semantics since `if cond { ... }` does not
                         // let temporaries live outside of `cond`.
@@ -4469,7 +4468,9 @@ impl<'a> LoweringContext<'a> {
 
                         // Lower condition:
                         let cond = this.with_loop_condition_scope(|this| this.lower_expr(cond));
-                        let span_block = this.mark_span_with_reason(CondTemporary, cond.span, None);
+                        let span_block = this.mark_span_with_reason(
+                            DesugaringKind::CondTemporary, cond.span, None
+                        );
                         // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
                         // to preserve drop semantics since `while cond { ... }` does not
                         // let temporaries live outside of `cond`.
@@ -4508,7 +4509,7 @@ impl<'a> LoweringContext<'a> {
             ExprKind::TryBlock(ref body) => {
                 self.with_catch_scope(body.id, |this| {
                     let unstable_span = this.mark_span_with_reason(
-                        CompilerDesugaringKind::TryBlock,
+                        DesugaringKind::TryBlock,
                         body.span,
                         this.allow_try_trait.clone(),
                     );
@@ -4836,7 +4837,7 @@ impl<'a> LoweringContext<'a> {
                 let mut head = self.lower_expr(head);
                 let head_sp = head.span;
                 let desugared_span = self.mark_span_with_reason(
-                    CompilerDesugaringKind::ForLoop,
+                    DesugaringKind::ForLoop,
                     head_sp,
                     None,
                 );
@@ -4990,13 +4991,13 @@ impl<'a> LoweringContext<'a> {
                 // }
 
                 let unstable_span = self.mark_span_with_reason(
-                    CompilerDesugaringKind::QuestionMark,
+                    DesugaringKind::QuestionMark,
                     e.span,
                     self.allow_try_trait.clone(),
                 );
                 let try_span = self.sess.source_map().end_point(e.span);
                 let try_span = self.mark_span_with_reason(
-                    CompilerDesugaringKind::QuestionMark,
+                    DesugaringKind::QuestionMark,
                     try_span,
                     self.allow_try_trait.clone(),
                 );
@@ -5811,12 +5812,12 @@ impl<'a> LoweringContext<'a> {
             }
         }
         let span = self.mark_span_with_reason(
-            CompilerDesugaringKind::Await,
+            DesugaringKind::Await,
             await_span,
             None,
         );
         let gen_future_span = self.mark_span_with_reason(
-            CompilerDesugaringKind::Await,
+            DesugaringKind::Await,
             await_span,
             self.allow_gen_future.clone(),
         );

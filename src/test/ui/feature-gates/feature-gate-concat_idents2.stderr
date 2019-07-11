@@ -2,7 +2,7 @@ error[E0658]: use of unstable library feature 'concat_idents': `concat_idents` i
   --> $DIR/feature-gate-concat_idents2.rs:4:5
    |
 LL |     concat_idents!(a, b);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29599
    = help: add `#![feature(concat_idents)]` to the crate attributes to enable

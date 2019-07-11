@@ -27,7 +27,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;
-pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnFormat, CompilerDesugaringKind};
+pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnKind, MacroKind, DesugaringKind};
 
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -60,7 +60,7 @@ impl Globals {
         Globals {
             symbol_interner: Lock::new(symbol::Interner::fresh()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
-            hygiene_data: Lock::new(hygiene::HygieneData::new()),
+            hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
             edition,
         }
     }
@@ -403,10 +403,10 @@ impl Span {
     }
 
     /// Checks if this span arises from a compiler desugaring of kind `kind`.
-    pub fn is_compiler_desugaring(&self, kind: CompilerDesugaringKind) -> bool {
+    pub fn is_desugaring(&self, kind: DesugaringKind) -> bool {
         match self.ctxt().outer_expn_info() {
-            Some(info) => match info.format {
-                ExpnFormat::CompilerDesugaring(k) => k == kind,
+            Some(info) => match info.kind {
+                ExpnKind::Desugaring(k) => k == kind,
                 _ => false,
             },
             None => false,
@@ -415,10 +415,10 @@ impl Span {
 
     /// Returns the compiler desugaring that created this span, or `None`
     /// if this span is not from a desugaring.
-    pub fn compiler_desugaring_kind(&self) -> Option<CompilerDesugaringKind> {
+    pub fn desugaring_kind(&self) -> Option<DesugaringKind> {
         match self.ctxt().outer_expn_info() {
-            Some(info) => match info.format {
-                ExpnFormat::CompilerDesugaring(k) => Some(k),
+            Some(info) => match info.kind {
+                ExpnKind::Desugaring(k) => Some(k),
                 _ => None
             },
             None => None
@@ -441,14 +441,18 @@ impl Span {
         while let Some(info) = self.ctxt().outer_expn_info() {
             // Don't print recursive invocations.
             if !info.call_site.source_equal(&prev_span) {
-                let (pre, post) = match info.format {
-                    ExpnFormat::MacroAttribute(..) => ("#[", "]"),
-                    ExpnFormat::MacroBang(..) => ("", "!"),
-                    ExpnFormat::CompilerDesugaring(..) => ("desugaring of `", "`"),
+                let (pre, post) = match info.kind {
+                    ExpnKind::Root => break,
+                    ExpnKind::Desugaring(..) => ("desugaring of ", ""),
+                    ExpnKind::Macro(macro_kind, _) => match macro_kind {
+                        MacroKind::Bang => ("", "!"),
+                        MacroKind::Attr => ("#[", "]"),
+                        MacroKind::Derive => ("#[derive(", ")]"),
+                    }
                 };
                 result.push(MacroBacktrace {
                     call_site: info.call_site,
-                    macro_decl_name: format!("{}{}{}", pre, info.format.name(), post),
+                    macro_decl_name: format!("{}{}{}", pre, info.kind.descr(), post),
                     def_site_span: info.def_site,
                 });
             }
@@ -1363,8 +1367,8 @@ pub struct MacroBacktrace {
     /// name of macro that was applied (e.g., "foo!" or "#[derive(Eq)]")
     pub macro_decl_name: String,
 
-    /// span where macro was defined (if known)
-    pub def_site_span: Option<Span>,
+    /// span where macro was defined (possibly dummy)
+    pub def_site_span: Span,
 }
 
 // _____________________________________________________________________________

@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
-use syntax::source_map::CompilerDesugaringKind;
+use syntax::source_map::DesugaringKind;
 
 use super::nll::explain_borrow::BorrowExplanation;
 use super::nll::region_infer::{RegionName, RegionNameSource};
@@ -174,7 +174,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         format!("variable moved due to use{}", move_spans.describe()),
                     );
                 }
-                if Some(CompilerDesugaringKind::ForLoop) == move_span.compiler_desugaring_kind() {
+                if Some(DesugaringKind::ForLoop) == move_span.desugaring_kind() {
                     if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
                         err.span_suggestion(
                             move_span,

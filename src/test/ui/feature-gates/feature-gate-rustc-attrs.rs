@@ -7,12 +7,12 @@ mod unknown { pub macro rustc() {} }
 
 #[rustc::unknown]
 //~^ ERROR attributes starting with `rustc` are reserved for use by the `rustc` compiler
-//~| ERROR macro `rustc::unknown` may not be used in attributes
+//~| ERROR expected attribute, found macro `rustc::unknown`
 fn f() {}
 
 #[unknown::rustc]
 //~^ ERROR attributes starting with `rustc` are reserved for use by the `rustc` compiler
-//~| ERROR macro `unknown::rustc` may not be used in attributes
+//~| ERROR expected attribute, found macro `unknown::rustc`
 fn g() {}
 
 #[rustc_dummy]

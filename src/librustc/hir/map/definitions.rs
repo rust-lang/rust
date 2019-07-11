@@ -100,6 +100,9 @@ pub struct Definitions {
     expansions_that_defined: FxHashMap<DefIndex, Mark>,
     next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
     def_index_to_span: FxHashMap<DefIndex, Span>,
+    /// When collecting definitions from an AST fragment produced by a macro invocation `Mark`
+    /// we know what parent node that fragment should be attached to thanks to this table.
+    invocation_parents: FxHashMap<Mark, DefIndex>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -434,6 +437,7 @@ impl Definitions {
         assert!(self.def_index_to_node.is_empty());
         self.def_index_to_node.push(ast::CRATE_NODE_ID);
         self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
+        self.set_invocation_parent(Mark::root(), root_index);
 
         // Allocate some other DefIndices that always must exist.
         GlobalMetaDataKind::allocate_def_indices(self);
@@ -525,6 +529,15 @@ impl Definitions {
 
     pub fn add_parent_module_of_macro_def(&mut self, mark: Mark, module: DefId) {
         self.parent_modules_of_macro_defs.insert(mark, module);
+    }
+
+    pub fn invocation_parent(&self, invoc_id: Mark) -> DefIndex {
+        self.invocation_parents[&invoc_id]
+    }
+
+    pub fn set_invocation_parent(&mut self, invoc_id: Mark, parent: DefIndex) {
+        let old_parent = self.invocation_parents.insert(invoc_id, parent);
+        assert!(old_parent.is_none(), "parent def-index is reset for an invocation");
     }
 }
 

@@ -26,20 +26,20 @@
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
 use crate::GLOBALS;
-use crate::Span;
+use crate::{Span, DUMMY_SP};
 use crate::edition::Edition;
 use crate::symbol::{kw, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
-#[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxContext(u32);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 struct SyntaxContextData {
     outer_mark: Mark,
     transparency: Transparency,
@@ -53,12 +53,15 @@ struct SyntaxContextData {
 }
 
 /// A mark is a unique ID associated with a macro expansion.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Mark(u32);
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct MarkData {
     parent: Mark,
+    /// Each mark should have an associated expansion info, but sometimes there's a delay between
+    /// creation of a mark and obtaining its info (e.g. macros are collected first and then
+    /// resolved later), so we use an `Option` here.
     expn_info: Option<ExpnInfo>,
 }
 
@@ -82,11 +85,8 @@ pub enum Transparency {
 }
 
 impl Mark {
-    pub fn fresh(parent: Mark) -> Self {
-        HygieneData::with(|data| {
-            data.marks.push(MarkData { parent, expn_info: None });
-            Mark(data.marks.len() as u32 - 1)
-        })
+    pub fn fresh(parent: Mark, expn_info: Option<ExpnInfo>) -> Self {
+        HygieneData::with(|data| data.fresh_mark(parent, expn_info))
     }
 
     /// The mark of the theoretical expansion that generates freshly parsed, unexpanded AST.
@@ -117,7 +117,11 @@ impl Mark {
 
     #[inline]
     pub fn set_expn_info(self, info: ExpnInfo) {
-        HygieneData::with(|data| data.marks[self.0 as usize].expn_info = Some(info))
+        HygieneData::with(|data| {
+            let old_info = &mut data.marks[self.0 as usize].expn_info;
+            assert!(old_info.is_none(), "expansion info is reset for a mark");
+            *old_info = Some(info);
+        })
     }
 
     pub fn is_descendant_of(self, ancestor: Mark) -> bool {
@@ -130,42 +134,14 @@ impl Mark {
         HygieneData::with(|data| data.is_descendant_of(self, data.outer(ctxt)))
     }
 
-    /// Computes a mark such that both input marks are descendants of (or equal to) the returned
-    /// mark. That is, the following holds:
-    ///
-    /// ```rust
-    /// let la = least_ancestor(a, b);
-    /// assert!(a.is_descendant_of(la))
-    /// assert!(b.is_descendant_of(la))
-    /// ```
-    pub fn least_ancestor(mut a: Mark, mut b: Mark) -> Mark {
-        HygieneData::with(|data| {
-            // Compute the path from a to the root
-            let mut a_path = FxHashSet::<Mark>::default();
-            while a != Mark::root() {
-                a_path.insert(a);
-                a = data.marks[a.0 as usize].parent;
-            }
-
-            // While the path from b to the root hasn't intersected, move up the tree
-            while !a_path.contains(&b) {
-                b = data.marks[b.0 as usize].parent;
-            }
-
-            b
-        })
-    }
-
     // Used for enabling some compatibility fallback in resolve.
     #[inline]
     pub fn looks_like_proc_macro_derive(self) -> bool {
         HygieneData::with(|data| {
             if data.default_transparency(self) == Transparency::Opaque {
-                if let Some(expn_info) = &data.marks[self.0 as usize].expn_info {
-                    if let ExpnFormat::MacroAttribute(name) = expn_info.format {
-                        if name.as_str().starts_with("derive(") {
-                            return true;
-                        }
+                if let Some(expn_info) = data.expn_info(self) {
+                    if let ExpnKind::Macro(MacroKind::Derive, _) = expn_info.kind {
+                        return true;
                     }
                 }
             }
@@ -182,11 +158,11 @@ crate struct HygieneData {
 }
 
 impl HygieneData {
-    crate fn new() -> Self {
+    crate fn new(edition: Edition) -> Self {
         HygieneData {
             marks: vec![MarkData {
                 parent: Mark::root(),
-                expn_info: None,
+                expn_info: Some(ExpnInfo::default(ExpnKind::Root, DUMMY_SP, edition)),
             }],
             syntax_contexts: vec![SyntaxContextData {
                 outer_mark: Mark::root(),
@@ -204,8 +180,21 @@ impl HygieneData {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 
+    fn fresh_mark(&mut self, parent: Mark, expn_info: Option<ExpnInfo>) -> Mark {
+        self.marks.push(MarkData { parent, expn_info });
+        Mark(self.marks.len() as u32 - 1)
+    }
+
     fn expn_info(&self, mark: Mark) -> Option<&ExpnInfo> {
-        self.marks[mark.0 as usize].expn_info.as_ref()
+        if mark != Mark::root() {
+            Some(self.marks[mark.0 as usize].expn_info.as_ref()
+                     .expect("no expansion info for a mark"))
+        } else {
+            // FIXME: Some code relies on `expn_info().is_none()` meaning "no expansion".
+            // Introduce a method for checking for "no expansion" instead and always return
+            // `ExpnInfo` from this function instead of the `Option`.
+            None
+        }
     }
 
     fn is_descendant_of(&self, mut mark: Mark, ancestor: Mark) -> bool {
@@ -219,7 +208,7 @@ impl HygieneData {
     }
 
     fn default_transparency(&self, mark: Mark) -> Transparency {
-        self.marks[mark.0 as usize].expn_info.as_ref().map_or(
+        self.expn_info(mark).map_or(
             Transparency::SemiTransparent, |einfo| einfo.default_transparency
         )
     }
@@ -420,33 +409,6 @@ impl SyntaxContext {
         SyntaxContext(raw)
     }
 
-    // Allocate a new SyntaxContext with the given ExpnInfo. This is used when
-    // deserializing Spans from the incr. comp. cache.
-    // FIXME(mw): This method does not restore MarkData::parent or
-    // SyntaxContextData::prev_ctxt or SyntaxContextData::opaque. These things
-    // don't seem to be used after HIR lowering, so everything should be fine
-    // as long as incremental compilation does not kick in before that.
-    pub fn allocate_directly(expansion_info: ExpnInfo) -> Self {
-        HygieneData::with(|data| {
-            data.marks.push(MarkData {
-                parent: Mark::root(),
-                expn_info: Some(expansion_info),
-            });
-
-            let mark = Mark(data.marks.len() as u32 - 1);
-
-            data.syntax_contexts.push(SyntaxContextData {
-                outer_mark: mark,
-                transparency: Transparency::SemiTransparent,
-                prev_ctxt: SyntaxContext::empty(),
-                opaque: SyntaxContext::empty(),
-                opaque_and_semitransparent: SyntaxContext::empty(),
-                dollar_crate_name: kw::DollarCrate,
-            });
-            SyntaxContext(data.syntax_contexts.len() as u32 - 1)
-        })
-    }
-
     /// Extend a syntax context with a given mark and default transparency for that mark.
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
         HygieneData::with(|data| data.apply_mark(self, mark))
@@ -639,8 +601,23 @@ impl fmt::Debug for SyntaxContext {
     }
 }
 
-/// Extra information for tracking spans of macro and syntax sugar expansion
-#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
+impl Span {
+    /// Creates a fresh expansion with given properties.
+    /// Expansions are normally created by macros, but in some cases expansions are created for
+    /// other compiler-generated code to set per-span properties like allowed unstable features.
+    /// The returned span belongs to the created expansion and has the new properties,
+    /// but its location is inherited from the current span.
+    pub fn fresh_expansion(self, parent: Mark, expn_info: ExpnInfo) -> Span {
+        HygieneData::with(|data| {
+            let mark = data.fresh_mark(parent, Some(expn_info));
+            self.with_ctxt(data.apply_mark(SyntaxContext::empty(), mark))
+        })
+    }
+}
+
+/// A subset of properties from both macro definition and macro call available through global data.
+/// Avoid using this if you have access to the original definition or call structures.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
     // --- The part unique to each expansion.
     /// The location of the actual macro invocation or syntax sugar , e.g.
@@ -653,16 +630,14 @@ pub struct ExpnInfo {
     /// call_site span would have its own ExpnInfo, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
-    /// The format with which the macro was invoked.
-    pub format: ExpnFormat,
+    /// The kind of this expansion - macro or compiler desugaring.
+    pub kind: ExpnKind,
 
     // --- The part specific to the macro/desugaring definition.
     // --- FIXME: Share it between expansions with the same definition.
-    /// The span of the macro definition itself. The macro may not
-    /// have a sensible definition span (e.g., something defined
-    /// completely inside libsyntax) in which case this is None.
+    /// The span of the macro definition (possibly dummy).
     /// This span serves only informational purpose and is not used for resolution.
-    pub def_site: Option<Span>,
+    pub def_site: Span,
     /// Transparency used by `apply_mark` for mark with this expansion info by default.
     pub default_transparency: Transparency,
     /// List of #[unstable]/feature-gated features that the macro is allowed to use
@@ -681,11 +656,11 @@ pub struct ExpnInfo {
 
 impl ExpnInfo {
     /// Constructs an expansion info with default properties.
-    pub fn default(format: ExpnFormat, call_site: Span, edition: Edition) -> ExpnInfo {
+    pub fn default(kind: ExpnKind, call_site: Span, edition: Edition) -> ExpnInfo {
         ExpnInfo {
             call_site,
-            format,
-            def_site: None,
+            kind,
+            def_site: DUMMY_SP,
             default_transparency: Transparency::SemiTransparent,
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
@@ -694,38 +669,68 @@ impl ExpnInfo {
         }
     }
 
-    pub fn with_unstable(format: ExpnFormat, call_site: Span, edition: Edition,
-                         allow_internal_unstable: &[Symbol]) -> ExpnInfo {
+    pub fn allow_unstable(kind: ExpnKind, call_site: Span, edition: Edition,
+                          allow_internal_unstable: Lrc<[Symbol]>) -> ExpnInfo {
         ExpnInfo {
-            allow_internal_unstable: Some(allow_internal_unstable.into()),
-            ..ExpnInfo::default(format, call_site, edition)
+            allow_internal_unstable: Some(allow_internal_unstable),
+            ..ExpnInfo::default(kind, call_site, edition)
         }
     }
 }
 
-/// The source of expansion.
-#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub enum ExpnFormat {
-    /// e.g., #[derive(...)] <item>
-    MacroAttribute(Symbol),
-    /// e.g., `format!()`
-    MacroBang(Symbol),
+/// Expansion kind.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub enum ExpnKind {
+    /// No expansion, aka root expansion. Only `Mark::root()` has this kind.
+    Root,
+    /// Expansion produced by a macro.
+    /// FIXME: Some code injected by the compiler before HIR lowering also gets this kind.
+    Macro(MacroKind, Symbol),
     /// Desugaring done by the compiler during HIR lowering.
-    CompilerDesugaring(CompilerDesugaringKind)
+    Desugaring(DesugaringKind)
 }
 
-impl ExpnFormat {
-    pub fn name(&self) -> Symbol {
+impl ExpnKind {
+    pub fn descr(&self) -> Symbol {
         match *self {
-            ExpnFormat::MacroBang(name) | ExpnFormat::MacroAttribute(name) => name,
-            ExpnFormat::CompilerDesugaring(kind) => kind.name(),
+            ExpnKind::Root => kw::PathRoot,
+            ExpnKind::Macro(_, descr) => descr,
+            ExpnKind::Desugaring(kind) => Symbol::intern(kind.descr()),
+        }
+    }
+}
+
+/// The kind of macro invocation or definition.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum MacroKind {
+    /// A bang macro `foo!()`.
+    Bang,
+    /// An attribute macro `#[foo]`.
+    Attr,
+    /// A derive macro `#[derive(Foo)]`
+    Derive,
+}
+
+impl MacroKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            MacroKind::Bang => "macro",
+            MacroKind::Attr => "attribute macro",
+            MacroKind::Derive => "derive macro",
+        }
+    }
+
+    pub fn article(self) -> &'static str {
+        match self {
+            MacroKind::Attr => "an",
+            _ => "a",
         }
     }
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub enum CompilerDesugaringKind {
+#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+pub enum DesugaringKind {
     /// We desugar `if c { i } else { e }` to `match $ExprKind::Use(c) { true => i, _ => e }`.
     /// However, we do not want to blame `c` for unreachability but rather say that `i`
     /// is unreachable. This desugaring kind allows us to avoid blaming `c`.
@@ -742,17 +747,18 @@ pub enum CompilerDesugaringKind {
     ForLoop,
 }
 
-impl CompilerDesugaringKind {
-    pub fn name(self) -> Symbol {
-        Symbol::intern(match self {
-            CompilerDesugaringKind::CondTemporary => "if and while condition",
-            CompilerDesugaringKind::Async => "async",
-            CompilerDesugaringKind::Await => "await",
-            CompilerDesugaringKind::QuestionMark => "?",
-            CompilerDesugaringKind::TryBlock => "try block",
-            CompilerDesugaringKind::ExistentialType => "existential type",
-            CompilerDesugaringKind::ForLoop => "for loop",
-        })
+impl DesugaringKind {
+    /// The description wording should combine well with "desugaring of {}".
+    fn descr(self) -> &'static str {
+        match self {
+            DesugaringKind::CondTemporary => "`if` or `while` condition",
+            DesugaringKind::Async => "`async` block or function",
+            DesugaringKind::Await => "`await` expression",
+            DesugaringKind::QuestionMark => "operator `?`",
+            DesugaringKind::TryBlock => "`try` block",
+            DesugaringKind::ExistentialType => "`existential type`",
+            DesugaringKind::ForLoop => "`for` loop",
+        }
     }
 }
 

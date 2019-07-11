@@ -7,11 +7,11 @@ LL | #[rustc::unknown]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
-error: macro `rustc::unknown` may not be used in attributes
-  --> $DIR/feature-gate-rustc-attrs.rs:8:1
+error: expected attribute, found macro `rustc::unknown`
+  --> $DIR/feature-gate-rustc-attrs.rs:8:3
    |
 LL | #[rustc::unknown]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^ not an attribute
 
 error[E0658]: attributes starting with `rustc` are reserved for use by the `rustc` compiler
   --> $DIR/feature-gate-rustc-attrs.rs:13:12
@@ -22,11 +22,11 @@ LL | #[unknown::rustc]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
-error: macro `unknown::rustc` may not be used in attributes
-  --> $DIR/feature-gate-rustc-attrs.rs:13:1
+error: expected attribute, found macro `unknown::rustc`
+  --> $DIR/feature-gate-rustc-attrs.rs:13:3
    |
 LL | #[unknown::rustc]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^ not an attribute
 
 error[E0658]: attributes starting with `rustc` are reserved for use by the `rustc` compiler
   --> $DIR/feature-gate-rustc-attrs.rs:20:3

@@ -705,7 +705,8 @@ extern "rust-intrinsic" {
                          they should be used through stabilized interfaces \
                          in the rest of the standard library",
                issue = "0")]
-    #[rustc_deprecated(reason = "no longer used by rustc, will be removed - use MaybeUnint instead",
+    #[rustc_deprecated(reason = "no longer used by rustc, will be removed - use MaybeUninit \
+                                 instead",
                        since = "1.38.0")]
     pub fn init<T>() -> T;
 

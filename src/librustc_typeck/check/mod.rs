@@ -119,7 +119,7 @@ use rustc::ty::subst::{UnpackedKind, Subst, InternalSubsts, SubstsRef, UserSelfT
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use rustc::ty::layout::VariantIdx;
 use syntax_pos::{self, BytePos, Span, MultiSpan};
-use syntax_pos::hygiene::CompilerDesugaringKind;
+use syntax_pos::hygiene::DesugaringKind;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -2165,7 +2165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
             // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
             // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
-            !span.is_compiler_desugaring(CompilerDesugaringKind::CondTemporary) {
+            !span.is_desugaring(DesugaringKind::CondTemporary) {
             self.diverges.set(Diverges::WarnedAlways);
 
             debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);

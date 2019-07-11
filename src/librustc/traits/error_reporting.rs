@@ -36,7 +36,7 @@ use errors::{Applicability, DiagnosticBuilder};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::sym;
-use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnFormat};
+use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnKind};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(&self,
@@ -61,12 +61,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // We want to ignore desugarings here: spans are equivalent even
             // if one is the result of a desugaring and the other is not.
             let mut span = error.obligation.cause.span;
-            if let Some(ExpnInfo {
-                format: ExpnFormat::CompilerDesugaring(_),
-                def_site: Some(def_span),
-                ..
-            }) = span.ctxt().outer_expn_info() {
-                span = def_span;
+            if let Some(ExpnInfo { kind: ExpnKind::Desugaring(_), def_site, .. })
+                    = span.ctxt().outer_expn_info() {
+                span = def_site;
             }
 
             error_map.entry(span).or_default().push(
@@ -373,9 +370,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             flags.push((sym::parent_trait, Some(t)));
         }
 
-        if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
+        if let Some(k) = obligation.cause.span.desugaring_kind() {
             flags.push((sym::from_desugaring, None));
-            flags.push((sym::from_desugaring, Some(k.name().to_string())));
+            flags.push((sym::from_desugaring, Some(format!("{:?}", k))));
         }
         let generics = self.tcx.generics_of(def_id);
         let self_ty = trait_ref.self_ty();

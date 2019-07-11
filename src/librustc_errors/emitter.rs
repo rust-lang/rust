@@ -723,39 +723,37 @@ impl EmitterWriter {
                 for (i, trace) in sp.macro_backtrace().iter().rev().enumerate() {
                     // Only show macro locations that are local
                     // and display them like a span_note
-                    if let Some(def_site) = trace.def_site_span {
-                        if def_site.is_dummy() {
-                            continue;
-                        }
-                        if always_backtrace {
-                            new_labels.push((def_site,
-                                             format!("in this expansion of `{}`{}",
-                                                     trace.macro_decl_name,
-                                                     if backtrace_len > 2 {
-                                                         // if backtrace_len == 1 it'll be pointed
-                                                         // at by "in this macro invocation"
-                                                         format!(" (#{})", i + 1)
-                                                     } else {
-                                                         String::new()
-                                                     })));
-                        }
-                        // Check to make sure we're not in any <*macros>
-                        if !sm.span_to_filename(def_site).is_macros() &&
-                           !trace.macro_decl_name.starts_with("desugaring of ") &&
-                           !trace.macro_decl_name.starts_with("#[") ||
-                           always_backtrace {
-                            new_labels.push((trace.call_site,
-                                             format!("in this macro invocation{}",
-                                                     if backtrace_len > 2 && always_backtrace {
-                                                         // only specify order when the macro
-                                                         // backtrace is multiple levels deep
-                                                         format!(" (#{})", i + 1)
-                                                     } else {
-                                                         String::new()
-                                                     })));
-                            if !always_backtrace {
-                                break;
-                            }
+                    if trace.def_site_span.is_dummy() {
+                        continue;
+                    }
+                    if always_backtrace {
+                        new_labels.push((trace.def_site_span,
+                                            format!("in this expansion of `{}`{}",
+                                                    trace.macro_decl_name,
+                                                    if backtrace_len > 2 {
+                                                        // if backtrace_len == 1 it'll be pointed
+                                                        // at by "in this macro invocation"
+                                                        format!(" (#{})", i + 1)
+                                                    } else {
+                                                        String::new()
+                                                    })));
+                    }
+                    // Check to make sure we're not in any <*macros>
+                    if !sm.span_to_filename(trace.def_site_span).is_macros() &&
+                        !trace.macro_decl_name.starts_with("desugaring of ") &&
+                        !trace.macro_decl_name.starts_with("#[") ||
+                        always_backtrace {
+                        new_labels.push((trace.call_site,
+                                            format!("in this macro invocation{}",
+                                                    if backtrace_len > 2 && always_backtrace {
+                                                        // only specify order when the macro
+                                                        // backtrace is multiple levels deep
+                                                        format!(" (#{})", i + 1)
+                                                    } else {
+                                                        String::new()
+                                                    })));
+                        if !always_backtrace {
+                            break;
                         }
                     }
                 }

@@ -928,7 +928,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// `__next` from a `for` loop.
     #[inline]
     pub fn from_compiler_desugaring(&self) -> bool {
-        self.source_info.span.compiler_desugaring_kind().is_some()
+        self.source_info.span.desugaring_kind().is_some()
     }
 
     /// Creates a new `LocalDecl` for a temporary.
