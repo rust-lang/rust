@@ -31,20 +31,11 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     main_id: DefId,
     config: MiriConfig,
 ) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, Evaluator<'tcx>>> {
-
-    // FIXME(https://github.com/rust-lang/miri/pull/803): no validation on Windows.
-    let target_os = tcx.sess.target.target.target_os.to_lowercase();
-    let validate = if target_os == "windows" {
-        false
-    } else {
-        config.validate
-    };
-
     let mut ecx = InterpCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(),
-        MemoryExtra::new(config.seed.map(StdRng::seed_from_u64), validate),
+        MemoryExtra::new(config.seed.map(StdRng::seed_from_u64), config.validate),
     );
 
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
