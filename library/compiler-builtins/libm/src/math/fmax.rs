@@ -1,4 +1,3 @@
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fmax(x: f64, y: f64) -> f64 {
     // IEEE754 says: maxNum(x, y) is the canonicalized number y if x < y, x if y < x, the

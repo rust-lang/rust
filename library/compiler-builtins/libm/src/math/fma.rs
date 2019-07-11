@@ -10,7 +10,6 @@ struct Num {
     sign: i32,
 }
 
-#[inline]
 fn normalize(x: f64) -> Num {
     let x1p63: f64 = f64::from_bits(0x43e0000000000000); // 0x1p63 === 2 ^ 63
 
@@ -30,7 +29,6 @@ fn normalize(x: f64) -> Num {
     Num { m: ix, e, sign }
 }
 
-#[inline]
 fn mul(x: u64, y: u64) -> (u64, u64) {
     let t1: u64;
     let t2: u64;
@@ -53,7 +51,6 @@ fn mul(x: u64, y: u64) -> (u64, u64) {
 /// Computes `(x*y)+z`, rounded as one ternary operation:
 /// Computes the value (as if) to infinite precision and rounds once to the result format,
 /// according to the rounding mode characterized by the value of FLT_ROUNDS.
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fma(x: f64, y: f64, z: f64) -> f64 {
     let x1p63: f64 = f64::from_bits(0x43e0000000000000); // 0x1p63 === 2 ^ 63

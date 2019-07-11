@@ -51,7 +51,6 @@ const C6: f64 = -1.13596475577881948265e-11; /* 0xBDA8FAE9, 0xBE8838D4 */
 //         expression for cos().  Retention happens in all cases tested
 //         under FreeBSD, so don't pessimize things by forcibly clipping
 //         any extra precision in w.
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub(crate) fn k_cos(x: f64, y: f64) -> f64 {
     let z = x * x;

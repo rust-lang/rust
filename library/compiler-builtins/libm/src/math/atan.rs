@@ -64,7 +64,6 @@ const AT: [f64; 11] = [
 ///
 /// Computes the inverse tangent (arc tangent) of the input value.
 /// Returns a value in radians, in the range of -pi/2 to pi/2.
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn atan(x: f64) -> f64 {
     let mut x = x;

@@ -5,7 +5,6 @@ const TOINT: f64 = 1. / f64::EPSILON;
 /// Ceil (f64)
 ///
 /// Finds the nearest integer greater than or equal to `x`.
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn ceil(x: f64) -> f64 {
     // On wasm32 we know that LLVM's intrinsic will compile to an optimized

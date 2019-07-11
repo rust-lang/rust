@@ -3,7 +3,6 @@ use core::f32;
 /// Floor (f32)
 ///
 /// Finds the nearest integer less than or equal to `x`.
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn floorf(x: f32) -> f32 {
     // On wasm32 we know that LLVM's intrinsic will compile to an optimized

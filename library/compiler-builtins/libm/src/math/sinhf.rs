@@ -1,7 +1,6 @@
 use super::expm1f;
 use super::k_expo2f;
 
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sinhf(x: f32) -> f32 {
     let mut h = 0.5f32;

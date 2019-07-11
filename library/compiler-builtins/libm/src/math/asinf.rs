@@ -24,7 +24,6 @@ const P_S1: f32 = -4.2743422091e-02;
 const P_S2: f32 = -8.6563630030e-03;
 const Q_S1: f32 = -7.0662963390e-01;
 
-#[inline]
 fn r(z: f32) -> f32 {
     let p = z * (P_S0 + z * (P_S1 + z * P_S2));
     let q = 1. + z * Q_S1;
@@ -36,7 +35,6 @@ fn r(z: f32) -> f32 {
 /// Computes the inverse sine (arc sine) of the argument `x`.
 /// Arguments to asin must be in the range -1 to 1.
 /// Returns values in radians, in the range of -pi/2 to pi/2.
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn asinf(mut x: f32) -> f32 {
     let x1p_120 = f64::from_bits(0x3870000000000000); // 0x1p-120 === 2 ^ (-120)

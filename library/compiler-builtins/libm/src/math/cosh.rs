@@ -7,7 +7,6 @@ use super::k_expo2;
 /// Computes the hyperbolic cosine of the argument x.
 /// Is defined as `(exp(x) + exp(-x))/2`
 /// Angles are specified in radians.
-#[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn cosh(mut x: f64) -> f64 {
     /* |x| */
