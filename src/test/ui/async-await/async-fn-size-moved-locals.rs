@@ -7,6 +7,9 @@
 //
 // See issue #59123 for a full explanation.
 
+// ignore-wasm32-bare (sizes don't match)
+// run-pass
+
 // edition:2018
 
 #![feature(async_await)]
