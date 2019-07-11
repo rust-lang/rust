@@ -162,7 +162,13 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         Ok(())
     }
 
-    fn write_result(&mut self, desc: &TestDesc, result: &TestResult, _: &[u8]) -> io::Result<()> {
+    fn write_result(
+        &mut self,
+        desc: &TestDesc,
+        result: &TestResult,
+        _: &[u8],
+        _: &ConsoleTestState,
+    ) -> io::Result<()> {
         if self.is_multithreaded {
             self.write_test_name(desc)?;
         }

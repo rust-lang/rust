@@ -1,11 +1,12 @@
 #[test]
 fn a() {
+    println!("print from successful test");
     // Should pass
 }
 
 #[test]
 fn b() {
-    assert!(false)
+    assert!(false);
 }
 
 #[test]

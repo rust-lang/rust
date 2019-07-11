@@ -906,7 +906,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             TeTimeout(ref test) => out.write_timeout(test),
             TeResult(test, result, stdout) => {
                 st.write_log_result(&test, &result)?;
-                out.write_result(&test, &result, &*stdout)?;
+                out.write_result(&test, &result, &*stdout, &st)?;
                 match result {
                     TrOk => {
                         st.passed += 1;
