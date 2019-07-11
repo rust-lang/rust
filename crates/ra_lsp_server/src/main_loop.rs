@@ -431,6 +431,12 @@ fn on_notification(
         }
         Err(not) => not,
     };
+    let not = match not.cast::<req::DidChangeConfiguration>() {
+        Ok(_params) => {
+            return Ok(());
+        }
+        Err(not) => not,
+    };
     log::error!("unhandled notification: {:?}", not);
     Ok(())
 }
