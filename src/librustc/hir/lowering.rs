@@ -1158,7 +1158,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         capture_clause: CaptureBy,
         closure_node_id: NodeId,
-        ret_ty: Option<syntax::ptr::P<Ty>>,
+        ret_ty: Option<AstP<Ty>>,
         span: Span,
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
