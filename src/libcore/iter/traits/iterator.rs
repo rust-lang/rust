@@ -267,7 +267,12 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn last(self) -> Option<Self::Item> where Self: Sized {
-        self.fold(None, |_, x| Some(x))
+        #[inline]
+        fn some<T>(_: Option<T>, x: T) -> Option<T> {
+            Some(x)
+        }
+
+        self.fold(None, some)
     }
 
     /// Returns the `n`th element of the iterator.
