@@ -454,7 +454,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             _ => place.clone()
         };
 
-        if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(&place) {
+        if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(place.as_place_ref()) {
             let init = self.builder.data.inits.push(Init {
                 location: InitLocation::Statement(self.loc),
                 path,

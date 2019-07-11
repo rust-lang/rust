@@ -1826,7 +1826,7 @@ newtype_index! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct PlaceRef<'a, 'tcx> {
     pub base: &'a PlaceBase<'tcx>,
     pub projection: &'a Option<Box<Projection<'tcx>>>,
@@ -1960,6 +1960,27 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
         op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
         Place::iterate_over(self.base, self.projection, op)
+    }
+
+    /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
+    /// a single deref of a local.
+    //
+    // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
+    pub fn local_or_deref_local(&self) -> Option<Local> {
+        match self {
+            PlaceRef {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } |
+            PlaceRef {
+                base: PlaceBase::Local(local),
+                projection: Some(box Projection {
+                    base: None,
+                    elem: ProjectionElem::Deref,
+                }),
+            } => Some(*local),
+            _ => None,
+        }
     }
 }
 

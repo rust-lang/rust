@@ -2,7 +2,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory, Local,
-    LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, Projection,
+    LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, Projection, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, Ty};
@@ -48,7 +48,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        (moved_place, used_place, span): (&Place<'tcx>, &Place<'tcx>, Span),
+        (moved_place, used_place, span): (PlaceRef<'cx, 'tcx>, PlaceRef<'cx, 'tcx>, Span),
         mpi: MovePathIndex,
     ) {
         debug!(
@@ -73,14 +73,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         if move_out_indices.is_empty() {
             let root_place = self
-                .prefixes(&used_place.base, &used_place.projection, PrefixSet::All)
+                .prefixes(used_place, PrefixSet::All)
                 .last()
                 .unwrap();
 
-            if self.uninitialized_error_reported.contains(&Place {
-                base: root_place.0.clone(),
-                projection: root_place.1.clone(),
-            }) {
+            if self.uninitialized_error_reported.contains(&root_place) {
                 debug!(
                     "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
                     root_place
@@ -88,10 +85,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return;
             }
 
-            self.uninitialized_error_reported.insert(Place {
-                base: root_place.0.clone(),
-                projection: root_place.1.clone(),
-            });
+            self.uninitialized_error_reported.insert(root_place);
 
             let item_msg = match self.describe_place_with_options(used_place,
                                                                   IncludingDowncast(true)) {
@@ -114,8 +108,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             err.buffer(&mut self.errors_buffer);
         } else {
             if let Some((reported_place, _)) = self.move_error_reported.get(&move_out_indices) {
-                if self.prefixes(&reported_place.base, &reported_place.projection, PrefixSet::All)
-                    .any(|p| *p.0 == used_place.base && *p.1 == used_place.projection)
+                if self.prefixes(*reported_place, PrefixSet::All)
+                    .any(|p| p == used_place)
                 {
                     debug!(
                         "report_use_of_moved_or_uninitialized place: error suppressed \
@@ -132,7 +126,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 span,
                 desired_action.as_noun(),
                 msg,
-                self.describe_place_with_options(&moved_place, IncludingDowncast(true)),
+                self.describe_place_with_options(moved_place, IncludingDowncast(true)),
             );
 
             self.add_moved_or_invoked_closure_note(
@@ -145,13 +139,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let is_partial_move = move_site_vec.iter().any(|move_site| {
                 let move_out = self.move_data.moves[(*move_site).moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
-                used_place != moved_place && used_place.is_prefix_of(moved_place)
+                used_place != moved_place.as_place_ref()
+                    && used_place.is_prefix_of(moved_place.as_place_ref())
             });
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
 
-                let move_spans = self.move_spans(moved_place, move_out.source);
+                let move_spans = self.move_spans(moved_place.as_place_ref(), move_out.source);
                 let move_span = move_spans.args_or_use();
 
                 let move_msg = if move_spans.for_closure() {
@@ -209,7 +204,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            let ty = used_place.ty(self.body, self.infcx.tcx).ty;
+            let ty =
+                Place::ty_from(used_place.base, used_place.projection, self.body, self.infcx.tcx)
+                    .ty;
             let needs_note = match ty.sty {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck_tables_of(id);
@@ -225,7 +222,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let place = &self.move_data.move_paths[mpi].place;
 
                 let ty = place.ty(self.body, self.infcx.tcx).ty;
-                let opt_name = self.describe_place_with_options(place, IncludingDowncast(true));
+                let opt_name =
+                    self.describe_place_with_options(place.as_place_ref(), IncludingDowncast(true));
                 let note_msg = match opt_name {
                     Some(ref name) => format!("`{}`", name),
                     None => "value".to_owned(),
@@ -259,7 +257,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             if let Some((_, mut old_err)) = self.move_error_reported
-                .insert(move_out_indices, (used_place.clone(), err))
+                .insert(move_out_indices, (used_place, err))
             {
                 // Cancel the old error so it doesn't ICE.
                 old_err.cancel();
@@ -289,7 +287,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.args_or_use();
 
-        let move_spans = self.move_spans(place, location);
+        let move_spans = self.move_spans(place.as_place_ref(), location);
         let span = move_spans.args_or_use();
 
         let mut err = self.cannot_move_when_borrowed(
@@ -328,7 +326,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // Conflicting borrows are reported separately, so only check for move
         // captures.
-        let use_spans = self.move_spans(place, location);
+        let use_spans = self.move_spans(place.as_place_ref(), location);
         let span = use_spans.var_or_use();
 
         let mut err = self.cannot_use_when_mutably_borrowed(
@@ -698,25 +696,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
 
         let drop_span = place_span.1;
-        let root_place = self.prefixes(&borrow.borrowed_place.base,
-                                       &borrow.borrowed_place.projection,
-                                       PrefixSet::All)
+        let root_place = self.prefixes(borrow.borrowed_place.as_place_ref(), PrefixSet::All)
             .last()
             .unwrap();
 
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.var_or_use();
 
-        assert!(root_place.1.is_none());
-        let proper_span = match root_place.0 {
+        assert!(root_place.projection.is_none());
+        let proper_span = match root_place.base {
             PlaceBase::Local(local) => self.body.local_decls[*local].source_info.span,
             _ => drop_span,
         };
 
         if self.access_place_error_reported
             .contains(&(Place {
-                base: root_place.0.clone(),
-                projection: root_place.1.clone(),
+                base: root_place.base.clone(),
+                projection: root_place.projection.clone(),
             }, borrow_span))
         {
             debug!(
@@ -728,8 +724,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         self.access_place_error_reported
             .insert((Place {
-                base: root_place.0.clone(),
-                projection: root_place.1.clone(),
+                base: root_place.base.clone(),
+                projection: root_place.projection.clone(),
             }, borrow_span));
 
         if let StorageDeadOrDrop::Destructor(dropped_ty) =
@@ -739,7 +735,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // we're not in the uninteresting case where `B` is a
             // prefix of `D`), then report this as a more interesting
             // destructor conflict.
-            if !borrow.borrowed_place.is_prefix_of(place_span.0) {
+            if !borrow.borrowed_place.as_place_ref().is_prefix_of(place_span.0.as_place_ref()) {
                 self.report_borrow_conflicts_with_destructor(
                     location, borrow, place_span, kind, dropped_ty,
                 );
@@ -753,10 +749,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let explanation = self.explain_why_borrow_contains_point(location, &borrow, kind_place);
 
         let err = match (place_desc, explanation) {
-            (Some(_), _) if self.is_place_thread_local(&Place {
-                base: root_place.0.clone(),
-                projection: root_place.1.clone(),
-            }) => {
+            (Some(_), _) if self.is_place_thread_local(root_place) => {
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span)
             }
             // If the outlives constraint comes from inside the closure,
@@ -1133,12 +1126,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("`{}` is borrowed here", place_desc),
             )
         } else {
-            let root_place = self.prefixes(&borrow.borrowed_place.base,
-                                           &borrow.borrowed_place.projection,
+            let root_place = self.prefixes(borrow.borrowed_place.as_place_ref(),
                                            PrefixSet::All)
                 .last()
                 .unwrap();
-            let local = if let (PlaceBase::Local(local), None) = root_place {
+            let local = if let PlaceRef {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } = root_place {
                 local
             } else {
                 bug!("try_report_cannot_return_reference_to_local: not a local")

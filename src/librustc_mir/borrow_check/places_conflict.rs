@@ -3,8 +3,8 @@ use crate::borrow_check::Overlap;
 use crate::borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
 use rustc::mir::{
-    BorrowKind, Body, Place, PlaceBase, Projection, ProjectionElem, ProjectionsIter,
-    StaticKind
+    Body, BorrowKind, Place, PlaceBase, PlaceRef, Projection, ProjectionElem, ProjectionsIter,
+    StaticKind,
 };
 use rustc::ty::{self, TyCtxt};
 use std::cmp::max;
@@ -36,7 +36,7 @@ crate fn places_conflict<'tcx>(
         body,
         borrow_place,
         BorrowKind::Mut { allow_two_phase_borrow: true },
-        access_place,
+        access_place.as_place_ref(),
         AccessDepth::Deep,
         bias,
     )
@@ -51,7 +51,7 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     borrow_kind: BorrowKind,
-    access_place: &Place<'tcx>,
+    access_place: PlaceRef<'_, 'tcx>,
     access: AccessDepth,
     bias: PlaceConflictBias,
 ) -> bool {
@@ -66,7 +66,7 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
         base: PlaceBase::Local(l1),
         projection: None,
     } = borrow_place {
-        if let Place {
+        if let PlaceRef {
             base: PlaceBase::Local(l2),
             projection: None,
         } = access_place {

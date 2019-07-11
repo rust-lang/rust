@@ -314,12 +314,12 @@ pub(crate) trait DataflowResultsConsumer<'a, 'tcx: 'a> {
 
     fn visit_statement_entry(&mut self,
                              _loc: Location,
-                             _stmt: &Statement<'tcx>,
+                             _stmt: &'a Statement<'tcx>,
                              _flow_state: &Self::FlowState) {}
 
     fn visit_terminator_entry(&mut self,
                               _loc: Location,
-                              _term: &Terminator<'tcx>,
+                              _term: &'a Terminator<'tcx>,
                               _flow_state: &Self::FlowState) {}
 
     // Main entry point: this drives the processing of results.

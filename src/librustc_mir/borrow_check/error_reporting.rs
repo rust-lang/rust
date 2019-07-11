@@ -3,8 +3,8 @@ use rustc::hir::def::Namespace;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Field, Local, LocalKind, Location, Operand,
-    Place, PlaceBase, ProjectionElem, Rvalue, Statement, StatementKind, Static,
-    StaticKind, Terminator, TerminatorKind,
+    Place, PlaceBase, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind,
+    Static, StaticKind, Terminator, TerminatorKind,
 };
 use rustc::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
@@ -34,7 +34,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(super) fn add_moved_or_invoked_closure_note(
         &self,
         location: Location,
-        place: &Place<'tcx>,
+        place: PlaceRef<'cx, 'tcx>,
         diag: &mut DiagnosticBuilder<'_>,
     ) {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
@@ -122,7 +122,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// End-user visible description of `place` if one can be found. If the
     /// place is a temporary for instance, None will be returned.
     pub(super) fn describe_place(&self, place: &Place<'tcx>) -> Option<String> {
-        self.describe_place_with_options(place, IncludingDowncast(false))
+        self.describe_place_with_options(place.as_place_ref(), IncludingDowncast(false))
     }
 
     /// End-user visible description of `place` if one can be found. If the
@@ -131,7 +131,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// `Downcast` and `IncludingDowncast` is true
     pub(super) fn describe_place_with_options(
         &self,
-        place: &Place<'tcx>,
+        place: PlaceRef<'cx, 'tcx>,
         including_downcast: IncludingDowncast,
     ) -> Option<String> {
         let mut buf = String::new();
@@ -144,19 +144,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Appends end-user visible description of `place` to `buf`.
     fn append_place_to_string(
         &self,
-        place: &Place<'tcx>,
+        place: PlaceRef<'cx, 'tcx>,
         buf: &mut String,
         mut autoderef: bool,
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
-        match *place {
-            Place {
+        match place {
+            PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: None,
             } => {
-                self.append_local_to_string(local, buf)?;
+                self.append_local_to_string(*local, buf)?;
             }
-            Place {
+            PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
                         kind: StaticKind::Promoted(_),
@@ -166,7 +166,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             } => {
                 buf.push_str("promoted");
             }
-            Place {
+            PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
                         kind: StaticKind::Static(def_id),
@@ -174,9 +174,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }),
                 projection: None,
             } => {
-                buf.push_str(&self.infcx.tcx.item_name(def_id).to_string());
+                buf.push_str(&self.infcx.tcx.item_name(*def_id).to_string());
             }
-            Place {
+            PlaceRef {
                 ref base,
                 projection: Some(ref proj),
             } => {
@@ -196,9 +196,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             if autoderef {
                                 // FIXME turn this recursion into iteration
                                 self.append_place_to_string(
-                                    &Place {
-                                        base: base.clone(),
-                                        projection: proj.base.clone(),
+                                    PlaceRef {
+                                        base: &base,
+                                        projection: &proj.base,
                                     },
                                     buf,
                                     autoderef,
@@ -209,9 +209,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     (None, PlaceBase::Local(local)) => {
                                         if self.body.local_decls[*local].is_ref_for_guard() {
                                             self.append_place_to_string(
-                                                &Place {
-                                                    base: base.clone(),
-                                                    projection: proj.base.clone(),
+                                                PlaceRef {
+                                                    base: &base,
+                                                    projection: &proj.base,
                                                 },
                                                 buf,
                                                 autoderef,
@@ -221,9 +221,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                             // FIXME deduplicate this and the _ => body below
                                             buf.push_str(&"*");
                                             self.append_place_to_string(
-                                                &Place {
-                                                    base: base.clone(),
-                                                    projection: proj.base.clone(),
+                                                PlaceRef {
+                                                    base: &base,
+                                                    projection: &proj.base,
                                                 },
                                                 buf,
                                                 autoderef,
@@ -235,9 +235,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     _ => {
                                         buf.push_str(&"*");
                                         self.append_place_to_string(
-                                            &Place {
-                                                base: base.clone(),
-                                                projection: proj.base.clone(),
+                                            PlaceRef {
+                                                base: &base,
+                                                projection: &proj.base,
                                             },
                                             buf,
                                             autoderef,
@@ -250,9 +250,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                     ProjectionElem::Downcast(..) => {
                         self.append_place_to_string(
-                            &Place {
-                                base: base.clone(),
-                                projection: proj.base.clone(),
+                            PlaceRef {
+                                base: &base,
+                                projection: &proj.base,
                             },
                             buf,
                             autoderef,
@@ -273,13 +273,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             buf.push_str(&name);
                         } else {
                             let field_name = self.describe_field(&Place {
-                                base: base.clone(),
+                                base: (*base).clone(),
                                 projection: proj.base.clone(),
                             }, field);
                             self.append_place_to_string(
-                                &Place {
-                                    base: base.clone(),
-                                    projection: proj.base.clone(),
+                                PlaceRef {
+                                    base: &base,
+                                    projection: &proj.base,
                                 },
                                 buf,
                                 autoderef,
@@ -292,9 +292,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         autoderef = true;
 
                         self.append_place_to_string(
-                            &Place {
-                                base: base.clone(),
-                                projection: proj.base.clone(),
+                            PlaceRef {
+                                base: &base,
+                                projection: &proj.base,
                             },
                             buf,
                             autoderef,
@@ -312,9 +312,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // then use another while the borrow is held, don't output indices details
                         // to avoid confusing the end-user
                         self.append_place_to_string(
-                            &Place {
-                                base: base.clone(),
-                                projection: proj.base.clone(),
+                            PlaceRef {
+                                base: &base,
+                                projection: &proj.base,
                             },
                             buf,
                             autoderef,
@@ -436,14 +436,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// Checks if a place is a thread-local static.
-    pub fn is_place_thread_local(&self, place: &Place<'tcx>) -> bool {
-        if let Place {
+    pub fn is_place_thread_local(&self, place_ref: PlaceRef<'cx, 'tcx>) -> bool {
+        if let PlaceRef {
             base: PlaceBase::Static(box Static {
                 kind: StaticKind::Static(def_id),
                 ..
             }),
             projection: None,
-        } = place {
+        } = place_ref {
             let attrs = self.infcx.tcx.get_attrs(*def_id);
             let is_thread_local = attrs.iter().any(|attr| attr.check_name(sym::thread_local));
 
@@ -487,7 +487,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Look up the provided place and work out the move path index for it,
         // we'll use this to check whether it was originally from an overloaded
         // operator.
-        match self.move_data.rev_lookup.find(deref_base) {
+        match self.move_data.rev_lookup.find(deref_base.as_place_ref()) {
             LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => {
                 debug!("borrowed_content_source: mpi={:?}", mpi);
 
@@ -775,7 +775,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Finds the spans associated to a move or copy of move_place at location.
     pub(super) fn move_spans(
         &self,
-        moved_place: &Place<'tcx>, // Could also be an upvar.
+        moved_place: PlaceRef<'cx, 'tcx>, // Could also be an upvar.
         location: Location,
     ) -> UseSpans {
         use self::UseSpans::*;
@@ -854,7 +854,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     def_id, is_generator, places
                 );
                 if let Some((args_span, var_span)) = self.closure_span(
-                    *def_id, &Place::from(target), places
+                    *def_id, Place::from(target).as_place_ref(), places
                 ) {
                     return ClosureUse {
                         is_generator,
@@ -878,7 +878,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn closure_span(
         &self,
         def_id: DefId,
-        target_place: &Place<'tcx>,
+        target_place: PlaceRef<'cx, 'tcx>,
         places: &Vec<Operand<'tcx>>,
     ) -> Option<(Span, Span)> {
         debug!(
@@ -894,7 +894,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             for (upvar, place) in self.infcx.tcx.upvars(def_id)?.values().zip(places) {
                 match place {
                     Operand::Copy(place) |
-                    Operand::Move(place) if target_place == place => {
+                    Operand::Move(place) if target_place == place.as_place_ref() => {
                         debug!("closure_span: found captured local {:?}", place);
                         return Some((*args_span, upvar.span));
                     },

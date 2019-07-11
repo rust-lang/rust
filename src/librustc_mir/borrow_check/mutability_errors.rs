@@ -75,7 +75,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 ));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
-                if self.is_upvar_field_projection(access_place).is_some() {
+                if self.is_upvar_field_projection(access_place.as_place_ref()).is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.upvars[upvar_index.index()].name;
@@ -100,11 +100,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         the_place_err.ty(self.body, self.infcx.tcx).ty
                     ));
 
-                    reason = if self.is_upvar_field_projection(access_place).is_some() {
-                        ", as it is a captured variable in a `Fn` closure".to_string()
-                    } else {
-                        ", as `Fn` closures cannot mutate their captured variables".to_string()
-                    }
+                    reason =
+                        if self.is_upvar_field_projection(access_place.as_place_ref()).is_some() {
+                            ", as it is a captured variable in a `Fn` closure".to_string()
+                        } else {
+                            ", as `Fn` closures cannot mutate their captured variables".to_string()
+                        }
                 } else if {
                     if let (PlaceBase::Local(local), None) = (&the_place_err.base, base) {
                         self.body.local_decls[*local].is_ref_for_guard()
