@@ -11,7 +11,7 @@ use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 use rustc::ty::Ty;
 use rustc::ty::layout::{Align, Size, HasParamEnv};
-use rustc_target::spec::{HasTargetSpec};
+use rustc_target::spec::{AddrSpaceIdx, HasTargetSpec};
 use std::ops::Range;
 use std::iter::TrustedLen;
 
@@ -169,6 +169,16 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn bitcast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn intcast(&mut self, val: Self::Value, dest_ty: Self::Type, is_signed: bool) -> Self::Value;
     fn pointercast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+
+    fn as_ptr_cast(&mut self,
+                   val: Self::Value,
+                   addr_space: AddrSpaceIdx,
+                   dest_ty: Self::Type) -> Self::Value;
+    fn addrspace_cast(&mut self, val: Self::Value,
+                      dest: AddrSpaceIdx) -> Self::Value;
+    fn flat_addr_cast(&mut self, val: Self::Value) -> Self::Value;
+    fn flat_as_ptr_cast(&mut self, val: Self::Value,
+                        dest_ty: Self::Type) -> Self::Value;
 
     fn icmp(&mut self, op: IntPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;

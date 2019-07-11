@@ -18,11 +18,13 @@ use crate::attributes;
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::value::Value;
+use crate::common::val_ty;
 use rustc::ty::{self, PolyFnSig};
 use rustc::ty::layout::{FnTypeExt, LayoutOf};
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;
+use rustc_target::spec::AddrSpaceIdx;
 
 /// Declare a function.
 ///
@@ -39,6 +41,7 @@ fn declare_raw_fn(
     let llfn = unsafe {
         llvm::LLVMRustGetOrInsertFunction(cx.llmod, namebuf.as_ptr(), ty)
     };
+    assert_eq!(val_ty(llfn).address_space(), cx.inst_addr_space());
 
     llvm::SetFunctionCallConv(llfn, callconv);
     // Function addresses in Rust are never significant, allowing functions to
@@ -74,12 +77,15 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn declare_global(
         &self,
-        name: &str, ty: &'ll Type
+        name: &str,
+        ty: &'ll Type,
+        addr_space: AddrSpaceIdx,
     ) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
         let namebuf = SmallCStr::new(name);
         unsafe {
-            llvm::LLVMRustGetOrInsertGlobal(self.llmod, namebuf.as_ptr(), ty)
+            llvm::LLVMRustGetOrInsertGlobal(self.llmod, namebuf.as_ptr(), ty,
+                                            addr_space.0)
         }
     }
 
@@ -115,18 +121,19 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn define_global(
         &self,
         name: &str,
-        ty: &'ll Type
+        ty: &'ll Type,
+        addr_space: AddrSpaceIdx
     ) -> Option<&'ll Value> {
         if self.get_defined_value(name).is_some() {
             None
         } else {
-            Some(self.declare_global(name, ty))
+            Some(self.declare_global(name, ty, addr_space))
         }
     }
 
-    fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
+    fn define_private_global(&self, ty: &'ll Type, addr_space: AddrSpaceIdx) -> &'ll Value {
         unsafe {
-            llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty)
+            llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty, addr_space.0)
         }
     }
 

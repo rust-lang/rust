@@ -721,6 +721,8 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 LinkerFlavor::Ld => "ld",
                 LinkerFlavor::Msvc => "link.exe",
                 LinkerFlavor::Lld(_) => "lld",
+                // FIXME: Waiting till ready
+                // LinkerFlavor::AmdGpuLinker => "lld",
                 LinkerFlavor::PtxLinker => "rust-ptx-linker",
             }), flavor)),
             (Some(linker), None) => {

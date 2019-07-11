@@ -11,7 +11,7 @@ use rustc_target::abi::call::ArgType;
 
 use rustc_codegen_ssa::traits::*;
 
-use rustc_target::abi::{HasDataLayout, LayoutOf};
+use rustc_target::abi::LayoutOf;
 use rustc::ty::{Ty};
 use rustc::ty::layout::{self};
 
@@ -302,7 +302,7 @@ impl ArgTypeMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
 pub trait FnTypeLlvmExt<'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
-    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    // fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value);
     fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
@@ -323,11 +323,11 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             PassMode::Ignore(IgnoreMode::CVarArgs) =>
                 bug!("`va_list` should never be a return type"),
             PassMode::Direct(_) | PassMode::Pair(..) => {
-                self.ret.layout.immediate_llvm_type(cx)
+                self.ret.layout.immediate_llvm_type(cx).copy_addr_space(cx.flat_addr_space())
             }
             PassMode::Cast(cast) => cast.llvm_type(cx),
             PassMode::Indirect(..) => {
-                llargument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
+                llargument_tys.push(cx.type_ptr_to_alloca(self.ret.memory_ty(cx)));
                 cx.type_void()
             }
         };
@@ -340,7 +340,8 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
 
             let llarg_ty = match arg.mode {
                 PassMode::Ignore(_) => continue,
-                PassMode::Direct(_) => arg.layout.immediate_llvm_type(cx),
+                PassMode::Direct(_) => arg.layout.immediate_llvm_type(cx)
+                    .copy_addr_space(cx.flat_addr_space()),
                 PassMode::Pair(..) => {
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 0, true));
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1, true));
@@ -354,7 +355,7 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Cast(cast) => cast.llvm_type(cx),
-                PassMode::Indirect(_, None) => cx.type_ptr_to(arg.memory_ty(cx)),
+                PassMode::Indirect(_, None) => cx.type_ptr_to_alloca(arg.memory_ty(cx)),
             };
             llargument_tys.push(llarg_ty);
         }
@@ -363,13 +364,6 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             cx.type_variadic_func(&llargument_tys, llreturn_ty)
         } else {
             cx.type_func(&llargument_tys, llreturn_ty)
-        }
-    }
-
-    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
-        unsafe {
-            llvm::LLVMPointerType(self.llvm_type(cx),
-                                  cx.data_layout().instruction_address_space as c_uint)
         }
     }
 

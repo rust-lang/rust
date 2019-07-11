@@ -229,10 +229,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             let llty = match self.ty.sty {
                 ty::Ref(_, ty, _) |
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                    cx.type_ptr_to(cx.layout_of(ty).llvm_type(cx))
+                    cx.type_ptr_to_flat(cx.layout_of(ty).llvm_type(cx))
                 }
                 ty::Adt(def, _) if def.is_box() => {
-                    cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
+                    cx.type_ptr_to_flat(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
                 }
                 ty::FnPtr(sig) => {
                     let sig = cx.tcx.normalize_erasing_late_bound_regions(

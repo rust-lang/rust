@@ -18,6 +18,36 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
+fn codegen_binop_fixup<'a, 'tcx: 'a, Bx>(bx: &mut Bx,
+                                         lhs: Bx::Value,
+                                         rhs: Bx::Value)
+    -> (Bx::Value, Bx::Value)
+    where Bx: BuilderMethods<'a, 'tcx>,
+{
+    // In case we're in separate addr spaces.
+    // Can happen when cmp against null_mut, eg.
+    // `infer-addr-spaces` should propagate.
+    // But, empirically, `infer-addr-spaces` doesn't.
+    let fix_null_ty = |val, this_ty, other_ty| {
+        if bx.cx().const_null(this_ty) == val {
+            bx.cx().const_null(other_ty)
+        } else {
+            val
+        }
+    };
+    let lhs_ty = bx.cx().val_ty(lhs);
+    let rhs_ty = bx.cx().val_ty(rhs);
+    let lhs = fix_null_ty(lhs, lhs_ty, rhs_ty);
+    let rhs = fix_null_ty(rhs, rhs_ty, lhs_ty);
+    if bx.cx().type_addr_space(lhs_ty).is_some() {
+        assert!(bx.cx().type_addr_space(rhs_ty).is_some());
+        (bx.flat_addr_cast(lhs),
+         bx.flat_addr_cast(rhs))
+    } else {
+        (lhs, rhs)
+    }
+}
+
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_rvalue(
         &mut self,
@@ -63,7 +93,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // index into the struct, and this case isn't
                         // important enough for it.
                         debug!("codegen_rvalue: creating ugly alloca");
-                        let scratch = PlaceRef::alloca(&mut bx, operand.layout, "__unsize_temp");
+                        let scratch = PlaceRef::alloca_addr_space(&mut bx, operand.layout,
+                                                                  "__unsize_temp");
                         scratch.storage_live(&mut bx);
                         operand.val.store(&mut bx, scratch);
                         base::coerce_unsized_into(&mut bx, scratch, dest);
@@ -331,12 +362,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             (CastTy::RPtr(_), CastTy::Ptr(_)) =>
                                 bx.pointercast(llval, ll_t_out),
                             (CastTy::Ptr(_), CastTy::Int(_)) |
-                            (CastTy::FnPtr, CastTy::Int(_)) =>
-                                bx.ptrtoint(llval, ll_t_out),
+                            (CastTy::FnPtr, CastTy::Int(_)) => {
+                                let llval = bx.flat_addr_cast(llval);
+                                bx.ptrtoint(llval, ll_t_out)
+                            },
                             (CastTy::Int(_), CastTy::Ptr(_)) => {
                                 let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);
                                 bx.inttoptr(usize_llval, ll_t_out)
-                            }
+                            },
                             (CastTy::Int(_), CastTy::Float) =>
                                 cast_int_to_float(&mut bx, signed, llval, ll_t_in, ll_t_out),
                             (CastTy::Float, CastTy::Int(IntTy::I)) =>
@@ -588,6 +621,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs, rhs
                 )
             } else {
+                let (lhs, rhs) = codegen_binop_fixup(bx, lhs, rhs);
                 bx.icmp(
                     base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed),
                     lhs, rhs
@@ -606,6 +640,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rhs_extra: Bx::Value,
         _input_ty: Ty<'tcx>,
     ) -> Bx::Value {
+        let (lhs_addr, rhs_addr) = codegen_binop_fixup(bx, lhs_addr, rhs_addr);
         match op {
             mir::BinOp::Eq => {
                 let lhs = bx.icmp(IntPredicate::IntEQ, lhs_addr, rhs_addr);
