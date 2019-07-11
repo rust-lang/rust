@@ -62,7 +62,7 @@ Misc
 Compatibility Notes
 -------------------
 - With the stabilisation of `mem::MaybeUninit`, `mem::uninitialized` use is no
-  longer recommended, and will be deprecated in 1.38.0.
+  longer recommended, and will be deprecated in 1.39.0.
 
 [60318]: https://github.com/rust-lang/rust/pull/60318/
 [60364]: https://github.com/rust-lang/rust/pull/60364/
