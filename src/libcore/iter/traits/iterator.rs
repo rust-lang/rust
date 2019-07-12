@@ -2708,6 +2708,16 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
     }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator> Iterator for &mut I {
+    type Item = I::Item;
+    fn next(&mut self) -> Option<I::Item> { (**self).next() }
+    fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        (**self).nth(n)
+    }
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
         I: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
