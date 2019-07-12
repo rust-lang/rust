@@ -1,5 +1,3 @@
-#![allow(deprecated)] // mem::uninitialized
-
 use crate::io::ErrorKind;
 use crate::mem;
 
@@ -61,7 +59,7 @@ pub use libc::strlen;
 
 pub fn hashmap_random_keys() -> (u64, u64) {
     unsafe {
-        let mut v = mem::uninitialized();
+        let mut v = mem::MaybeUninit::uninit().assume_init();
         libc::arc4random_buf(&mut v as *mut _ as *mut libc::c_void, mem::size_of_val(&v));
         v
     }
