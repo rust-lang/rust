@@ -70,12 +70,7 @@ fn async_nonmove_block(x: u8) -> impl Future<Output = u8> {
     }
 }
 
-fn async_closure(x: u8) -> impl Future<Output = u8> {
-    (async move |x: u8| -> u8 {
-        wake_and_yield_once().await;
-        x
-    })(x)
-}
+// see async-closure.rs for async_closure
 
 async fn async_fn(x: u8) -> u8 {
     wake_and_yield_once().await;
@@ -192,7 +187,6 @@ fn main() {
     test! {
         async_block,
         async_nonmove_block,
-        async_closure,
         async_fn,
         generic_async_fn,
         async_fn_with_internal_borrow,
