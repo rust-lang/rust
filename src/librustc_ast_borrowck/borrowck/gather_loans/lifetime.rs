@@ -3,21 +3,17 @@
 
 use crate::borrowck::*;
 use rustc::hir::HirId;
-use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::ty;
 
-use syntax_pos::Span;
 use log::debug;
 
 type R = Result<(),()>;
 
 pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     item_scope: region::Scope,
-                                    span: Span,
-                                    cause: euv::LoanCause,
                                     cmt: &'a mc::cmt_<'tcx>,
                                     loan_region: ty::Region<'tcx>)
                                     -> Result<(),()> {
@@ -26,12 +22,7 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     //! and is scope of `cmt` otherwise.
     debug!("guarantee_lifetime(cmt={:?}, loan_region={:?})",
            cmt, loan_region);
-    let ctxt = GuaranteeLifetimeContext {bccx: bccx,
-                                         item_scope,
-                                         span,
-                                         cause,
-                                         loan_region,
-                                         cmt_original: cmt};
+    let ctxt = GuaranteeLifetimeContext { bccx, item_scope, loan_region };
     ctxt.check(cmt, None)
 }
 
@@ -44,10 +35,7 @@ struct GuaranteeLifetimeContext<'a, 'tcx> {
     // the scope of the function body for the enclosing item
     item_scope: region::Scope,
 
-    span: Span,
-    cause: euv::LoanCause,
     loan_region: ty::Region<'tcx>,
-    cmt_original: &'a mc::cmt_<'tcx>
 }
 
 impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
@@ -85,7 +73,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         //! Reports an error if `loan_region` is larger than `max_scope`
 
         if !self.bccx.is_subregion_of(self.loan_region, max_scope) {
-            Err(self.report_error(err_out_of_scope(max_scope, self.loan_region, self.cause)))
+            Err(self.bccx.signal_error())
         } else {
             Ok(())
         }
@@ -121,12 +109,5 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
                 self.scope(cmt)
             }
         }
-    }
-
-    fn report_error(&self, code: bckerr_code<'tcx>) {
-        self.bccx.report(BckError { cmt: self.cmt_original,
-                                    span: self.span,
-                                    cause: BorrowViolation(self.cause),
-                                    code: code });
     }
 }

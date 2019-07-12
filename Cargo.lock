@@ -2946,7 +2946,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_borrowck"
+name = "rustc_ast_borrowck"
 version = "0.0.0"
 dependencies = [
  "graphviz 0.0.0",
@@ -2954,7 +2954,6 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
- "rustc_mir 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -3045,7 +3044,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc-rayon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_allocator 0.0.0",
- "rustc_borrowck 0.0.0",
+ "rustc_ast_borrowck 0.0.0",
  "rustc_codegen_utils 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -3110,7 +3109,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc-rayon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_allocator 0.0.0",
- "rustc_borrowck 0.0.0",
+ "rustc_ast_borrowck 0.0.0",
  "rustc_codegen_ssa 0.0.0",
  "rustc_codegen_utils 0.0.0",
  "rustc_data_structures 0.0.0",

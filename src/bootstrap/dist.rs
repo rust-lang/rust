@@ -935,8 +935,6 @@ impl Step for Src {
     }
 }
 
-const CARGO_VENDOR_VERSION: &str = "0.1.22";
-
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarball;
 
@@ -998,26 +996,6 @@ impl Step for PlainSourceTarball {
 
         // If we're building from git sources, we need to vendor a complete distribution.
         if builder.rust_info.is_git() {
-            // Get cargo-vendor installed, if it isn't already.
-            let mut has_cargo_vendor = false;
-            let mut cmd = Command::new(&builder.initial_cargo);
-            for line in output(cmd.arg("install").arg("--list")).lines() {
-                has_cargo_vendor |= line.starts_with("cargo-vendor ");
-            }
-            if !has_cargo_vendor {
-                let mut cmd = builder.cargo(
-                    builder.compiler(0, builder.config.build),
-                    Mode::ToolBootstrap,
-                    builder.config.build,
-                    "install"
-                );
-                cmd.arg("--force")
-                   .arg("--debug")
-                   .arg("--vers").arg(CARGO_VENDOR_VERSION)
-                   .arg("cargo-vendor");
-                builder.run(&mut cmd);
-            }
-
             // Vendor all Cargo dependencies
             let mut cmd = Command::new(&builder.initial_cargo);
             cmd.arg("vendor")
