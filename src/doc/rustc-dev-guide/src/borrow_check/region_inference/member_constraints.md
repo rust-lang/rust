@@ -176,11 +176,11 @@ region being inferred. However, it is somewhat arbitrary.
 
 In practice, computing upper bounds is a bit inconvenient, because our
 data structures are setup for the opposite. What we do is to compute
-the **reverse SCC graph** (we do this lazilly and cache the result) --
+the **reverse SCC graph** (we do this lazily and cache the result) --
 that is, a graph where `'a: 'b` induces an edge `SCC('b) ->
 SCC('a)`. Like the normal SCC graph, this is a DAG. We can then do a
 depth-first search starting from `SCC('0)` in this graph. This will
-take us to all the SCCs that must outlive `'0`. 
+take us to all the SCCs that must outlive `'0`.
 
 One wrinkle is that, as we walk the "upper bound" SCCs, their values
 will not yet have been fully computed. However, we **have** already
@@ -190,4 +190,3 @@ parameters, their value will contain themselves (i.e., the initial
 value for `'a` includes `'a` and the value for `'b` contains `'b`). So
 we can collect all of the lifetime parameters that are reachable,
 which is precisely what we are interested in.
-

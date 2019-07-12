@@ -137,7 +137,7 @@ by invoking `constraint_sccs.scc(r)`.
 
 Working in terms of SCCs allows us to be more efficient: if we have a
 set of regions `'a...'d` that are part of a single SCC, we don't have
-to compute/store their values separarely. We can just store one value
+to compute/store their values separately. We can just store one value
 **for the SCC**, since they must all be equal.
 
 If you look over the region inference code, you will see that a number
@@ -220,5 +220,3 @@ taking into account all of the liveness and outlives
 constraints. However, in order to complete the process, we must also
 consider [member constraints][m_c], which are described in [a later
 section][m_c].
-
-

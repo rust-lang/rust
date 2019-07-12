@@ -52,7 +52,7 @@ based on their index:
 
 In fact, the universal regions can be further subdivided based on
 where they were brought into scope (see the [`RegionClassification`]
-type). These subdivions are not important for the topics discussed
+type). These subdivisions are not important for the topics discussed
 here, but become important when we consider [closure constraint
 propagation](./closure_constraints.html), so we discuss them there.
 
