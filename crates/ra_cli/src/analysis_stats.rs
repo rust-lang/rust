@@ -115,9 +115,13 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
     println!("Analysis: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 
     if memory_usage {
+        drop(db);
         for (name, bytes) in host.per_query_memory_usage() {
             println!("{:>8} {}", bytes, name)
         }
+        let before = ra_prof::memory_usage();
+        drop(host);
+        println!("leftover: {}", before.allocated - ra_prof::memory_usage().allocated)
     }
 
     Ok(())

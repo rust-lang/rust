@@ -252,6 +252,13 @@ impl RootDatabase {
                 let q: $q = Default::default();
                 let name = format!("{:?}", q);
                 acc.push((name, before - after));
+
+                let before = memory_usage().allocated;
+                self.query($q).sweep(sweep.discard_everything());
+                let after = memory_usage().allocated;
+                let q: $q = Default::default();
+                let name = format!("{:?} (deps)", q);
+                acc.push((name, before - after));
             )*}
         }
         sweep_each_query![
