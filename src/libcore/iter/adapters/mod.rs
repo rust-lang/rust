@@ -748,13 +748,27 @@ impl<I: fmt::Debug, P> fmt::Debug for Filter<I, P> {
     }
 }
 
+fn filter_fold<T, Acc>(
+    mut predicate: impl FnMut(&T) -> bool,
+    mut fold: impl FnMut(Acc, T) -> Acc,
+) -> impl FnMut(Acc, T) -> Acc {
+    move |acc, item| if predicate(&item) { fold(acc, item) } else { acc }
+}
+
+fn filter_try_fold<'a, T, Acc, R: Try<Ok = Acc>>(
+    predicate: &'a mut impl FnMut(&T) -> bool,
+    mut fold: impl FnMut(Acc, T) -> R + 'a,
+) -> impl FnMut(Acc, T) -> R + 'a {
+    move |acc, item| if predicate(&item) { fold(acc, item) } else { R::from_ok(acc) }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool {
     type Item = I::Item;
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        self.try_for_each(Err).err()
+        self.iter.find(&mut self.predicate)
     }
 
     #[inline]
@@ -776,32 +790,26 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
     // leaving more budget for LLVM optimizations.
     #[inline]
     fn count(self) -> usize {
-        let mut predicate = self.predicate;
-        self.iter.map(|x| predicate(&x) as usize).sum()
+        #[inline]
+        fn to_usize<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut(T) -> usize {
+            move |x| predicate(&x) as usize
+        }
+
+        self.iter.map(to_usize(self.predicate)).sum()
     }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
-        let predicate = &mut self.predicate;
-        self.iter.try_fold(init, move |acc, item| if predicate(&item) {
-            fold(acc, item)
-        } else {
-            Try::from_ok(acc)
-        })
+        self.iter.try_fold(init, filter_try_fold(&mut self.predicate, fold))
     }
 
     #[inline]
-    fn fold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        let mut predicate = self.predicate;
-        self.iter.fold(init, move |acc, item| if predicate(&item) {
-            fold(acc, item)
-        } else {
-            acc
-        })
+        self.iter.fold(init, filter_fold(self.predicate, fold))
     }
 }
 
@@ -811,31 +819,21 @@ impl<I: DoubleEndedIterator, P> DoubleEndedIterator for Filter<I, P>
 {
     #[inline]
     fn next_back(&mut self) -> Option<I::Item> {
-        self.try_rfold((), |_, x| Err(x)).err()
+        self.iter.rfind(&mut self.predicate)
     }
 
     #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
-        let predicate = &mut self.predicate;
-        self.iter.try_rfold(init, move |acc, item| if predicate(&item) {
-            fold(acc, item)
-        } else {
-            Try::from_ok(acc)
-        })
+        self.iter.try_rfold(init, filter_try_fold(&mut self.predicate, fold))
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        let mut predicate = self.predicate;
-        self.iter.rfold(init, move |acc, item| if predicate(&item) {
-            fold(acc, item)
-        } else {
-            acc
-        })
+        self.iter.rfold(init, filter_fold(self.predicate, fold))
     }
 }
 
@@ -872,6 +870,26 @@ impl<I: fmt::Debug, F> fmt::Debug for FilterMap<I, F> {
     }
 }
 
+fn filter_map_fold<T, B, Acc>(
+    mut f: impl FnMut(T) -> Option<B>,
+    mut fold: impl FnMut(Acc, B) -> Acc,
+) -> impl FnMut(Acc, T) -> Acc {
+    move |acc, item| match f(item) {
+        Some(x) => fold(acc, x),
+        None => acc,
+    }
+}
+
+fn filter_map_try_fold<'a, T, B, Acc, R: Try<Ok = Acc>>(
+    f: &'a mut impl FnMut(T) -> Option<B>,
+    mut fold: impl FnMut(Acc, B) -> R + 'a,
+) -> impl FnMut(Acc, T) -> R + 'a {
+    move |acc, item| match f(item) {
+        Some(x) => fold(acc, x),
+        None => R::from_ok(acc),
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
     where F: FnMut(I::Item) -> Option<B>,
@@ -880,7 +898,7 @@ impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
 
     #[inline]
     fn next(&mut self) -> Option<B> {
-        self.try_for_each(Err).err()
+        self.iter.find_map(&mut self.f)
     }
 
     #[inline]
@@ -890,25 +908,17 @@ impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
     }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
-        let f = &mut self.f;
-        self.iter.try_fold(init, move |acc, item| match f(item) {
-            Some(x) => fold(acc, x),
-            None => Try::from_ok(acc),
-        })
+        self.iter.try_fold(init, filter_map_try_fold(&mut self.f, fold))
     }
 
     #[inline]
-    fn fold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        let mut f = self.f;
-        self.iter.fold(init, move |acc, item| match f(item) {
-            Some(x) => fold(acc, x),
-            None => acc,
-        })
+        self.iter.fold(init, filter_map_fold(self.f, fold))
     }
 }
 
@@ -918,29 +928,31 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
 {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
-        self.try_rfold((), |_, x| Err(x)).err()
+        #[inline]
+        fn find<T, B>(
+            f: &mut impl FnMut(T) -> Option<B>
+        ) -> impl FnMut((), T) -> LoopState<(), B> + '_ {
+            move |(), x| match f(x) {
+                Some(x) => LoopState::Break(x),
+                None => LoopState::Continue(()),
+            }
+        }
+
+        self.iter.try_rfold((), find(&mut self.f)).break_value()
     }
 
     #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
-        let f = &mut self.f;
-        self.iter.try_rfold(init, move |acc, item| match f(item) {
-            Some(x) => fold(acc, x),
-            None => Try::from_ok(acc),
-        })
+        self.iter.try_rfold(init, filter_map_try_fold(&mut self.f, fold))
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        let mut f = self.f;
-        self.iter.rfold(init, move |acc, item| match f(item) {
-            Some(x) => fold(acc, x),
-            None => acc,
-        })
+        self.iter.rfold(init, filter_map_fold(self.f, fold))
     }
 }
 
