@@ -1397,16 +1397,23 @@ impl<I: Iterator, P> Iterator for SkipWhile<I, P>
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
+        fn check<'a, T>(
+            flag: &'a mut bool,
+            pred: &'a mut impl FnMut(&T) -> bool,
+        ) -> impl FnMut(&T) -> bool + 'a {
+            move |x| {
+                if *flag || !pred(x) {
+                    *flag = true;
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+
         let flag = &mut self.flag;
         let pred = &mut self.predicate;
-        self.iter.find(move |x| {
-            if *flag || !pred(x) {
-                *flag = true;
-                true
-            } else {
-                false
-            }
-        })
+        self.iter.find(check(flag, pred))
     }
 
     #[inline]
