@@ -674,6 +674,30 @@ pub unsafe fn vmvnq_u32(a: uint32x4_t) -> uint32x4_t {
     simd_xor(a, b)
 }
 
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvn_p8(a: poly8x8_t) -> poly8x8_t {
+    let b = poly8x8_t(255, 255, 255, 255, 255, 255, 255, 255);
+    simd_xor(a, b)
+}
+
+/// Vector bitwise not.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+pub unsafe fn vmvnq_p8(a: poly8x16_t) -> poly8x16_t {
+    let b = poly8x16_t(
+        255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    );
+    simd_xor(a, b)
+}
+
 /// Folding minimum of adjacent pairs
 #[inline]
 #[target_feature(enable = "neon")]
@@ -1403,6 +1427,24 @@ mod tests {
         let a = u32x4::new(0, 1, 2, 3);
         let e = u32x4::new(4_294_967_295, 4_294_967_294, 4_294_967_293, 4_294_967_292);
         let r: u32x4 = transmute(vmvnq_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvn_p8() {
+        let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let e = u8x8::new(255, 254, 253, 252, 251, 250, 249, 248);
+        let r: u8x8 = transmute(vmvn_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmvnq_p8() {
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e = u8x16::new(
+            255, 254, 253, 252, 251, 250, 249, 248, 247, 246, 245, 244, 243, 242, 241, 240,
+        );
+        let r: u8x16 = transmute(vmvnq_p8(transmute(a)));
         assert_eq!(r, e);
     }
 
