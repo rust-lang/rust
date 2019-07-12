@@ -270,6 +270,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the deeply last field of nested structures, or the same type if
     /// not a structure at all. Corresponds to the only possible unsized field,
     /// and its type can be used to determine unsizing strategy.
+    ///
+    /// Should only be called if `ty` has no inference variables and does not
+    /// need its lifetimes preserved (e.g. as part of codegen); otherwise
+    /// normalization attempt may cause compiler bugs.
     pub fn struct_tail_erasing_lifetimes(self,
                                          ty: Ty<'tcx>,
                                          param_env: ty::ParamEnv<'tcx>)
@@ -287,8 +291,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// handle `<T as Trait>::Assoc` and `impl Trait`); pass the identity
     /// function to indicate no normalization should take place.
     ///
-    /// See also `struct_tail_erasing_lifetimes`, which is what callers running
-    /// after type checking should use.
+    /// See also `struct_tail_erasing_lifetimes`, which is suitable for use
+    /// during codegen.
     pub fn struct_tail_with_normalize(self,
                                       mut ty: Ty<'tcx>,
                                       normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>)
@@ -337,7 +341,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
     /// whereas struct_tail produces `T`, and `Trait`, respectively.
     ///
-    /// Must only be called after type-checking is complete; otherwise
+    /// Should only be called if the types have no inference variables and do
+    /// not need their lifetimes preserved (e.g. as part of codegen); otherwise
     /// normalization attempt may cause compiler bugs.
     pub fn struct_lockstep_tails_erasing_lifetimes(self,
                                                    source: Ty<'tcx>,
@@ -356,8 +361,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
     /// whereas struct_tail produces `T`, and `Trait`, respectively.
     ///
-    /// See also struct_lockstep_tails_erasing_lifetimes, which
-    /// is what callers running after type checking should use.
+    /// See also `struct_lockstep_tails_erasing_lifetimes`, which is suitable for use
+    /// during codegen.
     pub fn struct_lockstep_tails_with_normalize(self,
                                                 source: Ty<'tcx>,
                                                 target: Ty<'tcx>,
