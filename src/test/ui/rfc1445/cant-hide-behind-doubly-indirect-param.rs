@@ -4,7 +4,7 @@
 // through that we had intended to reject.
 //
 // See discussion on rust-lang/rust#62307 and rust-lang/rust#62339
-
+#![warn(indirect_structural_match)]
 // run-pass
 
 struct NoDerive(i32);
