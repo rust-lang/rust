@@ -127,6 +127,18 @@ async unsafe fn unsafe_async_fn(x: u8) -> u8 {
     x
 }
 
+unsafe fn unsafe_fn(x: u8) -> u8 {
+    x
+}
+
+fn async_block_in_unsafe_block(x: u8) -> impl Future<Output = u8> {
+    unsafe {
+        async move {
+            unsafe_fn(unsafe_async_fn(x).await)
+        }
+    }
+}
+
 struct Foo;
 
 trait Bar {
@@ -184,6 +196,7 @@ fn main() {
         async_fn,
         generic_async_fn,
         async_fn_with_internal_borrow,
+        async_block_in_unsafe_block,
         Foo::async_assoc_item,
         |x| {
             async move {
