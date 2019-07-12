@@ -100,7 +100,7 @@
 [Appendix D: Code Index](./appendix/code-index.md)
 [Appendix E: Bibliography](./appendix/bibliography.md)
 
-[Appendix Z HumorRust](./appendix/humorust.md)
+[Appendix Z: HumorRust](./appendix/humorust.md)
 
 ---
 
