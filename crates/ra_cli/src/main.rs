@@ -102,7 +102,7 @@ fn main() -> Result<()> {
 
 fn file() -> Result<TreeArc<SourceFile>> {
     let text = read_stdin()?;
-    Ok(SourceFile::parse(&text).tree)
+    Ok(SourceFile::parse(&text).tree().to_owned())
 }
 
 fn read_stdin() -> Result<String> {

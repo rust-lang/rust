@@ -503,8 +503,8 @@ fn foo() {
 
     fn check_join_lines_sel(before: &str, after: &str) {
         let (sel, before) = extract_range(before);
-        let file = SourceFile::parse(&before).tree;
-        let result = join_lines(&file, sel);
+        let parse = SourceFile::parse(&before);
+        let result = join_lines(parse.tree(), sel);
         let actual = result.apply(&before);
         assert_eq_text!(after, &actual);
     }

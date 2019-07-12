@@ -94,7 +94,8 @@ fn hover_text(docs: Option<String>, desc: Option<String>) -> Option<String> {
 }
 
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
-    let file = db.parse(position.file_id).tree;
+    let parse = db.parse(position.file_id);
+    let file = parse.tree();
     let mut res = HoverResult::new();
 
     let mut range = None;
@@ -241,8 +242,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 }
 
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
-    let file = db.parse(frange.file_id).tree;
-    let syntax = file.syntax();
+    let parse = db.parse(frange.file_id);
+    let syntax = parse.tree().syntax();
     let leaf_node = find_covering_element(syntax, frange.range);
     // if we picked identifier, expand to pattern/expression
     let node = leaf_node

@@ -87,7 +87,7 @@ impl FromIterator<TableEntry<FileId, Parse>> for SyntaxTreeStats {
         let mut res = SyntaxTreeStats::default();
         for entry in iter {
             res.total += 1;
-            if let Some(tree) = entry.value.as_ref().map(|it| &it.tree) {
+            if let Some(tree) = entry.value.as_ref().map(|it| it.tree()) {
                 res.retained += 1;
                 res.retained_size += tree.syntax().memory_size_of_subtree();
             }

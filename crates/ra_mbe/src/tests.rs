@@ -95,8 +95,8 @@ pub(crate) fn expand_to_expr(
 pub(crate) fn text_to_tokentree(text: &str) -> tt::Subtree {
     // wrap the given text to a macro call
     let wrapped = format!("wrap_macro!( {} )", text);
-    let wrapped = ast::SourceFile::parse(&wrapped).tree;
-    let wrapped = wrapped.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+    let wrapped = ast::SourceFile::parse(&wrapped);
+    let wrapped = wrapped.tree().syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
     let mut wrapped = ast_to_token_tree(wrapped).unwrap().0;
     wrapped.delimiter = tt::Delimiter::None;
 

@@ -11,7 +11,8 @@ use ra_syntax::{
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
-    let file = db.parse(position.file_id).tree;
+    let parse = db.parse(position.file_id);
+    let file = parse.tree();
     let comment = find_token_at_offset(file.syntax(), position.offset)
         .left_biased()
         .and_then(ast::Comment::cast)?;
@@ -86,10 +87,10 @@ pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<TextEdit> {
 }
 
 pub(crate) fn on_dot_typed(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
-    let file = db.parse(position.file_id).tree;
-    assert_eq!(file.syntax().text().char_at(position.offset), Some('.'));
+    let parse = db.parse(position.file_id);
+    assert_eq!(parse.tree().syntax().text().char_at(position.offset), Some('.'));
 
-    let whitespace = find_token_at_offset(file.syntax(), position.offset)
+    let whitespace = find_token_at_offset(parse.tree().syntax(), position.offset)
         .left_biased()
         .and_then(ast::Whitespace::cast)?;
 
@@ -139,8 +140,8 @@ mod tests {
             let mut edit = TextEditBuilder::default();
             edit.insert(offset, "=".to_string());
             let before = edit.finish().apply(&before);
-            let file = SourceFile::parse(&before).tree;
-            if let Some(result) = on_eq_typed(&file, offset) {
+            let parse = SourceFile::parse(&before);
+            if let Some(result) = on_eq_typed(parse.tree(), offset) {
                 let actual = result.apply(&before);
                 assert_eq_text!(after, &actual);
             } else {

@@ -49,8 +49,8 @@ pub fn module_from_declaration(
 
 /// Locates the module by position in the source code.
 pub fn module_from_position(db: &impl HirDatabase, position: FilePosition) -> Option<Module> {
-    let file = db.parse(position.file_id).tree;
-    match find_node_at_offset::<ast::Module>(file.syntax(), position.offset) {
+    let parse = db.parse(position.file_id);
+    match find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset) {
         Some(m) if !m.has_semi() => module_from_inline(db, position.file_id, m),
         _ => module_from_file_id(db, position.file_id),
     }

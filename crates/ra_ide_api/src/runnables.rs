@@ -22,8 +22,8 @@ pub enum RunnableKind {
 }
 
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
-    let source_file = db.parse(file_id).tree;
-    source_file.syntax().descendants().filter_map(|i| runnable(db, file_id, i)).collect()
+    let parse = db.parse(file_id);
+    parse.tree().syntax().descendants().filter_map(|i| runnable(db, file_id, i)).collect()
 }
 
 fn runnable(db: &RootDatabase, file_id: FileId, item: &SyntaxNode) -> Option<Runnable> {

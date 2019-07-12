@@ -22,7 +22,7 @@ fn lexer_tests() {
 fn parser_tests() {
     dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], |text, path| {
         let parse = SourceFile::parse(text);
-        let errors = parse.errors.as_slice();
+        let errors = parse.errors();
         assert_eq!(
             errors,
             &[] as &[ra_syntax::SyntaxError],
@@ -33,7 +33,7 @@ fn parser_tests() {
     });
     dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], |text, path| {
         let parse = SourceFile::parse(text);
-        let errors = parse.errors.as_slice();
+        let errors = parse.errors();
         assert!(!errors.is_empty(), "There should be errors in the file {:?}", path.display());
         parse.debug_dump()
     });

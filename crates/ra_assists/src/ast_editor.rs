@@ -278,8 +278,8 @@ impl AstBuilder<ast::NameRef> {
 }
 
 fn ast_node_from_file_text<N: AstNode>(text: &str) -> TreeArc<N> {
-    let file = SourceFile::parse(text).tree;
-    let res = file.syntax().descendants().find_map(N::cast).unwrap().to_owned();
+    let parse = SourceFile::parse(text);
+    let res = parse.tree().syntax().descendants().find_map(N::cast).unwrap().to_owned();
     res
 }
 
@@ -287,7 +287,8 @@ mod tokens {
     use once_cell::sync::Lazy;
     use ra_syntax::{AstNode, SourceFile, SyntaxKind::*, SyntaxToken, TreeArc, T};
 
-    static SOURCE_FILE: Lazy<TreeArc<SourceFile>> = Lazy::new(|| SourceFile::parse(",\n; ;").tree);
+    static SOURCE_FILE: Lazy<TreeArc<SourceFile>> =
+        Lazy::new(|| SourceFile::parse(",\n; ;").tree().to_owned());
 
     pub(crate) fn comma() -> SyntaxToken<'static> {
         SOURCE_FILE

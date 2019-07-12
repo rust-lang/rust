@@ -192,8 +192,8 @@ mod tests {
 
     fn do_check(text: &str, fold_kinds: &[FoldKind]) {
         let (ranges, text) = extract_ranges(text, "fold");
-        let file = SourceFile::parse(&text).tree;
-        let folds = folding_ranges(&file);
+        let parse = SourceFile::parse(&text);
+        let folds = folding_ranges(parse.tree());
 
         assert_eq!(
             folds.len(),

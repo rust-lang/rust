@@ -11,8 +11,8 @@ use crate::{db::RootDatabase, FileRange};
 
 // FIXME: restore macro support
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
-    let source_file = db.parse(frange.file_id).tree;
-    try_extend_selection(source_file.syntax(), frange.range).unwrap_or(frange.range)
+    let parse = db.parse(frange.file_id);
+    try_extend_selection(parse.tree().syntax(), frange.range).unwrap_or(frange.range)
 }
 
 fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange> {
@@ -212,10 +212,10 @@ mod tests {
 
     fn do_check(before: &str, afters: &[&str]) {
         let (cursor, before) = extract_offset(before);
-        let file = SourceFile::parse(&before).tree;
+        let parse = SourceFile::parse(&before);
         let mut range = TextRange::offset_len(cursor, 0.into());
         for &after in afters {
-            range = try_extend_selection(file.syntax(), range).unwrap();
+            range = try_extend_selection(parse.tree().syntax(), range).unwrap();
             let actual = &before[range];
             assert_eq!(after, actual);
         }

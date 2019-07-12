@@ -48,7 +48,7 @@ impl<'a> CompletionContext<'a> {
     ) -> Option<CompletionContext<'a>> {
         let module = source_binder::module_from_position(db, position);
         let token =
-            find_token_at_offset(original_parse.tree.syntax(), position.offset).left_biased()?;
+            find_token_at_offset(original_parse.tree().syntax(), position.offset).left_biased()?;
         let analyzer =
             hir::SourceAnalyzer::new(db, position.file_id, token.parent(), Some(position.offset));
         let mut ctx = CompletionContext {
@@ -89,7 +89,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file = {
             let edit = AtomTextEdit::insert(offset, "intellijRulezz".to_string());
-            original_parse.reparse(&edit).tree
+            original_parse.reparse(&edit).tree().to_owned()
         };
 
         // First, let's try to complete a reference to some declaration.
@@ -100,7 +100,7 @@ impl<'a> CompletionContext<'a> {
                 self.is_param = true;
                 return;
             }
-            self.classify_name_ref(&original_parse.tree, name_ref);
+            self.classify_name_ref(original_parse.tree(), name_ref);
         }
 
         // Otherwise, see if this is a declaration. We can use heuristics to
