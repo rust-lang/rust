@@ -3,7 +3,7 @@
 // edition:2018
 // aux-build:arc_wake.rs
 
-#![feature(async_await, async_closure)]
+#![feature(async_await)]
 
 extern crate arc_wake;
 
@@ -70,7 +70,7 @@ fn async_nonmove_block(x: u8) -> impl Future<Output = u8> {
     }
 }
 
-// see async-closure.rs for async_closure
+// see async-closure.rs for async_closure + async_closure_in_unsafe_block
 
 async fn async_fn(x: u8) -> u8 {
     wake_and_yield_once().await;

@@ -77,6 +77,12 @@ fn async_closure(x: u8) -> impl Future<Output = u8> {
     })(x)
 }
 
+fn async_closure_in_unsafe_block(x: u8) -> impl Future<Output = u8> {
+    (unsafe {
+        async move |x: u8| unsafe_fn(await!(unsafe_async_fn(x)))
+    })(x)
+}
+
 async fn async_fn(x: u8) -> u8 {
     await!(wake_and_yield_once());
     x
@@ -193,6 +199,7 @@ fn main() {
         async_block,
         async_nonmove_block,
         async_closure,
+        async_closure_in_unsafe_block,
         async_fn,
         generic_async_fn,
         async_fn_with_internal_borrow,
