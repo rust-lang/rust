@@ -745,8 +745,7 @@ impl<'a> State<'a> {
         self.bclose_maybe_open(span, true)
     }
 
-    crate fn break_offset_if_not_bol(&mut self, n: usize,
-                                   off: isize) {
+    crate fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
         if !self.s.is_beginning_of_line() {
             self.s.break_offset(n, off)
         } else {
