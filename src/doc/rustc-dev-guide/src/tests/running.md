@@ -108,6 +108,23 @@ Under the hood, the test runner invokes the standard rust test runner
 filtering for tests that include "issue-1234" in the name. (Thus
 `--test-args` is a good way to run a collection of related tests.)
 
+## Passing `--pass $mode`
+
+Pass UI tests now have three modes, `check-pass`, `build-pass` and
+`run-pass`. When `--pass $mode` is passed, these tests will be forced
+to run under the given `$mode` unless the directive `// ignore-pass`
+exists in the test file. For example, you can run all the tests in
+`src/test/run-pass` as `check-pass`:
+
+```bash
+> ./x.py test --stage 1 src/test/run-pass --pass check
+```
+
+By passing `--pass $mode`, you can reduce the testing time. For each
+mode, please see [here][mode].
+
+[mode]: https://rust-lang.github.io/rustc-guide/tests/adding.html#tests-that-do-not-result-in-compile-errors
+
 ## Using incremental compilation
 
 You can further enable the `--incremental` flag to save additional
