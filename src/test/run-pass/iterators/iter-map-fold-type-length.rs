@@ -1,3 +1,4 @@
+// run-pass
 //! Check that type lengths don't explode with `Map` folds.
 //!
 //! The normal limit is a million, and this test used to exceed 1.5 million, but
