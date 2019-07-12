@@ -12,8 +12,8 @@ use rustc::session::config::Input;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_interface::util::ReplaceBodyWithLoop;
-use rustc_borrowck as borrowck;
-use rustc_borrowck::graphviz as borrowck_dot;
+use rustc_ast_borrowck as borrowck;
+use rustc_ast_borrowck::graphviz as borrowck_dot;
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast;

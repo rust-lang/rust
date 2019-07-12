@@ -18,7 +18,7 @@ rayon = { version = "0.2.0", package = "rustc-rayon" }
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
 rustc_target = { path = "../librustc_target" }
-rustc_borrowck = { path = "../librustc_borrowck" }
+rustc_ast_borrowck = { path = "../librustc_ast_borrowck" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_incremental = { path = "../librustc_incremental" }
