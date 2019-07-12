@@ -2719,7 +2719,7 @@ impl<I: Iterator> Iterator for &mut I {
         (**self).nth(n)
     }
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-        I: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+        F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
         (**self).try_fold(init, f)
     }
