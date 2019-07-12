@@ -185,6 +185,13 @@ pub enum VariantDef {
 impl_froms!(VariantDef: Struct, EnumVariant);
 
 impl VariantDef {
+    pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
+        match self {
+            VariantDef::Struct(it) => it.fields(db),
+            VariantDef::EnumVariant(it) => it.fields(db),
+        }
+    }
+
     pub(crate) fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
         match self {
             VariantDef::Struct(it) => it.field(db, name),
