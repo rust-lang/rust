@@ -70,6 +70,8 @@ fn async_nonmove_block(x: u8) -> impl Future<Output = u8> {
     }
 }
 
+// see async-closure.rs for async_closure + async_closure_in_unsafe_block
+
 async fn async_fn(x: u8) -> u8 {
     wake_and_yield_once().await;
     x
@@ -118,6 +120,18 @@ fn async_fn_with_internal_borrow(y: u8) -> impl Future<Output = u8> {
 async unsafe fn unsafe_async_fn(x: u8) -> u8 {
     wake_and_yield_once().await;
     x
+}
+
+unsafe fn unsafe_fn(x: u8) -> u8 {
+    x
+}
+
+fn async_block_in_unsafe_block(x: u8) -> impl Future<Output = u8> {
+    unsafe {
+        async move {
+            unsafe_fn(unsafe_async_fn(x).await)
+        }
+    }
 }
 
 struct Foo;
@@ -176,6 +190,7 @@ fn main() {
         async_fn,
         generic_async_fn,
         async_fn_with_internal_borrow,
+        async_block_in_unsafe_block,
         Foo::async_assoc_item,
         |x| {
             async move {

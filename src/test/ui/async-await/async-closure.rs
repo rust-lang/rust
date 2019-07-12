@@ -53,6 +53,21 @@ fn async_closure(x: u8) -> impl Future<Output = u8> {
     })(x)
 }
 
+fn async_closure_in_unsafe_block(x: u8) -> impl Future<Output = u8> {
+    (unsafe {
+        async move |x: u8| unsafe_fn(unsafe_async_fn(x).await)
+    })(x)
+}
+
+async unsafe fn unsafe_async_fn(x: u8) -> u8 {
+    wake_and_yield_once().await;
+    x
+}
+
+unsafe fn unsafe_fn(x: u8) -> u8 {
+    x
+}
+
 fn test_future_yields_once_then_returns<F, Fut>(f: F)
 where
     F: FnOnce(u8) -> Fut,
@@ -77,5 +92,6 @@ fn main() {
 
     test! {
         async_closure,
+        async_closure_in_unsafe_block,
     }
 }
