@@ -1782,19 +1782,26 @@ impl<I> Iterator for Take<I> where I: Iterator{
     }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
-        if self.n == 0 {
-            Try::from_ok(init)
-        } else {
-            let n = &mut self.n;
-            self.iter.try_fold(init, move |acc, x| {
+        fn check<'a, T, Acc, R: Try<Ok = Acc>>(
+            n: &'a mut usize,
+            mut fold: impl FnMut(Acc, T) -> R + 'a,
+        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> + 'a {
+            move |acc, x| {
                 *n -= 1;
                 let r = fold(acc, x);
                 if *n == 0 { LoopState::Break(r) }
                 else { LoopState::from_try(r) }
-            }).into_try()
+            }
+        }
+
+        if self.n == 0 {
+            Try::from_ok(init)
+        } else {
+            let n = &mut self.n;
+            self.iter.try_fold(init, check(n, fold)).into_try()
         }
     }
 }
