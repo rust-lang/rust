@@ -178,7 +178,7 @@ impl<T> Option<T> {
     /// ```
     ///
     /// [`Some`]: #variant.Some
-    #[must_use]
+    #[must_use = "if you intended to assert that this has a value, consider `.unwrap()` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_some(&self) -> bool {
@@ -201,7 +201,8 @@ impl<T> Option<T> {
     /// ```
     ///
     /// [`None`]: #variant.None
-    #[must_use]
+    #[must_use = "if you intended to assert that this doesn't have a value, consider \
+                  `.and_then(|| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_none(&self) -> bool {

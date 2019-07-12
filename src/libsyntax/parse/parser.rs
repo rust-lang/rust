@@ -4629,6 +4629,9 @@ impl<'a> Parser<'a> {
     fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
+            if self.token == token::Eof {
+                break;
+            }
             let stmt = match self.parse_full_stmt(false) {
                 Err(mut err) => {
                     err.emit();
@@ -4643,8 +4646,6 @@ impl<'a> Parser<'a> {
             };
             if let Some(stmt) = stmt {
                 stmts.push(stmt);
-            } else if self.token == token::Eof {
-                break;
             } else {
                 // Found only `;` or `}`.
                 continue;
@@ -6666,12 +6667,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Reads a module from a source file.
-    fn eval_src_mod(&mut self,
-                    path: PathBuf,
-                    directory_ownership: DirectoryOwnership,
-                    name: String,
-                    id_sp: Span)
-                    -> PResult<'a, (ast::Mod, Vec<Attribute> )> {
+    fn eval_src_mod(
+        &mut self,
+        path: PathBuf,
+        directory_ownership: DirectoryOwnership,
+        name: String,
+        id_sp: Span,
+    ) -> PResult<'a, (ast::Mod, Vec<Attribute>)> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
             let mut err = String::from("circular modules: ");

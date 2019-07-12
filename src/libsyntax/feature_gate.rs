@@ -199,9 +199,6 @@ declare_features! (
 
     // no-tracking-issue-end
 
-    // Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
-    (active, dropck_parametricity, "1.3.0", Some(28498), None),
-
     // no-tracking-issue-start
 
     // Allows using `#[omit_gdb_pretty_printer_section]`.
@@ -641,6 +638,8 @@ declare_features! (
     (removed, extern_in_paths, "1.33.0", Some(55600), None,
      Some("subsumed by `::foo::bar` paths")),
     (removed, quote, "1.33.0", Some(29601), None, None),
+    // Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
+    (removed, dropck_parametricity, "1.38.0", Some(28498), None, None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
@@ -1447,15 +1446,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             cfg_fn!(omit_gdb_pretty_printer_section)
         )
     ),
-    (sym::unsafe_destructor_blind_to_params,
-    Normal,
-    template!(Word),
-    Gated(Stability::Deprecated("https://github.com/rust-lang/rust/issues/34761",
-                                Some("replace this attribute with `#[may_dangle]`")),
-        sym::dropck_parametricity,
-        "unsafe_destructor_blind_to_params has been replaced by \
-            may_dangle and will be removed in the future",
-        cfg_fn!(dropck_parametricity))),
     (sym::may_dangle,
     Normal,
     template!(Word),

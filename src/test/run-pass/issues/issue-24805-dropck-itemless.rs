@@ -1,12 +1,11 @@
 // run-pass
-#![allow(deprecated)]
 
 // Check that item-less traits do not cause dropck to inject extra
 // region constraints.
 
 #![allow(non_camel_case_types)]
 
-#![feature(dropck_parametricity)]
+#![feature(dropck_eyepatch)]
 
 trait UserDefined { }
 
@@ -20,9 +19,8 @@ impl<'a, T> UserDefined for &'a T { }
 //   ```
 macro_rules! impl_drop {
     ($Bound:ident, $Id:ident) => {
-        struct $Id<T:$Bound>(T);
-        impl <T:$Bound> Drop for $Id<T> {
-            #[unsafe_destructor_blind_to_params]
+        struct $Id<T: $Bound>(T);
+        unsafe impl <#[may_dangle] T: $Bound> Drop for $Id<T> {
             fn drop(&mut self) { }
         }
     }

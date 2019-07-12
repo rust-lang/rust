@@ -119,7 +119,7 @@ mod continue_keyword { }
 /// The `as` keyword can be used to change what the crate is referred to as in your project. If a
 /// crate name includes a dash, it is implicitly imported with the dashes replaced by underscores.
 ///
-/// `crate` is also used as in conjunction with `pub` to signify that the item it's attached to
+/// `crate` can also be used as in conjunction with `pub` to signify that the item it's attached to
 /// is public only to other members of the same crate it's in.
 ///
 /// ```rust
@@ -130,6 +130,10 @@ mod continue_keyword { }
 ///     pub(crate) semi_secret_thing: bool,
 /// }
 /// ```
+///
+/// `crate` is also used to represent the absolute path of a module, where `crate` refers to the
+/// root of the current crate. For instance, `crate::foo::bar` refers to the name `bar` inside the
+/// module `foo`, from anywhere else in the same crate.
 ///
 /// [Reference]: ../reference/items/extern-crates.html
 mod crate_keyword { }

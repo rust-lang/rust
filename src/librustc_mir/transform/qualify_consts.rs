@@ -890,6 +890,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
             let target = match body[bb].terminator().kind {
                 TerminatorKind::Goto { target } |
+                TerminatorKind::FalseUnwind { real_target: target, .. } |
                 TerminatorKind::Drop { target, .. } |
                 TerminatorKind::DropAndReplace { target, .. } |
                 TerminatorKind::Assert { target, .. } |
@@ -908,8 +909,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 TerminatorKind::GeneratorDrop |
                 TerminatorKind::Yield { .. } |
                 TerminatorKind::Unreachable |
-                TerminatorKind::FalseEdges { .. } |
-                TerminatorKind::FalseUnwind { .. } => None,
+                TerminatorKind::FalseEdges { .. } => None,
 
                 TerminatorKind::Return => {
                     break;

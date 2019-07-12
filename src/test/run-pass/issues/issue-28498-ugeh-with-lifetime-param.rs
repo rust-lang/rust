@@ -1,12 +1,11 @@
 // run-pass
-#![allow(deprecated)] // FIXME: switch to `#[may_dangle]` below.
 
 // Demonstrate the use of the unguarded escape hatch with a lifetime param
 // to assert that destructor will not access any dead data.
 //
 // Compare with compile-fail/issue28498-reject-lifetime-param.rs
 
-#![feature(dropck_parametricity)]
+#![feature(dropck_eyepatch)]
 
 #[derive(Debug)]
 struct ScribbleOnDrop(String);
@@ -19,11 +18,9 @@ impl Drop for ScribbleOnDrop {
 
 struct Foo<'a>(u32, &'a ScribbleOnDrop);
 
-impl<'a> Drop for Foo<'a> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] 'a> Drop for Foo<'a> {
     fn drop(&mut self) {
-        // Use of `unsafe_destructor_blind_to_params` is sound,
-        // because destructor never accesses `self.1`.
+        // Use of `may_dangle` is sound, because destructor never accesses `self.1`.
         println!("Dropping Foo({}, _)", self.0);
     }
 }

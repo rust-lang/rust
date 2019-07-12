@@ -10,7 +10,7 @@
 
 // Issue 62307 pointed out a case where the checking for
 // `#[structural_match]` was too shallow.
-
+#![warn(indirect_structural_match)]
 // run-pass
 
 #[derive(Debug)]

@@ -16,8 +16,7 @@ struct Foo<T>(u32, T, Box<for <'r> fn(&'r T) -> String>);
 
 impl<T> Drop for Foo<T> {
     fn drop(&mut self) {
-        // Use of `unsafe_destructor_blind_to_params` is unsound,
-        // because we pass `T` to the callback in `self.2`
+        // Use of `may_dangle` is unsound, because we pass `T` to the callback in `self.2`
         // below, and thus potentially read from borrowed data.
         println!("Dropping Foo({}, {})", self.0, (self.2)(&self.1));
     }

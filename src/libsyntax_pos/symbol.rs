@@ -695,7 +695,6 @@ symbols! {
         unmarked_api,
         unreachable_code,
         unrestricted_attribute_tokens,
-        unsafe_destructor_blind_to_params,
         unsafe_no_drop_flag,
         unsized_locals,
         unsized_tuple_coercion,
