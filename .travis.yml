@@ -91,7 +91,11 @@ script:
   - |
       rm rust-toolchain
       ./setup-toolchain.sh
-      export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
+      if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+        export PATH=$PATH:$(rustc --print sysroot)/bin
+      else
+        export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
+      fi
   - |
     if [ -z ${INTEGRATION} ]; then
       travis_wait 30 ./ci/base-tests.sh && sleep 5
