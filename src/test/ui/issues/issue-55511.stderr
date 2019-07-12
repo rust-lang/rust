@@ -4,7 +4,11 @@ warning: to use a constant of type `std::cell::Cell` in a pattern, `std::cell::C
 LL |         <() as Foo<'static>>::C => { }
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: #[warn(indirect_structural_match)] on by default
+note: lint level defined here
+  --> $DIR/issue-55511.rs:1:9
+   |
+LL | #![warn(indirect_structural_match)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
 

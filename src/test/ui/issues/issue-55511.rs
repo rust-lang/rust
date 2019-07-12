@@ -1,5 +1,5 @@
+#![warn(indirect_structural_match)]
 use std::cell::Cell;
-
 trait Foo<'a> {
     const C: Option<Cell<&'a u32>>;
 }
