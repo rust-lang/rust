@@ -1495,14 +1495,13 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
         if self.flag {
             None
         } else {
-            self.iter.next().and_then(|x| {
-                if (self.predicate)(&x) {
-                    Some(x)
-                } else {
-                    self.flag = true;
-                    None
-                }
-            })
+            let x = self.iter.next()?;
+            if (self.predicate)(&x) {
+                Some(x)
+            } else {
+                self.flag = true;
+                None
+            }
         }
     }
 
@@ -1517,22 +1516,30 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
     }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
-        if self.flag {
-            Try::from_ok(init)
-        } else {
-            let flag = &mut self.flag;
-            let p = &mut self.predicate;
-            self.iter.try_fold(init, move |acc, x|{
+        fn check<'a, T, Acc, R: Try<Ok = Acc>>(
+            flag: &'a mut bool,
+            p: &'a mut impl FnMut(&T) -> bool,
+            mut fold: impl FnMut(Acc, T) -> R + 'a,
+        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> + 'a {
+            move |acc, x| {
                 if p(&x) {
                     LoopState::from_try(fold(acc, x))
                 } else {
                     *flag = true;
                     LoopState::Break(Try::from_ok(acc))
                 }
-            }).into_try()
+            }
+        }
+
+        if self.flag {
+            Try::from_ok(init)
+        } else {
+            let flag = &mut self.flag;
+            let p = &mut self.predicate;
+            self.iter.try_fold(init, check(flag, p, fold)).into_try()
         }
     }
 }
