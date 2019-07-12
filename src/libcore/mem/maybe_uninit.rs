@@ -112,7 +112,6 @@ use crate::mem::ManuallyDrop;
 ///
 /// ```
 /// use std::mem::{self, MaybeUninit};
-/// use std::ptr;
 ///
 /// let data = {
 ///     // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
@@ -122,10 +121,13 @@ use crate::mem::ManuallyDrop;
 ///         MaybeUninit::uninit().assume_init()
 ///     };
 ///
-///     // Dropping a `MaybeUninit` does nothing, so if there is a panic during this loop,
-///     // we have a memory leak, but there is no memory safety issue.
+///     // Dropping a `MaybeUninit` does nothing. Thus using raw pointer
+///     // assignment instead of `ptr::write` does not cause the old
+///     // uninitialized value to be dropped. Also if there is a panic during
+///     // this loop, we have a memory leak, but there is no memory safety
+///     // issue.
 ///     for elem in &mut data[..] {
-///         unsafe { ptr::write(elem.as_mut_ptr(), vec![42]); }
+///         *elem = MaybeUninit::new(vec![42]);
 ///     }
 ///
 ///     // Everything is initialized. Transmute the array to the
@@ -151,7 +153,7 @@ use crate::mem::ManuallyDrop;
 /// let mut data_len: usize = 0;
 ///
 /// for elem in &mut data[0..500] {
-///     unsafe { ptr::write(elem.as_mut_ptr(), String::from("hello")); }
+///     *elem = MaybeUninit::new(String::from("hello"));
 ///     data_len += 1;
 /// }
 ///
