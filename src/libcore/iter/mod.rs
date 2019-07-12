@@ -141,7 +141,7 @@
 //! next.
 //!
 //! Also note that `Iterator` provides a default implementation of methods such as `nth` and `fold`
-//! which call `next` internally.  Each of these methods delegates to the `try_fold` implemantation.
+//! which call `next` internally.  Each of these methods delegates to the `try_fold` implementation.
 //! So if you can produce a more efficient custom implementation of iterating over the entire
 //! structure, then you can implement `try_fold` and get these other methods to use your iteration
 //! strategy.
