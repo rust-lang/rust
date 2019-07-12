@@ -9,6 +9,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::{self, InlineAsm as HirInlineAsm};
 use crate::mir::interpret::{ConstValue, InterpError, Scalar};
 use crate::mir::visit::MirVisitable;
+use polonius_engine::Atom;
 use rustc_data_structures::bit_set::BitMatrix;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
@@ -597,6 +598,12 @@ newtype_index! {
         derive [HashStable]
         DEBUG_FORMAT = "_{}",
         const RETURN_PLACE = 0,
+    }
+}
+
+impl Atom for Local {
+    fn index(self) -> usize {
+        Idx::index(self)
     }
 }
 

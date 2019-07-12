@@ -15,6 +15,7 @@ use std::rc::Rc;
 use super::TypeChecker;
 
 mod local_use_map;
+mod polonius;
 mod trace;
 
 /// Combines liveness analysis with initialization analysis to
@@ -57,15 +58,9 @@ pub(super) fn generate<'tcx>(
     };
 
     if !live_locals.is_empty() {
-        trace::trace(
-            typeck,
-            body,
-            elements,
-            flow_inits,
-            move_data,
-            live_locals,
-            location_table,
-        );
+        trace::trace(typeck, body, elements, flow_inits, move_data, live_locals, location_table);
+
+        polonius::populate_var_liveness_facts(typeck, body, location_table);
     }
 }
 

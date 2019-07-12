@@ -2,6 +2,7 @@ use crate::borrow_check::location::{LocationIndex, LocationTable};
 use crate::dataflow::indexes::BorrowIndex;
 use polonius_engine::AllFacts as PoloniusAllFacts;
 use polonius_engine::Atom;
+use rustc::mir::Local;
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use std::error::Error;
@@ -10,7 +11,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
-crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex>;
+crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex, Local>;
 
 crate trait AllFactsExt {
     /// Returns `true` if there is a need to gather `AllFacts` given the
@@ -60,6 +61,12 @@ impl AllFactsExt for AllFacts {
                 outlives,
                 region_live_at,
                 invalidates,
+                var_used,
+                var_defined,
+                var_drop_used,
+                var_uses_region,
+                var_drops_region,
+                var_initialized_on_exit,
             ])
         }
         Ok(())
