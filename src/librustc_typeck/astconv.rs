@@ -1496,7 +1496,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     {
         let tcx = self.tcx();
 
+        debug!(
+            "find_bound_for_assoc_item(ty_param_def_id={:?}, assoc_name={:?}, span={:?})",
+            ty_param_def_id,
+            assoc_name,
+            span,
+        );
+
         let predicates = &self.get_type_parameter_bounds(span, ty_param_def_id).predicates;
+
+        debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
+
         let bounds = predicates.iter().filter_map(|(p, _)| p.to_opt_poly_trait_ref());
 
         // Check that there is exactly one way to find an associated type with the
@@ -1535,7 +1545,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         };
 
+        debug!("one_bound_for_assoc_type: bound = {:?}", bound);
+
         if let Some(bound2) = bounds.next() {
+            debug!("one_bound_for_assoc_type: bound2 = {:?}", bound2);
+
             let bounds = iter::once(bound).chain(iter::once(bound2)).chain(bounds);
             let mut err = struct_span_err!(
                 self.tcx().sess, span, E0221,
