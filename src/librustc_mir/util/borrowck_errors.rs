@@ -300,16 +300,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         err
     }
 
-    fn cannot_move_into_closure(self, span: Span, desc: &str, _: Origin) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(
-            self,
-            span,
-            E0504,
-            "cannot move `{}` into closure because it is borrowed",
-            desc,
-        )
-    }
-
     fn cannot_reassign_immutable(
         self,
         span: Span,
@@ -334,10 +324,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
 
     fn cannot_assign(self, span: Span, desc: &str, _: Origin) -> DiagnosticBuilder<'cx> {
         struct_span_err!(self, span, E0594, "cannot assign to {}", desc)
-    }
-
-    fn cannot_assign_static(self, span: Span, desc: &str, o: Origin) -> DiagnosticBuilder<'cx> {
-        self.cannot_assign(span, &format!("immutable static item `{}`", desc), o)
     }
 
     fn cannot_move_out_of(
@@ -422,36 +408,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         )
     }
 
-    fn cannot_partially_reinit_an_uninit_struct(
-        self,
-        span: Span,
-        uninit_path: &str,
-        _: Origin,
-    ) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(
-            self,
-            span,
-            E0383,
-            "partial reinitialization of uninitialized structure `{}`",
-            uninit_path,
-        )
-    }
-
-    fn closure_cannot_assign_to_borrowed(
-        self,
-        span: Span,
-        descr: &str,
-        _: Origin,
-    ) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(
-            self,
-            span,
-            E0595,
-            "closure cannot assign to {}",
-            descr,
-        )
-    }
-
     fn cannot_borrow_path_as_mutable_because(
         self,
         span: Span,
@@ -467,15 +423,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             path,
             reason,
         )
-    }
-
-    fn cannot_borrow_path_as_mutable(
-        self,
-        span: Span,
-        path: &str,
-        o: Origin,
-    ) -> DiagnosticBuilder<'cx> {
-        self.cannot_borrow_path_as_mutable_because(span, path, "", o)
     }
 
     fn cannot_mutate_in_match_guard(
@@ -566,58 +513,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             format!("{}s a {} data owned by the current function", return_kind, reference_desc),
         );
 
-        err
-    }
-
-    fn lifetime_too_short_for_reborrow(
-        self,
-        span: Span,
-        path: &str,
-        _: Origin,
-    ) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(
-            self,
-            span,
-            E0598,
-            "lifetime of {} is too short to guarantee \
-             its contents can be safely reborrowed",
-            path,
-        )
-    }
-
-    fn cannot_act_on_capture_in_sharable_fn(
-        self,
-        span: Span,
-        bad_thing: &str,
-        help: (Span, &str),
-        _: Origin,
-    ) -> DiagnosticBuilder<'cx> {
-        let (help_span, help_msg) = help;
-        let mut err = struct_span_err!(
-            self,
-            span,
-            E0387,
-            "{} in a captured outer variable in an `Fn` closure",
-            bad_thing,
-        );
-        err.span_help(help_span, help_msg);
-        err
-    }
-
-    fn cannot_assign_into_immutable_reference(
-        self,
-        span: Span,
-        bad_thing: &str,
-        _: Origin,
-    ) -> DiagnosticBuilder<'cx> {
-        let mut err = struct_span_err!(
-            self,
-            span,
-            E0389,
-            "{} in a `&` reference",
-            bad_thing,
-        );
-        err.span_label(span, "assignment into an immutable reference");
         err
     }
 
