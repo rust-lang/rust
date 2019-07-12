@@ -1008,7 +1008,7 @@ impl<T: fmt::Debug> Option<T> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "option_expect_none", reason = "newly added", issue = "0")]
+    #[unstable(feature = "option_expect_none", reason = "newly added", issue = "62633")]
     pub fn expect_none(self, msg: &str) {
         if let Some(val) = self {
             expect_none_failed(msg, &val);
@@ -1050,7 +1050,7 @@ impl<T: fmt::Debug> Option<T> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "option_unwrap_none", reason = "newly added", issue = "0")]
+    #[unstable(feature = "option_unwrap_none", reason = "newly added", issue = "62633")]
     pub fn unwrap_none(self) {
         if let Some(val) = self {
             expect_none_failed("called `Option::unwrap_none()` on a `Some` value", &val);
