@@ -1,6 +1,6 @@
 // edition:2018
 
-#![feature(async_await, async_closure)]
+#![feature(async_await)]
 
 struct S;
 
