@@ -12,7 +12,7 @@ extern crate rustc_plugin;
 use rustc_interface::interface;
 use rustc_tools_util::*;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 
 mod lintlist;
@@ -270,12 +270,19 @@ pub fn main() {
             let sys_root_arg = arg_value(&orig_args, "--sysroot", |_| true);
             let have_sys_root_arg = sys_root_arg.is_some();
             let sys_root = sys_root_arg
-                .map(std::string::ToString::to_string)
-                .or_else(|| std::env::var("SYSROOT").ok())
+                .map(PathBuf::from)
+                .or_else(|| std::env::var("SYSROOT").ok().map(PathBuf::from))
                 .or_else(|| {
                     let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
                     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-                    home.and_then(|home| toolchain.map(|toolchain| format!("{}/toolchains/{}", home, toolchain)))
+                    home.and_then(|home| {
+                        toolchain.map(|toolchain| {
+                            let mut path = PathBuf::from(home);
+                            path.push("toolchains");
+                            path.push(toolchain);
+                            path
+                        })
+                    })
                 })
                 .or_else(|| {
                     Command::new("rustc")
@@ -284,9 +291,10 @@ pub fn main() {
                         .output()
                         .ok()
                         .and_then(|out| String::from_utf8(out.stdout).ok())
-                        .map(|s| s.trim().to_owned())
+                        .map(|s| PathBuf::from(s.trim()))
                 })
-                .or_else(|| option_env!("SYSROOT").map(String::from))
+                .or_else(|| option_env!("SYSROOT").map(PathBuf::from))
+                .map(|pb| pb.to_string_lossy().to_string())
                 .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust");
 
             // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
