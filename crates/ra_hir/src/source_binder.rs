@@ -266,6 +266,11 @@ impl SourceAnalyzer {
         self.infer.as_ref()?.field_resolution(expr_id)
     }
 
+    pub fn resolve_variant(&self, struct_lit: &ast::StructLit) -> Option<crate::VariantDef> {
+        let expr_id = self.body_source_map.as_ref()?.node_expr(struct_lit.into())?;
+        self.infer.as_ref()?.variant_resolution(expr_id)
+    }
+
     pub fn resolve_macro_call(
         &self,
         db: &impl HirDatabase,

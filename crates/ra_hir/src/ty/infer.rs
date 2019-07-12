@@ -113,6 +113,7 @@ pub struct InferenceResult {
     method_resolutions: FxHashMap<ExprId, Function>,
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, StructField>,
+    variant_resolutions: FxHashMap<ExprId, VariantDef>,
     /// For each associated item record what it resolves to
     assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
     diagnostics: Vec<InferenceDiagnostic>,
@@ -126,6 +127,9 @@ impl InferenceResult {
     }
     pub fn field_resolution(&self, expr: ExprId) -> Option<StructField> {
         self.field_resolutions.get(&expr).copied()
+    }
+    pub fn variant_resolution(&self, expr: ExprId) -> Option<VariantDef> {
+        self.variant_resolutions.get(&expr).copied()
     }
     pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<ImplItem> {
         self.assoc_resolutions.get(&id.into()).copied()
@@ -170,6 +174,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     obligations: Vec<Obligation>,
     method_resolutions: FxHashMap<ExprId, Function>,
     field_resolutions: FxHashMap<ExprId, StructField>,
+    variant_resolutions: FxHashMap<ExprId, VariantDef>,
     assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
@@ -183,6 +188,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         InferenceContext {
             method_resolutions: FxHashMap::default(),
             field_resolutions: FxHashMap::default(),
+            variant_resolutions: FxHashMap::default(),
             assoc_resolutions: FxHashMap::default(),
             type_of_expr: ArenaMap::default(),
             type_of_pat: ArenaMap::default(),
@@ -213,6 +219,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         InferenceResult {
             method_resolutions: self.method_resolutions,
             field_resolutions: self.field_resolutions,
+            variant_resolutions: self.variant_resolutions,
             assoc_resolutions: self.assoc_resolutions,
             type_of_expr: expr_types,
             type_of_pat: pat_types,
@@ -230,6 +237,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn write_field_resolution(&mut self, expr: ExprId, field: StructField) {
         self.field_resolutions.insert(expr, field);
+    }
+
+    fn write_variant_resolution(&mut self, expr: ExprId, variant: VariantDef) {
+        self.variant_resolutions.insert(expr, variant);
     }
 
     fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: ImplItem) {
@@ -1069,6 +1080,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::StructLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
+                if let Some(variant) = def_id {
+                    self.write_variant_resolution(tgt_expr, variant);
+                }
+
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
                 for (field_idx, field) in fields.iter().enumerate() {
                     let field_ty = def_id

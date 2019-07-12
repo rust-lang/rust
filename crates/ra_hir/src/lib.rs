@@ -55,7 +55,7 @@ use crate::{
 };
 
 pub use self::{
-    adt::AdtDef,
+    adt::{AdtDef, VariantDef},
     either::Either,
     expr::ExprScopes,
     generics::{GenericParam, GenericParams, HasGenericParams},
