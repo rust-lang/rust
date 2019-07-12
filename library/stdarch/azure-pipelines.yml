@@ -11,6 +11,7 @@ pr: ["master"]
 
 jobs:
   - job: DockerLinux
+    dependsOn: StyleAndDocs
     pool:
       vmImage: ubuntu-16.04
     steps:
@@ -160,6 +161,7 @@ jobs:
       CI: 1
 
   - job: AutomaticVerification
+    dependsOn: StyleAndDocs
     pool:
       vmImage: ubuntu-16.04
     steps:
@@ -168,6 +170,7 @@ jobs:
         displayName: Automatic verification  
 
   - job: GameBoyAdvance
+    dependsOn: StyleAndDocs
     pool:
       vmImage: ubuntu-16.04
     steps:

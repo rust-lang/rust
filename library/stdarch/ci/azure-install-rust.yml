@@ -33,6 +33,28 @@ steps:
       if defined TARGET rustup target add %TARGET%
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
     displayName: Install target (windows)
+  - script: |
+      @echo on
+      if "%ARCH%" == "i686" choco install mingw --x86 --force
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
+    displayName: Install MinGW32 (windows)
+  - bash: |
+      set -ex
+      gcc -print-search-dirs
+      find "C:\ProgramData\Chocolatey" -name "crt2*"
+      find "C:\ProgramData\Chocolatey" -name "dllcrt2*"
+      find "C:\ProgramData\Chocolatey" -name "libmsvcrt*"
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )	
+    displayName: Find GCC libraries (windows)
+  - bash: |
+      set -ex
+      if [[ -n ${ARCH_BITS} ]]; then
+        for i in crt2.o dllcrt2.o libmsvcrt.a ; do
+          cp -f "/C/ProgramData/Chocolatey/lib/mingw/tools/install/mingw${ARCH_BITS}/${ARCH}-w64-mingw32/lib/$i" "`rustc --print sysroot`/lib/rustlib/${TARGET}/lib"
+        done
+      fi
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )	
+    displayName: Fix MinGW (windows)
   - bash: |
         set -ex
         rustc -Vv
@@ -43,8 +65,12 @@ steps:
         which cargo
         which rustup
     displayName: Query rust and cargo versions
+  - script: |
+      @echo on
+      where gcc
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
+    displayName: Query gcc path
   - bash: |
       set -ex
       cargo generate-lockfile
     displayName: Generate lockfiles
-
