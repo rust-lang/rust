@@ -1,6 +1,6 @@
 use crate::cmp;
 use crate::fmt;
-use crate::ops::Try;
+use crate::ops::{Add, AddAssign, Try};
 use crate::usize;
 use crate::intrinsics;
 
@@ -994,14 +994,12 @@ impl<I> Iterator for Enumerate<I> where I: Iterator {
     ///
     /// Might panic if the index of the element overflows a `usize`.
     #[inline]
-    #[rustc_inherit_overflow_checks]
     fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
-        self.iter.next().map(|a| {
-            let ret = (self.count, a);
-            // Possible undefined overflow.
-            self.count += 1;
-            ret
-        })
+        let a = self.iter.next()?;
+        let i = self.count;
+        // Possible undefined overflow.
+        AddAssign::add_assign(&mut self.count, 1);
+        Some((i, a))
     }
 
     #[inline]
@@ -1010,13 +1008,12 @@ impl<I> Iterator for Enumerate<I> where I: Iterator {
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
     fn nth(&mut self, n: usize) -> Option<(usize, I::Item)> {
-        self.iter.nth(n).map(|a| {
-            let i = self.count + n;
-            self.count = i + 1;
-            (i, a)
-        })
+        let a = self.iter.nth(n)?;
+        // Possible undefined overflow.
+        let i = Add::add(self.count, n);
+        self.count = Add::add(i, 1);
+        Some((i, a))
     }
 
     #[inline]
@@ -1025,29 +1022,43 @@ impl<I> Iterator for Enumerate<I> where I: Iterator {
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
-        let count = &mut self.count;
-        self.iter.try_fold(init, move |acc, item| {
-            let acc = fold(acc, (*count, item));
-            *count += 1;
-            acc
-        })
+        #[inline]
+        fn enumerate<'a, T, Acc, R>(
+            count: &'a mut usize,
+            mut fold: impl FnMut(Acc, (usize, T)) -> R + 'a,
+        ) -> impl FnMut(Acc, T) -> R + 'a {
+            move |acc, item| {
+                let acc = fold(acc, (*count, item));
+                // Possible undefined overflow.
+                AddAssign::add_assign(count, 1);
+                acc
+            }
+        }
+
+        self.iter.try_fold(init, enumerate(&mut self.count, fold))
     }
 
     #[inline]
-    #[rustc_inherit_overflow_checks]
-    fn fold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        let mut count = self.count;
-        self.iter.fold(init, move |acc, item| {
-            let acc = fold(acc, (count, item));
-            count += 1;
-            acc
-        })
+        #[inline]
+        fn enumerate<T, Acc>(
+            mut count: usize,
+            mut fold: impl FnMut(Acc, (usize, T)) -> Acc,
+        ) -> impl FnMut(Acc, T) -> Acc {
+            move |acc, item| {
+                let acc = fold(acc, (count, item));
+                // Possible undefined overflow.
+                AddAssign::add_assign(&mut count, 1);
+                acc
+            }
+        }
+
+        self.iter.fold(init, enumerate(self.count, fold))
     }
 }
 
@@ -1057,48 +1068,60 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
 {
     #[inline]
     fn next_back(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
-        self.iter.next_back().map(|a| {
-            let len = self.iter.len();
-            // Can safely add, `ExactSizeIterator` promises that the number of
-            // elements fits into a `usize`.
-            (self.count + len, a)
-        })
+        let a = self.iter.next_back()?;
+        let len = self.iter.len();
+        // Can safely add, `ExactSizeIterator` promises that the number of
+        // elements fits into a `usize`.
+        Some((self.count + len, a))
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<(usize, <I as Iterator>::Item)> {
-        self.iter.nth_back(n).map(|a| {
-            let len = self.iter.len();
-            // Can safely add, `ExactSizeIterator` promises that the number of
-            // elements fits into a `usize`.
-            (self.count + len, a)
-        })
+        let a = self.iter.nth_back(n)?;
+        let len = self.iter.len();
+        // Can safely add, `ExactSizeIterator` promises that the number of
+        // elements fits into a `usize`.
+        Some((self.count + len, a))
     }
 
     #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
         // Can safely add and subtract the count, as `ExactSizeIterator` promises
         // that the number of elements fits into a `usize`.
-        let mut count = self.count + self.iter.len();
-        self.iter.try_rfold(init, move |acc, item| {
-            count -= 1;
-            fold(acc, (count, item))
-        })
+        fn enumerate<T, Acc, R>(
+            mut count: usize,
+            mut fold: impl FnMut(Acc, (usize, T)) -> R,
+        ) -> impl FnMut(Acc, T) -> R {
+            move |acc, item| {
+                count -= 1;
+                fold(acc, (count, item))
+            }
+        }
+
+        let count = self.count + self.iter.len();
+        self.iter.try_rfold(init, enumerate(count, fold))
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         // Can safely add and subtract the count, as `ExactSizeIterator` promises
         // that the number of elements fits into a `usize`.
-        let mut count = self.count + self.iter.len();
-        self.iter.rfold(init, move |acc, item| {
-            count -= 1;
-            fold(acc, (count, item))
-        })
+        fn enumerate<T, Acc>(
+            mut count: usize,
+            mut fold: impl FnMut(Acc, (usize, T)) -> Acc,
+        ) -> impl FnMut(Acc, T) -> Acc {
+            move |acc, item| {
+                count -= 1;
+                fold(acc, (count, item))
+            }
+        }
+
+        let count = self.count + self.iter.len();
+        self.iter.rfold(init, enumerate(count, fold))
     }
 }
 
