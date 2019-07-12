@@ -59,6 +59,6 @@ and designs for the trait system. It primarily consists of two parts:
 implementing them in rustc. This mainly happens in
 [`librustc_traits`][librustc_traits].
 
-[chalk]: https://github.com/rust-lang-nursery/chalk
-[chalk_engine]: https://github.com/rust-lang-nursery/chalk/tree/master/chalk-engine
+[chalk]: https://github.com/rust-lang/chalk
+[chalk_engine]: https://github.com/rust-lang/chalk/tree/master/chalk-engine
 [librustc_traits]: https://github.com/rust-lang/rust/tree/master/src/librustc_traits

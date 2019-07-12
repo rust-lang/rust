@@ -3,7 +3,7 @@ works. The aim of the guide is to help new contributors get oriented
 to rustc, as well as to help more experienced folks in figuring out
 some new part of the compiler that they haven't worked on before.
 
-[You can read the latest version of the guide here.](https://rust-lang-nursery.github.io/rustc-guide/)
+[You can read the latest version of the guide here.](https://rust-lang.github.io/rustc-guide/)
 
 You may also find the rustdocs [for the compiler itself][rustdocs] useful.
 
