@@ -1900,7 +1900,8 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
 
     #[inline]
     fn next(&mut self) -> Option<B> {
-        self.iter.next().and_then(|a| (self.f)(&mut self.state, a))
+        let a = self.iter.next()?;
+        (self.f)(&mut self.state, a)
     }
 
     #[inline]
@@ -1910,17 +1911,25 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
     }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
+        fn scan<'a, T, St, B, Acc, R: Try<Ok = Acc>>(
+            state: &'a mut St,
+            f: &'a mut impl FnMut(&mut St, T) -> Option<B>,
+            mut fold: impl FnMut(Acc, B) -> R + 'a,
+        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> + 'a {
+            move |acc, x| {
+                match f(state, x) {
+                    None => LoopState::Break(Try::from_ok(acc)),
+                    Some(x) => LoopState::from_try(fold(acc, x)),
+                }
+            }
+        }
+
         let state = &mut self.state;
         let f = &mut self.f;
-        self.iter.try_fold(init, move |acc, x| {
-            match f(state, x) {
-                None => LoopState::Break(Try::from_ok(acc)),
-                Some(x) => LoopState::from_try(fold(acc, x)),
-            }
-        }).into_try()
+        self.iter.try_fold(init, scan(state, f, fold)).into_try()
     }
 }
 
