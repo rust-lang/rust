@@ -6,7 +6,6 @@ standard library, and documentation.
 [Rust]: https://www.rust-lang.org
 
 ## Quick Start
-[quick-start]: #quick-start
 
 Read ["Installation"] from [The Book].
 
@@ -14,11 +13,15 @@ Read ["Installation"] from [The Book].
 [The Book]: https://doc.rust-lang.org/book/index.html
 
 ## Installing from Source
-[building-from-source]: #building-from-source
 
-_Note: If you wish to contribute to the compiler, you should read
-[this chapter](https://rust-lang.github.io/rustc-guide/how-to-build-and-run.html)
-of the rustc-guide instead of this section._
+_Note: If you wish to contribute to the compiler, you should read [this
+chapter][rustcguidebuild] of the rustc-guide instead of this section._
+
+The Rust build system has a Python script called `x.py` to bootstrap building
+the compiler. More information about it may be found by running `./x.py --help`
+or reading the [rustc guide][rustcguidebuild].
+
+[rustcguidebuild]: https://rust-lang.github.io/rustc-guide/how-to-build-and-run.html
 
 ### Building on *nix
 1. Make sure you have installed the dependencies:
@@ -39,43 +42,36 @@ of the rustc-guide instead of this section._
 
 [source]: https://github.com/rust-lang/rust
 
-3. Build and install:
+3. Configure the build settings:
+
+    The Rust build system uses a file named `config.toml` in the root of the
+    source tree to determine various configuration settings for the build.
+    Copy the default `config.toml.example` to `config.toml` to get started.
 
     ```sh
-    $ ./x.py build && sudo ./x.py install
+    $ cp config.toml.example config.toml
     ```
 
-    If after running `sudo ./x.py install` you see an error message like
+    It is recommended that if you plan to use the Rust build system to create
+    an installation (using `./x.py install`) that you set the `prefix` value
+    in the `[install]` section to a directory that you have write permissions.
 
-    ```
-    error: failed to load source for a dependency on 'cc'
-    ```
+4. Build and install:
 
-    then run these two commands and then try `sudo ./x.py install` again:
-
-    ```
-    $ cargo install cargo-vendor
+    ```sh
+    $ ./x.py build && ./x.py install
     ```
 
-    ```
-    $ cargo vendor
-    ```
-
-    > ***Note:*** Install locations can be adjusted by copying the config file
-    > from `./config.toml.example` to `./config.toml`, and
-    > adjusting the `prefix` option under `[install]`. Various other options, such
-    > as enabling debug information, are also supported, and are documented in
-    > the config file.
-
-    When complete, `sudo ./x.py install` will place several programs into
-    `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
+    When complete, `./x.py install` will place several programs into
+    `$PREFIX/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
     API-documentation tool. This install does not include [Cargo],
-    Rust's package manager, which you may also want to build.
+    Rust's package manager. To build and install Cargo, you may
+    run `./x.py install cargo` or set the `build.extended` key in
+    `config.toml` to `true` to build and install all tools.
 
 [Cargo]: https://github.com/rust-lang/cargo
 
 ### Building on Windows
-[building-on-windows]: #building-on-windows
 
 There are two prominent ABIs in use on Windows: the native (MSVC) ABI used by
 Visual Studio, and the GNU ABI used by the GCC toolchain. Which version of Rust
@@ -85,7 +81,6 @@ for interop with GNU software built using the MinGW/MSYS2 toolchain use the GNU
 build.
 
 #### MinGW
-[windows-mingw]: #windows-mingw
 
 [MSYS2][msys2] can be used to easily build Rust on Windows:
 
@@ -126,7 +121,6 @@ build.
    ```
 
 #### MSVC
-[windows-msvc]: #windows-msvc
 
 MSVC builds of Rust additionally require an installation of Visual Studio 2017
 (or later) so `rustc` can use its linker.  The simplest way is to get the
@@ -155,7 +149,6 @@ by manually calling the appropriate vcvars file before running the bootstrap.
 ```
 
 #### Specifying an ABI
-[specifying-an-abi]: #specifying-an-abi
 
 Each specific ABI can also be used from either environment (for example, using
 the GNU ABI in PowerShell) by using an explicit build triple. The available
@@ -169,11 +162,10 @@ Windows build triples are:
 
 The build triple can be specified by either specifying `--build=<triple>` when
 invoking `x.py` commands, or by copying the `config.toml` file (as described
-in Building From Source), and modifying the `build` option under the `[build]`
-section.
+in [Installing From Source](#installing-from-source)), and modifying the
+`build` option under the `[build]` section.
 
 ### Configure and Make
-[configure-and-make]: #configure-and-make
 
 While it's not the recommended build system, this project also provides a
 configure script and makefile (the latter of which just invokes `x.py`).
@@ -188,7 +180,6 @@ When using the configure script, the generated `config.mk` file may override the
 `config.mk` file.
 
 ## Building Documentation
-[building-documentation]: #building-documentation
 
 If you’d like to build the documentation, it’s almost the same:
 
@@ -201,7 +192,6 @@ the ABI used. I.e., if the ABI was `x86_64-pc-windows-msvc`, the directory will 
 `build\x86_64-pc-windows-msvc\doc`.
 
 ## Notes
-[notes]: #notes
 
 Since the Rust compiler is written in Rust, it must be built by a
 precompiled "snapshot" version of itself (made in an earlier stage of
@@ -224,7 +214,6 @@ There is more advice about hacking on Rust in [CONTRIBUTING.md].
 [CONTRIBUTING.md]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md
 
 ## Getting Help
-[getting-help]: #getting-help
 
 The Rust community congregates in a few places:
 
@@ -237,7 +226,6 @@ The Rust community congregates in a few places:
 [users.rust-lang.org]: https://users.rust-lang.org/
 
 ## Contributing
-[contributing]: #contributing
 
 To contribute to Rust, please see [CONTRIBUTING](CONTRIBUTING.md).
 
@@ -258,7 +246,6 @@ Also, you may find the [rustdocs for the compiler itself][rustdocs] useful.
 [rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 
 ## License
-[license]: #license
 
 Rust is primarily distributed under the terms of both the MIT license
 and the Apache License (Version 2.0), with portions covered by various
@@ -268,7 +255,6 @@ See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
 [COPYRIGHT](COPYRIGHT) for details.
 
 ## Trademark
-[trademark]: #trademark
 
 The Rust programming language is an open source, community project governed
 by a core team. It is also sponsored by the Mozilla Foundation (“Mozilla”),
