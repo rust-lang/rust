@@ -4629,6 +4629,9 @@ impl<'a> Parser<'a> {
     fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
+            if self.token == token::Eof {
+                break;
+            }
             let stmt = match self.parse_full_stmt(false) {
                 Err(mut err) => {
                     err.emit();
@@ -4643,8 +4646,6 @@ impl<'a> Parser<'a> {
             };
             if let Some(stmt) = stmt {
                 stmts.push(stmt);
-            } else if self.token == token::Eof {
-                break;
             } else {
                 // Found only `;` or `}`.
                 continue;
