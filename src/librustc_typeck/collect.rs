@@ -250,6 +250,8 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 }
 
+/// Returns the predicates defined on `item_def_id` of the form
+/// `X: Foo` where `X` is the type parameter `def_id`.
 fn type_param_predicates(
     tcx: TyCtxt<'_>,
     (item_def_id, def_id): (DefId, DefId),

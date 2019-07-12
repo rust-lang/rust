@@ -42,8 +42,17 @@ pub struct PathSeg(pub DefId, pub usize);
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
-    /// Returns the set of bounds in scope for the type parameter with
-    /// the given id.
+    /// Returns predicates in scope of the form `X: Foo`, where `X` is
+    /// a type parameter `X` with the given id `def_id`. This is a
+    /// subset of the full set of predicates.
+    ///
+    /// This is used for one specific purpose: resolving "short-hand"
+    /// associated type references like `T::Item`. In principle, we
+    /// would do that by first getting the full set of predicates in
+    /// scope and then filtering down to find those that apply to `T`,
+    /// but this can lead to cycle errors. The problem is that we have
+    /// to do this resolution *in order to create the predicates in
+    /// the first place*. Hence, we have this "special pass".
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
                                  -> &'tcx ty::GenericPredicates<'tcx>;
 
