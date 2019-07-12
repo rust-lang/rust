@@ -58,7 +58,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
         );
         assert!(output.status.success());
         // Windows does not return valid UTF-8 output:
-        Ok(String::from_utf8_lossy(&output.stderr).to_string())
+        String::from_utf8_lossy(Vec::leak(output.stdout))
     } else if cfg!(target_os = "windows") {
         panic!("disassembly unimplemented")
     } else if cfg!(target_os = "macos") {
@@ -74,7 +74,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
         );
         assert!(output.status.success());
 
-        String::from_utf8(output.stdout)
+        String::from_utf8_lossy(Vec::leak(output.stdout))
     } else {
         let objdump =
             env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
@@ -93,8 +93,8 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
         );
         assert!(output.status.success());
 
-        String::from_utf8(output.stdout)
-    }.expect("failed to convert to utf8");
+        String::from_utf8_lossy(Vec::leak(output.stdout))
+    };
 
     parse(&disassembly)
 }

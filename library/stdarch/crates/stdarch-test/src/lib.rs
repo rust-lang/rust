@@ -5,6 +5,7 @@
 //! assertions about the disassembly of a function.
 #![feature(const_str_as_bytes)]
 #![feature(const_transmute)]
+#![feature(vec_leak)]
 #![allow(clippy::missing_docs_in_private_items, clippy::print_stdout)]
 
 extern crate assert_instr_macro;

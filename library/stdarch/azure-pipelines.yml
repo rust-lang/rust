@@ -10,8 +10,55 @@ trigger: ["master"]
 pr: ["master"]
 
 jobs:
-  - job: DockerLinux
+  - job: DockerLinux0
     dependsOn: StyleAndDocs
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-install-rust.yml
+      - bash: |
+          if [ "${NO_DOCKER}" = "1" ]; then
+              ci/run.sh $TARGET
+          else
+              ci/run-docker.sh $TARGET
+          fi
+        displayName: Execute run-docker.sh
+    strategy:
+      matrix:
+        i686-unknown-linux-gnu:
+          TARGET: i686-unknown-linux-gnu
+        x86_64-unknown-linux-gnu:
+          TARGET: x86_64-unknown-linux-gnu
+        x86_64-unknown-linux-gnu-emulated:
+          TARGET: x86_64-unknown-linux-gnu-emulated
+          STDARCH_TEST_EVERYTHING: 1
+          RUSTFLAGS: --cfg stdarch_intel_sde
+        arm-unknown-linux-gnueabihf:
+          TARGET: arm-unknown-linux-gnueabihf
+        armv7-unknown-linux-gnueabihf:
+          TARGET: armv7-unknown-linux-gnueabihf
+          RUSTFLAGS: -C target-feature=+neon
+        aarch64-unknown-linux-gnu:
+          TARGET: aarch64-unknown-linux-gnu
+        mips-unknown-linux-gnu:
+          TARGET: mips-unknown-linux-gnu
+          NORUN: 1
+        mips64-unknown-linux-gnuabi64:
+          TARGET: mips64-unknown-linux-gnuabi64
+          NORUN: 1
+        mips64el-unknown-linux-gnuabi64:
+          TARGET: mips64el-unknown-linux-gnuabi64
+          NORUN: 1
+        powerpc64le-unknown-linux-gnu:
+          TARGET: powerpc64le-unknown-linux-gnu
+          STDARCH_DISABLE_ASSERT_INSTR: 1
+        s390x-unknown-linux-gnu:
+          TARGET: s390x-unknown-linux-gnu
+        wasm32-unknown-unknown:
+          TARGET: wasm32-unknown-unknown
+
+  - job: DockerLinux1
+    dependsOn: DockerLinux0
     pool:
       vmImage: ubuntu-16.04
     steps:
@@ -27,38 +74,14 @@ jobs:
       matrix:
         i586-unknown-linux-gnu:
           TARGET: i586-unknown-linux-gnu
-        i686-unknown-linux-gnu:
-          TARGET: i686-unknown-linux-gnu
-        x86_64-unknown-linux-gnu:
-          TARGET: x86_64-unknown-linux-gnu
-        x86_64-unknown-linux-gnu-emulated:
-          TARGET: x86_64-unknown-linux-gnu-emulated
-          STDARCH_TEST_EVERYTHING: 1
-          RUSTFLAGS: --cfg stdarch_intel_sde
         x86_64-linux-android:
           TARGET: x86_64-linux-android
           STDARCH_DISABLE_ASSERT_INSTR: 1
-        arm-unknown-linux-gnueabihf:
-          TARGET: arm-unknown-linux-gnueabihf
         arm-linux-androideabi:
           TARGET: arm-linux-androideabi
           STDARCH_DISABLE_ASSERT_INSTR: 1
-        armv7-unknown-linux-gnueabihf:
-          TARGET: armv7-unknown-linux-gnueabihf
-          RUSTFLAGS: -C target-feature=+neon
-        aarch64-unknown-linux-gnu:
-          TARGET: aarch64-unknown-linux-gnu
-        mips-unknown-linux-gnu:
-          TARGET: mips-unknown-linux-gnu
-          NORUN: 1
         mipsel-unknown-linux-musl:
           TARGET: mipsel-unknown-linux-musl
-          NORUN: 1
-        mips64-unknown-linux-gnuabi64:
-          TARGET: mips64-unknown-linux-gnuabi64
-          NORUN: 1
-        mips64el-unknown-linux-gnuabi64:
-          TARGET: mips64el-unknown-linux-gnuabi64
           NORUN: 1
         aarch64-linux-android:
           TARGET: aarch64-linux-android
@@ -69,13 +92,6 @@ jobs:
         #powerpc64-unknown-linux-gnu:
         #  TARGET: powerpc64-unknown-linux-gnu
         #  STDARCH_DISABLE_ASSERT_INSTR: 1
-        powerpc64le-unknown-linux-gnu:
-          TARGET: powerpc64le-unknown-linux-gnu
-          STDARCH_DISABLE_ASSERT_INSTR: 1
-        s390x-unknown-linux-gnu:
-          TARGET: s390x-unknown-linux-gnu
-        wasm32-unknown-unknown:
-          TARGET: wasm32-unknown-unknown
         nvptx64-nvidia-cuda:
           TARGET: nvptx64-nvidia-cuda
           NORUN: 1
@@ -136,14 +152,17 @@ jobs:
         displayName: Execute run.sh
     strategy:
       matrix:
-        x86_64-pc-windows-gnu:
-          TARGET: x86_64-pc-windows-gnu
         x86_64-pc-windows-msvc:
           TARGET: x86_64-pc-windows-msvc
-        i686-pc-windows-gnu:
-          TARGET: i686-pc-windows-gnu
-        i686-pc-windows-msvc:
-          TARGET: i686-pc-windows-msvc
+        # FIXME:
+        # Disassembly no implemented for the
+        # following targets:
+        # x86_64-pc-windows-gnu:
+        #  TARGET: x86_64-pc-windows-gnu
+        #i686-pc-windows-gnu:
+        #  TARGET: i686-pc-windows-gnu
+        #i686-pc-windows-msvc:
+        #  TARGET: i686-pc-windows-msvc
     
   - job: StyleAndDocs
     pool:
