@@ -4,7 +4,7 @@ use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use crate::borrow_check::nll::type_check::Locations;
 use crate::borrow_check::nll::universal_regions::DefiningTy;
 use crate::borrow_check::nll::ConstraintDescription;
-use crate::util::borrowck_errors::{BorrowckErrors, Origin};
+use crate::util::borrowck_errors::BorrowckErrors;
 use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -489,7 +489,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let mut diag = infcx
             .tcx
-            .borrowed_data_escapes_closure(span, escapes_from, Origin::Mir);
+            .borrowed_data_escapes_closure(span, escapes_from);
 
         if let Some((Some(outlived_fr_name), outlived_fr_span)) = outlived_fr_name_and_span {
             diag.span_label(

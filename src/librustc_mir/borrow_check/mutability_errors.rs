@@ -9,7 +9,7 @@ use syntax_pos::symbol::kw;
 
 use crate::borrow_check::MirBorrowckCtxt;
 use crate::borrow_check::error_reporting::BorrowedContentSource;
-use crate::util::borrowck_errors::{BorrowckErrors, Origin};
+use crate::util::borrowck_errors::BorrowckErrors;
 use crate::util::collect_writes::FindAssignments;
 use crate::util::suggest_ref_mut;
 use rustc_errors::Applicability;
@@ -161,15 +161,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let span = match error_access {
             AccessKind::Move => {
-                err = self.infcx.tcx
-                    .cannot_move_out_of(span, &(item_msg + &reason), Origin::Mir);
+                err = self.infcx.tcx.cannot_move_out_of(span, &(item_msg + &reason));
                 err.span_label(span, "cannot move");
                 err.buffer(&mut self.errors_buffer);
                 return;
             }
             AccessKind::Mutate => {
-                err = self.infcx.tcx
-                    .cannot_assign(span, &(item_msg + &reason), Origin::Mir);
+                err = self.infcx.tcx.cannot_assign(span, &(item_msg + &reason));
                 act = "assign";
                 acted_on = "written";
                 span
@@ -184,7 +182,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     borrow_span,
                     &item_msg,
                     &reason,
-                    Origin::Mir,
                 );
                 borrow_spans.var_span_label(
                     &mut err,

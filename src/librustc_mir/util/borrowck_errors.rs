@@ -2,13 +2,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use syntax_pos::{MultiSpan, Span};
 
-// FIXME(chrisvittal) remove Origin entirely
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum Origin {
-    Mir,
-}
-
-pub trait BorrowckErrors<'cx>: Sized + Copy {
+pub(crate) trait BorrowckErrors<'cx>: Sized + Copy {
     fn struct_span_err_with_code<S: Into<MultiSpan>>(
         self,
         sp: S,
@@ -22,7 +16,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self,
         span: Span,
         desc: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         struct_span_err!(
             self,
@@ -39,7 +32,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         desc: &str,
         borrow_span: Span,
         borrow_desc: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -62,7 +54,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         span: Span,
         verb: &str,
         desc: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         struct_span_err!(
             self,
@@ -82,7 +73,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         old_loan_span: Span,
         old_opt_via: &str,
         old_load_end_span: Option<Span>,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let via = |msg: &str|
             if msg.is_empty() { msg.to_string() } else { format!(" (via `{}`)", msg) };
@@ -130,7 +120,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         desc: &str,
         old_loan_span: Span,
         old_load_end_span: Option<Span>,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -164,7 +153,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         noun_old: &str,
         old_opt_via: &str,
         previous_end_span: Option<Span>,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -197,7 +185,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         old_opt_via: &str,
         previous_end_span: Option<Span>,
         second_borrow_desc: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -234,7 +221,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         kind_old: &str,
         msg_old: &str,
         old_load_end_span: Option<Span>,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let via = |msg: &str|
             if msg.is_empty() { msg.to_string() } else { format!(" (via `{}`)", msg) };
@@ -282,7 +268,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         span: Span,
         borrow_span: Span,
         desc: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -305,7 +290,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         span: Span,
         desc: &str,
         is_arg: bool,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let msg = if is_arg {
             "to immutable argument"
@@ -322,7 +306,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         )
     }
 
-    fn cannot_assign(self, span: Span, desc: &str, _: Origin) -> DiagnosticBuilder<'cx> {
+    fn cannot_assign(self, span: Span, desc: &str) -> DiagnosticBuilder<'cx> {
         struct_span_err!(self, span, E0594, "cannot assign to {}", desc)
     }
 
@@ -330,7 +314,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self,
         move_from_span: Span,
         move_from_desc: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         struct_span_err!(
             self,
@@ -349,7 +332,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         move_from_span: Span,
         ty: Ty<'_>,
         is_index: Option<bool>,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let type_name = match (&ty.sty, is_index) {
             (&ty::Array(_, _), Some(true)) | (&ty::Array(_, _), None) => "array",
@@ -372,7 +354,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self,
         move_from_span: Span,
         container_ty: Ty<'_>,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -391,7 +372,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         verb: &str,
         optional_adverb_for_moved: &str,
         moved_path: Option<String>,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let moved_path = moved_path
             .map(|mp| format!(": `{}`", mp))
@@ -413,7 +393,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         span: Span,
         path: &str,
         reason: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         struct_span_err!(
             self,
@@ -431,7 +410,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         match_span: Span,
         match_place: &str,
         action: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -450,7 +428,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self,
         span: Span,
         yield_span: Span,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -465,7 +442,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     fn cannot_borrow_across_destructor(
         self,
         borrow_span: Span,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         struct_span_err!(
             self,
@@ -479,7 +455,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self,
         span: Span,
         path: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         struct_span_err!(
             self,
@@ -496,7 +471,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         return_kind: &str,
         reference_desc: &str,
         path_desc: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -521,7 +495,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         closure_span: Span,
         borrowed_path: &str,
         capture_span: Span,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
@@ -544,7 +517,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self,
         escape_span: Span,
         escapes_from: &str,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         struct_span_err!(
             self,
@@ -558,7 +530,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     fn thread_local_value_does_not_live_long_enough(
         self,
         span: Span,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         struct_span_err!(
             self,
@@ -571,7 +542,6 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     fn temporary_value_borrowed_for_too_long(
         self,
         span: Span,
-        _: Origin,
     ) -> DiagnosticBuilder<'cx> {
         struct_span_err!(
             self,

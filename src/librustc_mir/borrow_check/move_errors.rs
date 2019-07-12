@@ -12,7 +12,7 @@ use crate::dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind,
     LookupResult, MoveError, MovePathIndex,
 };
-use crate::util::borrowck_errors::{BorrowckErrors, Origin};
+use crate::util::borrowck_errors::BorrowckErrors;
 
 // Often when desugaring a pattern match we may have many individual moves in
 // MIR that are all part of one operation from the user's point-of-view. For
@@ -255,11 +255,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                     IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
                         self.infcx.tcx
-                            .cannot_move_out_of_interior_of_drop(span, ty, Origin::Mir)
+                            .cannot_move_out_of_interior_of_drop(span, ty)
                     }
                     IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } =>
                         self.infcx.tcx.cannot_move_out_of_interior_noncopy(
-                            span, ty, Some(*is_index), Origin::Mir
+                            span, ty, Some(*is_index),
                         ),
                 },
                 span,
@@ -293,7 +293,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             )
         };
 
-        self.infcx.tcx.cannot_move_out_of(span, &description, Origin::Mir)
+        self.infcx.tcx.cannot_move_out_of(span, &description)
     }
 
     fn report_cannot_move_from_borrowed_content(
@@ -302,8 +302,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         deref_target_place: &Place<'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'a> {
-        let origin = Origin::Mir;
-
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
@@ -322,7 +320,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let mut err = self.infcx.tcx.cannot_move_out_of(
                     span,
                     &format!("`{}` in pattern guard", decl.name.unwrap()),
-                    origin,
                 );
                 err.note(
                     "variables bound in patterns cannot be moved from \
@@ -334,9 +331,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         debug!("report: ty={:?}", ty);
         let mut err = match ty.sty {
             ty::Array(..) | ty::Slice(..) =>
-                self.infcx.tcx.cannot_move_out_of_interior_noncopy(
-                    span, ty, None, origin
-                ),
+                self.infcx.tcx.cannot_move_out_of_interior_noncopy(span, ty, None),
             ty::Closure(def_id, closure_substs)
                 if def_id == self.mir_def_id && upvar_field.is_some()
             => {
@@ -378,7 +373,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     closure_kind_ty, closure_kind, place_description,
                 );
 
-                let mut diag = self.infcx.tcx.cannot_move_out_of(span, &place_description, origin);
+                let mut diag = self.infcx.tcx.cannot_move_out_of(span, &place_description);
 
                 diag.span_label(upvar_span, "captured outer variable");
 
@@ -391,14 +386,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         self.infcx.tcx.cannot_move_out_of(
                             span,
                             &format!("`{}` which is behind a {}", place_desc, source_desc),
-                            origin,
                         )
                     }
                     (_, _) => {
                         self.infcx.tcx.cannot_move_out_of(
                             span,
                             &source.describe_for_unnamed_place(),
-                            origin,
                         )
                     }
                 }

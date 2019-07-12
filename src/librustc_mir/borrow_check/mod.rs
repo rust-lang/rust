@@ -41,7 +41,7 @@ use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{do_dataflow, DebugFormatted};
 use crate::dataflow::EverInitializedPlaces;
 use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use crate::util::borrowck_errors::{BorrowckErrors, Origin};
+use crate::util::borrowck_errors::BorrowckErrors;
 
 use self::borrow_set::{BorrowData, BorrowSet};
 use self::flows::Flows;
@@ -1503,7 +1503,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .cannot_borrow_across_generator_yield(
                     self.retrieve_borrow_spans(borrow).var_or_use(),
                     yield_span,
-                    Origin::Mir,
                 );
 
             err.buffer(&mut self.errors_buffer);
