@@ -1,5 +1,4 @@
 // run-pass
-#![allow(deprecated)] // FIXME: switch to `#[may_dangle]` below.
 
 // Demonstrate the use of the unguarded escape hatch with a type param in negative position
 // to assert that destructor will not access any dead data.
@@ -11,7 +10,7 @@
 //
 // Compare with run-pass/issue28498-ugeh-with-passed-to-fn.rs
 
-#![feature(dropck_parametricity)]
+#![feature(dropck_eyepatch)]
 
 #[derive(Debug)]
 struct ScribbleOnDrop(String);
@@ -24,12 +23,10 @@ impl Drop for ScribbleOnDrop {
 
 struct Foo<T>(u32, T, Box<for <'r> fn(&'r T) -> String>);
 
-impl<T> Drop for Foo<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T> Drop for Foo<T> {
     fn drop(&mut self) {
-        // Use of `unsafe_destructor_blind_to_params` is sound,
-        // because destructor never passes a `self.1` to the callback
-        // (in `self.2`) despite having it available.
+        // Use of `may_dangle` is sound, because destructor never passes a `self.1`
+        // to the callback (in `self.2`) despite having it available.
         println!("Dropping Foo({}, _)", self.0);
     }
 }

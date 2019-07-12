@@ -246,7 +246,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 ///
 /// * (1.) `D` has a lifetime- or type-parametric Drop implementation,
 ///        (where that `Drop` implementation does not opt-out of
-///         this check via the `unsafe_destructor_blind_to_params`
+///         this check via the `may_dangle`
 ///         attribute), and
 /// * (2.) the structure of `D` can reach a reference of type `&'a _`,
 ///
@@ -279,7 +279,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 /// instead Drop-Check now simply assumes that if a destructor has
 /// access (direct or indirect) to a lifetime parameter, then that
 /// lifetime must be forced to outlive that destructor's dynamic
-/// extent. We then provide the `unsafe_destructor_blind_to_params`
+/// extent. We then provide the `may_dangle`
 /// attribute as a way for destructor implementations to opt-out of
 /// this conservative assumption (and thus assume the obligation of
 /// ensuring that they do not access data nor invoke methods of
