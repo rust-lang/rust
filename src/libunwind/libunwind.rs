@@ -72,7 +72,6 @@ pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reaso
            link(name = "unwind", kind = "static"))]
 extern "C" {
     #[unwind(allowed)]
-    pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
     pub fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut c_void;
     pub fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
@@ -212,32 +211,55 @@ if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm
 }
 } // cfg_if!
 
-cfg_if::cfg_if! {
-if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
-    // Not 32-bit iOS
+pub mod dwarf2 {
+    use crate::{_Unwind_Exception, _Unwind_Reason_Code, _Unwind_Trace_Fn};
+    use libc::c_void;
     #[cfg_attr(all(not(bootstrap), feature = "llvm-libunwind",
                    any(target_os = "fuchsia", target_os = "linux")),
                link(name = "unwind", kind = "static"))]
     extern "C" {
         #[unwind(allowed)]
+        pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
         pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
-        pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
-                                 trace_argument: *mut c_void)
-                                 -> _Unwind_Reason_Code;
-    }
-} else {
-    // 32-bit iOS uses SjLj and does not provide _Unwind_Backtrace()
-    #[cfg_attr(all(not(bootstrap), feature = "llvm-libunwind",
-                   any(target_os = "fuchsia", target_os = "linux")),
-               link(name = "unwind", kind = "static"))]
-    extern "C" {
-        #[unwind(allowed)]
-        pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
-    }
-
-    #[inline]
-    pub unsafe fn _Unwind_RaiseException(exc: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
-        _Unwind_SjLj_RaiseException(exc)
+        pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn, trace_argument: *mut c_void)
+            -> _Unwind_Reason_Code;
     }
 }
+
+pub mod sjlj {
+    use crate::{_Unwind_Exception, _Unwind_Reason_Code};
+    #[cfg_attr(all(not(bootstrap), feature = "llvm-libunwind",
+                   any(target_os = "fuchsia", target_os = "linux")),
+               link(name = "unwind", kind = "static"))]
+    extern "C" {
+        #[unwind(allowed)]
+        pub fn _Unwind_Sjlj_Resume(exception: *mut _Unwind_Exception) -> !;
+        pub fn _Unwind_Sjlj_RaiseException(exception: *mut _Unwind_Exception)
+            -> _Unwind_Reason_Code;
+    }
+    #[inline]
+    pub unsafe fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> ! {
+        _Unwind_Sjlj_Resume(exception)
+    }
+    #[inline]
+    pub unsafe fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
+        _Unwind_Sjlj_RaiseException(exception)
+    }
+}
+
+cfg_if::cfg_if! {
+    // 32-bit iOS
+    if #[cfg(all(target_os = "ios", target_arch = "arm"))] {
+        pub use sjlj::*;
+    }
+    // FIXME: for compatibility with i686-w64-mingw32-gcc on linux
+    else if #[cfg(all(target_vendor = "pc",
+                      target_os = "windows",
+                      target_arch = "x86",
+                      target_env = "gnu"))] {
+        pub use sjlj::*;
+    }
+    else {
+        pub use dwarf2::*;
+    }
 } // cfg_if!
