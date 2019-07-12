@@ -27,14 +27,14 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     let parse = db.parse(file_id);
     let mut res = Vec::new();
 
-    res.extend(parse.errors.iter().map(|err| Diagnostic {
+    res.extend(parse.errors().iter().map(|err| Diagnostic {
         range: location_to_range(err.location()),
         message: format!("Syntax Error: {}", err),
         severity: Severity::Error,
         fix: None,
     }));
 
-    for node in parse.tree.syntax().descendants() {
+    for node in parse.tree().syntax().descendants() {
         check_unnecessary_braces_in_use_statement(&mut res, file_id, node);
         check_struct_shorthand_initialization(&mut res, file_id, node);
     }
@@ -181,18 +181,18 @@ mod tests {
     type DiagnosticChecker = fn(&mut Vec<Diagnostic>, FileId, &SyntaxNode) -> Option<()>;
 
     fn check_not_applicable(code: &str, func: DiagnosticChecker) {
-        let file = SourceFile::parse(code).tree;
+        let parse = SourceFile::parse(code);
         let mut diagnostics = Vec::new();
-        for node in file.syntax().descendants() {
+        for node in parse.tree().syntax().descendants() {
             func(&mut diagnostics, FileId(0), node);
         }
         assert!(diagnostics.is_empty());
     }
 
     fn check_apply(before: &str, after: &str, func: DiagnosticChecker) {
-        let file = SourceFile::parse(before).tree;
+        let parse = SourceFile::parse(before);
         let mut diagnostics = Vec::new();
-        for node in file.syntax().descendants() {
+        for node in parse.tree().syntax().descendants() {
             func(&mut diagnostics, FileId(0), node);
         }
         let diagnostic =

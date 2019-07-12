@@ -59,11 +59,19 @@ pub use rowan::{SmolStr, TextRange, TextUnit};
 /// files.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Parse {
-    pub tree: TreeArc<SourceFile>,
-    pub errors: Arc<Vec<SyntaxError>>,
+    tree: TreeArc<SourceFile>,
+    errors: Arc<Vec<SyntaxError>>,
 }
 
 impl Parse {
+    pub fn tree(&self) -> &SourceFile {
+        &*self.tree
+    }
+
+    pub fn errors(&self) -> &[SyntaxError] {
+        &*self.errors
+    }
+
     pub fn ok(self) -> Result<TreeArc<SourceFile>, Arc<Vec<SyntaxError>>> {
         if self.errors.is_empty() {
             Ok(self.tree)

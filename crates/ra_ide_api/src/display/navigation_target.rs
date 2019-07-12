@@ -93,8 +93,8 @@ impl NavigationTarget {
         file_id: FileId,
         pat: AstPtr<ast::Pat>,
     ) -> NavigationTarget {
-        let file = db.parse(file_id).tree;
-        let (name, full_range) = match pat.to_node(file.syntax()).kind() {
+        let parse = db.parse(file_id);
+        let (name, full_range) = match pat.to_node(parse.tree().syntax()).kind() {
             ast::PatKind::BindPat(pat) => return NavigationTarget::from_bind_pat(file_id, &pat),
             _ => ("_".into(), pat.syntax_node_ptr().range()),
         };
@@ -315,8 +315,8 @@ impl NavigationTarget {
 }
 
 pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
-    let file = db.parse(symbol.file_id).tree;
-    let node = symbol.ptr.to_node(file.syntax()).to_owned();
+    let parse = db.parse(symbol.file_id);
+    let node = symbol.ptr.to_node(parse.tree().syntax()).to_owned();
 
     fn doc_comments<N: ast::DocCommentsOwner>(node: &N) -> Option<String> {
         node.doc_comment_text()
@@ -341,8 +341,8 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
 ///
 /// e.g. `struct Name`, `enum Name`, `fn Name`
 pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
-    let file = db.parse(symbol.file_id).tree;
-    let node = symbol.ptr.to_node(file.syntax()).to_owned();
+    let parse = db.parse(symbol.file_id);
+    let node = symbol.ptr.to_node(parse.tree().syntax()).to_owned();
 
     visitor()
         .visit(|node: &ast::FnDef| node.short_label())

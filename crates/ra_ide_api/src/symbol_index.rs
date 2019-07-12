@@ -34,9 +34,9 @@ use ra_db::{
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
     ast::{self, NameOwner},
-    AstNode, SmolStr, SourceFile,
+    AstNode, Parse, SmolStr, SourceFile,
     SyntaxKind::{self, *},
-    SyntaxNode, SyntaxNodePtr, TextRange, TreeArc, WalkEvent,
+    SyntaxNode, SyntaxNodePtr, TextRange, WalkEvent,
 };
 use rayon::prelude::*;
 
@@ -59,9 +59,9 @@ pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
 
 fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {
     db.check_canceled();
-    let source_file = db.parse(file_id).tree;
+    let parse = db.parse(file_id);
 
-    let symbols = source_file_to_file_symbols(&source_file, file_id);
+    let symbols = source_file_to_file_symbols(parse.tree(), file_id);
 
     // FIXME: add macros here
 
@@ -169,11 +169,9 @@ impl SymbolIndex {
         self.map.as_fst().size() + self.symbols.len() * mem::size_of::<FileSymbol>()
     }
 
-    pub(crate) fn for_files(
-        files: impl ParallelIterator<Item = (FileId, TreeArc<SourceFile>)>,
-    ) -> SymbolIndex {
+    pub(crate) fn for_files(files: impl ParallelIterator<Item = (FileId, Parse)>) -> SymbolIndex {
         let symbols = files
-            .flat_map(|(file_id, file)| source_file_to_file_symbols(&file, file_id))
+            .flat_map(|(file_id, file)| source_file_to_file_symbols(file.tree(), file_id))
             .collect::<Vec<_>>();
         SymbolIndex::new(symbols)
     }

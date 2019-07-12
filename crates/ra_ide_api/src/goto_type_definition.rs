@@ -7,9 +7,9 @@ pub(crate) fn goto_type_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    let file = db.parse(position.file_id).tree;
+    let parse = db.parse(position.file_id);
 
-    let node = find_token_at_offset(file.syntax(), position.offset).find_map(|token| {
+    let node = find_token_at_offset(parse.tree().syntax(), position.offset).find_map(|token| {
         token
             .parent()
             .ancestors()

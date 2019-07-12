@@ -32,7 +32,8 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
-    let source_file = db.parse(file_id).tree;
+    let parse = db.parse(file_id);
+    let root = parse.tree().syntax();
 
     fn calc_binding_hash(file_id: FileId, text: &SmolStr, shadow_count: u32) -> u64 {
         fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
@@ -51,7 +52,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
     let mut bindings_shadow_count: FxHashMap<SmolStr, u32> = FxHashMap::default();
 
     let mut res = Vec::new();
-    for node in source_file.syntax().descendants_with_tokens() {
+    for node in root.descendants_with_tokens() {
         if highlighted.contains(&node) {
             continue;
         }
@@ -89,11 +90,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         Some(SelfType(_)) => "type",
                         Some(Pat(ptr)) => {
                             binding_hash = Some({
-                                let text = ptr
-                                    .syntax_node_ptr()
-                                    .to_node(&source_file.syntax())
-                                    .text()
-                                    .to_smol_string();
+                                let text =
+                                    ptr.syntax_node_ptr().to_node(root).text().to_smol_string();
                                 let shadow_count =
                                     bindings_shadow_count.entry(text.clone()).or_default();
                                 calc_binding_hash(file_id, &text, *shadow_count)
@@ -178,7 +176,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
 }
 
 pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {
-    let source_file = db.parse(file_id).tree;
+    let parse = db.parse(file_id);
 
     fn rainbowify(seed: u64) -> String {
         use rand::prelude::*;
@@ -200,7 +198,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     let mut buf = String::new();
     buf.push_str(&STYLE);
     buf.push_str("<pre><code>");
-    let tokens = source_file.syntax().descendants_with_tokens().filter_map(|it| it.as_token());
+    let tokens = parse.tree().syntax().descendants_with_tokens().filter_map(|it| it.as_token());
     for token in tokens {
         could_intersect.retain(|it| token.range().start() <= it.range.end());
         while let Some(r) = ranges.get(frontier) {

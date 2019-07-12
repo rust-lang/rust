@@ -8,8 +8,8 @@ pub(crate) fn goto_implementation(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    let file = db.parse(position.file_id).tree;
-    let syntax = file.syntax();
+    let parse = db.parse(position.file_id);
+    let syntax = parse.tree().syntax();
 
     let module = source_binder::module_from_position(db, position)?;
 

@@ -167,7 +167,7 @@ impl ModuleSource {
     ) -> ModuleSource {
         match (file_id, decl_id) {
             (Some(file_id), _) => {
-                let source_file = db.parse(file_id).tree;
+                let source_file = db.parse(file_id).tree().to_owned();
                 ModuleSource::SourceFile(source_file)
             }
             (None, Some(item_id)) => {

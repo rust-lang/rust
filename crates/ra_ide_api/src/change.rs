@@ -135,8 +135,8 @@ impl LibraryData {
         files: Vec<(FileId, RelativePathBuf, Arc<String>)>,
     ) -> LibraryData {
         let symbol_index = SymbolIndex::for_files(files.par_iter().map(|(file_id, _, text)| {
-            let file = SourceFile::parse(text).tree;
-            (*file_id, file)
+            let parse = SourceFile::parse(text);
+            (*file_id, parse)
         }));
         let mut root_change = RootChange::default();
         root_change.added = files

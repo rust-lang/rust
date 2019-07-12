@@ -326,7 +326,7 @@ impl Analysis {
 
     /// Gets the syntax tree of the file.
     pub fn parse(&self, file_id: FileId) -> TreeArc<SourceFile> {
-        self.db.parse(file_id).tree
+        self.db.parse(file_id).tree().to_owned()
     }
 
     /// Gets the file's `LineIndex`: data structure to convert between absolute
@@ -343,7 +343,8 @@ impl Analysis {
     /// Returns position of the matching brace (all types of braces are
     /// supported).
     pub fn matching_brace(&self, position: FilePosition) -> Option<TextUnit> {
-        let file = self.db.parse(position.file_id).tree;
+        let parse = self.db.parse(position.file_id);
+        let file = parse.tree();
         matching_brace::matching_brace(&file, position.offset)
     }
 
@@ -356,10 +357,10 @@ impl Analysis {
     /// Returns an edit to remove all newlines in the range, cleaning up minor
     /// stuff like trailing commas.
     pub fn join_lines(&self, frange: FileRange) -> SourceChange {
-        let file = self.db.parse(frange.file_id).tree;
+        let parse = self.db.parse(frange.file_id);
         let file_edit = SourceFileEdit {
             file_id: frange.file_id,
-            edit: join_lines::join_lines(&file, frange.range),
+            edit: join_lines::join_lines(parse.tree(), frange.range),
         };
         SourceChange::source_file_edit("join lines", file_edit)
     }
@@ -374,7 +375,8 @@ impl Analysis {
     /// this works when adding `let =`.
     // FIXME: use a snippet completion instead of this hack here.
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.db.parse(position.file_id).tree;
+        let parse = self.db.parse(position.file_id);
+        let file = parse.tree();
         let edit = typing::on_eq_typed(&file, position.offset)?;
         Some(SourceChange::source_file_edit(
             "add semicolon",
@@ -390,14 +392,14 @@ impl Analysis {
     /// Returns a tree representation of symbols in the file. Useful to draw a
     /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
-        let file = self.db.parse(file_id).tree;
-        file_structure(&file)
+        let parse = self.db.parse(file_id);
+        file_structure(parse.tree())
     }
 
     /// Returns the set of folding ranges.
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
-        let file = self.db.parse(file_id).tree;
-        folding_ranges::folding_ranges(&file)
+        let parse = self.db.parse(file_id);
+        folding_ranges::folding_ranges(parse.tree())
     }
 
     /// Fuzzy searches for a symbol.
