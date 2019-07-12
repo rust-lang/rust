@@ -130,6 +130,7 @@
 #![feature(maybe_uninit_slice, maybe_uninit_array)]
 #![feature(external_doc)]
 #![feature(mem_take)]
+#![feature(option_err_or)]
 
 #[prelude_import]
 #[allow(unused)]

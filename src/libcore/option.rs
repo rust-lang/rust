@@ -896,6 +896,67 @@ impl<T> Option<T> {
     }
 }
 
+impl<E> Option<E> {
+    /// Transforms the `Option<E>` into a [`Result<T, E>`], mapping [`Some(v)`] to
+    /// [`Err(v)`] and [`None`] to [`Ok(ok)`].
+    ///
+    /// Arguments passed to `err_or` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`err_or_else`], which is
+    /// lazily evaluated.
+    ///
+    /// [`Result<T, E>`]: ../../std/result/enum.Result.html
+    /// [`Ok(ok)`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`Err(v)`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`None`]: #variant.None
+    /// [`Some(v)`]: #variant.Some
+    /// [`err_or_else`]: #method.err_or_else
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Some("foo");
+    /// assert_eq!(x.err_or(0), Err("foo"));
+    ///
+    /// let x: Option<&str> = None;
+    /// assert_eq!(x.err_or(0), Ok(0));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_err_or", issue = "62625")]
+    pub fn err_or<T>(self, ok: T) -> Result<T, E> {
+        match self {
+            Some(v) => Err(v),
+            None => Ok(ok),
+        }
+    }
+
+    /// Transforms the `Option<E>` into a [`Result<T, E>`], mapping [`Some(v)`] to
+    /// [`Err(v)`] and [`None`] to [`Ok(ok())`].
+    ///
+    /// [`Result<T, E>`]: ../../std/result/enum.Result.html
+    /// [`Ok(ok())`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`Err(v)`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`None`]: #variant.None
+    /// [`Some(v)`]: #variant.Some
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Some("foo");
+    /// assert_eq!(x.err_or_else(|| 0), Err("foo"));
+    ///
+    /// let x: Option<&str> = None;
+    /// assert_eq!(x.err_or_else(|| 0), Ok(0));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_err_or", issue = "62625")]
+    pub fn err_or_else<T, F: FnOnce() -> T>(self, ok: F) -> Result<T, E> {
+        match self {
+            Some(v) => Err(v),
+            None => Ok(ok()),
+        }
+    }
+}
+
 impl<T: Copy> Option<&T> {
     /// Maps an `Option<&T>` to an `Option<T>` by copying the contents of the
     /// option.

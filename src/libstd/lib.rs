@@ -279,6 +279,7 @@
 #![feature(non_exhaustive)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
+#![feature(option_err_or)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
