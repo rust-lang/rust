@@ -27,8 +27,6 @@ export CARGO_TARGET_DIR=`pwd`/target/
 
 # Check running clippy-driver without cargo
 (
-  export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
-
   # Check sysroot handling
   sysroot=$(./target/debug/clippy-driver --print sysroot)
   test $sysroot = $(rustc --print sysroot)
