@@ -1624,7 +1624,10 @@ impl<I> Iterator for Skip<I> where I: Iterator {
         let (lower, upper) = self.iter.size_hint();
 
         let lower = lower.saturating_sub(self.n);
-        let upper = upper.map(|x| x.saturating_sub(self.n));
+        let upper = match upper {
+            Some(x) => Some(x.saturating_sub(self.n)),
+            None => None,
+        };
 
         (lower, upper)
     }
@@ -1685,19 +1688,26 @@ impl<I> DoubleEndedIterator for Skip<I> where I: DoubleEndedIterator + ExactSize
         }
     }
 
-    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
-        let mut n = self.len();
-        if n == 0 {
-            Try::from_ok(init)
-        } else {
-            self.iter.try_rfold(init, move |acc, x| {
+        fn check<T, Acc, R: Try<Ok = Acc>>(
+            mut n: usize,
+            mut fold: impl FnMut(Acc, T) -> R,
+        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> {
+            move |acc, x| {
                 n -= 1;
                 let r = fold(acc, x);
                 if n == 0 { LoopState::Break(r) }
                 else { LoopState::from_try(r) }
-            }).into_try()
+            }
+        }
+
+        let n = self.len();
+        if n == 0 {
+            Try::from_ok(init)
+        } else {
+            self.iter.try_rfold(init, check(n, fold)).into_try()
         }
     }
 }
