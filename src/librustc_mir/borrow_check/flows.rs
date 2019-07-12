@@ -15,8 +15,8 @@ use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::HasMoveData;
 use crate::dataflow::Borrows;
 use crate::dataflow::EverInitializedPlaces;
-use crate::dataflow::{FlowAtLocation, FlowsAtLocation};
 use crate::dataflow::MaybeUninitializedPlaces;
+use crate::dataflow::{FlowAtLocation, FlowsAtLocation};
 use either::Either;
 use std::fmt;
 use std::rc::Rc;
@@ -40,12 +40,7 @@ impl<'b, 'tcx> Flows<'b, 'tcx> {
         ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'tcx>>,
         polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> Self {
-        Flows {
-            borrows,
-            uninits,
-            ever_inits,
-            polonius_output,
-        }
+        Flows { borrows, uninits, ever_inits, polonius_output }
     }
 
     crate fn borrows_in_scope(

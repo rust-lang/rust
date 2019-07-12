@@ -247,9 +247,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             }
 
             if self.use_live_at.insert(p) {
-                self.cx
-                    .elements
-                    .push_predecessors(self.cx.body, p, &mut self.stack)
+                self.cx.elements.push_predecessors(self.cx.body, p, &mut self.stack)
             }
         }
     }
@@ -287,10 +285,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             }
         }
 
-        debug!(
-            "compute_drop_live_points_for: drop_locations={:?}",
-            self.drop_locations
-        );
+        debug!("compute_drop_live_points_for: drop_locations={:?}", self.drop_locations);
 
         // Reverse DFS. But for drops, we do it a bit differently.
         // The stack only ever stores *terminators of blocks*. Within
@@ -326,17 +321,11 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         // block.  One of them may be either a definition or use
         // live point.
         let term_location = self.cx.elements.to_location(term_point);
-        debug_assert_eq!(
-            self.cx.body.terminator_loc(term_location.block),
-            term_location,
-        );
+        debug_assert_eq!(self.cx.body.terminator_loc(term_location.block), term_location,);
         let block = term_location.block;
         let entry_point = self.cx.elements.entry_point(term_location.block);
         for p in (entry_point..term_point).rev() {
-            debug!(
-                "compute_drop_live_points_for_block: p = {:?}",
-                self.cx.elements.to_location(p),
-            );
+            debug!("compute_drop_live_points_for_block: p = {:?}", self.cx.elements.to_location(p));
 
             if self.defs.contains(p) {
                 debug!("compute_drop_live_points_for_block: def site");
@@ -355,10 +344,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         }
 
         for &pred_block in self.cx.body.predecessors_for(block).iter() {
-            debug!(
-                "compute_drop_live_points_for_block: pred_block = {:?}",
-                pred_block,
-            );
+            debug!("compute_drop_live_points_for_block: pred_block = {:?}", pred_block,);
 
             // Check whether the variable is (at least partially)
             // initialized at the exit of this predecessor. If so, we
@@ -389,18 +375,12 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             // If the terminator of this predecessor either *assigns*
             // our value or is a "normal use", then stop.
             if self.defs.contains(pred_term_point) {
-                debug!(
-                    "compute_drop_live_points_for_block: defined at {:?}",
-                    pred_term_loc
-                );
+                debug!("compute_drop_live_points_for_block: defined at {:?}", pred_term_loc);
                 continue;
             }
 
             if self.use_live_at.contains(pred_term_point) {
-                debug!(
-                    "compute_drop_live_points_for_block: use-live at {:?}",
-                    pred_term_loc
-                );
+                debug!("compute_drop_live_points_for_block: use-live at {:?}", pred_term_loc);
                 continue;
             }
 
@@ -461,10 +441,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
         // "just ahead" of a terminator.
         self.flow_inits.reset_to_entry_of(block);
         for statement_index in 0..self.body[block].statements.len() {
-            let location = Location {
-                block,
-                statement_index,
-            };
+            let location = Location { block, statement_index };
             self.flow_inits.reconstruct_statement_effect(location);
             self.flow_inits.apply_local_effect(location);
         }
@@ -531,12 +508,11 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
 
         if let Some(data) = &drop_data.region_constraint_data {
             for &drop_location in drop_locations {
-                self.typeck
-                    .push_region_constraints(
-                        drop_location.to_locations(),
-                        ConstraintCategory::Boring,
-                        data,
-                    );
+                self.typeck.push_region_constraints(
+                    drop_location.to_locations(),
+                    ConstraintCategory::Boring,
+                    data,
+                );
             }
         }
 
@@ -602,14 +578,9 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         let param_env = typeck.param_env;
-        let (dropck_result, region_constraint_data) = param_env
-            .and(DropckOutlives::new(dropped_ty))
-            .fully_perform(typeck.infcx)
-            .unwrap();
+        let (dropck_result, region_constraint_data) =
+            param_env.and(DropckOutlives::new(dropped_ty)).fully_perform(typeck.infcx).unwrap();
 
-        DropData {
-            dropck_result,
-            region_constraint_data,
-        }
+        DropData { dropck_result, region_constraint_data }
     }
 }

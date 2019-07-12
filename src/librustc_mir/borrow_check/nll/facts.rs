@@ -28,8 +28,7 @@ crate trait AllFactsExt {
 impl AllFactsExt for AllFacts {
     /// Return
     fn enabled(tcx: TyCtxt<'_>) -> bool {
-        tcx.sess.opts.debugging_opts.nll_facts
-            || tcx.sess.opts.debugging_opts.polonius
+        tcx.sess.opts.debugging_opts.nll_facts || tcx.sess.opts.debugging_opts.polonius
     }
 
     fn write_to_dir(
@@ -91,11 +90,7 @@ struct FactWriter<'w> {
 }
 
 impl<'w> FactWriter<'w> {
-    fn write_facts_to_path<T>(
-        &self,
-        rows: &[T],
-        file_name: &str,
-    ) -> Result<(), Box<dyn Error>>
+    fn write_facts_to_path<T>(&self, rows: &[T], file_name: &str) -> Result<(), Box<dyn Error>>
     where
         T: FactRow,
     {
@@ -109,19 +104,11 @@ impl<'w> FactWriter<'w> {
 }
 
 trait FactRow {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>>;
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>>;
 }
 
 impl FactRow for RegionVid {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>> {
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[self])
     }
 }
@@ -131,11 +118,7 @@ where
     A: FactCell,
     B: FactCell,
 {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>> {
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[&self.0, &self.1])
     }
 }
@@ -146,11 +129,7 @@ where
     B: FactCell,
     C: FactCell,
 {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>> {
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[&self.0, &self.1, &self.2])
     }
 }
@@ -162,11 +141,7 @@ where
     C: FactCell,
     D: FactCell,
 {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>> {
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[&self.0, &self.1, &self.2, &self.3])
     }
 }
@@ -177,11 +152,7 @@ fn write_row(
     columns: &[&dyn FactCell],
 ) -> Result<(), Box<dyn Error>> {
     for (index, c) in columns.iter().enumerate() {
-        let tail = if index == columns.len() - 1 {
-            "\n"
-        } else {
-            "\t"
-        };
+        let tail = if index == columns.len() - 1 { "\n" } else { "\t" };
         write!(out, "{:?}{}", c.to_string(location_table), tail)?;
     }
     Ok(())
