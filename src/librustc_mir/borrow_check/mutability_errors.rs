@@ -1,3 +1,4 @@
+use core::unicode::property::Pattern_White_Space;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::mir::{self, BindingForm, ClearCrossCrate, Local, Location, Body};
@@ -10,7 +11,6 @@ use syntax_pos::symbol::kw;
 use crate::borrow_check::MirBorrowckCtxt;
 use crate::borrow_check::error_reporting::BorrowedContentSource;
 use crate::util::collect_writes::FindAssignments;
-use crate::util::suggest_ref_mut;
 use rustc_errors::Applicability;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -627,4 +627,17 @@ fn annotate_struct_field(
     }
 
     None
+}
+
+/// If possible, suggest replacing `ref` with `ref mut`.
+fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<(String)> {
+    let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).unwrap();
+    if hi_src.starts_with("ref")
+        && hi_src["ref".len()..].starts_with(Pattern_White_Space)
+    {
+        let replacement = format!("ref mut{}", &hi_src["ref".len()..]);
+        Some(replacement)
+    } else {
+        None
+    }
 }
