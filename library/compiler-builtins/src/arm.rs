@@ -137,11 +137,12 @@ pub unsafe extern "aapcs" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: us
 pub unsafe extern "aapcs" fn __aeabi_memcpy4(dest: *mut u8, src: *const u8, mut n: usize) {
     use core::ptr;
 
+    // We are guaranteed 4-alignment, so accessing at u32 is okay.
     let mut dest = dest as *mut u32;
     let mut src = src as *mut u32;
 
     while n >= 4 {
-        ptr::write(dest, ptr::read(src));
+        *dest = *src;
         dest = dest.offset(1);
         src = src.offset(1);
         n -= 4;
@@ -198,7 +199,7 @@ pub unsafe extern "aapcs" fn __aeabi_memset4(dest: *mut u8, mut n: usize, c: i32
     let c = (byte << 24) | (byte << 16) | (byte << 8) | byte;
 
     while n >= 4 {
-        ptr::write(dest, c);
+        *dest = c;
         dest = dest.offset(1);
         n -= 4;
     }
