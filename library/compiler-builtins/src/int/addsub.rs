@@ -90,44 +90,43 @@ where
 impl Subo for i128 {}
 impl Subo for u128 {}
 
-u128_lang_items! {
-    #[lang = "i128_add"]
-    pub fn rust_i128_add(a: i128, b: i128) -> i128 {
-        rust_u128_add(a as _, b as _) as _
+intrinsics! {
+    pub extern "C" fn __rust_i128_add(a: i128, b: i128) -> i128 {
+        __rust_u128_add(a as _, b as _) as _
     }
-    #[lang = "i128_addo"]
-    pub fn rust_i128_addo(a: i128, b: i128) -> (i128, bool) {
-        let mut oflow = 0;
-        let r = a.addo(b, &mut oflow);
-        (r, oflow != 0)
-    }
-    #[lang = "u128_add"]
-    pub fn rust_u128_add(a: u128, b: u128) -> u128 {
-        a.add(b)
-    }
-    #[lang = "u128_addo"]
-    pub fn rust_u128_addo(a: u128, b: u128) -> (u128, bool) {
+
+    pub extern "C" fn __rust_i128_addo(a: i128, b: i128) -> (i128, bool) {
         let mut oflow = 0;
         let r = a.addo(b, &mut oflow);
         (r, oflow != 0)
     }
 
-    #[lang = "i128_sub"]
-    pub fn rust_i128_sub(a: i128, b: i128) -> i128 {
-        rust_u128_sub(a as _, b as _) as _
+    pub extern "C" fn __rust_u128_add(a: u128, b: u128) -> u128 {
+        a.add(b)
     }
-    #[lang = "i128_subo"]
-    pub fn rust_i128_subo(a: i128, b: i128) -> (i128, bool) {
+
+    pub extern "C" fn __rust_u128_addo(a: u128, b: u128) -> (u128, bool) {
+        let mut oflow = 0;
+        let r = a.addo(b, &mut oflow);
+        (r, oflow != 0)
+    }
+
+
+    pub extern "C" fn __rust_i128_sub(a: i128, b: i128) -> i128 {
+        __rust_u128_sub(a as _, b as _) as _
+    }
+
+    pub extern "C" fn __rust_i128_subo(a: i128, b: i128) -> (i128, bool) {
         let mut oflow = 0;
         let r = a.subo(b, &mut oflow);
         (r, oflow != 0)
     }
-    #[lang = "u128_sub"]
-    pub fn rust_u128_sub(a: u128, b: u128) -> u128 {
+
+    pub extern "C" fn __rust_u128_sub(a: u128, b: u128) -> u128 {
         a.sub(b)
     }
-    #[lang = "u128_subo"]
-    pub fn rust_u128_subo(a: u128, b: u128) -> (u128, bool) {
+
+    pub extern "C" fn __rust_u128_subo(a: u128, b: u128) -> (u128, bool) {
         let mut oflow = 0;
         let r = a.subo(b, &mut oflow);
         (r, oflow != 0)

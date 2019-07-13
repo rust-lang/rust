@@ -268,14 +268,3 @@ intrinsics! {
         udivmod_inner!(n, d, rem, u128)
     }
 }
-
-u128_lang_items! {
-    #[lang = "u128_div"]
-    pub fn rust_u128_div(a: u128, b: u128) -> u128 {
-        __udivti3(a, b)
-    }
-    #[lang = "u128_rem"]
-    pub fn rust_u128_rem(a: u128, b: u128) -> u128 {
-        __umodti3(a, b)
-    }
-}

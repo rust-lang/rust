@@ -280,17 +280,3 @@ pub mod win64_128bit_abi_hack {
         }
     }
 }
-
-macro_rules! u128_lang_items {
-    ($(
-        #[lang = $lang:tt]
-        pub fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
-            $($body:tt)*
-        }
-    )*) => ($(
-        #[cfg_attr(not(any(stage0, feature = "no-lang-items")), lang = $lang)]
-        pub fn $name( $($argname:  $ty),* ) -> $ret {
-            $($body)*
-        }
-    )*)
-}

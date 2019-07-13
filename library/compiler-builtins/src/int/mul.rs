@@ -107,25 +107,14 @@ intrinsics! {
     pub extern "C" fn __muloti4(a: i128, b: i128, oflow: &mut i32) -> i128 {
         a.mulo(b, oflow)
     }
-}
 
-u128_lang_items! {
-    #[lang = "i128_mul"]
-    pub fn rust_i128_mul(a: i128, b: i128) -> i128 {
-        __multi3(a, b)
-    }
-    #[lang = "i128_mulo"]
-    pub fn rust_i128_mulo(a: i128, b: i128) -> (i128, bool) {
+    pub extern "C" fn __rust_i128_mulo(a: i128, b: i128) -> (i128, bool) {
         let mut oflow = 0;
         let r = __muloti4(a, b, &mut oflow);
         (r, oflow != 0)
     }
-    #[lang = "u128_mul"]
-    pub fn rust_u128_mul(a: u128, b: u128) -> u128 {
-        __multi3(a as _, b as _) as _
-    }
-    #[lang = "u128_mulo"]
-    pub fn rust_u128_mulo(a: u128, b: u128) -> (u128, bool) {
+
+    pub extern "C" fn __rust_u128_mulo(a: u128, b: u128) -> (u128, bool) {
         let mut oflow = 0;
         let r = a.mulo(b, &mut oflow);
         (r, oflow != 0)

@@ -99,14 +99,3 @@ intrinsics! {
         a.divmod(b, rem, |a, b| __divdi3(a, b))
     }
 }
-
-u128_lang_items! {
-    #[lang = "i128_div"]
-    pub fn rust_i128_div(a: i128, b: i128) -> i128 {
-        __divti3(a, b)
-    }
-    #[lang = "i128_rem"]
-    pub fn rust_i128_rem(a: i128, b: i128) -> i128 {
-        __modti3(a, b)
-    }
-}
