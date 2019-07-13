@@ -65,7 +65,7 @@ pub fn trans_promoted<'a, 'tcx: 'a>(
         }))
     {
         Ok(const_) => {
-            let cplace = trans_const_place(fx, *const_);
+            let cplace = trans_const_place(fx, const_);
             debug_assert_eq!(cplace.layout(), fx.layout_of(dest_ty));
             cplace
         }
@@ -90,7 +90,7 @@ pub fn trans_constant<'a, 'tcx: 'a>(
 pub fn force_eval_const<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     const_: &'tcx Const,
-) -> Const<'tcx> {
+) -> &'tcx Const<'tcx> {
     match const_.val {
         ConstValue::Unevaluated(def_id, ref substs) => {
             let param_env = ParamEnv::reveal_all();
@@ -100,15 +100,15 @@ pub fn force_eval_const<'a, 'tcx: 'a>(
                 instance,
                 promoted: None,
             };
-            *fx.tcx.const_eval(param_env.and(cid)).unwrap()
+            fx.tcx.const_eval(param_env.and(cid)).unwrap()
         }
-        _ => *fx.monomorphize(&const_),
+        _ => fx.monomorphize(&const_),
     }
 }
 
 pub fn trans_const_value<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    const_: Const<'tcx>,
+    const_: &'tcx Const<'tcx>,
 ) -> CValue<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
@@ -137,7 +137,7 @@ pub fn trans_const_value<'a, 'tcx: 'a>(
 
 fn trans_const_place<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    const_: Const<'tcx>,
+    const_: &'tcx Const<'tcx>,
 ) -> CPlace<'tcx> {
     // Adapted from https://github.com/rust-lang/rust/pull/53671/files#diff-e0b58bb6712edaa8595ad7237542c958L551
     let result = || -> InterpResult<'tcx, &'tcx Allocation> {
@@ -160,13 +160,13 @@ fn trans_const_place<'a, 'tcx: 'a>(
                 span: DUMMY_SP,
                 ty: const_.ty,
                 user_ty: None,
-                literal: fx.tcx.mk_const(const_),
+                literal: const_,
             })),
             None,
         )?;
         let ptr = ecx.allocate(op.layout, MemoryKind::Stack);
         ecx.copy_op(op, ptr.into())?;
-        let alloc = ecx.memory().get(ptr.to_ptr()?.alloc_id)?;
+        let alloc = ecx.memory().get(ptr.to_ref().to_scalar()?.to_ptr()?.alloc_id)?;
         Ok(fx.tcx.intern_const_alloc(alloc.clone()))
     };
     let alloc = result().expect("unable to convert ConstValue to Allocation");

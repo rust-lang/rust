@@ -200,7 +200,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         type_name, <T> () {
             let type_name = fx.tcx.type_name(T);
-            let type_name = crate::constant::trans_const_value(fx, *type_name);
+            let type_name = crate::constant::trans_const_value(fx, type_name);
             ret.write_cvalue(fx, type_name);
         };
 
