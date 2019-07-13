@@ -707,35 +707,35 @@ fn main() {
     // int/addsub.rs
     gen(
         |(a, b): (MyU128, MyU128)| Some(a.0.wrapping_add(b.0)),
-        "builtins::int::addsub::rust_u128_add(a, b)",
+        "builtins::int::addsub::__rust_u128_add(a, b)",
     );
     gen(
         |(a, b): (MyI128, MyI128)| Some(a.0.wrapping_add(b.0)),
-        "builtins::int::addsub::rust_i128_add(a, b)",
+        "builtins::int::addsub::__rust_i128_add(a, b)",
     );
     gen(
         |(a, b): (MyU128, MyU128)| Some(a.0.overflowing_add(b.0)),
-        "builtins::int::addsub::rust_u128_addo(a, b)",
+        "builtins::int::addsub::__rust_u128_addo(a, b)",
     );
     gen(
         |(a, b): (MyI128, MyI128)| Some(a.0.overflowing_add(b.0)),
-        "builtins::int::addsub::rust_i128_addo(a, b)",
+        "builtins::int::addsub::__rust_i128_addo(a, b)",
     );
     gen(
         |(a, b): (MyU128, MyU128)| Some(a.0.wrapping_sub(b.0)),
-        "builtins::int::addsub::rust_u128_sub(a, b)",
+        "builtins::int::addsub::__rust_u128_sub(a, b)",
     );
     gen(
         |(a, b): (MyI128, MyI128)| Some(a.0.wrapping_sub(b.0)),
-        "builtins::int::addsub::rust_i128_sub(a, b)",
+        "builtins::int::addsub::__rust_i128_sub(a, b)",
     );
     gen(
         |(a, b): (MyU128, MyU128)| Some(a.0.overflowing_sub(b.0)),
-        "builtins::int::addsub::rust_u128_subo(a, b)",
+        "builtins::int::addsub::__rust_u128_subo(a, b)",
     );
     gen(
         |(a, b): (MyI128, MyI128)| Some(a.0.overflowing_sub(b.0)),
-        "builtins::int::addsub::rust_i128_subo(a, b)",
+        "builtins::int::addsub::__rust_i128_subo(a, b)",
     );
 
     // int/mul.rs
