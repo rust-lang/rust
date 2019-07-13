@@ -2,7 +2,6 @@
 
 use crate::fmt;
 use crate::io::{self, Read, Initializer, Write, ErrorKind, BufRead, IoSlice, IoSliceMut};
-use crate::mem;
 
 /// Copies the entire contents of a reader into a writer.
 ///
@@ -43,11 +42,8 @@ use crate::mem;
 pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<u64>
     where R: Read, W: Write
 {
-    let mut buf = unsafe {
-        let mut buf: [u8; super::DEFAULT_BUF_SIZE] = mem::MaybeUninit::uninit().assume_init();
-        reader.initializer().initialize(&mut buf);
-        buf
-    };
+
+    let mut buf: [u8; super::DEFAULT_BUF_SIZE] = [0; super::DEFAULT_BUF_SIZE];
 
     let mut written = 0;
     loop {
