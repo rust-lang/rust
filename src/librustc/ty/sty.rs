@@ -1823,22 +1823,6 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn simd_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match self.sty {
-            Adt(def, substs) => {
-                def.non_enum_variant().fields[0].ty(tcx, substs)
-            }
-            _ => bug!("simd_type called on invalid type")
-        }
-    }
-
-    pub fn simd_size(&self, _cx: TyCtxt<'_>) -> usize {
-        match self.sty {
-            Adt(def, _) => def.non_enum_variant().fields.len(),
-            _ => bug!("simd_size called on invalid type")
-        }
-    }
-
     #[inline]
     pub fn is_region_ptr(&self) -> bool {
         match self.sty {
