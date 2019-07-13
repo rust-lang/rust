@@ -45,7 +45,7 @@ matrix:
     - os: linux
       env: BASE_TESTS=true
     - os: windows
-      env: CARGO_INCREMENTAL=0 BASE_TESTS=true OS_WINDOWS=true
+      env: BASE_TESTS=true OS_WINDOWS=true
 
     # Builds that are only executed when a PR is r+ed or a try build is started
     # We don't want to run these always because they go towards
