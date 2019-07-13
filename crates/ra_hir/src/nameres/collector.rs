@@ -84,7 +84,7 @@ struct DefCollector<DB> {
     global_macro_scope: FxHashMap<Name, MacroDefId>,
 
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
-    /// To prevent stackoverflow, we add a deep counter here for prevent that.
+    /// To prevent stack overflow, we add a deep counter here for prevent that.
     macro_stack_monitor: MacroStackMonitor,
 }
 
@@ -497,7 +497,7 @@ where
 
     fn collect_module(&mut self, module: &raw::ModuleData) {
         match module {
-            // inline module, just recurse
+            // inline module, just recursive
             raw::ModuleData::Definition { name, items, ast_id } => {
                 let module_id =
                     self.push_child_module(name.clone(), ast_id.with_file_id(self.file_id), None);
@@ -509,7 +509,7 @@ where
                 }
                 .collect(&*items);
             }
-            // out of line module, resolve, parse and recurse
+            // out of line module, resolve, parse and recursive
             raw::ModuleData::Declaration { name, ast_id, attr_path } => {
                 let ast_id = ast_id.with_file_id(self.file_id);
                 let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
@@ -649,7 +649,8 @@ fn resolve_submodule(
     let file_dir_mod = dir_path.join(format!("{}/{}.rs", mod_name, name));
     let mut candidates = ArrayVec::<[_; 3]>::new();
     let file_attr_mod = attr_path.map(|file_path| {
-        let file_attr_mod = dir_path.join(file_path.to_string());
+        let file_path = normalize_attribute_path(file_path);
+        let file_attr_mod = dir_path.join(file_path).normalize();
         candidates.push(file_attr_mod.clone());
 
         file_attr_mod
@@ -672,6 +673,17 @@ fn resolve_submodule(
                 Err(if is_dir_owner { file_mod } else { file_dir_mod })
             }
         }
+    }
+}
+
+fn normalize_attribute_path(file_path: &SmolStr) -> String {
+    let current_dir = "./";
+
+    let separator = |path: &str| path.replace("\\", "/");
+    if file_path.starts_with(current_dir) {
+        separator(&file_path[current_dir.len()..])
+    } else {
+        separator(file_path.as_str())
     }
 }
 
