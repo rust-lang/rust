@@ -714,6 +714,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         convert_dollar_crate: bool,
         span: Span,
     ) {
+        if delim == DelimToken::Brace {
+            self.cbox(INDENT_UNIT);
+        }
         if let Some(path) = path {
             self.print_path(path, false, 0);
         }
@@ -721,27 +724,27 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             self.word("!");
         }
         if let Some(ident) = ident {
-            self.space();
+            self.nbsp();
             self.print_ident(ident);
-            self.space();
         }
         match delim {
-            DelimToken::Paren => self.popen(),
-            DelimToken::Bracket => self.word("["),
-            DelimToken::NoDelim => self.word(" "),
             DelimToken::Brace => {
-                self.head("");
-                self.bopen();
+                if path.is_some() || has_bang || ident.is_some() {
+                    self.nbsp();
+                }
+                self.word("{");
+                if !tts.is_empty() {
+                    self.space();
+                }
             }
+            _ => self.word(token_kind_to_string(&token::OpenDelim(delim))),
         }
         self.ibox(0);
         self.print_tts(tts, convert_dollar_crate);
         self.end();
         match delim {
-            DelimToken::Paren => self.pclose(),
-            DelimToken::Bracket => self.word("]"),
-            DelimToken::NoDelim => self.word(" "),
             DelimToken::Brace => self.bclose(span),
+            _ => self.word(token_kind_to_string(&token::CloseDelim(delim))),
         }
     }
 
