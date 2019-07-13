@@ -1,4 +1,4 @@
-error[E0658]: The attribute `rustfmt` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: the attribute `rustfmt` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/tool-attributes-misplaced-1.rs:8:3
    |
 LL | #[rustfmt]

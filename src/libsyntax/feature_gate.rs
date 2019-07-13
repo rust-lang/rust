@@ -1451,7 +1451,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     template!(Word),
     Gated(Stability::Unstable,
         sym::dropck_eyepatch,
-        "may_dangle has unstable semantics and may be removed in the future",
+        "`may_dangle` has unstable semantics and may be removed in the future",
         cfg_fn!(dropck_eyepatch))),
     (sym::unwind, Whitelisted, template!(List: "allowed|aborts"), Gated(Stability::Unstable,
                                 sym::unwind_attributes,
@@ -1693,8 +1693,8 @@ impl<'a> Context<'a> {
             // Only run the custom attribute lint during regular feature gate
             // checking. Macro gating runs before the plugin attributes are
             // registered, so we skip this in that case.
-            let msg = format!("The attribute `{}` is currently unknown to the compiler and \
-                                may have meaning added to it in the future", attr.path);
+            let msg = format!("the attribute `{}` is currently unknown to the compiler and \
+                               may have meaning added to it in the future", attr.path);
             gate_feature!(self, custom_attribute, attr.span, &msg);
         }
     }
