@@ -1,17 +1,14 @@
 use rustc::hir;
 use rustc::hir::Node;
-use rustc::mir::{self, BindingForm, Constant, ClearCrossCrate, Local, Location, Body};
-use rustc::mir::{
-    Mutability, Operand, Place, PlaceBase, Projection, ProjectionElem, Static, StaticKind,
-};
-use rustc::mir::{Terminator, TerminatorKind};
-use rustc::ty::{self, Const, DefIdTree, Ty, TyS, TyCtxt};
+use rustc::mir::{self, BindingForm, ClearCrossCrate, Local, Location, Body};
+use rustc::mir::{Mutability, Place, PlaceBase, Projection, ProjectionElem, Static, StaticKind};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 use syntax_pos::symbol::kw;
 
-use crate::dataflow::move_paths::InitLocation;
 use crate::borrow_check::MirBorrowckCtxt;
+use crate::borrow_check::error_reporting::BorrowedContentSource;
 use crate::util::borrowck_errors::{BorrowckErrors, Origin};
 use crate::util::collect_writes::FindAssignments;
 use crate::util::suggest_ref_mut;
@@ -43,6 +40,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut err;
         let item_msg;
         let reason;
+        let mut opt_source = None;
         let access_place_desc = self.describe_place(access_place);
         debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
@@ -103,23 +101,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     reason = ", as it is immutable for the pattern guard".to_string();
                 } else {
-                    let pointer_type =
-                        if base.ty(self.body, self.infcx.tcx).ty.is_region_ptr() {
-                            "`&` reference"
-                        } else {
-                            "`*const` pointer"
-                        };
+                    let source = self.borrowed_content_source(base);
+                    let pointer_type = source.describe_for_immutable_place();
+                    opt_source = Some(source);
                     if let Some(desc) = access_place_desc {
                         item_msg = format!("`{}`", desc);
                         reason = match error_access {
                             AccessKind::Move |
-                            AccessKind::Mutate => format!(" which is behind a {}", pointer_type),
+                            AccessKind::Mutate => format!(" which is behind {}", pointer_type),
                             AccessKind::MutableBorrow => {
-                                format!(", as it is behind a {}", pointer_type)
+                                format!(", as it is behind {}", pointer_type)
                             }
                         }
                     } else {
-                        item_msg = format!("data in a {}", pointer_type);
+                        item_msg = format!("data in {}", pointer_type);
                         reason = String::new();
                     }
                 }
@@ -457,59 +452,31 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             Place::Projection(box Projection {
-                base: Place::Base(PlaceBase::Local(local)),
+                base: _,
                 elem: ProjectionElem::Deref,
-            })  if error_access == AccessKind::MutableBorrow => {
+            }) => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
-                let mpi = self.move_data.rev_lookup.find_local(*local);
-                for i in self.move_data.init_path_map[mpi].iter() {
-                    if let InitLocation::Statement(location) = self.move_data.inits[*i].location {
-                        if let Some(
-                            Terminator {
-                                kind: TerminatorKind::Call {
-                                    func: Operand::Constant(box Constant {
-                                        literal: Const {
-                                            ty: &TyS {
-                                                sty: ty::FnDef(id, substs),
-                                                ..
-                                            },
-                                            ..
-                                        },
-                                        ..
-                                    }),
-                                    ..
-                                },
-                                ..
-                            }
-                        ) = &self.body.basic_blocks()[location.block].terminator {
-                            let index_trait = self.infcx.tcx.lang_items().index_trait();
-                            if self.infcx.tcx.parent(id) == index_trait {
-                                let mut found = false;
-                                self.infcx.tcx.for_each_relevant_impl(
-                                    self.infcx.tcx.lang_items().index_mut_trait().unwrap(),
-                                    substs.type_at(0),
-                                    |_relevant_impl| {
-                                        found = true;
-                                    }
-                                );
-
-                                let extra = if found {
-                                    String::new()
-                                } else {
-                                    format!(", but it is not implemented for `{}`",
-                                            substs.type_at(0))
-                                };
-
-                                err.help(
-                                    &format!(
-                                        "trait `IndexMut` is required to modify indexed content{}",
-                                         extra,
-                                    ),
-                                );
-                            }
-                        }
+                match opt_source {
+                    Some(BorrowedContentSource::OverloadedDeref(ty)) => {
+                        err.help(
+                            &format!(
+                                "trait `DerefMut` is required to modify through a dereference, \
+                                but it is not implemented for `{}`",
+                                ty,
+                            ),
+                        );
+                    },
+                    Some(BorrowedContentSource::OverloadedIndex(ty)) => {
+                        err.help(
+                            &format!(
+                                "trait `IndexMut` is required to modify indexed content, \
+                                but it is not implemented for `{}`",
+                                ty,
+                            ),
+                        );
                     }
+                    _ => (),
                 }
             }
 
