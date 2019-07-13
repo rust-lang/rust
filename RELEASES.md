@@ -72,7 +72,7 @@ Misc
 
 Compatibility Notes
 -------------------
-- [Using `...` for inclusive range patterns is will now warn by default.][61342]
+- [Using `...` for inclusive range patterns will now warn by default.][61342]
   Please transition your code to using the `..=` syntax for inclusive
   ranges instead.
 - [Using a trait object without the `dyn` will now warn by default.][61203]
