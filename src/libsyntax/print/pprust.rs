@@ -616,6 +616,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                 ast::AttrStyle::Inner => self.word("#!["),
                 ast::AttrStyle::Outer => self.word("#["),
             }
+            self.ibox(0);
             if let Some(mi) = attr.meta() {
                 self.print_meta_item(&mi);
             } else {
@@ -634,6 +635,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                     }
                 }
             }
+            self.end();
             self.word("]");
         }
     }
@@ -698,14 +700,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
     }
 
     fn print_tts(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
-        self.ibox(0);
         for (i, tt) in tts.into_trees().enumerate() {
             if i != 0 {
                 self.space();
             }
             self.print_tt(tt, convert_dollar_crate);
         }
-        self.end();
     }
 
     fn print_mac_common(
@@ -738,7 +738,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                 self.bopen();
             }
         }
+        self.ibox(0);
         self.print_tts(tts, convert_dollar_crate);
+        self.end();
         match delim {
             DelimToken::Paren => self.pclose(),
             DelimToken::Bracket => self.word("]"),
