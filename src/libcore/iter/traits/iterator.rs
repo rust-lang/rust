@@ -2703,16 +2703,15 @@ fn select_fold1<I, F>(mut it: I, mut f: F) -> Option<I::Item>
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for &mut I {
     type Item = I::Item;
-    fn next(&mut self) -> Option<I::Item> { (**self).next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+    default fn next(&mut self) -> Option<I::Item> { (**self).next() }
+    default fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
+    default fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator> Iterator for &mut I {
-    type Item = I::Item;
+impl<I: Iterator + Sized> Iterator for &mut I {
     fn next(&mut self) -> Option<I::Item> { (**self).next() }
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
