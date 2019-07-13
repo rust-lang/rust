@@ -50,8 +50,6 @@ use std::iter;
 use std::rc::Rc;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
-use syntax::symbol::sym;
-
 pub struct SelectionContext<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
 
@@ -1334,15 +1332,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidate: SelectionCandidate<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if let ImplCandidate(def_id) = candidate {
-            if !self.allow_negative_impls
-                && self.tcx().impl_polarity(def_id) == hir::ImplPolarity::Negative
-            {
-                return Err(Unimplemented);
-            }
-
-            if self.tcx().has_attr(def_id, sym::rustc_reservation_impl) {
-                return Ok(None);
-            }
+            match self.tcx().impl_polarity(def_id) {
+                ty::ImplPolarity::Negative if !self.allow_negative_impls => {
+                    return Err(Unimplemented);
+                }
+                ty::ImplPolarity::Reservation => {
+                    return Ok(None);
+                }
+                _ => {}
+            };
         }
         Ok(Some(candidate))
     }
@@ -3734,8 +3732,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(());
         }
 
-        if self.intercrate.is_none() &&
-            self.tcx().has_attr(impl_def_id, sym::rustc_reservation_impl)
+        if self.intercrate.is_none()
+            && self.tcx().impl_polarity(impl_def_id) == ty::ImplPolarity::Reservation
         {
             debug!("match_impl: reservation impls only apply in intercrate mode");
             return Err(());

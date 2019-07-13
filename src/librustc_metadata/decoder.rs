@@ -722,7 +722,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.get_impl_data(id).parent_impl
     }
 
-    pub fn get_impl_polarity(&self, id: DefIndex) -> hir::ImplPolarity {
+    pub fn get_impl_polarity(&self, id: DefIndex) -> ty::ImplPolarity {
         self.get_impl_data(id).polarity
     }
 
