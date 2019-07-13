@@ -1,7 +1,9 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use crate::hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind};
+use crate::hir::{
+    Expr, GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind,
+};
 use crate::lint::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
 };
@@ -253,5 +255,53 @@ fn is_lint_pass_expansion(expn_info: &ExpnInfo) -> bool {
         info.kind.descr() == sym::declare_lint_pass
     } else {
         false
+    }
+}
+
+declare_tool_lint! {
+    pub rustc::VEC_NEW,
+    Allow,
+    "Using Vec::new() instead of vec![]"
+}
+
+declare_lint_pass!(VecNew => [VEC_NEW]);
+
+const VEC_PATH: &[Symbol; 3] = &[sym::alloc, sym::vec, sym::Vec];
+
+impl LateLintPass<'_, '_> for VecNew {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr) {
+        use crate::hir::ExprKind;
+        if let ExprKind::Call(func, args) = &expr.node {
+            if !args.is_empty() {
+                return;
+            }
+
+            if let ExprKind::Path(qpath) = &func.node {
+                if let QPath::TypeRelative(ty, segment) = qpath {
+                    if segment.ident.name.as_str() == "new" {
+                        if let TyKind::Path(ty_path) = &ty.node {
+                            if let QPath::Resolved(_, path) = ty_path {
+                                if let Some(def_id) = path.res.opt_def_id() {
+                                    if cx.match_def_path(def_id, VEC_PATH) {
+                                        cx.struct_span_lint(
+                                            VEC_NEW,
+                                            expr.span,
+                                            "usage of `Vec::new()`",
+                                        )
+                                        .span_suggestion(
+                                            expr.span,
+                                            "use",
+                                            "vec![]".to_string(),
+                                            Applicability::MachineApplicable,
+                                        )
+                                        .emit();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

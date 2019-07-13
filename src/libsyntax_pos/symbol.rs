@@ -123,6 +123,7 @@ symbols! {
         align,
         alignstack,
         all,
+        alloc,
         allocator,
         allocator_internals,
         alloc_error_handler,

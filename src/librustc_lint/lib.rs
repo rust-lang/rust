@@ -496,6 +496,7 @@ pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_early_pass(sess, false, false, box DefaultHashTypes::new());
     store.register_early_pass(sess, false, false, box LintPassImpl);
     store.register_late_pass(sess, false, false, false, box TyTyKind);
+    store.register_late_pass(sess, false, false, false, box VecNew);
     store.register_group(
         sess,
         false,
@@ -503,10 +504,11 @@ pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
         None,
         vec![
             LintId::of(DEFAULT_HASH_TYPES),
-            LintId::of(USAGE_OF_TY_TYKIND),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(TY_PASS_BY_REFERENCE),
             LintId::of(USAGE_OF_QUALIFIED_TY),
+            LintId::of(USAGE_OF_TY_TYKIND),
+            LintId::of(VEC_NEW),
         ],
     );
 }
