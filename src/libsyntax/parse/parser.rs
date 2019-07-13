@@ -7410,10 +7410,13 @@ impl<'a> Parser<'a> {
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
-                let kw_name = if let Ok(Some(_)) = self.parse_self_arg_with_attrs() {
-                    "method"
-                } else {
-                    "function"
+                let kw_name = match self.parse_self_arg_with_attrs() {
+                    Ok(Some(_)) => "method",
+                    Ok(None) => "function",
+                    Err(mut err) => {
+                        err.cancel();
+                        "function"
+                    }
                 };
                 self.consume_block(token::Paren);
                 let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
