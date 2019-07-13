@@ -184,10 +184,10 @@ fn main() {
     // FIXME: Ideally we'd turn a bad build env into a compile-time error, but
     // CTFE does not seem powerful enough for that yet.
     if let Some(sysroot) = compile_time_sysroot() {
-        let sysroot_flag = "--sysroot".to_string();
-        if !rustc_args.contains(&sysroot_flag) {
+        let sysroot_flag = "--sysroot";
+        if !rustc_args.iter().any(|e| e == sysroot_flag) {
             // We need to overwrite the default that librustc would compute.
-            rustc_args.push(sysroot_flag);
+            rustc_args.push(sysroot_flag.to_owned());
             rustc_args.push(sysroot);
         }
     }
