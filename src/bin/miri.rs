@@ -17,6 +17,8 @@ extern crate syntax;
 use std::str::FromStr;
 use std::env;
 
+use hex::FromHexError;
+
 use rustc_interface::interface;
 use rustc::hir::def_id::LOCAL_CRATE;
 
@@ -153,7 +155,14 @@ fn main() {
                     if seed.is_some() {
                         panic!("Cannot specify -Zmiri-seed multiple times!");
                     }
-                    let seed_raw = hex::decode(arg.trim_start_matches("-Zmiri-seed=")).unwrap();
+                    let seed_raw = hex::decode(arg.trim_start_matches("-Zmiri-seed="))
+                        .unwrap_or_else(|err| match err {
+                            FromHexError::InvalidHexCharacter { .. } => panic!(
+                                "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F]"
+                            ),
+                            FromHexError::OddLength => panic!("-Zmiri-seed should have an even number of digits"),
+                            err => panic!("Unknown error decoding -Zmiri-seed as hex: {:?}", err),
+                        });
                     if seed_raw.len() > 8 {
                         panic!(format!("-Zmiri-seed must be at most 8 bytes, was {}", seed_raw.len()));
                     }
