@@ -111,7 +111,9 @@ fn _8() {
 }
 
 fn _9() {
-    macro_rules! stmt_mac((  ) => { let _ = (  ) ; });
+    macro_rules!
+    stmt_mac
+    {(  ) => { let _ = (  ) ; } }
 
     #[rustc_dummy]
     stmt_mac!();
@@ -128,7 +130,7 @@ fn _9() {
     let _ = ();
 }
 
-macro_rules! expr_mac((  ) => { (  ) });
+macro_rules! expr_mac {(  ) => { (  ) } }
 
 fn _10() {
     let _ = #[rustc_dummy] expr_mac!();

@@ -703,6 +703,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         &mut self,
         path: &ast::Path,
         has_bang: bool,
+        ident: Option<ast::Ident>,
         tts: TokenStream,
         delim: MacDelimiter,
         span: Span,
@@ -710,6 +711,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         self.print_path(path, false, 0);
         if has_bang {
             self.word("!");
+        }
+        if let Some(ident) = ident {
+            self.space();
+            self.print_ident(ident);
+            self.space();
         }
         match delim {
             MacDelimiter::Parenthesis => self.popen(),
@@ -1329,33 +1335,17 @@ impl<'a> State<'a> {
                 self.s.word(";");
             }
             ast::ItemKind::Mac(ref mac) => {
-                if item.ident.name == kw::Invalid {
-                    self.print_mac(mac);
-                    match mac.node.delim {
-                        MacDelimiter::Brace => {}
-                        _ => self.s.word(";"),
-                    }
-                } else {
-                    self.print_path(&mac.node.path, false, 0);
-                    self.s.word("! ");
-                    self.print_ident(item.ident);
-                    self.cbox(INDENT_UNIT);
-                    self.popen();
-                    self.print_tts(mac.node.stream(), true);
-                    self.pclose();
-                    self.s.word(";");
-                    self.end();
+                self.print_mac(mac);
+                match mac.node.delim {
+                    MacDelimiter::Brace => {}
+                    _ => self.s.word(";"),
                 }
             }
-            ast::ItemKind::MacroDef(ref tts) => {
-                self.s.word("macro_rules! ");
-                self.print_ident(item.ident);
-                self.cbox(INDENT_UNIT);
-                self.popen();
-                self.print_tts(tts.stream(), true);
-                self.pclose();
-                self.s.word(";");
-                self.end();
+            ast::ItemKind::MacroDef(ref macro_def) => {
+                let path = &ast::Path::from_ident(ast::Ident::with_empty_ctxt(sym::macro_rules));
+                self.print_mac_common(
+                    path, true, Some(item.ident), macro_def.stream(), MacDelimiter::Brace, item.span
+                );
             }
         }
         self.ann.post(self, AnnNode::Item(item))
@@ -1743,7 +1733,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_mac(&mut self, m: &ast::Mac) {
-        self.print_mac_common(&m.node.path, true, m.node.stream(), m.node.delim, m.span);
+        self.print_mac_common(&m.node.path, true, None, m.node.stream(), m.node.delim, m.span);
     }
 
 
