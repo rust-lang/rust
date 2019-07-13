@@ -33,6 +33,21 @@ fn slice_index() -> u8 {
     arr[5]
 }
 
+fn eq() {
+    const N: usize = 16;
+    type Array = [u8; N];
+    let array1: Array = [0; N];
+    let array2: Array = [0; N];
+    let array3: Array = [1; N];
+    assert_eq!(array1, array2);
+    assert_ne!(array1, array3);
+}
+
+fn debug() {
+    let array = [0u8, 42, 13, 71];
+    println!("{:?}", array);
+}
+
 fn main() {
     assert_eq!(empty_array(), []);
     assert_eq!(index_unsafe(), 20);
@@ -42,4 +57,6 @@ fn main() {
     assert_eq!(array_array(), [[5, 4], [3, 2], [1, 0]]);
     assert_eq!(array_repeat(), [42; 8]);
     assert_eq!(mini_array(), [42]);
+    eq();
+    debug();
 }
