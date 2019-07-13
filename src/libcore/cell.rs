@@ -290,7 +290,7 @@ impl<T:Copy> Clone for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Default> Default for Cell<T> {
+impl<T: Default> Default for Cell<T> {
     /// Creates a `Cell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Cell<T> {
@@ -299,7 +299,7 @@ impl<T:Default> Default for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:PartialEq + Copy> PartialEq for Cell<T> {
+impl<T: PartialEq + Copy> PartialEq for Cell<T> {
     #[inline]
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
@@ -307,10 +307,10 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 }
 
 #[stable(feature = "cell_eq", since = "1.2.0")]
-impl<T:Eq + Copy> Eq for Cell<T> {}
+impl<T: Eq + Copy> Eq for Cell<T> {}
 
 #[stable(feature = "cell_ord", since = "1.10.0")]
-impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
+impl<T: PartialOrd + Copy> PartialOrd for Cell<T> {
     #[inline]
     fn partial_cmp(&self, other: &Cell<T>) -> Option<Ordering> {
         self.get().partial_cmp(&other.get())
@@ -338,7 +338,7 @@ impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
 }
 
 #[stable(feature = "cell_ord", since = "1.10.0")]
-impl<T:Ord + Copy> Ord for Cell<T> {
+impl<T: Ord + Copy> Ord for Cell<T> {
     #[inline]
     fn cmp(&self, other: &Cell<T>) -> Ordering {
         self.get().cmp(&other.get())
@@ -1008,7 +1008,7 @@ impl<T: Clone> Clone for RefCell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Default> Default for RefCell<T> {
+impl<T: Default> Default for RefCell<T> {
     /// Creates a `RefCell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> RefCell<T> {
