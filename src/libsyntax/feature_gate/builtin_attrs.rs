@@ -498,6 +498,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         overflow checking behavior of several libcore functions that are inlined \
         across crates and will never be stable",
     ),
+    rustc_attr!(rustc_reservation_impl, Normal, template!(Word),
+                "the `#[rustc_reservation_impl]` attribute is internally used \
+                 for reserving for `for<T> From<!> for T` impl"
+    ),
     rustc_attr!(
         rustc_test_marker, Normal, template!(Word),
         "the `#[rustc_test_marker]` attribute is used internally to track tests",

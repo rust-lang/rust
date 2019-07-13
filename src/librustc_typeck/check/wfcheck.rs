@@ -398,18 +398,23 @@ fn check_impl<'tcx>(
 
         match *ast_trait_ref {
             Some(ref ast_trait_ref) => {
-                let trait_ref = fcx.tcx.impl_trait_ref(item_def_id).unwrap();
-                let trait_ref =
-                    fcx.normalize_associated_types_in(
-                        ast_trait_ref.path.span, &trait_ref);
-                let obligations =
-                    ty::wf::trait_obligations(fcx,
-                                                fcx.param_env,
-                                                fcx.body_id,
-                                                &trait_ref,
-                                                ast_trait_ref.path.span);
-                for obligation in obligations {
-                    fcx.register_predicate(obligation);
+                // `#[rustc_reservation_impl]` impls are not real impls and
+                // therefore don't need to be WF (the trait's `Self: Trait` predicate
+                // won't hold).
+                if !fcx.tcx.has_attr(item_def_id, sym::rustc_reservation_impl) {
+                    let trait_ref = fcx.tcx.impl_trait_ref(item_def_id).unwrap();
+                    let trait_ref =
+                        fcx.normalize_associated_types_in(
+                            ast_trait_ref.path.span, &trait_ref);
+                    let obligations =
+                        ty::wf::trait_obligations(fcx,
+                                                  fcx.param_env,
+                                                  fcx.body_id,
+                                                  &trait_ref,
+                                                  ast_trait_ref.path.span);
+                    for obligation in obligations {
+                        fcx.register_predicate(obligation);
+                    }
                 }
             }
             None => {
