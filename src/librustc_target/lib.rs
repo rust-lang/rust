@@ -11,9 +11,7 @@
 
 #![feature(box_syntax)]
 #![feature(nll)]
-#![feature(rustc_attrs)]
 #![feature(slice_patterns)]
-#![feature(step_trait)]
 
 #![deny(rust_2018_idioms)]
 #![deny(unused_lifetimes)]
@@ -22,9 +20,6 @@
 
 #[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving
-
-#[macro_use]
-extern crate rustc_data_structures;
 
 pub mod abi;
 pub mod spec;

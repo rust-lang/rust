@@ -57,12 +57,13 @@ impl Idx for u32 {
 /// `u32::MAX`. You can also customize things like the `Debug` impl,
 /// what traits are derived, and so forth via the macro.
 #[macro_export]
+#[allow_internal_unstable(step_trait, rustc_attrs)]
 macro_rules! newtype_index {
     // ---- public rules ----
 
     // Use default constants
     ($(#[$attrs:meta])* $v:vis struct $name:ident { .. }) => (
-        newtype_index!(
+        $crate::newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @attrs        [$(#[$attrs])*]
             @type         [$name]
@@ -74,7 +75,7 @@ macro_rules! newtype_index {
 
     // Define any constants
     ($(#[$attrs:meta])* $v:vis struct $name:ident { $($tokens:tt)+ }) => (
-        newtype_index!(
+        $crate::newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @attrs        [$(#[$attrs])*]
             @type         [$name]
@@ -258,7 +259,7 @@ macro_rules! newtype_index {
             }
         }
 
-        newtype_index!(
+        $crate::newtype_index!(
             @handle_debug
             @derives      [$($derives,)*]
             @type         [$type]
@@ -294,7 +295,7 @@ macro_rules! newtype_index {
      @derives      [$_derive:ident, $($derives:ident,)*]
      @type         [$type:ident]
      @debug_format [$debug_format:tt]) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @handle_debug
             @derives      [$($derives,)*]
             @type         [$type]
@@ -309,7 +310,7 @@ macro_rules! newtype_index {
      @debug_format [$debug_format:tt]
                    derive [$($derives:ident),*]
                    $($tokens:tt)*) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
@@ -329,7 +330,7 @@ macro_rules! newtype_index {
                    derive [$($derives:ident,)+]
                    ENCODABLE = custom
                    $($tokens:tt)*) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @attrs        [$(#[$attrs])*]
             @derives      [$($derives,)+]
             @type         [$type]
@@ -348,7 +349,7 @@ macro_rules! newtype_index {
      @debug_format [$debug_format:tt]
                    derive [$($derives:ident,)+]
                    $($tokens:tt)*) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @derives      [$($derives,)+ RustcEncodable,]
             @attrs        [$(#[$attrs])*]
             @type         [$type]
@@ -356,7 +357,7 @@ macro_rules! newtype_index {
             @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
-        newtype_index!(@decodable $type);
+        $crate::newtype_index!(@decodable $type);
     );
 
     // The case where no derives are added, but encodable is overridden. Don't
@@ -368,7 +369,7 @@ macro_rules! newtype_index {
      @debug_format [$debug_format:tt]
                    ENCODABLE = custom
                    $($tokens:tt)*) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @derives      []
             @attrs        [$(#[$attrs])*]
             @type         [$type]
@@ -385,7 +386,7 @@ macro_rules! newtype_index {
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    $($tokens:tt)*) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @derives      [RustcEncodable,]
             @attrs        [$(#[$attrs])*]
             @type         [$type]
@@ -393,7 +394,7 @@ macro_rules! newtype_index {
             @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
-        newtype_index!(@decodable $type);
+        $crate::newtype_index!(@decodable $type);
     );
 
     (@decodable $type:ident) => (
@@ -420,7 +421,7 @@ macro_rules! newtype_index {
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    $name:ident = $constant:expr) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @derives      [$($derives,)*]
             @attrs        [$(#[$attrs])*]
             @type         [$type]
@@ -439,7 +440,7 @@ macro_rules! newtype_index {
      @debug_format [$debug_format:tt]
                    $(#[doc = $doc:expr])*
                    const $name:ident = $constant:expr) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @derives      [$($derives,)*]
             @attrs        [$(#[$attrs])*]
             @type         [$type]
@@ -458,7 +459,7 @@ macro_rules! newtype_index {
      @debug_format [$debug_format:tt]
                    MAX = $max:expr,
                    $($tokens:tt)*) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @derives      [$($derives,)*]
             @attrs        [$(#[$attrs])*]
             @type         [$type]
@@ -477,7 +478,7 @@ macro_rules! newtype_index {
      @debug_format [$_debug_format:tt]
                    DEBUG_FORMAT = $debug_format:tt,
                    $($tokens:tt)*) => (
-        newtype_index!(
+        $crate::newtype_index!(
             @derives      [$($derives,)*]
             @attrs        [$(#[$attrs])*]
             @type         [$type]
@@ -499,7 +500,7 @@ macro_rules! newtype_index {
                    $($tokens:tt)*) => (
         $(#[doc = $doc])*
         pub const $name: $type = $type::from_u32_const($constant);
-        newtype_index!(
+        $crate::newtype_index!(
             @derives      [$($derives,)*]
             @attrs        [$(#[$attrs])*]
             @type         [$type]

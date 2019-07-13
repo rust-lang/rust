@@ -257,10 +257,46 @@ impl<'tcx> TyCtxt<'tcx> {
         false
     }
 
-    /// Returns the deeply last field of nested structures, or the same type,
-    /// if not a structure at all. Corresponds to the only possible unsized
-    /// field, and its type can be used to determine unsizing strategy.
-    pub fn struct_tail(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    /// Attempts to returns the deeply last field of nested structures, but
+    /// does not apply any normalization in its search. Returns the same type
+    /// if input `ty` is not a structure at all.
+    pub fn struct_tail_without_normalization(self, ty: Ty<'tcx>) -> Ty<'tcx>
+    {
+        let tcx = self;
+        tcx.struct_tail_with_normalize(ty, |ty| ty)
+    }
+
+    /// Returns the deeply last field of nested structures, or the same type if
+    /// not a structure at all. Corresponds to the only possible unsized field,
+    /// and its type can be used to determine unsizing strategy.
+    ///
+    /// Should only be called if `ty` has no inference variables and does not
+    /// need its lifetimes preserved (e.g. as part of codegen); otherwise
+    /// normalization attempt may cause compiler bugs.
+    pub fn struct_tail_erasing_lifetimes(self,
+                                         ty: Ty<'tcx>,
+                                         param_env: ty::ParamEnv<'tcx>)
+                                         -> Ty<'tcx>
+    {
+        let tcx = self;
+        tcx.struct_tail_with_normalize(ty, |ty| tcx.normalize_erasing_regions(param_env, ty))
+    }
+
+    /// Returns the deeply last field of nested structures, or the same type if
+    /// not a structure at all. Corresponds to the only possible unsized field,
+    /// and its type can be used to determine unsizing strategy.
+    ///
+    /// This is parameterized over the normalization strategy (i.e. how to
+    /// handle `<T as Trait>::Assoc` and `impl Trait`); pass the identity
+    /// function to indicate no normalization should take place.
+    ///
+    /// See also `struct_tail_erasing_lifetimes`, which is suitable for use
+    /// during codegen.
+    pub fn struct_tail_with_normalize(self,
+                                      mut ty: Ty<'tcx>,
+                                      normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>)
+                                      -> Ty<'tcx>
+    {
         loop {
             match ty.sty {
                 ty::Adt(def, substs) => {
@@ -281,6 +317,15 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
 
+                ty::Projection(_) | ty::Opaque(..) => {
+                    let normalized = normalize(ty);
+                    if ty == normalized {
+                        return ty;
+                    } else {
+                        ty = normalized;
+                    }
+                }
+
                 _ => {
                     break;
                 }
@@ -294,10 +339,35 @@ impl<'tcx> TyCtxt<'tcx> {
     /// structure definitions.
     /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
     /// whereas struct_tail produces `T`, and `Trait`, respectively.
-    pub fn struct_lockstep_tails(self,
-                                 source: Ty<'tcx>,
-                                 target: Ty<'tcx>)
-                                 -> (Ty<'tcx>, Ty<'tcx>) {
+    ///
+    /// Should only be called if the types have no inference variables and do
+    /// not need their lifetimes preserved (e.g. as part of codegen); otherwise
+    /// normalization attempt may cause compiler bugs.
+    pub fn struct_lockstep_tails_erasing_lifetimes(self,
+                                                   source: Ty<'tcx>,
+                                                   target: Ty<'tcx>,
+                                                   param_env: ty::ParamEnv<'tcx>)
+                                                   -> (Ty<'tcx>, Ty<'tcx>)
+    {
+        let tcx = self;
+        tcx.struct_lockstep_tails_with_normalize(
+            source, target, |ty| tcx.normalize_erasing_regions(param_env, ty))
+    }
+
+    /// Same as applying struct_tail on `source` and `target`, but only
+    /// keeps going as long as the two types are instances of the same
+    /// structure definitions.
+    /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
+    /// whereas struct_tail produces `T`, and `Trait`, respectively.
+    ///
+    /// See also `struct_lockstep_tails_erasing_lifetimes`, which is suitable for use
+    /// during codegen.
+    pub fn struct_lockstep_tails_with_normalize(self,
+                                                source: Ty<'tcx>,
+                                                target: Ty<'tcx>,
+                                                normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>)
+                                                -> (Ty<'tcx>, Ty<'tcx>)
+    {
         let (mut a, mut b) = (source, target);
         loop {
             match (&a.sty, &b.sty) {
@@ -319,6 +389,22 @@ impl<'tcx> TyCtxt<'tcx> {
                         break;
                     }
                 },
+                (ty::Projection(_), _) | (ty::Opaque(..), _) |
+                (_, ty::Projection(_)) | (_, ty::Opaque(..)) => {
+                    // If either side is a projection, attempt to
+                    // progress via normalization. (Should be safe to
+                    // apply to both sides as normalization is
+                    // idempotent.)
+                    let a_norm = normalize(a);
+                    let b_norm = normalize(b);
+                    if a == a_norm && b == b_norm {
+                        break;
+                    } else {
+                        a = a_norm;
+                        b = b_norm;
+                    }
+                }
+
                 _ => break,
             }
         }
