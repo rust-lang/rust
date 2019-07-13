@@ -617,21 +617,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                 ast::AttrStyle::Outer => self.word("#["),
             }
             self.ibox(0);
-            if let Some(mi) = attr.meta() {
-                self.print_meta_item(&mi);
-            } else {
-                match attr.tokens.trees().next() {
-                    Some(TokenTree::Delimited(_, delim, tts)) => {
-                        self.print_mac_common(
-                            Some(&attr.path), false, None, delim, tts, true, attr.span
-                        );
-                    }
-                    tree => {
-                        self.print_path(&attr.path, false, 0);
-                        if tree.is_some() {
-                            self.space();
-                            self.print_tts(attr.tokens.clone(), true);
-                        }
+            match attr.tokens.trees().next() {
+                Some(TokenTree::Delimited(_, delim, tts)) => {
+                    self.print_mac_common(
+                        Some(&attr.path), false, None, delim, tts, true, attr.span
+                    );
+                }
+                tree => {
+                    self.print_path(&attr.path, false, 0);
+                    if tree.is_some() {
+                        self.space();
+                        self.print_tts(attr.tokens.clone(), true);
                     }
                 }
             }
