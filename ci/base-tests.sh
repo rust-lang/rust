@@ -31,11 +31,16 @@ export CARGO_TARGET_DIR=`pwd`/target/
   sysroot=$(./target/debug/clippy-driver --print sysroot)
   test $sysroot = $(rustc --print sysroot)
 
-  sysroot=$(./target/debug/clippy-driver --sysroot /tmp --print sysroot)
-  test $sysroot = /tmp
+  if [ -z $OS_WINDOWS ]; then
+    desired_sysroot=/tmp
+  else
+    desired_sysroot=C:/tmp
+  fi
+  sysroot=$(./target/debug/clippy-driver --sysroot $desired_sysroot --print sysroot)
+  test $sysroot = $desired_sysroot
 
-  sysroot=$(SYSROOT=/tmp ./target/debug/clippy-driver --print sysroot)
-  test $sysroot = /tmp
+  sysroot=$(SYSROOT=$desired_sysroot ./target/debug/clippy-driver --print sysroot)
+  test $sysroot = $desired_sysroot
 
   # Make sure this isn't set - clippy-driver should cope without it
   unset CARGO_MANIFEST_DIR
