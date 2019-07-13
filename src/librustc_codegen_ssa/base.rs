@@ -128,7 +128,8 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
     target: Ty<'tcx>,
     old_info: Option<Cx::Value>,
 ) -> Cx::Value {
-    let (source, target) = cx.tcx().struct_lockstep_tails(source, target);
+    let (source, target) =
+        cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, cx.param_env());
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
             cx.const_usize(len.unwrap_usize(cx.tcx()))
