@@ -2038,6 +2038,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                     vis.visit_ty(ty);
 
                     for target in &vis.found {
+                        if in_external_macro(cx.sess(), generics.span) {
+                            continue;
+                        }
                         let generics_suggestion_span = generics.span.substitute_dummy({
                             let pos = snippet_opt(cx, item.span.until(body.arguments[0].pat.span))
                                 .and_then(|snip| {

@@ -1,4 +1,8 @@
+// aux-build:implicit_hasher_macros.rs
 #![allow(unused)]
+
+#[macro_use]
+extern crate implicit_hasher_macros;
 
 use std::cmp::Eq;
 use std::collections::{HashMap, HashSet};
@@ -87,5 +91,8 @@ gen!(fn bar);
 #[path = "../auxiliary/test_macro.rs"]
 pub mod test_macro;
 __implicit_hasher_test_macro!(impl<K, V> for HashMap<K, V> where V: test_macro::A);
+
+// #4260
+implicit_hasher_fn!();
 
 fn main() {}
