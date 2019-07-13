@@ -99,6 +99,23 @@ void LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
   unwrap(PMBR)->populateThinLTOPassManager(*unwrap(PMR));
 }
 
+extern "C"
+void LLVMRustAddLastExtensionPasses(
+    LLVMPassManagerBuilderRef PMBR, LLVMPassRef *Passes, size_t NumPasses) {
+  auto AddExtensionPasses = [Passes, NumPasses](
+      const PassManagerBuilder &Builder, PassManagerBase &PM) {
+    for (size_t I = 0; I < NumPasses; I++) {
+      PM.add(unwrap(Passes[I]));
+    }
+  };
+  // Add the passes to both of the pre-finalization extension points,
+  // so they are run for optimized and non-optimized builds.
+  unwrap(PMBR)->addExtension(PassManagerBuilder::EP_OptimizerLast,
+                             AddExtensionPasses);
+  unwrap(PMBR)->addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                             AddExtensionPasses);
+}
+
 #ifdef LLVM_COMPONENT_X86
 #define SUBTARGET_X86 SUBTARGET(X86)
 #else
