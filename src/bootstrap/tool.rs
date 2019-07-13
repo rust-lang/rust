@@ -109,36 +109,63 @@ impl Step for ToolBuild {
                     continue
                 }
 
-                // Don't worry about libs that turn out to be host dependencies
-                // or build scripts, we only care about target dependencies that
-                // are in `deps`.
-                if let Some(maybe_target) = val.1
-                    .parent()                   // chop off file name
-                    .and_then(|p| p.parent())   // chop off `deps`
-                    .and_then(|p| p.parent())   // chop off `release`
-                    .and_then(|p| p.file_name())
-                    .and_then(|p| p.to_str())
-                {
-                    if maybe_target != &*target {
-                        continue
+                // Don't worry about compiles that turn out to be host
+                // dependencies or build scripts. To skip these we look for
+                // anything that goes in `.../release/deps` but *doesn't* go in
+                // `$target/release/deps`. This ensure that outputs in
+                // `$target/release` are still considered candidates for
+                // deduplication.
+                if let Some(parent) = val.1.parent() {
+                    if parent.ends_with("release/deps") {
+                        let maybe_target = parent
+                            .parent()
+                            .and_then(|p| p.parent())
+                            .and_then(|p| p.file_name())
+                            .and_then(|p| p.to_str())
+                            .unwrap();
+                        if maybe_target != &*target {
+                            continue;
+                        }
                     }
                 }
 
+                // Record that we've built an artifact for `id`, and if one was
+                // already listed then we need to see if we reused the same
+                // artifact or produced a duplicate.
                 let mut artifacts = builder.tool_artifacts.borrow_mut();
                 let prev_artifacts = artifacts
                     .entry(target)
                     .or_default();
-                if let Some(prev) = prev_artifacts.get(&*id) {
-                    if prev.1 != val.1 {
-                        duplicates.push((
-                            id.to_string(),
-                            val,
-                            prev.clone(),
-                        ));
+                let prev = match prev_artifacts.get(&*id) {
+                    Some(prev) => prev,
+                    None => {
+                        prev_artifacts.insert(id.to_string(), val);
+                        continue;
                     }
-                    return
+                };
+                if prev.1 == val.1 {
+                    return; // same path, same artifact
                 }
-                prev_artifacts.insert(id.to_string(), val);
+
+                // If the paths are different and one of them *isn't* inside of
+                // `release/deps`, then it means it's probably in
+                // `$target/release`, or it's some final artifact like
+                // `libcargo.rlib`. In these situations Cargo probably just
+                // copied it up from `$target/release/deps/libcargo-xxxx.rlib`,
+                // so if the features are equal we can just skip it.
+                let prev_no_hash = prev.1.parent().unwrap().ends_with("release/deps");
+                let val_no_hash = val.1.parent().unwrap().ends_with("release/deps");
+                if prev.2 == val.2 || !prev_no_hash || !val_no_hash {
+                    return;
+                }
+
+                // ... and otherwise this looks like we duplicated some sort of
+                // compilation, so record it to generate an error later.
+                duplicates.push((
+                    id.to_string(),
+                    val,
+                    prev.clone(),
+                ));
             }
         });
 
