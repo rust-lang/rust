@@ -421,8 +421,8 @@ fn downgrade_if_error(diag: &mut Diagnostic) {
     }
 }
 
-pub struct MirBorrowckCtxt<'cx, 'tcx> {
-    pub(crate) infcx: &'cx InferCtxt<'cx, 'tcx>,
+crate struct MirBorrowckCtxt<'cx, 'tcx> {
+    crate infcx: &'cx InferCtxt<'cx, 'tcx>,
     body: &'cx Body<'tcx>,
     mir_def_id: DefId,
     move_data: &'cx MoveData<'tcx>,
