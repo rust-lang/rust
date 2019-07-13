@@ -16,15 +16,17 @@ use std::borrow::Cow;
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Allocation<Tag=(),Extra=()> {
     /// The actual bytes of the allocation.
-    /// Note that the bytes of a pointer represent the offset of the pointer
-    pub bytes: Vec<u8>,
+    /// Note that the bytes of a pointer represent the offset of the pointer.
+    bytes: Vec<u8>,
     /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
     /// at the given offset.
     pub relocations: Relocations<Tag>,
-    /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
-    pub undef_mask: UndefMask,
+    /// Denotes which part of this allocation is initialized.
+    undef_mask: UndefMask,
+    /// The size of the allocation. Currently, must always equal `bytes.len()`.
+    pub size: Size,
     /// The alignment of the allocation to detect unaligned reads.
     pub align: Align,
     /// Whether the allocation is mutable.
@@ -85,11 +87,12 @@ impl<Tag> Allocation<Tag> {
     /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align) -> Self {
         let bytes = slice.into().into_owned();
-        let undef_mask = UndefMask::new(Size::from_bytes(bytes.len() as u64), true);
+        let size = Size::from_bytes(bytes.len() as u64);
         Self {
             bytes,
             relocations: Relocations::new(),
-            undef_mask,
+            undef_mask: UndefMask::new(size, true),
+            size,
             align,
             mutability: Mutability::Immutable,
             extra: (),
@@ -106,10 +109,26 @@ impl<Tag> Allocation<Tag> {
             bytes: vec![0; size.bytes() as usize],
             relocations: Relocations::new(),
             undef_mask: UndefMask::new(size, false),
+            size,
             align,
             mutability: Mutability::Mutable,
             extra: (),
         }
+    }
+}
+
+/// Raw accessors. Provide access to otherwise private bytes.
+impl<Tag, Extra> Allocation<Tag, Extra> {
+    pub fn len(&self) -> usize {
+        self.size.bytes() as usize
+    }
+
+    /// Look at a slice which may describe undefined bytes or describe a relocation. This differs
+    /// from `get_bytes_with_undef_and_ptr` in that it does no relocation checks (even on the
+    /// edges) at all. It further ignores `AllocationExtra` callbacks.
+    /// This must not be used for reads affecting the interpreter execution.
+    pub fn inspect_with_undef_and_ptr_outside_interpreter(&self, range: Range<usize>) -> &[u8] {
+        &self.bytes[range]
     }
 }
 
@@ -132,9 +151,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         );
         let end = end.bytes() as usize;
         assert!(
-            end <= self.bytes.len(),
+            end <= self.len(),
             "Out-of-bounds access at offset {}, size {} in allocation of size {}",
-            offset.bytes(), size.bytes(), self.bytes.len()
+            offset.bytes(), size.bytes(), self.len()
         );
         (offset.bytes() as usize)..end
     }

@@ -176,15 +176,21 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::Allocation {
         hasher: &mut StableHasher<W>,
     ) {
         let mir::interpret::Allocation {
-            bytes, relocations, undef_mask, align, mutability,
+            relocations, align, mutability, size,
             extra: _,
+            .. /* private bytes and undef_mask */
         } = self;
+
+        let bytes = self.inspect_with_undef_and_ptr_outside_interpreter(0..self.len());
+        let undef_mask = self.undef_mask();
+
         bytes.hash_stable(hcx, hasher);
         relocations.len().hash_stable(hcx, hasher);
         for reloc in relocations.iter() {
             reloc.hash_stable(hcx, hasher);
         }
         undef_mask.hash_stable(hcx, hasher);
+        size.hash_stable(hcx, hasher);
         align.hash_stable(hcx, hasher);
         mutability.hash_stable(hcx, hasher);
     }
