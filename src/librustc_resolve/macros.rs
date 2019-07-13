@@ -328,7 +328,7 @@ impl<'a> Resolver<'a> {
                 if attr_kind == NonMacroAttrKind::Custom {
                     assert!(path.segments.len() == 1);
                     if !features.custom_attribute {
-                        let msg = format!("the attribute `{}` is currently unknown to the \
+                        let msg = format!("The attribute `{}` is currently unknown to the \
                                             compiler and may have meaning added to it in the \
                                             future", path);
                         self.report_unknown_attribute(

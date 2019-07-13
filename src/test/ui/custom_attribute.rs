@@ -1,9 +1,9 @@
 #![feature(stmt_expr_attributes)]
 
-#[foo] //~ ERROR the attribute `foo`
+#[foo] //~ ERROR The attribute `foo`
 fn main() {
-    #[foo] //~ ERROR the attribute `foo`
+    #[foo] //~ ERROR The attribute `foo`
     let x = ();
-    #[foo] //~ ERROR the attribute `foo`
+    #[foo] //~ ERROR The attribute `foo`
     x
 }

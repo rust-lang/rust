@@ -1,4 +1,4 @@
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:7:3
    |
 LL | #[fake_attr]
@@ -7,7 +7,7 @@ LL | #[fake_attr]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:8:3
    |
 LL | #[fake_attr(100)]
@@ -16,7 +16,7 @@ LL | #[fake_attr(100)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:9:3
    |
 LL | #[fake_attr(1, 2, 3)]
@@ -25,7 +25,7 @@ LL | #[fake_attr(1, 2, 3)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:10:3
    |
 LL | #[fake_attr("hello")]
@@ -34,7 +34,7 @@ LL | #[fake_attr("hello")]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:11:3
    |
 LL | #[fake_attr(name = "hello")]
@@ -43,7 +43,7 @@ LL | #[fake_attr(name = "hello")]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:12:3
    |
 LL | #[fake_attr(1, "hi", key = 12, true, false)]
@@ -52,7 +52,7 @@ LL | #[fake_attr(1, "hi", key = 12, true, false)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:13:3
    |
 LL | #[fake_attr(key = "hello", val = 10)]
@@ -61,7 +61,7 @@ LL | #[fake_attr(key = "hello", val = 10)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:14:3
    |
 LL | #[fake_attr(key("hello"), val(10))]
@@ -70,7 +70,7 @@ LL | #[fake_attr(key("hello"), val(10))]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:15:3
    |
 LL | #[fake_attr(enabled = true, disabled = false)]
@@ -79,7 +79,7 @@ LL | #[fake_attr(enabled = true, disabled = false)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:16:3
    |
 LL | #[fake_attr(true)]
@@ -88,7 +88,7 @@ LL | #[fake_attr(true)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:17:3
    |
 LL | #[fake_attr(pi = 3.14159)]
@@ -97,7 +97,7 @@ LL | #[fake_attr(pi = 3.14159)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:18:3
    |
 LL | #[fake_attr(b"hi")]
@@ -106,7 +106,7 @@ LL | #[fake_attr(b"hi")]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
-error[E0658]: the attribute `fake_doc` is currently unknown to the compiler and may have meaning added to it in the future
+error[E0658]: The attribute `fake_doc` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/feature-gate-custom_attribute.rs:19:3
    |
 LL | #[fake_doc(r"doc")]
