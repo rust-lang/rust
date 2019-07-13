@@ -4,7 +4,7 @@ use crate::ast::{Attribute, MacDelimiter, GenericArg};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
-use crate::parse::token::{self, BinOpToken, Nonterminal, Token, TokenKind};
+use crate::parse::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
 use crate::parse::lexer::comments;
 use crate::parse::{self, ParseSess};
 use crate::print::pp::{self, Breaks};
@@ -619,9 +619,23 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             if let Some(mi) = attr.meta() {
                 self.print_meta_item(&mi);
             } else {
-                self.print_path(&attr.path, false, 0);
-                self.space();
-                self.print_tts(attr.tokens.clone(), true);
+                match attr.tokens.trees().next() {
+                    Some(TokenTree::Delimited(_, delim, tts)) => {
+                        let delim = match delim {
+                            DelimToken::Brace => MacDelimiter::Brace,
+                            DelimToken::Bracket => MacDelimiter::Bracket,
+                            DelimToken::Paren | DelimToken::NoDelim => MacDelimiter::Parenthesis,
+                        };
+                        self.print_mac_common(&attr.path, false, None, tts, delim, attr.span);
+                    }
+                    tree => {
+                        self.print_path(&attr.path, false, 0);
+                        if tree.is_some() {
+                            self.space();
+                            self.print_tts(attr.tokens.clone(), true);
+                        }
+                    }
+                }
             }
             self.word("]");
         }
