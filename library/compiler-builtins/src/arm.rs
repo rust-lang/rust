@@ -135,8 +135,6 @@ pub unsafe extern "aapcs" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: us
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 #[cfg_attr(thumb, linkage = "weak")]
 pub unsafe extern "aapcs" fn __aeabi_memcpy4(dest: *mut u8, src: *const u8, mut n: usize) {
-    use core::ptr;
-
     // We are guaranteed 4-alignment, so accessing at u32 is okay.
     let mut dest = dest as *mut u32;
     let mut src = src as *mut u32;
@@ -191,8 +189,6 @@ pub unsafe extern "aapcs" fn __aeabi_memset(dest: *mut u8, n: usize, c: i32) {
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 #[cfg_attr(thumb, linkage = "weak")]
 pub unsafe extern "aapcs" fn __aeabi_memset4(dest: *mut u8, mut n: usize, c: i32) {
-    use core::ptr;
-
     let mut dest = dest as *mut u32;
 
     let byte = (c as u32) & 0xff;
