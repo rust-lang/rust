@@ -93,6 +93,7 @@
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
+#![feature(slice_from_raw_parts)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(std_internals)]
