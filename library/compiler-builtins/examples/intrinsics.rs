@@ -350,8 +350,8 @@ fn run() {
     // }
 }
 
-fn something_with_a_dtor(f: &Fn()) {
-    struct A<'a>(&'a (Fn() + 'a));
+fn something_with_a_dtor(f: &dyn Fn()) {
+    struct A<'a>(&'a (dyn Fn() + 'a));
 
     impl<'a> Drop for A<'a> {
         fn drop(&mut self) {
