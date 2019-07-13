@@ -1,9 +1,9 @@
-#![feature(rustc_attrs, rustc_private, step_trait)]
+#![feature(rustc_private)]
 
-#[macro_use] extern crate rustc_data_structures;
+extern crate rustc_data_structures;
 extern crate serialize as rustc_serialize;
 
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::{newtype_index, indexed_vec::Idx};
 
 newtype_index!(struct MyIdx { MAX = 0xFFFF_FFFA });
 
