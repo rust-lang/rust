@@ -1105,7 +1105,7 @@ pub trait Write {
     /// an [`Err`] variant.
     ///
     /// If the return value is [`Ok(n)`] then it must be guaranteed that
-    /// `0 <= n <= buf.len()`. A return value of `0` typically means that the
+    /// `n <= buf.len()`. A return value of `0` typically means that the
     /// underlying object is no longer able to accept bytes and will likely not
     /// be able to in the future as well, or that the buffer provided is empty.
     ///
