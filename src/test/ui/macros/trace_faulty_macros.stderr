@@ -17,7 +17,7 @@ LL |     my_faulty_macro!();
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `my_faulty_macro! {  }`
-   = note: to `my_faulty_macro ! ( bcd ) ;`
+   = note: to `my_faulty_macro ! (bcd) ;`
    = note: expanding `my_faulty_macro! { bcd }`
 
 error: recursion limit reached while expanding the macro `my_recursive_macro`
@@ -38,13 +38,13 @@ LL |     my_recursive_macro!();
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! (  ) ;`
+   = note: to `my_recursive_macro ! () ;`
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! (  ) ;`
+   = note: to `my_recursive_macro ! () ;`
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! (  ) ;`
+   = note: to `my_recursive_macro ! () ;`
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! (  ) ;`
+   = note: to `my_recursive_macro ! () ;`
 
 error: aborting due to 2 previous errors
 

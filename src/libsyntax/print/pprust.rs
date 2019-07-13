@@ -621,12 +621,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             } else {
                 match attr.tokens.trees().next() {
                     Some(TokenTree::Delimited(_, delim, tts)) => {
-                        let delim = match delim {
-                            DelimToken::Brace => MacDelimiter::Brace,
-                            DelimToken::Bracket => MacDelimiter::Bracket,
-                            DelimToken::Paren | DelimToken::NoDelim => MacDelimiter::Parenthesis,
-                        };
-                        self.print_mac_common(&attr.path, false, None, tts, delim, attr.span);
+                        self.print_mac_common(
+                            Some(&attr.path), false, None, delim, tts, true, attr.span
+                        );
                     }
                     tree => {
                         self.print_path(&attr.path, false, 0);
@@ -692,13 +689,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                     _ => {}
                 }
             }
-            TokenTree::Delimited(_, delim, tts) => {
-                self.word(token_kind_to_string(&token::OpenDelim(delim)));
-                self.space();
-                self.print_tts(tts, convert_dollar_crate);
-                self.space();
-                self.word(token_kind_to_string(&token::CloseDelim(delim)))
-            },
+            TokenTree::Delimited(dspan, delim, tts) => {
+                self.print_mac_common(
+                    None, false, None, delim, tts, convert_dollar_crate, dspan.entire()
+                );
+            }
         }
     }
 
@@ -715,14 +710,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
 
     fn print_mac_common(
         &mut self,
-        path: &ast::Path,
+        path: Option<&ast::Path>,
         has_bang: bool,
         ident: Option<ast::Ident>,
+        delim: DelimToken,
         tts: TokenStream,
-        delim: MacDelimiter,
+        convert_dollar_crate: bool,
         span: Span,
     ) {
-        self.print_path(path, false, 0);
+        if let Some(path) = path {
+            self.print_path(path, false, 0);
+        }
         if has_bang {
             self.word("!");
         }
@@ -732,18 +730,20 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             self.space();
         }
         match delim {
-            MacDelimiter::Parenthesis => self.popen(),
-            MacDelimiter::Bracket => self.word("["),
-            MacDelimiter::Brace => {
+            DelimToken::Paren => self.popen(),
+            DelimToken::Bracket => self.word("["),
+            DelimToken::NoDelim => self.word(" "),
+            DelimToken::Brace => {
                 self.head("");
                 self.bopen();
             }
         }
-        self.print_tts(tts, true);
+        self.print_tts(tts, convert_dollar_crate);
         match delim {
-            MacDelimiter::Parenthesis => self.pclose(),
-            MacDelimiter::Bracket => self.word("]"),
-            MacDelimiter::Brace => self.bclose(span),
+            DelimToken::Paren => self.pclose(),
+            DelimToken::Bracket => self.word("]"),
+            DelimToken::NoDelim => self.word(" "),
+            DelimToken::Brace => self.bclose(span),
         }
     }
 
@@ -1356,9 +1356,14 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
-                let path = &ast::Path::from_ident(ast::Ident::with_empty_ctxt(sym::macro_rules));
                 self.print_mac_common(
-                    path, true, Some(item.ident), macro_def.stream(), MacDelimiter::Brace, item.span
+                    Some(&ast::Path::from_ident(ast::Ident::with_empty_ctxt(sym::macro_rules))),
+                    true,
+                    Some(item.ident),
+                    DelimToken::Brace,
+                    macro_def.stream(),
+                    true,
+                    item.span,
                 );
             }
         }
@@ -1747,9 +1752,10 @@ impl<'a> State<'a> {
     }
 
     crate fn print_mac(&mut self, m: &ast::Mac) {
-        self.print_mac_common(&m.node.path, true, None, m.node.stream(), m.node.delim, m.span);
+        self.print_mac_common(
+            Some(&m.node.path), true, None, m.node.delim.to_token(), m.node.stream(), true, m.span
+        );
     }
-
 
     fn print_call_post(&mut self, args: &[P<ast::Expr>]) {
         self.popen();
