@@ -497,7 +497,7 @@ where
 
     fn collect_module(&mut self, module: &raw::ModuleData) {
         match module {
-            // inline module, just recursive
+            // inline module, just recurse
             raw::ModuleData::Definition { name, items, ast_id } => {
                 let module_id =
                     self.push_child_module(name.clone(), ast_id.with_file_id(self.file_id), None);
@@ -509,7 +509,7 @@ where
                 }
                 .collect(&*items);
             }
-            // out of line module, resolve, parse and recursive
+            // out of line module, resolve, parse and recurse
             raw::ModuleData::Declaration { name, ast_id, attr_path } => {
                 let ast_id = ast_id.with_file_id(self.file_id);
                 let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
