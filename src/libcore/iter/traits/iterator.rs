@@ -2717,7 +2717,7 @@ impl<I: Iterator + Sized> Iterator for &mut I {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
     }
-    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R where
         F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
         (**self).try_fold(init, f)
