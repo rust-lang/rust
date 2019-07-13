@@ -1263,6 +1263,14 @@ impl<T> [T] {
     /// assert!(v.contains(&30));
     /// assert!(!v.contains(&50));
     /// ```
+    ///
+    /// If you only have a borrowed `T`, use `any`:
+    ///
+    /// ```
+    /// let v = [String::from("hello"), String::from("world")];
+    /// assert!(v.iter().any(|e| e == "hello"));
+    /// assert!(!v.iter().any(|e| e == "hi"));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains(&self, x: &T) -> bool
         where T: PartialEq
