@@ -32,7 +32,7 @@ use crate::sys_common::{AsInner, IntoInner, FromInner};
 /// in each pair are owned strings; the latter are borrowed
 /// references.
 ///
-/// Note, `OsString` and `OsStr` internally do not necessarily hold strings in
+/// Note, `OsString` and [`OsStr`] internally do not necessarily hold strings in
 /// the form native to the platform; While on Unix, strings are stored as a
 /// sequence of 8-bit values, on Windows, where strings are 16-bit value based
 /// as just discussed, strings are also actually stored as a sequence of 8-bit
@@ -667,10 +667,11 @@ impl From<&OsStr> for Box<OsStr> {
 
 #[stable(feature = "os_string_from_box", since = "1.18.0")]
 impl From<Box<OsStr>> for OsString {
-    /// Converts a `Box<OsStr>` into a `OsString` without copying or allocating.
+    /// Converts a [`Box`]`<`[`OsStr`]`>` into a `OsString` without copying or
+    /// allocating.
     ///
     /// [`Box`]: ../boxed/struct.Box.html
-    /// [`OsString`]: ../ffi/struct.OsString.html
+    /// [`OsStr`]: ../ffi/struct.OsStr.html
     fn from(boxed: Box<OsStr>) -> OsString {
         boxed.into_os_string()
     }
