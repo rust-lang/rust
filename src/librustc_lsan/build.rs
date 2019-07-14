@@ -20,6 +20,7 @@ fn main() {
             .out_dir(&native.out_dir)
             .build_target(&target)
             .build();
+        native.fixup_sanitizer_lib_name("lsan");
     }
     println!("cargo:rerun-if-env-changed=LLVM_CONFIG");
 }

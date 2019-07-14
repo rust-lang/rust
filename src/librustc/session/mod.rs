@@ -111,11 +111,12 @@ pub struct Session {
     /// The maximum number of stackframes allowed in const eval.
     pub const_eval_stack_frame_limit: usize,
 
-    /// The metadata::creader module may inject an allocator/panic_runtime
-    /// dependency if it didn't already find one, and this tracks what was
-    /// injected.
+    /// The metadata::creader module may inject an allocator/panic_runtime/
+    /// sanitizer dependency if it didn't already find one, and this tracks what
+    /// was injected.
     pub allocator_kind: Once<Option<AllocatorKind>>,
     pub injected_panic_runtime: Once<Option<CrateNum>>,
+    pub injected_sanitizer_runtime: Once<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -1249,6 +1250,7 @@ fn build_session_(
         next_node_id: OneThread::new(Cell::new(NodeId::from_u32(1))),
         allocator_kind: Once::new(),
         injected_panic_runtime: Once::new(),
+        injected_sanitizer_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,

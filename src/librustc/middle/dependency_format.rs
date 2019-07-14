@@ -210,6 +210,8 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
     // quite yet, so do so here.
     activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
+    activate_injected_dep(*sess.injected_sanitizer_runtime.get(), &mut ret,
+                          &|cnum| tcx.is_sanitizer_runtime(cnum));
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we
@@ -285,11 +287,13 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
         }
     }).collect::<Vec<_>>();
 
-    // Our allocator/panic runtime may not have been linked above if it wasn't
-    // explicitly linked, which is the case for any injected dependency. Handle
-    // that here and activate them.
+    // Our allocator/panic/sanitizer runtime may not have been linked above if
+    // it wasn't explicitly linked, which is the case for any injected
+    // dependency. Handle that here and activate them.
     activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
+    activate_injected_dep(*sess.injected_sanitizer_runtime.get(), &mut ret,
+                          &|cnum| tcx.is_sanitizer_runtime(cnum));
 
     Some(ret)
 }

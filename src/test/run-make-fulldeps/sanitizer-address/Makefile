@@ -5,12 +5,7 @@
 LOG := $(TMPDIR)/log.txt
 
 # NOTE the address sanitizer only supports x86_64 linux and macOS
-
-ifeq ($(TARGET),x86_64-apple-darwin)
-EXTRA_RUSTFLAG=-C rpath
-else
 ifeq ($(TARGET),x86_64-unknown-linux-gnu)
-
 # Apparently there are very specific Linux kernels, notably the one that's
 # currently on Travis CI, which contain a buggy commit that triggers failures in
 # the ASan implementation, detailed at google/sanitizers#837. As noted in
@@ -19,7 +14,6 @@ ifeq ($(TARGET),x86_64-unknown-linux-gnu)
 # longer running kernel 4.4.0-93 we can remove this and pass an empty set of
 # flags again.
 EXTRA_RUSTFLAG=-C relocation-model=dynamic-no-pic
-endif
 endif
 
 all:

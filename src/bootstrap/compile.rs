@@ -285,7 +285,7 @@ fn copy_apple_sanitizer_dylibs(
     platform: &str,
     into: &Path,
 ) {
-    for &sanitizer in &["asan", "tsan"] {
+    for &sanitizer in &["asan", "lsan", "tsan"] {
         let filename = format!("lib__rustc__clang_rt.{}_{}_dynamic.dylib", sanitizer, platform);
         let mut src_path = native_dir.join(sanitizer);
         src_path.push("build");

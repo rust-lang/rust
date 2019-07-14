@@ -762,105 +762,78 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_sanitizer_runtime(&mut self) {
-        if let Some(ref sanitizer) = self.sess.opts.debugging_opts.sanitizer {
-            // Sanitizers can only be used on some tested platforms with
-            // executables linked to `std`
-            const ASAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
-                                                      "x86_64-apple-darwin"];
-            const TSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
-                                                      "x86_64-apple-darwin"];
-            const LSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
-            const MSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
+        // Sanitizers can only be used on some tested platforms with
+        // executables linked to `std`
+        const ASAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
+                                                "x86_64-apple-darwin"];
+        const TSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
+                                                "x86_64-apple-darwin"];
+        const LSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
+                                                "x86_64-apple-darwin"];
+        const MSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
 
-            let supported_targets = match *sanitizer {
-                Sanitizer::Address => ASAN_SUPPORTED_TARGETS,
-                Sanitizer::Thread => TSAN_SUPPORTED_TARGETS,
-                Sanitizer::Leak => LSAN_SUPPORTED_TARGETS,
-                Sanitizer::Memory => MSAN_SUPPORTED_TARGETS,
-            };
-            if !supported_targets.contains(&&*self.sess.opts.target_triple.triple()) {
-                self.sess.err(&format!("{:?}Sanitizer only works with the `{}` target",
-                    sanitizer,
-                    supported_targets.join("` or `")
-                ));
+        let sanitizer = match self.sess.opts.debugging_opts.sanitizer {
+            Some(ref sanitizer) => sanitizer,
+            None => {
+                self.sess.injected_sanitizer_runtime.set(None);
                 return
             }
+        };
 
-            // firstyear 2017 - during testing I was unable to access an OSX machine
-            // to make this work on different crate types. As a result, today I have
-            // only been able to test and support linux as a target.
-            if self.sess.opts.target_triple.triple() == "x86_64-unknown-linux-gnu" {
-                if !self.sess.crate_types.borrow().iter().all(|ct| {
-                    match *ct {
-                        // Link the runtime
-                        config::CrateType::Staticlib |
-                        config::CrateType::Executable => true,
-                        // This crate will be compiled with the required
-                        // instrumentation pass
-                        config::CrateType::Rlib |
-                        config::CrateType::Dylib |
-                        config::CrateType::Cdylib =>
-                            false,
-                        _ => {
-                            self.sess.err(&format!("Only executables, staticlibs, \
-                                cdylibs, dylibs and rlibs can be compiled with \
-                                `-Z sanitizer`"));
-                            false
-                        }
-                    }
-                }) {
-                    return
-                }
-            } else {
-                if !self.sess.crate_types.borrow().iter().all(|ct| {
-                    match *ct {
-                        // Link the runtime
-                        config::CrateType::Executable => true,
-                        // This crate will be compiled with the required
-                        // instrumentation pass
-                        config::CrateType::Rlib => false,
-                        _ => {
-                            self.sess.err(&format!("Only executables and rlibs can be \
-                                                    compiled with `-Z sanitizer`"));
-                            false
-                        }
-                    }
-                }) {
-                    return
-                }
+        let supported_targets = match *sanitizer {
+            Sanitizer::Address => ASAN_SUPPORTED_TARGETS,
+            Sanitizer::Thread => TSAN_SUPPORTED_TARGETS,
+            Sanitizer::Leak => LSAN_SUPPORTED_TARGETS,
+            Sanitizer::Memory => MSAN_SUPPORTED_TARGETS,
+        };
+        if !supported_targets.contains(&&*self.sess.opts.target_triple.triple()) {
+            self.sess.err(&format!("{:?}Sanitizer only works with the `{}` target",
+                sanitizer,
+                supported_targets.join("` or `")
+            ));
+            return
+        }
+
+        let any_non_rlib = self.sess.crate_types.borrow().iter().any(|ct| {
+            *ct != config::CrateType::Rlib
+        });
+        if !any_non_rlib {
+            info!("sanitizer runtime injection skipped, only generating rlib");
+            self.sess.injected_sanitizer_runtime.set(None);
+            return
+        }
+
+        let mut uses_std = false;
+        self.cstore.iter_crate_data(|_, data| {
+            if data.name == sym::std {
+                uses_std = true;
             }
+        });
 
-            let mut uses_std = false;
-            self.cstore.iter_crate_data(|_, data| {
-                if data.name == sym::std {
-                    uses_std = true;
-                }
-            });
+        if uses_std {
+            let name = match *sanitizer {
+                Sanitizer::Address => "rustc_asan",
+                Sanitizer::Leak => "rustc_lsan",
+                Sanitizer::Memory => "rustc_msan",
+                Sanitizer::Thread => "rustc_tsan",
+            };
+            info!("loading sanitizer: {}", name);
 
-            if uses_std {
-                let name = match *sanitizer {
-                    Sanitizer::Address => "rustc_asan",
-                    Sanitizer::Leak => "rustc_lsan",
-                    Sanitizer::Memory => "rustc_msan",
-                    Sanitizer::Thread => "rustc_tsan",
-                };
-                info!("loading sanitizer: {}", name);
+            let symbol = Symbol::intern(name);
+            let dep_kind = DepKind::Implicit;
+            let (cnum, data) =
+                self.resolve_crate(&None, symbol, symbol, None, None, DUMMY_SP,
+                                    PathKind::Crate, dep_kind)
+                    .unwrap_or_else(|err| err.report());
 
-                let symbol = Symbol::intern(name);
-                let dep_kind = DepKind::Explicit;
-                let (_, data) =
-                    self.resolve_crate(&None, symbol, symbol, None, None, DUMMY_SP,
-                                       PathKind::Crate, dep_kind)
-                        .unwrap_or_else(|err| err.report());
-
-                // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
-                if !data.root.sanitizer_runtime {
-                    self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
-                                           name));
-                }
-            } else {
-                self.sess.err("Must link std to be compiled with `-Z sanitizer`");
+            // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
+            if !data.root.sanitizer_runtime {
+                self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
+                                        name));
             }
+            self.sess.injected_sanitizer_runtime.set(Some(cnum));
+        } else {
+            self.sess.err("Must link std to be compiled with `-Z sanitizer`");
         }
     }
 
