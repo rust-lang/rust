@@ -75,6 +75,9 @@
 ///                     D((r_1, p_(i,2), .., p_(i,n)))
 ///                     D((r_2, p_(i,2), .., p_(i,n)))
 ///
+///     Note that the OR-patterns are not always used directly in Rust, but are used to derive
+///     the exhaustive integer matching rules, so they're written here for posterity.
+///
 /// The algorithm for computing `U`
 /// -------------------------------
 /// The algorithm is inductive (on the number of columns: i.e., components of tuple patterns).

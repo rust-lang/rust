@@ -176,7 +176,8 @@ pub enum PatternKind<'tcx> {
         suffix: Vec<Pattern<'tcx>>,
     },
 
-    /// or-pattern
+    /// An or-pattern, e.g. `p | q`.
+    /// Invariant: `pats.len() >= 2`.
     Or {
         pats: Vec<Pattern<'tcx>>,
     },

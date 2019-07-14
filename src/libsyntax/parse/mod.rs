@@ -66,6 +66,8 @@ pub struct ParseSess {
     // Places where `yield e?` exprs were used and should be feature gated.
     pub yield_spans: Lock<Vec<Span>>,
     pub injected_crate_name: Once<Symbol>,
+    // Places where or-patterns e.g. `Some(Foo | Bar)` were used and should be feature gated.
+    pub or_pattern_spans: Lock<Vec<Span>>,
 }
 
 impl ParseSess {
@@ -96,6 +98,7 @@ impl ParseSess {
             async_closure_spans: Lock::new(Vec::new()),
             yield_spans: Lock::new(Vec::new()),
             injected_crate_name: Once::new(),
+            or_pattern_spans: Lock::new(Vec::new()),
         }
     }
 

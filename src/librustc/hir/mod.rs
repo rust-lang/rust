@@ -978,7 +978,8 @@ pub enum PatKind {
     TupleStruct(QPath, HirVec<P<Pat>>, Option<usize>),
 
     /// An or-pattern `A | B | C`.
-    Or(Vec<P<Pat>>),
+    /// Invariant: `pats.len() >= 2`.
+    Or(HirVec<P<Pat>>),
 
     /// A path pattern for an unit struct/variant or a (maybe-associated) constant.
     Path(QPath),

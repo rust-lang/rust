@@ -313,7 +313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Or(ref pats) => {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 for pat in pats {
-                    self.check_pat_walk(pat, expected, def_bm, false);
+                    self.check_pat_walk(pat, expected, def_bm, discrim_span);
                 }
                 expected_ty
             }

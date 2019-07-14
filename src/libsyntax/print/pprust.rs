@@ -431,46 +431,33 @@ impl std::ops::DerefMut for State<'_> {
     }
 }
 
-pub enum SeparatorSpacing {
-    After,
-    Both,
-}
-
 pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefMut {
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
     fn print_ident(&mut self, ident: ast::Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
 
-    fn strsep<T, F>(
-        &mut self,
-        sep: &'static str,
-        spacing: SeparatorSpacing,
-        b: Breaks,
-        elts: &[T],
-        mut op: F
-    ) -> io::Result<()>
+    fn strsep<T, F>(&mut self, sep: &'static str, space_before: bool,
+                    b: Breaks, elts: &[T], mut op: F)
         where F: FnMut(&mut Self, &T),
     {
         self.rbox(0, b);
-        let mut first = true;
-        for elt in elts {
-            if first {
-                first = false;
-            } else {
-                if let SeparatorSpacing::Both = spacing {
-                    self.writer().space();
+        if let Some((first, rest)) = elts.split_first() {
+            op(self, first);
+            for elt in rest {
+                if space_before {
+                    self.space();
                 }
                 self.word_space(sep);
+                op(self, elt);
             }
-            op(self, elt);
         }
         self.end();
     }
 
-    fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F)
+    fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], op: F)
         where F: FnMut(&mut Self, &T),
     {
-        self.strsep(",", SeparatorSpacing::After, b, elts, op)
+        self.strsep(",", false, b, elts, op)
     }
 
     fn maybe_print_comment(&mut self, pos: BytePos) {
@@ -2379,8 +2366,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::Or(ref pats) => {
-                let spacing = SeparatorSpacing::Both;
-                self.strsep("|", spacing, Inconsistent, &pats[..], |s, p| s.print_pat(p))?;
+                self.strsep("|", true, Inconsistent, &pats[..], |s, p| s.print_pat(p));
             }
             PatKind::Path(None, ref path) => {
                 self.print_path(path, true, 0);
@@ -2458,16 +2444,7 @@ impl<'a> State<'a> {
     }
 
     fn print_pats(&mut self, pats: &[P<ast::Pat>]) {
-        let mut first = true;
-        for p in pats {
-            if first {
-                first = false;
-            } else {
-                self.s.space();
-                self.word_space("|");
-            }
-            self.print_pat(p);
-        }
+        self.strsep("|", true, Inconsistent, pats, |s, p| s.print_pat(p));
     }
 
     fn print_arm(&mut self, arm: &ast::Arm) {

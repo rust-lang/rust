@@ -650,6 +650,7 @@ pub enum PatKind {
     TupleStruct(Path, Vec<P<Pat>>),
 
     /// An or-pattern `A | B | C`.
+    /// Invariant: `pats.len() >= 2`.
     Or(Vec<P<Pat>>),
 
     /// A possibly qualified path pattern.
