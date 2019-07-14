@@ -433,6 +433,7 @@ supported_targets! {
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
+    ("i686-unknown-windows-gnu", i686_unknown_windows_gnu),
 
     ("aarch64-pc-windows-msvc", aarch64_pc_windows_msvc),
     ("x86_64-pc-windows-msvc", x86_64_pc_windows_msvc),
