@@ -62,7 +62,7 @@ fn solve(
     let context = ChalkContext { db, krate };
     let solver = db.trait_solver(krate);
     debug!("solve goal: {:?}", goal);
-    let solution = solver.lock().solve_with_fuel(&context, goal, Some(1000));
+    let solution = solver.lock().solve(&context, goal);
     debug!("solve({:?}) => {:?}", goal, solution);
     solution
 }
