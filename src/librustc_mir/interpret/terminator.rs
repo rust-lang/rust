@@ -280,7 +280,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             _ => bug!("unexpected callee ty: {:?}", instance_ty),
                         }
                     };
-                    // Rust and RustCall are compatible
                     let normalize_abi = |abi| match abi {
                         Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
                             // These are all the same ABI, really.
