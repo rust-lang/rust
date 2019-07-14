@@ -6,6 +6,11 @@
 #
 # Check travis config for `gdb --batch` command to print all crash logs
 
+parameters:
+  # When this parameter is set to anything other than an empty string the tests
+  # will only be executed when the commit updates submodules
+  only_on_updated_submodules: ''
+
 steps:
 
 # Disable automatic line ending conversion, which is enabled by default on
@@ -20,6 +25,22 @@ steps:
 
 - checkout: self
   fetchDepth: 2
+
+# Set the SKIP_JOB environment variable if this job is supposed to only run
+# when submodules are updated and they were not. The following time consuming
+# tasks will be skipped when the environment variable is present.
+- ${{ if parameters.only_on_updated_submodules }}:
+  - bash: |
+      set -e
+      # Submodules pseudo-files inside git have the 160000 permissions, so when
+      # those files are present in the diff a submodule was updated.
+      if git diff HEAD^ | grep "^index .* 160000" >/dev/null 2>&1; then
+          echo "Executing the job since submodules are updated"
+      else
+          echo "Not executing this job since no submodules were updated"
+          echo "##vso[task.setvariable variable=SKIP_JOB;]1"
+      fi
+    displayName: Decide whether to run this job
 
 # Spawn a background process to collect CPU usage statistics which we'll upload
 # at the end of the build. See the comments in the script here for more
@@ -71,7 +92,7 @@ steps:
     echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json
     sudo service docker restart
   displayName: Enable IPv6
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Linux'))
 
 # Disable automatic line ending conversion (again). On Windows, when we're
 # installing dependencies, something switches the git configuration directory or
@@ -87,12 +108,12 @@ steps:
     set -e
     mkdir -p $HOME/rustsrc
     $BUILD_SOURCESDIRECTORY/src/ci/init_repo.sh . $HOME/rustsrc
-  condition: and(succeeded(), ne(variables['Agent.OS'], 'Windows_NT'))
+  condition: and(succeeded(), not(variables.SKIP_JOB), ne(variables['Agent.OS'], 'Windows_NT'))
   displayName: Check out submodules (Unix)
 - script: |
     if not exist D:\cache\rustsrc\NUL mkdir D:\cache\rustsrc
     sh src/ci/init_repo.sh . /d/cache/rustsrc
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Windows_NT'))
   displayName: Check out submodules (Windows)
 
 # See also the disable for autocrlf above, this just checks that it worked
@@ -124,10 +145,10 @@ steps:
     retry pip3 install awscli --upgrade --user
     echo "##vso[task.prependpath]$HOME/.local/bin"
   displayName: Install awscli (Linux)
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Linux'))
 - script: pip install awscli
   displayName: Install awscli (non-Linux)
-  condition: and(succeeded(), ne(variables['Agent.OS'], 'Linux'))
+  condition: and(succeeded(), not(variables.SKIP_JOB), ne(variables['Agent.OS'], 'Linux'))
 
 # Configure our CI_JOB_NAME variable which log analyzers can use for the main
 # step to see what's going on.
@@ -145,7 +166,7 @@ steps:
     python2.7 "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "" ""
     cd ..
     rm -rf rust-toolstate
-  condition: and(succeeded(), eq(variables['IMAGE'], 'mingw-check'))
+  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['IMAGE'], 'mingw-check'))
   displayName: Verify the publish_toolstate script works
 
 - bash: |
@@ -166,6 +187,7 @@ steps:
     SRC: .
     AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
     TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)
+  condition: and(succeeded(), not(variables.SKIP_JOB))
   displayName: Run build
 
 # If we're a deploy builder, use the `aws` command to publish everything to our
@@ -188,7 +210,7 @@ steps:
     retry aws s3 cp --no-progress --recursive --acl public-read ./$upload_dir s3://$DEPLOY_BUCKET/$deploy_dir/$BUILD_SOURCEVERSION
   env:
     AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
-  condition: and(succeeded(), or(eq(variables.DEPLOY, '1'), eq(variables.DEPLOY_ALT, '1')))
+  condition: and(succeeded(), not(variables.SKIP_JOB), or(eq(variables.DEPLOY, '1'), eq(variables.DEPLOY_ALT, '1')))
   displayName: Upload artifacts
 
 # Upload CPU usage statistics that we've been gathering this whole time. Always
