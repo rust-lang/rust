@@ -1369,8 +1369,12 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
-                let (kw, has_bang) =
-                    if macro_def.legacy { ("macro_rules", true) } else { ("macro", false) };
+                let (kw, has_bang) = if macro_def.legacy {
+                    ("macro_rules", true)
+                } else {
+                    self.print_visibility(&item.vis);
+                    ("macro", false)
+                };
                 self.print_mac_common(
                     Some(MacHeader::Keyword(kw)),
                     has_bang,
