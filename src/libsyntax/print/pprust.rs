@@ -20,6 +20,11 @@ use syntax_pos::{DUMMY_SP, FileName, Span};
 
 use std::borrow::Cow;
 
+pub enum MacHeader<'a> {
+    Path(&'a ast::Path),
+    Keyword(&'static str),
+}
+
 pub enum AnnNode<'a> {
     Ident(&'a ast::Ident),
     Name(&'a ast::Name),
@@ -620,7 +625,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
             match attr.tokens.trees().next() {
                 Some(TokenTree::Delimited(_, delim, tts)) => {
                     self.print_mac_common(
-                        Some(&attr.path), false, None, delim, tts, true, attr.span
+                        Some(MacHeader::Path(&attr.path)), false, None, delim, tts, true, attr.span
                     );
                 }
                 tree => {
@@ -706,7 +711,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
 
     fn print_mac_common(
         &mut self,
-        path: Option<&ast::Path>,
+        header: Option<MacHeader<'_>>,
         has_bang: bool,
         ident: Option<ast::Ident>,
         delim: DelimToken,
@@ -717,8 +722,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         if delim == DelimToken::Brace {
             self.cbox(INDENT_UNIT);
         }
-        if let Some(path) = path {
-            self.print_path(path, false, 0);
+        match header {
+            Some(MacHeader::Path(path)) => self.print_path(path, false, 0),
+            Some(MacHeader::Keyword(kw)) => self.word(kw),
+            None => {}
         }
         if has_bang {
             self.word("!");
@@ -729,7 +736,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         }
         match delim {
             DelimToken::Brace => {
-                if path.is_some() || has_bang || ident.is_some() {
+                if header.is_some() || has_bang || ident.is_some() {
                     self.nbsp();
                 }
                 self.word("{");
@@ -1357,9 +1364,11 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
+                let (kw, has_bang) =
+                    if macro_def.legacy { ("macro_rules", true) } else { ("macro", false) };
                 self.print_mac_common(
-                    Some(&ast::Path::from_ident(ast::Ident::with_empty_ctxt(sym::macro_rules))),
-                    true,
+                    Some(MacHeader::Keyword(kw)),
+                    has_bang,
                     Some(item.ident),
                     DelimToken::Brace,
                     macro_def.stream(),
@@ -1754,7 +1763,13 @@ impl<'a> State<'a> {
 
     crate fn print_mac(&mut self, m: &ast::Mac) {
         self.print_mac_common(
-            Some(&m.node.path), true, None, m.node.delim.to_token(), m.node.stream(), true, m.span
+            Some(MacHeader::Path(&m.node.path)),
+            true,
+            None,
+            m.node.delim.to_token(),
+            m.node.stream(),
+            true,
+            m.span,
         );
     }
 
