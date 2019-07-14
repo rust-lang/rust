@@ -4378,9 +4378,10 @@ impl<'a> Parser<'a> {
         Ok(Some(self.mk_item(span, ident, ItemKind::MacroDef(def), vis.clone(), attrs.to_vec())))
     }
 
-    fn parse_stmt_without_recovery(&mut self,
-                                   macro_legacy_warnings: bool)
-                                   -> PResult<'a, Option<Stmt>> {
+    fn parse_stmt_without_recovery(
+        &mut self,
+        macro_legacy_warnings: bool,
+    ) -> PResult<'a, Option<Stmt>> {
         maybe_whole!(self, NtStmt, |x| Some(x));
 
         let attrs = self.parse_outer_attributes()?;
@@ -4586,20 +4587,15 @@ impl<'a> Parser<'a> {
                     if self.eat(&token::Semi) {
                         stmt_span = stmt_span.with_hi(self.prev_span.hi());
                     }
-                    let sugg = pprust::to_string(|s| {
-                        use crate::print::pprust::INDENT_UNIT;
-                        s.ibox(INDENT_UNIT);
-                        s.bopen();
-                        s.print_stmt(&stmt);
-                        s.bclose_maybe_open(stmt.span, false)
-                    });
-                    e.span_suggestion(
-                        stmt_span,
-                        "try placing this code inside a block",
-                        sugg,
-                        // speculative, has been misleading in the past (closed Issue #46836)
-                        Applicability::MaybeIncorrect
-                    );
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(stmt_span) {
+                        e.span_suggestion(
+                            stmt_span,
+                            "try placing this code inside a block",
+                            format!("{{ {} }}", snippet),
+                            // speculative, has been misleading in the past (#46836)
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
                 Err(mut e) => {
                     self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
