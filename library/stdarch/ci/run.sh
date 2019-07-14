@@ -87,10 +87,11 @@ case ${TARGET} in
         #export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128,+unimplemented-simd128"
         #cargo_test "--release --no-run"
         ;;
-    mips-*gnu* | mipsel-*gnu*)
-        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa,+fp64,+mips32r5"
-        cargo_test "--release"
-	      ;;
+    # FIXME: don't build anymore
+    #mips-*gnu* | mipsel-*gnu*)
+    #    export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa,+fp64,+mips32r5"
+    #    cargo_test "--release"
+	  #    ;;
     mips64*)
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa"
         cargo_test "--release"
