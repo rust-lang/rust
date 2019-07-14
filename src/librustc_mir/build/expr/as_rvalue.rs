@@ -128,7 +128,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         expr_span,
                         scope,
                         result,
-                        value.ty,
+                        expr.ty,
                     );
                 }
 
