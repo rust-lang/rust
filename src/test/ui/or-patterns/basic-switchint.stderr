@@ -1,0 +1,22 @@
+warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
+  --> $DIR/basic-switchint.rs:4:12
+   |
+LL | #![feature(or_patterns)]
+   |            ^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: unreachable pattern
+  --> $DIR/basic-switchint.rs:31:9
+   |
+LL |         Foo::One(100 | 110..=120 | 210..=220) => MatchArm::Arm(3),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unreachable_patterns)]` on by default
+
+warning: unreachable pattern
+  --> $DIR/basic-switchint.rs:33:9
+   |
+LL |         Foo::Two(0..=10 | 100..=110, 0 | _) => MatchArm::Arm(4),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

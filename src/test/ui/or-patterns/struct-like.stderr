@@ -1,0 +1,8 @@
+warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
+  --> $DIR/struct-like.rs:2:12
+   |
+LL | #![feature(or_patterns)]
+   |            ^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
