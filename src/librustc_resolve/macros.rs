@@ -417,19 +417,17 @@ impl<'a> Resolver<'a> {
         }
 
         assert!(force || !record_used); // `record_used` implies `force`
-        let ident = orig_ident.modern();
 
         // Make sure `self`, `super` etc produce an error when passed to here.
-        if ident.is_path_segment_keyword() {
+        if orig_ident.is_path_segment_keyword() {
             return Err(Determinacy::Determined);
         }
 
-        let rust_2015 = orig_ident.span.rust_2015();
-        let (ns, macro_kind, is_import, is_absolute_path) = match scope_set {
-            ScopeSet::Import(ns) => (ns, None, true, false),
-            ScopeSet::AbsolutePath(ns) => (ns, None, false, true),
-            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false, false),
-            ScopeSet::Module => (TypeNS, None, false, false),
+        let (ns, macro_kind, is_import) = match scope_set {
+            ScopeSet::Import(ns) => (ns, None, true),
+            ScopeSet::AbsolutePath(ns) => (ns, None, false),
+            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
+            ScopeSet::Module => (TypeNS, None, false),
         };
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
@@ -444,11 +442,11 @@ impl<'a> Resolver<'a> {
         // So we have to save the innermost solution and continue searching in outer scopes
         // to detect potential ambiguities.
         let mut innermost_result: Option<(&NameBinding<'_>, Flags)> = None;
-        let mut use_prelude = !parent_scope.module.no_implicit_prelude;
         let mut determinacy = Determinacy::Determined;
 
         // Go through all the scopes and try to resolve the name.
-        let break_result = self.visit_scopes(scope_set, parent_scope, ident, |this, scope, ident| {
+        let break_result =
+                self.visit_scopes(scope_set, parent_scope, orig_ident, |this, scope, ident| {
             let result = match scope {
                 Scope::DeriveHelpers => {
                     let mut result = Err(Determinacy::Determined);
@@ -478,11 +476,11 @@ impl<'a> Resolver<'a> {
                     _ => Err(Determinacy::Determined),
                 }
                 Scope::CrateRoot => {
-                    let root_ident = Ident::new(kw::PathRoot, orig_ident.span);
+                    let root_ident = Ident::new(kw::PathRoot, ident.span);
                     let root_module = this.resolve_crate_root(root_ident);
                     let binding = this.resolve_ident_in_module_ext(
                         ModuleOrUniformRoot::Module(root_module),
-                        orig_ident,
+                        ident,
                         ns,
                         None,
                         record_used,
@@ -498,7 +496,6 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::Module(module) => {
-                    use_prelude = !module.no_implicit_prelude;
                     let orig_current_module = mem::replace(&mut this.current_module, module);
                     let binding = this.resolve_ident_in_module_unadjusted_ext(
                         ModuleOrUniformRoot::Module(module),
@@ -528,94 +525,69 @@ impl<'a> Resolver<'a> {
                         Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                     }
                 }
-                Scope::MacroUsePrelude => {
-                    if use_prelude || rust_2015 {
-                        match this.macro_use_prelude.get(&ident.name).cloned() {
-                            Some(binding) =>
-                                Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE)),
-                            None => Err(Determinacy::determined(
-                                this.graph_root.unresolved_invocations.borrow().is_empty()
-                            ))
-                        }
-                    } else {
-                        Err(Determinacy::Determined)
-                    }
+                Scope::MacroUsePrelude => match this.macro_use_prelude.get(&ident.name).cloned() {
+                    Some(binding) => Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE)),
+                    None => Err(Determinacy::determined(
+                        this.graph_root.unresolved_invocations.borrow().is_empty()
+                    ))
                 }
-                Scope::BuiltinMacros => {
-                    match this.builtin_macros.get(&ident.name).cloned() {
-                        Some(binding) => Ok((binding, Flags::PRELUDE)),
-                        None => Err(Determinacy::Determined),
-                    }
+                Scope::BuiltinMacros => match this.builtin_macros.get(&ident.name).cloned() {
+                    Some(binding) => Ok((binding, Flags::PRELUDE)),
+                    None => Err(Determinacy::Determined),
                 }
-                Scope::BuiltinAttrs => {
-                    if is_builtin_attr_name(ident.name) {
-                        let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
-                                       ty::Visibility::Public, DUMMY_SP, Mark::root())
-                                       .to_name_binding(this.arenas);
-                        Ok((binding, Flags::PRELUDE))
-                    } else {
-                        Err(Determinacy::Determined)
-                    }
+                Scope::BuiltinAttrs => if is_builtin_attr_name(ident.name) {
+                    let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
+                                   ty::Visibility::Public, DUMMY_SP, Mark::root())
+                                   .to_name_binding(this.arenas);
+                    Ok((binding, Flags::PRELUDE))
+                } else {
+                    Err(Determinacy::Determined)
                 }
-                Scope::LegacyPluginHelpers => {
-                    if (use_prelude || rust_2015) &&
-                       this.session.plugin_attributes.borrow().iter()
+                Scope::LegacyPluginHelpers => if this.session.plugin_attributes.borrow().iter()
                                                      .any(|(name, _)| ident.name == *name) {
-                        let binding = (Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
-                                       ty::Visibility::Public, DUMMY_SP, Mark::root())
-                                       .to_name_binding(this.arenas);
-                        Ok((binding, Flags::PRELUDE))
-                    } else {
-                        Err(Determinacy::Determined)
-                    }
+                    let binding = (Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
+                                   ty::Visibility::Public, DUMMY_SP, Mark::root())
+                                   .to_name_binding(this.arenas);
+                    Ok((binding, Flags::PRELUDE))
+                } else {
+                    Err(Determinacy::Determined)
                 }
-                Scope::ExternPrelude => {
-                    if use_prelude || is_absolute_path {
-                        match this.extern_prelude_get(ident, !record_used) {
-                            Some(binding) => Ok((binding, Flags::PRELUDE)),
-                            None => Err(Determinacy::determined(
-                                this.graph_root.unresolved_invocations.borrow().is_empty()
-                            )),
-                        }
-                    } else {
-                        Err(Determinacy::Determined)
-                    }
+                Scope::ExternPrelude => match this.extern_prelude_get(ident, !record_used) {
+                    Some(binding) => Ok((binding, Flags::PRELUDE)),
+                    None => Err(Determinacy::determined(
+                        this.graph_root.unresolved_invocations.borrow().is_empty()
+                    )),
                 }
-                Scope::ToolPrelude => {
-                    if use_prelude && KNOWN_TOOLS.contains(&ident.name) {
-                        let binding = (Res::ToolMod, ty::Visibility::Public,
-                                       DUMMY_SP, Mark::root()).to_name_binding(this.arenas);
-                        Ok((binding, Flags::PRELUDE))
-                    } else {
-                        Err(Determinacy::Determined)
-                    }
+                Scope::ToolPrelude => if KNOWN_TOOLS.contains(&ident.name) {
+                    let binding = (Res::ToolMod, ty::Visibility::Public, DUMMY_SP, Mark::root())
+                                   .to_name_binding(this.arenas);
+                    Ok((binding, Flags::PRELUDE))
+                } else {
+                    Err(Determinacy::Determined)
                 }
                 Scope::StdLibPrelude => {
                     let mut result = Err(Determinacy::Determined);
-                    if use_prelude {
-                        if let Some(prelude) = this.prelude {
-                            if let Ok(binding) = this.resolve_ident_in_module_unadjusted(
-                                ModuleOrUniformRoot::Module(prelude),
-                                ident,
-                                ns,
-                                false,
-                                path_span,
-                            ) {
-                                result = Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE));
-                            }
+                    if let Some(prelude) = this.prelude {
+                        if let Ok(binding) = this.resolve_ident_in_module_unadjusted(
+                            ModuleOrUniformRoot::Module(prelude),
+                            ident,
+                            ns,
+                            false,
+                            path_span,
+                        ) {
+                            result = Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE));
                         }
                     }
                     result
                 }
-                Scope::BuiltinTypes => {
-                    match this.primitive_type_table.primitive_types.get(&ident.name).cloned() {
-                        Some(prim_ty) => {
-                            let binding = (Res::PrimTy(prim_ty), ty::Visibility::Public,
-                                           DUMMY_SP, Mark::root()).to_name_binding(this.arenas);
-                            Ok((binding, Flags::PRELUDE))
-                        }
-                        None => Err(Determinacy::Determined)
+                Scope::BuiltinTypes => match this.primitive_type_table.primitive_types
+                                                 .get(&ident.name).cloned() {
+                    Some(prim_ty) => {
+                        let binding = (Res::PrimTy(prim_ty), ty::Visibility::Public,
+                                       DUMMY_SP, Mark::root()).to_name_binding(this.arenas);
+                        Ok((binding, Flags::PRELUDE))
                     }
+                    None => Err(Determinacy::Determined)
                 }
             };
 
@@ -712,7 +684,7 @@ impl<'a> Resolver<'a> {
             // the last segment, so we are certainly working with a single-segment attribute here.)
             assert!(ns == MacroNS);
             let binding = (Res::NonMacroAttr(NonMacroAttrKind::Custom),
-                           ty::Visibility::Public, ident.span, Mark::root())
+                           ty::Visibility::Public, orig_ident.span, Mark::root())
                            .to_name_binding(self.arenas);
             Ok(binding)
         } else {

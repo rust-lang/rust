@@ -562,19 +562,10 @@ impl<'a> Resolver<'a> {
         &mut self,
         scope_set: ScopeSet,
         parent_scope: &ParentScope<'a>,
-        orig_ident: Ident,
+        ident: Ident,
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
-        let ident = orig_ident.modern();
-        let rust_2015 = orig_ident.span.rust_2015();
-        let is_absolute_path = match scope_set {
-            ScopeSet::AbsolutePath(..) => true,
-            _ => false,
-        };
-
         let mut suggestions = Vec::new();
-        let mut use_prelude = !parent_scope.module.no_implicit_prelude;
-
         self.visit_scopes(scope_set, parent_scope, ident, |this, scope, _| {
             match scope {
                 Scope::DeriveHelpers => {
@@ -603,26 +594,22 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::CrateRoot => {
-                    let root_ident = Ident::new(kw::PathRoot, orig_ident.span);
+                    let root_ident = Ident::new(kw::PathRoot, ident.span);
                     let root_module = this.resolve_crate_root(root_ident);
                     add_module_candidates(root_module, &mut suggestions, filter_fn);
                 }
                 Scope::Module(module) => {
-                    use_prelude = !module.no_implicit_prelude;
                     add_module_candidates(module, &mut suggestions, filter_fn);
                 }
                 Scope::MacroUsePrelude => {
-                    if use_prelude || rust_2015 {
-                        let macro_use_prelude = &this.macro_use_prelude;
-                        suggestions.extend(macro_use_prelude.iter().filter_map(|(name, binding)| {
-                            let res = binding.res();
-                            if filter_fn(res) {
-                                Some(TypoSuggestion::from_res(*name, res))
-                            } else {
-                                None
-                            }
-                        }));
-                    }
+                    suggestions.extend(this.macro_use_prelude.iter().filter_map(|(name, binding)| {
+                        let res = binding.res();
+                        if filter_fn(res) {
+                            Some(TypoSuggestion::from_res(*name, res))
+                        } else {
+                            None
+                        }
+                    }));
                 }
                 Scope::BuiltinMacros => {
                     suggestions.extend(this.builtin_macros.iter().filter_map(|(name, binding)| {
@@ -643,41 +630,33 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::LegacyPluginHelpers => {
-                    if use_prelude || rust_2015 {
-                        let res = Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
-                        if filter_fn(res) {
-                            let plugin_attributes = this.session.plugin_attributes.borrow();
-                            suggestions.extend(plugin_attributes.iter().map(|(name, _)| {
-                                TypoSuggestion::from_res(*name, res)
-                            }));
-                        }
-                    }
-                }
-                Scope::ExternPrelude => {
-                    if use_prelude || is_absolute_path {
-                        suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
-                            let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
-                            if filter_fn(res) {
-                                Some(TypoSuggestion::from_res(ident.name, res))
-                            } else {
-                                None
-                            }
-                        }));
-                    }
-                }
-                Scope::ToolPrelude => {
-                    if use_prelude {
-                        let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
-                        suggestions.extend(KNOWN_TOOLS.iter().map(|name| {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
+                    if filter_fn(res) {
+                        let plugin_attributes = this.session.plugin_attributes.borrow();
+                        suggestions.extend(plugin_attributes.iter().map(|(name, _)| {
                             TypoSuggestion::from_res(*name, res)
                         }));
                     }
                 }
-                Scope::StdLibPrelude => {
-                    if use_prelude {
-                        if let Some(prelude) = this.prelude {
-                            add_module_candidates(prelude, &mut suggestions, filter_fn);
+                Scope::ExternPrelude => {
+                    suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
+                        let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
+                        if filter_fn(res) {
+                            Some(TypoSuggestion::from_res(ident.name, res))
+                        } else {
+                            None
                         }
+                    }));
+                }
+                Scope::ToolPrelude => {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
+                    suggestions.extend(KNOWN_TOOLS.iter().map(|name| {
+                        TypoSuggestion::from_res(*name, res)
+                    }));
+                }
+                Scope::StdLibPrelude => {
+                    if let Some(prelude) = this.prelude {
+                        add_module_candidates(prelude, &mut suggestions, filter_fn);
                     }
                 }
                 Scope::BuiltinTypes => {

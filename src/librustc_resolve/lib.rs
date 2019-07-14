@@ -2145,7 +2145,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         scope_set: ScopeSet,
         parent_scope: &ParentScope<'a>,
-        mut ident: Ident,
+        ident: Ident,
         mut visitor: impl FnMut(&mut Self, Scope<'a>, Ident) -> Option<T>,
     ) -> Option<T> {
         // General principles:
@@ -2192,6 +2192,7 @@ impl<'a> Resolver<'a> {
         //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
         //    in prelude, not sure where exactly (creates ambiguities with any other prelude names).
 
+        let rust_2015 = ident.span.rust_2015();
         let (ns, is_absolute_path) = match scope_set {
             ScopeSet::Import(ns) => (ns, false),
             ScopeSet::AbsolutePath(ns) => (ns, true),
@@ -2203,10 +2204,29 @@ impl<'a> Resolver<'a> {
             TypeNS | ValueNS => Scope::Module(parent_scope.module),
             MacroNS => Scope::DeriveHelpers,
         };
+        let mut ident = ident.modern();
+        let mut use_prelude = !parent_scope.module.no_implicit_prelude;
 
         loop {
-            if let break_result @ Some(..) = visitor(self, scope, ident) {
-                return break_result;
+            let visit = match scope {
+                Scope::DeriveHelpers => true,
+                Scope::MacroRules(..) => true,
+                Scope::CrateRoot => true,
+                Scope::Module(..) => true,
+                Scope::MacroUsePrelude => use_prelude || rust_2015,
+                Scope::BuiltinMacros => true,
+                Scope::BuiltinAttrs => true,
+                Scope::LegacyPluginHelpers => use_prelude || rust_2015,
+                Scope::ExternPrelude => use_prelude || is_absolute_path,
+                Scope::ToolPrelude => use_prelude,
+                Scope::StdLibPrelude => use_prelude,
+                Scope::BuiltinTypes => true,
+            };
+
+            if visit {
+                if let break_result @ Some(..) = visitor(self, scope, ident) {
+                    return break_result;
+                }
             }
 
             scope = match scope {
@@ -2229,6 +2249,7 @@ impl<'a> Resolver<'a> {
                     ValueNS | MacroNS => break,
                 }
                 Scope::Module(module) => {
+                    use_prelude = !module.no_implicit_prelude;
                     match self.hygienic_lexical_parent(module, &mut ident.span) {
                         Some(parent_module) => Scope::Module(parent_module),
                         None => {
