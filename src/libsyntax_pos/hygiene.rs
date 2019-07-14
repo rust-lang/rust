@@ -343,6 +343,38 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
     }))
 }
 
+pub fn debug_hygiene_data(verbose: bool) -> String {
+    HygieneData::with(|data| {
+        if verbose {
+            format!("{:#?}", data)
+        } else {
+            let mut s = String::from("");
+            s.push_str("Expansions:");
+            data.expn_data.iter().enumerate().for_each(|(id, expn_info)| {
+                let expn_info = expn_info.as_ref().expect("no expansion data for an expansion ID");
+                s.push_str(&format!(
+                    "\n{}: parent: {:?}, call_site_ctxt: {:?}, kind: {:?}",
+                    id,
+                    expn_info.parent,
+                    expn_info.call_site.ctxt(),
+                    expn_info.kind,
+                ));
+            });
+            s.push_str("\n\nSyntaxContexts:");
+            data.syntax_context_data.iter().enumerate().for_each(|(id, ctxt)| {
+                s.push_str(&format!(
+                    "\n#{}: parent: {:?}, outer_mark: ({:?}, {:?})",
+                    id,
+                    ctxt.parent,
+                    ctxt.outer_expn,
+                    ctxt.outer_transparency,
+                ));
+            });
+            s
+        }
+    })
+}
+
 impl SyntaxContext {
     #[inline]
     pub const fn root() -> Self {
