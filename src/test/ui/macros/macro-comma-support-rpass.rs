@@ -15,6 +15,7 @@
 
 #![cfg_attr(core, no_std)]
 
+#![allow(deprecated)] // for deprecated `try!()` macro
 #![feature(concat_idents)]
 
 #[cfg(std)] use std::fmt;
@@ -261,9 +262,7 @@ fn thread_local() {
 #[test]
 fn try() {
     fn inner() -> Result<(), ()> {
-        #[allow(deprecated)]
         try!(Ok(()));
-        #[allow(deprecated)]
         try!(Ok(()),);
         Ok(())
     }

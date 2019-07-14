@@ -1,5 +1,6 @@
 // Test that the resolve failure does not lead to downstream type errors.
 // See issue #31997.
+#![allow(deprecated)]
 
 trait TheTrait { }
 
@@ -10,7 +11,7 @@ fn closure<F, T>(x: F) -> Result<T, ()>
 }
 
 fn foo() -> Result<(), ()> {
-    closure(|| bar(core::ptr::null_mut()))?; //~ ERROR cannot find function `bar` in this scope
+    try!(closure(|| bar(core::ptr::null_mut()))); //~ ERROR cannot find function `bar` in this scope
     Ok(())
 }
 
