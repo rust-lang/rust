@@ -293,8 +293,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.load(addr, self.fn_ty.ret.layout.align.abi)
             }
         };
-        let llval = bx.flat_addr_cast(llval);
-        bx.ret(llval);
+        let llvalc = bx.flat_addr_cast(llval);
+        bx.ret(llvalc);
     }
 
 
@@ -416,9 +416,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     col,
                     "panic_bounds_check_loc",
                 );
-                let file_line_col = bx.cx().const_flat_as_cast(file_line_col);
                 (lang_items::PanicBoundsCheckFnLangItem,
-                    vec![file_line_col, index, len])
+                    vec![bx.cx().const_flat_as_cast(file_line_col), index, len])
             }
             _ => {
                 let str = msg.description();
@@ -430,9 +429,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     col,
                     "panic_loc",
                 );
-                let msg_file_line_col = bx.cx().const_flat_as_cast(msg_file_line_col);
                 (lang_items::PanicFnLangItem,
-                    vec![msg_file_line_col])
+                    vec![bx.cx().const_flat_as_cast(msg_file_line_col)])
             }
         };
 

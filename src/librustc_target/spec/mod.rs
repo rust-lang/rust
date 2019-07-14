@@ -76,8 +76,6 @@ pub enum LinkerFlavor {
     Ld,
     Msvc,
     Lld(LldFlavor),
-    // FIXME: Enable when ready
-    // AmdGpuLinker,
     PtxLinker,
 }
 
@@ -147,8 +145,6 @@ flavor_mappings! {
     ((LinkerFlavor::Gcc), "gcc"),
     ((LinkerFlavor::Ld), "ld"),
     ((LinkerFlavor::Msvc), "msvc"),
-    // FIXME: Enable when ready
-    // ((LinkerFlavor::AmdGpuLinker), "amdgpu-linker"),
     ((LinkerFlavor::PtxLinker), "ptx-linker"),
     ((LinkerFlavor::Lld(LldFlavor::Wasm)), "wasm-ld"),
     ((LinkerFlavor::Lld(LldFlavor::Ld64)), "ld64.lld"),

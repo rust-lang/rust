@@ -596,10 +596,6 @@ impl CodegenCx<'b, 'tcx> {
             t_v8f64: t_f64, 8;
         }
 
-        // ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
-        // ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);
-        // ifn!("llvm.memset.p0i8.i64", fn(i8p, t_i8, t_i64, t_i32, i1) -> void);
-
         fn parse_addr_space(s: &str) -> AddrSpaceIdx {
             assert!(s.starts_with("p"));
             assert!(s.ends_with("i8"));
@@ -609,7 +605,7 @@ impl CodegenCx<'b, 'tcx> {
         }
 
         if key.starts_with("llvm.memcpy") || key.starts_with("llvm.memmove") ||
-          key.starts_with("llvm.memset") {
+            key.starts_with("llvm.memset") {
 
             let mut split = key.split('.');
             assert_eq!(Some("llvm"), split.next());

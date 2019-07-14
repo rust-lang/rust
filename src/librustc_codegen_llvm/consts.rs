@@ -151,21 +151,20 @@ fn check_and_apply_linkage(
 }
 
 pub fn ptrcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-    let ty = ty.copy_addr_space(val_addr_space(val));
     unsafe {
-        llvm::LLVMConstPointerCast(val, ty)
+        llvm::LLVMConstPointerCast(val, ty.copy_addr_space(val_addr_space(val)))
     }
 }
 
 impl CodegenCx<'ll, 'tcx> {
     crate fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        let ty = if let Some(addr_space) = val_addr_space_opt(val) {
+        let ty_addr = if let Some(addr_space) = val_addr_space_opt(val) {
             ty.copy_addr_space(addr_space)
         } else {
             ty
         };
         unsafe {
-            llvm::LLVMConstBitCast(val, ty)
+            llvm::LLVMConstBitCast(val, ty_addr)
         }
     }
 

@@ -363,8 +363,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bx.pointercast(llval, ll_t_out),
                             (CastTy::Ptr(_), CastTy::Int(_)) |
                             (CastTy::FnPtr, CastTy::Int(_)) => {
-                                let llval = bx.flat_addr_cast(llval);
-                                bx.ptrtoint(llval, ll_t_out)
+                                let llvalc = bx.flat_addr_cast(llval);
+                                bx.ptrtoint(llvalc, ll_t_out)
                             },
                             (CastTy::Int(_), CastTy::Ptr(_)) => {
                                 let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);
@@ -621,10 +621,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs, rhs
                 )
             } else {
-                let (lhs, rhs) = codegen_binop_fixup(bx, lhs, rhs);
+                let (lhsc, rhsc) = codegen_binop_fixup(bx, lhs, rhs);
                 bx.icmp(
                     base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed),
-                    lhs, rhs
+                    lhsc, rhsc
                 )
             }
         }

@@ -137,9 +137,8 @@ impl CodegenCx<'ll, 'tcx> {
                                                     s.len() as c_uint,
                                                     !null_terminated as Bool);
             let sym = self.generate_local_symbol_name("str");
-            let addr_space = self.const_addr_space();
-            let g = self.define_global(&sym[..], self.val_ty(sc), addr_space)
-                .unwrap_or_else(||bug!("symbol `{}` is already defined", sym) );
+            let g = self.define_global(&sym[..], self.val_ty(sc), self.const_addr_space())
+                .unwrap_or_else(||bug!("symbol `{}` is already defined", sym));
             llvm::LLVMSetInitializer(g, sc);
             llvm::LLVMSetGlobalConstant(g, True);
             llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
@@ -310,12 +309,12 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             },
             Scalar::Raw { data, size } => {
                 assert_eq!(size as u64, layout.value.size(self).bytes());
-                let llval = self.const_uint_big(self.type_ix(bitsize), data);
+                let llconstval = self.const_uint_big(self.type_ix(bitsize), data);
                 let flat_llty = llty.copy_addr_space(self.flat_addr_space());
                 let llval = if layout.value == layout::Pointer {
-                    unsafe { llvm::LLVMConstIntToPtr(llval, flat_llty) }
+                    unsafe { llvm::LLVMConstIntToPtr(llconstval, flat_llty) }
                 } else {
-                    self.const_bitcast(llval, flat_llty)
+                    self.const_bitcast(llconstval, flat_llty)
                 };
                 if llty.is_ptr() {
                     self.const_as_cast(llval, llty.address_space())
