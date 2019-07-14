@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 // ignore-pretty pretty-printing is unhygienic
 
 // aux-build:my_crate.rs

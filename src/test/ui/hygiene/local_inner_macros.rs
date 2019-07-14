@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // aux-build:local_inner_macros.rs
 
 extern crate local_inner_macros;

@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // aux-build:transparent-basic.rs
 
 #![feature(decl_macro, rustc_attrs)]
