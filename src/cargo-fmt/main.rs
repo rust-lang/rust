@@ -101,8 +101,7 @@ fn execute() -> i32 {
 
     let strategy = CargoFmtStrategy::from_opts(&opts);
 
-    if opts.manifest_path.is_some() {
-        let specified_manifest_path = opts.manifest_path.unwrap();
+    if let Some(specified_manifest_path) = opts.manifest_path {
         if !specified_manifest_path.ends_with("Cargo.toml") {
             print_usage_to_stderr("the manifest-path must be a path to a Cargo.toml file");
             return FAILURE;
@@ -284,9 +283,11 @@ fn get_targets_root_only(
 ) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(manifest_path, false)?;
     let workspace_root_path = PathBuf::from(&metadata.workspace_root).canonicalize()?;
-    let (in_workspace_root, current_dir_manifest) = if manifest_path.is_some() {
-        let target_manifest = manifest_path.unwrap().canonicalize()?;
-        (workspace_root_path == target_manifest, target_manifest)
+    let (in_workspace_root, current_dir_manifest) = if let Some(target_manifest) = manifest_path {
+        (
+            workspace_root_path == target_manifest,
+            target_manifest.canonicalize()?,
+        )
     } else {
         let current_dir = env::current_dir()?.canonicalize()?;
         (
