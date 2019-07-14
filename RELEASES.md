@@ -3,9 +3,8 @@ Version 1.37.0 (2019-08-15)
 
 Language
 --------
-- [`#[must_use]` will now warn if the type is in a tuple and unused.][61100]
-- [`#[must_use]` will now warn if the type is in a `Box` and unused.][62228]
-- [`#[must_use]` will now warn if the type is in a array and unused.][62235]
+- `#[must_use]` will now warn if the type contained in a [tuple][61100],
+  [`Box`][62228], or an [array][62235] and unused.
 - [You can now use the `cfg` and `cfg_attr` attributes on
   generic parameters.][61547]
 - [You can now use enum variants through type alias.][61682] e.g. You can
@@ -30,12 +29,12 @@ Compiler
 --------
 - [You can now enable Profile-Guided Optimization with the `-C profile-generate`
   and `-C profile-use` flags.][61268] For more information on how to use profile
-  guided optimization, please refer to the [rustc book](rustc-book-pgo).
+  guided optimization, please refer to the [rustc book][rustc-book-pgo].
 - [The `rust-lldb` wrapper script should now work again.][61827]
 
 Libraries
 ---------
-- [`mem::MaybeUninit` is now `#[repr(transparent)]`.][61802]
+- [`mem::MaybeUninit<T>` is now ABI-compatible with `T`.][61802]
 
 Stabilized APIs
 ---------------
