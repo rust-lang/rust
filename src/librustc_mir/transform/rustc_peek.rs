@@ -3,7 +3,7 @@ use syntax::ast;
 use syntax::symbol::sym;
 use syntax_pos::Span;
 
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
 use rustc::mir::{self, Body, Location, Local};
 use rustc_data_structures::bit_set::BitSet;
@@ -114,15 +114,20 @@ pub fn sanity_check_via_rustc_peek<'tcx, O>(
             .expect("call to rustc_peek should be preceded by \
                     assignment to temporary holding its argument");
 
-        if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, peeking_at_place) = peek_rval {
-            let loc = Location { block: bb, statement_index };
-            let flow_state = dataflow::state_for_location(loc, results.operator(), results, body);
+        match (call.kind, peek_rval) {
+            | (PeekCallKind::ByRef, mir::Rvalue::Ref(_, _, peek_at))
+            | (PeekCallKind::ByVal, mir::Rvalue::Use(mir::Operand::Move(peek_at)))
+            | (PeekCallKind::ByVal, mir::Rvalue::Use(mir::Operand::Copy(peek_at)))
+            => {
+                let loc = Location { block: bb, statement_index };
+                results.peek_at(tcx, body, peek_at, loc, call);
+            }
 
-            results.operator().peek_at(tcx, peeking_at_place, &flow_state, call);
-        } else {
-            let msg = "rustc_peek: argument expression \
-                       must be immediate borrow of form `&expr`";
-            tcx.sess.span_err(call.span, msg);
+            _ => {
+                let msg = "rustc_peek: argument expression \
+                           must be either `place` or `&place`";
+                tcx.sess.span_err(call.span, msg);
+            }
         }
     }
 }
@@ -145,8 +150,25 @@ fn value_assigned_to_local<'a, 'tcx>(
 }
 
 #[derive(Clone, Copy, Debug)]
+enum PeekCallKind {
+    ByVal,
+    ByRef,
+}
+
+impl PeekCallKind {
+    fn from_arg_ty(arg: Ty<'_>) -> Self {
+        if let ty::Ref(_, _, _) = arg.sty {
+            PeekCallKind::ByRef
+        } else {
+            PeekCallKind::ByVal
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct PeekCall {
     arg: Local,
+    kind: PeekCallKind,
     span: Span,
 }
 
@@ -159,14 +181,15 @@ impl PeekCall {
         if let mir::TerminatorKind::Call { func: mir::Operand::Constant(func), args, .. } =
             &terminator.kind
         {
-            if let ty::FnDef(def_id, _) = func.ty.sty {
-                let abi = tcx.fn_sig(def_id).abi();
+            if let ty::FnDef(def_id, substs) = func.ty.sty {
+                let sig = tcx.fn_sig(def_id);
                 let name = tcx.item_name(def_id);
-                if abi != Abi::RustIntrinsic || name != sym::rustc_peek {
+                if sig.abi() != Abi::RustIntrinsic || name != sym::rustc_peek {
                     return None;
                 }
 
                 assert_eq!(args.len(), 1);
+                let kind = PeekCallKind::from_arg_ty(substs.type_at(0));
                 let arg = match args[0] {
                     | mir::Operand::Copy(mir::Place::Base(mir::PlaceBase::Local(local)))
                     | mir::Operand::Move(mir::Place::Base(mir::PlaceBase::Local(local)))
@@ -181,6 +204,7 @@ impl PeekCall {
 
                 return Some(PeekCall {
                     arg,
+                    kind,
                     span,
                 });
             }
