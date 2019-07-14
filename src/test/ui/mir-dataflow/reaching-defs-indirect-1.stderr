@@ -1,0 +1,16 @@
+error: rustc_peek: [10: "x=0"]
+  --> $DIR/reaching-defs-indirect-1.rs:13:14
+   |
+LL |     unsafe { rustc_peek(x); }
+   |              ^^^^^^^^^^^^^
+
+error: rustc_peek: [10: "x=0", 22: "*p=2"]
+  --> $DIR/reaching-defs-indirect-1.rs:24:14
+   |
+LL |     unsafe { rustc_peek(x); }
+   |              ^^^^^^^^^^^^^
+
+error: stop_after_dataflow ended compilation
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,10 @@
+error: rustc_peek: [5: "mut x", 7: "x=42"]
+  --> $DIR/reaching-defs-arg.rs:10:14
+   |
+LL |     unsafe { rustc_peek(&x); }
+   |              ^^^^^^^^^^^^^^
+
+error: stop_after_dataflow ended compilation
+
+error: aborting due to 2 previous errors
+
