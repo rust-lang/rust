@@ -460,6 +460,7 @@ pub(crate) fn trait_datum_query(
             associated_ty_ids: Vec::new(),
             where_clauses: Vec::new(),
             flags: chalk_rust_ir::TraitFlags {
+                non_enumerable: false,
                 auto: false,
                 marker: false,
                 upstream: true,
@@ -477,6 +478,7 @@ pub(crate) fn trait_datum_query(
         auto: trait_.is_auto(db),
         upstream: trait_.module(db).krate(db) != Some(krate),
         // FIXME set these flags correctly
+        non_enumerable: false,
         marker: false,
         fundamental: false,
     };
