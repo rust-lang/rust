@@ -2508,15 +2508,55 @@ struct S;
 impl Iterable for S { type Item = u32; }
 fn test<T: Iterable>() {
     let x: <S as Iterable>::Item = 1;
-    let y: T::Item = no_matter;
+    let y: <T as Iterable>::Item = no_matter;
+    let z: T::Item = no_matter;
 }
 "#),
         @r###"
-[108; 181) '{     ...ter; }': ()
-[118; 119) 'x': i32
-[145; 146) '1': i32
-[156; 157) 'y': {unknown}
-[169; 178) 'no_matter': {unknown}"###
+   ⋮
+   ⋮[108; 227) '{     ...ter; }': ()
+   ⋮[118; 119) 'x': i32
+   ⋮[145; 146) '1': i32
+   ⋮[156; 157) 'y': {unknown}
+   ⋮[183; 192) 'no_matter': {unknown}
+   ⋮[202; 203) 'z': {unknown}
+   ⋮[215; 224) 'no_matter': {unknown}
+    "###
+    );
+}
+
+#[test]
+fn infer_return_associated_type() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Iterable {
+   type Item;
+}
+struct S;
+impl Iterable for S { type Item = u32; }
+fn foo1<T: Iterable>(t: T) -> T::Item {}
+fn foo2<T: Iterable>(t: T) -> <T as Iterable>::Item {}
+fn test() {
+    let x = foo1(S);
+    let y = foo2(S);
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[106; 107) 't': T
+   ⋮[123; 125) '{}': ()
+   ⋮[147; 148) 't': T
+   ⋮[178; 180) '{}': ()
+   ⋮[191; 236) '{     ...(S); }': ()
+   ⋮[201; 202) 'x': {unknown}
+   ⋮[205; 209) 'foo1': fn foo1<S>(T) -> {unknown}
+   ⋮[205; 212) 'foo1(S)': {unknown}
+   ⋮[210; 211) 'S': S
+   ⋮[222; 223) 'y': {unknown}
+   ⋮[226; 230) 'foo2': fn foo2<S>(T) -> {unknown}
+   ⋮[226; 233) 'foo2(S)': {unknown}
+   ⋮[231; 232) 'S': S
+    "###
     );
 }
 
