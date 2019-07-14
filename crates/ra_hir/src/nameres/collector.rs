@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use arrayvec::ArrayVec;
 use ra_db::FileId;
 use ra_syntax::{ast, SmolStr};
@@ -84,7 +86,7 @@ struct DefCollector<DB> {
     global_macro_scope: FxHashMap<Name, MacroDefId>,
 
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
-    /// To prevent stackoverflow, we add a deep counter here for prevent that.
+    /// To prevent stack overflow, we add a deep counter here for prevent that.
     macro_stack_monitor: MacroStackMonitor,
 }
 
@@ -649,7 +651,8 @@ fn resolve_submodule(
     let file_dir_mod = dir_path.join(format!("{}/{}.rs", mod_name, name));
     let mut candidates = ArrayVec::<[_; 3]>::new();
     let file_attr_mod = attr_path.map(|file_path| {
-        let file_attr_mod = dir_path.join(file_path.to_string());
+        let file_path = normalize_attribute_path(file_path);
+        let file_attr_mod = dir_path.join(file_path.as_ref()).normalize();
         candidates.push(file_attr_mod.clone());
 
         file_attr_mod
@@ -672,6 +675,21 @@ fn resolve_submodule(
                 Err(if is_dir_owner { file_mod } else { file_dir_mod })
             }
         }
+    }
+}
+
+fn normalize_attribute_path(file_path: &SmolStr) -> Cow<str> {
+    let current_dir = "./";
+    let windows_path_separator = r#"\"#;
+    let current_dir_normalize = if file_path.starts_with(current_dir) {
+        &file_path[current_dir.len()..]
+    } else {
+        file_path.as_str()
+    };
+    if current_dir_normalize.contains(windows_path_separator) {
+        Cow::Owned(current_dir_normalize.replace(windows_path_separator, "/"))
+    } else {
+        Cow::Borrowed(current_dir_normalize)
     }
 }
 
