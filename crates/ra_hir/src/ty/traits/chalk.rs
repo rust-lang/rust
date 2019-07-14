@@ -276,11 +276,6 @@ impl ToChalk for Arc<super::TraitEnvironment> {
                 // for env, we just ignore errors
                 continue;
             }
-            if let GenericPredicate::Implemented(trait_ref) = pred {
-                if blacklisted_trait(db, trait_ref.trait_) {
-                    continue;
-                }
-            }
             clauses.push(pred.clone().to_chalk(db).cast());
         }
         chalk_ir::Environment::new().add_clauses(clauses)
@@ -322,10 +317,10 @@ fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
     }
 }
 
-fn blacklisted_trait(db: &impl HirDatabase, trait_: Trait) -> bool {
+fn is_non_enumerable_trait(db: &impl HirDatabase, trait_: Trait) -> bool {
     let name = trait_.name(db).unwrap_or_else(crate::Name::missing).to_string();
     match &*name {
-        "Send" | "Sync" | "Sized" | "Fn" | "FnMut" | "FnOnce" => true,
+        "Sized" => true,
         _ => false,
     }
 }
@@ -342,11 +337,6 @@ fn convert_where_clauses(
             // HACK: Return just the single predicate (which is always false
             // anyway), otherwise Chalk can easily get into slow situations
             return vec![pred.clone().subst(substs).to_chalk(db)];
-        }
-        if let GenericPredicate::Implemented(trait_ref) = pred {
-            if blacklisted_trait(db, trait_ref.trait_) {
-                continue;
-            }
         }
         result.push(pred.clone().subst(substs).to_chalk(db));
     }
@@ -375,10 +365,6 @@ where
             return Vec::new();
         }
         let trait_: Trait = from_chalk(self.db, trait_id);
-        let blacklisted = blacklisted_trait(self.db, trait_);
-        if blacklisted {
-            return Vec::new();
-        }
         let result: Vec<_> = self
             .db
             .impls_for_trait(self.krate, trait_)
@@ -477,8 +463,8 @@ pub(crate) fn trait_datum_query(
     let flags = chalk_rust_ir::TraitFlags {
         auto: trait_.is_auto(db),
         upstream: trait_.module(db).krate(db) != Some(krate),
+        non_enumerable: is_non_enumerable_trait(db, trait_),
         // FIXME set these flags correctly
-        non_enumerable: false,
         marker: false,
         fundamental: false,
     };
