@@ -177,7 +177,7 @@ pub fn parse(
     macro_node_id: NodeId,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
-    let mut result = Vec::new();
+    let mut result = vec![];
 
     // For each token tree in `input`, parse the token into a `self::TokenTree`, consuming
     // additional trees if need be.

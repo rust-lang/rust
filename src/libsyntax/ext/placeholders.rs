@@ -15,14 +15,14 @@ use rustc_data_structures::fx::FxHashMap;
 pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
         dummy_spanned(ast::Mac_ {
-            path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
+            path: ast::Path { span: DUMMY_SP, segments: vec![] },
             tts: TokenStream::empty().into(),
             delim: ast::MacDelimiter::Brace,
         })
     }
 
     let ident = ast::Ident::invalid();
-    let attrs = Vec::new();
+    let attrs = vec![];
     let generics = ast::Generics::default();
     let vis = dummy_spanned(ast::VisibilityKind::Inherited);
     let span = DUMMY_SP;

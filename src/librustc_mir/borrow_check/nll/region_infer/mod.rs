@@ -277,7 +277,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraint_sccs,
             rev_constraint_graph: None,
             member_constraints,
-            member_constraints_applied: Vec::new(),
+            member_constraints_applied: vec![],
             closure_bounds_mapping,
             scc_universes,
             scc_representatives,

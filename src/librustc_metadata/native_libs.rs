@@ -14,7 +14,7 @@ use syntax::{span_err, struct_span_err};
 pub fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
         tcx,
-        libs: Vec::new(),
+        libs: vec![],
     };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
     collector.process_command_line();

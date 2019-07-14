@@ -20,9 +20,9 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt<'_>,
     let attrs = vec![cx.attribute(span, inline), cx.attribute(span, doc)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path: path_std!(cx, cmp::Eq),
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: true,
@@ -39,7 +39,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt<'_>,
                               cs_total_eq_assert(a, b, c)
                           })),
                       }],
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
     trait_def.expand_ext(cx, mitem, item, push, true)
 }
@@ -67,7 +67,7 @@ fn cs_total_eq_assert(cx: &mut ExtCtxt<'_>,
         }
     }
 
-    let mut stmts = Vec::new();
+    let mut stmts = vec![];
     match *substr.fields {
         StaticStruct(vdata, ..) => {
             process_variant(cx, &mut stmts, vdata);

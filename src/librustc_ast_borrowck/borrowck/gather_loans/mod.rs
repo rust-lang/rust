@@ -31,7 +31,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
         bccx,
-        all_loans: Vec::new(),
+        all_loans: vec![],
         item_ub: region::Scope {
             id: bccx.tcx.hir().body(body).value.hir_id.local_id,
             data: region::ScopeData::Node

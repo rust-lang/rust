@@ -128,7 +128,7 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
         // Generate the submodule itself
         let name = f.kind.fn_name("allocator_abi");
         let allocator_abi = Ident::from_str(&name).gensym();
-        let module = f.cx.item_mod(span, span, allocator_abi, Vec::new(), items);
+        let module = f.cx.item_mod(span, span, allocator_abi, vec![], items);
         let module = f.cx.monotonic_expander().flat_map_item(module).pop().unwrap();
 
         // Return the item and new submodule
@@ -160,7 +160,7 @@ struct AllocFnFactory<'a> {
 
 impl AllocFnFactory<'_> {
     fn allocator_fn(&self, method: &AllocatorMethod) -> P<Item> {
-        let mut abi_args = Vec::new();
+        let mut abi_args = vec![];
         let mut i = 0;
         let ref mut mk = || {
             let name = Ident::from_str(&format!("arg{}", i));
@@ -277,7 +277,7 @@ impl AllocFnFactory<'_> {
                 (self.ptr_u8(), expr)
             }
 
-            AllocatorTy::Unit => (self.cx.ty(self.span, TyKind::Tup(Vec::new())), expr),
+            AllocatorTy::Unit => (self.cx.ty(self.span, TyKind::Tup(vec![])), expr),
 
             AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
                 panic!("can't convert AllocatorTy to an output")

@@ -293,11 +293,11 @@ impl Attribute {
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         if self.tokens.is_empty() {
-            return Ok(Vec::new());
+            return Ok(vec![]);
         }
         self.parse(sess, |parser| {
             parser.expect(&token::OpenDelim(token::Paren))?;
-            let mut list = Vec::new();
+            let mut list = vec![];
             while !parser.eat(&token::CloseDelim(token::Paren)) {
                 list.push(f(parser)?);
                 if !parser.eat(&token::Comma) {
@@ -535,7 +535,7 @@ impl MetaItemKind {
                 TokenStream::new(vec)
             }
             MetaItemKind::List(ref list) => {
-                let mut tokens = Vec::new();
+                let mut tokens = vec![];
                 for (i, item) in list.iter().enumerate() {
                     if i > 0 {
                         tokens.push(TokenTree::token(token::Comma, span).into());
@@ -571,7 +571,7 @@ impl MetaItemKind {
         };
 
         let mut tokens = delimited.into_trees().peekable();
-        let mut result = Vec::new();
+        let mut result = vec![];
         while let Some(..) = tokens.peek() {
             let item = NestedMetaItem::from_tokens(&mut tokens)?;
             result.push(item);

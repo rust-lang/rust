@@ -2150,7 +2150,7 @@ fn explicit_predicates_of(
             let trait_item = tcx.hir().trait_item(trait_item_ref.id);
             let bounds = match trait_item.node {
                 hir::TraitItemKind::Type(ref bounds, _) => bounds,
-                _ => return Vec::new().into_iter()
+                _ => return vec![].into_iter()
             };
 
             let assoc_ty =

@@ -1558,7 +1558,7 @@ impl ExplicitOutlivesRequirements {
             hir::GenericParamKind::Type { .. } => {
                 Self::lifetimes_outliving_type(inferred_outlives, index)
             }
-            hir::GenericParamKind::Const { .. } => Vec::new(),
+            hir::GenericParamKind::Const { .. } => vec![],
         }
     }
 
@@ -1612,7 +1612,7 @@ impl ExplicitOutlivesRequirements {
         bound_spans: Vec<(usize, Span)>
     ) -> Vec<Span> {
         if bounds.is_empty() {
-            return Vec::new();
+            return vec![];
         }
         if bound_spans.len() == bounds.len() {
             let (_, last_bound_span) = bound_spans[bound_spans.len()-1];
@@ -1620,7 +1620,7 @@ impl ExplicitOutlivesRequirements {
             // start from just after the parameter (span passed as argument)
             vec![lo.to(last_bound_span)]
         } else {
-            let mut merged = Vec::new();
+            let mut merged = vec![];
             let mut last_merged_i = None;
 
             let mut from_start = true;
@@ -1680,7 +1680,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
             let ty_generics = cx.tcx.generics_of(def_id);
 
             let mut bound_count = 0;
-            let mut lint_spans = Vec::new();
+            let mut lint_spans = vec![];
 
             for param in &hir_generics.params {
                 let has_lifetime_bounds = param.bounds.iter().any(|bound| {
@@ -1715,7 +1715,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                 );
             }
 
-            let mut where_lint_spans = Vec::new();
+            let mut where_lint_spans = vec![];
             let mut dropped_predicate_count = 0;
             let num_predicates = hir_generics.where_clause.predicates.len();
             for (i, where_predicate) in hir_generics.where_clause.predicates.iter().enumerate() {

@@ -23,9 +23,9 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt<'_>,
 
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path: path_std!(cx, fmt::Debug),
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
@@ -35,14 +35,14 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt<'_>,
                           explicit_self: borrowed_explicit_self(),
                           args: vec![(fmtr, "f")],
                           ret_ty: Literal(path_std!(cx, fmt::Result)),
-                          attributes: Vec::new(),
+                          attributes: vec![],
                           is_unsafe: false,
                           unify_fieldless_variants: false,
                           combine_substructure: combine_substructure(Box::new(|a, b, c| {
                               show_substructure(a, b, c)
                           })),
                       }],
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
     trait_def.expand(cx, mitem, item, push)
 }

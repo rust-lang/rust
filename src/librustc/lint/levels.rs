@@ -37,7 +37,7 @@ enum LintSet {
 impl LintLevelSets {
     pub fn new(sess: &Session) -> LintLevelSets {
         let mut me = LintLevelSets {
-            list: Vec::new(),
+            list: vec![],
             lint_cap: Level::Forbid,
         };
         me.process_command_line(sess);

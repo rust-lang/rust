@@ -18,7 +18,7 @@ pub struct RPathConfig<'a> {
 pub fn get_rpath_flags(config: &mut RPathConfig<'_>) -> Vec<String> {
     // No rpath on windows
     if !config.has_rpath {
-        return Vec::new();
+        return vec![];
     }
 
     debug!("preparing the RPATH!");
@@ -163,7 +163,7 @@ fn get_install_prefix_rpath(config: &mut RPathConfig<'_>) -> String {
 
 fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
     let mut set = FxHashSet::default();
-    let mut minimized = Vec::new();
+    let mut minimized = vec![];
     for rpath in rpaths {
         if set.insert(rpath) {
             minimized.push(rpath.clone());

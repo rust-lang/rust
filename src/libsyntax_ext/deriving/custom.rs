@@ -51,7 +51,7 @@ impl MultiItemModifier for ProcMacroDerive {
             Annotatable::Expr(_) => {
                 ecx.span_err(span, "proc-macro derives may only be \
                                     applied to a struct, enum, or union");
-                return Vec::new()
+                return vec![]
             }
         };
         match item.node {
@@ -61,7 +61,7 @@ impl MultiItemModifier for ProcMacroDerive {
             _ => {
                 ecx.span_err(span, "proc-macro derives may only be \
                                     applied to a struct, enum, or union");
-                return Vec::new()
+                return vec![]
             }
         }
 

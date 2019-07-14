@@ -632,7 +632,7 @@ fn check_existential_types<'fcx, 'tcx>(
     ty: Ty<'tcx>,
 ) -> Vec<ty::Predicate<'tcx>> {
     trace!("check_existential_types(ty={:?})", ty);
-    let mut substituted_predicates = Vec::new();
+    let mut substituted_predicates = vec![];
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
         ty_op: |ty| {

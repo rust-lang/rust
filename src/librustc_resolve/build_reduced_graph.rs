@@ -389,7 +389,7 @@ impl<'a> Resolver<'a> {
                     use_span: item.span,
                     root_span: item.span,
                     span: item.span,
-                    module_path: Vec::new(),
+                    module_path: vec![],
                     vis: Cell::new(vis),
                     used: Cell::new(used),
                 });
@@ -808,7 +808,7 @@ impl<'a> Resolver<'a> {
     fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>,
                                     parent_scope: &ParentScope<'a>) -> bool {
         let mut import_all = None;
-        let mut single_imports = Vec::new();
+        let mut single_imports = vec![];
         for attr in &item.attrs {
             if attr.check_name(sym::macro_use) {
                 if self.current_module.parent.is_some() {
@@ -853,7 +853,7 @@ impl<'a> Resolver<'a> {
             use_span: item.span,
             root_span: span,
             span,
-            module_path: Vec::new(),
+            module_path: vec![],
             vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
             used: Cell::new(false),
         });
@@ -977,7 +977,7 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
             module: self.resolver.current_module,
             expansion: self.expansion,
             legacy: self.current_legacy_scope,
-            derives: Vec::new(),
+            derives: vec![],
         };
         self.resolver.build_reduced_graph_for_item(item, parent_scope);
         visit::walk_item(self, item);
@@ -1061,7 +1061,7 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
                 expansion: self.expansion,
                 legacy: self.current_legacy_scope,
                 // Let's hope discerning built-in attributes from derive helpers is not necessary
-                derives: Vec::new(),
+                derives: vec![],
             };
             parent_scope.module.builtin_attrs.borrow_mut().push((
                 attr.path.segments[0].ident, parent_scope

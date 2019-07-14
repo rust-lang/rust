@@ -436,7 +436,7 @@ pub fn compile(
         local_inner_macros,
         stability: attr::find_stability(&sess, &def.attrs, def.span),
         deprecation: attr::find_deprecation(&sess, &def.attrs, def.span),
-        helper_attrs: Vec::new(),
+        helper_attrs: vec![],
         edition,
     }
 }
@@ -728,7 +728,7 @@ struct TokenSet {
 impl TokenSet {
     // Returns a set for the empty sequence.
     fn empty() -> Self {
-        TokenSet { tokens: Vec::new(), maybe_empty: true }
+        TokenSet { tokens: vec![], maybe_empty: true }
     }
 
     // Returns the set `{ tok }` for the single-token (and thus

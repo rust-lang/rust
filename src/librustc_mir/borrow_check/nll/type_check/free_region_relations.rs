@@ -67,7 +67,7 @@ crate fn create(
         implicit_region_bound,
         constraints,
         universal_regions: universal_regions.clone(),
-        region_bound_pairs: Vec::new(),
+        region_bound_pairs: vec![],
         relations: UniversalRegionRelations {
             universal_regions: universal_regions.clone(),
             outlives: Default::default(),

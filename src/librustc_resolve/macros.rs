@@ -224,9 +224,9 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
                 (&attr.path, MacroKind::Attr, derives.clone(), after_derive),
             InvocationKind::Bang { ref mac, .. } =>
-                (&mac.node.path, MacroKind::Bang, Vec::new(), false),
+                (&mac.node.path, MacroKind::Bang, vec![], false),
             InvocationKind::Derive { ref path, .. } =>
-                (path, MacroKind::Derive, Vec::new(), false),
+                (path, MacroKind::Derive, vec![], false),
             InvocationKind::DeriveContainer { .. } =>
                 return Ok(None),
         };
@@ -262,7 +262,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
 impl<'a> Resolver<'a> {
     pub fn dummy_parent_scope(&self) -> ParentScope<'a> {
-        self.invoc_parent_scope(Mark::root(), Vec::new())
+        self.invoc_parent_scope(Mark::root(), vec![])
     }
 
     fn invoc_parent_scope(&self, invoc_id: Mark, derives: Vec<ast::Path>) -> ParentScope<'a> {
@@ -598,7 +598,7 @@ impl<'a> Resolver<'a> {
                 WhereToResolve::DeriveHelpers => {
                     let mut result = Err(Determinacy::Determined);
                     for derive in &parent_scope.derives {
-                        let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
+                        let parent_scope = ParentScope { derives: vec![], ..*parent_scope };
                         match self.resolve_macro_path(derive, MacroKind::Derive,
                                                       &parent_scope, true, force) {
                             Ok((Some(ext), _)) => if ext.helper_attrs.contains(&ident.name) {

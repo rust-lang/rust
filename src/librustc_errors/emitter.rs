@@ -241,12 +241,12 @@ impl EmitterWriter {
                           width_offset: usize,
                           code_offset: usize) -> Vec<(usize, Style)> {
         if line.line_index == 0 {
-            return Vec::new();
+            return vec![];
         }
 
         let source_string = match file.get_line(line.line_index - 1) {
             Some(s) => s,
-            None => return Vec::new(),
+            None => return vec![],
         };
 
         let line_offset = buffer.num_lines();

@@ -677,7 +677,7 @@ pub fn parse(
     // there are frequently *no* others! -- are allocated on the heap.
     let mut initial = initial_matcher_pos(ms, parser.token.span);
     let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
-    let mut next_items = Vec::new();
+    let mut next_items = vec![];
 
     loop {
         // Matcher positions black-box parsed by parser.rs (`parser`)

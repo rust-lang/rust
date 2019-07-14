@@ -54,8 +54,8 @@ impl ChalkTypeRelatingDelegate<'me, 'tcx> {
         Self {
             infcx,
             environment,
-            goals: Vec::new(),
-            constraints: Vec::new(),
+            goals: vec![],
+            constraints: vec![],
         }
     }
 }

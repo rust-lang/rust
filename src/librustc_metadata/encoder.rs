@@ -430,7 +430,7 @@ impl<'tcx> EncodeContext<'tcx> {
 
         // Encode the allocation index
         let interpret_alloc_index = {
-            let mut interpret_alloc_index = Vec::new();
+            let mut interpret_alloc_index = vec![];
             let mut n = 0;
             trace!("beginning to encode alloc ids");
             loop {

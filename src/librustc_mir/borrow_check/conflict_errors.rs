@@ -1254,7 +1254,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn get_moved_indexes(&mut self, location: Location, mpi: MovePathIndex) -> Vec<MoveSite> {
         let body = self.body;
 
-        let mut stack = Vec::new();
+        let mut stack = vec![];
         stack.extend(body.predecessor_locations(location).map(|predecessor| {
             let is_back_edge = location.dominates(predecessor, &self.dominators);
             (predecessor, is_back_edge)
@@ -1788,7 +1788,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ty::Ref(return_region, _, _) if return_region.has_name() && !is_closure => {
                 // This is case 1 from above, return type is a named reference so we need to
                 // search for relevant arguments.
-                let mut arguments = Vec::new();
+                let mut arguments = vec![];
                 for (index, argument) in sig.inputs().skip_binder().iter().enumerate() {
                     if let ty::Ref(argument_region, _, _) = argument.sty {
                         if argument_region == return_region {

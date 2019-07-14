@@ -61,7 +61,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt<'_>,
             }
         }
     });
-    MacEager::expr(ecx.expr_tuple(span, Vec::new()))
+    MacEager::expr(ecx.expr_tuple(span, vec![]))
 }
 
 pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt<'_>,
@@ -199,7 +199,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
     MacEager::items(smallvec![
         P(ast::Item {
             ident,
-            attrs: Vec::new(),
+            attrs: vec![],
             id: ast::DUMMY_NODE_ID,
             node: ast::ItemKind::Const(
                 ty,

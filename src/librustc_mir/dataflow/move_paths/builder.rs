@@ -28,7 +28,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         MoveDataBuilder {
             body,
             tcx,
-            errors: Vec::new(),
+            errors: vec![],
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(body),

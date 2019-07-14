@@ -119,9 +119,9 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt<'_>,
 
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path: Path::new_(vec![krate, "Encodable"], None, vec![], PathKind::Global),
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
@@ -129,7 +129,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt<'_>,
             MethodDef {
                 name: "encode",
                 generics: LifetimeBounds {
-                    lifetimes: Vec::new(),
+                    lifetimes: vec![],
                     bounds: vec![
                         (typaram,
                          vec![Path::new_(vec![krate, "Encoder"], None, vec![], PathKind::Global)])
@@ -141,12 +141,12 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt<'_>,
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, result::Result),
                     None,
-                    vec![Box::new(Tuple(Vec::new())), Box::new(Literal(Path::new_(
+                    vec![Box::new(Tuple(vec![])), Box::new(Literal(Path::new_(
                         vec![typaram, "Error"], None, vec![], PathKind::Local
                     )))],
                     PathKind::Std
                 )),
-                attributes: Vec::new(),
+                attributes: vec![],
                 is_unsafe: false,
                 unify_fieldless_variants: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
@@ -154,7 +154,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt<'_>,
                 })),
             }
         ],
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
 
     trait_def.expand(cx, mitem, item, push)
@@ -177,7 +177,7 @@ fn encodable_substructure(cx: &mut ExtCtxt<'_>,
     return match *substr.fields {
         Struct(_, ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field");
-            let mut stmts = Vec::new();
+            let mut stmts = vec![];
             for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
                     Some(id) => id.name,
@@ -229,7 +229,7 @@ fn encodable_substructure(cx: &mut ExtCtxt<'_>,
             let me = cx.stmt_let(trait_span, false, blkarg, encoder);
             let encoder = cx.expr_ident(trait_span, blkarg);
             let emit_variant_arg = cx.ident_of("emit_enum_variant_arg");
-            let mut stmts = Vec::new();
+            let mut stmts = vec![];
             if !fields.is_empty() {
                 let last = fields.len() - 1;
                 for (i, &FieldInfo { ref self_, span, .. }) in fields.iter().enumerate() {

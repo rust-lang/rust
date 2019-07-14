@@ -792,7 +792,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let mut state = WalkState {
             set: Default::default(),
             stack: vec![orig_node_idx],
-            result: Vec::new(),
+            result: vec![],
             dup_found: false,
         };
         state.set.insert(orig_node_idx);

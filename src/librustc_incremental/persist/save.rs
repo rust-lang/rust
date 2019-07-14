@@ -110,7 +110,7 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 
     // generate the data in a memory buffer
-    let mut encoder = Encoder::new(Vec::new());
+    let mut encoder = Encoder::new(vec![]);
     file_format::write_file_header(&mut encoder);
     encode(&mut encoder);
 

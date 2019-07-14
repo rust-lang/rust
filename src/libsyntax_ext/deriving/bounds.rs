@@ -13,14 +13,14 @@ pub fn expand_deriving_copy(cx: &mut ExtCtxt<'_>,
                             push: &mut dyn FnMut(Annotatable)) {
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path: path_std!(cx, marker::Copy),
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: true,
-        methods: Vec::new(),
-        associated_types: Vec::new(),
+        methods: vec![],
+        associated_types: vec![],
     };
 
     trait_def.expand(cx, mitem, item, push);

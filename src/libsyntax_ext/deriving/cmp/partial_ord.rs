@@ -81,7 +81,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt<'_>,
         is_unsafe: false,
         supports_unions: false,
         methods,
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
     trait_def.expand(cx, mitem, item, push)
 }

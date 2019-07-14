@@ -39,8 +39,8 @@ impl Command {
     fn _new(program: Program) -> Command {
         Command {
             program,
-            args: Vec::new(),
-            env: Vec::new(),
+            args: vec![],
+            env: vec![],
         }
     }
 

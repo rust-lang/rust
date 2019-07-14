@@ -17,7 +17,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn dump_graphviz_scc_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
         let mut nodes_per_scc: IndexVec<ConstraintSccIndex, _> = self.constraint_sccs
             .all_sccs()
-            .map(|_| Vec::new())
+            .map(|_| vec![])
             .collect();
 
         for region in self.definitions.indices() {

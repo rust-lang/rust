@@ -69,7 +69,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
         main_fn: None,
         attr_main_fn: None,
         start_fn: None,
-        non_main_fns: Vec::new(),
+        non_main_fns: vec![],
     };
 
     tcx.hir().krate().visit_all_item_likes(&mut ctxt);

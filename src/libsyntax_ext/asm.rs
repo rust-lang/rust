@@ -87,9 +87,9 @@ fn parse_inline_asm<'a>(
     let mut p = cx.new_parser_from_tts(&tts[first_colon..]);
     let mut asm = kw::Invalid;
     let mut asm_str_style = None;
-    let mut outputs = Vec::new();
-    let mut inputs = Vec::new();
-    let mut clobs = Vec::new();
+    let mut outputs = vec![];
+    let mut inputs = vec![];
+    let mut clobs = vec![];
     let mut volatile = false;
     let mut alignstack = false;
     let mut dialect = AsmDialect::Att;

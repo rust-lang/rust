@@ -5,7 +5,7 @@ pub fn opts() -> TargetOptions {
 
     // Make sure that the linker/gcc really don't pull in anything, including
     // default objects, libs, etc.
-    base.pre_link_args_crt.insert(LinkerFlavor::Gcc, Vec::new());
+    base.pre_link_args_crt.insert(LinkerFlavor::Gcc, vec![]);
     base.pre_link_args_crt.get_mut(&LinkerFlavor::Gcc).unwrap().push("-nostdlib".to_string());
 
     // At least when this was tested, the linker would not add the

@@ -224,7 +224,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let fake_borrow_temps = if let Some(ref borrows) = fake_borrows {
             self.calculate_fake_borrows(borrows, scrutinee_span)
         } else {
-            Vec::new()
+            vec![]
         };
 
         // Step 5. Create everything else: the guards and the arms.
@@ -636,7 +636,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 let projection = UserTypeProjection {
                     base: self.canonical_user_type_annotations.push(annotation),
-                    projs: Vec::new(),
+                    projs: vec![],
                 };
                 let subpattern_user_ty = pattern_user_ty.push_projection(&projection, user_ty_span);
                 self.visit_bindings(subpattern, subpattern_user_ty, f)

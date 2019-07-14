@@ -564,7 +564,7 @@ fn check_legality_of_move_bindings(
             }
         })
     }
-    let span_vec = &mut Vec::new();
+    let span_vec = &mut vec![];
     let check_move = |p: &Pat, sub: Option<&Pat>, span_vec: &mut Vec<Span>| {
         // check legality of moving out of the enum
 

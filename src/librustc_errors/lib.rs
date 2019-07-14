@@ -414,7 +414,7 @@ impl Handler {
             deduplicated_err_count: AtomicUsize::new(0),
             emitter: Lock::new(e),
             continue_after_error: AtomicBool::new(true),
-            delayed_span_bugs: Lock::new(Vec::new()),
+            delayed_span_bugs: Lock::new(vec![]),
             taught_diagnostics: Default::default(),
             emitted_diagnostic_codes: Default::default(),
             emitted_diagnostics: Default::default(),

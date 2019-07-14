@@ -454,7 +454,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef {
         ast::PolyTraitRef {
-            bound_generic_params: Vec::new(),
+            bound_generic_params: vec![],
             trait_ref: self.trait_ref(path),
             span,
         }
@@ -723,7 +723,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn expr_vec_ng(&self, sp: Span) -> P<ast::Expr> {
         self.expr_call_global(sp, self.std_path(&[sym::vec, sym::Vec, sym::new]),
-                              Vec::new())
+                              vec![])
     }
     fn expr_vec_slice(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr_addr_of(sp, self.expr_vec(sp, exprs))
@@ -938,7 +938,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn lambda0(&self, span: Span, body: P<ast::Expr>) -> P<ast::Expr> {
-        self.lambda(span, Vec::new(), body)
+        self.lambda(span, vec![], body)
     }
 
     fn lambda1(&self, span: Span, body: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr> {
@@ -1003,7 +1003,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                     body: P<ast::Block>) -> P<ast::Item> {
         self.item(span,
                   name,
-                  Vec::new(),
+                  vec![],
                   ast::ItemKind::Fn(self.fn_decl(inputs, ast::FunctionRetTy::Ty(output)),
                               ast::FnHeader {
                                   unsafety: ast::Unsafety::Normal,
@@ -1038,7 +1038,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 ty,
                 ident: None,
                 vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
-                attrs: Vec::new(),
+                attrs: vec![],
                 id: ast::DUMMY_NODE_ID,
             }
         }).collect();
@@ -1053,7 +1053,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                ast::Variant_ {
                    ident,
                    id: ast::DUMMY_NODE_ID,
-                   attrs: Vec::new(),
+                   attrs: vec![],
                    data: vdata,
                    disr_expr: None,
                })
@@ -1062,7 +1062,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn item_enum_poly(&self, span: Span, name: Ident,
                       enum_definition: ast::EnumDef,
                       generics: Generics) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Enum(enum_definition, generics))
+        self.item(span, name, vec![], ast::ItemKind::Enum(enum_definition, generics))
     }
 
     fn item_enum(&self, span: Span, name: Ident,
@@ -1083,7 +1083,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn item_struct_poly(&self, span: Span, name: Ident,
         struct_def: ast::VariantData, generics: Generics) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Struct(struct_def, generics))
+        self.item(span, name, vec![], ast::ItemKind::Struct(struct_def, generics))
     }
 
     fn item_mod(&self, span: Span, inner_span: Span, name: Ident,
@@ -1102,7 +1102,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item_extern_crate(&self, span: Span, name: Ident) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::ExternCrate(None))
+        self.item(span, name, vec![], ast::ItemKind::ExternCrate(None))
     }
 
     fn item_static(&self,
@@ -1112,7 +1112,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                    mutbl: ast::Mutability,
                    expr: P<ast::Expr>)
                    -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Static(ty, mutbl, expr))
+        self.item(span, name, vec![], ast::ItemKind::Static(ty, mutbl, expr))
     }
 
     fn item_const(&self,
@@ -1121,12 +1121,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   ty: P<ast::Ty>,
                   expr: P<ast::Expr>)
                   -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Const(ty, expr))
+        self.item(span, name, vec![], ast::ItemKind::Const(ty, expr))
     }
 
     fn item_ty_poly(&self, span: Span, name: Ident, ty: P<ast::Ty>,
                     generics: Generics) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Ty(ty, generics))
+        self.item(span, name, vec![], ast::ItemKind::Ty(ty, generics))
     }
 
     fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> P<ast::Item> {

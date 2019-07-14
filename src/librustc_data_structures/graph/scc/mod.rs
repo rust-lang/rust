@@ -219,10 +219,10 @@ where
             graph,
             node_states: IndexVec::from_elem_n(NodeState::NotVisited, num_nodes),
             node_stack: Vec::with_capacity(num_nodes),
-            successors_stack: Vec::new(),
+            successors_stack: vec![],
             scc_data: SccData {
                 ranges: IndexVec::new(),
-                all_successors: Vec::new(),
+                all_successors: vec![],
             },
             duplicate_set: FxHashSet::default(),
         };

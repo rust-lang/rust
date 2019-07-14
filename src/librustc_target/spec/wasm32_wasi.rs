@@ -81,7 +81,7 @@ pub fn target() -> Result<Target, String> {
     options
         .pre_link_args
         .entry(LinkerFlavor::Gcc)
-        .or_insert(Vec::new())
+        .or_insert(vec![])
         .push("--target=wasm32-wasi".to_string());
 
     // When generating an executable be sure to put the startup object at the

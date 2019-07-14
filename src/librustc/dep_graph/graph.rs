@@ -124,7 +124,7 @@ impl DepGraph {
     pub fn query(&self) -> DepGraphQuery {
         let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
         let nodes: Vec<_> = current_dep_graph.data.iter().map(|n| n.node).collect();
-        let mut edges = Vec::new();
+        let mut edges = vec![];
         for (from, edge_targets) in current_dep_graph.data.iter()
                                                            .map(|d| (d.node, &d.edges)) {
             for &edge_target in edge_targets.iter() {

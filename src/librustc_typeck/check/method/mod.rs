@@ -236,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                })
                                .collect()
                     }
-                    _ => Vec::new(),
+                    _ => vec![],
                 };
 
             return Err(IllegalSizedBound(candidates));

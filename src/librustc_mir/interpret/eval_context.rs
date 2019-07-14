@@ -207,7 +207,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             tcx,
             param_env,
             memory: Memory::new(tcx, memory_extra),
-            stack: Vec::new(),
+            stack: vec![],
             vtables: FxHashMap::default(),
         }
     }
@@ -708,7 +708,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         match place {
             Place::Local { frame, local } => {
-                let mut allocs = Vec::new();
+                let mut allocs = vec![];
                 let mut msg = format!("{:?}", local);
                 if frame != self.cur_frame() {
                     write!(msg, " ({} frames up)", self.cur_frame() - frame).unwrap();
@@ -767,7 +767,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo<'tcx>> {
         let mut last_span = None;
-        let mut frames = Vec::new();
+        let mut frames = vec![];
         for &Frame { instance, span, body, block, stmt, .. } in self.stack().iter().rev() {
             // make sure we don't emit frames that are duplicates of the previous
             if explicit_span == Some(span) {

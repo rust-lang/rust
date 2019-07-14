@@ -69,8 +69,8 @@ macro_rules! declare_features {
         impl Features {
             pub fn new() -> Features {
                 Features {
-                    declared_lang_features: Vec::new(),
-                    declared_lib_features: Vec::new(),
+                    declared_lang_features: vec![],
+                    declared_lib_features: vec![],
                     $($feature: false),+
                 }
             }

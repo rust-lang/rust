@@ -23,7 +23,7 @@ impl MirPass for Lower128Bit {
 
 impl Lower128Bit {
     fn lower_128bit_ops<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let mut new_blocks = Vec::new();
+        let mut new_blocks = vec![];
         let cur_len = body.basic_blocks().len();
 
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();

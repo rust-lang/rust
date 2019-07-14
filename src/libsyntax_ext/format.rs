@@ -127,7 +127,7 @@ fn parse_args<'a>(
     sp: Span,
     tts: &[tokenstream::TokenTree]
 ) -> Result<(P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<Symbol, usize>), DiagnosticBuilder<'a>> {
-    let mut args = Vec::<P<ast::Expr>>::new();
+    let mut args: Vec<P<ast::Expr>> = vec![];
     let mut names = FxHashMap::<Symbol, usize>::default();
 
     let mut p = ecx.new_parser_from_tts(tts);
@@ -730,8 +730,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
                                     -> P<ast::Expr> {
     // NOTE: this verbose way of initializing `Vec<Vec<ArgumentType>>` is because
     // `ArgumentType` does not derive `Clone`.
-    let arg_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
-    let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
+    let arg_types: Vec<_> = (0..args.len()).map(|_| vec![]).collect();
+    let arg_unique_types: Vec<_> = (0..args.len()).map(|_| vec![]).collect();
 
     let mut macsp = ecx.call_site();
     macsp = macsp.apply_mark(ecx.current_expansion.mark);
@@ -876,7 +876,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
     let fmt_str = &*fmt.node.0.as_str();  // for the suggestions below
     let mut parser = parse::Parser::new(fmt_str, str_style, skips, append_newline);
 
-    let mut unverified_pieces = Vec::new();
+    let mut unverified_pieces = vec![];
     while let Some(piece) = parser.next() {
         if !parser.errors.is_empty() {
             break;
@@ -914,8 +914,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
         names,
         curarg: 0,
         curpiece: 0,
-        arg_index_map: Vec::new(),
-        count_args: Vec::new(),
+        arg_index_map: vec![],
+        count_args: vec![],
         count_positions: FxHashMap::default(),
         count_positions_count: 0,
         count_args_index_offset: 0,
@@ -925,7 +925,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
         all_pieces_simple: true,
         macsp,
         fmtsp: fmt.span,
-        invalid_refs: Vec::new(),
+        invalid_refs: vec![],
         arg_spans,
         is_literal,
     };

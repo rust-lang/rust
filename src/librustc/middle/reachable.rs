@@ -404,7 +404,7 @@ fn reachable_set(tcx: TyCtxt<'_>, crate_num: CrateNum) -> ReachableSet {
         tcx,
         tables: &ty::TypeckTables::empty(None),
         reachable_symbols: Default::default(),
-        worklist: Vec::new(),
+        worklist: vec![],
         any_library,
     };
 

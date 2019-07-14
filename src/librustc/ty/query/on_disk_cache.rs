@@ -142,7 +142,7 @@ impl<'sess> OnDiskCache<'sess> {
 
     pub fn new_empty(source_map: &'sess SourceMap) -> OnDiskCache<'sess> {
         OnDiskCache {
-            serialized_data: Vec::new(),
+            serialized_data: vec![],
             file_index_to_stable_id: Default::default(),
             file_index_to_file: Default::default(),
             prev_cnums: vec![],
@@ -152,7 +152,7 @@ impl<'sess> OnDiskCache<'sess> {
             query_result_index: Default::default(),
             prev_diagnostics_index: Default::default(),
             synthetic_expansion_infos: Default::default(),
-            alloc_decoding_state: AllocDecodingState::new(Vec::new()),
+            alloc_decoding_state: AllocDecodingState::new(vec![]),
         }
     }
 
@@ -187,7 +187,7 @@ impl<'sess> OnDiskCache<'sess> {
                 predicate_shorthands: Default::default(),
                 expn_info_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
-                interpret_allocs_inverse: Vec::new(),
+                interpret_allocs_inverse: vec![],
                 source_map: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
             };
@@ -237,7 +237,7 @@ impl<'sess> OnDiskCache<'sess> {
             .collect::<Result<_, _>>()?;
 
             let interpret_alloc_index = {
-                let mut interpret_alloc_index = Vec::new();
+                let mut interpret_alloc_index = vec![];
                 let mut n = 0;
                 loop {
                     let new_n = encoder.interpret_allocs_inverse.len();
@@ -354,7 +354,7 @@ impl<'sess> OnDiskCache<'sess> {
                                            diagnostics: ThinVec<Diagnostic>) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
 
-        let x = current_diagnostics.entry(dep_node_index).or_insert(Vec::new());
+        let x = current_diagnostics.entry(dep_node_index).or_insert(vec![]);
 
         x.extend(Into::<Vec<_>>::into(diagnostics));
     }

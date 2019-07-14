@@ -303,9 +303,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // The output fragments also go through expansion recursively until no invocations are left.
         // Unresolved macros produce dummy outputs as a recovery measure.
         invocations.reverse();
-        let mut expanded_fragments = Vec::new();
+        let mut expanded_fragments = vec![];
         let mut derives: FxHashMap<Mark, Vec<_>> = FxHashMap::default();
-        let mut undetermined_invocations = Vec::new();
+        let mut undetermined_invocations = vec![];
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
             let invoc = if let Some(invoc) = invocations.pop() {
@@ -390,7 +390,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             };
 
             if expanded_fragments.len() < depth {
-                expanded_fragments.push(Vec::new());
+                expanded_fragments.push(vec![]);
             }
             expanded_fragments[depth - 1].push((mark, expanded_fragment));
             if !self.cx.ecfg.single_step {
@@ -435,7 +435,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     features: self.cx.ecfg.features,
                 },
                 cx: self.cx,
-                invocations: Vec::new(),
+                invocations: vec![],
                 monotonic: self.monotonic,
             };
             fragment.mut_visit_with(&mut collector);
@@ -878,7 +878,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)
         where T: HasAttrs,
     {
-        let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
+        let (mut attr, mut traits, mut after_derive) = (None, vec![], false);
 
         item.visit_attrs(|mut attrs| {
             attr = self.find_attr_invoc(&mut attrs, &mut after_derive);

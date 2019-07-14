@@ -110,7 +110,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             body,
             visited: BitSet::new_empty(body.basic_blocks().len()),
-            visit_stack: Vec::new(),
+            visit_stack: vec![],
             root_is_start_block: root == START_BLOCK,
         };
 

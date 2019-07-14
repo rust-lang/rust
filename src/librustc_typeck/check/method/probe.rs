@@ -360,9 +360,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.structurally_resolved_type(span, ty.value);
                 assert_eq!(ty, self.tcx.types.err);
-                return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(),
-                                                                 Vec::new(),
-                                                                 Vec::new(),
+                return Err(MethodError::NoMatch(NoMatchData::new(vec![],
+                                                                 vec![],
+                                                                 vec![],
                                                                  None,
                                                                  mode)));
             }
@@ -482,15 +482,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             mode,
             method_name,
             return_type,
-            inherent_candidates: Vec::new(),
-            extension_candidates: Vec::new(),
+            inherent_candidates: vec![],
+            extension_candidates: vec![],
             impl_dups: FxHashSet::default(),
             orig_steps_var_values,
             steps,
-            static_candidates: Vec::new(),
+            static_candidates: vec![],
             allow_similar_names: false,
             private_candidate: None,
-            unsatisfied_predicates: Vec::new(),
+            unsatisfied_predicates: vec![],
             is_suggestion,
         }
     }
@@ -1112,8 +1112,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn pick_method(&mut self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
         debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
 
-        let mut possibly_unsatisfied_predicates = Vec::new();
-        let mut unstable_candidates = Vec::new();
+        let mut possibly_unsatisfied_predicates = vec![];
+        let mut unstable_candidates = vec![];
 
         for (kind, candidates) in &[
             ("inherent", &self.inherent_candidates),
@@ -1635,7 +1635,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             } else {
                 self.fcx
                     .associated_item(def_id, name, Namespace::Value)
-                    .map_or(Vec::new(), |x| vec![x])
+                    .map_or(vec![], |x| vec![x])
             }
         } else {
             self.tcx.associated_items(def_id).collect()

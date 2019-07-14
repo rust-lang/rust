@@ -111,7 +111,7 @@ impl MirPass for AddRetag {
         // PART 2
         // Retag return values of functions.  Also escape-to-raw the argument of `drop`.
         // We collect the return destinations because we cannot mutate while iterating.
-        let mut returns: Vec<(SourceInfo, Place<'tcx>, BasicBlock)> = Vec::new();
+        let mut returns: Vec<(SourceInfo, Place<'tcx>, BasicBlock)> = vec![];
         for block_data in basic_blocks.iter_mut() {
             match block_data.terminator().kind {
                 TerminatorKind::Call { ref destination, .. } => {

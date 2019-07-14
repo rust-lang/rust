@@ -240,7 +240,7 @@ impl HygieneData {
     }
 
     fn marks(&self, mut ctxt: SyntaxContext) -> Vec<(Mark, Transparency)> {
-        let mut marks = Vec::new();
+        let mut marks = vec![];
         while ctxt != SyntaxContext::empty() {
             let outer_mark = self.outer(ctxt);
             let transparency = self.transparency(ctxt);
@@ -537,7 +537,7 @@ impl SyntaxContext {
             }
 
             let mut glob_ctxt = data.modern(glob_span.ctxt());
-            let mut marks = Vec::new();
+            let mut marks = vec![];
             while !data.is_descendant_of(expansion, data.outer(glob_ctxt)) {
                 marks.push(data.remove_mark(&mut glob_ctxt));
             }

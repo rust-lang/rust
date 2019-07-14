@@ -191,7 +191,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                 _ => return Err(CopyImplementationError::NotAnAdt),
             };
 
-            let mut infringing = Vec::new();
+            let mut infringing = vec![];
             for variant in &adt.variants {
                 for field in &variant.fields {
                     let ty = field.ty(tcx, substs);
@@ -987,7 +987,7 @@ impl<'tcx> ty::TyS<'tcx> {
         // To avoid a stack overflow when checking an enum variant or struct that
         // contains a different, structurally recursive type, maintain a stack
         // of seen types and check recursion for each of them (issues #3008, #3779).
-        let mut seen: Vec<Ty<'_>> = Vec::new();
+        let mut seen: Vec<Ty<'_>> = vec![];
         let mut representable_cache = FxHashMap::default();
         let r = is_type_structurally_recursive(
             tcx, sp, &mut seen, &mut representable_cache, self);

@@ -640,10 +640,10 @@ impl Inherited<'a, 'tcx> {
             infcx,
             fulfillment_cx: RefCell::new(TraitEngine::new(tcx)),
             locals: RefCell::new(Default::default()),
-            deferred_sized_obligations: RefCell::new(Vec::new()),
+            deferred_sized_obligations: RefCell::new(vec![]),
             deferred_call_resolutions: RefCell::new(Default::default()),
-            deferred_cast_checks: RefCell::new(Vec::new()),
-            deferred_generator_interiors: RefCell::new(Vec::new()),
+            deferred_cast_checks: RefCell::new(vec![]),
+            deferred_generator_interiors: RefCell::new(vec![]),
             opaque_types: RefCell::new(Default::default()),
             implicit_region_bound,
             body_id,
@@ -1636,8 +1636,8 @@ fn check_impl_items_against_trait<'tcx>(
     }
 
     // Check for missing items from trait
-    let mut missing_items = Vec::new();
-    let mut invalidated_items = Vec::new();
+    let mut missing_items = vec![];
+    let mut invalidated_items = vec![];
     let associated_type_overridden = overridden_associated_type.is_some();
     for trait_item in tcx.associated_items(impl_trait_ref.def_id) {
         let is_implemented = trait_def.ancestors(tcx, impl_id)
@@ -1759,7 +1759,7 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
             struct_span_err!(tcx.sess, sp, E0587,
                              "type has conflicting packed and align representation hints").emit();
         }
-        else if check_packed_inner(tcx, def_id, &mut Vec::new()) {
+        else if check_packed_inner(tcx, def_id, &mut vec![]) {
             struct_span_err!(tcx.sess, sp, E0588,
                 "packed type cannot transitively contain a `[repr(align)]` type").emit();
         }
@@ -2143,7 +2143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             diverges: Cell::new(Diverges::Maybe),
             has_errors: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
-                stack: Vec::new(),
+                stack: vec![],
                 by_id: Default::default(),
             }),
             inh,
@@ -3284,7 +3284,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let formal_ret = self.resolve_type_vars_with_obligations(formal_ret);
         let ret_ty = match expected_ret.only_has_type(self) {
             Some(ret) => ret,
-            None => return Vec::new()
+            None => return vec![]
         };
         let expect_args = self.fudge_inference_if_ok(|| {
             // Attempt to apply a subtyping relationship between the formal

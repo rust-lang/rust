@@ -257,7 +257,7 @@ fn dump_region_data_to<'a, 'tcx>(
            path);
     let g = ConstraintGraph::new("region_data".to_string(), region_rels, map);
     debug!("dump_region_data calling render");
-    let mut v = Vec::new();
+    let mut v = vec![];
     dot::render(&g, &mut v).unwrap();
     fs::write(path, &v)
 }

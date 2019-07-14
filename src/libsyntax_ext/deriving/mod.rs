@@ -54,7 +54,7 @@ impl MultiItemModifier for BuiltinDerive {
               meta_item: &MetaItem,
               item: Annotatable)
               -> Vec<Annotatable> {
-        let mut items = Vec::new();
+        let mut items = vec![];
         (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a));
         items
     }

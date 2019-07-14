@@ -251,10 +251,10 @@ pub fn lower_crate(
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
-        exported_macros: Vec::new(),
-        non_exported_macro_attrs: Vec::new(),
-        catch_scopes: Vec::new(),
-        loop_scopes: Vec::new(),
+        exported_macros: vec![],
+        non_exported_macro_attrs: vec![],
+        catch_scopes: vec![],
+        loop_scopes: vec![],
         is_in_loop_condition: false,
         is_in_trait_impl: false,
         is_in_dyn_type: false,
@@ -266,9 +266,9 @@ pub fn lower_crate(
         node_id_to_hir_id: IndexVec::new(),
         generator_kind: None,
         current_item: None,
-        lifetimes_to_define: Vec::new(),
+        lifetimes_to_define: vec![],
         is_collecting_in_band_lifetimes: false,
-        in_scope_lifetimes: Vec::new(),
+        in_scope_lifetimes: vec![],
         allow_try_trait: Some([sym::try_trait][..].into()),
         allow_gen_future: Some([sym::gen_future][..].into()),
     }.lower_crate(krate)
@@ -1093,7 +1093,7 @@ impl<'a> LoweringContext<'a> {
             &generics.params,
             |this| {
                 this.collect_in_band_defs(parent_id, anonymous_lifetime_mode, |this| {
-                    let mut params = Vec::new();
+                    let mut params = vec![];
                     // Note: it is necessary to lower generics *before* calling `f`.
                     // When lowering `async fn`, there's a final step when lowering
                     // the return type that assumes that all in-scope lifetimes have
@@ -1954,10 +1954,10 @@ impl<'a> LoweringContext<'a> {
             parent: parent_index,
             exist_ty_id,
             collect_elided_lifetimes: true,
-            currently_bound_lifetimes: Vec::new(),
+            currently_bound_lifetimes: vec![],
             already_defined_lifetimes: FxHashSet::default(),
-            output_lifetimes: Vec::new(),
-            output_lifetime_params: Vec::new(),
+            output_lifetimes: vec![],
+            output_lifetime_params: vec![],
         };
 
         for bound in bounds {
@@ -3225,8 +3225,8 @@ impl<'a> LoweringContext<'a> {
         };
 
         self.lower_body(|this| {
-            let mut arguments: Vec<hir::Arg> = Vec::new();
-            let mut statements: Vec<hir::Stmt> = Vec::new();
+            let mut arguments: Vec<hir::Arg> = vec![];
+            let mut statements: Vec<hir::Stmt> = vec![];
 
             // Async function arguments are lowered into the closure body so that they are
             // captured and so that the drop order matches the equivalent non-async functions.

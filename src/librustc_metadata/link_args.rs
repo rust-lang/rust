@@ -6,7 +6,7 @@ use syntax::symbol::sym;
 
 pub fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
     let mut collector = Collector {
-        args: Vec::new(),
+        args: vec![],
     };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 

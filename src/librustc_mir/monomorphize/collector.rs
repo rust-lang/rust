@@ -225,7 +225,7 @@ impl<'tcx> InliningMap<'tcx> {
     fn new() -> InliningMap<'tcx> {
         InliningMap {
             index: FxHashMap::default(),
-            targets: Vec::new(),
+            targets: vec![],
             inlines: GrowableBitSet::with_capacity(1024),
         }
     }
@@ -317,7 +317,7 @@ pub fn collect_crate_mono_items(
 // start monomorphizing from.
 fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<'_>> {
     debug!("collecting roots");
-    let mut roots = Vec::new();
+    let mut roots = vec![];
 
     {
         let entry_fn = tcx.entry_fn(LOCAL_CRATE);
@@ -358,7 +358,7 @@ fn collect_items_rec<'tcx>(
     }
     debug!("BEGIN collect_items_rec({})", starting_point.to_string(tcx, true));
 
-    let mut neighbors = Vec::new();
+    let mut neighbors = vec![];
     let recursion_depth_reset;
 
     match starting_point {

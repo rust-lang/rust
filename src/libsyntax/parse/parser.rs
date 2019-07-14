@@ -487,20 +487,20 @@ impl<'a> Parser<'a> {
                 ownership: DirectoryOwnership::Owned { relative: None }
             },
             root_module_name: None,
-            expected_tokens: Vec::new(),
+            expected_tokens: vec![],
             token_cursor: TokenCursor {
                 frame: TokenCursorFrame::new(
                     DelimSpan::dummy(),
                     token::NoDelim,
                     &tokens.into(),
                 ),
-                stack: Vec::new(),
+                stack: vec![],
             },
             desugar_doc_comments,
             cfg_mods: true,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
-            unclosed_delims: Vec::new(),
+            unclosed_delims: vec![],
             last_unexpected_token_span: None,
             subparser_name,
         };
@@ -1302,7 +1302,7 @@ impl<'a> Parser<'a> {
                 match ty.node {
                     // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                     TyKind::Path(None, ref path) if maybe_bounds => {
-                        self.parse_remaining_bounds(Vec::new(), path.clone(), lo, true)?
+                        self.parse_remaining_bounds(vec![], path.clone(), lo, true)?
                     }
                     TyKind::TraitObject(ref bounds, TraitObjectSyntax::None)
                             if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
@@ -1310,7 +1310,7 @@ impl<'a> Parser<'a> {
                             GenericBound::Trait(ref pt, ..) => pt.trait_ref.path.clone(),
                             GenericBound::Outlives(..) => self.bug("unexpected lifetime bound"),
                         };
-                        self.parse_remaining_bounds(Vec::new(), path, lo, true)?
+                        self.parse_remaining_bounds(vec![], path, lo, true)?
                     }
                     // `(TYPE)`
                     _ => TyKind::Paren(P(ty))
@@ -1356,7 +1356,7 @@ impl<'a> Parser<'a> {
             TyKind::Infer
         } else if self.token_is_bare_fn_keyword() {
             // Function pointer type
-            self.parse_ty_bare_fn(Vec::new())?
+            self.parse_ty_bare_fn(vec![])?
         } else if self.check_keyword(kw::For) {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
@@ -1406,7 +1406,7 @@ impl<'a> Parser<'a> {
                 //   `Type`
                 //   `Trait1 + Trait2 + 'a`
                 if allow_plus && self.check_plus() {
-                    self.parse_remaining_bounds(Vec::new(), path, lo, true)?
+                    self.parse_remaining_bounds(vec![], path, lo, true)?
                 } else {
                     TyKind::Path(None, path)
                 }
@@ -1659,7 +1659,7 @@ impl<'a> Parser<'a> {
             path_span = path_lo.to(self.prev_span);
         } else {
             path_span = self.token.span.to(self.token.span);
-            path = ast::Path { segments: Vec::new(), span: path_span };
+            path = ast::Path { segments: vec![], span: path_span };
         }
 
         // See doc comment for `unmatched_angle_bracket_count`.
@@ -1697,7 +1697,7 @@ impl<'a> Parser<'a> {
         });
 
         let lo = self.meta_var_span.unwrap_or(self.token.span);
-        let mut segments = Vec::new();
+        let mut segments = vec![];
         let mod_sep_ctxt = self.token.span.ctxt();
         if self.eat(&token::ModSep) {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
@@ -2070,7 +2070,7 @@ impl<'a> Parser<'a> {
 
                 if self.eat(&token::CloseDelim(token::Bracket)) {
                     // Empty vector.
-                    ex = ExprKind::Array(Vec::new());
+                    ex = ExprKind::Array(vec![]);
                 } else {
                     // Nonempty vector.
                     let first_expr = self.parse_expr()?;
@@ -2336,7 +2336,7 @@ impl<'a> Parser<'a> {
                          -> PResult<'a, P<Expr>> {
         let struct_sp = lo.to(self.prev_span);
         self.bump();
-        let mut fields = Vec::new();
+        let mut fields = vec![];
         let mut base = None;
 
         attrs.extend(self.parse_inner_attributes()?);
@@ -2688,7 +2688,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a stream of tokens into a list of `TokenTree`s, up to EOF.
     pub fn parse_all_token_trees(&mut self) -> PResult<'a, Vec<TokenTree>> {
-        let mut tts = Vec::new();
+        let mut tts = vec![];
         while self.token != token::Eof {
             tts.push(self.parse_token_tree());
         }
@@ -2696,7 +2696,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_tokens(&mut self) -> TokenStream {
-        let mut result = Vec::new();
+        let mut result = vec![];
         loop {
             match self.token.kind {
                 token::Eof | token::CloseDelim(..) => break,
@@ -3375,7 +3375,7 @@ impl<'a> Parser<'a> {
         }
         attrs.extend(self.parse_inner_attributes()?);
 
-        let mut arms: Vec<Arm> = Vec::new();
+        let mut arms: Vec<Arm> = vec![];
         while self.token != token::CloseDelim(token::Brace) {
             match self.parse_arm() {
                 Ok(arm) => arms.push(arm),
@@ -3511,7 +3511,7 @@ impl<'a> Parser<'a> {
         // Allow a '|' before the pats (RFC 1925 + RFC 2530)
         self.eat(&token::BinOp(token::Or));
 
-        let mut pats = Vec::new();
+        let mut pats = vec![];
         loop {
             pats.push(self.parse_top_level_pat()?);
 
@@ -3556,7 +3556,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_pat_list(&mut self) -> PResult<'a, (Vec<P<Pat>>, Option<usize>, bool)> {
-        let mut fields = Vec::new();
+        let mut fields = vec![];
         let mut ddpos = None;
         let mut prev_dd_sp = None;
         let mut trailing_comma = false;
@@ -3603,9 +3603,9 @@ impl<'a> Parser<'a> {
     fn parse_pat_vec_elements(
         &mut self,
     ) -> PResult<'a, (Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>)> {
-        let mut before = Vec::new();
+        let mut before = vec![];
         let mut slice = None;
-        let mut after = Vec::new();
+        let mut after = vec![];
         let mut first = true;
         let mut before_slice = true;
 
@@ -3711,7 +3711,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the fields of a struct-like pattern.
     fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<source_map::Spanned<ast::FieldPat>>, bool)> {
-        let mut fields = Vec::new();
+        let mut fields = vec![];
         let mut etc = false;
         let mut ate_comma = true;
         let mut delayed_err: Option<DiagnosticBuilder<'a>> = None;
@@ -4616,7 +4616,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a block. Inner attributes are allowed.
     fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
-        maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
+        maybe_whole!(self, NtBlock, |x| (vec![], x));
 
         let lo = self.token.span;
         self.expect(&token::OpenDelim(token::Brace))?;
@@ -4732,8 +4732,8 @@ impl<'a> Parser<'a> {
     fn parse_generic_bounds_common(&mut self,
                                    allow_plus: bool,
                                    colon_span: Option<Span>) -> PResult<'a, GenericBounds> {
-        let mut bounds = Vec::new();
-        let mut negative_bounds = Vec::new();
+        let mut bounds = vec![];
+        let mut negative_bounds = vec![];
         let mut last_plus_span = None;
         let mut was_negative = false;
         loop {
@@ -4851,7 +4851,7 @@ impl<'a> Parser<'a> {
     /// BOUND = LT_BOUND (e.g., `'a`)
     /// ```
     fn parse_lt_param_bounds(&mut self) -> GenericBounds {
-        let mut lifetimes = Vec::new();
+        let mut lifetimes = vec![];
         while self.check_lifetime() {
             lifetimes.push(ast::GenericBound::Outlives(self.expect_lifetime()));
 
@@ -4872,7 +4872,7 @@ impl<'a> Parser<'a> {
         let bounds = if self.eat(&token::Colon) {
             self.parse_generic_bounds(Some(self.prev_span))?
         } else {
-            Vec::new()
+            vec![]
         };
 
         let default = if self.eat(&token::Eq) {
@@ -4904,7 +4904,7 @@ impl<'a> Parser<'a> {
         let bounds = if self.eat(&token::Colon) {
             self.parse_generic_bounds(None)?
         } else {
-            Vec::new()
+            vec![]
         };
         generics.where_clause = self.parse_where_clause()?;
 
@@ -4928,7 +4928,7 @@ impl<'a> Parser<'a> {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs.into(),
-            bounds: Vec::new(),
+            bounds: vec![],
             kind: GenericParamKind::Const {
                 ty,
             }
@@ -4938,7 +4938,7 @@ impl<'a> Parser<'a> {
     /// Parses a (possibly empty) list of lifetime and type parameters, possibly including
     /// a trailing comma and erroneous trailing attributes.
     crate fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
-        let mut params = Vec::new();
+        let mut params = vec![];
         loop {
             let attrs = self.parse_outer_attributes()?;
             if self.check_lifetime() {
@@ -4947,7 +4947,7 @@ impl<'a> Parser<'a> {
                 let bounds = if self.eat(&token::Colon) {
                     self.parse_lt_param_bounds()
                 } else {
-                    Vec::new()
+                    vec![]
                 };
                 params.push(ast::GenericParam {
                     ident: lifetime.ident,
@@ -5013,7 +5013,7 @@ impl<'a> Parser<'a> {
         Ok(ast::Generics {
             params,
             where_clause: WhereClause {
-                predicates: Vec::new(),
+                predicates: vec![],
                 span: DUMMY_SP,
             },
             span,
@@ -5169,10 +5169,10 @@ impl<'a> Parser<'a> {
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
     fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<AssocTyConstraint>)> {
-        let mut args = Vec::new();
-        let mut constraints = Vec::new();
-        let mut misplaced_assoc_ty_constraints: Vec<Span> = Vec::new();
-        let mut assoc_ty_constraints: Vec<Span> = Vec::new();
+        let mut args = vec![];
+        let mut constraints = vec![];
+        let mut misplaced_assoc_ty_constraints: Vec<Span> = vec![];
+        let mut assoc_ty_constraints: Vec<Span> = vec![];
 
         let args_lo = self.token.span;
 
@@ -5271,7 +5271,7 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
         let mut where_clause = WhereClause {
-            predicates: Vec::new(),
+            predicates: vec![],
             span: self.prev_span.to(self.prev_span),
         };
 
@@ -5606,7 +5606,7 @@ impl<'a> Parser<'a> {
     fn parse_fn_block_decl(&mut self) -> PResult<'a, P<FnDecl>> {
         let inputs_captures = {
             if self.eat(&token::OrOr) {
-                Vec::new()
+                vec![]
             } else {
                 self.expect(&token::BinOp(token::Or))?;
                 let args = self.parse_seq_to_before_tokens(
@@ -5864,7 +5864,7 @@ impl<'a> Parser<'a> {
         let bounds = if self.eat(&token::Colon) {
             self.parse_generic_bounds(Some(self.prev_span))?
         } else {
-            Vec::new()
+            vec![]
         };
 
         if self.eat(&token::Eq) {
@@ -5951,7 +5951,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::OpenDelim(token::Brace))?;
         let attrs = self.parse_inner_attributes()?;
 
-        let mut impl_items = Vec::new();
+        let mut impl_items = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
             let mut at_end = false;
             match self.parse_impl_item(&mut at_end) {
@@ -6068,7 +6068,7 @@ impl<'a> Parser<'a> {
             // parameters, and the lifetime parameters must not have bounds.
             Ok(params)
         } else {
-            Ok(Vec::new())
+            Ok(vec![])
         }
     }
 
@@ -6155,7 +6155,7 @@ impl<'a> Parser<'a> {
     fn parse_record_struct_body(
         &mut self,
     ) -> PResult<'a, (Vec<StructField>, /* recovered */ bool)> {
-        let mut fields = Vec::new();
+        let mut fields = vec![];
         let mut recovered = false;
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
@@ -6468,7 +6468,7 @@ impl<'a> Parser<'a> {
             } else {
                 let placeholder = ast::Mod {
                     inner: DUMMY_SP,
-                    items: Vec::new(),
+                    items: vec![],
                     inline: false
                 };
                 Ok((id, ItemKind::Mod(placeholder), None))
@@ -6904,7 +6904,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the part of an enum declaration following the `{`.
     fn parse_enum_def(&mut self, _generics: &ast::Generics) -> PResult<'a, EnumDef> {
-        let mut variants = Vec::new();
+        let mut variants = vec![];
         while self.token != token::CloseDelim(token::Brace) {
             let variant_attrs = self.parse_outer_attributes()?;
             let vlo = self.token.span;
@@ -7646,7 +7646,7 @@ impl<'a> Parser<'a> {
         where F: FnOnce(&mut Self) -> PResult<'a, R>
     {
         // Record all tokens we parse when parsing this item.
-        let mut tokens = Vec::new();
+        let mut tokens = vec![];
         let prev_collecting = match self.token_cursor.frame.last_token {
             LastToken::Collecting(ref mut list) => {
                 Some(mem::take(list))
@@ -7722,7 +7722,7 @@ impl<'a> Parser<'a> {
     fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
-        let mut prefix = ast::Path { segments: Vec::new(), span: lo.shrink_to_lo() };
+        let mut prefix = ast::Path { segments: vec![], span: lo.shrink_to_lo() };
         let kind = if self.check(&token::OpenDelim(token::Brace)) ||
                       self.check(&token::BinOp(token::Star)) ||
                       self.is_import_coupler() {

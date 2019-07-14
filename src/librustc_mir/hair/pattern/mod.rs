@@ -85,7 +85,7 @@ impl<'tcx> PatternTypeProjection<'tcx> {
                 user_ty: self.user_ty,
                 inferred_ty,
             }),
-            projs: Vec::new(),
+            projs: vec![],
         }
     }
 }
@@ -1127,7 +1127,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         .map(|i| adt_subpattern(i as usize, None))
                         .collect(),
                     slice: None,
-                    suffix: Vec::new(),
+                    suffix: vec![],
                 }
             }
             _ => {

@@ -464,7 +464,7 @@ fn locals_live_across_suspend_points(
     );
 
     let mut storage_liveness_map = FxHashMap::default();
-    let mut live_locals_at_suspension_points = Vec::new();
+    let mut live_locals_at_suspension_points = vec![];
 
     for (block, data) in body.basic_blocks().iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
@@ -942,7 +942,7 @@ fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) ->
     let term_block = BasicBlock::new(body.basic_blocks().len());
     let source_info = source_info(body);
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
+        statements: vec![],
         terminator: Some(Terminator {
             source_info,
             kind,
@@ -973,7 +973,7 @@ fn insert_panic_block<'tcx>(
 
     let source_info = source_info(body);
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
+        statements: vec![],
         terminator: Some(Terminator {
             source_info,
             kind: term,
@@ -1047,7 +1047,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     };
     let source_info = source_info(body);
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
+        statements: vec![],
         terminator: Some(Terminator {
             source_info,
             kind: term,
@@ -1072,7 +1072,7 @@ where
         // Find the target for this suspension point, if applicable
         target(point).map(|target| {
             let block = BasicBlock::new(body.basic_blocks().len());
-            let mut statements = Vec::new();
+            let mut statements = vec![];
 
             // Create StorageLive instructions for locals with live storage
             for i in 0..(body.local_decls.len()) {
@@ -1163,7 +1163,7 @@ impl MirPass for StateTransform {
             state_substs,
             remap,
             storage_liveness,
-            suspension_points: Vec::new(),
+            suspension_points: vec![],
             new_ret_local,
             discr_ty,
         };

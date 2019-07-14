@@ -437,7 +437,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span, is_error: bool) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
+            node: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(vec![]) },
             span: sp,
             attrs: ThinVec::new(),
         })
@@ -456,7 +456,7 @@ impl DummyResult {
     pub fn raw_ty(sp: Span, is_error: bool) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
+            node: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(vec![]) },
             span: sp
         })
     }
@@ -634,7 +634,7 @@ impl SyntaxExtension {
             local_inner_macros: false,
             stability: None,
             deprecation: None,
-            helper_attrs: Vec::new(),
+            helper_attrs: vec![],
             edition,
             kind,
         }
@@ -651,7 +651,7 @@ impl SyntaxExtension {
     pub fn dummy_derive(edition: Edition) -> SyntaxExtension {
         fn expander(_: &mut ExtCtxt<'_>, _: Span, _: &ast::MetaItem, _: Annotatable)
                     -> Vec<Annotatable> {
-            Vec::new()
+            vec![]
         }
         SyntaxExtension::default(SyntaxExtensionKind::Derive(Box::new(expander)), edition)
     }
@@ -737,7 +737,7 @@ impl<'a> ExtCtxt<'a> {
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,
-                module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
+                module: Rc::new(ModuleData { mod_path: vec![], directory: PathBuf::new() }),
                 directory_ownership: DirectoryOwnership::Owned { relative: None },
             },
             expansions: FxHashMap::default(),
@@ -966,7 +966,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>,
                           sp: Span,
                           tts: &[tokenstream::TokenTree]) -> Option<Vec<P<ast::Expr>>> {
     let mut p = cx.new_parser_from_tts(tts);
-    let mut es = Vec::new();
+    let mut es = vec![];
     while p.token != token::Eof {
         let mut expr = panictry!(p.parse_expr());
         cx.expander().visit_expr(&mut expr);

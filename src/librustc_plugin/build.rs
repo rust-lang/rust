@@ -37,7 +37,7 @@ pub fn find_plugin_registrar(tcx: TyCtxt<'_>) -> Option<DefId> {
 fn plugin_registrar_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
     assert_eq!(cnum, LOCAL_CRATE);
 
-    let mut finder = RegistrarFinder { registrars: Vec::new() };
+    let mut finder = RegistrarFinder { registrars: vec![] };
     tcx.hir().krate().visit_all_item_likes(&mut finder);
 
     match finder.registrars.len() {

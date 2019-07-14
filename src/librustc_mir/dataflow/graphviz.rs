@@ -47,7 +47,7 @@ pub(crate) fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
           P: Fn(&BD, BD::Idx) -> DebugFormatted,
 {
     let g = Graph { mbcx, phantom: PhantomData, render_idx };
-    let mut v = Vec::new();
+    let mut v = vec![];
     dot::render(&g, &mut v)?;
     debug!("print_borrowck_graph_to path: {} def_id: {:?}",
            path.display(), mbcx.def_id);
@@ -98,7 +98,7 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
         // +---------+----------------------------------+------------------+------------------+
         // | [00-00] | _7 = const Foo::twiddle(move _8) | [0c-00]          | [f3-0f]          |
         // +---------+----------------------------------+------------------+------------------+
-        let mut v = Vec::new();
+        let mut v = vec![];
         self.node_label_internal(n, &mut v, *n, self.mbcx.body()).unwrap();
         dot::LabelText::html(String::from_utf8(v).unwrap())
     }

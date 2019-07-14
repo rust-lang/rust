@@ -42,7 +42,7 @@ use syntax_pos::edition::Edition;
 use std::{thread, panic};
 
 pub fn diagnostics_registry() -> Registry {
-    let mut all_errors = Vec::new();
+    let mut all_errors = vec![];
     all_errors.extend_from_slice(&rustc::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_typeck::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);

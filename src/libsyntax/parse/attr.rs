@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
 
     /// Parse attributes that appear before an item
     crate fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
-        let mut attrs: Vec<ast::Attribute> = Vec::new();
+        let mut attrs: Vec<ast::Attribute> = vec![];
         let mut just_parsed_doc_comment = false;
         loop {
             debug!("parse_outer_attributes: self.token={:?}", self.token);

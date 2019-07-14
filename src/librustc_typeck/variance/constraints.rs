@@ -58,7 +58,7 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
         contravariant,
         invariant,
         bivariant,
-        constraints: Vec::new(),
+        constraints: vec![],
     };
 
     tcx.hir().krate().visit_all_item_likes(&mut constraint_cx);

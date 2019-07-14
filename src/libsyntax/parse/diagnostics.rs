@@ -664,7 +664,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::ModSep)?;
 
         let mut path = ast::Path {
-            segments: Vec::new(),
+            segments: vec![],
             span: DUMMY_SP,
         };
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE)?;

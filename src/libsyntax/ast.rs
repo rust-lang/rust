@@ -366,9 +366,9 @@ impl Default for Generics {
     /// Creates an instance of `Generics`.
     fn default() -> Generics {
         Generics {
-            params: Vec::new(),
+            params: vec![],
             where_clause: WhereClause {
-                predicates: Vec::new(),
+                predicates: vec![],
                 span: DUMMY_SP,
             },
             span: DUMMY_SP,
@@ -979,7 +979,7 @@ impl Expr {
     fn to_bound(&self) -> Option<GenericBound> {
         match &self.node {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
-                PolyTraitRef::new(Vec::new(), path.clone(), self.span),
+                PolyTraitRef::new(vec![], path.clone(), self.span),
                 TraitBoundModifier::None,
             )),
             _ => None,

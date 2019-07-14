@@ -582,7 +582,7 @@ impl RustcDefaultCalls {
             match input {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
-                    let mut v = Vec::new();
+                    let mut v = vec![];
                     locator::list_file_metadata(&sess.target.target,
                                                 path,
                                                 &*cstore.metadata_loader,
@@ -1086,7 +1086,7 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
         return None;
     };
 
-    let mut result = Vec::new();
+    let mut result = vec![];
     let mut excluded_cargo_defaults = false;
     for flag in ICE_REPORT_COMPILER_FLAGS {
         let prefix = if flag.len() == 1 { "-" } else { "--" };

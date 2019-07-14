@@ -18,9 +18,9 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt<'_>,
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path: path_std!(cx, cmp::Ord),
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
@@ -37,7 +37,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt<'_>,
                               cs_cmp(a, b, c)
                           })),
                       }],
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
 
     trait_def.expand(cx, mitem, item, push)

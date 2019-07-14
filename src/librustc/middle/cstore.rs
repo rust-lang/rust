@@ -154,7 +154,7 @@ pub struct EncodedMetadata {
 impl EncodedMetadata {
     pub fn new() -> EncodedMetadata {
         EncodedMetadata {
-            raw_data: Vec::new(),
+            raw_data: vec![],
         }
     }
 }

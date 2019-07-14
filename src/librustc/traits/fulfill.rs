@@ -101,7 +101,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         debug!("select(obligation-forest-size={})", self.predicates.len());
 
-        let mut errors = Vec::new();
+        let mut errors = vec![];
 
         loop {
             debug!("select: starting another iteration");

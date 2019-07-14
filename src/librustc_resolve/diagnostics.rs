@@ -86,7 +86,7 @@ impl<'a> Resolver<'a> {
             err.code(DiagnosticId::Error("E0411".into()));
             err.span_label(span, format!("`Self` is only available in impls, traits, \
                                           and type definitions"));
-            return (err, Vec::new());
+            return (err, vec![]);
         }
         if is_self_value(path, ns) {
             debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
@@ -105,7 +105,7 @@ impl<'a> Resolver<'a> {
                              with `self` parameter")
                 }
             });
-            return (err, Vec::new());
+            return (err, vec![]);
         }
 
         // Try to lookup name in more relaxed fashion for better error reporting.
@@ -489,7 +489,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
-            Some((path, Vec::new()))
+            Some((path, vec![]))
         } else {
             None
         }
@@ -544,7 +544,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
-            Some((path, Vec::new()))
+            Some((path, vec![]))
         } else {
             None
         }
@@ -584,7 +584,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                     name, path, result);
             if let PathResult::Module(..) = result {
-                return Some((path, Vec::new()));
+                return Some((path, vec![]));
             }
         }
 
@@ -636,7 +636,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 _ => format!("{}", ident),
             };
 
-            let mut corrections: Vec<(Span, String)> = Vec::new();
+            let mut corrections: Vec<(Span, String)> = vec![];
             if !directive.is_nested() {
                 // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
                 // intermediate segments.

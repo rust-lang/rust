@@ -269,8 +269,8 @@ impl IrMaps<'tcx> {
             live_node_map: HirIdMap::default(),
             variable_map: HirIdMap::default(),
             capture_info_map: Default::default(),
-            var_kinds: Vec::new(),
-            lnks: Vec::new(),
+            var_kinds: vec![],
+            lnks: vec![],
         }
     }
 
@@ -484,7 +484,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
         // being the location that the variable is used.  This results
         // in better error messages than just pointing at the closure
         // construction site.
-        let mut call_caps = Vec::new();
+        let mut call_caps = vec![];
         let closure_def_id = ir.tcx.hir().local_def_id(expr.hir_id);
         if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
             let parent_upvars = ir.tcx.upvars(ir.body_owner);
@@ -833,7 +833,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     #[allow(unused_must_use)]
     fn ln_str(&self, ln: LiveNode) -> String {
-        let mut wr = Vec::new();
+        let mut wr = vec![];
         {
             let wr = &mut wr as &mut dyn Write;
             write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));

@@ -2842,9 +2842,9 @@ impl<'a> State<'a> {
             self.print_generic_params(generic_params);
         }
         let generics = ast::Generics {
-            params: Vec::new(),
+            params: vec![],
             where_clause: ast::WhereClause {
-                predicates: Vec::new(),
+                predicates: vec![],
                 span: syntax_pos::DUMMY_SP,
             },
             span: syntax_pos::DUMMY_SP,
@@ -2929,7 +2929,7 @@ mod tests {
             let abba_ident = ast::Ident::from_str("abba");
 
             let decl = ast::FnDecl {
-                inputs: Vec::new(),
+                inputs: vec![],
                 output: ast::FunctionRetTy::Default(syntax_pos::DUMMY_SP),
                 c_variadic: false
             };
@@ -2958,7 +2958,7 @@ mod tests {
 
             let var = source_map::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
                 ident,
-                attrs: Vec::new(),
+                attrs: vec![],
                 id: ast::DUMMY_NODE_ID,
                 // making this up as I go.... ?
                 data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),

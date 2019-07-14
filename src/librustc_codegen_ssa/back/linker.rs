@@ -1010,7 +1010,7 @@ fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
         return exports.clone()
     }
 
-    let mut symbols = Vec::new();
+    let mut symbols = vec![];
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {

@@ -375,7 +375,7 @@ fn find_type_parameters(
 
     let mut visitor = Visitor {
         ty_param_names,
-        types: Vec::new(),
+        types: vec![],
         span,
         cx,
     };
@@ -528,7 +528,7 @@ impl<'a> TraitDef<'a> {
                 ident,
                 vis: respan(self.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 defaultness: ast::Defaultness::Final,
-                attrs: Vec::new(),
+                attrs: vec![],
                 generics: Generics::default(),
                 node: ast::ImplItemKind::Type(type_def.to_ty(cx, self.span, type_ident, generics)),
                 tokens: None,
@@ -629,7 +629,7 @@ impl<'a> TraitDef<'a> {
 
                         let predicate = ast::WhereBoundPredicate {
                             span: self.span,
-                            bound_generic_params: Vec::new(),
+                            bound_generic_params: vec![],
                             bounded_ty: ty,
                             bounds,
                         };
@@ -755,7 +755,7 @@ impl<'a> TraitDef<'a> {
                        generics: &Generics,
                        from_scratch: bool)
                        -> P<ast::Item> {
-        let mut field_tys = Vec::new();
+        let mut field_tys = vec![];
 
         for variant in &enum_def.variants {
             field_tys.extend(variant.node
@@ -874,9 +874,9 @@ impl<'a> MethodDef<'a> {
          generics: &Generics)
          -> (Option<ast::ExplicitSelf>, Vec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
 
-        let mut self_args = Vec::new();
-        let mut nonself_args = Vec::new();
-        let mut arg_tys = Vec::new();
+        let mut self_args = vec![];
+        let mut nonself_args = vec![];
+        let mut arg_tys = vec![];
         let mut nonstatic = false;
 
         let ast_explicit_self = self.explicit_self.as_ref().map(|self_ptr| {
@@ -1015,9 +1015,9 @@ impl<'a> MethodDef<'a> {
                                      use_temporaries: bool)
                                      -> P<Expr> {
 
-        let mut raw_fields = Vec::new(); // Vec<[fields of self],
+        let mut raw_fields = vec![]; // Vec<[fields of self],
                                  // [fields of next Self arg], [etc]>
-        let mut patterns = Vec::new();
+        let mut patterns = vec![];
         for i in 0..self_args.len() {
             let struct_path = cx.path(DUMMY_SP, vec![type_ident]);
             let (pat, ident_expr) = trait_.create_struct_pattern(cx,
@@ -1320,7 +1320,7 @@ impl<'a> MethodDef<'a> {
                 // We need a default case that handles the fieldless variants.
                 // The index and actual variant aren't meaningful in this case,
                 // so just use whatever
-                let substructure = EnumMatching(0, variants.len(), v, Vec::new());
+                let substructure = EnumMatching(0, variants.len(), v, vec![]);
                 Some(self.call_substructure_method(cx,
                                                    trait_,
                                                    type_ident,
@@ -1529,8 +1529,8 @@ impl<'a> MethodDef<'a> {
 // general helper methods.
 impl<'a> TraitDef<'a> {
     fn summarise_struct(&self, cx: &mut ExtCtxt<'_>, struct_def: &VariantData) -> StaticFields {
-        let mut named_idents = Vec::new();
-        let mut just_spans = Vec::new();
+        let mut named_idents = vec![];
+        let mut just_spans = vec![];
         for field in struct_def.fields() {
             let sp = field.span.with_ctxt(self.span.ctxt());
             match field.ident {
@@ -1551,7 +1551,7 @@ impl<'a> TraitDef<'a> {
             // unnamed fields
             (false, _) => Unnamed(just_spans, is_tuple),
             // empty
-            _ => Named(Vec::new()),
+            _ => Named(vec![]),
         }
     }
 
@@ -1584,8 +1584,8 @@ impl<'a> TraitDef<'a> {
          use_temporaries: bool)
          -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>)
     {
-        let mut paths = Vec::new();
-        let mut ident_exprs = Vec::new();
+        let mut paths = vec![];
+        let mut ident_exprs = vec![];
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = struct_field.span.with_ctxt(self.span.ctxt());
             let ident = cx.ident_of(&format!("{}_{}", prefix, i)).gensym();

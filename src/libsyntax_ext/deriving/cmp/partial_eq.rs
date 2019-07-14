@@ -90,14 +90,14 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
 
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path: path_std!(cx, cmp::PartialEq),
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods,
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
     trait_def.expand(cx, mitem, item, push)
 }

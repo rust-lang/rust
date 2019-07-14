@@ -739,7 +739,7 @@ impl IntType {
 pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
     use ReprAttr::*;
 
-    let mut acc = Vec::new();
+    let mut acc = vec![];
     let diagnostic = &sess.span_diagnostic;
     if attr.path == sym::repr {
         if let Some(items) = attr.meta_item_list() {

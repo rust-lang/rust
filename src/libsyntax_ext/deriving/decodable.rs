@@ -38,16 +38,16 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt<'_>,
 
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path: Path::new_(vec![krate, "Decodable"], None, vec![], PathKind::Global),
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
                           name: "decode",
                           generics: LifetimeBounds {
-                              lifetimes: Vec::new(),
+                              lifetimes: vec![],
                               bounds: vec![(typaram,
                                             vec![Path::new_(vec![krate, "Decoder"],
                                                             None,
@@ -64,14 +64,14 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt<'_>,
                         vec![typaram, "Error"], None, vec![], PathKind::Local
                     )))],
                                                  PathKind::Std)),
-                          attributes: Vec::new(),
+                          attributes: vec![],
                           is_unsafe: false,
                           unify_fieldless_variants: false,
                           combine_substructure: combine_substructure(Box::new(|a, b, c| {
                               decodable_substructure(a, b, c, krate)
                           })),
                       }],
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
 
     trait_def.expand(cx, mitem, item, push)

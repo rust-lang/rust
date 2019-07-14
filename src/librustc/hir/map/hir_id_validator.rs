@@ -7,7 +7,7 @@ use rustc_data_structures::sync::{Lock, ParallelIterator, par_iter};
 pub fn check_crate(hir_map: &hir::map::Map<'_>) {
     hir_map.dep_graph.assert_ignored();
 
-    let errors = Lock::new(Vec::new());
+    let errors = Lock::new(vec![]);
 
     par_iter(&hir_map.krate().modules).for_each(|(module_id, _)| {
         let local_def_id = hir_map.local_def_id_from_node_id(*module_id);

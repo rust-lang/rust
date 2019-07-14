@@ -66,7 +66,7 @@ impl LanguageItems {
 
         Self {
             items: vec![$(init_none($variant)),*],
-            missing: Vec::new(),
+            missing: vec![],
         }
     }
 

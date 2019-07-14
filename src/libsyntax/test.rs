@@ -235,7 +235,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
     cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
     let it = cx.ext_cx.monotonic_expander().flat_map_item(P(ast::Item {
         ident: name,
-        attrs: Vec::new(),
+        attrs: vec![],
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::Mod(reexport_mod),
         vis: dummy_spanned(ast::VisibilityKind::Public),
@@ -264,8 +264,8 @@ fn generate_test_harness(sess: &ParseSess,
     let cx = TestCtxt {
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, econfig, resolver),
-        path: Vec::new(),
-        test_cases: Vec::new(),
+        path: vec![],
+        test_cases: vec![],
         reexport_test_harness_main,
         // N.B., doesn't consider the value of `--crate-name` passed on the command line.
         is_libtest: attr::find_crate_name(&krate.attrs)
@@ -277,8 +277,8 @@ fn generate_test_harness(sess: &ParseSess,
 
     TestHarnessGenerator {
         cx,
-        tests: Vec::new(),
-        tested_submods: Vec::new(),
+        tests: vec![],
+        tested_submods: vec![],
     }.visit_crate(krate);
 }
 

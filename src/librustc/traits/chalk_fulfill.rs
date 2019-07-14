@@ -91,7 +91,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
-        let mut errors = Vec::new();
+        let mut errors = vec![];
         let mut next_round = FxHashSet::default();
         let mut making_progress;
 

@@ -59,9 +59,9 @@ pub fn modify(sess: &ParseSess,
 
     let (derives, attr_macros, bang_macros) = {
         let mut collect = CollectProcMacros {
-            derives: Vec::new(),
-            attr_macros: Vec::new(),
-            bang_macros: Vec::new(),
+            derives: vec![],
+            attr_macros: vec![],
+            bang_macros: vec![],
             in_root: true,
             handler,
             is_proc_macro_crate,
@@ -176,7 +176,7 @@ impl<'a> CollectProcMacros<'a> {
                 Some(ident.name)
             }).collect()
         } else {
-            Vec::new()
+            vec![]
         };
 
         if self.in_root && item.vis.node.is_pub() {
@@ -358,7 +358,7 @@ fn mk_decls(
     let proc_macro = Ident::with_empty_ctxt(sym::proc_macro);
     let krate = cx.item(span,
                         proc_macro,
-                        Vec::new(),
+                        vec![],
                         ast::ItemKind::ExternCrate(None));
 
     let bridge = Ident::from_str("bridge");

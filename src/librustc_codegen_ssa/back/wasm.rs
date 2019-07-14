@@ -38,7 +38,7 @@ pub fn add_producer_section(
         name: "Rust",
         version: rust_version,
     };
-    let mut fields = Vec::new();
+    let mut fields = vec![];
     let mut wrote_rustc = false;
     let mut wrote_rust = false;
 
@@ -64,7 +64,7 @@ pub fn add_producer_section(
 
         for _ in 0..decoder.u32() {
             let name = decoder.str();
-            let mut values = Vec::new();
+            let mut values = vec![];
             for _ in 0..decoder.u32() {
                 let name = decoder.str();
                 let version = decoder.str();
@@ -169,7 +169,7 @@ struct WasmEncoder {
 
 impl WasmEncoder {
     fn new() -> WasmEncoder {
-        WasmEncoder { data: Vec::new() }
+        WasmEncoder { data: vec![] }
     }
 
     fn u32(&mut self, val: u32) {

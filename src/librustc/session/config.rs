@@ -597,10 +597,10 @@ pub fn host_triple() -> &'static str {
 impl Default for Options {
     fn default() -> Options {
         Options {
-            crate_types: Vec::new(),
+            crate_types: vec![],
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
-            lint_opts: Vec::new(),
+            lint_opts: vec![],
             lint_cap: None,
             describe_lints: false,
             output_types: OutputTypes(BTreeMap::new()),
@@ -610,20 +610,20 @@ impl Default for Options {
             test: false,
             incremental: None,
             debugging_opts: basic_debugging_options(),
-            prints: Vec::new(),
+            prints: vec![],
             borrowck_mode: BorrowckMode::Migrate,
             cg: basic_codegen_options(),
             error_format: ErrorOutputType::default(),
             externs: Externs(BTreeMap::new()),
             crate_name: None,
             alt_std_name: None,
-            libs: Vec::new(),
+            libs: vec![],
             unstable_features: UnstableFeatures::Disallow,
             debug_assertions: true,
             actually_rustdoc: false,
             cli_forced_codegen_units: None,
             cli_forced_thinlto_off: false,
-            remap_path_prefix: Vec::new(),
+            remap_path_prefix: vec![],
             edition: DEFAULT_EDITION,
         }
     }
@@ -1147,9 +1147,9 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "select target processor (rustc --print target-cpus for details)"),
     target_feature: String = (String::new(), parse_string, [TRACKED],
         "target specific attributes (rustc --print target-features for details)"),
-    passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
+    passes: Vec<String> = (vec![], parse_list, [TRACKED],
         "a list of extra LLVM passes to run (space separated)"),
-    llvm_args: Vec<String> = (Vec::new(), parse_list, [TRACKED],
+    llvm_args: Vec<String> = (vec![], parse_list, [TRACKED],
         "a list of arguments to pass to llvm (space separated)"),
     save_temps: bool = (false, parse_bool, [UNTRACKED],
         "save all temporary output files during compilation"),
@@ -1175,13 +1175,13 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "choose the relocation model to use (rustc --print relocation-models for details)"),
     code_model: Option<String> = (None, parse_opt_string, [TRACKED],
         "choose the code model to use (rustc --print code-models for details)"),
-    metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
+    metadata: Vec<String> = (vec![], parse_list, [TRACKED],
         "metadata to mangle symbol names with"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
     codegen_units: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
-    remark: Passes = (Passes::Some(Vec::new()), parse_passes, [UNTRACKED],
+    remark: Passes = (Passes::Some(vec![]), parse_passes, [UNTRACKED],
         "print remarks for these optimization passes (space separated, or \"all\")"),
     no_stack_check: bool = (false, parse_bool, [UNTRACKED],
         "the --no-stack-check flag is deprecated and does nothing"),
@@ -1315,7 +1315,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "trace and profile the queries and keys of the incremental compilation framework"),
     no_analysis: bool = (false, parse_bool, [UNTRACKED],
         "parse and expand the source, but run no analysis"),
-    extra_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
+    extra_plugins: Vec<String> = (vec![], parse_list, [TRACKED],
         "load extra plugins"),
     unstable_options: bool = (false, parse_bool, [UNTRACKED],
         "adds unstable command line options to rustc interface"),
@@ -1445,7 +1445,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "disables the 'leak check' for subtyping; unsound, but useful for tests"),
     no_interleave_lints: bool = (false, parse_bool, [UNTRACKED],
         "don't interleave execution of lints; allows benchmarking individual lints"),
-    crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
+    crate_attr: Vec<String> = (vec![], parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     self_profile: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
@@ -2152,7 +2152,7 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
-    let mut prints = Vec::<PrintRequest>::new();
+    let mut prints: Vec<PrintRequest> = vec![];
     if cg.target_cpu.as_ref().map_or(false, |s| s == "help") {
         prints.push(PrintRequest::TargetCPUs);
         cg.target_cpu = None;
@@ -2449,7 +2449,7 @@ pub fn build_session_options_and_crate_config(
 }
 
 pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
-    let mut crate_types: Vec<CrateType> = Vec::new();
+    let mut crate_types: Vec<CrateType> = vec![];
     for unparsed_crate_type in &list_list {
         for part in unparsed_crate_type.split(',') {
             let new_part = match part {

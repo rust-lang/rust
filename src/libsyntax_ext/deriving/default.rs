@@ -19,9 +19,9 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt<'_>,
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path: path_std!(cx, default::Default),
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
@@ -29,7 +29,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt<'_>,
                           name: "default",
                           generics: LifetimeBounds::empty(),
                           explicit_self: None,
-                          args: Vec::new(),
+                          args: vec![],
                           ret_ty: Self_,
                           attributes: attrs,
                           is_unsafe: false,
@@ -38,7 +38,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt<'_>,
                               default_substructure(a, b, c)
                           })),
                       }],
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
     trait_def.expand(cx, mitem, item, push)
 }
@@ -49,7 +49,7 @@ fn default_substructure(cx: &mut ExtCtxt<'_>,
                         -> P<Expr> {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
     let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
-    let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
+    let default_call = |span| cx.expr_call_global(span, default_ident.clone(), vec![]);
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {

@@ -253,7 +253,7 @@ pub fn mk_printer() -> Printer {
         left_total: 0,
         right_total: 0,
         scan_stack: VecDeque::new(),
-        print_stack: Vec::new(),
+        print_stack: vec![],
         pending_indentation: 0
     }
 }

@@ -370,7 +370,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
-        let mut errors_buffer = Vec::new();
+        let mut errors_buffer = vec![];
         for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
             let hir_id = hir::HirId {
                 owner: common_local_id_root.index,

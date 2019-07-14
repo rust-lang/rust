@@ -107,7 +107,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 -> NodeCollector<'a, 'hir> {
         let root_mod_def_path_hash = definitions.def_path_hash(CRATE_DEF_INDEX);
 
-        let mut hir_body_nodes = Vec::new();
+        let mut hir_body_nodes = vec![];
 
         // Allocate `DepNode`s for the root module.
         let (root_mod_sig_dep_index, root_mod_full_dep_index) = {

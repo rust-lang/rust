@@ -1203,13 +1203,13 @@ impl<'a> ModuleData<'a> {
             kind,
             normal_ancestor_id,
             resolutions: Default::default(),
-            single_segment_macro_resolutions: RefCell::new(Vec::new()),
-            multi_segment_macro_resolutions: RefCell::new(Vec::new()),
-            builtin_attrs: RefCell::new(Vec::new()),
+            single_segment_macro_resolutions: RefCell::new(vec![]),
+            multi_segment_macro_resolutions: RefCell::new(vec![]),
+            builtin_attrs: RefCell::new(vec![]),
             unresolved_invocations: Default::default(),
             no_implicit_prelude: false,
-            glob_importers: RefCell::new(Vec::new()),
-            globs: RefCell::new(Vec::new()),
+            glob_importers: RefCell::new(vec![]),
+            globs: RefCell::new(vec![]),
             traits: RefCell::new(None),
             populated: Cell::new(normal_ancestor_id.is_local()),
             span,
@@ -1959,8 +1959,8 @@ impl<'a> Resolver<'a> {
             has_self: FxHashSet::default(),
             field_names: FxHashMap::default(),
 
-            determined_imports: Vec::new(),
-            indeterminate_imports: Vec::new(),
+            determined_imports: vec![],
+            indeterminate_imports: vec![],
 
             current_module: graph_root,
             ribs: PerNS {
@@ -1968,7 +1968,7 @@ impl<'a> Resolver<'a> {
                 type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
                 macro_ns: vec![Rib::new(ModuleRibKind(graph_root))],
             },
-            label_ribs: Vec::new(),
+            label_ribs: vec![],
 
             current_trait_ref: None,
             current_self_type: None,
@@ -1992,13 +1992,13 @@ impl<'a> Resolver<'a> {
 
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
-            maybe_unused_extern_crates: Vec::new(),
+            maybe_unused_extern_crates: vec![],
 
             unused_labels: FxHashMap::default(),
 
-            privacy_errors: Vec::new(),
-            ambiguity_errors: Vec::new(),
-            use_injections: Vec::new(),
+            privacy_errors: vec![],
+            ambiguity_errors: vec![],
+            use_injections: vec![],
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
@@ -2023,11 +2023,11 @@ impl<'a> Resolver<'a> {
             macro_defs,
             local_macro_def_scopes: FxHashMap::default(),
             name_already_seen: FxHashMap::default(),
-            potentially_unused_imports: Vec::new(),
+            potentially_unused_imports: vec![],
             struct_constructors: Default::default(),
             unused_macros: Default::default(),
             proc_macro_stubs: Default::default(),
-            current_type_ascription: Vec::new(),
+            current_type_ascription: vec![],
             injected_crate: None,
             active_features:
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
@@ -4181,7 +4181,7 @@ impl<'a> Resolver<'a> {
             }
         };
 
-        let mut names = Vec::new();
+        let mut names = vec![];
         if path.len() == 1 {
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.
@@ -4472,7 +4472,7 @@ impl<'a> Resolver<'a> {
                                   -> Vec<TraitCandidate> {
         debug!("(getting traits containing item) looking for '{}'", ident.name);
 
-        let mut found_traits = Vec::new();
+        let mut found_traits = vec![];
         // Look for the current trait.
         if let Some((module, _)) = self.current_trait_ref {
             if self.resolve_ident_in_module(
@@ -4514,7 +4514,7 @@ impl<'a> Resolver<'a> {
         assert!(ns == TypeNS || ns == ValueNS);
         let mut traits = module.traits.borrow_mut();
         if traits.is_none() {
-            let mut collected_traits = Vec::new();
+            let mut collected_traits = vec![];
             module.for_each_child(|name, ns, binding| {
                 if ns != TypeNS { return }
                 match binding.res() {
@@ -4580,10 +4580,11 @@ impl<'a> Resolver<'a> {
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Res) -> bool
     {
-        let mut candidates = Vec::new();
+        let mut candidates = vec![];
         let mut seen_modules = FxHashSet::default();
         let not_local_module = crate_name.name != kw::Crate;
-        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
+        let mut worklist: Vec<(_, Vec<ast::PathSegment>, _)>
+            = vec![(start_module, vec![], not_local_module)];
 
         while let Some((in_module,
                         path_segments,
@@ -4702,7 +4703,7 @@ impl<'a> Resolver<'a> {
     fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
         let mut result = None;
         let mut seen_modules = FxHashSet::default();
-        let mut worklist = vec![(self.graph_root, Vec::new())];
+        let mut worklist = vec![(self.graph_root, vec![])];
 
         while let Some((in_module, path_segments)) = worklist.pop() {
             // abort if the module is already found
@@ -4743,7 +4744,7 @@ impl<'a> Resolver<'a> {
         self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
             self.populate_module_if_necessary(enum_module);
 
-            let mut variants = Vec::new();
+            let mut variants = vec![];
             enum_module.for_each_child_stable(|ident, _, name_binding| {
                 if let Res::Def(DefKind::Variant, _) = name_binding.res() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
@@ -4906,7 +4907,7 @@ impl<'a> Resolver<'a> {
             let note_msg = format!("`{ident}` could{also} refer to {what}",
                                    ident = ident, also = also, what = what);
 
-            let mut help_msgs = Vec::new();
+            let mut help_msgs = vec![];
             if b.is_glob_import() && (kind == AmbiguityKind::GlobVsGlob ||
                                       kind == AmbiguityKind::GlobVsExpanded ||
                                       kind == AmbiguityKind::GlobVsOuter &&
@@ -5359,7 +5360,7 @@ fn show_candidates(err: &mut DiagnosticBuilder<'_>,
 
 /// A somewhat inefficient routine to obtain the name of a module.
 fn module_to_string(module: Module<'_>) -> Option<String> {
-    let mut names = Vec::new();
+    let mut names = vec![];
 
     fn collect_mod(names: &mut Vec<Ident>, module: Module<'_>) {
         if let ModuleKind::Def(.., name) = module.kind {

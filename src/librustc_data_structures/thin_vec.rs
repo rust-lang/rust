@@ -25,7 +25,7 @@ impl<T> From<Vec<T>> for ThinVec<T> {
 impl<T> Into<Vec<T>> for ThinVec<T> {
     fn into(self) -> Vec<T> {
         match self {
-            ThinVec(None) => Vec::new(),
+            ThinVec(None) => vec![],
             ThinVec(Some(vec)) => *vec,
         }
     }

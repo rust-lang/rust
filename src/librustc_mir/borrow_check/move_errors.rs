@@ -67,7 +67,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &self,
         errors: Vec<(Place<'tcx>, MoveError<'tcx>)>
     ) -> Vec<GroupedMoveError<'tcx>> {
-        let mut grouped_errors = Vec::new();
+        let mut grouped_errors = vec![];
         for (original_path, error) in errors {
             self.append_to_grouped_errors(&mut grouped_errors, original_path, error);
         }
@@ -501,7 +501,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         binds_to: &[Local],
     ) {
-        let mut suggestions: Vec<(Span, &str, String)> = Vec::new();
+        let mut suggestions: Vec<(Span, &str, String)> = vec![];
         for local in binds_to {
             let bind_to = &self.body.local_decls[*local];
             if let Some(
@@ -551,7 +551,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         binds_to: &[Local],
     ) {
-        let mut noncopy_var_spans = Vec::new();
+        let mut noncopy_var_spans = vec![];
         for (j, local) in binds_to.into_iter().enumerate() {
             let bind_to = &self.body.local_decls[*local];
             let binding_span = bind_to.source_info.span;

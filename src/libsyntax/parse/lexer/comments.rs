@@ -139,7 +139,7 @@ fn push_blank_line_comment(rdr: &StringReader<'_>, comments: &mut Vec<Comment>) 
     debug!(">>> blank-line comment");
     comments.push(Comment {
         style: BlankLine,
-        lines: Vec::new(),
+        lines: vec![],
         pos: rdr.pos,
     });
 }
@@ -174,7 +174,7 @@ fn read_line_comments(rdr: &mut StringReader<'_>,
                       comments: &mut Vec<Comment>) {
     debug!(">>> line comments");
     let p = rdr.pos;
-    let mut lines: Vec<String> = Vec::new();
+    let mut lines: Vec<String> = vec![];
     while rdr.ch_is('/') && rdr.nextch_is('/') {
         let line = rdr.read_one_line_comment();
         debug!("{}", line);
@@ -230,7 +230,7 @@ fn read_block_comment(rdr: &mut StringReader<'_>,
                       comments: &mut Vec<Comment>) {
     debug!(">>> block comment");
     let p = rdr.pos;
-    let mut lines: Vec<String> = Vec::new();
+    let mut lines: Vec<String> = vec![];
 
     // Count the number of chars since the start of the line by rescanning.
     let src_index = rdr.src_index(rdr.source_file.line_begin_pos(rdr.pos));
@@ -345,7 +345,7 @@ pub fn gather_comments(sess: &ParseSess, path: FileName, src: String) -> Vec<Com
     let source_file = cm.new_source_file(path, src);
     let mut rdr = lexer::StringReader::new(sess, source_file, None);
 
-    let mut comments: Vec<Comment> = Vec::new();
+    let mut comments: Vec<Comment> = vec![];
     let mut code_to_the_left = false; // Only code
     let mut anything_to_the_left = false; // Code or comments
 

@@ -585,7 +585,7 @@ fn generated_output_paths(
     exact_name: bool,
     crate_name: &str,
 ) -> Vec<PathBuf> {
-    let mut out_filenames = Vec::new();
+    let mut out_filenames = vec![];
     for output_type in sess.opts.output_types.keys() {
         let file = outputs.path(*output_type);
         match *output_type {

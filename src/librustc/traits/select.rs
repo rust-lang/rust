@@ -1717,7 +1717,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let mut candidates = SelectionCandidateSet {
-            vec: Vec::new(),
+            vec: vec![],
             ambiguous: false,
         };
 
@@ -2550,7 +2550,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Never
             | ty::Error => {
                 // safe for everything
-                Where(ty::Binder::dummy(Vec::new()))
+                Where(ty::Binder::dummy(vec![]))
             }
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
@@ -2602,7 +2602,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(ty::FloatVar(_))
             | ty::FnDef(..)
             | ty::FnPtr(_)
-            | ty::Error => Where(ty::Binder::dummy(Vec::new())),
+            | ty::Error => Where(ty::Binder::dummy(vec![])),
 
             ty::Uint(_)
             | ty::Int(_)
@@ -2691,7 +2691,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
             | ty::Never
-            | ty::Char => Vec::new(),
+            | ty::Char => vec![],
 
             ty::UnnormalizedProjection(..)
             | ty::Placeholder(..)
@@ -2849,7 +2849,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ProjectionCandidate => {
                 self.confirm_projection_candidate(obligation);
-                Ok(VtableParam(Vec::new()))
+                Ok(VtableParam(vec![]))
             }
 
             ClosureCandidate => {
@@ -2883,7 +2883,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // because that's what the object type is telling us,
                 // and there's really no additional obligations to
                 // prove and no types in particular to unify etc.
-                Ok(VtableParam(Vec::new()))
+                Ok(VtableParam(vec![]))
             }
 
             BuiltinUnsizeCandidate => {

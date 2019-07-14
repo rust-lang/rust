@@ -143,7 +143,7 @@ impl CStore {
     }
 
     pub(super) fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {
-        let mut ordering = Vec::new();
+        let mut ordering = vec![];
         self.push_dependencies_in_postorder(&mut ordering, krate);
         ordering.reverse();
         ordering
@@ -167,7 +167,7 @@ impl CStore {
     }
 
     pub(super) fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
-        let mut ordering = Vec::new();
+        let mut ordering = vec![];
         for (num, v) in self.metas.borrow().iter_enumerated() {
             if let &Some(_) = v {
                 self.push_dependencies_in_postorder(&mut ordering, num);

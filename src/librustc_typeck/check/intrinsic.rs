@@ -116,7 +116,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                  param(0))
             }
             "fence" | "singlethreadfence" => {
-                (0, Vec::new(), tcx.mk_unit())
+                (0, vec![], tcx.mk_unit())
             }
             op => {
                 struct_span_err!(tcx.sess, it.span, E0092,
@@ -128,13 +128,13 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
         };
         (n_tps, inputs, output, hir::Unsafety::Unsafe)
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
-        (0, Vec::new(), tcx.types.never, hir::Unsafety::Unsafe)
+        (0, vec![], tcx.types.never, hir::Unsafety::Unsafe)
     } else {
         let unsafety = intrisic_operation_unsafety(&name[..]);
         let (n_tps, inputs, output) = match &name[..] {
-            "breakpoint" => (0, Vec::new(), tcx.mk_unit()),
+            "breakpoint" => (0, vec![], tcx.mk_unit()),
             "size_of" |
-            "pref_align_of" | "min_align_of" => (1, Vec::new(), tcx.types.usize),
+            "pref_align_of" | "min_align_of" => (1, vec![], tcx.types.usize),
             "size_of_val" |  "min_align_of_val" => {
                 (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST,
@@ -143,8 +143,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                  ], tcx.types.usize)
             }
             "rustc_peek" => (1, vec![param(0)], param(0)),
-            "panic_if_uninhabited" => (1, Vec::new(), tcx.mk_unit()),
-            "init" => (1, Vec::new(), param(0)),
+            "panic_if_uninhabited" => (1, vec![], tcx.mk_unit()),
+            "init" => (1, vec![], param(0)),
             "forget" => (1, vec![param(0)], tcx.mk_unit()),
             "transmute" => (2, vec![ param(0) ], param(1)),
             "move_val_init" => {
@@ -166,10 +166,10 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             "drop_in_place" => {
                 (1, vec![tcx.mk_mut_ptr(param(0))], tcx.mk_unit())
             }
-            "needs_drop" => (1, Vec::new(), tcx.types.bool),
+            "needs_drop" => (1, vec![], tcx.types.bool),
 
-            "type_name" => (1, Vec::new(), tcx.mk_static_str()),
-            "type_id" => (1, Vec::new(), tcx.types.u64),
+            "type_name" => (1, vec![], tcx.mk_static_str()),
+            "type_id" => (1, vec![], tcx.types.u64),
             "offset" | "arith_offset" => {
               (1,
                vec![

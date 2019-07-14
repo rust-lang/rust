@@ -11,7 +11,7 @@ use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashSet;
 
 pub fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
-    let mut result = Vec::new();
+    let mut result = vec![];
     attrs.retain(|attr| {
         if attr.path != sym::derive {
             return true;

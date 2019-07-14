@@ -781,7 +781,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             let relocations = self.get(src.alloc_id)?.relocations(self, src, size);
             if relocations.is_empty() {
                 // nothing to copy, ignore even the `length` loop
-                Vec::new()
+                vec![]
             } else {
                 let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
                 for i in 0..length {

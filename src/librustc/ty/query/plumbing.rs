@@ -738,7 +738,7 @@ macro_rules! define_queries_inner {
 
             #[cfg(parallel_compiler)]
             pub fn collect_active_jobs(&self) -> Vec<Lrc<QueryJob<$tcx>>> {
-                let mut jobs = Vec::new();
+                let mut jobs = vec![];
 
                 // We use try_lock here since we are only called from the
                 // deadlock handler, and this shouldn't be locked.
@@ -758,7 +758,7 @@ macro_rules! define_queries_inner {
             }
 
             pub fn print_stats(&self) {
-                let mut queries = Vec::new();
+                let mut queries = vec![];
 
                 #[derive(Clone)]
                 struct QueryStats {

@@ -624,10 +624,10 @@ impl<'a> CrateLoader<'a> {
                     )
                 }
                 ProcMacro::Attr { name, client } => (
-                    name, SyntaxExtensionKind::Attr(Box::new(AttrProcMacro { client })), Vec::new()
+                    name, SyntaxExtensionKind::Attr(Box::new(AttrProcMacro { client })), vec![]
                 ),
                 ProcMacro::Bang { name, client } => (
-                    name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new()
+                    name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), vec![]
                 )
             };
 

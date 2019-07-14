@@ -898,7 +898,7 @@ fn get_metadata_section_imp(target: &Target,
             // Header is okay -> inflate the actual metadata
             let compressed_bytes = &buf[header_len..];
             debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
-            let mut inflated = Vec::new();
+            let mut inflated = vec![];
             match DeflateDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
                 Ok(_) => {
                     rustc_erase_owner!(OwningRef::new(inflated).map_owner_box())

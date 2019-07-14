@@ -22,16 +22,16 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt<'_>,
     let arg = Path::new_local(typaram);
     let hash_trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path,
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
                           name: "hash",
                           generics: LifetimeBounds {
-                              lifetimes: Vec::new(),
+                              lifetimes: vec![],
                               bounds: vec![(typaram, vec![path_std!(cx, hash::Hasher)])],
                           },
                           explicit_self: borrowed_explicit_self(),
@@ -45,7 +45,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt<'_>,
                               hash_substructure(a, b, c)
                           })),
                       }],
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
 
     hash_trait_def.expand(cx, mitem, item, push);
@@ -69,7 +69,7 @@ fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructu
         let expr = cx.expr_call(span, hash_path, vec![ref_thing, state_expr.clone()]);
         cx.stmt_expr(expr)
     };
-    let mut stmts = Vec::new();
+    let mut stmts = vec![];
 
     let fields = match *substr.fields {
         Struct(_, ref fs) | EnumMatching(_, 1, .., ref fs) => fs,

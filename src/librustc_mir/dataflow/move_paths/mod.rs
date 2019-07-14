@@ -61,7 +61,7 @@ impl<'tcx> MovePath<'tcx> {
         &self,
         move_paths: &IndexVec<MovePathIndex, MovePath<'_>>,
     ) -> Vec<MovePathIndex> {
-        let mut parents = Vec::new();
+        let mut parents = vec![];
 
         let mut curr_parent = self.parent;
         while let Some(parent_mpi) = curr_parent {

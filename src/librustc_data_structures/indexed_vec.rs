@@ -546,7 +546,7 @@ pub type Enumerated<I, J> = iter::Map<iter::Enumerate<J>, IntoIdx<I>>;
 impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn new() -> Self {
-        IndexVec { raw: Vec::new(), _marker: PhantomData }
+        IndexVec { raw: vec![], _marker: PhantomData }
     }
 
     #[inline]

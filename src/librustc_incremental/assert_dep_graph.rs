@@ -246,7 +246,7 @@ fn dump_graph(tcx: TyCtxt<'_>) {
 
     { // dump a .dot file in graphviz format:
         let dot_path = format!("{}.dot", path);
-        let mut v = Vec::new();
+        let mut v = vec![];
         dot::render(&GraphvizDepGraph(nodes, edges), &mut v).unwrap();
         fs::write(dot_path, v).unwrap();
     }

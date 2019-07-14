@@ -77,16 +77,16 @@ impl ParseSess {
             unstable_features: UnstableFeatures::from_environment(),
             config: FxHashSet::default(),
             missing_fragment_specifiers: Lock::new(FxHashSet::default()),
-            raw_identifier_spans: Lock::new(Vec::new()),
+            raw_identifier_spans: Lock::new(vec![]),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
             edition: Edition::from_session(),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
-            param_attr_spans: Lock::new(Vec::new()),
-            let_chains_spans: Lock::new(Vec::new()),
-            async_closure_spans: Lock::new(Vec::new()),
+            param_attr_spans: Lock::new(vec![]),
+            let_chains_spans: Lock::new(vec![]),
+            async_closure_spans: Lock::new(vec![]),
         }
     }
 
@@ -552,7 +552,7 @@ mod tests {
                 }
             }
         }
-        let mut v = PatIdentVisitor { spans: Vec::new() };
+        let mut v = PatIdentVisitor { spans: vec![] };
         crate::visit::walk_item(&mut v, &item);
         return v.spans;
     }

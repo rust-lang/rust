@@ -80,7 +80,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: vec![],
         path: path_std!(cx, clone::Clone),
         additional_bounds: bounds,
         generics: LifetimeBounds::empty(),
@@ -90,14 +90,14 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
                           name: "clone",
                           generics: LifetimeBounds::empty(),
                           explicit_self: borrowed_explicit_self(),
-                          args: Vec::new(),
+                          args: vec![],
                           ret_ty: Self_,
                           attributes: attrs,
                           is_unsafe: false,
                           unify_fieldless_variants: false,
                           combine_substructure: substructure,
                       }],
-        associated_types: Vec::new(),
+        associated_types: vec![],
     };
 
     trait_def.expand_ext(cx, mitem, item, push, is_shallow)
@@ -126,7 +126,7 @@ fn cs_clone_shallow(name: &str,
         }
     }
 
-    let mut stmts = Vec::new();
+    let mut stmts = vec![];
     if is_union {
         // let _: AssertParamIsCopy<Self>;
         let self_ty =

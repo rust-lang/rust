@@ -231,7 +231,7 @@ pub trait PrettyPrinter<'tcx>:
         self,
         def_id: DefId,
     ) -> Result<(Self, bool), Self::Error> {
-        let mut callers = Vec::new();
+        let mut callers = vec![];
         self.try_print_visible_def_path_recur(def_id, &mut callers)
     }
 

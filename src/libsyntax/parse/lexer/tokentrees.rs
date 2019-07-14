@@ -12,9 +12,9 @@ impl<'a> StringReader<'a> {
             string_reader: self,
             token: Token::dummy(),
             joint_to_prev: Joint,
-            open_braces: Vec::new(),
-            unmatched_braces: Vec::new(),
-            matching_delim_spans: Vec::new(),
+            open_braces: vec![],
+            unmatched_braces: vec![],
+            matching_delim_spans: vec![],
             last_unclosed_found_span: None,
         };
         let res = tt_reader.parse_all_token_trees();
@@ -39,7 +39,7 @@ struct TokenTreesReader<'a> {
 impl<'a> TokenTreesReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
     fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
-        let mut tts = Vec::new();
+        let mut tts = vec![];
 
         self.real_token();
         while self.token != token::Eof {

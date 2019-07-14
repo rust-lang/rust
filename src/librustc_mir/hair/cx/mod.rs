@@ -90,7 +90,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             body_owner: src_def_id,
             body_owner_kind,
             check_overflow,
-            control_flow_destroyed: Vec::new(),
+            control_flow_destroyed: vec![],
         }
     }
 

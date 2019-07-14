@@ -121,7 +121,7 @@ impl<'tcx> Children {
         simplified_self: Option<SimplifiedType>,
     ) -> Result<Inserted, OverlapError> {
         let mut last_lint = None;
-        let mut replace_children = Vec::new();
+        let mut replace_children = vec![];
 
         debug!(
             "insert(impl_def_id={:?}, simplified_self={:?})",

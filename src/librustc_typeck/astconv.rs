@@ -969,8 +969,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ast_bounds: &[hir::GenericBound],
         bounds: &mut Bounds<'tcx>,
     ) {
-        let mut trait_bounds = Vec::new();
-        let mut region_bounds = Vec::new();
+        let mut trait_bounds = vec![];
+        let mut region_bounds = vec![];
 
         for ast_bound in ast_bounds {
             match *ast_bound {
@@ -1214,7 +1214,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         let mut bounds = Bounds::default();
-        let mut potential_assoc_types = Vec::new();
+        let mut potential_assoc_types = vec![];
         let dummy_self = self.tcx().types.trait_object_dummy_self;
         // FIXME: we want to avoid collecting into a `Vec` here, but simply cloning the iterator is
         // not straightforward due to the borrow checker.
@@ -1351,9 +1351,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // `Iterator<Item = isize>`.
                     (true, potential_assoc_types)
                 } else {
-                    (false, Vec::new())
+                    (false, vec![])
                 };
-            let mut suggestions = Vec::new();
+            let mut suggestions = vec![];
             for (i, item_def_id) in associated_types.iter().enumerate() {
                 let assoc_item = tcx.associated_item(*item_def_id);
                 err.span_label(

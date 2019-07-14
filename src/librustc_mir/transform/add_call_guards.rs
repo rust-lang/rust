@@ -42,7 +42,7 @@ impl AddCallGuards {
             body.predecessors().iter().map(|ps| ps.len()).collect();
 
         // We need a place to store the new blocks generated
-        let mut new_blocks = Vec::new();
+        let mut new_blocks = vec![];
 
         let cur_len = body.basic_blocks().len();
 

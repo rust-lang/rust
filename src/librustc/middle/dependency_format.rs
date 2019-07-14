@@ -96,7 +96,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
     let sess = &tcx.sess;
 
     if !sess.opts.output_types.should_codegen() {
-        return Vec::new();
+        return vec![];
     }
 
     let preferred_linkage = match ty {
@@ -128,7 +128,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
 
     if preferred_linkage == Linkage::NotLinked {
         // If the crate is not linked, there are no link-time dependencies.
-        return Vec::new();
+        return vec![];
     }
 
     if preferred_linkage == Linkage::Static {
@@ -151,7 +151,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
                                    but was not found in this form",
                                   tcx.crate_name(cnum)));
             }
-            return Vec::new();
+            return vec![];
         }
     }
 

@@ -320,7 +320,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         //! Returns a vector of the loans that are generated as
         //! we enter `node`.
 
-        let mut result = Vec::new();
+        let mut result = vec![];
         self.dfcx_loans.each_gen_bit(node, |loan_index| {
             result.push(loan_index);
             true

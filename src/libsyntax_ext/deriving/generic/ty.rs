@@ -40,10 +40,10 @@ pub enum PathKind {
 
 impl<'a> Path<'a> {
     pub fn new(path: Vec<&str>) -> Path<'_> {
-        Path::new_(path, None, Vec::new(), PathKind::Std)
+        Path::new_(path, None, vec![], PathKind::Std)
     }
     pub fn new_local(path: &str) -> Path<'_> {
-        Path::new_(vec![path], None, Vec::new(), PathKind::Local)
+        Path::new_(vec![path], None, vec![], PathKind::Local)
     }
     pub fn new_<'r>(path: Vec<&'r str>,
                     lifetime: Option<&'r str>,
@@ -82,12 +82,12 @@ impl<'a> Path<'a> {
                        .collect();
 
         match self.kind {
-            PathKind::Global => cx.path_all(span, true, idents, params, Vec::new()),
-            PathKind::Local => cx.path_all(span, false, idents, params, Vec::new()),
+            PathKind::Global => cx.path_all(span, true, idents, params, vec![]),
+            PathKind::Local => cx.path_all(span, false, idents, params, vec![]),
             PathKind::Std => {
                 let def_site = DUMMY_SP.apply_mark(cx.current_expansion.mark);
                 idents.insert(0, Ident::new(kw::DollarCrate, def_site));
-                cx.path_all(span, false, idents, params, Vec::new())
+                cx.path_all(span, false, idents, params, vec![])
             }
         }
 
@@ -130,7 +130,7 @@ pub fn borrowed_self<'r>() -> Ty<'r> {
 }
 
 pub fn nil_ty<'r>() -> Ty<'r> {
-    Tuple(Vec::new())
+    Tuple(vec![])
 }
 
 fn mk_lifetime(cx: &ExtCtxt<'_>, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
@@ -223,7 +223,7 @@ fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
     Generics {
         params,
         where_clause: ast::WhereClause {
-            predicates: Vec::new(),
+            predicates: vec![],
             span,
         },
         span,
@@ -240,8 +240,8 @@ pub struct LifetimeBounds<'a> {
 impl<'a> LifetimeBounds<'a> {
     pub fn empty() -> LifetimeBounds<'a> {
         LifetimeBounds {
-            lifetimes: Vec::new(),
-            bounds: Vec::new(),
+            lifetimes: vec![],
+            bounds: vec![],
         }
     }
     pub fn to_generics(&self,

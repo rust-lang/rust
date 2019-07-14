@@ -505,7 +505,7 @@ fn merge_codegen_units<'tcx>(
 fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<'tcx>,
                                   inlining_map: &InliningMap<'tcx>)
                                   -> PostInliningPartitioning<'tcx> {
-    let mut new_partitioning = Vec::new();
+    let mut new_partitioning = vec![];
     let mut mono_item_placements = FxHashMap::default();
 
     let PreInliningPartitioning {
@@ -922,7 +922,7 @@ fn collect_and_partition_mono_items(
             .map(|i| {
                 let mut output = i.to_string(tcx, false);
                 output.push_str(" @@");
-                let mut empty = Vec::new();
+                let mut empty = vec![];
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
                 cgus.sort_by_key(|(name, _)| *name);
                 cgus.dedup();

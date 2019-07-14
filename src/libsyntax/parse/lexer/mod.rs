@@ -92,7 +92,7 @@ impl<'a> StringReader<'a> {
             source_file,
             end_src_index: src.len(),
             src,
-            fatal_errs: Vec::new(),
+            fatal_errs: vec![],
             override_span,
         }
     }
@@ -167,7 +167,7 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn buffer_fatal_errors(&mut self) -> Vec<Diagnostic> {
-        let mut buffer = Vec::new();
+        let mut buffer = vec![];
 
         for err in self.fatal_errs.drain(..) {
             err.buffer(&mut buffer);
@@ -1377,17 +1377,17 @@ mod tests {
             span_diagnostic: errors::Handler::with_emitter(true, None, Box::new(emitter)),
             unstable_features: UnstableFeatures::from_environment(),
             config: CrateConfig::default(),
-            included_mod_stack: Lock::new(Vec::new()),
+            included_mod_stack: Lock::new(vec![]),
             source_map: sm,
             missing_fragment_specifiers: Lock::new(FxHashSet::default()),
-            raw_identifier_spans: Lock::new(Vec::new()),
+            raw_identifier_spans: Lock::new(vec![]),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             buffered_lints: Lock::new(vec![]),
             edition: Edition::from_session(),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
-            param_attr_spans: Lock::new(Vec::new()),
-            let_chains_spans: Lock::new(Vec::new()),
-            async_closure_spans: Lock::new(Vec::new()),
+            param_attr_spans: Lock::new(vec![]),
+            let_chains_spans: Lock::new(vec![]),
+            async_closure_spans: Lock::new(vec![]),
         }
     }
 

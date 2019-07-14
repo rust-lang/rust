@@ -1085,7 +1085,7 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
         let mut position_independent_executable = false;
 
         if t.options.position_independent_executables {
-            let empty_vec = Vec::new();
+            let empty_vec = vec![];
             let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
             let more_args = &sess.opts.cg.link_arg;
             let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());

@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use super::{LldFlavor, TargetOptions, PanicStrategy, LinkerFlavor};
 
 pub fn options() -> TargetOptions {
-    let mut lld_args = Vec::new();
-    let mut clang_args = Vec::new();
+    let mut lld_args = vec![];
+    let mut clang_args = vec![];
     let mut arg = |arg: &str| {
         lld_args.push(arg.to_string());
         clang_args.push(format!("-Wl,{}", arg));

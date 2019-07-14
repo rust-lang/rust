@@ -502,7 +502,7 @@ fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
     let print_moves = sess.opts.debugging_opts.flowgraph_print_moves;
     let print_assigns = sess.opts.debugging_opts.flowgraph_print_assigns;
     let print_all = sess.opts.debugging_opts.flowgraph_print_all;
-    let mut variants = Vec::new();
+    let mut variants = vec![];
     if print_all || print_loans {
         variants.push(borrowck_dot::Loans);
     }
@@ -864,7 +864,7 @@ fn print_with_analysis(
         None
     };
 
-    let mut out = Vec::new();
+    let mut out = vec![];
 
     tcx.analysis(LOCAL_CRATE)?;
 

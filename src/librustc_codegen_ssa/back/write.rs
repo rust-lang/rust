@@ -1048,7 +1048,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
     }).expect("failed to spawn helper thread");
 
-    let mut each_linked_rlib_for_lto = Vec::new();
+    let mut each_linked_rlib_for_lto = vec![];
     drop(link::each_linked_rlib(sess, crate_info, &mut |cnum, path| {
         if link::ignored_for_lto(sess, crate_info, cnum) {
             return
@@ -1250,7 +1250,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
         let max_workers = ::num_cpus::get();
         let mut worker_id_counter = 0;
-        let mut free_worker_ids = Vec::new();
+        let mut free_worker_ids = vec![];
         let mut get_worker_id = |free_worker_ids: &mut Vec<usize>| {
             if let Some(id) = free_worker_ids.pop() {
                 id
@@ -1266,9 +1266,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut compiled_modules = vec![];
         let mut compiled_metadata_module = None;
         let mut compiled_allocator_module = None;
-        let mut needs_fat_lto = Vec::new();
-        let mut needs_thin_lto = Vec::new();
-        let mut lto_import_only_modules = Vec::new();
+        let mut needs_fat_lto = vec![];
+        let mut needs_thin_lto = vec![];
+        let mut lto_import_only_modules = vec![];
         let mut started_lto = false;
         let mut codegen_aborted = false;
 
@@ -1276,11 +1276,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut codegen_done = false;
 
         // This is the queue of LLVM work items that still need processing.
-        let mut work_items = Vec::<(WorkItem<B>, u64)>::new();
+        let mut work_items: Vec<(WorkItem<B>, u64)> = vec![];
 
         // This are the Jobserver Tokens we currently hold. Does not include
         // the implicit Token the compiler process owns no matter what.
-        let mut tokens = Vec::new();
+        let mut tokens = vec![];
 
         let mut main_thread_worker_state = MainThreadWorkerState::Idle;
         let mut running = 0;

@@ -951,7 +951,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             UnresolvedImportError {
                                 span,
                                 label: Some(label),
-                                note: Vec::new(),
+                                note: vec![],
                                 suggestion,
                             }
                         }
@@ -996,7 +996,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         return Some(UnresolvedImportError {
                             span: directive.span,
                             label: Some(String::from("cannot glob-import a module into itself")),
-                            note: Vec::new(),
+                            note: vec![],
                             suggestion: None,
                         });
                     }
@@ -1116,7 +1116,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     directive, module, ident,
                 ) {
                     Some((suggestion, note)) => (suggestion.or(lev_suggestion), note),
-                    _ => (lev_suggestion, Vec::new()),
+                    _ => (lev_suggestion, vec![]),
                 };
 
                 let label = match module {
@@ -1367,9 +1367,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(&mut self, module: Module<'b>) {
         // Since import resolution is finished, globs will not define any more names.
-        *module.globs.borrow_mut() = Vec::new();
+        *module.globs.borrow_mut() = vec![];
 
-        let mut reexports = Vec::new();
+        let mut reexports = vec![];
 
         for (&(ident, ns), resolution) in module.resolutions.borrow().iter() {
             let resolution = &mut *resolution.borrow_mut();

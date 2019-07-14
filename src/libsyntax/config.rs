@@ -39,8 +39,8 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition,
         if let Some(attrs) = strip_unconfigured.configure(krate.attrs) {
             krate.attrs = attrs;
         } else { // the entire crate is unconfigured
-            krate.attrs = Vec::new();
-            krate.module.items = Vec::new();
+            krate.attrs = vec![];
+            krate.module.items = vec![];
             return (krate, Features::new());
         }
 

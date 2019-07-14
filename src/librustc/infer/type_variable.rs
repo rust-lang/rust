@@ -312,7 +312,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// unified `V1` with `T1`, this function would return `{T0}`.
     pub fn types_escaping_snapshot(&mut self, s: &Snapshot<'tcx>) -> Vec<Ty<'tcx>> {
         let mut new_elem_threshold = u32::MAX;
-        let mut escaping_types = Vec::new();
+        let mut escaping_types = vec![];
         let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
         debug!("actions_since_snapshot.len() = {}", actions_since_snapshot.len());
         for action in actions_since_snapshot {

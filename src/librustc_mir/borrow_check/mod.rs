@@ -153,7 +153,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let body = &body; // no further changes
     let location_table = &LocationTable::new(body);
 
-    let mut errors_buffer = Vec::new();
+    let mut errors_buffer = vec![];
     let (move_data, move_errors): (MoveData<'tcx>, Option<Vec<(Place<'tcx>, MoveError<'tcx>)>>) =
         match MoveData::gather_moves(body, tcx) {
             Ok(move_data) => (move_data, None),
@@ -2213,7 +2213,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     // ```
                                     // fn foo<F: FnOnce()>(_f: F) { }
                                     // fn main() {
-                                    //     let var = Vec::new();
+                                    //     let var = vec![];
                                     //     foo(move || {
                                     //         var.push(1);
                                     //     });

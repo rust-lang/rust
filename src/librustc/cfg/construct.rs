@@ -51,8 +51,8 @@ pub fn construct(tcx: TyCtxt<'_>, body: &hir::Body) -> CFG {
         tables,
         graph,
         fn_exit,
-        loop_scopes: Vec::new(),
-        breakable_block_scopes: Vec::new(),
+        loop_scopes: vec![],
+        breakable_block_scopes: vec![],
     };
     body_exit = cfg_builder.expr(&body.value, entry);
     cfg_builder.add_contained_edge(body_exit, fn_exit);

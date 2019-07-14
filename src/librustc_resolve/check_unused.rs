@@ -179,8 +179,8 @@ fn calc_unused_spans(
                 return UnusedSpanResult::FlatUnused(use_tree.span, full_span);
             }
 
-            let mut unused_spans = Vec::new();
-            let mut to_remove = Vec::new();
+            let mut unused_spans = vec![];
+            let mut to_remove = vec![];
             let mut all_nested_unused = true;
             let mut previous_unused = false;
             for (pos, (use_tree, use_tree_id)) in nested.iter().enumerate() {
@@ -284,7 +284,7 @@ pub fn check_crate(resolver: &mut Resolver<'_>, krate: &ast::Crate) {
     visit::walk_crate(&mut visitor, krate);
 
     for unused in visitor.unused_imports.values() {
-        let mut fixes = Vec::new();
+        let mut fixes = vec![];
         let mut spans = match calc_unused_spans(unused, unused.use_tree, unused.use_tree_id) {
             UnusedSpanResult::Used => continue,
             UnusedSpanResult::FlatUnused(span, remove) => {

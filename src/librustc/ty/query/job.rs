@@ -103,7 +103,7 @@ impl<'tcx> QueryJob<'tcx> {
     pub(super) fn find_cycle_in_stack(&self, tcx: TyCtxt<'tcx>, span: Span) -> CycleError<'tcx> {
         // Get the current executing query (waiter) and find the waitee amongst its parents
         let mut current_job = tls::with_related_context(tcx, |icx| icx.query.clone());
-        let mut cycle = Vec::new();
+        let mut cycle = vec![];
 
         while let Some(job) = current_job {
             cycle.push(job.info.clone());
@@ -176,7 +176,7 @@ impl<'tcx> QueryLatch<'tcx> {
         QueryLatch {
             info: Mutex::new(QueryLatchInfo {
                 complete: false,
-                waiters: Vec::new(),
+                waiters: vec![],
             }),
         }
     }
@@ -365,7 +365,7 @@ fn remove_cycle<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> bool {
     let mut visited = FxHashSet::default();
-    let mut stack = Vec::new();
+    let mut stack = vec![];
     // Look for a cycle starting with the last query in `jobs`
     if let Some(waiter) = cycle_check(jobs.pop().unwrap(),
                                       DUMMY_SP,
@@ -395,7 +395,7 @@ fn remove_cycle<'tcx>(
                 // This query is connected to the root (it has no query parent)
                 Some((*span, query.clone(), None))
             } else {
-                let mut waiters = Vec::new();
+                let mut waiters = vec![];
                 // Find all the direct waiters who lead to the root
                 visit_waiters(query.clone(), |span, waiter| {
                     // Mark all the other queries in the cycle as already visited
@@ -507,7 +507,7 @@ fn deadlock(tcx: TyCtxt<'_>, registry: &rayon_core::Registry) {
         process::abort();
     });
 
-    let mut wakelist = Vec::new();
+    let mut wakelist = vec![];
     let mut jobs: Vec<_> = tcx.queries.collect_active_jobs();
 
     let mut found_cycle = false;
