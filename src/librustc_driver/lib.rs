@@ -109,6 +109,10 @@ pub trait Callbacks {
     fn after_parsing(&mut self, _compiler: &interface::Compiler) -> bool {
         true
     }
+    /// Called after expansion and returns true to continue execution
+    fn after_expansion(&mut self, _compiler: &interface::Compiler) -> bool {
+        true
+    }
     /// Called after analysis and returns true to continue execution
     fn after_analysis(&mut self, _compiler: &interface::Compiler) -> bool {
         true
@@ -309,6 +313,11 @@ pub fn run_compiler(
         // Lint plugins are registered; now we can process command line flags.
         if sess.opts.describe_lints {
             describe_lints(&sess, &sess.lint_store.borrow(), true);
+            return sess.compile_status();
+        }
+
+        compiler.expansion()?;
+        if !callbacks.after_expansion(compiler) {
             return sess.compile_status();
         }
 
