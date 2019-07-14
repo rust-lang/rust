@@ -38,8 +38,8 @@ cannot run all programs:
 * Miri runs the program as a platform-independent interpreter, so the program
   has no access to any platform-specific APIs or FFI. A few APIs have been
   implemented (such as printing to stdout) but most have not: for example, Miri
-  currently does not support concurrency, or networking, or file system access,
-  or gathering entropy from the system.
+  currently does not support concurrency, or SIMD, or networking, or file system
+  access.
 
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
