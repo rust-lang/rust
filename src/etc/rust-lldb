@@ -3,25 +3,30 @@
 # Exit if anything fails
 set -e
 
-# Find out where to look for the pretty printer Python module
-RUSTC_SYSROOT=`rustc --print sysroot`
-
 # Find the host triple so we can find lldb in rustlib.
-host=`rustc -vV | sed -n -e 's/^host: //p'`
+host=$(rustc -vV | sed -n -e 's/^host: //p')
+
+# Find out where to look for the pretty printer Python module
+RUSTC_SYSROOT=$(rustc --print sysroot)
+RUST_LLDB="$RUSTC_SYSROOT/lib/rustlib/$host/bin/lldb"
 
 lldb=lldb
-if [ -f "$RUSTC_SYSROOT/lib/rustlib/$host/bin/lldb" ]; then
-    lldb="$RUSTC_SYSROOT/lib/rustlib/$host/bin/lldb"
+if [ -f "$RUST_LLDB" ]; then
+    lldb="$RUST_LLDB"
 else
-    LLDB_VERSION=`"$lldb" --version 2>/dev/null | head -1 | cut -d. -f1`
+    if ! command -v "$lldb" > /dev/null; then
+        echo "$lldb not found! Please install it." >&2
+        exit 1
+    else
+        LLDB_VERSION=$("$lldb" --version | cut -d ' ' -f3)
 
-    if [ "$LLDB_VERSION" = "lldb-350" ]
-    then
-        echo "***"
-	echo \
-"WARNING: This version of LLDB has known issues with Rust and cannot \
-display the contents of local variables!"
-        echo "***"
+        if [ "$LLDB_VERSION" = "3.5.0" ]; then
+            cat << EOF >&2
+***
+WARNING: This version of LLDB has known issues with Rust and cannot display the contents of local variables!
+***
+EOF
+        fi
     fi
 fi
 
