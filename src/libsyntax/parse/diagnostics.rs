@@ -800,7 +800,7 @@ impl<'a> Parser<'a> {
                         .span_label(
                             extern_sp,
                             "`extern` blocks define existing foreign functions and `fn`s \
-                             inside of them can't have a body")
+                             inside of them cannot have a body")
                         .help("you might have meant to write a function accessible through ffi, \
                                which can be done by writing `extern fn` outside of the \
                                `extern` block")
