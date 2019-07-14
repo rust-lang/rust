@@ -41,7 +41,6 @@ Stabilized APIs
 - [`BufReader::buffer`]
 - [`BufWriter::buffer`]
 - [`Cell::from_mut`]
-- [`Cell<T>::as_slice_of_cells`]
 - [`Cell<[T]>::as_slice_of_cells`][`Cell<slice>::as_slice_of_cells`]
 - [`DoubleEndedIterator::nth_back`]
 - [`Option::xor`]
