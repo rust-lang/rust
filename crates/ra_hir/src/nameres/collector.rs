@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use arrayvec::ArrayVec;
 use ra_db::FileId;
 use ra_syntax::{ast, SmolStr};
@@ -650,7 +652,7 @@ fn resolve_submodule(
     let mut candidates = ArrayVec::<[_; 3]>::new();
     let file_attr_mod = attr_path.map(|file_path| {
         let file_path = normalize_attribute_path(file_path);
-        let file_attr_mod = dir_path.join(file_path).normalize();
+        let file_attr_mod = dir_path.join(file_path.as_ref()).normalize();
         candidates.push(file_attr_mod.clone());
 
         file_attr_mod
@@ -676,14 +678,18 @@ fn resolve_submodule(
     }
 }
 
-fn normalize_attribute_path(file_path: &SmolStr) -> String {
+fn normalize_attribute_path(file_path: &SmolStr) -> Cow<str> {
     let current_dir = "./";
-
-    let separator = |path: &str| path.replace("\\", "/");
-    if file_path.starts_with(current_dir) {
-        separator(&file_path[current_dir.len()..])
+    let windows_path_separator = r#"\"#;
+    let current_dir_normalize = if file_path.starts_with(current_dir) {
+        &file_path[current_dir.len()..]
     } else {
-        separator(file_path.as_str())
+        file_path.as_str()
+    };
+    if current_dir_normalize.contains(windows_path_separator) {
+        Cow::Owned(current_dir_normalize.replace(windows_path_separator, "/"))
+    } else {
+        Cow::Borrowed(current_dir_normalize)
     }
 }
 
