@@ -89,7 +89,14 @@ fn execute() -> i32 {
     };
 
     if opts.version {
-        return handle_command_status(get_version());
+        return handle_command_status(get_rustfmt_info(&[String::from("--version")]));
+    }
+    if opts.rustfmt_options.iter().any(|s| {
+        ["--print-config", "-h", "--help", "-V", "--version"].contains(&s.as_str())
+            || s.starts_with("--help=")
+            || s.starts_with("--print-config=")
+    }) {
+        return handle_command_status(get_rustfmt_info(&opts.rustfmt_options));
     }
 
     let strategy = CargoFmtStrategy::from_opts(&opts);
@@ -142,10 +149,10 @@ fn handle_command_status(status: Result<i32, io::Error>) -> i32 {
     }
 }
 
-fn get_version() -> Result<i32, io::Error> {
+fn get_rustfmt_info(args: &[String]) -> Result<i32, io::Error> {
     let mut command = Command::new("rustfmt")
         .stdout(std::process::Stdio::inherit())
-        .args(&[String::from("--version")])
+        .args(args)
         .spawn()
         .map_err(|e| match e.kind() {
             io::ErrorKind::NotFound => io::Error::new(
@@ -168,14 +175,7 @@ fn format_crate(
     rustfmt_args: Vec<String>,
     manifest_path: Option<&Path>,
 ) -> Result<i32, io::Error> {
-    let targets = if rustfmt_args
-        .iter()
-        .any(|s| ["--print-config", "-h", "--help", "-V", "--version"].contains(&s.as_str()))
-    {
-        BTreeSet::new()
-    } else {
-        get_targets(strategy, manifest_path)?
-    };
+    let targets = get_targets(strategy, manifest_path)?;
 
     // Currently only bin and lib files get formatted.
     run_rustfmt(&targets, &rustfmt_args, verbosity)
