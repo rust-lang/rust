@@ -42,6 +42,7 @@ Stabilized APIs
 - [`BufWriter::buffer`]
 - [`Cell::from_mut`]
 - [`Cell<T>::as_slice_of_cells`]
+- [`Cell<[T]>::as_slice_of_cells`][`Cell<slice>::as_slice_of_cells`]
 - [`DoubleEndedIterator::nth_back`]
 - [`Option::xor`]
 - [`Wrapping::reverse_bits`]
@@ -95,7 +96,7 @@ Compatibility Notes
 [`BufReader::buffer`]: https://doc.rust-lang.org/std/io/struct.BufReader.html#method.buffer
 [`BufWriter::buffer`]: https://doc.rust-lang.org/std/io/struct.BufWriter.html#method.buffer
 [`Cell::from_mut`]: https://doc.rust-lang.org/std/cell/struct.Cell.html#method.from_mut
-[`Cell<T>::as_slice_of_cells`]: https://doc.rust-lang.org/std/cell/struct.Cell.html#method.as_slice_of_cells
+[`Cell<slice>::as_slice_of_cells`]: https://doc.rust-lang.org/std/cell/struct.Cell.html#method.as_slice_of_cells
 [`DoubleEndedIterator::nth_back`]: https://doc.rust-lang.org/std/iter/trait.DoubleEndedIterator.html#method.nth_back
 [`Option::xor`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.xor
 [`RefCell::try_borrow_unguarded`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.try_borrow_unguarded
