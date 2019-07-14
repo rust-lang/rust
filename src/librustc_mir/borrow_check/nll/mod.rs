@@ -11,7 +11,7 @@ use crate::transform::MirSource;
 use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Body};
+use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Local, Body};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_errors::Diagnostic;
 use std::fmt::Debug;
@@ -84,7 +84,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     errors_buffer: &mut Vec<Diagnostic>,
 ) -> (
     RegionInferenceContext<'tcx>,
-    Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
+    Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex, Local>>>,
     Option<ClosureRegionRequirements<'tcx>>,
 ) {
     let mut all_facts = if AllFacts::enabled(infcx.tcx) {

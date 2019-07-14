@@ -366,7 +366,8 @@ fn check_item_type(
 
         let mut forbid_unsized = true;
         if allow_foreign_ty {
-            if let ty::Foreign(_) = fcx.tcx.struct_tail(item_ty).sty {
+            let tail = fcx.tcx.struct_tail_erasing_lifetimes(item_ty, fcx.param_env);
+            if let ty::Foreign(_) = tail.sty {
                 forbid_unsized = false;
             }
         }

@@ -3,8 +3,6 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
    |
 LL |     Index::index(&v, 1..2).make_ascii_uppercase();
    |     ^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
-   |
-   = help: trait `IndexMut` is required to modify indexed content
 
 error: aborting due to previous error
 

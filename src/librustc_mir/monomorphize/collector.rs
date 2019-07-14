@@ -851,12 +851,13 @@ fn find_vtable_types_for_unsizing<'tcx>(
     target_ty: Ty<'tcx>,
 ) -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
+        let param_env = ty::ParamEnv::reveal_all();
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
             use syntax_pos::DUMMY_SP;
-            if ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
+            if ty.is_sized(tcx.at(DUMMY_SP), param_env) {
                 return false;
             }
-            let tail = tcx.struct_tail(ty);
+            let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
             match tail.sty {
                 ty::Foreign(..) => false,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -866,7 +867,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
         if type_has_metadata(inner_source) {
             (inner_source, inner_target)
         } else {
-            tcx.struct_lockstep_tails(inner_source, inner_target)
+            tcx.struct_lockstep_tails_erasing_lifetimes(inner_source, inner_target, param_env)
         }
     };
 

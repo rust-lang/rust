@@ -3,7 +3,7 @@
 //! FIXME: this might be better as a "generic" fixed-point combinator,
 //! but is not as ugly as it is right now.
 
-use rustc::mir::{BasicBlock, Location};
+use rustc::mir::{BasicBlock, Local, Location};
 use rustc::ty::RegionVid;
 use rustc_data_structures::bit_set::BitIter;
 
@@ -15,11 +15,13 @@ use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::HasMoveData;
 use crate::dataflow::Borrows;
 use crate::dataflow::EverInitializedPlaces;
-use crate::dataflow::{FlowAtLocation, FlowsAtLocation};
 use crate::dataflow::MaybeUninitializedPlaces;
+use crate::dataflow::{FlowAtLocation, FlowsAtLocation};
 use either::Either;
 use std::fmt;
 use std::rc::Rc;
+
+crate type PoloniusOutput = Output<RegionVid, BorrowIndex, LocationIndex, Local>;
 
 // (forced to be `pub` due to its use as an associated type below.)
 crate struct Flows<'b, 'tcx> {
@@ -28,7 +30,7 @@ crate struct Flows<'b, 'tcx> {
     pub ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'tcx>>,
 
     /// Polonius Output
-    pub polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
+    pub polonius_output: Option<Rc<PoloniusOutput>>,
 }
 
 impl<'b, 'tcx> Flows<'b, 'tcx> {
@@ -36,14 +38,9 @@ impl<'b, 'tcx> Flows<'b, 'tcx> {
         borrows: FlowAtLocation<'tcx, Borrows<'b, 'tcx>>,
         uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'tcx>>,
         ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'tcx>>,
-        polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
+        polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> Self {
-        Flows {
-            borrows,
-            uninits,
-            ever_inits,
-            polonius_output,
-        }
+        Flows { borrows, uninits, ever_inits, polonius_output }
     }
 
     crate fn borrows_in_scope(

@@ -2,18 +2,7 @@
 // Deref and not DerefMut is implemented.
 
 use std::ops::Deref;
-
-struct Rc<T> {
-    value: *const T
-}
-
-impl<T> Deref for Rc<T> {
-    type Target = T;
-
-    fn deref(&self) -> &T {
-        unsafe { &*self.value }
-    }
-}
+use std::rc::Rc;
 
 struct Point {
     x: isize,

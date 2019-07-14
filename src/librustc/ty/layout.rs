@@ -543,7 +543,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                 }
 
-                let unsized_part = tcx.struct_tail(pointee);
+                let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
                 let metadata = match unsized_part.sty {
                     ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
@@ -1664,7 +1664,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Ref(_, pointee, _) |
             ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
-                let tail = tcx.struct_tail(pointee);
+                let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
                 match tail.sty {
                     ty::Param(_) | ty::Projection(_) => {
                         debug_assert!(tail.has_param_types() || tail.has_self_ty());
@@ -2015,7 +2015,7 @@ where
                     }));
                 }
 
-                match tcx.struct_tail(pointee).sty {
+                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).sty {
                     ty::Slice(_) |
                     ty::Str => tcx.types.usize,
                     ty::Dynamic(_, _) => {

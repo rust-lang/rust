@@ -14,13 +14,12 @@ impl Drop for ScribbleOnDrop {
     }
 }
 
-struct Foo<T:fmt::Debug>(u32, T);
+struct Foo<T: fmt::Debug>(u32, T);
 
-impl<T:fmt::Debug> Drop for Foo<T> {
+impl<T: fmt::Debug> Drop for Foo<T> {
     fn drop(&mut self) {
-        // Use of `unsafe_destructor_blind_to_params` is unsound,
-        // because we access `T` fmt method when we pass `self.1`
-        // below, and thus potentially read from borrowed data.
+        // Use of `may_dangle` is unsound, because we access `T` fmt method when we pass
+        // `self.1` below, and thus potentially read from borrowed data.
         println!("Dropping Foo({}, {:?})", self.0, self.1);
     }
 }

@@ -18,9 +18,7 @@
 #![feature(label_break_value)]
 #![feature(mem_take)]
 #![feature(nll)]
-#![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(step_trait)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 

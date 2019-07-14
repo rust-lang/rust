@@ -1,12 +1,11 @@
 // run-pass
-#![allow(deprecated)] // FIXME: switch to `#[may_dangle]` below.
 
 // Demonstrate the use of the unguarded escape hatch with a trait bound
 // to assert that destructor will not access any dead data.
 //
 // Compare with compile-fail/issue28498-reject-trait-bound.rs
 
-#![feature(dropck_parametricity)]
+#![feature(dropck_eyepatch)]
 
 use std::fmt;
 
@@ -19,14 +18,12 @@ impl Drop for ScribbleOnDrop {
     }
 }
 
-struct Foo<T:fmt::Debug>(u32, T);
+struct Foo<T: fmt::Debug>(u32, T);
 
-impl<T:fmt::Debug> Drop for Foo<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T: fmt::Debug> Drop for Foo<T> {
     fn drop(&mut self) {
-        // Use of `unsafe_destructor_blind_to_params` is sound,
-        // because destructor never accesses the `Debug::fmt` method
-        // of `T`, despite having it available.
+        // Use of `may_dangle` is sound, because destructor never accesses
+        // the `Debug::fmt` method of `T`, despite having it available.
         println!("Dropping Foo({}, _)", self.0);
     }
 }

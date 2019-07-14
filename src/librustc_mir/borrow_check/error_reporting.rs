@@ -4,9 +4,9 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Field, Local, LocalKind, Location, Operand,
     Place, PlaceBase, ProjectionElem, Rvalue, Statement, StatementKind, Static,
-    StaticKind, TerminatorKind,
+    StaticKind, Terminator, TerminatorKind,
 };
-use rustc::ty::{self, DefIdTree, Ty};
+use rustc::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::print::Print;
 use rustc_errors::DiagnosticBuilder;
@@ -15,6 +15,7 @@ use syntax::symbol::sym;
 
 use super::borrow_set::BorrowData;
 use super::{MirBorrowckCtxt};
+use crate::dataflow::move_paths::{InitLocation, LookupResult};
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 
@@ -401,6 +402,70 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             err.note(&message);
         }
     }
+
+    pub(super) fn borrowed_content_source(
+        &self,
+        deref_base: &Place<'tcx>,
+    ) -> BorrowedContentSource<'tcx> {
+        let tcx = self.infcx.tcx;
+
+        // Look up the provided place and work out the move path index for it,
+        // we'll use this to check whether it was originally from an overloaded
+        // operator.
+        match self.move_data.rev_lookup.find(deref_base) {
+            LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => {
+                debug!("borrowed_content_source: mpi={:?}", mpi);
+
+                for i in &self.move_data.init_path_map[mpi] {
+                    let init = &self.move_data.inits[*i];
+                    debug!("borrowed_content_source: init={:?}", init);
+                    // We're only interested in statements that initialized a value, not the
+                    // initializations from arguments.
+                    let loc = match init.location {
+                        InitLocation::Statement(stmt) => stmt,
+                        _ => continue,
+                    };
+
+                    let bbd = &self.body[loc.block];
+                    let is_terminator = bbd.statements.len() == loc.statement_index;
+                    debug!(
+                        "borrowed_content_source: loc={:?} is_terminator={:?}",
+                        loc,
+                        is_terminator,
+                    );
+                    if !is_terminator {
+                        continue;
+                    } else if let Some(Terminator {
+                        kind: TerminatorKind::Call {
+                            ref func,
+                            from_hir_call: false,
+                            ..
+                        },
+                        ..
+                    }) = bbd.terminator {
+                        if let Some(source)
+                            = BorrowedContentSource::from_call(func.ty(self.body, tcx), tcx)
+                        {
+                            return source;
+                        }
+                    }
+                }
+            }
+            // Base is a `static` so won't be from an overloaded operator
+            _ => (),
+        };
+
+        // If we didn't find an overloaded deref or index, then assume it's a
+        // built in deref and check the type of the base.
+        let base_ty = deref_base.ty(self.body, tcx).ty;
+        if base_ty.is_unsafe_ptr() {
+            BorrowedContentSource::DerefRawPointer
+        } else if base_ty.is_mutable_pointer() {
+            BorrowedContentSource::DerefMutableRef
+        } else {
+            BorrowedContentSource::DerefSharedRef
+        }
+    }
 }
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
@@ -543,6 +608,90 @@ impl UseSpans {
         match self {
             closure @ UseSpans::ClosureUse { .. } => closure,
             UseSpans::OtherUse(_) => if_other(),
+        }
+    }
+}
+
+pub(super) enum BorrowedContentSource<'tcx> {
+    DerefRawPointer,
+    DerefMutableRef,
+    DerefSharedRef,
+    OverloadedDeref(Ty<'tcx>),
+    OverloadedIndex(Ty<'tcx>),
+}
+
+impl BorrowedContentSource<'tcx> {
+    pub(super) fn describe_for_unnamed_place(&self) -> String {
+        match *self {
+            BorrowedContentSource::DerefRawPointer => format!("a raw pointer"),
+            BorrowedContentSource::DerefSharedRef => format!("a shared reference"),
+            BorrowedContentSource::DerefMutableRef => {
+                format!("a mutable reference")
+            }
+            BorrowedContentSource::OverloadedDeref(ty) => {
+                if ty.is_rc() {
+                   format!("an `Rc`")
+                } else if ty.is_arc() {
+                    format!("an `Arc`")
+                } else {
+                    format!("dereference of `{}`", ty)
+                }
+            }
+            BorrowedContentSource::OverloadedIndex(ty) => format!("index of `{}`", ty),
+        }
+    }
+
+    pub(super) fn describe_for_named_place(&self) -> Option<&'static str> {
+        match *self {
+            BorrowedContentSource::DerefRawPointer => Some("raw pointer"),
+            BorrowedContentSource::DerefSharedRef => Some("shared reference"),
+            BorrowedContentSource::DerefMutableRef => Some("mutable reference"),
+            // Overloaded deref and index operators should be evaluated into a
+            // temporary. So we don't need a description here.
+            BorrowedContentSource::OverloadedDeref(_)
+            | BorrowedContentSource::OverloadedIndex(_) => None
+        }
+    }
+
+    pub(super) fn describe_for_immutable_place(&self) -> String {
+        match *self {
+            BorrowedContentSource::DerefRawPointer => format!("a `*const` pointer"),
+            BorrowedContentSource::DerefSharedRef => format!("a `&` reference"),
+            BorrowedContentSource::DerefMutableRef => {
+                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
+            },
+            BorrowedContentSource::OverloadedDeref(ty) => {
+                if ty.is_rc() {
+                   format!("an `Rc`")
+                } else if ty.is_arc() {
+                    format!("an `Arc`")
+                } else {
+                    format!("a dereference of `{}`", ty)
+                }
+            }
+            BorrowedContentSource::OverloadedIndex(ty) => format!("an index of `{}`", ty),
+        }
+    }
+
+    fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
+        match func.sty {
+            ty::FnDef(def_id, substs) => {
+                let trait_id = tcx.trait_of_item(def_id)?;
+
+                let lang_items = tcx.lang_items();
+                if Some(trait_id) == lang_items.deref_trait()
+                    || Some(trait_id) == lang_items.deref_mut_trait()
+                {
+                    Some(BorrowedContentSource::OverloadedDeref(substs.type_at(0)))
+                } else if Some(trait_id) == lang_items.index_trait()
+                    || Some(trait_id) == lang_items.index_mut_trait()
+                {
+                    Some(BorrowedContentSource::OverloadedIndex(substs.type_at(0)))
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 }
