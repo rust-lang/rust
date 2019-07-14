@@ -441,6 +441,10 @@ where
         self.curr_loc = Some(loc);
     }
 
+    pub fn get(&self) -> &BitSet<BD::Idx> {
+        self.flow_state.as_dense()
+    }
+
     /// Return whether the current state contains bit `x`.
     pub fn contains(&self, x: BD::Idx) -> bool {
         self.flow_state.contains(x)
