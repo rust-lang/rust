@@ -1264,11 +1264,12 @@ impl<T> [T] {
     /// assert!(!v.contains(&50));
     /// ```
     ///
-    /// If you only have a borrowed `T`, use `any`:
+    /// If you do not have an `&T`, but just an `&U` such that `T: Borrow<U>`
+    /// (e.g. `String: Borrow<str>`), you can use `iter().any`:
     ///
     /// ```
-    /// let v = [String::from("hello"), String::from("world")];
-    /// assert!(v.iter().any(|e| e == "hello"));
+    /// let v = [String::from("hello"), String::from("world")]; // slice of `String`
+    /// assert!(v.iter().any(|e| e == "hello")); // search with `&str`
     /// assert!(!v.iter().any(|e| e == "hi"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
