@@ -3,7 +3,6 @@
 fn foo() {
     let (x, y) = (0, 0);
     x <- y; //~ ERROR expected one of
-    //~^ ERROR mismatched types
 }
 
 fn main() {

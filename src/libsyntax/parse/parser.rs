@@ -4675,6 +4675,9 @@ impl<'a> Parser<'a> {
                     {
                         e.emit();
                         self.recover_stmt();
+                        // Don't complain about type errors in body tail after parse error (#57383).
+                        let sp = expr.span.to(self.prev_span);
+                        stmt.node = StmtKind::Expr(DummyResult::raw_expr(sp, true));
                     }
                 }
             }
@@ -4692,8 +4695,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::Semi) {
             stmt = stmt.add_trailing_semicolon();
         }
-
-        stmt.span = stmt.span.with_hi(self.prev_span.hi());
+        stmt.span = stmt.span.to(self.prev_span);
         Ok(Some(stmt))
     }
 
