@@ -18,6 +18,12 @@ use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
 use super::on_lookup_result_bits;
 
+mod reaching_defs;
+mod use_def_chain;
+
+pub use self::reaching_defs::ReachingDefinitions;
+pub use self::use_def_chain::UseDefChain;
+
 mod storage_liveness;
 
 pub use self::storage_liveness::*;

@@ -19,6 +19,7 @@ use std::usize;
 
 pub use self::impls::{MaybeStorageLive, RequiresStorage};
 pub use self::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+pub use self::impls::{ReachingDefinitions, UseDefChain};
 pub use self::impls::DefinitelyInitializedPlaces;
 pub use self::impls::EverInitializedPlaces;
 pub use self::impls::borrows::Borrows;
