@@ -1,0 +1,14 @@
+error: usage of `Vec::new()`
+  --> $DIR/vec_new.rs:6:22
+   |
+LL |     let _: Vec<u8> = Vec::new();
+   |                      ^^^^^^^^^^ help: use: `vec![]`
+   |
+note: lint level defined here
+  --> $DIR/vec_new.rs:3:9
+   |
+LL | #![deny(rustc::vec_new)]
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
