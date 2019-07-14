@@ -252,8 +252,8 @@ cfg_if::cfg_if! {
     if #[cfg(all(target_os = "ios", target_arch = "arm"))] {
         pub use sjlj::*;
     }
-    // FIXME: for compatibility with i686-w64-mingw32-gcc on linux
-    else if #[cfg(all(target_vendor = "pc",
+    // FIXME: i686-unknown-windows-gnu target with sjlj
+    else if #[cfg(all(target_vendor = "unknown",
                       target_os = "windows",
                       target_arch = "x86",
                       target_env = "gnu"))] {
