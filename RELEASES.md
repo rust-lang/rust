@@ -3,12 +3,12 @@ Version 1.37.0 (2019-08-15)
 
 Language
 --------
-- `#[must_use]` will now warn if the type contained in a [tuple][61100],
+- `#[must_use]` will now warn if the type is contained in a [tuple][61100],
   [`Box`][62228], or an [array][62235] and unused.
 - [You can now use the `cfg` and `cfg_attr` attributes on
   generic parameters.][61547]
 - [You can now use enum variants through type alias.][61682] e.g. You can
-  write the following.
+  write the following:
   ```rust
   type MyOption = Option<u8>;
 
