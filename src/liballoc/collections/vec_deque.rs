@@ -506,7 +506,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity overflows [`usize`].
     ///
     /// # Examples
     ///
@@ -529,7 +529,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity overflows [`usize`].
     ///
     /// # Examples
     ///
@@ -1812,7 +1812,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new number of elements in self overflows a `usize`.
+    /// Panics if the new number of elements in self overflows a [`usize`].
     ///
     /// # Examples
     ///

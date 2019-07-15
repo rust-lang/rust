@@ -301,7 +301,7 @@ pub trait Hasher {
     fn write_u128(&mut self, i: u128) {
         self.write(&i.to_ne_bytes())
     }
-    /// Writes a single `usize` into this hasher.
+    /// Writes a single [`usize`] into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_usize(&mut self, i: usize) {

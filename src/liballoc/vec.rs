@@ -443,7 +443,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity overflows [`usize`].
     ///
     /// # Examples
     ///
@@ -468,7 +468,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity overflows [`usize`].
     ///
     /// # Examples
     ///
@@ -1084,7 +1084,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the number of elements in the vector overflows a `usize`.
+    /// Panics if the number of elements in the vector overflows a [`usize`].
     ///
     /// # Examples
     ///
@@ -1137,7 +1137,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the number of elements in the vector overflows a `usize`.
+    /// Panics if the number of elements in the vector overflows a [`usize`].
     ///
     /// # Examples
     ///
