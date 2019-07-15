@@ -6,8 +6,8 @@
 	../build/bin/clang -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math | ../build/bin/opt -early-cse-memssa - -S -o $@ -simplifycfg -simplifycfg
 
 %-unopt.ll: %.cpp
-	../build/bin/clang++ -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I ../../adept-2.0.5/include -I../../tapenade/ADFirstAidKit
-	#../build/bin/clang++ -fno-exceptions -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I../../adept-2.0.5/include -I../../tapenade/ADFirstAidKit
+	#../build/bin/clang++ -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I ../../adept-2.0.5/include -I../../tapenade/ADFirstAidKit
+	../build/bin/clang++ -fno-exceptions -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I../../adept-2.0.5/include -I../../tapenade/ADFirstAidKit
 
 %-preopt.ll: %-unopt.ll
 	../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -simplifycfg -inline -adce -aggressive-instcombine -O2 -S -o $@
@@ -22,14 +22,8 @@
 	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - | ../build/bin/opt - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce  
 
 %-lowernovec.ll: %-unopt.ll
-	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -S -o $@
-	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@
-	# There is 100% a bug here, not sure what/why
-	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -instsimplify -S -o $@.2
-	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - | ../build/bin/opt - -S -o $@ -instsimplify	
-	../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@ -instsimplify -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce -inline -instsimplify -instcombine -correlated-propagation
-	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -S -o $@
-	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -S -o $@
+	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@ -instsimplify -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce -inline -instsimplify -instcombine -correlated-propagation
+	../build/bin/opt $^ -autodiff_inline=true -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@ -instsimplify -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce -inline -instsimplify -instcombine -correlated-propagation
 
 %-lowerprint.ll: %-unopt.ll
 	../build/bin/opt $^ -indvars -lower-autodiff -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -O3 -print-before-all -print-after-all
