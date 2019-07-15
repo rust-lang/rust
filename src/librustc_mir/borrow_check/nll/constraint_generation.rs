@@ -6,8 +6,8 @@ use crate::borrow_check::nll::region_infer::values::LivenessValues;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, BasicBlockData, Location, Body, Place, PlaceBase, Rvalue};
-use rustc::mir::{SourceInfo, Statement, Terminator};
+use rustc::mir::{BasicBlock, BasicBlockData, Location, Body, Place, PlaceBase, Rvalue, TerminatorKind};
+use rustc::mir::{Local, SourceInfo, Statement, StatementKind, Terminator};
 use rustc::mir::UserTypeProjection;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty};
@@ -114,6 +114,17 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
                 self.location_table
                     .start_index(location.successor_within_block()),
             ));
+
+            // If there are borrows on this now dead local, we need to record them as `killed`.
+            if let StatementKind::StorageDead(ref local) = statement.kind {
+                record_killed_borrows_for_local(
+                    all_facts,
+                    self.borrow_set,
+                    self.location_table,
+                    local,
+                    location,
+                );
+            }
         }
 
         self.super_statement(statement, location);
@@ -127,20 +138,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
     ) {
         // When we see `X = ...`, then kill borrows of
         // `(*X).foo` and so forth.
-        if let Some(all_facts) = self.all_facts {
-            if let Place {
-                base: PlaceBase::Local(temp),
-                projection: None,
-            } = place {
-                if let Some(borrow_indices) = self.borrow_set.local_map.get(temp) {
-                    all_facts.killed.reserve(borrow_indices.len());
-                    for &borrow_index in borrow_indices {
-                        let location_index = self.location_table.mid_index(location);
-                        all_facts.killed.push((borrow_index, location_index));
-                    }
-                }
-            }
-        }
+        self.record_killed_borrows_for_place(place, location);
 
         self.super_assign(place, rvalue, location);
     }
@@ -164,6 +162,14 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
                     self.location_table
                         .start_index(successor_block.start_location()),
                 ));
+            }
+        }
+
+        // A `Call` terminator's return value can be a local which has borrows,
+        // so we need to record those as `killed` as well.
+        if let TerminatorKind::Call { ref destination, .. } = terminator.kind {
+            if let Some((place, _)) = destination {
+                self.record_killed_borrows_for_place(place, location);
             }
         }
 
@@ -200,5 +206,41 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
                 let vid = live_region.to_region_vid();
                 self.liveness_constraints.add_element(vid, location);
             });
+    }
+
+    /// When recording facts for Polonius, records the borrows on the specified place
+    /// as `killed`. For example, when assigning to a local, or on a call's return destination.
+    fn record_killed_borrows_for_place(&mut self, place: &Place<'tcx>, location: Location) {
+        if let Some(all_facts) = self.all_facts {
+            if let Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } = place {
+                record_killed_borrows_for_local(
+                    all_facts,
+                    self.borrow_set,
+                    self.location_table,
+                    local,
+                    location,
+                );
+            }
+        }
+    }
+}
+
+/// When recording facts for Polonius, records the borrows on the specified local as `killed`.
+fn record_killed_borrows_for_local(
+    all_facts: &mut AllFacts,
+    borrow_set: &BorrowSet<'_>,
+    location_table: &LocationTable,
+    local: &Local,
+    location: Location,
+) {
+    if let Some(borrow_indices) = borrow_set.local_map.get(local) {
+        all_facts.killed.reserve(borrow_indices.len());
+        for &borrow_index in borrow_indices {
+            let location_index = location_table.mid_index(location);
+            all_facts.killed.push((borrow_index, location_index));
+        }
     }
 }
