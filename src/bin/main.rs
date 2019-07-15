@@ -1,6 +1,6 @@
 use env_logger;
-#[macro_use]
-extern crate failure;
+use failure::{err_msg, format_err, Error as FailureError, Fail};
+use io::Error as IoError;
 
 use rustfmt_nightly as rustfmt;
 
@@ -10,12 +10,10 @@ use std::io::{self, stdout, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use failure::err_msg;
-
 use getopts::{Matches, Options};
 
 use crate::rustfmt::{
-    load_config, CliOptions, Color, Config, Edition, EmitMode, ErrorKind, FileLines, FileName,
+    load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName,
     FormatReportFormatterBuilder, Input, Session, Verbosity,
 };
 
@@ -49,20 +47,37 @@ enum Operation {
     },
     /// Print the help message.
     Help(HelpOp),
-    // Print version information
+    /// Print version information
     Version,
     /// Output default config to a file, or stdout if None
-    ConfigOutputDefault {
-        path: Option<String>,
-    },
+    ConfigOutputDefault { path: Option<String> },
     /// Output current config (as if formatting to a file) to stdout
-    ConfigOutputCurrent {
-        path: Option<String>,
-    },
+    ConfigOutputCurrent { path: Option<String> },
     /// No file specified, read from stdin
-    Stdin {
-        input: String,
-    },
+    Stdin { input: String },
+}
+
+/// Rustfmt operations errors.
+#[derive(Fail, Debug)]
+pub enum OperationError {
+    /// An unknown help topic was requested.
+    #[fail(display = "Unknown help topic: `{}`.", _0)]
+    UnknownHelpTopic(String),
+    /// An unknown print-config option was requested.
+    #[fail(display = "Unknown print-config option: `{}`.", _0)]
+    UnknownPrintConfigTopic(String),
+    /// Attempt to generate a minimal config from standard input.
+    #[fail(display = "The `--print-config=minimal` option doesn't work with standard input.")]
+    MinimalPathWithStdin,
+    /// An io error during reading or writing.
+    #[fail(display = "io error: {}", _0)]
+    IoError(IoError),
+}
+
+impl From<IoError> for OperationError {
+    fn from(e: IoError) -> OperationError {
+        OperationError::IoError(e)
+    }
 }
 
 /// Arguments to `--help`
@@ -156,7 +171,7 @@ fn is_nightly() -> bool {
 }
 
 // Returned i32 is an exit code
-fn execute(opts: &Options) -> Result<i32, failure::Error> {
+fn execute(opts: &Options) -> Result<i32, FailureError> {
     let matches = opts.parse(env::args().skip(1))?;
     let options = GetOptsOptions::from_matches(&matches)?;
 
@@ -210,7 +225,7 @@ fn execute(opts: &Options) -> Result<i32, failure::Error> {
     }
 }
 
-fn format_string(input: String, options: GetOptsOptions) -> Result<i32, failure::Error> {
+fn format_string(input: String, options: GetOptsOptions) -> Result<i32, FailureError> {
     // try to read config from local directory
     let (mut config, _) = load_config(Some(Path::new(".")), Some(options.clone()))?;
 
@@ -243,7 +258,7 @@ fn format(
     files: Vec<PathBuf>,
     minimal_config_path: Option<String>,
     options: &GetOptsOptions,
-) -> Result<i32, failure::Error> {
+) -> Result<i32, FailureError> {
     options.verify_file_lines(&files);
     let (config, config_path) = load_config(None, Some(options.clone()))?;
 
@@ -385,7 +400,7 @@ fn print_version() {
     println!("rustfmt {}", version_info);
 }
 
-fn determine_operation(matches: &Matches) -> Result<Operation, ErrorKind> {
+fn determine_operation(matches: &Matches) -> Result<Operation, OperationError> {
     if matches.opt_present("h") {
         let topic = matches.opt_str("h");
         if topic == None {
@@ -395,22 +410,25 @@ fn determine_operation(matches: &Matches) -> Result<Operation, ErrorKind> {
         } else if topic == Some("file-lines".to_owned()) {
             return Ok(Operation::Help(HelpOp::FileLines));
         } else {
-            println!("Unknown help topic: `{}`\n", topic.unwrap());
-            return Ok(Operation::Help(HelpOp::None));
+            return Err(OperationError::UnknownHelpTopic(topic.unwrap()));
         }
     }
+    let mut free_matches = matches.free.iter();
 
     let mut minimal_config_path = None;
-    if let Some(ref kind) = matches.opt_str("print-config") {
-        let path = matches.free.get(0).cloned();
-        if kind == "default" {
-            return Ok(Operation::ConfigOutputDefault { path });
-        } else if kind == "current" {
-            return Ok(Operation::ConfigOutputCurrent { path });
-        } else if kind == "minimal" {
-            minimal_config_path = path;
-            if minimal_config_path.is_none() {
-                println!("WARNING: PATH required for `--print-config minimal`");
+    if let Some(kind) = matches.opt_str("print-config") {
+        let path = free_matches.next().cloned();
+        match kind.as_str() {
+            "default" => return Ok(Operation::ConfigOutputDefault { path }),
+            "current" => return Ok(Operation::ConfigOutputCurrent { path }),
+            "minimal" => {
+                minimal_config_path = path;
+                if minimal_config_path.is_none() {
+                    eprintln!("WARNING: PATH required for `--print-config minimal`.");
+                }
+            }
+            _ => {
+                return Err(OperationError::UnknownPrintConfigTopic(kind));
             }
         }
     }
@@ -419,17 +437,7 @@ fn determine_operation(matches: &Matches) -> Result<Operation, ErrorKind> {
         return Ok(Operation::Version);
     }
 
-    // if no file argument is supplied, read from stdin
-    if matches.free.is_empty() {
-        let mut buffer = String::new();
-        io::stdin().read_to_string(&mut buffer)?;
-
-        return Ok(Operation::Stdin { input: buffer });
-    }
-
-    let files: Vec<_> = matches
-        .free
-        .iter()
+    let files: Vec<_> = free_matches
         .map(|s| {
             let p = PathBuf::from(s);
             // we will do comparison later, so here tries to canonicalize first
@@ -437,6 +445,17 @@ fn determine_operation(matches: &Matches) -> Result<Operation, ErrorKind> {
             p.canonicalize().unwrap_or(p)
         })
         .collect();
+
+    // if no file argument is supplied, read from stdin
+    if files.is_empty() {
+        if minimal_config_path.is_some() {
+            return Err(OperationError::MinimalPathWithStdin);
+        }
+        let mut buffer = String::new();
+        io::stdin().read_to_string(&mut buffer)?;
+
+        return Ok(Operation::Stdin { input: buffer });
+    }
 
     Ok(Operation::Format {
         files,
@@ -464,7 +483,7 @@ struct GetOptsOptions {
 }
 
 impl GetOptsOptions {
-    pub fn from_matches(matches: &Matches) -> Result<GetOptsOptions, failure::Error> {
+    pub fn from_matches(matches: &Matches) -> Result<GetOptsOptions, FailureError> {
         let mut options = GetOptsOptions::default();
         options.verbose = matches.opt_present("verbose");
         options.quiet = matches.opt_present("quiet");
@@ -598,7 +617,7 @@ impl CliOptions for GetOptsOptions {
     }
 }
 
-fn edition_from_edition_str(edition_str: &str) -> Result<Edition, failure::Error> {
+fn edition_from_edition_str(edition_str: &str) -> Result<Edition, FailureError> {
     match edition_str {
         "2015" => Ok(Edition::Edition2015),
         "2018" => Ok(Edition::Edition2018),
@@ -606,7 +625,7 @@ fn edition_from_edition_str(edition_str: &str) -> Result<Edition, failure::Error
     }
 }
 
-fn emit_mode_from_emit_str(emit_str: &str) -> Result<EmitMode, failure::Error> {
+fn emit_mode_from_emit_str(emit_str: &str) -> Result<EmitMode, FailureError> {
     match emit_str {
         "files" => Ok(EmitMode::Files),
         "stdout" => Ok(EmitMode::Stdout),
