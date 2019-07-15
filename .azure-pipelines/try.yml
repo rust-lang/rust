@@ -93,7 +93,7 @@ jobs:
 - job: Windows4
   timeoutInMinutes: 600
   pool:
-    name: 'windows-private3'
+    name: 'windows-private2'
   steps:
   - template: steps/run.yml
   strategy:
