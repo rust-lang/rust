@@ -366,8 +366,12 @@ pub(super) fn specialization_graph_provider(
                     }
                 }
 
-                for cause in &overlap.intercrate_ambiguity_causes {
-                    cause.add_intercrate_ambiguity_hint(&mut err);
+                let access_levels = tcx.privacy_access_levels(impl_def_id.krate);
+                let id = tcx.hir().as_local_hir_id(impl_def_id).unwrap();
+                if access_levels.is_exported(id) || access_levels.is_public(id) {
+                    for cause in &overlap.intercrate_ambiguity_causes {
+                        cause.add_intercrate_ambiguity_hint(&mut err);
+                    }
                 }
 
                 if overlap.involves_placeholder {
