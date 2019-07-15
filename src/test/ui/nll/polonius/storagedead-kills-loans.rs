@@ -10,7 +10,8 @@
 use std::{io, mem};
 use std::io::Read;
 
-fn fill(r: &mut Read, mut buf: &mut [u8]) -> io::Result<()> {
+#[allow(dead_code)]
+fn fill(r: &mut dyn Read, mut buf: &mut [u8]) -> io::Result<()> {
     while buf.len() > 0 {
         match r.read(buf).unwrap() {
             0 => return Err(io::Error::new(io::ErrorKind::Other,
