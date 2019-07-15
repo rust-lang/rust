@@ -878,12 +878,25 @@ pub enum DiscriminantKind {
     },
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Niche {
     pub offset: Size,
     pub scalar: Scalar,
 }
 
 impl Niche {
+    pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
+        let niche = Niche {
+            offset,
+            scalar,
+        };
+        if niche.available(cx) > 0 {
+            Some(niche)
+        } else {
+            None
+        }
+    }
+
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
         let Scalar { value, valid_range: ref v } = self.scalar;
         let bits = value.size(cx).bits();
@@ -934,18 +947,25 @@ pub struct LayoutDetails {
     pub variants: Variants,
     pub fields: FieldPlacement,
     pub abi: Abi,
+
+    /// The leaf scalar with the largest number of invalid values
+    /// (i.e. outside of its `valid_range`), if it exists.
+    pub largest_niche: Option<Niche>,
+
     pub align: AbiAndPrefAlign,
     pub size: Size
 }
 
 impl LayoutDetails {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
+        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar.clone());
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
         LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Union(0),
             abi: Abi::Scalar(scalar),
+            largest_niche,
             size,
             align,
         }
