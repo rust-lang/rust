@@ -65,7 +65,7 @@ pub fn target() -> Result<Target, String> {
         ..Default::default()
     };
     Ok(Target {
-        llvm_target: "x86_64-unknown-linux-gnu".into(),
+        llvm_target: "x86_64-elf".into(),
         target_endian: "little".into(),
         target_pointer_width: "64".into(),
         target_c_int_width: "32".into(),
