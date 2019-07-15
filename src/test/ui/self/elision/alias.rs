@@ -1,3 +1,5 @@
+// check-pass
+
 #![feature(arbitrary_self_types)]
 #![allow(non_snake_case)]
 
@@ -30,3 +32,5 @@ impl Struct {
         f
     }
 }
+
+fn main() { }

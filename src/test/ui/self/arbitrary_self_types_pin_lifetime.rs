@@ -1,4 +1,4 @@
-// compile-pass
+// check-pass
 
 use std::pin::Pin;
 use std::task::{Context, Poll};
