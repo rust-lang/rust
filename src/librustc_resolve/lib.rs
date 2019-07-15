@@ -3684,11 +3684,9 @@ impl<'a> Resolver<'a> {
             let path = Path { segments: path.iter().map(path_seg).collect(), span };
             let parent_scope =
                 ParentScope { module: self.current_module, ..self.dummy_parent_scope() };
-            for macro_kind in &[MacroKind::Bang, MacroKind::Attr, MacroKind::Derive] {
-                if let Ok((_, res)) = self.resolve_macro_path(&path, *macro_kind,
-                                                              &parent_scope, false, false) {
-                    return Some(PartialRes::new(res));
-                }
+            if let Ok((_, res)) =
+                    self.resolve_macro_path(&path, None, &parent_scope, false, false) {
+                return Some(PartialRes::new(res));
             }
         }
 

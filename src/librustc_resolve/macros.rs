@@ -220,7 +220,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
 
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
-        let (ext, res) = self.smart_resolve_macro_path(path, kind, &parent_scope, true, force)?;
+        let (ext, res) = self.smart_resolve_macro_path(path, kind, &parent_scope, force)?;
 
         let span = invoc.span();
         invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, fast_print_path(path)));
@@ -269,10 +269,10 @@ impl<'a> Resolver<'a> {
         path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'a>,
-        trace: bool,
         force: bool,
     ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
-        let (ext, res) = match self.resolve_macro_path(path, kind, parent_scope, trace, force) {
+        let (ext, res) = match self.resolve_macro_path(path, Some(kind), parent_scope,
+                                                       true, force) {
             Ok((Some(ext), res)) => (ext, res),
             // Use dummy syntax extensions for unresolved macros for better recovery.
             Ok((None, res)) => (self.dummy_ext(kind), res),
@@ -334,7 +334,7 @@ impl<'a> Resolver<'a> {
     pub fn resolve_macro_path(
         &mut self,
         path: &ast::Path,
-        kind: MacroKind,
+        kind: Option<MacroKind>,
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
@@ -343,7 +343,7 @@ impl<'a> Resolver<'a> {
         let mut path = Segment::from_path(path);
 
         // Possibly apply the macro helper hack
-        if kind == MacroKind::Bang && path.len() == 1 &&
+        if kind == Some(MacroKind::Bang) && path.len() == 1 &&
            path[0].ident.span.ctxt().outer_expn_info()
                .map_or(false, |info| info.local_inner_macros) {
             let root = Ident::new(kw::DollarCrate, path[0].ident.span);
@@ -364,6 +364,7 @@ impl<'a> Resolver<'a> {
             };
 
             if trace {
+                let kind = kind.expect("macro kind must be specified if tracing is enabled");
                 parent_scope.module.multi_segment_macro_resolutions.borrow_mut()
                     .push((path, path_span, kind, parent_scope.clone(), res.ok()));
             }
@@ -371,14 +372,17 @@ impl<'a> Resolver<'a> {
             self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
             res
         } else {
+            // Macro without a specific kind restriction is equvalent to a macro import.
+            let scope_set = kind.map_or(ScopeSet::Import(MacroNS), ScopeSet::Macro);
             let binding = self.early_resolve_ident_in_lexical_scope(
-                path[0].ident, ScopeSet::Macro(kind), parent_scope, false, force, path_span
+                path[0].ident, scope_set, parent_scope, false, force, path_span
             );
             if let Err(Determinacy::Undetermined) = binding {
                 return Err(Determinacy::Undetermined);
             }
 
             if trace {
+                let kind = kind.expect("macro kind must be specified if tracing is enabled");
                 parent_scope.module.single_segment_macro_resolutions.borrow_mut()
                     .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
             }
@@ -452,7 +456,7 @@ impl<'a> Resolver<'a> {
                     let mut result = Err(Determinacy::Determined);
                     for derive in &parent_scope.derives {
                         let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
-                        match this.resolve_macro_path(derive, MacroKind::Derive,
+                        match this.resolve_macro_path(derive, Some(MacroKind::Derive),
                                                       &parent_scope, true, force) {
                             Ok((Some(ext), _)) => if ext.helper_attrs.contains(&ident.name) {
                                 let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),

@@ -574,7 +574,7 @@ impl<'a> Resolver<'a> {
                         for derive in &parent_scope.derives {
                             let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
                             if let Ok((Some(ext), _)) = this.resolve_macro_path(
-                                derive, MacroKind::Derive, &parent_scope, false, false
+                                derive, Some(MacroKind::Derive), &parent_scope, false, false
                             ) {
                                 suggestions.extend(ext.helper_attrs.iter().map(|name| {
                                     TypoSuggestion::from_res(*name, res)

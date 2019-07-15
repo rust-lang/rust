@@ -6,6 +6,7 @@ use rustc::lint as lint;
 use rustc::ty;
 use syntax;
 use syntax::ast::{self, Ident};
+use syntax::ext::base::SyntaxExtensionKind;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
@@ -425,12 +426,10 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
 /// Resolves a string as a macro.
 fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
-    use syntax::ext::base::{MacroKind, SyntaxExtensionKind};
-    let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
-    let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
+    let path = ast::Path::from_ident(Ident::from_str(path_str));
     cx.enter_resolver(|resolver| {
         if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
-            &path, MacroKind::Bang, &resolver.dummy_parent_scope(), false, false
+            &path, None, &resolver.dummy_parent_scope(), false, false
         ) {
             if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
                 return Some(res.map_id(|_| panic!("unexpected id")));
