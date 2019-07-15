@@ -803,38 +803,55 @@ impl<'a> CrateLoader<'a> {
             return
         }
 
+        let any_unsupported = self.sess.crate_types.borrow().iter().any(|ct| {
+            match *ct {
+                config::CrateType::Executable |
+                config::CrateType::Staticlib |
+                config::CrateType::Cdylib |
+                config::CrateType::Dylib |
+                config::CrateType::Rlib => false,
+                _ => true,
+            }
+        });
+        if any_unsupported {
+            self.sess.err("Only executables, staticlibs, cdylibs, dylibs and rlibs can be compiled \
+                            with `-Z sanitizer`");
+            self.sess.injected_sanitizer_runtime.set(None);
+            return
+        }
+
         let mut uses_std = false;
         self.cstore.iter_crate_data(|_, data| {
             if data.name == sym::std {
                 uses_std = true;
             }
         });
-
-        if uses_std {
-            let name = match *sanitizer {
-                Sanitizer::Address => "rustc_asan",
-                Sanitizer::Leak => "rustc_lsan",
-                Sanitizer::Memory => "rustc_msan",
-                Sanitizer::Thread => "rustc_tsan",
-            };
-            info!("loading sanitizer: {}", name);
-
-            let symbol = Symbol::intern(name);
-            let dep_kind = DepKind::Implicit;
-            let (cnum, data) =
-                self.resolve_crate(&None, symbol, symbol, None, None, DUMMY_SP,
-                                    PathKind::Crate, dep_kind)
-                    .unwrap_or_else(|err| err.report());
-
-            // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
-            if !data.root.sanitizer_runtime {
-                self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
-                                        name));
-            }
-            self.sess.injected_sanitizer_runtime.set(Some(cnum));
-        } else {
+        if !uses_std {
             self.sess.err("Must link std to be compiled with `-Z sanitizer`");
+            return
         }
+
+        let name = match *sanitizer {
+            Sanitizer::Address => "rustc_asan",
+            Sanitizer::Leak => "rustc_lsan",
+            Sanitizer::Memory => "rustc_msan",
+            Sanitizer::Thread => "rustc_tsan",
+        };
+        info!("loading sanitizer: {}", name);
+
+        let symbol = Symbol::intern(name);
+        let dep_kind = DepKind::Implicit;
+        let (cnum, data) =
+            self.resolve_crate(&None, symbol, symbol, None, None, DUMMY_SP,
+                                PathKind::Crate, dep_kind)
+                .unwrap_or_else(|err| err.report());
+
+        // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
+        if !data.root.sanitizer_runtime {
+            self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
+                                    name));
+        }
+        self.sess.injected_sanitizer_runtime.set(Some(cnum));
     }
 
     fn inject_profiler_runtime(&mut self) {
