@@ -511,13 +511,11 @@ fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
         if sym!(signum) == method_name.ident.name;
         // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
         // the method call)
-        if is_float(cx, &expressions[0]);
         then {
-            true
-        } else {
-            false
+            return is_float(cx, &expressions[0]);
         }
     }
+    false
 }
 
 fn is_float(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
