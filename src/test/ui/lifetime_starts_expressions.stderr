@@ -14,7 +14,7 @@ error: expected type, found keyword `loop`
 LL |     loop { break 'label: loop { break 'label 42; }; }
    |                          ^^^^ expecting a type here because of type ascription
    |
-   = note: #![feature(type_ascription)] lets you annotate an expression with a type: `<expr>: <type>`
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
 note: this expression expects an ascribed type after the colon
   --> $DIR/lifetime_starts_expressions.rs:6:12
    |
