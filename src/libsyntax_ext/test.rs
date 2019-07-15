@@ -42,12 +42,12 @@ pub fn expand_test_or_bench(
         if let Annotatable::Item(i) = item { i }
         else {
             cx.parse_sess.span_diagnostic.span_fatal(item.span(),
-                "#[test] attribute is only allowed on non associated functions").raise();
+                "`#[test]` attribute is only allowed on non associated functions").raise();
         };
 
     if let ast::ItemKind::Mac(_) = item.node {
         cx.parse_sess.span_diagnostic.span_warn(item.span,
-            "#[test] attribute should not be used on macros. Use #[cfg(test)] instead.");
+            "`#[test]` attribute should not be used on macros. Use `#[cfg(test)]` instead.");
         return vec![Annotatable::Item(item)];
     }
 
@@ -167,7 +167,7 @@ pub fn expand_test_or_bench(
         ast::ItemKind::ExternCrate(Some(sym::test))
     );
 
-    log::debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+    log::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
         // Access to libtest under a gensymed name
