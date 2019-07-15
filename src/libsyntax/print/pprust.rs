@@ -4,7 +4,7 @@ use crate::ast::{Attribute, MacDelimiter, GenericArg};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
-use crate::parse::token::{self, BinOpToken, Nonterminal, Token, TokenKind};
+use crate::parse::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
 use crate::parse::lexer::comments;
 use crate::parse::{self, ParseSess};
 use crate::print::pp::{self, Breaks};
@@ -19,6 +19,11 @@ use syntax_pos::{self, BytePos};
 use syntax_pos::{DUMMY_SP, FileName, Span};
 
 use std::borrow::Cow;
+
+pub enum MacHeader<'a> {
+    Path(&'a ast::Path),
+    Keyword(&'static str),
+}
 
 pub enum AnnNode<'a> {
     Ident(&'a ast::Ident),
@@ -188,7 +193,7 @@ pub fn literal_to_string(lit: token::Lit) -> String {
 }
 
 /// Print an ident from AST, `$crate` is converted into its respective crate name.
-fn ast_ident_to_string(ident: ast::Ident, is_raw: bool) -> String {
+pub fn ast_ident_to_string(ident: ast::Ident, is_raw: bool) -> String {
     ident_to_string(ident.name, is_raw, Some(ident.span))
 }
 
@@ -446,6 +451,8 @@ impl std::ops::DerefMut for State<'_> {
 
 pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefMut {
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
+    fn print_ident(&mut self, ident: ast::Ident);
+    fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
 
     fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F)
         where F: FnMut(&mut Self, &T),
@@ -596,17 +603,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         }
     }
 
-    fn print_attribute_path(&mut self, path: &ast::Path) {
-        for (i, segment) in path.segments.iter().enumerate() {
-            if i > 0 {
-                self.word("::");
-            }
-            if segment.ident.name != kw::PathRoot {
-                self.word(ast_ident_to_string(segment.ident, segment.ident.is_raw_guess()));
-            }
-        }
-    }
-
     fn print_attribute(&mut self, attr: &ast::Attribute) {
         self.print_attribute_inline(attr, false)
     }
@@ -625,13 +621,22 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                 ast::AttrStyle::Inner => self.word("#!["),
                 ast::AttrStyle::Outer => self.word("#["),
             }
-            if let Some(mi) = attr.meta() {
-                self.print_meta_item(&mi);
-            } else {
-                self.print_attribute_path(&attr.path);
-                self.space();
-                self.print_tts(attr.tokens.clone(), true);
+            self.ibox(0);
+            match attr.tokens.trees().next() {
+                Some(TokenTree::Delimited(_, delim, tts)) => {
+                    self.print_mac_common(
+                        Some(MacHeader::Path(&attr.path)), false, None, delim, tts, true, attr.span
+                    );
+                }
+                tree => {
+                    self.print_path(&attr.path, false, 0);
+                    if tree.is_some() {
+                        self.space();
+                        self.print_tts(attr.tokens.clone(), true);
+                    }
+                }
             }
+            self.end();
             self.word("]");
         }
     }
@@ -650,15 +655,15 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
     fn print_meta_item(&mut self, item: &ast::MetaItem) {
         self.ibox(INDENT_UNIT);
         match item.node {
-            ast::MetaItemKind::Word => self.print_attribute_path(&item.path),
+            ast::MetaItemKind::Word => self.print_path(&item.path, false, 0),
             ast::MetaItemKind::NameValue(ref value) => {
-                self.print_attribute_path(&item.path);
+                self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
                 self.print_literal(value);
             }
             ast::MetaItemKind::List(ref items) => {
-                self.print_attribute_path(&item.path);
+                self.print_path(&item.path, false, 0);
                 self.popen();
                 self.commasep(Consistent,
                               &items[..],
@@ -687,36 +692,90 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                     _ => {}
                 }
             }
-            TokenTree::Delimited(_, delim, tts) => {
-                self.word(token_kind_to_string(&token::OpenDelim(delim)));
-                self.space();
-                self.print_tts(tts, convert_dollar_crate);
-                self.space();
-                self.word(token_kind_to_string(&token::CloseDelim(delim)))
-            },
+            TokenTree::Delimited(dspan, delim, tts) => {
+                self.print_mac_common(
+                    None, false, None, delim, tts, convert_dollar_crate, dspan.entire()
+                );
+            }
         }
     }
 
     fn print_tts(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
-        self.ibox(0);
         for (i, tt) in tts.into_trees().enumerate() {
             if i != 0 {
                 self.space();
             }
             self.print_tt(tt, convert_dollar_crate);
         }
+    }
+
+    fn print_mac_common(
+        &mut self,
+        header: Option<MacHeader<'_>>,
+        has_bang: bool,
+        ident: Option<ast::Ident>,
+        delim: DelimToken,
+        tts: TokenStream,
+        convert_dollar_crate: bool,
+        span: Span,
+    ) {
+        if delim == DelimToken::Brace {
+            self.cbox(INDENT_UNIT);
+        }
+        match header {
+            Some(MacHeader::Path(path)) => self.print_path(path, false, 0),
+            Some(MacHeader::Keyword(kw)) => self.word(kw),
+            None => {}
+        }
+        if has_bang {
+            self.word("!");
+        }
+        if let Some(ident) = ident {
+            self.nbsp();
+            self.print_ident(ident);
+        }
+        match delim {
+            DelimToken::Brace => {
+                if header.is_some() || has_bang || ident.is_some() {
+                    self.nbsp();
+                }
+                self.word("{");
+                if !tts.is_empty() {
+                    self.space();
+                }
+            }
+            _ => self.word(token_kind_to_string(&token::OpenDelim(delim))),
+        }
+        self.ibox(0);
+        self.print_tts(tts, convert_dollar_crate);
         self.end();
+        match delim {
+            DelimToken::Brace => self.bclose(span),
+            _ => self.word(token_kind_to_string(&token::CloseDelim(delim))),
+        }
     }
-}
 
-impl<'a> PrintState<'a> for State<'a> {
-    fn comments(&mut self) -> &mut Option<Comments<'a>> {
-        &mut self.comments
+    fn print_path(&mut self, path: &ast::Path, colons_before_params: bool, depth: usize) {
+        self.maybe_print_comment(path.span.lo());
+
+        for (i, segment) in path.segments[..path.segments.len() - depth].iter().enumerate() {
+            if i > 0 {
+                self.word("::")
+            }
+            self.print_path_segment(segment, colons_before_params);
+        }
     }
-}
 
-impl<'a> State<'a> {
-    crate fn head<S: Into<Cow<'static, str>>>(&mut self, w: S) {
+    fn print_path_segment(&mut self, segment: &ast::PathSegment, colons_before_params: bool) {
+        if segment.ident.name != kw::PathRoot {
+            self.print_ident(segment.ident);
+            if let Some(ref args) = segment.args {
+                self.print_generic_args(args, colons_before_params);
+            }
+        }
+    }
+
+    fn head<S: Into<Cow<'static, str>>>(&mut self, w: S) {
         let w = w.into();
         // outer-box is consistent
         self.cbox(INDENT_UNIT);
@@ -728,36 +787,103 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn bopen(&mut self) {
-        self.s.word("{");
+    fn bopen(&mut self) {
+        self.word("{");
         self.end(); // close the head-box
     }
 
-    crate fn bclose_maybe_open(&mut self, span: syntax_pos::Span, close_box: bool) {
+    fn bclose_maybe_open(&mut self, span: syntax_pos::Span, close_box: bool) {
         self.maybe_print_comment(span.hi());
         self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
-        self.s.word("}");
+        self.word("}");
         if close_box {
             self.end(); // close the outer-box
         }
     }
-    crate fn bclose(&mut self, span: syntax_pos::Span) {
+
+    fn bclose(&mut self, span: syntax_pos::Span) {
         self.bclose_maybe_open(span, true)
     }
 
-    crate fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
-        if !self.s.is_beginning_of_line() {
-            self.s.break_offset(n, off)
+    fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
+        if !self.is_beginning_of_line() {
+            self.break_offset(n, off)
         } else {
-            if off != 0 && self.s.last_token().is_hardbreak_tok() {
+            if off != 0 && self.last_token().is_hardbreak_tok() {
                 // We do something pretty sketchy here: tuck the nonzero
                 // offset-adjustment we were going to deposit along with the
                 // break into the previous hardbreak.
-                self.s.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
+                self.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
             }
         }
     }
+}
 
+impl<'a> PrintState<'a> for State<'a> {
+    fn comments(&mut self) -> &mut Option<Comments<'a>> {
+        &mut self.comments
+    }
+
+    fn print_ident(&mut self, ident: ast::Ident) {
+        self.s.word(ast_ident_to_string(ident, ident.is_raw_guess()));
+        self.ann.post(self, AnnNode::Ident(&ident))
+    }
+
+    fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool) {
+        if colons_before_params {
+            self.s.word("::")
+        }
+
+        match *args {
+            ast::GenericArgs::AngleBracketed(ref data) => {
+                self.s.word("<");
+
+                self.commasep(Inconsistent, &data.args, |s, generic_arg| {
+                    s.print_generic_arg(generic_arg)
+                });
+
+                let mut comma = data.args.len() != 0;
+
+                for constraint in data.constraints.iter() {
+                    if comma {
+                        self.word_space(",")
+                    }
+                    self.print_ident(constraint.ident);
+                    self.s.space();
+                    match constraint.kind {
+                        ast::AssocTyConstraintKind::Equality { ref ty } => {
+                            self.word_space("=");
+                            self.print_type(ty);
+                        }
+                        ast::AssocTyConstraintKind::Bound { ref bounds } => {
+                            self.print_type_bounds(":", &*bounds);
+                        }
+                    }
+                    comma = true;
+                }
+
+                self.s.word(">")
+            }
+
+            ast::GenericArgs::Parenthesized(ref data) => {
+                self.s.word("(");
+                self.commasep(
+                    Inconsistent,
+                    &data.inputs,
+                    |s, ty| s.print_type(ty));
+                self.s.word(")");
+
+                if let Some(ref ty) = data.output {
+                    self.space_if_not_bol();
+                    self.word_space("->");
+                    self.print_type(ty);
+                }
+            }
+        }
+    }
+}
+
+impl<'a> State<'a> {
     // Synthesizes a comment that was not textually present in the original source
     // file.
     pub fn synth_comment(&mut self, text: String) {
@@ -1231,33 +1357,24 @@ impl<'a> State<'a> {
                 self.s.word(";");
             }
             ast::ItemKind::Mac(ref mac) => {
-                if item.ident.name == kw::Invalid {
-                    self.print_mac(mac);
-                    match mac.node.delim {
-                        MacDelimiter::Brace => {}
-                        _ => self.s.word(";"),
-                    }
-                } else {
-                    self.print_path(&mac.node.path, false, 0);
-                    self.s.word("! ");
-                    self.print_ident(item.ident);
-                    self.cbox(INDENT_UNIT);
-                    self.popen();
-                    self.print_tts(mac.node.stream(), true);
-                    self.pclose();
-                    self.s.word(";");
-                    self.end();
+                self.print_mac(mac);
+                match mac.node.delim {
+                    MacDelimiter::Brace => {}
+                    _ => self.s.word(";"),
                 }
             }
-            ast::ItemKind::MacroDef(ref tts) => {
-                self.s.word("macro_rules! ");
-                self.print_ident(item.ident);
-                self.cbox(INDENT_UNIT);
-                self.popen();
-                self.print_tts(tts.stream(), true);
-                self.pclose();
-                self.s.word(";");
-                self.end();
+            ast::ItemKind::MacroDef(ref macro_def) => {
+                let (kw, has_bang) =
+                    if macro_def.legacy { ("macro_rules", true) } else { ("macro", false) };
+                self.print_mac_common(
+                    Some(MacHeader::Keyword(kw)),
+                    has_bang,
+                    Some(item.ident),
+                    DelimToken::Brace,
+                    macro_def.stream(),
+                    true,
+                    item.span,
+                );
             }
         }
         self.ann.post(self, AnnNode::Item(item))
@@ -1645,24 +1762,16 @@ impl<'a> State<'a> {
     }
 
     crate fn print_mac(&mut self, m: &ast::Mac) {
-        self.print_path(&m.node.path, false, 0);
-        self.s.word("!");
-        match m.node.delim {
-            MacDelimiter::Parenthesis => self.popen(),
-            MacDelimiter::Bracket => self.s.word("["),
-            MacDelimiter::Brace => {
-                self.head("");
-                self.bopen();
-            }
-        }
-        self.print_tts(m.node.stream(), true);
-        match m.node.delim {
-            MacDelimiter::Parenthesis => self.pclose(),
-            MacDelimiter::Bracket => self.s.word("]"),
-            MacDelimiter::Brace => self.bclose(m.span),
-        }
+        self.print_mac_common(
+            Some(MacHeader::Path(&m.node.path)),
+            true,
+            None,
+            m.node.delim.to_token(),
+            m.node.stream(),
+            true,
+            m.span,
+        );
     }
-
 
     fn print_call_post(&mut self, args: &[P<ast::Expr>]) {
         self.popen();
@@ -2204,11 +2313,6 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_ident(&mut self, ident: ast::Ident) {
-        self.s.word(ast_ident_to_string(ident, ident.is_raw_guess()));
-        self.ann.post(self, AnnNode::Ident(&ident))
-    }
-
     crate fn print_usize(&mut self, i: usize) {
         self.s.word(i.to_string())
     }
@@ -2216,31 +2320,6 @@ impl<'a> State<'a> {
     crate fn print_name(&mut self, name: ast::Name) {
         self.s.word(name.as_str().to_string());
         self.ann.post(self, AnnNode::Name(&name))
-    }
-
-    fn print_path(&mut self,
-                  path: &ast::Path,
-                  colons_before_params: bool,
-                  depth: usize) {
-        self.maybe_print_comment(path.span.lo());
-
-        for (i, segment) in path.segments[..path.segments.len() - depth].iter().enumerate() {
-            if i > 0 {
-                self.s.word("::")
-            }
-            self.print_path_segment(segment, colons_before_params);
-        }
-    }
-
-    fn print_path_segment(&mut self,
-                          segment: &ast::PathSegment,
-                          colons_before_params: bool) {
-        if segment.ident.name != kw::PathRoot {
-            self.print_ident(segment.ident);
-            if let Some(ref args) = segment.args {
-                self.print_generic_args(args, colons_before_params);
-            }
-        }
     }
 
     fn print_qpath(&mut self,
@@ -2263,62 +2342,6 @@ impl<'a> State<'a> {
         match item_segment.args {
             Some(ref args) => self.print_generic_args(args, colons_before_params),
             None => {},
-        }
-    }
-
-    fn print_generic_args(&mut self,
-                          args: &ast::GenericArgs,
-                          colons_before_params: bool)
-    {
-        if colons_before_params {
-            self.s.word("::")
-        }
-
-        match *args {
-            ast::GenericArgs::AngleBracketed(ref data) => {
-                self.s.word("<");
-
-                self.commasep(Inconsistent, &data.args, |s, generic_arg| {
-                    s.print_generic_arg(generic_arg)
-                });
-
-                let mut comma = data.args.len() != 0;
-
-                for constraint in data.constraints.iter() {
-                    if comma {
-                        self.word_space(",")
-                    }
-                    self.print_ident(constraint.ident);
-                    self.s.space();
-                    match constraint.kind {
-                        ast::AssocTyConstraintKind::Equality { ref ty } => {
-                            self.word_space("=");
-                            self.print_type(ty);
-                        }
-                        ast::AssocTyConstraintKind::Bound { ref bounds } => {
-                            self.print_type_bounds(":", &*bounds);
-                        }
-                    }
-                    comma = true;
-                }
-
-                self.s.word(">")
-            }
-
-            ast::GenericArgs::Parenthesized(ref data) => {
-                self.s.word("(");
-                self.commasep(
-                    Inconsistent,
-                    &data.inputs,
-                    |s, ty| s.print_type(ty));
-                self.s.word(")");
-
-                if let Some(ref ty) = data.output {
-                    self.space_if_not_bol();
-                    self.word_space("->");
-                    self.print_type(ty);
-                }
-            }
         }
     }
 

@@ -1,9 +1,9 @@
 // minimal junk
-#![feature(no_core)]
-#![no_core]
+#![feature /* 0#0 */(no_core)]
+#![no_core /* 0#0 */]
 
-macro_rules! foo /* 60#0 */(( $ x : ident ) => { y + $ x });
+macro_rules! foo /* 0#0 */ { ($ x : ident) => { y + $ x } }
 
-fn bar /* 62#0 */() { let x /* 59#2 */ = 1; y /* 61#4 */ + x /* 59#5 */ }
+fn bar /* 0#0 */() { let x /* 0#0 */ = 1; y /* 0#1 */ + x /* 0#0 */ }
 
-fn y /* 61#0 */() { }
+fn y /* 0#0 */() { }

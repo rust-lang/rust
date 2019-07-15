@@ -6,7 +6,7 @@ pub use crate::symbol::{Ident, Symbol as Name};
 pub use crate::util::parser::ExprPrecedence;
 
 use crate::ext::hygiene::{Mark, SyntaxContext};
-use crate::parse::token;
+use crate::parse::token::{self, DelimToken};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
@@ -1295,6 +1295,16 @@ pub enum MacDelimiter {
 impl Mac_ {
     pub fn stream(&self) -> TokenStream {
         self.tts.clone()
+    }
+}
+
+impl MacDelimiter {
+    crate fn to_token(self) -> DelimToken {
+        match self {
+            MacDelimiter::Parenthesis => DelimToken::Paren,
+            MacDelimiter::Bracket => DelimToken::Bracket,
+            MacDelimiter::Brace => DelimToken::Brace,
+        }
     }
 }
 
