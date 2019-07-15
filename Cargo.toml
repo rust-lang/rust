@@ -61,4 +61,5 @@ rustc-workspace-hack = "1.0.0"
 rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util"}
 
 [features]
+deny-warnings = []
 debugging = []

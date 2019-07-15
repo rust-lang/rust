@@ -7,8 +7,8 @@ if [ "$TRAVIS_OS_NAME" == "linux" ]; then
   remark -f *.md -f doc/*.md > /dev/null
 fi
 # build clippy in debug mode and run tests
-cargo build --features debugging
-cargo test --features debugging
+cargo build --features "debugging deny-warnings"
+cargo test --features "debugging deny-warnings"
 # for faster build, share target dir between subcrates
 export CARGO_TARGET_DIR=`pwd`/target/
 (cd clippy_lints && cargo test)

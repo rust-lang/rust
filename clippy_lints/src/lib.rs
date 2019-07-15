@@ -9,6 +9,7 @@
 #![recursion_limit = "512"]
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
 #![deny(rustc::internal)]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(crate_visibility_modifier)]
 #![feature(concat_idents)]
 
