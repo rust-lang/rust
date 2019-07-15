@@ -17,7 +17,7 @@ declare_clippy_lint! {
     ///
     /// ** Example:**
     ///
-    /// ```rust,ignore
+    /// ```rust
     /// // Bad
     /// pub struct A;
     ///
@@ -26,6 +26,9 @@ declare_clippy_lint! {
     ///         "I am A".to_string()
     ///     }
     /// }
+    /// ```
+    ///
+    /// ```rust
     /// // Good
     /// use std::fmt;
     ///
@@ -39,19 +42,19 @@ declare_clippy_lint! {
     /// ```
     pub INHERENT_TO_STRING,
     style,
-    "type implements inherent method 'to_string()', but should instead implement the 'Display' trait"
+    "type implements inherent method `to_string()`, but should instead implement the `Display` trait"
 }
 
 declare_clippy_lint! {
     /// **What id does:** Checks for the definition of inherent methods with a signature of `to_string(&self) -> String` and if the type implementing this method also implements the `Display` trait.
     ///
-    /// **Why is this bad?** This method is also implicitly defined if a type implements the 'Display' trait. The less versatile inherent method will then shadow the implementation introduced by `Display`.
+    /// **Why is this bad?** This method is also implicitly defined if a type implements the `Display` trait. The less versatile inherent method will then shadow the implementation introduced by `Display`.
     ///
-    /// **Known problems:** The inherent method will shadow the implementation by `Display`. If they behave differently, this may lead to confusing situations for users of the respective type.
+    /// **Known problems:** None
     ///
     /// ** Example:**
     ///
-    /// ```rust,ignore
+    /// ```rust
     /// // Bad
     /// use std::fmt;
     ///
@@ -68,6 +71,9 @@ declare_clippy_lint! {
     ///         write!(f, "I am A, too")
     ///     }
     /// }
+    /// ```
+    ///
+    /// ```rust
     /// // Good
     /// use std::fmt;
     ///
@@ -81,7 +87,7 @@ declare_clippy_lint! {
     /// ```
     pub INHERENT_TO_STRING_SHADOW_DISPLAY,
     correctness,
-    "type implements inherent method 'to_string()', which gets shadowed by the implementation of the 'Display' trait "
+    "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait "
 }
 
 declare_lint_pass!(InherentToString => [INHERENT_TO_STRING, INHERENT_TO_STRING_SHADOW_DISPLAY]);
@@ -114,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InherentToString {
 
 fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem) {
     let display_trait_id =
-        get_trait_def_id(cx, &["core", "fmt", "Display"]).expect("Failed to get trait ID of 'Display'!");
+        get_trait_def_id(cx, &["core", "fmt", "Display"]).expect("Failed to get trait ID of `Display`!");
 
     // Get the real type of 'self'
     let fn_def_id = cx.tcx.hir().local_def_id(item.hir_id);
@@ -128,10 +134,10 @@ fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem) {
             INHERENT_TO_STRING_SHADOW_DISPLAY,
             item.span,
             &format!(
-                "type '{}' implements inherent method 'to_string() -> String' which shadows the implementation of 'Display'",
+                "type `{}` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`",
                 self_type.to_string()
             ),
-            &format!("remove the inherent method from type '{}'", self_type.to_string())
+            &format!("remove the inherent method from type `{}`", self_type.to_string())
         );
     } else {
         span_help_and_lint(
@@ -139,10 +145,10 @@ fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem) {
             INHERENT_TO_STRING,
             item.span,
             &format!(
-                "implementation of inherent method 'to_string() -> String' for type '{}'",
+                "implementation of inherent method `to_string(&self) -> String` for type `{}`",
                 self_type.to_string()
             ),
-            &format!("implement trait 'Display' for type '{}' instead", self_type.to_string()),
+            &format!("implement trait `Display` for type `{}` instead", self_type.to_string()),
         );
     }
 }
