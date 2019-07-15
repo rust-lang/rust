@@ -4,7 +4,7 @@
 // by NLL but was incorrectly rejected by Polonius because of these
 // missing `killed` facts.
 
-// build-pass
+// check-pass
 // compile-flags: -Z borrowck=mir -Z polonius
 // ignore-compare-mode-nll
 
