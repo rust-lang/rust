@@ -1,5 +1,6 @@
 // compile-flags: -O
 // only-x86_64
+// ignore-debug: the debug assertions get in the way
 
 #![crate_type = "lib"]
 

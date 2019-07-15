@@ -25,7 +25,7 @@ dependencies = [
 name = "alloc"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_xorshift 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -131,7 +131,7 @@ dependencies = [
  "autocfg 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "backtrace-sys 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
@@ -143,7 +143,7 @@ version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
@@ -373,7 +373,7 @@ name = "cfg-if"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
 
@@ -502,7 +502,7 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.16"
+version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -834,7 +834,7 @@ name = "dlmalloc"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
@@ -1008,7 +1008,7 @@ name = "fortanix-sgx-abi"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
 
@@ -1199,7 +1199,7 @@ name = "hashbrown"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-alloc 1.0.0",
  "rustc-std-workspace-core 1.0.0",
 ]
@@ -2066,7 +2066,7 @@ dependencies = [
 name = "panic_abort"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2077,7 +2077,7 @@ version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
  "cfg-if 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "unwind 0.0.0",
@@ -2263,7 +2263,7 @@ name = "profiler_builtins"
 version = "0.0.0"
 dependencies = [
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -2835,7 +2835,7 @@ name = "rustc-demangle"
 version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
 
@@ -2941,7 +2941,7 @@ dependencies = [
  "alloc 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -3160,7 +3160,7 @@ dependencies = [
  "alloc 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -3223,7 +3223,7 @@ dependencies = [
  "alloc 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -3341,7 +3341,7 @@ dependencies = [
  "alloc 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -3648,7 +3648,7 @@ dependencies = [
  "backtrace 0.3.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "dlmalloc 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "fortanix-sgx-abi 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4309,7 +4309,7 @@ version = "0.0.0"
 dependencies = [
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -4527,7 +4527,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b0aa3473e85a3161b59845d6096b289bb577874cafeaf75ea1b1beaa6572c7fc"
 "checksum commoncrypto 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d056a8586ba25a1e4d61cb090900e495952c7886786fc55f909ab2f819b69007"
 "checksum commoncrypto-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1fed34f46747aa73dfaa578069fd8279d2818ade2b55f38f22a9401c7f4083e2"
-"checksum compiler_builtins 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "e79ed19793c99771b386d76e08c3419409bb3d418b81a8b8afc73524247461cf"
+"checksum compiler_builtins 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)" = "ad9b4731b9e701aefe9e6bd1e9173f30526661508f9aaadaa5caec25ddf95585"
 "checksum compiletest_rs 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)" = "f40ecc9332b68270998995c00f8051ee856121764a0d3230e64c9efd059d27b6"
 "checksum constant_time_eq 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "8ff012e225ce166d4422e0e78419d901719760f62ae2b7969ca6b564d1b54a9e"
 "checksum core-foundation 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4e2640d6d0bf22e82bed1b73c6aef8d5dd31e5abe6666c57e6d45e2649f4f887"
