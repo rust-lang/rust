@@ -80,8 +80,8 @@ wasm_syscall = []
 # current thread id and accessing/getting the current thread's TCB
 wasm-bindgen-threads = []
 
-# Enable std_detect default features for stdsimd:
-# https://github.com/rust-lang-nursery/stdsimd/blob/master/crates/std_detect/Cargo.toml
+# Enable std_detect default features for stdarch/crates/std_detect:
+# https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
 std_detect_file_io = []
 std_detect_dlsym_getauxval = []
 

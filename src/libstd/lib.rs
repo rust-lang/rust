@@ -492,12 +492,12 @@ mod memchr;
 pub mod rt;
 
 // Pull in the `std_detect` crate directly into libstd. The contents of
-// `std_detect` are in a different repository: rust-lang-nursery/stdsimd.
+// `std_detect` are in a different repository: rust-lang/stdarch.
 //
 // `std_detect` depends on libstd, but the contents of this module are
 // set up in such a way that directly pulling it here works such that the
 // crate uses the this crate as its libstd.
-#[path = "../stdsimd/crates/std_detect/src/mod.rs"]
+#[path = "../stdarch/crates/std_detect/src/mod.rs"]
 #[allow(missing_debug_implementations, missing_docs, dead_code)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]

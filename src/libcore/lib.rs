@@ -228,12 +228,12 @@ mod tuple;
 mod unit;
 
 // Pull in the `core_arch` crate directly into libcore. The contents of
-// `core_arch` are in a different repository: rust-lang-nursery/stdsimd.
+// `core_arch` are in a different repository: rust-lang/stdarch.
 //
 // `core_arch` depends on libcore, but the contents of this module are
 // set up in such a way that directly pulling it here works such that the
 // crate uses the this crate as its libcore.
-#[path = "../stdsimd/crates/core_arch/src/mod.rs"]
+#[path = "../stdarch/crates/core_arch/src/mod.rs"]
 #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;

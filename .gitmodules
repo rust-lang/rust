@@ -31,9 +31,9 @@
 [submodule "src/llvm-emscripten"]
 	path = src/llvm-emscripten
 	url = https://github.com/rust-lang/llvm.git
-[submodule "src/stdsimd"]
-	path = src/stdsimd
-	url = https://github.com/rust-lang-nursery/stdsimd.git
+[submodule "src/stdarch"]
+	path = src/stdarch
+	url = https://github.com/rust-lang/stdarch.git
 [submodule "src/doc/rustc-guide"]
 	path = src/doc/rustc-guide
 	url = https://github.com/rust-lang/rustc-guide.git
