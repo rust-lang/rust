@@ -331,7 +331,8 @@ use prelude::v1::*;
 pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::{unreachable, unimplemented, write, writeln, todo};
-#[allow(deprecated)]
+// FIXME: change this to `#[allow(deprecated)]` when we update nightly compiler.
+#[allow(deprecated_in_future)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::r#try;
 
