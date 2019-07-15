@@ -139,15 +139,15 @@ impl<'a> base::Resolver for Resolver<'a> {
         let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::default(
             ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
         ));
-        let mark = span.ctxt().outer();
+        let expn_id = span.ctxt().outer_expn();
         let module = self.module_map[&self.definitions.local_def_id(id)];
-        self.definitions.set_invocation_parent(mark, module.def_id().unwrap().index);
-        self.invocations.insert(mark, self.arenas.alloc_invocation_data(InvocationData {
+        self.definitions.set_invocation_parent(expn_id, module.def_id().unwrap().index);
+        self.invocations.insert(expn_id, self.arenas.alloc_invocation_data(InvocationData {
             module,
             parent_legacy_scope: LegacyScope::Empty,
             output_legacy_scope: Cell::new(None),
         }));
-        mark
+        expn_id
     }
 
     fn resolve_dollar_crates(&mut self) {

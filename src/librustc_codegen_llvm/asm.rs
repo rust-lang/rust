@@ -102,7 +102,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             let kind = llvm::LLVMGetMDKindIDInContext(self.llcx,
                 key.as_ptr() as *const c_char, key.len() as c_uint);
 
-            let val: &'ll Value = self.const_i32(ia.ctxt.outer().as_u32() as i32);
+            let val: &'ll Value = self.const_i32(ia.ctxt.outer_expn().as_u32() as i32);
 
             llvm::LLVMSetMetadata(r, kind,
                 llvm::LLVMMDNodeInContext(self.llcx, &val, 1));

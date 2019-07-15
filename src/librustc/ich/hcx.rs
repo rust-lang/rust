@@ -363,17 +363,17 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             }
 
             let sub_hash: u64 = CACHE.with(|cache| {
-                let mark = span.ctxt.outer();
+                let expn_id = span.ctxt.outer_expn();
 
-                if let Some(&sub_hash) = cache.borrow().get(&mark) {
+                if let Some(&sub_hash) = cache.borrow().get(&expn_id) {
                     return sub_hash;
                 }
 
                 let mut hasher = StableHasher::new();
-                mark.expn_info().hash_stable(hcx, &mut hasher);
+                expn_id.expn_info().hash_stable(hcx, &mut hasher);
                 let sub_hash: Fingerprint = hasher.finish();
                 let sub_hash = sub_hash.to_smaller_hash();
-                cache.borrow_mut().insert(mark, sub_hash);
+                cache.borrow_mut().insert(expn_id, sub_hash);
                 sub_hash
             });
 

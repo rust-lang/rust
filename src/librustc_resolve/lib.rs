@@ -2070,7 +2070,7 @@ impl<'a> Resolver<'a> {
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
-            match self.macro_defs.get(&ctxt.outer()) {
+            match self.macro_defs.get(&ctxt.outer_expn()) {
                 Some(&def_id) => return def_id,
                 None => ctxt.remove_mark(),
             };
@@ -2428,7 +2428,7 @@ impl<'a> Resolver<'a> {
 
     fn hygienic_lexical_parent(&mut self, module: Module<'a>, span: &mut Span)
                                -> Option<Module<'a>> {
-        if !module.expansion.outer_is_descendant_of(span.ctxt()) {
+        if !module.expansion.outer_expn_is_descendant_of(span.ctxt()) {
             return Some(self.macro_def_scope(span.remove_mark()));
         }
 
@@ -2464,7 +2464,7 @@ impl<'a> Resolver<'a> {
             module.expansion.is_descendant_of(parent.expansion) {
                 // The macro is a proc macro derive
                 if module.expansion.looks_like_proc_macro_derive() {
-                    if parent.expansion.outer_is_descendant_of(span.ctxt()) {
+                    if parent.expansion.outer_expn_is_descendant_of(span.ctxt()) {
                         *poisoned = Some(node_id);
                         return module.parent;
                     }
