@@ -8,12 +8,12 @@ help: possible candidate is found in another module, you can import it into scop
 LL | use std::ops::Add;
    |
 
-error[E0405]: cannot find trait `Clone` in this scope
+error[E0404]: expected trait, found derive macro `Clone`
   --> $DIR/no-implicit-prelude.rs:11:6
    |
 LL | impl Clone for Test {}
-   |      ^^^^^ not found in this scope
-help: possible candidates are found in other modules, you can import them into scope
+   |      ^^^^^ not a trait
+help: possible better candidates are found in other modules, you can import them into scope
    |
 LL | use std::clone::Clone;
    |
@@ -64,5 +64,5 @@ LL | use std::prelude::v1::drop;
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0405, E0425.
-For more information about an error, try `rustc --explain E0405`.
+Some errors have detailed explanations: E0404, E0405, E0425.
+For more information about an error, try `rustc --explain E0404`.

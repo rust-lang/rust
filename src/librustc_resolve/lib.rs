@@ -3664,9 +3664,7 @@ impl<'a> Resolver<'a> {
         crate_lint: CrateLint,
     ) -> Option<PartialRes> {
         let mut fin_res = None;
-        // FIXME: can't resolve paths in macro namespace yet, macros are
-        // processed by the little special hack below.
-        for (i, ns) in [primary_ns, TypeNS, ValueNS, /*MacroNS*/].iter().cloned().enumerate() {
+        for (i, ns) in [primary_ns, TypeNS, ValueNS].iter().cloned().enumerate() {
             if i == 0 || ns != primary_ns {
                 match self.resolve_qpath(id, qself, path, ns, span, global_by_default, crate_lint) {
                     // If defer_to_typeck, then resolution > no resolution,
@@ -3675,21 +3673,25 @@ impl<'a> Resolver<'a> {
                                          defer_to_typeck =>
                         return Some(partial_res),
                     partial_res => if fin_res.is_none() { fin_res = partial_res },
-                };
+                }
             }
         }
-        if primary_ns != MacroNS &&
-           (self.macro_names.contains(&path[0].ident.modern()) ||
-            self.builtin_macros.get(&path[0].ident.name).cloned()
-                               .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang) ||
-            self.macro_use_prelude.get(&path[0].ident.name).cloned()
-                                  .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang)) {
-            // Return some dummy definition, it's enough for error reporting.
-            return Some(PartialRes::new(Res::Def(
-                DefKind::Macro(MacroKind::Bang),
-                DefId::local(CRATE_DEF_INDEX),
-            )));
+
+        // `MacroNS`
+        assert!(primary_ns != MacroNS);
+        if qself.is_none() {
+            let path_seg = |seg: &Segment| ast::PathSegment::from_ident(seg.ident);
+            let path = Path { segments: path.iter().map(path_seg).collect(), span };
+            let parent_scope =
+                ParentScope { module: self.current_module, ..self.dummy_parent_scope() };
+            for macro_kind in &[MacroKind::Bang, MacroKind::Attr, MacroKind::Derive] {
+                if let Ok((_, res)) = self.resolve_macro_path(&path, *macro_kind,
+                                                              &parent_scope, false, false) {
+                    return Some(PartialRes::new(res));
+                }
+            }
         }
+
         fin_res
     }
 
