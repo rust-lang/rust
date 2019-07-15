@@ -9,7 +9,7 @@ use std::{cmp, fmt, iter, str};
 use serde::{ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json as json;
 
-use syntax::source_map::{self, SourceFile};
+use syntax::source_map::{self, SourceFile, SourceMap, Span};
 
 /// A range of lines in a file, inclusive of both ends.
 pub struct LineRange {
@@ -77,6 +77,17 @@ impl Serialize for FileName {
 impl LineRange {
     pub fn file_name(&self) -> FileName {
         self.file.name.clone().into()
+    }
+
+    pub(crate) fn from_span(source_map: &SourceMap, span: Span) -> LineRange {
+        let lo_char_pos = source_map.lookup_char_pos(span.lo());
+        let hi_char_pos = source_map.lookup_char_pos(span.hi());
+        debug_assert!(lo_char_pos.file.name == hi_char_pos.file.name);
+        LineRange {
+            file: lo_char_pos.file.clone(),
+            lo: lo_char_pos.line,
+            hi: hi_char_pos.line,
+        }
     }
 }
 

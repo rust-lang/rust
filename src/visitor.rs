@@ -6,7 +6,7 @@ use syntax::{ast, visit};
 
 use crate::attr::*;
 use crate::comment::{CodeCharKind, CommentCodeSlices};
-use crate::config::file_lines::FileName;
+use crate::config::file_lines::LineRange;
 use crate::config::{BraceStyle, Config};
 use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
@@ -89,6 +89,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         Shape::indented(self.block_indent, self.config)
     }
 
+    fn next_span(&self, hi: BytePos) -> Span {
+        mk_sp(self.last_pos, hi)
+    }
+
     fn visit_stmt(&mut self, stmt: &Stmt<'_>) {
         debug!(
             "visit_stmt: {:?} {:?}",
@@ -132,6 +136,60 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
     }
 
+    /// Remove spaces between the opening brace and the first statement or the inner attribute
+    /// of the block.
+    fn trim_spaces_after_opening_brace(
+        &mut self,
+        b: &ast::Block,
+        inner_attrs: Option<&[ast::Attribute]>,
+    ) {
+        if let Some(first_stmt) = b.stmts.first() {
+            let hi = inner_attrs
+                .and_then(|attrs| inner_attributes(attrs).first().map(|attr| attr.span.lo()))
+                .unwrap_or_else(|| first_stmt.span().lo());
+            let missing_span = self.next_span(hi);
+            let snippet = self.snippet(missing_span);
+            let len = CommentCodeSlices::new(snippet)
+                .nth(0)
+                .and_then(|(kind, _, s)| {
+                    if kind == CodeCharKind::Normal {
+                        s.rfind('\n')
+                    } else {
+                        None
+                    }
+                });
+            if let Some(len) = len {
+                self.last_pos = self.last_pos + BytePos::from_usize(len);
+            }
+        }
+    }
+
+    /// Returns the total length of the spaces which should be trimmed between the last statement
+    /// and the closing brace of the block.
+    fn trimmed_spaces_width_before_closing_brace(
+        &mut self,
+        b: &ast::Block,
+        brace_compensation: BytePos,
+    ) -> usize {
+        match b.stmts.last() {
+            None => 0,
+            Some(..) => {
+                let span_after_last_stmt = self.next_span(b.span.hi() - brace_compensation);
+                let missing_snippet = self.snippet(span_after_last_stmt);
+                CommentCodeSlices::new(missing_snippet)
+                    .last()
+                    .and_then(|(kind, _, s)| {
+                        if kind == CodeCharKind::Normal && s.trim().is_empty() {
+                            Some(s.len())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or(0)
+            }
+        }
+    }
+
     pub(crate) fn visit_block(
         &mut self,
         b: &ast::Block,
@@ -150,39 +208,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.last_pos = self.last_pos + brace_compensation;
         self.block_indent = self.block_indent.block_indent(self.config);
         self.push_str("{");
-
-        if let Some(first_stmt) = b.stmts.first() {
-            let hi = inner_attrs
-                .and_then(|attrs| inner_attributes(attrs).first().map(|attr| attr.span.lo()))
-                .unwrap_or_else(|| first_stmt.span().lo());
-
-            let snippet = self.snippet(mk_sp(self.last_pos, hi));
-            let len = CommentCodeSlices::new(snippet)
-                .nth(0)
-                .and_then(|(kind, _, s)| {
-                    if kind == CodeCharKind::Normal {
-                        s.rfind('\n')
-                    } else {
-                        None
-                    }
-                });
-            if let Some(len) = len {
-                self.last_pos = self.last_pos + BytePos::from_usize(len);
-            }
-        }
+        self.trim_spaces_after_opening_brace(b, inner_attrs);
 
         // Format inner attributes if available.
-        let skip_rewrite = if let Some(attrs) = inner_attrs {
-            self.visit_attrs(attrs, ast::AttrStyle::Inner)
-        } else {
-            false
-        };
-
-        if skip_rewrite {
-            self.push_rewrite(b.span, None);
-            self.close_block(false, b.span);
-            self.last_pos = source!(self, b.span).hi();
-            return;
+        if let Some(attrs) = inner_attrs {
+            self.visit_attrs(attrs, ast::AttrStyle::Inner);
         }
 
         self.walk_block_stmts(b);
@@ -195,36 +225,22 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
         }
 
-        let mut remove_len = BytePos(0);
-        if let Some(stmt) = b.stmts.last() {
-            let span_after_last_stmt = mk_sp(
-                stmt.span.hi(),
-                source!(self, b.span).hi() - brace_compensation,
-            );
-            // if the span is outside of a file_lines range, then do not try to remove anything
-            if !out_of_file_lines_range!(self, span_after_last_stmt) {
-                let snippet = self.snippet(span_after_last_stmt);
-                let len = CommentCodeSlices::new(snippet)
-                    .last()
-                    .and_then(|(kind, _, s)| {
-                        if kind == CodeCharKind::Normal && s.trim().is_empty() {
-                            Some(s.len())
-                        } else {
-                            None
-                        }
-                    });
-                if let Some(len) = len {
-                    remove_len = BytePos::from_usize(len);
-                }
-            }
+        let missing_span = self.next_span(b.span.hi());
+        if out_of_file_lines_range!(self, missing_span) {
+            self.push_str(self.snippet(missing_span));
+            self.block_indent = self.block_indent.block_unindent(self.config);
+            self.last_pos = source!(self, b.span).hi();
+            return;
         }
 
+        let remove_len = BytePos::from_usize(
+            self.trimmed_spaces_width_before_closing_brace(b, brace_compensation),
+        );
         let unindent_comment = self.is_if_else_block && !b.stmts.is_empty() && {
             let end_pos = source!(self, b.span).hi() - brace_compensation - remove_len;
             let snippet = self.snippet(mk_sp(self.last_pos, end_pos));
             snippet.contains("//") || snippet.contains("/*")
         };
-        // FIXME: we should compress any newlines here to just one
         if unindent_comment {
             self.block_indent = self.block_indent.block_unindent(self.config);
         }
@@ -234,7 +250,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         if unindent_comment {
             self.block_indent = self.block_indent.block_indent(self.config);
         }
-        self.close_block(unindent_comment, b.span);
+        self.close_block(unindent_comment, self.next_span(b.span.hi()));
         self.last_pos = source!(self, b.span).hi();
     }
 
@@ -243,12 +259,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     // The closing brace itself, however, should be indented at a shallower
     // level.
     fn close_block(&mut self, unindent_comment: bool, span: Span) {
-        let file_name: FileName = self.source_map.span_to_filename(span).into();
         let skip_this_line = !self
             .config
             .file_lines()
-            .contains_line(&file_name, self.line_number);
-        if !skip_this_line {
+            .contains(&LineRange::from_span(self.source_map, span));
+        if skip_this_line {
+            self.push_str(self.snippet(span));
+        } else {
             let total_len = self.buffer.len();
             let chars_too_many = if unindent_comment {
                 0
@@ -271,8 +288,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.buffer.push_str("\n");
                 }
             }
+            self.push_str("}");
         }
-        self.push_str("}");
         self.block_indent = self.block_indent.block_unindent(self.config);
     }
 
@@ -800,8 +817,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.block_indent = self.block_indent.block_indent(self.config);
                 self.visit_attrs(attrs, ast::AttrStyle::Inner);
                 self.walk_mod_items(m);
-                self.format_missing_with_indent(source!(self, m.inner).hi() - BytePos(1));
-                self.close_block(false, m.inner);
+                let missing_span = mk_sp(source!(self, m.inner).hi() - BytePos(1), m.inner.hi());
+                self.format_missing_with_indent(missing_span.lo());
+                self.close_block(false, missing_span);
             }
             self.last_pos = source!(self, m.inner).hi();
         } else {
@@ -823,9 +841,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub(crate) fn skip_empty_lines(&mut self, end_pos: BytePos) {
         while let Some(pos) = self
             .snippet_provider
-            .opt_span_after(mk_sp(self.last_pos, end_pos), "\n")
+            .opt_span_after(self.next_span(end_pos), "\n")
         {
-            if let Some(snippet) = self.opt_snippet(mk_sp(self.last_pos, pos)) {
+            if let Some(snippet) = self.opt_snippet(self.next_span(pos)) {
                 if snippet.trim().is_empty() {
                     self.last_pos = pos;
                 } else {

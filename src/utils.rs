@@ -306,7 +306,22 @@ pub(crate) fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
     }
 }
 
-#[inline]
+/// Returns the number of LF and CRLF respectively.
+pub(crate) fn count_lf_crlf(input: &str) -> (usize, usize) {
+    let mut lf = 0;
+    let mut crlf = 0;
+    let mut is_crlf = false;
+    for c in input.as_bytes() {
+        match c {
+            b'\r' => is_crlf = true,
+            b'\n' if is_crlf => crlf += 1,
+            b'\n' => lf += 1,
+            _ => is_crlf = false,
+        }
+    }
+    (lf, crlf)
+}
+
 pub(crate) fn count_newlines(input: &str) -> usize {
     // Using bytes to omit UTF-8 decoding
     bytecount::count(input.as_bytes(), b'\n')

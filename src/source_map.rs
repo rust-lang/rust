@@ -5,6 +5,7 @@ use syntax::source_map::{BytePos, SourceMap, Span};
 
 use crate::comment::FindUncommented;
 use crate::config::file_lines::LineRange;
+use crate::utils::starts_with_newline;
 use crate::visitor::SnippetProvider;
 
 pub(crate) trait SpanUtils {
@@ -95,7 +96,7 @@ impl LineRangeUtils for SourceMap {
 
         // in case the span starts with a newline, the line range is off by 1 without the
         // adjustment below
-        let offset = 1 + if snippet.starts_with('\n') { 1 } else { 0 };
+        let offset = 1 + if starts_with_newline(&snippet) { 1 } else { 0 };
         // Line numbers start at 1
         LineRange {
             file: lo.sf.clone(),

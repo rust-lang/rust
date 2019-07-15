@@ -7,7 +7,7 @@ use crate::config::file_lines::FileLines;
 use crate::config::{EmitMode, FileName};
 use crate::shape::{Indent, Shape};
 use crate::source_map::LineRangeUtils;
-use crate::utils::{count_newlines, last_line_width, mk_sp};
+use crate::utils::{count_lf_crlf, count_newlines, last_line_width, mk_sp};
 use crate::visitor::FmtVisitor;
 
 struct SnippetStatus {
@@ -157,7 +157,7 @@ impl<'a> FmtVisitor<'a> {
     fn write_snippet_inner<F>(
         &mut self,
         big_snippet: &str,
-        mut big_diff: usize,
+        big_diff: usize,
         old_snippet: &str,
         span: Span,
         process_last_snippet: F,
@@ -176,36 +176,26 @@ impl<'a> FmtVisitor<'a> {
             _ => Cow::from(old_snippet),
         };
 
-        // if the snippet starts with a new line, then information about the lines needs to be
-        // adjusted since it is off by 1.
-        let snippet = if snippet.starts_with('\n') {
-            // this takes into account the blank_lines_* options
-            self.push_vertical_spaces(1);
-            // include the newline character into the big_diff
-            big_diff += 1;
-            status.cur_line += 1;
-            &snippet[1..]
-        } else {
-            snippet
-        };
-
-        let slice_within_file_lines_range = |file_lines: FileLines, cur_line, s| -> (usize, bool) {
-            let newline_count = count_newlines(s);
-            let within_file_lines_range = file_lines.contains_range(
-                file_name,
-                cur_line,
-                // if a newline character is at the end of the slice, then the number of newlines
-                // needs to be decreased by 1 so that the range checked against the file_lines is
-                // the visual range one would expect.
-                cur_line + newline_count - if s.ends_with('\n') { 1 } else { 0 },
-            );
-            (newline_count, within_file_lines_range)
-        };
+        let slice_within_file_lines_range =
+            |file_lines: FileLines, cur_line, s| -> (usize, usize, bool) {
+                let (lf_count, crlf_count) = count_lf_crlf(s);
+                let newline_count = lf_count + crlf_count;
+                let within_file_lines_range = file_lines.contains_range(
+                    file_name,
+                    cur_line,
+                    // if a newline character is at the end of the slice, then the number of
+                    // newlines needs to be decreased by 1 so that the range checked against
+                    // the file_lines is the visual range one would expect.
+                    cur_line + newline_count - if s.ends_with('\n') { 1 } else { 0 },
+                );
+                (lf_count, crlf_count, within_file_lines_range)
+            };
         for (kind, offset, subslice) in CommentCodeSlices::new(snippet) {
             debug!("{:?}: {:?}", kind, subslice);
 
-            let (newline_count, within_file_lines_range) =
+            let (lf_count, crlf_count, within_file_lines_range) =
                 slice_within_file_lines_range(self.config.file_lines(), status.cur_line, subslice);
+            let newline_count = lf_count + crlf_count;
             if CodeCharKind::Comment == kind && within_file_lines_range {
                 // 1: comment.
                 self.process_comment(
@@ -219,7 +209,7 @@ impl<'a> FmtVisitor<'a> {
                 // 2: blank lines.
                 self.push_vertical_spaces(newline_count);
                 status.cur_line += newline_count;
-                status.line_start = offset + newline_count;
+                status.line_start = offset + lf_count + crlf_count * 2;
             } else {
                 // 3: code which we failed to format or which is not within file-lines range.
                 self.process_missing_code(&mut status, snippet, subslice, offset, file_name);
@@ -227,7 +217,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let last_snippet = &snippet[status.line_start..];
-        let (_, within_file_lines_range) =
+        let (_, _, within_file_lines_range) =
             slice_within_file_lines_range(self.config.file_lines(), status.cur_line, last_snippet);
         if within_file_lines_range {
             process_last_snippet(self, last_snippet, snippet);
