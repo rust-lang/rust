@@ -125,26 +125,60 @@ fi
 # goes ahead and sets it for all builders.
 args="$args --privileged"
 
-exec docker \
+# Things get a little weird if this script is already running in a docker
+# container. If we're already in a docker container then we assume it's set up
+# to do docker-in-docker where we have access to a working `docker` command.
+#
+# If this is the case (we check via the presence of `/.dockerenv`)
+# then we can't actually use the `--volume` argument. Typically we use
+# `--volume` to efficiently share the build and source directory between this
+# script and the container we're about to spawn. If we're inside docker already
+# though the `--volume` argument maps the *host's* folder to the container we're
+# about to spawn, when in fact we want the folder in this container itself. To
+# work around this we use a recipe cribbed from
+# https://circleci.com/docs/2.0/building-docker-images/#mounting-folders to
+# create a temporary container with a volume. We then copy the entire source
+# directory into this container, and then use that copy in the container we're
+# about to spawn. Finally after the build finishes we re-extract the object
+# directory.
+#
+# Note that none of this is necessary if we're *not* in a docker-in-docker
+# scenario. If this script is run on a bare metal host then we share a bunch of
+# data directories to share as much data as possible. Note that we also use
+# `LOCAL_USER_ID` (recognized in `src/ci/run.sh`) to ensure that files are all
+# read/written as the same user as the bare-metal user.
+if [ -f /.dockerenv ]; then
+  docker create -v /checkout --name checkout alpine:3.4 /bin/true
+  docker cp . checkout:/checkout
+  args="$args --volumes-from checkout"
+else
+  args="$args --volume $root_dir:/checkout:ro"
+  args="$args --volume $objdir:/checkout/obj"
+  args="$args --volume $HOME/.cargo:/cargo"
+  args="$args --volume $HOME/rustsrc:$HOME/rustsrc"
+  args="$args --env LOCAL_USER_ID=`id -u`"
+fi
+
+docker \
   run \
-  --volume "$root_dir:/checkout:ro" \
-  --volume "$objdir:/checkout/obj" \
   --workdir /checkout/obj \
   --env SRC=/checkout \
   $args \
   --env CARGO_HOME=/cargo \
   --env DEPLOY \
   --env DEPLOY_ALT \
-  --env LOCAL_USER_ID=`id -u` \
   --env CI \
   --env TF_BUILD \
   --env BUILD_SOURCEBRANCHNAME \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env TOOLSTATE_REPO \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
-  --volume "$HOME/.cargo:/cargo" \
-  --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --init \
   --rm \
   rust-ci \
   /checkout/src/ci/run.sh
+
+if [ -f /.dockerenv ]; then
+  rm -rf $objdir
+  docker cp checkout:/checkout/obj $objdir
+fi
