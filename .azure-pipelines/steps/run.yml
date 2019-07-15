@@ -24,7 +24,6 @@ steps:
   displayName: "Disable git automatic line ending conversion"
 
 - checkout: self
-  fetchDepth: 2
 
 # Set the SKIP_JOB environment variable if this job is supposed to only run
 # when submodules are updated and they were not. The following time consuming
