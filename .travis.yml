@@ -17,6 +17,7 @@ branches:
 env:
  global:
    - RUST_BACKTRACE=1
+   - secure: "OKulfkA5OGd/d1IhvBKzRkHQwMcWjzrzbimo7+5NhkUkWxndAzl+719TB3wWvIh1i2wXXrEXsyZkXM5FtRrHm55v1VKQ5ibjEvFg1w3NIg81iDyoLq186fLqywvxGkOAFPrsePPsBj5USd5xvhwwbrjO6L7/RK6Z8shBwOSc41s="
 
 install:
   - |
@@ -88,6 +89,20 @@ matrix:
     - os: windows
 
 script:
+  - |
+    if [ "$TRAVIS_BRANCH" == "auto" ] || [ "$TRAVIS_BRANCH" == "try" ]; then
+      pr=$(echo $TRAVIS_COMMIT_MESSAGE | grep -o "#[0-9]*" | head -1 | sed 's/^#//g')
+      output=$(curl -H "Authorization: token $GITHUB_API_TOKEN" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$pr" | \
+        python -c "import sys, json; print(json.load(sys.stdin)['body'])" | \
+        grep "^changelog: " | \
+        sed "s/changelog: //g")
+      if [ -z "$output" ]; then
+        echo "ERROR: PR body must contain 'changelog: ...'"
+        exit 1
+      elif [ "$output" = "none" ]; then
+        echo "WARNING: changelog is 'none'"
+      fi
+    fi
   - |
       rm rust-toolchain
       ./setup-toolchain.sh
