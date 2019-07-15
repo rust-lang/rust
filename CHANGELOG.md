@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [1.3.3] 2019-07-15
+
+### Fixed
+
+- Fix `cargo fmt -- --help` printing nothing (#3620).
+- Fix inserting an extra comma (#3677).
+- Fix incorrect handling of CRLF with `file-lines` (#3684).
+- Fix `print-config=minimal` option (#3687).
+
 ## [1.3.2] 2019-07-06
 
 ### Fixed
