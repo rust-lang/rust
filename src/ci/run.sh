@@ -25,7 +25,7 @@ source "$ci_dir/shared.sh"
 
 branch_name=$(getCIBranch)
 
-if [ ! isCI ] || [ "$branch_name" = "auto" ]; then
+if [ ! isCI ] || [ "$branch_name" = "auto" ] || [ "$branch_name" = "try" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 fi
 

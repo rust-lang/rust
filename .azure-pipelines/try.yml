@@ -6,21 +6,21 @@ variables:
 - group: real-prod-credentials
 
 jobs:
-- job: Linux
-  timeoutInMinutes: 600
-  pool:
-    vmImage: ubuntu-16.04
-  steps:
-  - template: steps/run.yml
-  strategy:
-    matrix:
-      dist-x86_64-linux:
-        IMAGE: dist-x86_64-linux
-        DEPLOY: 1
-
-      dist-x86_64-linux-alt:
-        IMAGE: dist-x86_64-linux
-        DEPLOY_ALT: 1
+# - job: Linux
+#   timeoutInMinutes: 600
+#   pool:
+#     vmImage: ubuntu-16.04
+#   steps:
+#   - template: steps/run.yml
+#   strategy:
+#     matrix:
+#       dist-x86_64-linux:
+#         IMAGE: dist-x86_64-linux
+#         DEPLOY: 1
+#
+#       dist-x86_64-linux-alt:
+#         IMAGE: dist-x86_64-linux
+#         DEPLOY_ALT: 1
 
 # The macOS and Windows builds here are currently disabled due to them not being
 # overly necessary on `try` builds. We also don't actually have anything that
@@ -76,3 +76,33 @@ jobs:
 #         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
 #         SCRIPT: python x.py dist
 #         DEPLOY_ALT: 1
+
+# - job: Linux4
+#   timeoutInMinutes: 600
+#   pool:
+#     name: 'linux-private'
+#   steps:
+#   - template: steps/run.yml
+#   strategy:
+#     matrix:
+#       i686-gnu-nopt:
+#         IMAGE: i686-gnu-nopt
+#       x86_64-gnu-nopt:
+#         IMAGE: x86_64-gnu-nopt
+
+- job: Windows4
+  timeoutInMinutes: 600
+  pool:
+    name: 'windows-private2'
+  steps:
+  - template: steps/run.yml
+  strategy:
+    matrix:
+      i686-msvc-1:
+        MSYS_BITS: 32
+        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+        SCRIPT: make ci-subset-2
+      i686-msvc-2:
+        MSYS_BITS: 32
+        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+        SCRIPT: make ci-subset-2
