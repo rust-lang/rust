@@ -5,8 +5,6 @@ use std::pin::Pin;
 
 struct Struct { }
 
-type Alias = Struct;
-
 impl Struct {
     // Test using `&self` sugar:
 

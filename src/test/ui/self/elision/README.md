@@ -1,5 +1,5 @@
 Test cases intended to to document behavior and try to exhaustively
-explore the combinations. 
+explore the combinations.
 
 ## Confidence
 
@@ -23,11 +23,11 @@ in the "confidence" field in the following table. Values:
 | `struct.rs` | `Struct` | `Struct` | ignore `self` parameter | 100% |
 | `alias.rs` | `Struct` | `Alias` | ignore `self` parameter | 100% |
 | `ref-self.rs` | `Struct` | `&Self` | take lifetime from `&Self` | 100% |
-| `ref-mut-self.rs` | `Struct` | `&mut Self` | take lifetime from `&Self` | 100% |
+| `ref-mut-self.rs` | `Struct` | `&mut Self` | take lifetime from `&mut Self` | 100% |
 | `ref-struct.rs` | `Struct` | `&Struct` | take lifetime from `&Self` | 50% |
-| `ref-mut-struct.rs` | `Struct` | `&Struct` | take lifetime from `&Self` | 50% |
+| `ref-mut-struct.rs` | `Struct` | `&mut Struct` | take lifetime from `&mut Self` | 50% |
 | `ref-alias.rs` | `Struct` | `&Alias` | ignore `Alias` | 0% |
-| `ref-mut-alias.rs` | `Struct` | `&Alias` | ignore `Alias` | 0% |
+| `ref-mut-alias.rs` | `Struct` | `&mut Alias` | ignore `Alias` | 0% |
 | `lt-self.rs` | `Struct<'a>` | `Self` | ignore `Self` (and hence `'a`) | 25% |
 | `lt-struct.rs` | `Struct<'a>` | `Self` | ignore `Self` (and hence `'a`) | 0% |
 | `lt-alias.rs`   | `Alias<'a>` | `Self` | ignore `Self` (and hence `'a`) | 0% |
@@ -42,4 +42,3 @@ In each case, we test the following patterns:
 - `self: Box<Pin<XXX>>`
 
 In the non-reference cases, `Pin` causes errors so we substitute `Rc`.
-
