@@ -28,7 +28,7 @@ use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
 
 use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{struct_span_err, unwrap_or};
@@ -221,7 +221,7 @@ impl<'a> Resolver<'a> {
                         ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
                         let binding = (module, ty::Visibility::Public,
-                                        module.span, Mark::root())
+                                        module.span, ExpnId::root())
                                         .to_name_binding(self.arenas);
                         return Ok(binding);
                     } else if ident.name == kw::Super ||
@@ -246,7 +246,7 @@ impl<'a> Resolver<'a> {
             .map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
         if let Some(binding) = resolution.binding {
-            if !restricted_shadowing && binding.expansion != Mark::root() {
+            if !restricted_shadowing && binding.expansion != ExpnId::root() {
                 if let NameBindingKind::Res(_, true) = binding.kind {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
                 }
@@ -286,7 +286,7 @@ impl<'a> Resolver<'a> {
                     if let Some(shadowed_glob) = resolution.shadowed_glob {
                         // Forbid expanded shadowing to avoid time travel.
                         if restricted_shadowing &&
-                        binding.expansion != Mark::root() &&
+                        binding.expansion != ExpnId::root() &&
                         binding.res() != shadowed_glob.res() {
                             self.ambiguity_errors.push(AmbiguityError {
                                 kind: AmbiguityKind::GlobVsExpanded,
@@ -525,7 +525,7 @@ impl<'a> Resolver<'a> {
                             (binding, old_binding)
                         };
                         if glob_binding.res() != nonglob_binding.res() &&
-                           ns == MacroNS && nonglob_binding.expansion != Mark::root() {
+                           ns == MacroNS && nonglob_binding.expansion != ExpnId::root() {
                             resolution.binding = Some(this.ambiguity(AmbiguityKind::GlobVsExpanded,
                                                                     nonglob_binding, glob_binding));
                         } else {
@@ -1248,7 +1248,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         target: Ident,
     ) {
         // Skip if the import was produced by a macro.
-        if directive.parent_scope.expansion != Mark::root() {
+        if directive.parent_scope.expansion != ExpnId::root() {
             return;
         }
 

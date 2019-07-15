@@ -31,7 +31,7 @@ use syntax::ast::{self, Ident};
 use syntax::source_map;
 use syntax::symbol::{Symbol, sym};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
 use log::debug;
 
@@ -458,7 +458,7 @@ crate fn proc_macro_def_path_table(crate_root: &CrateRoot<'_>,
             crate_root,
             ast::DUMMY_NODE_ID,
             DefPathData::MacroNs(name.as_interned_str()),
-            Mark::root(),
+            ExpnId::root(),
             DUMMY_SP);
         debug!("definition for {:?} is {:?}", name, def_index);
         assert_eq!(def_index, DefIndex::from_proc_macro_index(index));

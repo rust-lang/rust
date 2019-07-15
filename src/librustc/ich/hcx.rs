@@ -359,7 +359,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             // times, we cache a stable hash of it and hash that instead of
             // recursing every time.
             thread_local! {
-                static CACHE: RefCell<FxHashMap<hygiene::Mark, u64>> = Default::default();
+                static CACHE: RefCell<FxHashMap<hygiene::ExpnId, u64>> = Default::default();
             }
 
             let sub_hash: u64 = CACHE.with(|cache| {

@@ -23,7 +23,7 @@ use std::mem;
 use syntax::ast::NodeId;
 use syntax::source_map::{SourceMap, StableSourceFileId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
-use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
+use syntax_pos::hygiene::{ExpnId, SyntaxContext, ExpnInfo};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -594,7 +594,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
         // as long as incremental compilation does not kick in before that.
         let location = || Span::new(lo, hi, SyntaxContext::empty());
         let recover_from_expn_info = |this: &Self, expn_info, pos| {
-            let span = location().fresh_expansion(Mark::root(), expn_info);
+            let span = location().fresh_expansion(ExpnId::root(), expn_info);
             this.synthetic_expansion_infos.borrow_mut().insert(pos, span.ctxt());
             span
         };
@@ -725,7 +725,7 @@ struct CacheEncoder<'a, 'tcx, E: ty_codec::TyEncoder> {
     encoder: &'a mut E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
-    expn_info_shorthands: FxHashMap<Mark, AbsoluteBytePos>,
+    expn_info_shorthands: FxHashMap<ExpnId, AbsoluteBytePos>,
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
     interpret_allocs_inverse: Vec<interpret::AllocId>,
     source_map: CachingSourceMapView<'tcx>,

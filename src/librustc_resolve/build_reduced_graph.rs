@@ -30,7 +30,7 @@ use syntax::attr;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::SyntaxExtension;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
@@ -45,7 +45,7 @@ use log::debug;
 
 type Res = def::Res<NodeId>;
 
-impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
+impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, ExpnId) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Module(self.0),
@@ -57,7 +57,7 @@ impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
     }
 }
 
-impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, Mark) {
+impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, ExpnId) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Res(self.0, false),
@@ -71,7 +71,7 @@ impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, Mark) {
 
 pub(crate) struct IsMacroExport;
 
-impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, Mark, IsMacroExport) {
+impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, ExpnId, IsMacroExport) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Res(self.0, true),
@@ -397,7 +397,7 @@ impl<'a> Resolver<'a> {
                 let imported_binding = self.import(binding, directive);
                 if ptr::eq(self.current_module, self.graph_root) {
                     if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
-                        if expansion != Mark::root() && orig_name.is_some() &&
+                        if expansion != ExpnId::root() && orig_name.is_some() &&
                            entry.extern_crate_item.is_none() {
                             self.session.span_err(item.span, "macro-expanded `extern crate` items \
                                                               cannot shadow names passed with \
@@ -571,7 +571,7 @@ impl<'a> Resolver<'a> {
                                        variant: &Variant,
                                        parent: Module<'a>,
                                        vis: ty::Visibility,
-                                       expansion: Mark) {
+                                       expansion: ExpnId) {
         let ident = variant.node.ident;
 
         // Define a name in the type namespace.
@@ -600,7 +600,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, expansion: Mark) {
+    fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, expansion: ExpnId) {
         let (res, ns) = match item.node {
             ForeignItemKind::Fn(..) => {
                 (Res::Def(DefKind::Fn, self.definitions.local_def_id(item.id)), ValueNS)
@@ -618,7 +618,7 @@ impl<'a> Resolver<'a> {
         self.define(parent, item.ident, ns, (res, vis, item.span, expansion));
     }
 
-    fn build_reduced_graph_for_block(&mut self, block: &Block, expansion: Mark) {
+    fn build_reduced_graph_for_block(&mut self, block: &Block, expansion: ExpnId) {
         let parent = self.current_module;
         if self.block_needs_anonymous_module(block) {
             let module = self.new_module(parent,
@@ -642,7 +642,7 @@ impl<'a> Resolver<'a> {
         // but metadata cannot encode gensyms currently, so we create it here.
         // This is only a guess, two equivalent idents may incorrectly get different gensyms here.
         let ident = ident.gensym_if_underscore();
-        let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
+        let expansion = ExpnId::root(); // FIXME(jseyfried) intercrate hygiene
         match res {
             Res::Def(kind @ DefKind::Mod, def_id)
             | Res::Def(kind @ DefKind::Enum, def_id) => {
@@ -734,13 +734,14 @@ impl<'a> Resolver<'a> {
         };
 
         let kind = ModuleKind::Def(DefKind::Mod, def_id, name.as_symbol());
-        let module =
-            self.arenas.alloc_module(ModuleData::new(parent, kind, def_id, Mark::root(), DUMMY_SP));
+        let module = self.arenas.alloc_module(ModuleData::new(
+            parent, kind, def_id, ExpnId::root(), DUMMY_SP
+        ));
         self.extern_module_map.insert((def_id, macros_only), module);
         module
     }
 
-    pub fn macro_def_scope(&mut self, expansion: Mark) -> Module<'a> {
+    pub fn macro_def_scope(&mut self, expansion: ExpnId) -> Module<'a> {
         let def_id = match self.macro_defs.get(&expansion) {
             Some(def_id) => *def_id,
             None => return self.graph_root,
@@ -858,7 +859,7 @@ impl<'a> Resolver<'a> {
             used: Cell::new(false),
         });
 
-        let allow_shadowing = parent_scope.expansion == Mark::root();
+        let allow_shadowing = parent_scope.expansion == ExpnId::root();
         if let Some(span) = import_all {
             let directive = macro_use_directive(span);
             self.potentially_unused_imports.push(directive);
@@ -918,7 +919,7 @@ impl<'a> Resolver<'a> {
 pub struct BuildReducedGraphVisitor<'a, 'b> {
     pub resolver: &'a mut Resolver<'b>,
     pub current_legacy_scope: LegacyScope<'b>,
-    pub expansion: Mark,
+    pub expansion: ExpnId,
 }
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {

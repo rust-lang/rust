@@ -44,7 +44,7 @@ use std::{mem, ptr};
 use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax::symbol::{kw, sym, Symbol, LocalInternedString, InternedString};
 use syntax_pos::Span;
 
@@ -3071,10 +3071,10 @@ impl<'tcx> TyCtxt<'tcx> {
                                          self.expansion_that_defined(def_parent_def_id))
     }
 
-    fn expansion_that_defined(self, scope: DefId) -> Mark {
+    fn expansion_that_defined(self, scope: DefId) -> ExpnId {
         match scope.krate {
             LOCAL_CRATE => self.hir().definitions().expansion_that_defined(scope.index),
-            _ => Mark::root(),
+            _ => ExpnId::root(),
         }
     }
 

@@ -3,7 +3,7 @@ use crate::attr::{HasAttrs, Stability, Deprecation};
 use crate::source_map::{SourceMap, Spanned, respan};
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
-use crate::ext::hygiene::{Mark, SyntaxContext, Transparency};
+use crate::ext::hygiene::{ExpnId, SyntaxContext, Transparency};
 use crate::mut_visit::{self, MutVisitor};
 use crate::parse::{self, parser, DirectoryOwnership};
 use crate::parse::token;
@@ -682,16 +682,16 @@ pub struct Indeterminate;
 pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
 
-    fn get_module_scope(&mut self, id: ast::NodeId) -> Mark;
+    fn get_module_scope(&mut self, id: ast::NodeId) -> ExpnId;
 
     fn resolve_dollar_crates(&mut self);
-    fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
-                                            derives: &[Mark]);
+    fn visit_ast_fragment_with_placeholders(&mut self, mark: ExpnId, fragment: &AstFragment,
+                                            derives: &[ExpnId]);
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
 
     fn resolve_imports(&mut self);
 
-    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
+    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate>;
 
     fn check_unused_macros(&self);
@@ -705,7 +705,7 @@ pub struct ModuleData {
 
 #[derive(Clone)]
 pub struct ExpansionData {
-    pub mark: Mark,
+    pub mark: ExpnId,
     pub depth: usize,
     pub module: Rc<ModuleData>,
     pub directory_ownership: DirectoryOwnership,
@@ -735,7 +735,7 @@ impl<'a> ExtCtxt<'a> {
             root_path: PathBuf::new(),
             resolver,
             current_expansion: ExpansionData {
-                mark: Mark::root(),
+                mark: ExpnId::root(),
                 depth: 0,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
                 directory_ownership: DirectoryOwnership::Owned { relative: None },

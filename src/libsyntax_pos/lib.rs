@@ -27,7 +27,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;
-pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnKind, MacroKind, DesugaringKind};
+pub use hygiene::{ExpnId, SyntaxContext, ExpnInfo, ExpnKind, MacroKind, DesugaringKind};
 
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -516,13 +516,13 @@ impl Span {
     }
 
     #[inline]
-    pub fn apply_mark(self, mark: Mark) -> Span {
+    pub fn apply_mark(self, mark: ExpnId) -> Span {
         let span = self.data();
         span.with_ctxt(span.ctxt.apply_mark(mark))
     }
 
     #[inline]
-    pub fn remove_mark(&mut self) -> Mark {
+    pub fn remove_mark(&mut self) -> ExpnId {
         let mut span = self.data();
         let mark = span.ctxt.remove_mark();
         *self = Span::new(span.lo, span.hi, span.ctxt);
@@ -530,7 +530,7 @@ impl Span {
     }
 
     #[inline]
-    pub fn adjust(&mut self, expansion: Mark) -> Option<Mark> {
+    pub fn adjust(&mut self, expansion: ExpnId) -> Option<ExpnId> {
         let mut span = self.data();
         let mark = span.ctxt.adjust(expansion);
         *self = Span::new(span.lo, span.hi, span.ctxt);
@@ -538,7 +538,7 @@ impl Span {
     }
 
     #[inline]
-    pub fn modernize_and_adjust(&mut self, expansion: Mark) -> Option<Mark> {
+    pub fn modernize_and_adjust(&mut self, expansion: ExpnId) -> Option<ExpnId> {
         let mut span = self.data();
         let mark = span.ctxt.modernize_and_adjust(expansion);
         *self = Span::new(span.lo, span.hi, span.ctxt);
@@ -546,7 +546,7 @@ impl Span {
     }
 
     #[inline]
-    pub fn glob_adjust(&mut self, expansion: Mark, glob_span: Span) -> Option<Option<Mark>> {
+    pub fn glob_adjust(&mut self, expansion: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
         let mut span = self.data();
         let mark = span.ctxt.glob_adjust(expansion, glob_span);
         *self = Span::new(span.lo, span.hi, span.ctxt);
@@ -554,8 +554,8 @@ impl Span {
     }
 
     #[inline]
-    pub fn reverse_glob_adjust(&mut self, expansion: Mark, glob_span: Span)
-                               -> Option<Option<Mark>> {
+    pub fn reverse_glob_adjust(&mut self, expansion: ExpnId, glob_span: Span)
+                               -> Option<Option<ExpnId>> {
         let mut span = self.data();
         let mark = span.ctxt.reverse_glob_adjust(expansion, glob_span);
         *self = Span::new(span.lo, span.hi, span.ctxt);

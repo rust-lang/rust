@@ -21,7 +21,7 @@ use crate::entry::{self, EntryPointType};
 use crate::ext::base::{ExtCtxt, Resolver};
 use crate::ext::build::AstBuilder;
 use crate::ext::expand::ExpansionConfig;
-use crate::ext::hygiene::{self, Mark, SyntaxContext, MacroKind};
+use crate::ext::hygiene::{self, ExpnId, SyntaxContext, MacroKind};
 use crate::mut_visit::{*, ExpectOne};
 use crate::feature_gate::Features;
 use crate::util::map_in_place::MapInPlace;
@@ -303,7 +303,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     //            #![main]
     //            test::test_main_static(&[..tests]);
     //        }
-    let sp = DUMMY_SP.fresh_expansion(Mark::root(), ExpnInfo::allow_unstable(
+    let sp = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, cx.ext_cx.parse_sess.edition,
         [sym::main, sym::test, sym::rustc_attrs][..].into(),
     ));

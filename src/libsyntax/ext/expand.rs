@@ -5,7 +5,7 @@ use crate::source_map::{dummy_spanned, respan};
 use crate::config::StripUnconfigured;
 use crate::ext::base::*;
 use crate::ext::derive::{add_derived_markers, collect_derives};
-use crate::ext::hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnKind};
+use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnInfo, ExpnKind};
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use crate::mut_visit::*;
@@ -304,7 +304,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // Unresolved macros produce dummy outputs as a recovery measure.
         invocations.reverse();
         let mut expanded_fragments = Vec::new();
-        let mut derives: FxHashMap<Mark, Vec<_>> = FxHashMap::default();
+        let mut derives: FxHashMap<ExpnId, Vec<_>> = FxHashMap::default();
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
@@ -367,7 +367,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 derives.reserve(traits.len());
                 invocations.reserve(traits.len());
                 for path in traits {
-                    let mark = Mark::fresh(self.cx.current_expansion.mark, None);
+                    let mark = ExpnId::fresh(self.cx.current_expansion.mark, None);
                     derives.push(mark);
                     invocations.push(Invocation {
                         kind: InvocationKind::Derive {
@@ -423,7 +423,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// them with "placeholders" - dummy macro invocations with specially crafted `NodeId`s.
     /// Then call into resolver that builds a skeleton ("reduced graph") of the fragment and
     /// prepares data for resolving paths of macro invocations.
-    fn collect_invocations(&mut self, mut fragment: AstFragment, derives: &[Mark])
+    fn collect_invocations(&mut self, mut fragment: AstFragment, derives: &[ExpnId])
                            -> (AstFragment, Vec<Invocation>) {
         // Resolve `$crate`s in the fragment for pretty-printing.
         self.cx.resolver.resolve_dollar_crates();
@@ -822,7 +822,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             )),
             _ => None,
         };
-        let mark = Mark::fresh(self.cx.current_expansion.mark, expn_info);
+        let mark = ExpnId::fresh(self.cx.current_expansion.mark, expn_info);
         self.invocations.push(Invocation {
             kind,
             fragment_kind,
@@ -1402,7 +1402,7 @@ impl<'feat> ExpansionConfig<'feat> {
 
 // A Marker adds the given mark to the syntax context.
 #[derive(Debug)]
-pub struct Marker(pub Mark);
+pub struct Marker(pub ExpnId);
 
 impl MutVisitor for Marker {
     fn visit_span(&mut self, span: &mut Span) {
