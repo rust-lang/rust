@@ -1,0 +1,118 @@
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/simple_conditionals.rs:7:9
+   |
+LL |     if x.is_some() {
+   |        ----------- the check is happening here
+LL |         x.unwrap(); // unnecessary
+   |         ^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/simple_conditionals.rs:1:35
+   |
+LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: This call to `unwrap()` will always panic.
+  --> $DIR/simple_conditionals.rs:9:9
+   |
+LL |     if x.is_some() {
+   |        ----------- because of this check
+...
+LL |         x.unwrap(); // will panic
+   |         ^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/simple_conditionals.rs:1:9
+   |
+LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: This call to `unwrap()` will always panic.
+  --> $DIR/simple_conditionals.rs:12:9
+   |
+LL |     if x.is_none() {
+   |        ----------- because of this check
+LL |         x.unwrap(); // will panic
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/simple_conditionals.rs:14:9
+   |
+LL |     if x.is_none() {
+   |        ----------- the check is happening here
+...
+LL |         x.unwrap(); // unnecessary
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/simple_conditionals.rs:18:9
+   |
+LL |     if x.is_ok() {
+   |        --------- the check is happening here
+LL |         x.unwrap(); // unnecessary
+   |         ^^^^^^^^^^
+
+error: This call to `unwrap_err()` will always panic.
+  --> $DIR/simple_conditionals.rs:19:9
+   |
+LL |     if x.is_ok() {
+   |        --------- because of this check
+LL |         x.unwrap(); // unnecessary
+LL |         x.unwrap_err(); // will panic
+   |         ^^^^^^^^^^^^^^
+
+error: This call to `unwrap()` will always panic.
+  --> $DIR/simple_conditionals.rs:21:9
+   |
+LL |     if x.is_ok() {
+   |        --------- because of this check
+...
+LL |         x.unwrap(); // will panic
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/simple_conditionals.rs:22:9
+   |
+LL |     if x.is_ok() {
+   |        --------- the check is happening here
+...
+LL |         x.unwrap_err(); // unnecessary
+   |         ^^^^^^^^^^^^^^
+
+error: This call to `unwrap()` will always panic.
+  --> $DIR/simple_conditionals.rs:25:9
+   |
+LL |     if x.is_err() {
+   |        ---------- because of this check
+LL |         x.unwrap(); // will panic
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/simple_conditionals.rs:26:9
+   |
+LL |     if x.is_err() {
+   |        ---------- the check is happening here
+LL |         x.unwrap(); // will panic
+LL |         x.unwrap_err(); // unnecessary
+   |         ^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/simple_conditionals.rs:28:9
+   |
+LL |     if x.is_err() {
+   |        ---------- the check is happening here
+...
+LL |         x.unwrap(); // unnecessary
+   |         ^^^^^^^^^^
+
+error: This call to `unwrap_err()` will always panic.
+  --> $DIR/simple_conditionals.rs:29:9
+   |
+LL |     if x.is_err() {
+   |        ---------- because of this check
+...
+LL |         x.unwrap_err(); // will panic
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+
