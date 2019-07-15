@@ -1,3 +1,4 @@
+use core::unicode::property::Pattern_White_Space;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::mir::{self, BindingForm, ClearCrossCrate, Local, Location, Body};
@@ -9,9 +10,7 @@ use syntax_pos::symbol::kw;
 
 use crate::borrow_check::MirBorrowckCtxt;
 use crate::borrow_check::error_reporting::BorrowedContentSource;
-use crate::util::borrowck_errors::{BorrowckErrors, Origin};
 use crate::util::collect_writes::FindAssignments;
-use crate::util::suggest_ref_mut;
 use rustc_errors::Applicability;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -161,15 +160,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let span = match error_access {
             AccessKind::Move => {
-                err = self.infcx.tcx
-                    .cannot_move_out_of(span, &(item_msg + &reason), Origin::Mir);
+                err = self.cannot_move_out_of(span, &(item_msg + &reason));
                 err.span_label(span, "cannot move");
                 err.buffer(&mut self.errors_buffer);
                 return;
             }
             AccessKind::Mutate => {
-                err = self.infcx.tcx
-                    .cannot_assign(span, &(item_msg + &reason), Origin::Mir);
+                err = self.cannot_assign(span, &(item_msg + &reason));
                 act = "assign";
                 acted_on = "written";
                 span
@@ -180,11 +177,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let borrow_spans = self.borrow_spans(span, location);
                 let borrow_span = borrow_spans.args_or_use();
-                err = self.infcx.tcx.cannot_borrow_path_as_mutable_because(
+                err = self.cannot_borrow_path_as_mutable_because(
                     borrow_span,
                     &item_msg,
                     &reason,
-                    Origin::Mir,
                 );
                 borrow_spans.var_span_label(
                     &mut err,
@@ -631,4 +627,17 @@ fn annotate_struct_field(
     }
 
     None
+}
+
+/// If possible, suggest replacing `ref` with `ref mut`.
+fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<(String)> {
+    let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).unwrap();
+    if hi_src.starts_with("ref")
+        && hi_src["ref".len()..].starts_with(Pattern_White_Space)
+    {
+        let replacement = format!("ref mut{}", &hi_src["ref".len()..]);
+        Some(replacement)
+    } else {
+        None
+    }
 }
