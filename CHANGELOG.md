@@ -4,6 +4,10 @@
 
 ## [1.3.3] 2019-07-15
 
+### Added
+
+- Add `--manifest-path` support to `cargo fmt` (#3683).
+
 ### Fixed
 
 - Fix `cargo fmt -- --help` printing nothing (#3620).
