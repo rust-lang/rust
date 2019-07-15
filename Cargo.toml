@@ -1,7 +1,7 @@
 [package]
 
 name = "rustfmt-nightly"
-version = "1.3.2"
+version = "1.3.3"
 authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang/rustfmt"
