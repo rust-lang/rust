@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(rustc_private)]
 
 // FIXME: switch to something more ergonomic here, once available.
