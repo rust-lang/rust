@@ -12,6 +12,7 @@
 // revisions, don't worry about the --compare-mode=nll on this test.
 
 // ignore-compare-mode-nll
+// ignore-compare-mode-polonius
 
 //[nll]compile-flags: -Z borrowck=mir
 
