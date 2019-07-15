@@ -132,7 +132,7 @@ offsets and strings as output. This works on top of rich code model powered by
 
 ### `crates/ra_lsp_server`
 
-An LSP implementation which wraps `ra_ide_api` into a langauge server protocol.
+An LSP implementation which wraps `ra_ide_api` into a language server protocol.
 
 ### `ra_vfs`
 
