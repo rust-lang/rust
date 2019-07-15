@@ -4611,7 +4611,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block. Inner attributes are allowed.
-    fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
+    crate fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         let lo = self.token.span;
@@ -6698,15 +6698,20 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a function declaration from a foreign module.
-    fn parse_item_foreign_fn(&mut self, vis: ast::Visibility, lo: Span, attrs: Vec<Attribute>)
-                             -> PResult<'a, ForeignItem> {
+    fn parse_item_foreign_fn(
+        &mut self,
+        vis: ast::Visibility,
+        lo: Span,
+        attrs: Vec<Attribute>,
+        extern_sp: Span,
+    ) -> PResult<'a, ForeignItem> {
         self.expect_keyword(kw::Fn)?;
 
         let (ident, mut generics) = self.parse_fn_header()?;
         let decl = self.parse_fn_decl(true)?;
         generics.where_clause = self.parse_where_clause()?;
         let hi = self.token.span;
-        self.expect(&token::Semi)?;
+        self.parse_semi_or_incorrect_foreign_fn_body(&ident, extern_sp)?;
         Ok(ast::ForeignItem {
             ident,
             attrs,
@@ -6833,12 +6838,14 @@ impl<'a> Parser<'a> {
     /// extern "C" {}
     /// extern {}
     /// ```
-    fn parse_item_foreign_mod(&mut self,
-                              lo: Span,
-                              opt_abi: Option<Abi>,
-                              visibility: Visibility,
-                              mut attrs: Vec<Attribute>)
-                              -> PResult<'a, P<Item>> {
+    fn parse_item_foreign_mod(
+        &mut self,
+        lo: Span,
+        opt_abi: Option<Abi>,
+        visibility: Visibility,
+        mut attrs: Vec<Attribute>,
+        extern_sp: Span,
+    ) -> PResult<'a, P<Item>> {
         self.expect(&token::OpenDelim(token::Brace))?;
 
         let abi = opt_abi.unwrap_or(Abi::C);
@@ -6847,7 +6854,7 @@ impl<'a> Parser<'a> {
 
         let mut foreign_items = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
-            foreign_items.push(self.parse_foreign_item()?);
+            foreign_items.push(self.parse_foreign_item(extern_sp)?);
         }
 
         let prev_span = self.prev_span;
@@ -7094,6 +7101,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.eat_keyword(kw::Extern) {
+            let extern_sp = self.prev_span;
             if self.eat_keyword(kw::Crate) {
                 return Ok(Some(self.parse_item_extern_crate(lo, visibility, attrs)?));
             }
@@ -7117,7 +7125,9 @@ impl<'a> Parser<'a> {
                                         maybe_append(attrs, extra_attrs));
                 return Ok(Some(item));
             } else if self.check(&token::OpenDelim(token::Brace)) {
-                return Ok(Some(self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs)?));
+                return Ok(Some(
+                    self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs, extern_sp)?,
+                ));
             }
 
             self.unexpected()?;
@@ -7502,7 +7512,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a foreign item.
-    crate fn parse_foreign_item(&mut self) -> PResult<'a, ForeignItem> {
+    crate fn parse_foreign_item(&mut self, extern_sp: Span) -> PResult<'a, ForeignItem> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
         let attrs = self.parse_outer_attributes()?;
@@ -7527,7 +7537,7 @@ impl<'a> Parser<'a> {
         }
         // FOREIGN FUNCTION ITEM
         if self.check_keyword(kw::Fn) {
-            return Ok(self.parse_item_foreign_fn(visibility, lo, attrs)?);
+            return Ok(self.parse_item_foreign_fn(visibility, lo, attrs, extern_sp)?);
         }
         // FOREIGN TYPE ITEM
         if self.check_keyword(kw::Type) {

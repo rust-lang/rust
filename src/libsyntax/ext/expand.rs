@@ -742,7 +742,7 @@ impl<'a> Parser<'a> {
             AstFragmentKind::ForeignItems => {
                 let mut items = SmallVec::new();
                 while self.token != token::Eof {
-                    items.push(self.parse_foreign_item()?);
+                    items.push(self.parse_foreign_item(DUMMY_SP)?);
                 }
                 AstFragment::ForeignItems(items)
             }
