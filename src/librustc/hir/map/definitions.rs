@@ -450,7 +450,7 @@ impl Definitions {
                                   parent: DefIndex,
                                   node_id: ast::NodeId,
                                   data: DefPathData,
-                                  expansion: ExpnId,
+                                  expn_id: ExpnId,
                                   span: Span)
                                   -> DefIndex {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
@@ -498,8 +498,8 @@ impl Definitions {
             self.node_to_def_index.insert(node_id, index);
         }
 
-        if expansion != ExpnId::root() {
-            self.expansions_that_defined.insert(index, expansion);
+        if expn_id != ExpnId::root() {
+            self.expansions_that_defined.insert(index, expn_id);
         }
 
         // The span is added if it isn't dummy
@@ -523,12 +523,12 @@ impl Definitions {
         self.expansions_that_defined.get(&index).cloned().unwrap_or(ExpnId::root())
     }
 
-    pub fn parent_module_of_macro_def(&self, mark: ExpnId) -> DefId {
-        self.parent_modules_of_macro_defs[&mark]
+    pub fn parent_module_of_macro_def(&self, expn_id: ExpnId) -> DefId {
+        self.parent_modules_of_macro_defs[&expn_id]
     }
 
-    pub fn add_parent_module_of_macro_def(&mut self, mark: ExpnId, module: DefId) {
-        self.parent_modules_of_macro_defs.insert(mark, module);
+    pub fn add_parent_module_of_macro_def(&mut self, expn_id: ExpnId, module: DefId) {
+        self.parent_modules_of_macro_defs.insert(expn_id, module);
     }
 
     pub fn invocation_parent(&self, invoc_id: ExpnId) -> DefIndex {

@@ -530,34 +530,34 @@ impl Span {
     }
 
     #[inline]
-    pub fn adjust(&mut self, expansion: ExpnId) -> Option<ExpnId> {
+    pub fn adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         let mut span = self.data();
-        let mark = span.ctxt.adjust(expansion);
+        let mark = span.ctxt.adjust(expn_id);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }
 
     #[inline]
-    pub fn modernize_and_adjust(&mut self, expansion: ExpnId) -> Option<ExpnId> {
+    pub fn modernize_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         let mut span = self.data();
-        let mark = span.ctxt.modernize_and_adjust(expansion);
+        let mark = span.ctxt.modernize_and_adjust(expn_id);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }
 
     #[inline]
-    pub fn glob_adjust(&mut self, expansion: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
+    pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
         let mut span = self.data();
-        let mark = span.ctxt.glob_adjust(expansion, glob_span);
+        let mark = span.ctxt.glob_adjust(expn_id, glob_span);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }
 
     #[inline]
-    pub fn reverse_glob_adjust(&mut self, expansion: ExpnId, glob_span: Span)
+    pub fn reverse_glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span)
                                -> Option<Option<ExpnId>> {
         let mut span = self.data();
-        let mark = span.ctxt.reverse_glob_adjust(expansion, glob_span);
+        let mark = span.ctxt.reverse_glob_adjust(expn_id, glob_span);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }

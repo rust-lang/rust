@@ -319,7 +319,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             };
 
             let scope =
-                if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
+                if self.monotonic { invoc.expansion_data.id } else { orig_expansion_data.id };
             let ext = match self.cx.resolver.resolve_macro_invocation(&invoc, scope, force) {
                 Ok(ext) => ext,
                 Err(Indeterminate) => {
@@ -329,9 +329,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             };
 
             progress = true;
-            let ExpansionData { depth, mark, .. } = invoc.expansion_data;
+            let ExpansionData { depth, id: expn_id, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
-            self.cx.current_expansion.mark = scope;
+            self.cx.current_expansion.id = scope;
 
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
@@ -362,13 +362,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
                 let mut item_with_markers = item.clone();
                 add_derived_markers(&mut self.cx, item.span(), &traits, &mut item_with_markers);
-                let derives = derives.entry(invoc.expansion_data.mark).or_default();
+                let derives = derives.entry(invoc.expansion_data.id).or_default();
 
                 derives.reserve(traits.len());
                 invocations.reserve(traits.len());
                 for path in traits {
-                    let mark = ExpnId::fresh(self.cx.current_expansion.mark, None);
-                    derives.push(mark);
+                    let expn_id = ExpnId::fresh(self.cx.current_expansion.id, None);
+                    derives.push(expn_id);
                     invocations.push(Invocation {
                         kind: InvocationKind::Derive {
                             path,
@@ -377,7 +377,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         },
                         fragment_kind: invoc.fragment_kind,
                         expansion_data: ExpansionData {
-                            mark,
+                            id: expn_id,
                             ..invoc.expansion_data.clone()
                         },
                     });
@@ -392,7 +392,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             if expanded_fragments.len() < depth {
                 expanded_fragments.push(Vec::new());
             }
-            expanded_fragments[depth - 1].push((mark, expanded_fragment));
+            expanded_fragments[depth - 1].push((expn_id, expanded_fragment));
             if !self.cx.ecfg.single_step {
                 invocations.extend(new_invocations.into_iter().rev());
             }
@@ -405,7 +405,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         while let Some(expanded_fragments) = expanded_fragments.pop() {
             for (mark, expanded_fragment) in expanded_fragments.into_iter().rev() {
                 let derives = derives.remove(&mark).unwrap_or_else(Vec::new);
-                placeholder_expander.add(NodeId::placeholder_from_mark(mark),
+                placeholder_expander.add(NodeId::placeholder_from_expn_id(mark),
                                          expanded_fragment, derives);
             }
         }
@@ -444,7 +444,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         if self.monotonic {
             self.cx.resolver.visit_ast_fragment_with_placeholders(
-                self.cx.current_expansion.mark, &fragment, derives);
+                self.cx.current_expansion.id, &fragment, derives);
         }
 
         (fragment, invocations)
@@ -493,7 +493,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
-            let info = self.cx.current_expansion.mark.expn_info().unwrap();
+            let info = self.cx.current_expansion.id.expn_info().unwrap();
             let suggested_limit = self.cx.ecfg.recursion_limit * 2;
             let mut err = self.cx.struct_span_err(info.call_site,
                 &format!("recursion limit reached while expanding the macro `{}`",
@@ -822,17 +822,17 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             )),
             _ => None,
         };
-        let mark = ExpnId::fresh(self.cx.current_expansion.mark, expn_info);
+        let expn_id = ExpnId::fresh(self.cx.current_expansion.id, expn_info);
         self.invocations.push(Invocation {
             kind,
             fragment_kind,
             expansion_data: ExpansionData {
-                mark,
+                id: expn_id,
                 depth: self.cx.current_expansion.depth + 1,
                 ..self.cx.current_expansion.clone()
             },
         });
-        placeholder(fragment_kind, NodeId::placeholder_from_mark(mark))
+        placeholder(fragment_kind, NodeId::placeholder_from_expn_id(expn_id))
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: AstFragmentKind) -> AstFragment {

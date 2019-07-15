@@ -571,13 +571,13 @@ impl<'a> Resolver<'a> {
                                        variant: &Variant,
                                        parent: Module<'a>,
                                        vis: ty::Visibility,
-                                       expansion: ExpnId) {
+                                       expn_id: ExpnId) {
         let ident = variant.node.ident;
 
         // Define a name in the type namespace.
         let def_id = self.definitions.local_def_id(variant.node.id);
         let res = Res::Def(DefKind::Variant, def_id);
-        self.define(parent, ident, TypeNS, (res, vis, variant.span, expansion));
+        self.define(parent, ident, TypeNS, (res, vis, variant.span, expn_id));
 
         // If the variant is marked as non_exhaustive then lower the visibility to within the
         // crate.
@@ -596,11 +596,11 @@ impl<'a> Resolver<'a> {
         let ctor_def_id = self.definitions.local_def_id(ctor_node_id);
         let ctor_kind = CtorKind::from_ast(&variant.node.data);
         let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
-        self.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expansion));
+        self.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, expansion: ExpnId) {
+    fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, expn_id: ExpnId) {
         let (res, ns) = match item.node {
             ForeignItemKind::Fn(..) => {
                 (Res::Def(DefKind::Fn, self.definitions.local_def_id(item.id)), ValueNS)
@@ -615,16 +615,16 @@ impl<'a> Resolver<'a> {
         };
         let parent = self.current_module;
         let vis = self.resolve_visibility(&item.vis);
-        self.define(parent, item.ident, ns, (res, vis, item.span, expansion));
+        self.define(parent, item.ident, ns, (res, vis, item.span, expn_id));
     }
 
-    fn build_reduced_graph_for_block(&mut self, block: &Block, expansion: ExpnId) {
+    fn build_reduced_graph_for_block(&mut self, block: &Block, expn_id: ExpnId) {
         let parent = self.current_module;
         if self.block_needs_anonymous_module(block) {
             let module = self.new_module(parent,
                                          ModuleKind::Block(block.id),
                                          parent.normal_ancestor_id,
-                                         expansion,
+                                         expn_id,
                                          block.span);
             self.block_map.insert(block.id, module);
             self.current_module = module; // Descend into the block.
@@ -741,8 +741,8 @@ impl<'a> Resolver<'a> {
         module
     }
 
-    pub fn macro_def_scope(&mut self, expansion: ExpnId) -> Module<'a> {
-        let def_id = match self.macro_defs.get(&expansion) {
+    pub fn macro_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
+        let def_id = match self.macro_defs.get(&expn_id) {
             Some(def_id) => *def_id,
             None => return self.graph_root,
         };
@@ -924,7 +924,7 @@ pub struct BuildReducedGraphVisitor<'a, 'b> {
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) -> &'b InvocationData<'b> {
-        let invoc_id = id.placeholder_to_mark();
+        let invoc_id = id.placeholder_to_expn_id();
 
         self.resolver.current_module.unresolved_invocations.borrow_mut().insert(invoc_id);
 

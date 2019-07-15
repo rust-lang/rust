@@ -88,7 +88,7 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         fragment.mut_visit_with(self);
         if let AstFragment::Items(mut items) = fragment {
             for derive in derives {
-                match self.remove(NodeId::placeholder_from_mark(derive)) {
+                match self.remove(NodeId::placeholder_from_expn_id(derive)) {
                     AstFragment::Items(derived_items) => items.extend(derived_items),
                     _ => unreachable!(),
                 }

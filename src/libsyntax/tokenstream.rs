@@ -545,10 +545,10 @@ impl DelimSpan {
         self.open.with_hi(self.close.hi())
     }
 
-    pub fn apply_mark(self, mark: ExpnId) -> Self {
+    pub fn apply_mark(self, expn_id: ExpnId) -> Self {
         DelimSpan {
-            open: self.open.apply_mark(mark),
-            close: self.close.apply_mark(mark),
+            open: self.open.apply_mark(expn_id),
+            close: self.close.apply_mark(expn_id),
         }
     }
 }

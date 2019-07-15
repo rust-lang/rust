@@ -219,7 +219,7 @@ pub fn transcribe(
                         if let NtTT(ref tt) = **nt {
                             result.push(tt.clone().into());
                         } else {
-                            sp = sp.apply_mark(cx.current_expansion.mark);
+                            sp = sp.apply_mark(cx.current_expansion.id);
                             let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
                             result.push(token.into());
                         }
@@ -234,8 +234,8 @@ pub fn transcribe(
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
                     let ident =
-                        Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.mark));
-                    sp = sp.apply_mark(cx.current_expansion.mark);
+                        Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.id));
+                    sp = sp.apply_mark(cx.current_expansion.id);
                     result.push(TokenTree::token(token::Dollar, sp).into());
                     result.push(TokenTree::Token(Token::from_ast_ident(ident)).into());
                 }
@@ -247,7 +247,7 @@ pub fn transcribe(
             // jump back out of the Delimited, pop the result_stack and add the new results back to
             // the previous results (from outside the Delimited).
             quoted::TokenTree::Delimited(mut span, delimited) => {
-                span = span.apply_mark(cx.current_expansion.mark);
+                span = span.apply_mark(cx.current_expansion.id);
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span });
                 result_stack.push(mem::take(&mut result));
             }
@@ -255,7 +255,7 @@ pub fn transcribe(
             // Nothing much to do here. Just push the token to the result, being careful to
             // preserve syntax context.
             quoted::TokenTree::Token(token) => {
-                let mut marker = Marker(cx.current_expansion.mark);
+                let mut marker = Marker(cx.current_expansion.id);
                 let mut tt = TokenTree::Token(token);
                 noop_visit_tt(&mut tt, &mut marker);
                 result.push(tt.into());

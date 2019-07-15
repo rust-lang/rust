@@ -232,7 +232,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
 
     let name = Ident::from_str("__test_reexports").gensym();
     let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
-    cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
+    cx.ext_cx.current_expansion.id = cx.ext_cx.resolver.get_module_scope(parent);
     let it = cx.ext_cx.monotonic_expander().flat_map_item(P(ast::Item {
         ident: name,
         attrs: Vec::new(),

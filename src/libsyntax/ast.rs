@@ -251,11 +251,11 @@ mod node_id_inner {
 pub use node_id_inner::NodeId;
 
 impl NodeId {
-    pub fn placeholder_from_mark(mark: ExpnId) -> Self {
-        NodeId::from_u32(mark.as_u32())
+    pub fn placeholder_from_expn_id(expn_id: ExpnId) -> Self {
+        NodeId::from_u32(expn_id.as_u32())
     }
 
-    pub fn placeholder_to_mark(self) -> ExpnId {
+    pub fn placeholder_to_expn_id(self) -> ExpnId {
         ExpnId::from_u32(self.as_u32())
     }
 }

@@ -160,15 +160,15 @@ impl<'a> base::Resolver for Resolver<'a> {
         });
     }
 
-    fn visit_ast_fragment_with_placeholders(&mut self, mark: ExpnId, fragment: &AstFragment,
+    fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment,
                                             derives: &[ExpnId]) {
-        fragment.visit_with(&mut DefCollector::new(&mut self.definitions, mark));
+        fragment.visit_with(&mut DefCollector::new(&mut self.definitions, expn_id));
 
-        let invocation = self.invocations[&mark];
+        let invocation = self.invocations[&expn_id];
         self.current_module = invocation.module;
-        self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
+        self.current_module.unresolved_invocations.borrow_mut().remove(&expn_id);
         self.current_module.unresolved_invocations.borrow_mut().extend(derives);
-        let parent_def = self.definitions.invocation_parent(mark);
+        let parent_def = self.definitions.invocation_parent(expn_id);
         for &derive_invoc_id in derives {
             self.definitions.set_invocation_parent(derive_invoc_id, parent_def);
         }
@@ -176,7 +176,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         let mut visitor = BuildReducedGraphVisitor {
             resolver: self,
             current_legacy_scope: invocation.parent_legacy_scope,
-            expansion: mark,
+            expansion: expn_id,
         };
         fragment.visit_with(&mut visitor);
         invocation.output_legacy_scope.set(Some(visitor.current_legacy_scope));
@@ -223,16 +223,16 @@ impl<'a> base::Resolver for Resolver<'a> {
         let (ext, res) = self.smart_resolve_macro_path(path, kind, &parent_scope, force)?;
 
         let span = invoc.span();
-        invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, fast_print_path(path)));
+        invoc.expansion_data.id.set_expn_info(ext.expn_info(span, fast_print_path(path)));
 
         if let Res::Def(_, def_id) = res {
             if after_derive {
                 self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
             }
-            self.macro_defs.insert(invoc.expansion_data.mark, def_id);
+            self.macro_defs.insert(invoc.expansion_data.id, def_id);
             let normal_module_def_id =
-                self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
-            self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
+                self.macro_def_scope(invoc.expansion_data.id).normal_ancestor_id;
+            self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.id,
                                                             normal_module_def_id);
         }
 

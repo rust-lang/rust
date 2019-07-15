@@ -2095,10 +2095,10 @@ impl<'a> Resolver<'a> {
         parent: Module<'a>,
         kind: ModuleKind,
         normal_ancestor_id: DefId,
-        expansion: ExpnId,
+        expn_id: ExpnId,
         span: Span,
     ) -> Module<'a> {
-        let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expansion, span);
+        let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expn_id, span);
         self.arenas.alloc_module(module)
     }
 

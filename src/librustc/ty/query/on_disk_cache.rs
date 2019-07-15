@@ -588,7 +588,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
 
         let expn_info_tag = u8::decode(self)?;
 
-        // FIXME(mw): This method does not restore `MarkData::parent` or
+        // FIXME(mw): This method does not restore `InternalExpnData::parent` or
         // `SyntaxContextData::prev_ctxt` or `SyntaxContextData::opaque`. These things
         // don't seem to be used after HIR lowering, so everything should be fine
         // as long as incremental compilation does not kick in before that.
