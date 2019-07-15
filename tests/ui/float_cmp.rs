@@ -77,4 +77,23 @@ fn main() {
     let b: *const f32 = xs.as_ptr();
 
     assert_eq!(a, b); // no errors
+
+    // no errors - comparing signums is ok
+    let x32 = 3.21f32;
+    1.23f32.signum() == x32.signum();
+    1.23f32.signum() == -(x32.signum());
+    1.23f32.signum() == 3.21f32.signum();
+
+    1.23f32.signum() != x32.signum();
+    1.23f32.signum() != -(x32.signum());
+    1.23f32.signum() != 3.21f32.signum();
+
+    let x64 = 3.21f64;
+    1.23f64.signum() == x64.signum();
+    1.23f64.signum() == -(x64.signum());
+    1.23f64.signum() == 3.21f64.signum();
+
+    1.23f64.signum() != x64.signum();
+    1.23f64.signum() != -(x64.signum());
+    1.23f64.signum() != 3.21f64.signum();
 }
