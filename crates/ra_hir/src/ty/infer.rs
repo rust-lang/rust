@@ -29,8 +29,8 @@ use test_utils::tested_by;
 use super::{
     autoderef, lower, method_resolution, op, primitive,
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, CallableDef, Environment, InEnvironment, ProjectionTy, Substs, TraitRef, Ty,
-    TypableDef, TypeCtor,
+    ApplicationTy, CallableDef, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef,
+    Ty, TypableDef, TypeCtor,
 };
 use crate::{
     adt::VariantDef,
@@ -107,7 +107,7 @@ impl Default for BindingMode {
 }
 
 /// The result of type inference: A mapping from expressions and patterns to types.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct InferenceResult {
     /// For each method call expr, records the function it resolves to.
     method_resolutions: FxHashMap<ExprId, Function>,
@@ -170,15 +170,9 @@ struct InferenceContext<'a, D: HirDatabase> {
     body: Arc<Body>,
     resolver: Resolver,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
-    trait_env: Arc<Environment>,
+    trait_env: Arc<TraitEnvironment>,
     obligations: Vec<Obligation>,
-    method_resolutions: FxHashMap<ExprId, Function>,
-    field_resolutions: FxHashMap<ExprId, StructField>,
-    variant_resolutions: FxHashMap<ExprId, VariantDef>,
-    assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
-    type_of_expr: ArenaMap<ExprId, Ty>,
-    type_of_pat: ArenaMap<PatId, Ty>,
-    diagnostics: Vec<InferenceDiagnostic>,
+    result: InferenceResult,
     /// The return type of the function being inferred.
     return_ty: Ty,
 }
@@ -186,13 +180,7 @@ struct InferenceContext<'a, D: HirDatabase> {
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(db: &'a D, body: Arc<Body>, resolver: Resolver) -> Self {
         InferenceContext {
-            method_resolutions: FxHashMap::default(),
-            field_resolutions: FxHashMap::default(),
-            variant_resolutions: FxHashMap::default(),
-            assoc_resolutions: FxHashMap::default(),
-            type_of_expr: ArenaMap::default(),
-            type_of_pat: ArenaMap::default(),
-            diagnostics: Vec::default(),
+            result: InferenceResult::default(),
             var_unification_table: InPlaceUnificationTable::new(),
             obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
@@ -205,50 +193,45 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn resolve_all(mut self) -> InferenceResult {
         // FIXME resolve obligations as well (use Guidance if necessary)
+        let mut result = mem::replace(&mut self.result, InferenceResult::default());
         let mut tv_stack = Vec::new();
-        let mut expr_types = mem::replace(&mut self.type_of_expr, ArenaMap::default());
-        for ty in expr_types.values_mut() {
+        for ty in result.type_of_expr.values_mut() {
             let resolved = self.resolve_ty_completely(&mut tv_stack, mem::replace(ty, Ty::Unknown));
             *ty = resolved;
         }
-        let mut pat_types = mem::replace(&mut self.type_of_pat, ArenaMap::default());
-        for ty in pat_types.values_mut() {
+        for ty in result.type_of_pat.values_mut() {
             let resolved = self.resolve_ty_completely(&mut tv_stack, mem::replace(ty, Ty::Unknown));
             *ty = resolved;
         }
-        InferenceResult {
-            method_resolutions: self.method_resolutions,
-            field_resolutions: self.field_resolutions,
-            variant_resolutions: self.variant_resolutions,
-            assoc_resolutions: self.assoc_resolutions,
-            type_of_expr: expr_types,
-            type_of_pat: pat_types,
-            diagnostics: self.diagnostics,
-        }
+        result
     }
 
     fn write_expr_ty(&mut self, expr: ExprId, ty: Ty) {
-        self.type_of_expr.insert(expr, ty);
+        self.result.type_of_expr.insert(expr, ty);
     }
 
     fn write_method_resolution(&mut self, expr: ExprId, func: Function) {
-        self.method_resolutions.insert(expr, func);
+        self.result.method_resolutions.insert(expr, func);
     }
 
     fn write_field_resolution(&mut self, expr: ExprId, field: StructField) {
-        self.field_resolutions.insert(expr, field);
+        self.result.field_resolutions.insert(expr, field);
     }
 
     fn write_variant_resolution(&mut self, expr: ExprId, variant: VariantDef) {
-        self.variant_resolutions.insert(expr, variant);
+        self.result.variant_resolutions.insert(expr, variant);
     }
 
     fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: ImplItem) {
-        self.assoc_resolutions.insert(id, item);
+        self.result.assoc_resolutions.insert(id, item);
     }
 
     fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {
-        self.type_of_pat.insert(pat, ty);
+        self.result.type_of_pat.insert(pat, ty);
+    }
+
+    fn push_diagnostic(&mut self, diagnostic: InferenceDiagnostic) {
+        self.result.diagnostics.push(diagnostic);
     }
 
     fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
@@ -345,7 +328,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let in_env = InEnvironment::new(self.trait_env.clone(), obligation.clone());
             let canonicalized = self.canonicalizer().canonicalize_obligation(in_env);
             let solution =
-                self.db.solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
+                self.db.trait_solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
 
             match solution {
                 Some(Solution::Unique(substs)) => {
@@ -565,7 +548,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Some(ty)
             }
             Resolution::LocalBinding(pat) => {
-                let ty = self.type_of_pat.get(pat)?.clone();
+                let ty = self.result.type_of_pat.get(pat)?.clone();
                 let ty = self.resolve_ty_as_possible(&mut vec![], ty);
                 Some(ty)
             }
@@ -1090,7 +1073,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         .and_then(|it| match it.field(self.db, &field.name) {
                             Some(field) => Some(field),
                             None => {
-                                self.diagnostics.push(InferenceDiagnostic::NoSuchField {
+                                self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                     expr: tgt_expr,
                                     field: field_idx,
                                 });

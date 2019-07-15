@@ -27,7 +27,7 @@ struct ChalkContext<'a, DB> {
     krate: Crate,
 }
 
-pub(crate) fn solver_query(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<Solver>> {
+pub(crate) fn trait_solver_query(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<Solver>> {
     // krate parameter is just so we cache a unique solver per crate
     let solver_choice = chalk_solve::SolverChoice::SLG { max_size: CHALK_SOLVER_MAX_SIZE };
     debug!("Creating new solver for crate {:?}", _krate);
@@ -60,9 +60,9 @@ fn solve(
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal>>,
 ) -> Option<chalk_solve::Solution> {
     let context = ChalkContext { db, krate };
-    let solver = db.solver(krate);
+    let solver = db.trait_solver(krate);
     debug!("solve goal: {:?}", goal);
-    let solution = solver.lock().solve_with_fuel(&context, goal, Some(1000));
+    let solution = solver.lock().solve(&context, goal);
     debug!("solve({:?}) => {:?}", goal, solution);
     solution
 }
@@ -73,19 +73,19 @@ fn solve(
 /// ```
 /// we assume that `T: Default`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Environment {
+pub struct TraitEnvironment {
     pub predicates: Vec<GenericPredicate>,
 }
 
 /// Something (usually a goal), along with an environment.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InEnvironment<T> {
-    pub environment: Arc<Environment>,
+    pub environment: Arc<TraitEnvironment>,
     pub value: T,
 }
 
 impl<T> InEnvironment<T> {
-    pub fn new(environment: Arc<Environment>, value: T) -> InEnvironment<T> {
+    pub fn new(environment: Arc<TraitEnvironment>, value: T) -> InEnvironment<T> {
         InEnvironment { environment, value }
     }
 }
@@ -117,12 +117,12 @@ pub struct ProjectionPredicate {
 }
 
 /// Solve a trait goal using Chalk.
-pub(crate) fn solve_query(
+pub(crate) fn trait_solve_query(
     db: &impl HirDatabase,
     krate: Crate,
     trait_ref: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
-    let _p = profile("solve_query");
+    let _p = profile("trait_solve_query");
     let canonical = trait_ref.to_chalk(db).cast();
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
