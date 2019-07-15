@@ -118,6 +118,8 @@
 #![feature(wasm_target_feature)]
 #![feature(avx512_target_feature)]
 #![feature(cmpxchg16b_target_feature)]
+#![feature(rtm_target_feature)]
+#![feature(f16c_target_feature)]
 #![feature(const_slice_len)]
 #![feature(const_str_as_bytes)]
 #![feature(const_str_len)]
