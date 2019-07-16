@@ -263,7 +263,7 @@ pub fn write_mir_pretty<'tcx>(
 
         write_mir_fn(tcx, MirSource::item(def_id), body, &mut |_, _| Ok(()), w)?;
 
-        for (i, body) in body.promoted.iter_enumerated() {
+        for (i, body) in tcx.promoted_mir(def_id).iter_enumerated() {
             writeln!(w, "")?;
             let src = MirSource {
                 instance: ty::InstanceDef::Item(def_id),
