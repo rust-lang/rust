@@ -695,7 +695,7 @@ pub fn handle_code_lens(
         let title = match &runnable.kind {
             RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => Some("▶️Run Test"),
             RunnableKind::Bench { .. } => Some("Run Bench"),
-            _ => None,
+            RunnableKind::Bin => Some("️Run"),
         };
 
         if let Some(title) = title {
