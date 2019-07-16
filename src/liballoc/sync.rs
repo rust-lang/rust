@@ -479,10 +479,8 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "0")]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<T> {
-        let ptr = self.ptr.cast();
-        mem::forget(self);
         Arc {
-            ptr,
+            ptr: mem::ManuallyDrop::new(self).ptr.cast(),
             phantom: PhantomData,
         }
     }
@@ -525,10 +523,8 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "0")]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<[T]> {
-        let ptr = NonNull::new_unchecked(self.ptr.as_ptr() as _);
-        mem::forget(self);
         Arc {
-            ptr,
+            ptr: NonNull::new_unchecked(mem::ManuallyDrop::new(self).ptr.as_ptr() as _),
             phantom: PhantomData,
         }
     }

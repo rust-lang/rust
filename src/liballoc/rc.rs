@@ -495,10 +495,8 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "0")]
     #[inline]
     pub unsafe fn assume_init(self) -> Rc<T> {
-        let ptr = self.ptr.cast();
-        mem::forget(self);
         Rc {
-            ptr,
+            ptr: mem::ManuallyDrop::new(self).ptr.cast(),
             phantom: PhantomData,
         }
     }
@@ -541,10 +539,8 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "0")]
     #[inline]
     pub unsafe fn assume_init(self) -> Rc<[T]> {
-        let ptr = NonNull::new_unchecked(self.ptr.as_ptr() as _);
-        mem::forget(self);
         Rc {
-            ptr,
+            ptr: NonNull::new_unchecked(mem::ManuallyDrop::new(self).ptr.as_ptr() as _),
             phantom: PhantomData,
         }
     }
