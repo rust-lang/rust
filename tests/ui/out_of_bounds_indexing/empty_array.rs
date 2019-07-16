@@ -3,7 +3,7 @@
 
 fn main() {
     let empty: [i8; 0] = [];
-    empty[0]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
+    empty[0];
     &empty[1..5];
     &empty[0..=4];
     &empty[..=4];
