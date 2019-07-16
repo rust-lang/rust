@@ -661,7 +661,7 @@ impl char {
     /// Returns `true` if this `char` is alphanumeric.
     ///
     /// 'Alphanumeric'-ness is defined in terms of the Unicode General Categories
-    /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
+    /// 'Nd', 'Nl', 'No' and the Derived Core Property `Alphabetic`.
     ///
     /// # Examples
     ///
