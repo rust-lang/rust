@@ -40,7 +40,7 @@ warning: type parameter `γ` should have an upper camel case name
 LL |     γ
    |     ^ help: convert the identifier to upper camel case: `Γ`
    |
-   = note: #[warn(non_camel_case_types)] on by default
+   = note: `#[warn(non_camel_case_types)]` on by default
 
 error: aborting due to 4 previous errors
 

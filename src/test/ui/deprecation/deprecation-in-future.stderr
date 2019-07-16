@@ -4,5 +4,5 @@ warning: use of deprecated item 'deprecated_future': text
 LL |     deprecated_future(); // ok; deprecated_in_future only applies to rustc_deprecated
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: #[warn(deprecated)] on by default
+   = note: `#[warn(deprecated)]` on by default
 

@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(unused_parens)] implied by #[warn(unused)]
+   = note: `#[warn(unused_parens)]` implied by `#[warn(unused)]`
 
 warning: function is never used: `with_parens`
   --> $DIR/path-lookahead.rs:7:1
@@ -22,7 +22,7 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(dead_code)] implied by #[warn(unused)]
+   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
 
 warning: function is never used: `no_parens`
   --> $DIR/path-lookahead.rs:11:1

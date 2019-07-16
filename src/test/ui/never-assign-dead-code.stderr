@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(unreachable_code)] implied by #[warn(unused)]
+   = note: `#[warn(unreachable_code)]` implied by `#[warn(unused)]`
 
 warning: unreachable expression
   --> $DIR/never-assign-dead-code.rs:10:5
@@ -28,5 +28,5 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(unused_variables)] implied by #[warn(unused)]
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 

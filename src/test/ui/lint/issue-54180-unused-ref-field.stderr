@@ -11,7 +11,7 @@ note: lint level defined here
    |
 LL | #![deny(unused)]
    |         ^^^^^^
-   = note: #[deny(unused_variables)] implied by #[deny(unused)]
+   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
 
 error: unused variable: `x`
   --> $DIR/issue-54180-unused-ref-field.rs:29:45

@@ -4,7 +4,7 @@ warning: denote infinite loops with `loop { ... }`
 LL |     'while_loop: while true {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
    |
-   = note: #[warn(while_true)] on by default
+   = note: `#[warn(while_true)]` on by default
 
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/loop-break-value.rs:28:9

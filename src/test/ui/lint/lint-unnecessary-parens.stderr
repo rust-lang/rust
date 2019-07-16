@@ -40,7 +40,7 @@ warning: denote infinite loops with `loop { ... }`
 LL |     while (true) {}
    |     ^^^^^^^^^^^^ help: use `loop`
    |
-   = note: #[warn(while_true)] on by default
+   = note: `#[warn(while_true)]` on by default
 
 error: unnecessary parentheses around `match` head expression
   --> $DIR/lint-unnecessary-parens.rs:23:11

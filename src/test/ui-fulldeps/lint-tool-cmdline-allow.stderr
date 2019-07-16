@@ -8,7 +8,7 @@ warning: item is named 'lintme'
 LL | fn lintme() {}
    | ^^^^^^^^^^^^^^
    |
-   = note: #[warn(clippy::test_lint)] on by default
+   = note: `#[warn(clippy::test_lint)]` on by default
 
 warning: function is never used: `lintme`
   --> $DIR/lint-tool-cmdline-allow.rs:10:1
@@ -21,5 +21,5 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(dead_code)] implied by #[warn(unused)]
+   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
 
