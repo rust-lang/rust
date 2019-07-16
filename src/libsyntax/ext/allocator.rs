@@ -1,10 +1,33 @@
-#![feature(nll)]
-#![feature(rustc_private)]
+#[derive(Clone, Copy)]
+pub enum AllocatorKind {
+    Global,
+    DefaultLib,
+    DefaultExe,
+}
 
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
+impl AllocatorKind {
+    pub fn fn_name(&self, base: &str) -> String {
+        match *self {
+            AllocatorKind::Global => format!("__rg_{}", base),
+            AllocatorKind::DefaultLib => format!("__rdl_{}", base),
+            AllocatorKind::DefaultExe => format!("__rde_{}", base),
+        }
+    }
+}
 
-pub mod expand;
+pub enum AllocatorTy {
+    Layout,
+    Ptr,
+    ResultPtr,
+    Unit,
+    Usize,
+}
+
+pub struct AllocatorMethod {
+    pub name: &'static str,
+    pub inputs: &'static [AllocatorTy],
+    pub output: AllocatorTy,
+}
 
 pub static ALLOCATOR_METHODS: &[AllocatorMethod] = &[
     AllocatorMethod {
@@ -28,17 +51,3 @@ pub static ALLOCATOR_METHODS: &[AllocatorMethod] = &[
         output: AllocatorTy::ResultPtr,
     },
 ];
-
-pub struct AllocatorMethod {
-    pub name: &'static str,
-    pub inputs: &'static [AllocatorTy],
-    pub output: AllocatorTy,
-}
-
-pub enum AllocatorTy {
-    Layout,
-    Ptr,
-    ResultPtr,
-    Unit,
-    Usize,
-}

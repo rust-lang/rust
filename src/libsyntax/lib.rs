@@ -171,6 +171,7 @@ pub mod ext {
     mod proc_macro_server;
 
     pub use syntax_pos::hygiene;
+    pub mod allocator;
     pub mod base;
     pub mod build;
     pub mod expand;
