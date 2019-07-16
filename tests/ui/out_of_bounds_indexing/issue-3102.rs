@@ -1,4 +1,5 @@
 #![warn(clippy::out_of_bounds_indexing)]
+#![allow(clippy::no_effect)]
 
 fn main() {
     let x = [1, 2, 3, 4];
