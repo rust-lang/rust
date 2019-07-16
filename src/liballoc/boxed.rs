@@ -94,7 +94,7 @@ use core::ptr::{self, NonNull, Unique};
 use core::slice;
 use core::task::{Context, Poll};
 
-use crate::alloc;
+use crate::alloc::{self, Global, Alloc};
 use crate::vec::Vec;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
@@ -144,9 +144,11 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "0")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        let ptr = unsafe { alloc::alloc(layout) };
-        let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
-        Box(unique.cast())
+        let ptr = unsafe {
+            Global.alloc(layout)
+                .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
+        };
+        Box(ptr.cast().into())
     }
 
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
