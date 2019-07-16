@@ -1043,7 +1043,7 @@ impl<T: ?Sized> *const T {
     }
 
     /// Cast to a pointer to a different type
-    #[unstable(feature = "ptr_cast", issue = "60602")]
+    #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[inline]
     pub const fn cast<U>(self) -> *const U {
         self as _
@@ -1678,7 +1678,7 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Cast to a pointer to a different type
-    #[unstable(feature = "ptr_cast", issue = "60602")]
+    #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[inline]
     pub const fn cast<U>(self) -> *mut U {
         self as _
