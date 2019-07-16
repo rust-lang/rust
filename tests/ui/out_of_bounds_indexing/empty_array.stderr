@@ -1,7 +1,7 @@
 error: index out of bounds: the len is 0 but the index is 0
   --> $DIR/empty_array.rs:6:5
    |
-LL |     empty[0]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
+LL |     empty[0];
    |     ^^^^^^^^
    |
    = note: #[deny(const_err)] on by default
