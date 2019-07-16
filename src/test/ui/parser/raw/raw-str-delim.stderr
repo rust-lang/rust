@@ -1,8 +1,9 @@
-error: found invalid character; only `#` is allowed in raw string delimitation: ~
-  --> $DIR/raw-str-delim.rs:2:5
+error: found invalid character; only `#` is allowed in raw string delimitation
+  --> $DIR/raw-str-delim.rs:2:7
    |
 LL |     r#~"#"~#
-   |     ^^
+   |       ^
+   = help: replace with `#`
 
 error: aborting due to previous error
 

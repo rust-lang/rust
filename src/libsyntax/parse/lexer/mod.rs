@@ -4,7 +4,7 @@ use crate::symbol::{sym, Symbol};
 use crate::parse::unescape;
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
-use errors::{FatalError, Diagnostic, DiagnosticBuilder};
+use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
 use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
 use core::unicode::property::Pattern_White_Space;
 
@@ -145,15 +145,60 @@ impl<'a> StringReader<'a> {
         self.ch.is_none()
     }
 
-    fn fail_unterminated_raw_string(&self, pos: BytePos, hash_count: u16) -> ! {
-        let mut err = self.struct_span_fatal(pos, pos, "unterminated raw string");
-        err.span_label(self.mk_sp(pos, pos), "unterminated raw string");
+    fn fail_unterminated_raw_string(&self, start: Span, hash_count: u16, spans: Vec<Span>) -> ! {
+        const SPAN_THRESHOLD: usize = 3;
+        const MSG_STR: &str = "you might have meant to end the raw string here";
+        let hash_str = format!("\"{}", "#".repeat(hash_count as usize));
+        let spans_len = spans.len();
 
-        if hash_count > 0 {
-            err.note(&format!("this raw string should be terminated with `\"{}`",
-                              "#".repeat(hash_count as usize)));
+        let mut err = self.sess.span_diagnostic.struct_span_fatal(start, "unterminated raw string");
+        err.span_label(start, "unterminated raw string");
+
+        for s in spans {
+            if spans_len < SPAN_THRESHOLD {
+                err.span_suggestion(
+                    s,
+                    MSG_STR,
+                    hash_str.clone(),
+                    Applicability::MaybeIncorrect
+                );
+            } else {
+                err.tool_only_span_suggestion(
+                    s,
+                    MSG_STR,
+                    hash_str.clone(),
+                    Applicability::MaybeIncorrect
+                );
+            }
         }
 
+        if hash_count > 0 && spans_len >= SPAN_THRESHOLD {
+            err.note(&format!("this raw string should be terminated with `\"{}`", hash_str));
+        }
+
+        err.emit();
+        FatalError.raise();
+    }
+
+    fn fail_incorrect_raw_string_delimiter(&mut self, start: BytePos) -> ! {
+        loop {
+            match self.ch {
+                Some('#') | Some('"') => break,
+                _ => self.bump(),
+            }
+        }
+        let end = self.pos;
+        let span = self.mk_sp(start, end);
+        let mut err = self.sess.span_diagnostic.struct_span_fatal(
+            span,
+            "found invalid character; only `#` is allowed in raw string delimitation",
+        );
+        err.span_suggestion_hidden(
+            span,
+            "replace with `#`",
+            format!("{}", "#".repeat((end.0 - start.0) as usize)),
+            Applicability::MachineApplicable,
+        );
         err.emit();
         FatalError.raise();
     }
@@ -200,16 +245,6 @@ impl<'a> StringReader<'a> {
     /// Report a lexical error spanning [`from_pos`, `to_pos`).
     fn err_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) {
         self.err_span(self.mk_sp(from_pos, to_pos), m)
-    }
-
-    /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
-    /// escaped character to the error message
-    fn fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) -> FatalError {
-        let mut m = m.to_string();
-        m.push_str(": ");
-        push_escaped_char(&mut m, c);
-
-        self.fatal_span_(from_pos, to_pos, &m[..])
     }
 
     fn struct_span_fatal(&self, from_pos: BytePos, to_pos: BytePos, m: &str)
@@ -945,6 +980,7 @@ impl<'a> StringReader<'a> {
                 Ok(TokenKind::lit(token::Char, symbol, suffix))
             }
             'b' => {
+                let start_bpos = self.pos;
                 self.bump();
                 let (kind, symbol) = match self.ch {
                     Some('\'') => {
@@ -963,7 +999,7 @@ impl<'a> StringReader<'a> {
                         (token::ByteStr, symbol)
                     },
                     Some('r') => {
-                        let (start, end, hash_count) = self.scan_raw_string();
+                        let (start, end, hash_count) = self.scan_raw_string(start_bpos);
                         let symbol = self.symbol_from_to(start, end);
                         self.validate_raw_byte_str_escape(start, end);
 
@@ -984,7 +1020,7 @@ impl<'a> StringReader<'a> {
                 Ok(TokenKind::lit(token::Str, symbol, suffix))
             }
             'r' => {
-                let (start, end, hash_count) = self.scan_raw_string();
+                let (start, end, hash_count) = self.scan_raw_string(self.pos);
                 let symbol = self.symbol_from_to(start, end);
                 self.validate_raw_str_escape(start, end);
                 let suffix = self.scan_optional_raw_name();
@@ -1145,8 +1181,7 @@ impl<'a> StringReader<'a> {
 
     /// Scans a raw (byte) string, returning byte position range for `"<literal>"`
     /// (including quotes) along with `#` character count in `(b)r##..."<literal>"##...`;
-    fn scan_raw_string(&mut self) -> (BytePos, BytePos, u16) {
-        let start_bpos = self.pos;
+    fn scan_raw_string(&mut self, start_bpos: BytePos) -> (BytePos, BytePos, u16) {
         self.bump();
         let mut hash_count: u16 = 0;
         while self.ch_is('#') {
@@ -1161,30 +1196,32 @@ impl<'a> StringReader<'a> {
             hash_count += 1;
         }
 
-        if self.is_eof() {
-            self.fail_unterminated_raw_string(start_bpos, hash_count);
-        } else if !self.ch_is('"') {
-            let last_bpos = self.pos;
-            let curr_char = self.ch.unwrap();
-            self.fatal_span_char(start_bpos,
-                                 last_bpos,
-                                 "found invalid character; only `#` is allowed \
-                                 in raw string delimitation",
-                                 curr_char).raise();
+        let bpos_span = self.mk_sp(start_bpos, self.pos);
+
+        match self.ch {
+            None => self.fail_unterminated_raw_string(
+                        bpos_span,
+                        hash_count,
+                        vec![self.mk_sp(self.pos, self.pos)]
+                    ),
+            Some('"') => (),
+            Some(_) => self.fail_incorrect_raw_string_delimiter(self.pos),
         }
+
         self.bump();
         let content_start_bpos = self.pos;
         let mut content_end_bpos;
+        let mut spans = vec![];
+
         'outer: loop {
             match self.ch {
-                None => {
-                    self.fail_unterminated_raw_string(start_bpos, hash_count);
-                }
+                None => self.fail_unterminated_raw_string(bpos_span, hash_count, spans),
                 Some('"') => {
                     content_end_bpos = self.pos;
                     for _ in 0..hash_count {
                         self.bump();
                         if !self.ch_is('#') {
+                            spans.push(self.mk_sp(content_end_bpos, self.pos));
                             continue 'outer;
                         }
                     }

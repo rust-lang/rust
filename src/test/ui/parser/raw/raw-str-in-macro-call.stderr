@@ -1,0 +1,20 @@
+error: no rules expected the token `#`
+  --> $DIR/raw-str-in-macro-call.rs:17:17
+   |
+LL | macro_rules! m2 {
+   | --------------- when calling this macro
+...
+LL |     m2!(r#"abc"##);
+   |                 ^ no rules expected this token in macro call
+
+error: unexpected end of macro invocation
+  --> $DIR/raw-str-in-macro-call.rs:18:5
+   |
+LL | macro_rules! m3 {
+   | --------------- when calling this macro
+...
+LL |     m3!(r#"abc"#);
+   |     ^^^^^^^^^^^^^^ missing tokens in macro arguments
+
+error: aborting due to 2 previous errors
+

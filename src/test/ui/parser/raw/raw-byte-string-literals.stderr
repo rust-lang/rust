@@ -10,11 +10,12 @@ error: raw byte string must be ASCII
 LL |     br"é";
    |        ^
 
-error: found invalid character; only `#` is allowed in raw string delimitation: ~
-  --> $DIR/raw-byte-string-literals.rs:6:6
+error: found invalid character; only `#` is allowed in raw string delimitation
+  --> $DIR/raw-byte-string-literals.rs:6:9
    |
 LL |     br##~"a"~##;
-   |      ^^^
+   |         ^
+   = help: replace with `#`
 
 error: aborting due to 3 previous errors
 
