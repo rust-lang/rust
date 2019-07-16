@@ -2575,13 +2575,14 @@ fn document(w: &mut fmt::Formatter<'_>, cx: &Context, item: &clean::Item) -> fmt
 }
 
 /// Render md_text as markdown.
-fn render_markdown(w: &mut fmt::Formatter<'_>,
-                   cx: &Context,
-                   md_text: &str,
-                   links: Vec<(String, String)>,
-                   prefix: &str,
-                   is_hidden: bool)
-                   -> fmt::Result {
+fn render_markdown(
+    w: &mut fmt::Formatter<'_>,
+    cx: &Context,
+    md_text: &str,
+    links: Vec<(String, String)>,
+    prefix: &str,
+    is_hidden: bool,
+) -> fmt::Result {
     let mut ids = cx.id_map.borrow_mut();
     write!(w, "<div class='docblock{}'>{}{}</div>",
            if is_hidden { " hidden" } else { "" },
@@ -2595,7 +2596,8 @@ fn document_short(
     cx: &Context,
     item: &clean::Item,
     link: AssocItemLink<'_>,
-    prefix: &str, is_hidden: bool
+    prefix: &str,
+    is_hidden: bool,
 ) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
