@@ -919,7 +919,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
             } else {
-                err.note("#![feature(type_ascription)] lets you annotate an \
+                err.note("`#![feature(type_ascription)]` lets you annotate an \
                           expression with a type: `<expr>: <type>`")
                     .span_note(
                         lhs_span,
