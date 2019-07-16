@@ -82,7 +82,7 @@ impl TemplateParser {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```text
     /// assert_eq!(
     ///     TemplateParser::parse(
     ///         r"

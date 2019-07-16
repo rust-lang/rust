@@ -1417,7 +1417,7 @@ impl MacroBranch {
 ///
 /// # Expected syntax
 ///
-/// ```ignore
+/// ```text
 /// lazy_static! {
 ///     [pub] static ref NAME_1: TYPE_1 = EXPR_1;
 ///     [pub] static ref NAME_2: TYPE_2 = EXPR_2;

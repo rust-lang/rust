@@ -16,7 +16,7 @@
 //! following values of `chain_indent`:
 //! Block:
 //!
-//! ```ignore
+//! ```text
 //! let foo = {
 //!     aaaa;
 //!     bbb;
@@ -27,7 +27,7 @@
 //!
 //! Visual:
 //!
-//! ```ignore
+//! ```text
 //! let foo = {
 //!               aaaa;
 //!               bbb;
@@ -41,7 +41,7 @@
 //! the braces.
 //! Block:
 //!
-//! ```ignore
+//! ```text
 //! let a = foo.bar
 //!     .baz()
 //!     .qux
@@ -49,7 +49,7 @@
 //!
 //! Visual:
 //!
-//! ```ignore
+//! ```text
 //! let a = foo.bar
 //!            .baz()
 //!            .qux
@@ -454,7 +454,7 @@ trait ChainFormatter {
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
     // Root is the parent plus any other chain items placed on the first line to
     // avoid an orphan. E.g.,
-    // ```ignore
+    // ```text
     // foo.bar
     //     .baz()
     // ```
@@ -516,7 +516,7 @@ impl<'a> ChainFormatterShared<'a> {
     // know whether 'overflowing' the last child make a better formatting:
     //
     // A chain with overflowing the last child:
-    // ```ignore
+    // ```text
     // parent.child1.child2.last_child(
     //     a,
     //     b,
@@ -525,7 +525,7 @@ impl<'a> ChainFormatterShared<'a> {
     // ```
     //
     // A chain without overflowing the last child (in vertical layout):
-    // ```ignore
+    // ```text
     // parent
     //     .child1
     //     .child2
@@ -534,7 +534,7 @@ impl<'a> ChainFormatterShared<'a> {
     //
     // In particular, overflowing is effective when the last child is a method with a multi-lined
     // block-like argument (e.g., closure):
-    // ```ignore
+    // ```text
     // parent.child1.child2.last_child(|a, b, c| {
     //     let x = foo(a, b, c);
     //     let y = bar(a, b, c);

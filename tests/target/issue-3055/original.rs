@@ -18,7 +18,7 @@
 /// ```
 ///
 /// Should not format with ignore attribute
-/// ```ignore
+/// ```text
 ///           .--------------.
 ///           |              v
 /// Park <- Idle -> Poll -> Probe -> Download -> Install -> Reboot

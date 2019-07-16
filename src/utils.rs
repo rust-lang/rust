@@ -507,7 +507,7 @@ pub(crate) fn remove_trailing_white_spaces(text: &str) -> String {
 /// Indent each line according to the specified `indent`.
 /// e.g.
 ///
-/// ```rust,ignore
+/// ```rust,compile_fail
 /// foo!{
 /// x,
 /// y,
@@ -521,7 +521,7 @@ pub(crate) fn remove_trailing_white_spaces(text: &str) -> String {
 ///
 /// will become
 ///
-/// ```rust,ignore
+/// ```rust,compile_fail
 /// foo!{
 ///     x,
 ///     y,

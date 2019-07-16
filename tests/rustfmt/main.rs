@@ -48,6 +48,7 @@ macro_rules! assert_that {
     };
 }
 
+#[ignore]
 #[test]
 fn print_config() {
     assert_that!(

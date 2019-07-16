@@ -49,6 +49,7 @@ script:
     if [ -z ${INTEGRATION} ]; then
       cargo build
       cargo test
+      cargo test -- --ignored
     else
       ./ci/integration.sh
     fi
