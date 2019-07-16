@@ -146,16 +146,13 @@ fn parse_args<'a>(
         if p.token == token::Eof {
             break;
         } // accept trailing commas
-        if named || (p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq)) {
+        if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
             named = true;
             let name = if let token::Ident(name, _) = p.token.kind {
                 p.bump();
                 name
             } else {
-                return Err(ecx.struct_span_err(
-                    p.token.span,
-                    "expected ident, positional arguments cannot follow named arguments",
-                ));
+                unreachable!();
             };
 
             p.expect(&token::Eq)?;
@@ -176,6 +173,17 @@ fn parse_args<'a>(
             args.push(e);
         } else {
             let e = p.parse_expr()?;
+            if named {
+                let mut err = ecx.struct_span_err(
+                    e.span,
+                    "positional arguments cannot follow named arguments",
+                );
+                err.span_label(e.span, "positional arguments must be before named arguments");
+                for (_, pos) in &names {
+                    err.span_label(args[*pos].span, "named argument");
+                }
+                err.emit();
+            }
             args.push(e);
         }
     }
@@ -721,13 +729,14 @@ pub fn expand_format_args_nl<'cx>(
 
 /// Take the various parts of `format_args!(efmt, args..., name=names...)`
 /// and construct the appropriate formatting expression.
-pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
-                                    sp: Span,
-                                    efmt: P<ast::Expr>,
-                                    args: Vec<P<ast::Expr>>,
-                                    names: FxHashMap<Symbol, usize>,
-                                    append_newline: bool)
-                                    -> P<ast::Expr> {
+pub fn expand_preparsed_format_args(
+    ecx: &mut ExtCtxt<'_>,
+    sp: Span,
+    efmt: P<ast::Expr>,
+    args: Vec<P<ast::Expr>>,
+    names: FxHashMap<Symbol, usize>,
+    append_newline: bool,
+) -> P<ast::Expr> {
     // NOTE: this verbose way of initializing `Vec<Vec<ArgumentType>>` is because
     // `ArgumentType` does not derive `Clone`.
     let arg_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
@@ -906,6 +915,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
         .map(|span| fmt.span.from_inner(*span))
         .collect();
 
+    let named_pos: FxHashSet<usize> = names.values().cloned().collect();
+
     let mut cx = Context {
         ecx,
         args,
@@ -971,14 +982,12 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
     }
 
     // Make sure that all arguments were used and all arguments have types.
-    let num_pos_args = cx.args.len() - cx.names.len();
-
     let errs = cx.arg_types
                  .iter()
                  .enumerate()
                  .filter(|(i, ty)| ty.is_empty() && !cx.count_positions.contains_key(&i))
                  .map(|(i, _)| {
-                    let msg = if i >= num_pos_args {
+                    let msg = if named_pos.contains(&i) {
                         // named argument
                         "named argument never used"
                     } else {
