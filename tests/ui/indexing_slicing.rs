@@ -1,5 +1,8 @@
 #![feature(plugin)]
 #![warn(clippy::indexing_slicing)]
+
+// We also check the out_of_bounds_indexing lint here, because it lints similar things and
+// we want to avoid false positives.
 #![warn(clippy::out_of_bounds_indexing)]
 #![allow(clippy::no_effect, clippy::unnecessary_operation)]
 
@@ -15,21 +18,10 @@ fn main() {
     &x[index_from..][..index_to]; // Two lint reports, one for [index_from..] and another for [..index_to].
     x[4]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
     x[1 << 3]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
-    &x[..=4];
-    &x[1..5];
-    &x[5..][..10]; // Two lint reports, one for [5..] and another for [..10].
-    &x[5..];
-    &x[..5];
-    &x[5..].iter().map(|x| 2 * x).collect::<Vec<i32>>();
-    &x[0..=4];
+    &x[5..][..10]; // Two lint reports, one for out of bounds [5..] and another for slicing [..10].
     &x[0..][..3];
     &x[1..][..5];
 
-    &x[4..]; // Ok, should not produce stderr.
-    &x[..4]; // Ok, should not produce stderr.
-    &x[..]; // Ok, should not produce stderr.
-    &x[1..]; // Ok, should not produce stderr.
-    &x[2..].iter().map(|x| 2 * x).collect::<Vec<i32>>(); // Ok, should not produce stderr.
     &x[0..].get(..3); // Ok, should not produce stderr.
     x[0]; // Ok, should not produce stderr.
     x[3]; // Ok, should not produce stderr.
@@ -42,21 +34,6 @@ fn main() {
     &y[..=4];
 
     &y[..]; // Ok, should not produce stderr.
-
-    let empty: [i8; 0] = [];
-    empty[0]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
-    &empty[1..5];
-    &empty[0..=4];
-    &empty[..=4];
-    &empty[1..];
-    &empty[..4];
-    &empty[0..=0];
-    &empty[..=0];
-
-    &empty[0..]; // Ok, should not produce stderr.
-    &empty[0..0]; // Ok, should not produce stderr.
-    &empty[..0]; // Ok, should not produce stderr.
-    &empty[..]; // Ok, should not produce stderr.
 
     let v = vec![0; 5];
     v[0];
@@ -79,9 +56,4 @@ fn main() {
     x[M]; // Ok, should not produce stderr.
     v[N];
     v[M];
-
-    // issue 3102
-    let num = 1;
-    &x[num..10]; // should trigger out of bounds error
-    &x[10..num]; // should trigger out of bounds error
 }

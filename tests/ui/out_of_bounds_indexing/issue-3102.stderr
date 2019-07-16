@@ -1,0 +1,30 @@
+error: statement with no effect
+  --> $DIR/issue-3102.rs:8:5
+   |
+LL |     &x[num..10]; // should trigger out of bounds error
+   |     ^^^^^^^^^^^^
+   |
+   = note: `-D clippy::no-effect` implied by `-D warnings`
+
+error: range is out of bounds
+  --> $DIR/issue-3102.rs:8:13
+   |
+LL |     &x[num..10]; // should trigger out of bounds error
+   |             ^^
+   |
+   = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+
+error: statement with no effect
+  --> $DIR/issue-3102.rs:9:5
+   |
+LL |     &x[10..num]; // should trigger out of bounds error
+   |     ^^^^^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/issue-3102.rs:9:8
+   |
+LL |     &x[10..num]; // should trigger out of bounds error
+   |        ^^
+
+error: aborting due to 4 previous errors
+
