@@ -731,14 +731,14 @@ pub const ALL_LINTS: [Lint; 308] = [
     Lint {
         name: "inherent_to_string",
         group: "style",
-        desc: "type implements inherent method \'to_string()\', but should instead implement the \'Display\' trait",
+        desc: "type implements inherent method `to_string()`, but should instead implement the `Display` trait",
         deprecation: None,
         module: "inherent_to_string",
     },
     Lint {
         name: "inherent_to_string_shadow_display",
         group: "correctness",
-        desc: "type implements inherent method \'to_string()\', which gets shadowed by the implementation of the \'Display\' trait ",
+        desc: "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait ",
         deprecation: None,
         module: "inherent_to_string",
     },

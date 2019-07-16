@@ -17,16 +17,12 @@ LL | |         "C.to_string()".to_string()
 LL | |     }
    | |_____^
    |
-   = note: #[deny(clippy::inherent_to_string_shadow_display)] on by default
-   = help: remove the inherent method from type `C`
-
-error: unknown clippy lint: clippy::inherent_to_string_shadow
+note: lint level defined here
   --> $DIR/inherent_to_string.rs:2:9
    |
-LL | #![deny(clippy::inherent_to_string_shadow)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::unknown-clippy-lints` implied by `-D warnings`
+LL | #![deny(clippy::inherent_to_string_shadow_display)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: remove the inherent method from type `C`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
