@@ -73,7 +73,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
             }
         }
 
-        _ => cx.span_bug(span, "#[derive(Clone)] on trait item or impl item"),
+        _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
 
     let inline = cx.meta_word(span, sym::inline);

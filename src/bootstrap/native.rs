@@ -104,7 +104,6 @@ impl Step for Llvm {
             }
         }
 
-        let _folder = builder.fold_output(|| "llvm");
         let descriptor = if emscripten { "Emscripten " } else { "" };
         builder.info(&format!("Building {}LLVM for {}", descriptor, target));
         let _time = util::timeit(&builder);
@@ -493,7 +492,6 @@ impl Step for Lld {
             return out_dir
         }
 
-        let _folder = builder.fold_output(|| "lld");
         builder.info(&format!("Building LLD for {}", target));
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
@@ -560,7 +558,6 @@ impl Step for TestHelpers {
             return
         }
 
-        let _folder = builder.fold_output(|| "build_test_helpers");
         builder.info("Building test helpers");
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();

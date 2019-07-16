@@ -21,6 +21,7 @@ jobs:
         IMAGE: mingw-check
 
 - job: LinuxTools
+  timeoutInMinutes: 600
   pool:
     vmImage: ubuntu-16.04
   steps:

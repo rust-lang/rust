@@ -443,7 +443,7 @@ impl<'a> StringReader<'a> {
 
                 let is_beginning_of_file = self.pos == self.source_file.start_pos;
                 if is_beginning_of_file {
-                    debug!("Skipping a shebang");
+                    debug!("skipping a shebang");
                     let start = self.pos;
                     while !self.ch_is('\n') && !self.is_eof() {
                         self.bump();

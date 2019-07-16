@@ -50,7 +50,6 @@ impl Step for Std {
         let mut cargo = builder.cargo(compiler, Mode::Std, target, cargo_subcommand(builder.kind));
         std_cargo(builder, &compiler, target, &mut cargo);
 
-        let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
         builder.info(&format!("Checking std artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
@@ -99,7 +98,6 @@ impl Step for Rustc {
             cargo_subcommand(builder.kind));
         rustc_cargo(builder, &mut cargo);
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustc", compiler.stage));
         builder.info(&format!("Checking compiler artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
@@ -153,7 +151,6 @@ impl Step for CodegenBackend {
 
         // We won't build LLVM if it's not available, as it shouldn't affect `check`.
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         run_cargo(builder,
                   &mut cargo,
                   args(builder.kind),
@@ -190,7 +187,6 @@ impl Step for Test {
         let mut cargo = builder.cargo(compiler, Mode::Test, target, cargo_subcommand(builder.kind));
         test_cargo(builder, &compiler, target, &mut cargo);
 
-        let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
         builder.info(&format!("Checking test artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
@@ -239,7 +235,6 @@ impl Step for Rustdoc {
                                            SourceType::InTree,
                                            &[]);
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustdoc", compiler.stage));
         println!("Checking rustdoc artifacts ({} -> {})", &compiler.host, target);
         run_cargo(builder,
                   &mut cargo,
