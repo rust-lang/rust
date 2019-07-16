@@ -5,6 +5,7 @@ use crate::{
     },
     CompletionItem,
 };
+use hir::{Ty, TypeCtor};
 use ra_syntax::{ast::AstNode, TextRange};
 use ra_text_edit::TextEditBuilder;
 
@@ -21,26 +22,44 @@ fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: 
         .snippet_edit(edit)
 }
 
+fn is_bool_or_unknown(ty: Option<Ty>) -> bool {
+    if let Some(ty) = ty {
+        match ty {
+            Ty::Apply(at) => match at.ctor {
+                TypeCtor::Bool => true,
+                _ => false,
+            },
+            Ty::Unknown => true,
+            _ => false,
+        }
+    } else {
+        true
+    }
+}
+
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some(dot_receiver) = ctx.dot_receiver {
         let receiver_text = dot_receiver.syntax().text().to_string();
+        let receiver_ty = ctx.analyzer.type_of(ctx.db, dot_receiver);
+        if is_bool_or_unknown(receiver_ty) {
+            postfix_snippet(ctx, "if", "if expr {}", &format!("if {} {{$0}}", receiver_text))
+                .add_to(acc);
+            postfix_snippet(
+                ctx,
+                "while",
+                "while expr {}",
+                &format!("while {} {{\n$0\n}}", receiver_text),
+            )
+            .add_to(acc);
+        }
         postfix_snippet(ctx, "not", "!expr", &format!("!{}", receiver_text)).add_to(acc);
         postfix_snippet(ctx, "ref", "&expr", &format!("&{}", receiver_text)).add_to(acc);
         postfix_snippet(ctx, "refm", "&mut expr", &format!("&mut {}", receiver_text)).add_to(acc);
-        postfix_snippet(ctx, "if", "if expr {}", &format!("if {} {{$0}}", receiver_text))
-            .add_to(acc);
         postfix_snippet(
             ctx,
             "match",
             "match expr {}",
             &format!("match {} {{\n    ${{1:_}} => {{$0\\}},\n}}", receiver_text),
-        )
-        .add_to(acc);
-        postfix_snippet(
-            ctx,
-            "while",
-            "while expr {}",
-            &format!("while {} {{\n$0\n}}", receiver_text),
         )
         .add_to(acc);
         postfix_snippet(ctx, "dbg", "dbg!(expr)", &format!("dbg!({})", receiver_text)).add_to(acc);
@@ -64,7 +83,7 @@ mod tests {
             do_postfix_completion(
                 r#"
                 fn main() {
-                    let bar = "a";
+                    let bar = true;
                     bar.<|>
                 }
                 "#,
@@ -72,59 +91,117 @@ mod tests {
             @r###"[
     CompletionItem {
         label: "box",
-        source_range: [88; 88),
-        delete: [84; 88),
+        source_range: [89; 89),
+        delete: [85; 89),
         insert: "Box::new(bar)",
         detail: "Box::new(expr)",
     },
     CompletionItem {
         label: "dbg",
-        source_range: [88; 88),
-        delete: [84; 88),
+        source_range: [89; 89),
+        delete: [85; 89),
         insert: "dbg!(bar)",
         detail: "dbg!(expr)",
     },
     CompletionItem {
         label: "if",
-        source_range: [88; 88),
-        delete: [84; 88),
+        source_range: [89; 89),
+        delete: [85; 89),
         insert: "if bar {$0}",
         detail: "if expr {}",
     },
     CompletionItem {
         label: "match",
-        source_range: [88; 88),
-        delete: [84; 88),
+        source_range: [89; 89),
+        delete: [85; 89),
         insert: "match bar {\n    ${1:_} => {$0\\},\n}",
         detail: "match expr {}",
     },
     CompletionItem {
         label: "not",
-        source_range: [88; 88),
-        delete: [84; 88),
+        source_range: [89; 89),
+        delete: [85; 89),
         insert: "!bar",
         detail: "!expr",
     },
     CompletionItem {
         label: "ref",
-        source_range: [88; 88),
-        delete: [84; 88),
+        source_range: [89; 89),
+        delete: [85; 89),
         insert: "&bar",
         detail: "&expr",
     },
     CompletionItem {
         label: "refm",
-        source_range: [88; 88),
-        delete: [84; 88),
+        source_range: [89; 89),
+        delete: [85; 89),
         insert: "&mut bar",
         detail: "&mut expr",
     },
     CompletionItem {
         label: "while",
-        source_range: [88; 88),
-        delete: [84; 88),
+        source_range: [89; 89),
+        delete: [85; 89),
         insert: "while bar {\n$0\n}",
         detail: "while expr {}",
+    },
+]"###
+        );
+    }
+
+    #[test]
+    fn some_postfix_completions_ignored() {
+        assert_debug_snapshot_matches!(
+            do_postfix_completion(
+                r#"
+                fn main() {
+                    let bar: u8 = 12;
+                    bar.<|>
+                }
+                "#,
+            ),
+            @r###"[
+    CompletionItem {
+        label: "box",
+        source_range: [91; 91),
+        delete: [87; 91),
+        insert: "Box::new(bar)",
+        detail: "Box::new(expr)",
+    },
+    CompletionItem {
+        label: "dbg",
+        source_range: [91; 91),
+        delete: [87; 91),
+        insert: "dbg!(bar)",
+        detail: "dbg!(expr)",
+    },
+    CompletionItem {
+        label: "match",
+        source_range: [91; 91),
+        delete: [87; 91),
+        insert: "match bar {\n    ${1:_} => {$0\\},\n}",
+        detail: "match expr {}",
+    },
+    CompletionItem {
+        label: "not",
+        source_range: [91; 91),
+        delete: [87; 91),
+        insert: "!bar",
+        detail: "!expr",
+    },
+    CompletionItem {
+        label: "ref",
+        source_range: [91; 91),
+        delete: [87; 91),
+        insert: "&bar",
+        detail: "&expr",
+    },
+    CompletionItem {
+        label: "refm",
+        source_range: [91; 91),
+        delete: [87; 91),
+        insert: "&mut bar",
+        detail: "&mut expr",
     },
 ]"###
         );
