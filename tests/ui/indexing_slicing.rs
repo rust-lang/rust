@@ -1,6 +1,5 @@
 #![feature(plugin)]
 #![warn(clippy::indexing_slicing)]
-
 // We also check the out_of_bounds_indexing lint here, because it lints similar things and
 // we want to avoid false positives.
 #![warn(clippy::out_of_bounds_indexing)]
