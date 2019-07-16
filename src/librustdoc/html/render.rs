@@ -4250,9 +4250,10 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
             RenderMode::ForDeref { mut_: deref_mut_ } => should_render_item(&item, deref_mut_),
         };
 
-        let (is_hidden, extra_class) = if trait_.is_none() ||
-                                          item.doc_value().is_some() ||
-                                          item.inner.is_associated() {
+        let (is_hidden, extra_class) = if (trait_.is_none() ||
+                                           item.doc_value().is_some() ||
+                                           item.inner.is_associated()) &&
+                                          !is_default_item {
             (false, "")
         } else {
             (true, " hidden")
