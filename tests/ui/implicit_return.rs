@@ -77,10 +77,6 @@ fn test_closure() {
     let _ = || true;
 }
 
-fn test_return_never() -> ! {
-    panic!()
-}
-
 fn test_panic() -> bool {
     panic!()
 }

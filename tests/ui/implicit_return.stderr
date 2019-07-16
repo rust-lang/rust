@@ -61,16 +61,10 @@ LL |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:81:5
-   |
-LL |     panic!()
-   |     ^^^^^^^^ help: add `return` as shown: `return panic!()`
-
-error: missing return statement
-  --> $DIR/implicit_return.rs:89:5
+  --> $DIR/implicit_return.rs:85:5
    |
 LL |     format!("test {}", "test")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add `return` as shown: `return format!("test {}", "test")`
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 
