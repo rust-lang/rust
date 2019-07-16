@@ -3189,6 +3189,7 @@ dependencies = [
  "rustc_interface",
  "rustc_metadata",
  "rustc_mir",
+ "rustc_plugin_impl",
  "rustc_save_analysis",
  "rustc_target",
  "serialize",
@@ -3246,7 +3247,7 @@ dependencies = [
  "rustc_metadata",
  "rustc_mir",
  "rustc_passes",
- "rustc_plugin",
+ "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_resolve",
  "rustc_traits",
@@ -3372,7 +3373,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_plugin"
+name = "rustc_plugin_impl"
 version = "0.0.0"
 dependencies = [
  "rustc",

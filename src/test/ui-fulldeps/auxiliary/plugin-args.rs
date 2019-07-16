@@ -6,7 +6,6 @@
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc;
-extern crate rustc_plugin;
 extern crate rustc_driver;
 
 use std::borrow::ToOwned;
@@ -17,7 +16,7 @@ use syntax::print::pprust;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use syntax::tokenstream::TokenStream;
-use rustc_plugin::Registry;
+use rustc_driver::plugin::Registry;
 
 struct Expander {
     args: Vec<ast::NestedMetaItem>,

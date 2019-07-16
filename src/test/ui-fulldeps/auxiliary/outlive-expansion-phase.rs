@@ -4,12 +4,11 @@
 #![feature(box_syntax, rustc_private)]
 
 extern crate rustc;
-extern crate rustc_plugin;
 extern crate rustc_driver;
 
 use std::any::Any;
 use std::cell::RefCell;
-use rustc_plugin::Registry;
+use rustc_driver::plugin::Registry;
 
 struct Foo {
     foo: isize
