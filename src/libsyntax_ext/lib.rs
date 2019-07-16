@@ -31,6 +31,7 @@ mod source_util;
 mod test;
 mod trace_macros;
 
+pub mod global_allocator;
 pub mod proc_macro_decls;
 pub mod test_harness;
 

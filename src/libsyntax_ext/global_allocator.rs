@@ -1,5 +1,4 @@
 use log::debug;
-use rustc::middle::allocator::AllocatorKind;
 use smallvec::{smallvec, SmallVec};
 use syntax::{
     ast::{
@@ -11,6 +10,7 @@ use syntax::{
         respan, ExpnInfo, ExpnKind,
     },
     ext::{
+        allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS},
         base::{ExtCtxt, MacroKind, Resolver},
         build::AstBuilder,
         expand::ExpansionConfig,
@@ -23,14 +23,12 @@ use syntax::{
 };
 use syntax_pos::Span;
 
-use crate::{AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
-
 pub fn modify(
     sess: &ParseSess,
     resolver: &mut dyn Resolver,
     krate: &mut Crate,
     crate_name: String,
-    handler: &rustc_errors::Handler,
+    handler: &errors::Handler,
 ) {
     ExpandAllocatorDirectives {
         handler,
@@ -44,7 +42,7 @@ pub fn modify(
 
 struct ExpandAllocatorDirectives<'a> {
     found: bool,
-    handler: &'a rustc_errors::Handler,
+    handler: &'a errors::Handler,
     sess: &'a ParseSess,
     resolver: &'a mut dyn Resolver,
     crate_name: Option<String>,
