@@ -1653,6 +1653,18 @@ impl<'test> TestCx<'test> {
                     None,
                 )
             }
+            _ if self.config.target.contains("vxworks") => {
+                let aux_dir = self.aux_output_dir_name();
+                let ProcArgs { prog, args } = self.make_run_args();
+                let mut vx_run = Command::new("vx-run");
+                vx_run.args(&[&prog]).args(args).envs(env.clone());
+                self.compose_and_run(
+                    vx_run,
+                    self.config.run_lib_path.to_str().unwrap(),
+                    Some(aux_dir.to_str().unwrap()),
+                    None,
+                )
+            }
             _ => {
                 let aux_dir = self.aux_output_dir_name();
                 let ProcArgs { prog, args } = self.make_run_args();
