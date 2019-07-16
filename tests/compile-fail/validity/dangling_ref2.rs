@@ -3,5 +3,5 @@ use std::mem;
 fn main() {
     let val = 14;
     let ptr = (&val as *const i32).wrapping_offset(1);
-    let _x: &i32 = unsafe { mem::transmute(ptr) }; //~ ERROR encountered dangling (not entirely in bounds) reference
+    let _x: &i32 = unsafe { mem::transmute(ptr) }; //~ ERROR dangling reference (not entirely in bounds)
 }
