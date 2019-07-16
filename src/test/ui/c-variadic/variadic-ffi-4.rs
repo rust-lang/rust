@@ -18,6 +18,7 @@ pub unsafe extern "C" fn no_escape2(_: usize, ap: ...) {
 
 pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
     *ap0 = ap1; //~ ERROR: mismatched types
+    //~^ ERROR: mismatched types
 }
 
 pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
@@ -29,5 +30,6 @@ pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...
 }
 
 pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-    *ap0 = ap1.clone(); //~ ERROR: cannot infer an appropriate lifetime
+    *ap0 = ap1.clone(); //~ ERROR: mismatched types
+    //~^ ERROR: mismatched types
 }

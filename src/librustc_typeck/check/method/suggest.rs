@@ -331,6 +331,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.note("try using `<*const T>::as_ref()` to get a reference to the \
                                       type behind the pointer: https://doc.rust-lang.org/std/\
                                       primitive.pointer.html#method.as_ref");
+                            err.note("using `<*const T>::as_ref()` on a pointer \
+                                      which is unaligned or points to invalid \
+                                      or uninitialized memory is undefined behavior");
                         }
                         err
                     }

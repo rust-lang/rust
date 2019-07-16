@@ -333,6 +333,8 @@ pub(crate) trait DataflowResultsConsumer<'a, 'tcx: 'a> {
     }
 
     fn process_basic_block(&mut self, bb: BasicBlock, flow_state: &mut Self::FlowState) {
+        self.visit_block_entry(bb, flow_state);
+
         let BasicBlockData { ref statements, ref terminator, is_cleanup: _ } =
             self.body()[bb];
         let mut location = Location { block: bb, statement_index: 0 };

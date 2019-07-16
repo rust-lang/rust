@@ -4,7 +4,7 @@
 
 struct Pt<A>(A);
 unsafe impl<#[may_dangle] A> Drop for Pt<A> {
-    //~^ ERROR may_dangle has unstable semantics and may be removed in the future
+    //~^ ERROR `may_dangle` has unstable semantics and may be removed in the future
     fn drop(&mut self) { }
 }
 

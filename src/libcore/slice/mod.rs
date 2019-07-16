@@ -25,7 +25,7 @@
 use crate::cmp::Ordering::{self, Less, Equal, Greater};
 use crate::cmp;
 use crate::fmt;
-use crate::intrinsics::{assume, exact_div, unchecked_sub};
+use crate::intrinsics::{assume, exact_div, unchecked_sub, is_aligned_and_not_null};
 use crate::isize;
 use crate::iter::*;
 use crate::ops::{FnMut, Try, self};
@@ -5228,7 +5228,7 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
-    debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
+    debug_assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
                   "attempt to create slice covering half the address space");
     &*ptr::slice_from_raw_parts(data, len)
@@ -5249,7 +5249,7 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
-    debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
+    debug_assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
                   "attempt to create slice covering half the address space");
     &mut *ptr::slice_from_raw_parts_mut(data, len)
