@@ -44,10 +44,15 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
     where R: Read, W: Write
 {
     let mut buf = unsafe {
-        #[allow(deprecated)]
-        let mut buf: [u8; super::DEFAULT_BUF_SIZE] = mem::uninitialized();
-        reader.initializer().initialize(&mut buf);
-        buf
+        // This is still technically undefined behavior due to creating a reference
+        // to uninitialized data, but within libstd we can rely on more guarantees
+        // than if this code were in an external lib
+
+        // FIXME: This should probably be changed to an array of `MaybeUninit<u8>`
+        // once the `mem::MaybeUninit` slice APIs stabilize
+        let mut buf: mem::MaybeUninit<[u8; super::DEFAULT_BUF_SIZE]> = mem::MaybeUninit::uninit();
+        reader.initializer().initialize(&mut *buf.as_mut_ptr());
+        buf.assume_init()
     };
 
     let mut written = 0;
