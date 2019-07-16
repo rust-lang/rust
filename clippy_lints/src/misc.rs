@@ -364,6 +364,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                     if is_allowed(cx, left) || is_allowed(cx, right) {
                         return;
                     }
+
+                    // Allow comparing the results of signum()
+                    if is_signum(cx, left) && is_signum(cx, right) {
+                        return;
+                    }
+
                     if let Some(name) = get_item_name(cx, expr) {
                         let name = name.as_str();
                         if name == "eq"
@@ -491,6 +497,25 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
         Some((Constant::F64(f), _)) => f == 0.0 || f.is_infinite(),
         _ => false,
     }
+}
+
+// Return true if `expr` is the result of `signum()` invoked on a float value.
+fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
+    // The negation of a signum is still a signum
+    if let ExprKind::Unary(UnNeg, ref child_expr) = expr.node {
+        return is_signum(cx, &child_expr);
+    }
+
+    if_chain! {
+        if let ExprKind::MethodCall(ref method_name, _, ref expressions) = expr.node;
+        if sym!(signum) == method_name.ident.name;
+        // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
+        // the method call)
+        then {
+            return is_float(cx, &expressions[0]);
+        }
+    }
+    false
 }
 
 fn is_float(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
