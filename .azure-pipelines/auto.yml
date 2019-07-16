@@ -174,7 +174,7 @@ jobs:
 
       dist-x86_64-apple:
         SCRIPT: ./x.py dist
-        RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb --set rust.jemalloc
+        RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
         DEPLOY: 1
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -184,7 +184,7 @@ jobs:
 
       dist-x86_64-apple-alt:
         SCRIPT: ./x.py dist
-        RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --enable-lldb --set rust.jemalloc
+        RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
         DEPLOY_ALT: 1
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -202,7 +202,7 @@ jobs:
 
       dist-i686-apple:
         SCRIPT: ./x.py dist
-        RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --enable-full-tools --enable-profiler --enable-lldb --set rust.jemalloc
+        RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --enable-full-tools --enable-profiler --set rust.jemalloc
         DEPLOY: 1
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7

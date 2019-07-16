@@ -1668,6 +1668,9 @@ extern "C" {
     pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
     pub fn LLVMRustAddPass(PM: &PassManager<'_>, Pass: &'static mut Pass);
+    pub fn LLVMRustAddLastExtensionPasses(PMB: &PassManagerBuilder,
+                                          Passes: *const &'static mut Pass,
+                                          NumPasses: size_t);
 
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
