@@ -11,9 +11,6 @@ set -o nounset
 ci_dir=$(cd $(dirname $0) && pwd)
 . "$ci_dir/shared.sh"
 
-travis_fold start init_repo
-travis_time_start
-
 REPO_DIR="$1"
 CACHE_DIR="$2"
 
@@ -73,5 +70,3 @@ retry sh -c "git submodule deinit -f $use_git && \
     git submodule sync && \
     git submodule update -j 16 --init --recursive $use_git"
 wait
-travis_fold end init_repo
-travis_time_finish

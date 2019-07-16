@@ -74,7 +74,6 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
-        let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
         let is_expected = compile::stream_cargo(builder, &mut cargo, vec![], &mut |msg| {
@@ -509,7 +508,6 @@ impl Step for Rustdoc {
             &[],
         );
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
         builder.info(&format!("Building rustdoc for stage{} ({})",
             target_compiler.stage, target_compiler.host));
         builder.run(&mut cargo);

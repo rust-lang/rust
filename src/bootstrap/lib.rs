@@ -128,7 +128,7 @@ use build_helper::{
 };
 use filetime::FileTime;
 
-use crate::util::{exe, libdir, OutputFolder, CiEnv};
+use crate::util::{exe, libdir, CiEnv};
 
 mod cc_detect;
 mod channel;
@@ -1089,19 +1089,6 @@ impl Build {
         match &self.config.channel[..] {
             "stable" | "beta" => false,
             "nightly" | _ => true,
-        }
-    }
-
-    /// Fold the output of the commands after this method into a group. The fold
-    /// ends when the returned object is dropped. Folding can only be used in
-    /// the Travis CI environment.
-    pub fn fold_output<D, F>(&self, name: F) -> Option<OutputFolder>
-        where D: Into<String>, F: FnOnce() -> D
-    {
-        if !self.config.dry_run && self.ci_env == CiEnv::Travis {
-            Some(OutputFolder::new(name().into()))
-        } else {
-            None
         }
     }
 
