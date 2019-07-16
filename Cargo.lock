@@ -2752,20 +2752,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_allocator"
-version = "0.0.0"
-dependencies = [
- "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc 0.0.0",
- "rustc_data_structures 0.0.0",
- "rustc_errors 0.0.0",
- "rustc_target 0.0.0",
- "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "syntax 0.0.0",
- "syntax_pos 0.0.0",
-]
-
-[[package]]
 name = "rustc_apfloat"
 version = "0.0.0"
 dependencies = [
@@ -2822,7 +2808,6 @@ dependencies = [
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_allocator 0.0.0",
  "rustc_apfloat 0.0.0",
  "rustc_codegen_utils 0.0.0",
  "rustc_data_structures 0.0.0",
@@ -2883,7 +2868,6 @@ dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-rayon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_allocator 0.0.0",
  "rustc_ast_borrowck 0.0.0",
  "rustc_codegen_utils 0.0.0",
  "rustc_data_structures 0.0.0",
@@ -2904,7 +2888,6 @@ dependencies = [
  "serialize 0.0.0",
  "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
- "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",
 ]
 
@@ -2948,7 +2931,6 @@ dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-rayon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_allocator 0.0.0",
  "rustc_ast_borrowck 0.0.0",
  "rustc_codegen_ssa 0.0.0",
  "rustc_codegen_utils 0.0.0",

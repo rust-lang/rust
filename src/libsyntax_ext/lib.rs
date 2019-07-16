@@ -37,6 +37,7 @@ mod test_case;
 mod trace_macros;
 
 pub mod deriving;
+pub mod global_allocator;
 pub mod proc_macro_decls;
 pub mod proc_macro_impl;
 

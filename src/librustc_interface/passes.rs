@@ -497,7 +497,7 @@ fn configure_and_expand_inner<'a>(
     if has_global_allocator {
         // Expand global allocators, which are treated as an in-tree proc macro
         time(sess, "creating allocators", || {
-            allocator::expand::modify(
+            syntax_ext::global_allocator::modify(
                 &sess.parse_sess,
                 &mut resolver,
                 &mut krate,
