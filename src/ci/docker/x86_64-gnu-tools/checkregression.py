@@ -4,6 +4,9 @@
 import sys
 import json
 
+# Regressions for these tools does not cause failure
+REGRESSION_OK = ["rustc-guide"]
+
 if __name__ == '__main__':
     os_name = sys.argv[1]
     toolstate_file = sys.argv[2]
@@ -32,7 +35,8 @@ if __name__ == '__main__':
                 'The state of "{}" has {} from "{}" to "{}"'
                 .format(tool, verb, state, new_state)
             )
-            regressed = True
+            if tool not in REGRESSION_OK:
+                regressed = True
 
     if regressed:
         sys.exit(1)
