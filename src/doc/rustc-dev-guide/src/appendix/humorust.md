@@ -8,3 +8,4 @@ enlightening?
 - [The Genesis of Generic Germination](https://github.com/rust-lang/rust/pull/53645#issue-210543221)
 - [The Bastion of the Turbofish test](https://github.com/rust-lang/rust/blob/79d8a0fcefa5134db2a94739b1d18daa01fc6e9f/src/test/ui/bastion-of-the-turbofish.rs)
 - [Rust Koans](https://users.rust-lang.org/t/rust-koans/2408/4)
+- [`break rust;`](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=0ab2bd6a9d722e0f05a95e2a5dcf89cc)
