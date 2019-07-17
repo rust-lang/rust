@@ -6,6 +6,9 @@ trigger: none
 pr:
 - master
 
+variables:
+- group: public-credentials
+
 jobs:
 - job: Linux
   timeoutInMinutes: 600
