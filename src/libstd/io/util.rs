@@ -48,7 +48,7 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
     // `MaybeUninit`. Revisit this once we decided whether that is valid or not.
     // This is still technically undefined behavior due to creating a reference
     // to uninitialized data, but within libstd we can rely on more guarantees
-    // than if this code were in an external lib
+    // than if this code were in an external lib.
     unsafe { reader.initializer().initialize(buf.get_mut()); }
 
     let mut written = 0;
