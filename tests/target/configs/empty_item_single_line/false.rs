@@ -11,5 +11,4 @@ fn lorem() {
 }
 
 fn lorem() {
-
 }

@@ -126,8 +126,7 @@ fn issue339() {
         // collapsing here exceeds line length
         ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffg => {
         }
-        h => {
-            // comment above block
+        h => { // comment above block
         }
         i => {} // comment below block
         j => {
@@ -148,8 +147,7 @@ fn issue339() {
         m => {}
         n => {}
         o => {}
-        p => {
-            // Don't collapse me
+        p => { // Don't collapse me
         }
         q => {}
         r => {}

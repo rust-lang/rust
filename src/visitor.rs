@@ -5,9 +5,9 @@ use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
 use syntax::{ast, visit};
 
 use crate::attr::*;
-use crate::comment::{CodeCharKind, CommentCodeSlices};
-use crate::config::file_lines::LineRange;
+use crate::comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
 use crate::config::{BraceStyle, Config};
+use crate::coverage::transform_missing_snippet;
 use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
     rewrite_associated_impl_type, rewrite_associated_type, rewrite_existential_impl_type,
@@ -22,8 +22,8 @@ use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt::Stmt;
 use crate::utils::{
-    self, contains_skip, count_newlines, depr_skip_annotation, inner_attributes, mk_sp,
-    ptr_vec_to_ref_vec, rewrite_ident, stmt_expr,
+    self, contains_skip, count_newlines, depr_skip_annotation, inner_attributes, last_line_width,
+    mk_sp, ptr_vec_to_ref_vec, rewrite_ident, stmt_expr,
 };
 use crate::{ErrorKind, FormatReport, FormattingError};
 
@@ -165,32 +165,6 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
     }
 
-    /// Returns the total length of the spaces which should be trimmed between the last statement
-    /// and the closing brace of the block.
-    fn trimmed_spaces_width_before_closing_brace(
-        &mut self,
-        b: &ast::Block,
-        brace_compensation: BytePos,
-    ) -> usize {
-        match b.stmts.last() {
-            None => 0,
-            Some(..) => {
-                let span_after_last_stmt = self.next_span(b.span.hi() - brace_compensation);
-                let missing_snippet = self.snippet(span_after_last_stmt);
-                CommentCodeSlices::new(missing_snippet)
-                    .last()
-                    .and_then(|(kind, _, s)| {
-                        if kind == CodeCharKind::Normal && s.trim().is_empty() {
-                            Some(s.len())
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or(0)
-            }
-        }
-    }
-
     pub(crate) fn visit_block(
         &mut self,
         b: &ast::Block,
@@ -226,72 +200,99 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
         }
 
-        let missing_span = self.next_span(b.span.hi());
-        if out_of_file_lines_range!(self, missing_span) {
-            self.push_str(self.snippet(missing_span));
+        let rest_span = self.next_span(b.span.hi());
+        if out_of_file_lines_range!(self, rest_span) {
+            self.push_str(self.snippet(rest_span));
             self.block_indent = self.block_indent.block_unindent(self.config);
-            self.last_pos = source!(self, b.span).hi();
-            return;
+        } else {
+            // Ignore the closing brace.
+            let missing_span = self.next_span(b.span.hi() - brace_compensation);
+            self.close_block(missing_span, self.unindent_comment_on_closing_brace(b));
         }
-
-        let remove_len = BytePos::from_usize(
-            self.trimmed_spaces_width_before_closing_brace(b, brace_compensation),
-        );
-        let unindent_comment = self.is_if_else_block && !b.stmts.is_empty() && {
-            let end_pos = source!(self, b.span).hi() - brace_compensation - remove_len;
-            let snippet = self.snippet(mk_sp(self.last_pos, end_pos));
-            snippet.contains("//") || snippet.contains("/*")
-        };
-        if unindent_comment {
-            self.block_indent = self.block_indent.block_unindent(self.config);
-        }
-        self.format_missing_with_indent(
-            source!(self, b.span).hi() - brace_compensation - remove_len,
-        );
-        if unindent_comment {
-            self.block_indent = self.block_indent.block_indent(self.config);
-        }
-        self.close_block(unindent_comment, self.next_span(b.span.hi()));
         self.last_pos = source!(self, b.span).hi();
     }
 
-    // FIXME: this is a terrible hack to indent the comments between the last
-    // item in the block and the closing brace to the block's level.
-    // The closing brace itself, however, should be indented at a shallower
-    // level.
-    fn close_block(&mut self, unindent_comment: bool, span: Span) {
-        let skip_this_line = !self
-            .config
-            .file_lines()
-            .contains(&LineRange::from_span(self.source_map, span));
-        if skip_this_line {
-            self.push_str(self.snippet(span));
-        } else {
-            let total_len = self.buffer.len();
-            let chars_too_many = if unindent_comment {
-                0
-            } else if self.config.hard_tabs() {
-                1
-            } else {
-                self.config.tab_spaces()
-            };
+    fn close_block(&mut self, span: Span, unindent_comment: bool) {
+        let config = self.config;
 
-            // FIXME this is a temporaly fix
-            // should be remove truncate logic in close_block
-            // avoid not to truncate necessary chars
-            let truncate_start = total_len - chars_too_many;
-            let target_str = &self.buffer[truncate_start..total_len];
-            let truncate_length = target_str.len() - target_str.trim().len();
+        let mut last_hi = span.lo();
+        let mut unindented = false;
+        let mut prev_ends_with_newline = false;
+        let mut extra_newline = false;
 
-            if let Some(last_char) = target_str.chars().last() {
-                self.buffer.truncate(total_len - truncate_length);
-                if last_char == '\n' {
-                    self.buffer.push_str("\n");
+        let skip_normal = |s: &str| {
+            let trimmed = s.trim();
+            trimmed.is_empty() || trimmed.chars().all(|c| c == ';')
+        };
+
+        for (kind, offset, sub_slice) in CommentCodeSlices::new(self.snippet(span)) {
+            let sub_slice = transform_missing_snippet(config, sub_slice);
+
+            debug!("close_block: {:?} {:?} {:?}", kind, offset, sub_slice);
+
+            match kind {
+                CodeCharKind::Comment => {
+                    if !unindented && unindent_comment {
+                        unindented = true;
+                        self.block_indent = self.block_indent.block_unindent(config);
+                    }
+                    let span_in_between = mk_sp(last_hi, span.lo() + BytePos::from_usize(offset));
+                    let snippet_in_between = self.snippet(span_in_between);
+                    let mut comment_on_same_line = !snippet_in_between.contains("\n");
+
+                    let mut comment_shape =
+                        Shape::indented(self.block_indent, config).comment(config);
+                    if comment_on_same_line {
+                        // 1 = a space before `//`
+                        let offset_len = 1 + last_line_width(&self.buffer)
+                            .saturating_sub(self.block_indent.width());
+                        match comment_shape
+                            .visual_indent(offset_len)
+                            .sub_width(offset_len)
+                        {
+                            Some(shp) => comment_shape = shp,
+                            None => comment_on_same_line = false,
+                        }
+                    };
+
+                    if comment_on_same_line {
+                        self.push_str(" ");
+                    } else {
+                        if count_newlines(snippet_in_between) >= 2 || extra_newline {
+                            self.push_str("\n");
+                        }
+                        self.push_str(&self.block_indent.to_string_with_newline(config));
+                    }
+
+                    let comment_str = rewrite_comment(&sub_slice, false, comment_shape, config);
+                    match comment_str {
+                        Some(ref s) => self.push_str(s),
+                        None => self.push_str(&sub_slice),
+                    }
+                }
+                CodeCharKind::Normal if skip_normal(&sub_slice) => {
+                    extra_newline = prev_ends_with_newline && sub_slice.contains('\n');
+                    continue;
+                }
+                CodeCharKind::Normal => {
+                    self.push_str(&self.block_indent.to_string_with_newline(config));
+                    self.push_str(sub_slice.trim());
                 }
             }
-            self.push_str("}");
+            prev_ends_with_newline = sub_slice.ends_with('\n');
+            extra_newline = false;
+            last_hi = span.lo() + BytePos::from_usize(offset + sub_slice.len());
+        }
+        if unindented {
+            self.block_indent = self.block_indent.block_indent(self.config);
         }
         self.block_indent = self.block_indent.block_unindent(self.config);
+        self.push_str(&self.block_indent.to_string_with_newline(config));
+        self.push_str("}");
+    }
+
+    fn unindent_comment_on_closing_brace(&self, b: &ast::Block) -> bool {
+        self.is_if_else_block && !b.stmts.is_empty()
     }
 
     // Note that this only gets called for function definitions. Required methods
@@ -806,9 +807,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.block_indent = self.block_indent.block_indent(self.config);
                 self.visit_attrs(attrs, ast::AttrStyle::Inner);
                 self.walk_mod_items(m);
-                let missing_span = mk_sp(source!(self, m.inner).hi() - BytePos(1), m.inner.hi());
-                self.format_missing_with_indent(missing_span.lo());
-                self.close_block(false, missing_span);
+                let missing_span = self.next_span(m.inner.hi() - BytePos(1));
+                self.close_block(missing_span, false);
             }
             self.last_pos = source!(self, m.inner).hi();
         } else {

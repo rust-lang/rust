@@ -49,6 +49,7 @@ mod chains;
 mod closures;
 mod comment;
 pub(crate) mod config;
+mod coverage;
 mod emitter;
 mod expr;
 mod format_report_formatter;

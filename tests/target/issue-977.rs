@@ -1,5 +1,4 @@
 // rustfmt-normalize_comments: true
-// FIXME(#919)
 
 trait NameC {
     // comment
@@ -10,8 +9,7 @@ struct FooC {
 enum MooC {
     // comment
 }
-mod BarC {
-    // comment
+mod BarC { // comment
 }
 extern "C" {
     // comment

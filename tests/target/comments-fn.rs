@@ -15,7 +15,6 @@ where
     F: Foo, // COmment after where-clause
     G: Goo, // final comment
 {
-
 }
 
 fn bar<F /* comment on F */, G /* comment on G */>() {}

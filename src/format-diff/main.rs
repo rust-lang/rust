@@ -292,5 +292,4 @@ mod cmd_line_tests {
                 .is_err()
         );
     }
-
 }

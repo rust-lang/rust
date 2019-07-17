@@ -1,5 +1,4 @@
 // rustfmt-normalize_comments: true
-// FIXME(#919)
 
 trait NameC { /* comment */ }
 struct FooC { /* comment */ }

@@ -59,8 +59,7 @@ fn issue_1086() {
 
 // random comment
 
-fn main() {
-    // Test
+fn main() { // Test
 }
 
 // #1643

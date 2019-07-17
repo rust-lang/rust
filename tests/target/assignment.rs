@@ -17,7 +17,7 @@ fn main() {
     single_lit_fit >>= 10;
 
     // #2791
-    let x = 2;;;;
+    let x = 2;
 }
 
 fn break_meee() {

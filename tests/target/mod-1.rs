@@ -33,6 +33,5 @@ pub mod x {
     }
 }
 
-mod y {
-    // sup boooooiiii
+mod y { // sup boooooiiii
 }

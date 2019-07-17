@@ -1,10 +1,9 @@
-use std::borrow::Cow;
-
 use syntax::source_map::{BytePos, Pos, Span};
 
 use crate::comment::{is_last_comment_block, rewrite_comment, CodeCharKind, CommentCodeSlices};
 use crate::config::file_lines::FileLines;
-use crate::config::{EmitMode, FileName};
+use crate::config::FileName;
+use crate::coverage::transform_missing_snippet;
 use crate::shape::{Indent, Shape};
 use crate::source_map::LineRangeUtils;
 use crate::utils::{count_lf_crlf, count_newlines, last_line_width, mk_sp};
@@ -171,10 +170,7 @@ impl<'a> FmtVisitor<'a> {
         let file_name = &char_pos.file.name.clone().into();
         let mut status = SnippetStatus::new(char_pos.line);
 
-        let snippet = &*match self.config.emit_mode() {
-            EmitMode::Coverage => Cow::from(replace_chars(old_snippet)),
-            _ => Cow::from(old_snippet),
-        };
+        let snippet = &*transform_missing_snippet(self.config, old_snippet);
 
         let slice_within_file_lines_range =
             |file_lines: FileLines, cur_line, s| -> (usize, usize, bool) {
@@ -332,11 +328,4 @@ impl<'a> FmtVisitor<'a> {
             status.line_start = subslice.len() + offset;
         }
     }
-}
-
-fn replace_chars(string: &str) -> String {
-    string
-        .chars()
-        .map(|ch| if ch.is_whitespace() { ch } else { 'X' })
-        .collect()
 }

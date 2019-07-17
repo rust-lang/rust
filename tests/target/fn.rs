@@ -21,7 +21,6 @@ fn foo(
 where
     T: Blah,
 {
-
 }
 
 fn foo<U, T>(
@@ -32,7 +31,6 @@ where
     T: Blah,
     U: dsfasdfasdfasd,
 {
-
 }
 
 fn foo<U: Fn(A) -> B /* paren inside generics */>() {}
