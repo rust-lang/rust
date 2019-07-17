@@ -37,6 +37,7 @@ const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
 // errors; eventually we plan to convert all code using panictry to just use
 // normal try.
+#[macro_export]
 macro_rules! panictry {
     ($e:expr) => ({
         use std::result::Result::{Ok, Err};
@@ -168,7 +169,7 @@ pub mod ext {
     pub mod derive;
     pub mod expand;
     pub mod placeholders;
-    pub mod source_util;
+    pub mod proc_macro;
 
     pub mod tt {
         pub mod transcribe;

@@ -33,6 +33,7 @@ mod global_allocator;
 mod global_asm;
 mod log_syntax;
 mod proc_macro_server;
+mod source_util;
 mod test;
 mod test_case;
 mod trace_macros;
@@ -95,7 +96,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         )* }
     }
 
-    use syntax::ext::source_util::*;
+    use source_util::*;
     register! {
         line: expand_line,
         column: expand_column,
