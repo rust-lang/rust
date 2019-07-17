@@ -10,7 +10,7 @@ use rustc::{
     lint::{LateContext, LateLintPass, LintArray, LintPass},
 };
 use rustc_errors::Applicability;
-use syntax_pos::Span;
+use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for missing return statements at the end of a block.
@@ -138,7 +138,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
         _: FnKind<'tcx>,
         _: &'tcx FnDecl,
         body: &'tcx Body,
-        span: syntax::source_map::Span,
+        span: Span,
         _: HirId,
     ) {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
