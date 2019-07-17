@@ -9,4 +9,4 @@ description = "A guide to developing rustc"
 
 [output.linkcheck]
 follow-web-links = true
-exclude = [ "crates\\.io", "gcc\\.godbolt\\.org" ]
+exclude = [ "crates\\.io", "gcc\\.godbolt\\.org", "youtube\\.com", "dl\\.acm\\.org" ]
