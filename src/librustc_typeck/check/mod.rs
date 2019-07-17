@@ -1442,12 +1442,12 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
         return
     }
 
-    // For the wasm32 target statics with #[link_section] are placed into custom
+    // For the wasm32 target statics with `#[link_section]` are placed into custom
     // sections of the final output file, but this isn't link custom sections of
     // other executable formats. Namely we can only embed a list of bytes,
     // nothing with pointers to anything else or relocations. If any relocation
     // show up, reject them here.
-    // #[link_section] may contain arbitrary, or even undefined bytes, but it is
+    // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
     let instance = ty::Instance::mono(tcx, id);
