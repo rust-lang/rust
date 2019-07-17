@@ -39,6 +39,7 @@ mod global_allocator;
 mod global_asm;
 mod log_syntax;
 mod proc_macro_server;
+mod source_util;
 mod test;
 mod test_case;
 mod trace_macros;
