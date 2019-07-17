@@ -1,0 +1,54 @@
+error: index out of bounds: the len is 0 but the index is 0
+  --> $DIR/empty_array.rs:6:5
+   |
+LL |     empty[0];
+   |     ^^^^^^^^
+   |
+   = note: #[deny(const_err)] on by default
+
+error: range is out of bounds
+  --> $DIR/empty_array.rs:7:12
+   |
+LL |     &empty[1..5];
+   |            ^
+   |
+   = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+
+error: range is out of bounds
+  --> $DIR/empty_array.rs:8:16
+   |
+LL |     &empty[0..=4];
+   |                ^
+
+error: range is out of bounds
+  --> $DIR/empty_array.rs:9:15
+   |
+LL |     &empty[..=4];
+   |               ^
+
+error: range is out of bounds
+  --> $DIR/empty_array.rs:10:12
+   |
+LL |     &empty[1..];
+   |            ^
+
+error: range is out of bounds
+  --> $DIR/empty_array.rs:11:14
+   |
+LL |     &empty[..4];
+   |              ^
+
+error: range is out of bounds
+  --> $DIR/empty_array.rs:12:16
+   |
+LL |     &empty[0..=0];
+   |                ^
+
+error: range is out of bounds
+  --> $DIR/empty_array.rs:13:15
+   |
+LL |     &empty[..=0];
+   |               ^
+
+error: aborting due to 8 previous errors
+

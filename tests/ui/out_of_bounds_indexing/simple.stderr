@@ -1,0 +1,40 @@
+error: range is out of bounds
+  --> $DIR/simple.rs:7:11
+   |
+LL |     &x[..=4];
+   |           ^
+   |
+   = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+
+error: range is out of bounds
+  --> $DIR/simple.rs:8:11
+   |
+LL |     &x[1..5];
+   |           ^
+
+error: range is out of bounds
+  --> $DIR/simple.rs:9:8
+   |
+LL |     &x[5..];
+   |        ^
+
+error: range is out of bounds
+  --> $DIR/simple.rs:10:10
+   |
+LL |     &x[..5];
+   |          ^
+
+error: range is out of bounds
+  --> $DIR/simple.rs:11:8
+   |
+LL |     &x[5..].iter().map(|x| 2 * x).collect::<Vec<i32>>();
+   |        ^
+
+error: range is out of bounds
+  --> $DIR/simple.rs:12:12
+   |
+LL |     &x[0..=4];
+   |            ^
+
+error: aborting due to 6 previous errors
+
