@@ -160,6 +160,16 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Utility types and common code for the above passes.
 
+fn bad_placeholder_type(tcx: TyCtxt<'tcx>, span: Span) -> errors::DiagnosticBuilder<'tcx> {
+    let mut diag = tcx.sess.struct_span_err_with_code(
+        span,
+        "the type placeholder `_` is not allowed within types on item signatures",
+        DiagnosticId::Error("E0121".into()),
+    );
+    diag.span_label(span, "not allowed in type signatures");
+    diag
+}
+
 impl ItemCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id }
@@ -191,12 +201,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        self.tcx().sess.struct_span_err_with_code(
-            span,
-            "the type placeholder `_` is not allowed within types on item signatures",
-            DiagnosticId::Error("E0121".into()),
-        ).span_label(span, "not allowed in type signatures")
-         .emit();
+        bad_placeholder_type(self.tcx(), span).emit();
 
         self.tcx().types.err
     }
@@ -207,12 +212,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
-        self.tcx().sess.struct_span_err_with_code(
-            span,
-            "the const placeholder `_` is not allowed within types on item signatures",
-            DiagnosticId::Error("E0121".into()),
-        ).span_label(span, "not allowed in type signatures")
-         .emit();
+        bad_placeholder_type(self.tcx(), span).emit();
 
         self.tcx().consts.err
     }
