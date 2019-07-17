@@ -69,6 +69,7 @@ mod reorder;
 mod rewrite;
 pub(crate) mod rustfmt_diff;
 mod shape;
+mod skip;
 pub(crate) mod source_file;
 pub(crate) mod source_map;
 mod spanned;

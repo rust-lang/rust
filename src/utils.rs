@@ -638,26 +638,6 @@ pub(crate) fn unicode_str_width(s: &str) -> usize {
     s.width()
 }
 
-pub(crate) fn get_skip_macro_names(attrs: &[ast::Attribute]) -> Vec<String> {
-    let mut skip_macro_names = vec![];
-    for attr in attrs {
-        // syntax::ast::Path is implemented partialEq
-        // but it is designed for segments.len() == 1
-        if format!("{}", attr.path) != "rustfmt::skip::macros" {
-            continue;
-        }
-
-        if let Some(list) = attr.meta_item_list() {
-            for nested_meta_item in list {
-                if let Some(name) = nested_meta_item.ident() {
-                    skip_macro_names.push(name.to_string());
-                }
-            }
-        }
-    }
-    skip_macro_names
-}
-
 #[cfg(test)]
 mod test {
     use super::*;

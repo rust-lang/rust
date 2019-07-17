@@ -17,7 +17,7 @@ use crate::comment::{CharClasses, FullCodeCharKind};
 use crate::config::{Config, FileName, Verbosity};
 use crate::ignore_path::IgnorePathSet;
 use crate::issues::BadIssueSeeker;
-use crate::utils::{count_newlines, get_skip_macro_names};
+use crate::utils::count_newlines;
 use crate::visitor::{FmtVisitor, SnippetProvider};
 use crate::{modules, source_file, ErrorKind, FormatReport, Input, Session};
 
@@ -158,10 +158,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             &snippet_provider,
             self.report.clone(),
         );
-        visitor
-            .skip_macro_names
-            .borrow_mut()
-            .append(&mut get_skip_macro_names(&self.krate.attrs));
+        visitor.skip_context.update_with_attrs(&self.krate.attrs);
 
         // Format inner attributes if available.
         if !self.krate.attrs.is_empty() && is_root {

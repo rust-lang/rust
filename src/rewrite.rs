@@ -8,6 +8,7 @@ use syntax::source_map::{SourceMap, Span};
 
 use crate::config::{Config, IndentStyle};
 use crate::shape::Shape;
+use crate::skip::SkipContext;
 use crate::visitor::SnippetProvider;
 use crate::FormatReport;
 
@@ -39,7 +40,7 @@ pub(crate) struct RewriteContext<'a> {
     // Used for `format_snippet`
     pub(crate) macro_rewrite_failure: RefCell<bool>,
     pub(crate) report: FormatReport,
-    pub(crate) skip_macro_names: RefCell<Vec<String>>,
+    pub(crate) skip_context: SkipContext,
 }
 
 impl<'a> RewriteContext<'a> {

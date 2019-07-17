@@ -211,9 +211,8 @@ pub(crate) fn rewrite_macro(
     position: MacroPosition,
 ) -> Option<String> {
     let should_skip = context
-        .skip_macro_names
-        .borrow()
-        .contains(&context.snippet(mac.node.path.span).to_owned());
+        .skip_context
+        .skip_macro(&context.snippet(mac.node.path.span).to_owned());
     if should_skip {
         None
     } else {
