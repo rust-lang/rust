@@ -512,7 +512,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub const fn as_secs_f64(&self) -> f64 {
+    pub fn as_secs_f64(&self) -> f64 {
         (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
     }
 
@@ -529,7 +529,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub const fn as_secs_f32(&self) -> f32 {
+    pub fn as_secs_f32(&self) -> f32 {
         (self.secs as f32) + (self.nanos as f32) / (NANOS_PER_SEC as f32)
     }
 
