@@ -3,10 +3,9 @@ use std::fmt;
 use std::path::PathBuf;
 
 use errors;
-use errors::emitter::{ColorConfig, HumanReadableErrorType};
 use getopts;
 use rustc::lint::Level;
-use rustc::session::early_error;
+use rustc::session;
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
                              get_cmd_lint_options, ExternEntry};
@@ -243,36 +242,9 @@ impl Options {
             return Err(0);
         }
 
-        let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
-            Some("auto") => ColorConfig::Auto,
-            Some("always") => ColorConfig::Always,
-            Some("never") => ColorConfig::Never,
-            None => ColorConfig::Auto,
-            Some(arg) => {
-                early_error(ErrorOutputType::default(),
-                            &format!("argument for `--color` must be `auto`, `always` or `never` \
-                                      (instead was `{}`)", arg));
-            }
-        };
-        // FIXME: deduplicate this code from the identical code in librustc/session/config.rs
-        let error_format = match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
-            None |
-            Some("human") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
-            Some("json") => ErrorOutputType::Json {
-                pretty: false,
-                json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
-            },
-            Some("pretty-json") => ErrorOutputType::Json {
-                pretty: true,
-                json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
-            },
-            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
-            Some(arg) => {
-                early_error(ErrorOutputType::default(),
-                            &format!("argument for `--error-format` must be `human`, `json` or \
-                                      `short` (instead was `{}`)", arg));
-            }
-        };
+        let color = session::config::parse_color(&matches);
+        let (json_rendered, _artifacts) = session::config::parse_json(&matches);
+        let error_format = session::config::parse_error_format(&matches, color, json_rendered);
 
         let codegen_options = build_codegen_options(matches, error_format);
         let debugging_options = build_debugging_options(matches, error_format);

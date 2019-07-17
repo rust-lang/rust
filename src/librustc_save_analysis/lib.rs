@@ -1087,7 +1087,7 @@ impl<'a> SaveHandler for DumpHandler<'a> {
             file_name
         };
 
-        if sess.opts.debugging_opts.emit_artifact_notifications {
+        if sess.opts.json_artifact_notifications {
             sess.parse_sess.span_diagnostic
                 .emit_artifact_notification(&file_name, "save-analysis");
         }
