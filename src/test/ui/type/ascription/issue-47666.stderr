@@ -1,0 +1,13 @@
+error: expected type, found reserved keyword `box`
+  --> $DIR/issue-47666.rs:2:25
+   |
+LL |     let _ = Option:Some(vec![0, 1]);
+   |                         ^^^^^^^^^^
+   |                         |
+   |                         expected type
+   |                         in this macro invocation
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to previous error
+

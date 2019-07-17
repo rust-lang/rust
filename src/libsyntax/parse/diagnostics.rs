@@ -2,6 +2,7 @@ use crate::ast::{
     self, Arg, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
+use crate::feature_gate::{feature_err, UnstableFeatures};
 use crate::parse::{SeqSep, PResult, Parser, ParseSess};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
 use crate::parse::token::{self, TokenKind};
@@ -365,7 +366,51 @@ impl<'a> Parser<'a> {
                 err.span_label(self.token.span, "unexpected token");
             }
         }
+        self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
+    }
+
+    pub fn maybe_annotate_with_ascription(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        maybe_expected_semicolon: bool,
+    ) {
+        if let Some((sp, likely_path)) = self.last_type_ascription {
+            let cm = self.sess.source_map();
+            let next_pos = cm.lookup_char_pos(self.token.span.lo());
+            let op_pos = cm.lookup_char_pos(sp.hi());
+
+            if likely_path {
+                err.span_suggestion(
+                    sp,
+                    "maybe write a path separator here",
+                    "::".to_string(),
+                    match self.sess.unstable_features {
+                        UnstableFeatures::Disallow => Applicability::MachineApplicable,
+                        _ => Applicability::MaybeIncorrect,
+                    },
+                );
+            } else if op_pos.line != next_pos.line && maybe_expected_semicolon {
+                err.span_suggestion(
+                    sp,
+                    "try using a semicolon",
+                    ";".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if let UnstableFeatures::Disallow = self.sess.unstable_features {
+                err.span_label(sp, "tried to parse a type due to this");
+            } else {
+                err.span_label(sp, "tried to parse a type due to this type ascription");
+            }
+            if let UnstableFeatures::Disallow = self.sess.unstable_features {
+                // Give extra information about type ascription only if it's a nightly compiler.
+            } else {
+                err.note("`#![feature(type_ascription)]` lets you annotate an expression with a \
+                          type: `<expr>: <type>`");
+                err.note("for more information, see \
+                          https://github.com/rust-lang/rust/issues/23416");
+            }
+        }
     }
 
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
@@ -556,7 +601,7 @@ impl<'a> Parser<'a> {
         .collect::<Vec<_>>();
 
         if !discriminant_spans.is_empty() && has_fields {
-            let mut err = crate::feature_gate::feature_err(
+            let mut err = feature_err(
                 sess,
                 sym::arbitrary_enum_discriminant,
                 discriminant_spans.clone(),
@@ -887,47 +932,9 @@ impl<'a> Parser<'a> {
             self.look_ahead(2, |t| t.is_ident()) ||
             self.look_ahead(1, |t| t == &token::Colon) &&  // `foo:bar:baz`
             self.look_ahead(2, |t| t.is_ident()) ||
-            self.look_ahead(1, |t| t == &token::ModSep) &&  // `foo:bar::baz`
-            self.look_ahead(2, |t| t.is_ident())
-    }
-
-    crate fn bad_type_ascription(
-        &self,
-        err: &mut DiagnosticBuilder<'a>,
-        lhs_span: Span,
-        cur_op_span: Span,
-        next_sp: Span,
-        maybe_path: bool,
-    ) {
-        err.span_label(self.token.span, "expecting a type here because of type ascription");
-        let cm = self.sess.source_map();
-        let next_pos = cm.lookup_char_pos(next_sp.lo());
-        let op_pos = cm.lookup_char_pos(cur_op_span.hi());
-        if op_pos.line != next_pos.line {
-            err.span_suggestion(
-                cur_op_span,
-                "try using a semicolon",
-                ";".to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        } else {
-            if maybe_path {
-                err.span_suggestion(
-                    cur_op_span,
-                    "maybe you meant to write a path separator here",
-                    "::".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.note("`#![feature(type_ascription)]` lets you annotate an \
-                          expression with a type: `<expr>: <type>`")
-                    .span_note(
-                        lhs_span,
-                        "this expression expects an ascribed type after the colon",
-                    )
-                    .help("this might be indicative of a syntax error elsewhere");
-            }
-        }
+            self.look_ahead(1, |t| t == &token::ModSep) &&
+            (self.look_ahead(2, |t| t.is_ident()) ||   // `foo:bar::baz`
+             self.look_ahead(2, |t| t == &token::Lt))  // `foo:bar::<baz>`
     }
 
     crate fn recover_seq_parse_error(

@@ -141,7 +141,10 @@ fn parse_args<'a>(
 
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
-            return Err(ecx.struct_span_err(p.token.span, "expected token: `,`"));
+            let mut err = ecx.struct_span_err(p.token.span, "expected token: `,`");
+            err.span_label(p.token.span, "expected `,`");
+            p.maybe_annotate_with_ascription(&mut err, false);
+            return Err(err);
         }
         if p.token == token::Eof {
             break;
