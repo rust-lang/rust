@@ -6,7 +6,6 @@ use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::attr;
 use syntax::ast;
-use syntax::print::pprust;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 use std::iter;
@@ -166,8 +165,6 @@ pub fn expand_test_or_bench(
         vec![],
         ast::ItemKind::ExternCrate(Some(sym::test))
     );
-
-    log::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
         // Access to libtest under a gensymed name
