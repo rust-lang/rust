@@ -1101,13 +1101,13 @@ struct BorrowRef<'b> {
 impl<'b> BorrowRef<'b> {
     #[inline]
     fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRef<'b>> {
-        let b = borrow.get();
-        if is_writing(b) || b == isize::max_value() {
+        let b = borrow.get().wrapping_add(1);
+        if !is_reading(b) {
             // If there's currently a writing borrow, or if incrementing the
             // refcount would overflow into a writing borrow.
             None
         } else {
-            borrow.set(b + 1);
+            borrow.set(b);
             Some(BorrowRef { borrow })
         }
     }
