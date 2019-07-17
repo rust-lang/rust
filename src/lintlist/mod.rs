@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 306] = [
+pub const ALL_LINTS: [Lint; 308] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -727,6 +727,20 @@ pub const ALL_LINTS: [Lint; 306] = [
         desc: "infinite iteration",
         deprecation: None,
         module: "infinite_iter",
+    },
+    Lint {
+        name: "inherent_to_string",
+        group: "style",
+        desc: "type implements inherent method `to_string()`, but should instead implement the `Display` trait",
+        deprecation: None,
+        module: "inherent_to_string",
+    },
+    Lint {
+        name: "inherent_to_string_shadow_display",
+        group: "correctness",
+        desc: "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait ",
+        deprecation: None,
+        module: "inherent_to_string",
     },
     Lint {
         name: "inline_always",

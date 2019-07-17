@@ -973,6 +973,8 @@ Released 2018-09-13
 [`ineffective_bit_mask`]: https://rust-lang.github.io/rust-clippy/master/index.html#ineffective_bit_mask
 [`infallible_destructuring_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#infallible_destructuring_match
 [`infinite_iter`]: https://rust-lang.github.io/rust-clippy/master/index.html#infinite_iter
+[`inherent_to_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#inherent_to_string
+[`inherent_to_string_shadow_display`]: https://rust-lang.github.io/rust-clippy/master/index.html#inherent_to_string_shadow_display
 [`inline_always`]: https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
 [`inline_fn_without_body`]: https://rust-lang.github.io/rust-clippy/master/index.html#inline_fn_without_body
 [`int_plus_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#int_plus_one

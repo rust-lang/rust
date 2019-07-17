@@ -195,6 +195,7 @@ pub mod indexing_slicing;
 pub mod infallible_destructuring_match;
 pub mod infinite_iter;
 pub mod inherent_impl;
+pub mod inherent_to_string;
 pub mod inline_fn_without_body;
 pub mod int_plus_one;
 pub mod integer_division;
@@ -585,6 +586,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box path_buf_push_overwrite::PathBufPushOverwrite);
     reg.register_late_lint_pass(box checked_conversions::CheckedConversions);
     reg.register_late_lint_pass(box integer_division::IntegerDivision);
+    reg.register_late_lint_pass(box inherent_to_string::InherentToString);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -725,6 +727,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH,
         infinite_iter::INFINITE_ITER,
+        inherent_to_string::INHERENT_TO_STRING,
+        inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY,
         inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
         int_plus_one::INT_PLUS_ONE,
         invalid_ref::INVALID_REF,
@@ -913,6 +917,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
         infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH,
+        inherent_to_string::INHERENT_TO_STRING,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
         let_if_seq::USELESS_LET_IF_SEQ,
@@ -1075,6 +1080,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         functions::NOT_UNSAFE_PTR_ARG_DEREF,
         indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         infinite_iter::INFINITE_ITER,
+        inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY,
         inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
         invalid_ref::INVALID_REF,
         literal_representation::MISTYPED_LITERAL_SUFFIXES,
