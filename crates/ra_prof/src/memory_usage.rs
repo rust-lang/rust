@@ -8,10 +8,10 @@ pub struct MemoryUsage {
 impl MemoryUsage {
     #[cfg(feature = "jemalloc")]
     pub fn current() -> MemoryUsage {
-        jemalloc_ctl::epoch().unwrap();
+        jemalloc_ctl::epoch::advance().unwrap();
         MemoryUsage {
-            allocated: Bytes(jemalloc_ctl::stats::allocated().unwrap()),
-            resident: Bytes(jemalloc_ctl::stats::resident().unwrap()),
+            allocated: Bytes(jemalloc_ctl::stats::allocated::read().unwrap()),
+            resident: Bytes(jemalloc_ctl::stats::resident::read().unwrap()),
         }
     }
 

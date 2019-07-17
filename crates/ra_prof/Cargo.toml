@@ -10,8 +10,8 @@ once_cell = "0.2.0"
 itertools = "0.8.0"
 backtrace = "0.3.28"
 cpuprofiler = { version = "0.0.3", optional = true }
-jemallocator = { version = "0.1.9", optional = true }
-jemalloc-ctl = { version = "0.2.0", optional = true }
+jemallocator = { version = "0.3.2", optional = true }
+jemalloc-ctl = { version = "0.3.2", optional = true }
 
 
 [features]
