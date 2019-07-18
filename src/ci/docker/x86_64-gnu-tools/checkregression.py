@@ -4,7 +4,7 @@
 import sys
 import json
 
-# Regressions for these tools does not cause failure
+# Regressions for these tools do not cause failure.
 REGRESSION_OK = ["rustc-guide", "miri"]
 
 if __name__ == '__main__':
