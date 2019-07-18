@@ -1,5 +1,5 @@
 error: missing return statement
-  --> $DIR/implicit_return.rs:8:5
+  --> $DIR/implicit_return.rs:9:5
    |
 LL |     true
    |     ^^^^ help: add `return` as shown: `return true`
@@ -7,58 +7,64 @@ LL |     true
    = note: `-D clippy::implicit-return` implied by `-D warnings`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:14:9
+  --> $DIR/implicit_return.rs:15:9
    |
 LL |         true
    |         ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:16:9
+  --> $DIR/implicit_return.rs:17:9
    |
 LL |         false
    |         ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:24:17
+  --> $DIR/implicit_return.rs:25:17
    |
 LL |         true => false,
    |                 ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:25:20
+  --> $DIR/implicit_return.rs:26:20
    |
 LL |         false => { true },
    |                    ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:40:9
+  --> $DIR/implicit_return.rs:41:9
    |
 LL |         break true;
    |         ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:48:13
+  --> $DIR/implicit_return.rs:49:13
    |
 LL |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:57:13
+  --> $DIR/implicit_return.rs:58:13
    |
 LL |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:75:18
+  --> $DIR/implicit_return.rs:76:18
    |
 LL |     let _ = || { true };
    |                  ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:76:16
+  --> $DIR/implicit_return.rs:77:16
    |
 LL |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`
 
-error: aborting due to 10 previous errors
+error: missing return statement
+  --> $DIR/implicit_return.rs:85:5
+   |
+LL |     format!("test {}", "test")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add `return` as shown: `return format!("test {}", "test")`
+
+error: aborting due to 11 previous errors
 
