@@ -32,6 +32,7 @@ mod trace_macros;
 
 pub mod global_allocator;
 pub mod proc_macro_decls;
+pub mod standard_library_imports;
 pub mod test_harness;
 
 use rustc_data_structures::sync::Lrc;
