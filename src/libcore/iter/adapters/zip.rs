@@ -2,6 +2,7 @@ use crate::cmp;
 use crate::ops::Try;
 
 use super::super::{Iterator, DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen};
+use super::super::LoopState;
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -152,14 +153,16 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
     }
 
     #[inline]
-    default fn try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R where
+    default fn try_fold<Acc, F, R>(&mut self, init: Acc, mut fold: F) -> R where
         Self: Sized, F: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
-        let mut accum = init;
-        while let Some(x) = ZipImpl::next(self) {
-            accum = f(accum, x)?;
-        }
-        Try::from_ok(accum)
+        let b = &mut self.b;
+        self.a.try_fold(init, move |acc, a_item| {
+            match b.next() {
+                None => LoopState::Break(Try::from_ok(acc)),
+                Some(b_item) => LoopState::from_try(fold(acc, (a_item, b_item))),
+            }
+        }).into_try()
     }
 }
 
@@ -252,6 +255,17 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R where
+        Self: Sized, F: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    {
+        let mut accum = init;
+        while let Some(x) = ZipImpl::next(self) {
+            accum = f(accum, x)?;
+        }
+        Try::from_ok(accum)
     }
 }
 
