@@ -5,17 +5,11 @@
 #![deny(rust_2018_idioms)]
 #![deny(unused_lifetimes)]
 
-#![feature(in_band_lifetimes)]
-#![feature(proc_macro_diagnostic)]
-#![feature(proc_macro_internals)]
-#![feature(proc_macro_span)]
 #![feature(decl_macro)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
-
-extern crate proc_macro;
 
 mod error_codes;
 
@@ -25,20 +19,18 @@ mod cfg;
 mod compile_error;
 mod concat;
 mod concat_idents;
+mod deriving;
 mod env;
 mod format;
 mod format_foreign;
 mod global_asm;
 mod log_syntax;
-mod proc_macro_server;
 mod source_util;
 mod test;
 mod test_case;
 mod trace_macros;
 
-pub mod deriving;
 pub mod proc_macro_decls;
-pub mod proc_macro_impl;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
