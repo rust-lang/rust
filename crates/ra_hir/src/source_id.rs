@@ -52,7 +52,7 @@ impl<N: AstNode> AstId<N> {
 #[derive(Debug)]
 pub(crate) struct FileAstId<N: AstNode> {
     raw: ErasedFileAstId,
-    _ty: PhantomData<N>,
+    _ty: PhantomData<fn() -> N>,
 }
 
 impl<N: AstNode> Clone for FileAstId<N> {
