@@ -4,7 +4,7 @@ use crate::borrow_check::nll::facts::AllFactsExt;
 use crate::borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
 use crate::borrow_check::nll::region_infer::values::RegionValueElements;
 use crate::dataflow::indexes::BorrowIndex;
-use crate::dataflow::move_paths::MoveData;
+use crate::dataflow::move_paths::{MoveData, MovePathIndex};
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::MirSource;
@@ -87,7 +87,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     errors_buffer: &mut Vec<Diagnostic>,
 ) -> (
     RegionInferenceContext<'tcx>,
-    Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex, Local>>>,
+    Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>>>,
     Option<ClosureRegionRequirements<'tcx>>,
 ) {
     let mut all_facts = if AllFacts::enabled(infcx.tcx) {

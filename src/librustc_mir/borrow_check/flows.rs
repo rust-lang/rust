@@ -12,7 +12,7 @@ use crate::borrow_check::location::LocationIndex;
 use polonius_engine::Output;
 
 use crate::dataflow::indexes::BorrowIndex;
-use crate::dataflow::move_paths::HasMoveData;
+use crate::dataflow::move_paths::{HasMoveData, MovePathIndex};
 use crate::dataflow::Borrows;
 use crate::dataflow::EverInitializedPlaces;
 use crate::dataflow::MaybeUninitializedPlaces;
@@ -21,7 +21,7 @@ use either::Either;
 use std::fmt;
 use std::rc::Rc;
 
-crate type PoloniusOutput = Output<RegionVid, BorrowIndex, LocationIndex, Local>;
+crate type PoloniusOutput = Output<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>;
 
 // (forced to be `pub` due to its use as an associated type below.)
 crate struct Flows<'b, 'tcx> {

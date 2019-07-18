@@ -134,7 +134,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
 
             // FIXME: this is temporary until we can generate our own initialization
             if self.cx.typeck.borrowck_context.all_facts.is_some() {
-                self.add_polonius_var_initialized_on_exit_for(local)
+                self.add_polonius_var_maybe_initialized_on_exit_for(local)
             }
 
             self.compute_use_live_points_for(local);
@@ -161,14 +161,14 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     //
     // FIXME: this analysis (the initialization tracking) should be
     // done in Polonius, but isn't yet.
-    fn add_polonius_var_initialized_on_exit_for(&mut self, local: Local) {
+    fn add_polonius_var_maybe_initialized_on_exit_for(&mut self, local: Local) {
         let move_path = self.cx.move_data.rev_lookup.find_local(local);
         let facts = self.cx.typeck.borrowck_context.all_facts.as_mut().unwrap();
         for block in self.cx.body.basic_blocks().indices() {
             debug!("polonius: generating initialization facts for {:?} in {:?}", local, block);
 
             // iterate through the block, applying the effects of each statement
-            // up to and including location, and populate `var_initialized_on_exit`
+            // up to and including location, and populate `var_maybe_initialized_on_exit`
             self.cx.flow_inits.reset_to_entry_of(block);
             let start_location = Location { block, statement_index: 0 };
             self.cx.flow_inits.apply_local_effect(start_location);
@@ -181,7 +181,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
                 // statement has not yet taken effect:
                 if self.cx.flow_inits.has_any_child_of(move_path).is_some() {
                     facts
-                        .var_initialized_on_exit
+                        .var_maybe_initialized_on_exit
                         .push((local, self.cx.location_table.start_index(current_location)));
                 }
 
@@ -190,7 +190,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
 
                 if self.cx.flow_inits.has_any_child_of(move_path).is_some() {
                     facts
-                        .var_initialized_on_exit
+                        .var_maybe_initialized_on_exit
                         .push((local, self.cx.location_table.mid_index(current_location)));
                 }
             }
@@ -199,7 +199,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
 
             if self.cx.flow_inits.has_any_child_of(move_path).is_some() {
                 facts
-                    .var_initialized_on_exit
+                    .var_maybe_initialized_on_exit
                     .push((local, self.cx.location_table.start_index(terminator_location)));
             }
 
@@ -208,7 +208,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
 
             if self.cx.flow_inits.has_any_child_of(move_path).is_some() {
                 facts
-                    .var_initialized_on_exit
+                    .var_maybe_initialized_on_exit
                     .push((local, self.cx.location_table.mid_index(terminator_location)));
             }
         }
