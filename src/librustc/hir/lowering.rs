@@ -63,7 +63,6 @@ use syntax::errors;
 use syntax::ext::hygiene::ExpnId;
 use syntax::print::pprust;
 use syntax::source_map::{respan, ExpnInfo, ExpnKind, DesugaringKind, Spanned};
-use syntax::std_inject;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::{self, Token};
@@ -241,7 +240,7 @@ pub fn lower_crate(
     dep_graph.assert_ignored();
 
     LoweringContext {
-        crate_root: std_inject::injected_crate_name().map(Symbol::intern),
+        crate_root: sess.parse_sess.injected_crate_name.try_get().copied(),
         sess,
         cstore,
         resolver,
