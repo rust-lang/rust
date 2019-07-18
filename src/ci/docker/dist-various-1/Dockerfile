@@ -112,6 +112,7 @@ ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
 ENV TARGETS=$TARGETS,thumbv8m.base-none-eabi
 ENV TARGETS=$TARGETS,thumbv8m.main-none-eabi
 ENV TARGETS=$TARGETS,thumbv8m.main-none-eabihf
+ENV TARGETS=$TARGETS,riscv32i-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imc-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv64imac-unknown-none-elf
