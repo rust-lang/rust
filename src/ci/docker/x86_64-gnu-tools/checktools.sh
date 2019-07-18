@@ -89,7 +89,7 @@ status_check() {
     check_dispatch $1 beta rustfmt src/tools/rustfmt
     check_dispatch $1 beta clippy-driver src/tools/clippy
     # These tools are not required on the beta/stable branches.
-    # They will still cause failure during the beta cutoff week, see `src/tools/publish_toolstate.py` for that.
+    # They will still cause failure during the beta cutoff week, see `checkregression.py` for that.
     check_dispatch $1 nightly miri src/tools/miri
     check_dispatch $1 nightly embedded-book src/doc/embedded-book
 }
