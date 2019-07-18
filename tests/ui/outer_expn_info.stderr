@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![deny(clippy::internal)]
    |         ^^^^^^^^^^^^^^^^
-   = note: #[deny(clippy::outer_expn_info)] implied by #[deny(clippy::internal)]
+   = note: `#[deny(clippy::outer_expn_info)]` implied by `#[deny(clippy::internal)]`
 
 error: aborting due to previous error
 

@@ -4,7 +4,7 @@ error: index out of bounds: the len is 4 but the index is 4
 LL |     x[4]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
    |     ^^^^
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: index out of bounds: the len is 4 but the index is 8
   --> $DIR/indexing_slicing.rs:19:5

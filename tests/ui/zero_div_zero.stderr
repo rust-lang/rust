@@ -4,7 +4,7 @@ error: equal expressions as operands to `/`
 LL |     let nan = 0.0 / 0.0;
    |               ^^^^^^^^^
    |
-   = note: #[deny(clippy::eq_op)] on by default
+   = note: `#[deny(clippy::eq_op)]` on by default
 
 error: constant division of 0.0 with 0.0 will always result in NaN
   --> $DIR/zero_div_zero.rs:4:15

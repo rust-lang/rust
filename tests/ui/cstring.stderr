@@ -4,7 +4,7 @@ error: you are getting the inner pointer of a temporary `CString`
 LL |     CString::new("foo").unwrap().as_ptr();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: #[deny(clippy::temporary_cstring_as_ptr)] on by default
+   = note: `#[deny(clippy::temporary_cstring_as_ptr)]` on by default
    = note: that pointer will be invalid outside this expression
 help: assign the `CString` to a variable to extend its lifetime
   --> $DIR/cstring.rs:7:5

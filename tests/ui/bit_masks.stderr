@@ -12,7 +12,7 @@ error: this operation will always return zero. This is likely not the intended o
 LL |     x & 0 == 0;
    |     ^^^^^
    |
-   = note: #[deny(clippy::erasing_op)] on by default
+   = note: `#[deny(clippy::erasing_op)]` on by default
 
 error: incompatible bit mask: `_ & 2` can never be equal to `1`
   --> $DIR/bit_masks.rs:17:5

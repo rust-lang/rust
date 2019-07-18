@@ -83,7 +83,7 @@ error: equal expressions as operands to `&&`
 LL |     match test && test {
    |           ^^^^^^^^^^^^
    |
-   = note: #[deny(clippy::eq_op)] on by default
+   = note: `#[deny(clippy::eq_op)]` on by default
 
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:36:5

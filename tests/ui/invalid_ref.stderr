@@ -4,7 +4,7 @@ error: reference to zeroed memory
 LL |     let ref_zero: &T = std::mem::zeroed(); // warning
    |                        ^^^^^^^^^^^^^^^^^^
    |
-   = note: #[deny(clippy::invalid_ref)] on by default
+   = note: `#[deny(clippy::invalid_ref)]` on by default
    = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 
 error: reference to zeroed memory
