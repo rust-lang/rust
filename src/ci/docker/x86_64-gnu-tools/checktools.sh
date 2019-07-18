@@ -42,7 +42,7 @@ check_tool_failed() {
 }
 
 # This function checks that if a tool's submodule changed, the tool's state must improve
-verify_status() {
+verify_submodule_changed() {
     echo "Verifying status of $1..."
     if echo "$CHANGED_FILES" | grep -q "^M[[:blank:]]$2$"; then
         echo "This PR updated '$2', verifying if status is 'test-pass'..."
@@ -67,7 +67,7 @@ verify_status() {
 check_dispatch() {
     if [ "$1" = submodule_changed ]; then
         # ignore $2 (branch id)
-        verify_status $3 $4
+        verify_submodule_changed $3 $4
     elif [ "$2" = beta ]; then
         echo "Requiring test passing for $3..."
         if check_tool_failed "$3"; then
@@ -76,7 +76,9 @@ check_dispatch() {
     fi
 }
 
-# list all tools here
+# List all tools here.
+# This function gets called with "submodule_changed" for each PR that changed a submodule,
+# and with "beta_required" for each PR that lands on beta/stable.
 status_check() {
     check_dispatch $1 beta book src/doc/book
     check_dispatch $1 beta nomicon src/doc/nomicon
@@ -86,7 +88,8 @@ status_check() {
     check_dispatch $1 beta rls src/tools/rls
     check_dispatch $1 beta rustfmt src/tools/rustfmt
     check_dispatch $1 beta clippy-driver src/tools/clippy
-    # these tools are not required for beta to successfully branch
+    # These tools are not required on the beta/stable branches.
+    # They will still cause failure during the beta cutoff week, see `src/tools/publish_toolstate.py` for that.
     check_dispatch $1 nightly miri src/tools/miri
     check_dispatch $1 nightly embedded-book src/doc/embedded-book
 }
@@ -97,6 +100,7 @@ status_check() {
 status_check "submodule_changed"
 
 CHECK_NOT="$(readlink -f "$(dirname $0)/checkregression.py")"
+# This callback is called by `commit_toolstate_change`, see `repo.sh`.
 change_toolstate() {
     # only update the history
     if python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" changed; then

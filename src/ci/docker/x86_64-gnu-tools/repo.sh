@@ -62,6 +62,10 @@ commit_toolstate_change() {
     MESSAGE_FILE="$1"
     shift
     for RETRY_COUNT in 1 2 3 4 5; do
+        # Call the callback; this will in the end call `change_toolstate` from
+        # `checktools.sh` if we are in the `auto` branch (pre-landing) or
+        # `src/tools/publish_toolstate.py` if we are in the `master` branch
+        # (post-landing).
         "$@"
         # `git commit` failing means nothing to commit.
         FAILURE=0
