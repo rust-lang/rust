@@ -24,7 +24,7 @@ use log::debug;
 declare_lint! {
     pub UNUSED_MUST_USE,
     Warn,
-    "unused result of a type flagged as #[must_use]",
+    "unused result of a type flagged as `#[must_use]`",
     report_in_external_macro: true
 }
 
@@ -316,7 +316,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
 
         let name = attr.name_or_empty();
         if !attr::is_used(attr) {
-            debug!("Emitting warning for: {:?}", attr);
+            debug!("emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
             let known_crate = attr_info.map(|&&(_, ty, ..)| {
@@ -332,7 +332,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
                 let msg = match attr.style {
                     ast::AttrStyle::Outer => {
                         "crate-level attribute should be an inner attribute: add an exclamation \
-                         mark: #![foo]"
+                         mark: `#![foo]`"
                     }
                     ast::AttrStyle::Inner => "crate-level attribute should be in the root module",
                 };
@@ -570,9 +570,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 let msg = match m {
                     adjustment::AutoBorrowMutability::Immutable =>
-                        "unnecessary allocation, use & instead",
+                        "unnecessary allocation, use `&` instead",
                     adjustment::AutoBorrowMutability::Mutable { .. }=>
-                        "unnecessary allocation, use &mut instead"
+                        "unnecessary allocation, use `&mut` instead"
                 };
                 cx.span_lint(UNUSED_ALLOCATION, e.span, msg);
             }

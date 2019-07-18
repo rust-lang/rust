@@ -591,7 +591,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
         if !self.impling_types.as_ref().unwrap().contains(&item.hir_id) {
             cx.span_lint(MISSING_DEBUG_IMPLEMENTATIONS,
                          item.span,
-                         "type does not implement `fmt::Debug`; consider adding #[derive(Debug)] \
+                         "type does not implement `fmt::Debug`; consider adding `#[derive(Debug)]` \
                           or a manual implementation")
         }
     }
@@ -867,7 +867,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                 if attr::contains_name(&it.attrs, sym::no_mangle) {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
-                    let msg = "const items should never be #[no_mangle]";
+                    let msg = "const items should never be `#[no_mangle]`";
                     let mut err = cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
 
                     // account for "pub const" (#45562)
@@ -1358,7 +1358,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
 declare_lint! {
     UNNAMEABLE_TEST_ITEMS,
     Warn,
-    "detects an item that cannot be named being marked as #[test_case]",
+    "detects an item that cannot be named being marked as `#[test_case]`",
     report_in_external_macro: true
 }
 
