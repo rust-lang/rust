@@ -457,7 +457,7 @@ fn configure_and_expand_inner<'a>(
     sess.profiler(|p| p.end_activity("macro expansion"));
 
     time(sess, "maybe building test harness", || {
-        syntax_ext::test_harness::modify_for_testing(
+        syntax_ext::test_harness::inject(
             &sess.parse_sess,
             &mut resolver,
             sess.opts.test,
@@ -486,7 +486,7 @@ fn configure_and_expand_inner<'a>(
             let num_crate_types = crate_types.len();
             let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
             let is_test_crate = sess.opts.test;
-            syntax_ext::proc_macro_decls::modify(
+            syntax_ext::proc_macro_harness::inject(
                 &sess.parse_sess,
                 &mut resolver,
                 krate,
