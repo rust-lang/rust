@@ -63,6 +63,7 @@ impl<'a, 'tcx> DoubleComparisons {
                 );
             }};
         }
+        #[rustfmt::skip]
         match (op, lkind, rkind) {
             (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Lt) | (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Eq) => {
                 lint_double_comparison!(<=)
