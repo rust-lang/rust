@@ -14,7 +14,7 @@ LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_
    |                                           |
    |                                           a raw memory access tried to access part of a pointer value as raw bytes
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:30:45

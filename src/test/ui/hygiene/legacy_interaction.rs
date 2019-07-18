@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 #![allow(dead_code)]
 // ignore-pretty pretty-printing is unhygienic
 
@@ -12,7 +12,7 @@ extern crate legacy_interaction;
 // ```rust
 //  macro_rules! m {
 //     () => {
-//         fn f() // (1)
+//         fn f() {} // (1)
 //         g() // (2)
 //     }
 // }

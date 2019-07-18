@@ -6,8 +6,6 @@ LL | #[derive(Clone)]
 ...
 LL | impl<T: Clone + ?Sized> Clone for Node<[T]> {
    | ------------------------------------------- first implementation here
-   |
-   = note: upstream crates may add new impl of trait `std::clone::Clone` for type `[_]` in future versions
 
 error: aborting due to previous error
 

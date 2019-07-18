@@ -6,7 +6,7 @@ LL | const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 };
    |                          |
    |                          "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
   --> $DIR/const_raw_ptr_ops.rs:12:28

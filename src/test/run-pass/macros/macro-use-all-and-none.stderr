@@ -4,5 +4,5 @@ warning: unused attribute
 LL | #[macro_use()]
    | ^^^^^^^^^^^^^^
    |
-   = note: #[warn(unused_attributes)] on by default
+   = note: `#[warn(unused_attributes)]` on by default
 

@@ -1,4 +1,3 @@
-// run-pass
 #![crate_type = "lib"]
 
 extern crate my_crate;

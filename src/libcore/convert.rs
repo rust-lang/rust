@@ -477,6 +477,7 @@ pub trait TryInto<T>: Sized {
 /// [`TryInto`]: trait.TryInto.html
 /// [`i32::MAX`]: ../../std/i32/constant.MAX.html
 /// [`!`]: ../../std/primitive.never.html
+/// [`Infallible`]: enum.Infallible.html
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.

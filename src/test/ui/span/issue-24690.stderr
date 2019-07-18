@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(unused_variables)] implied by #[warn(unused)]
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 
 warning: variable `theTwo` should have a snake case name
   --> $DIR/issue-24690.rs:12:9
@@ -17,7 +17,7 @@ warning: variable `theTwo` should have a snake case name
 LL |     let theTwo = 2;
    |         ^^^^^^ help: convert the identifier to snake case: `the_two`
    |
-   = note: #[warn(non_snake_case)] on by default
+   = note: `#[warn(non_snake_case)]` on by default
 
 warning: variable `theOtherTwo` should have a snake case name
   --> $DIR/issue-24690.rs:13:9

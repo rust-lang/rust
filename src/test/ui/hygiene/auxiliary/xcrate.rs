@@ -1,4 +1,3 @@
-// run-pass
 #![feature(decl_macro)]
 #![allow(unused)]
 

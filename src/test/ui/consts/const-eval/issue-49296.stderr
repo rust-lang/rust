@@ -6,7 +6,7 @@ LL | const X: u64 = *wat(42);
    |                |
    |                dangling pointer was dereferenced
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to previous error
 

@@ -4,7 +4,7 @@ error: index out of bounds: the len is 3 but the index is 4
 LL |     &{[1, 2, 3][4]};
    |       ^^^^^^^^^^^^
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: this expression will panic at runtime
   --> $DIR/array-literal-index-oob.rs:2:5

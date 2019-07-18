@@ -28,7 +28,7 @@ warning: use of deprecated item 'deprecated_macro': deprecation reason
 LL |     deprecated_macro!();
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: #[warn(deprecated)] on by default
+   = note: `#[warn(deprecated)]` on by default
 
 warning: use of deprecated item 'local_deprecated': local deprecation reason
   --> $DIR/macro-stability.rs:26:5

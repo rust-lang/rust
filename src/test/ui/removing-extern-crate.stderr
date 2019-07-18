@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![warn(rust_2018_idioms)]
    |         ^^^^^^^^^^^^^^^^
-   = note: #[warn(unused_extern_crates)] implied by #[warn(rust_2018_idioms)]
+   = note: `#[warn(unused_extern_crates)]` implied by `#[warn(rust_2018_idioms)]`
 
 warning: unused extern crate
   --> $DIR/removing-extern-crate.rs:10:1
