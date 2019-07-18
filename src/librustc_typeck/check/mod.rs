@@ -1320,7 +1320,7 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, substs: SubstsRef<'tcx>,
             tcx.sess, span, E0720,
             "opaque type expands to a recursive type",
         );
-        err.span_label(span, "expands to self-referential type");
+        err.span_label(span, "expands to a recursive type");
         if let ty::Opaque(..) = partially_expanded_type.sty {
             err.note("type resolves to itself");
         } else {

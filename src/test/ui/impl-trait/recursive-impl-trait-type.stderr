@@ -2,7 +2,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:6:22
    |
 LL | fn option(i: i32) -> impl Sized {
-   |                      ^^^^^^^^^^ expands to self-referential type
+   |                      ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `std::option::Option<(impl Sized, i32)>`
 
@@ -10,7 +10,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:14:15
    |
 LL | fn tuple() -> impl Sized {
-   |               ^^^^^^^^^^ expands to self-referential type
+   |               ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `(impl Sized,)`
 
@@ -18,7 +18,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:18:15
    |
 LL | fn array() -> impl Sized {
-   |               ^^^^^^^^^^ expands to self-referential type
+   |               ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `[impl Sized; 1]`
 
@@ -26,7 +26,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:22:13
    |
 LL | fn ptr() -> impl Sized {
-   |             ^^^^^^^^^^ expands to self-referential type
+   |             ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `*const impl Sized`
 
@@ -34,7 +34,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:26:16
    |
 LL | fn fn_ptr() -> impl Sized {
-   |                ^^^^^^^^^^ expands to self-referential type
+   |                ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `fn() -> impl Sized`
 
@@ -42,7 +42,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:30:25
    |
 LL | fn closure_capture() -> impl Sized {
-   |                         ^^^^^^^^^^ expands to self-referential type
+   |                         ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `[closure@$DIR/recursive-impl-trait-type.rs:32:5: 32:19 x:impl Sized]`
 
@@ -50,7 +50,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:35:29
    |
 LL | fn closure_ref_capture() -> impl Sized {
-   |                             ^^^^^^^^^^ expands to self-referential type
+   |                             ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `[closure@$DIR/recursive-impl-trait-type.rs:37:5: 37:20 x:impl Sized]`
 
@@ -58,7 +58,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:40:21
    |
 LL | fn closure_sig() -> impl Sized {
-   |                     ^^^^^^^^^^ expands to self-referential type
+   |                     ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `[closure@$DIR/recursive-impl-trait-type.rs:41:5: 41:21]`
 
@@ -66,7 +66,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:44:23
    |
 LL | fn generator_sig() -> impl Sized {
-   |                       ^^^^^^^^^^ expands to self-referential type
+   |                       ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `[closure@$DIR/recursive-impl-trait-type.rs:45:5: 45:23]`
 
@@ -74,7 +74,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:48:27
    |
 LL | fn generator_capture() -> impl Sized {
-   |                           ^^^^^^^^^^ expands to self-referential type
+   |                           ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `[generator@$DIR/recursive-impl-trait-type.rs:50:5: 50:26 x:impl Sized {()}]`
 
@@ -82,7 +82,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:53:26
    |
 LL | fn substs_change<T>() -> impl Sized {
-   |                          ^^^^^^^^^^ expands to self-referential type
+   |                          ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `(impl Sized,)`
 
@@ -90,7 +90,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:57:24
    |
 LL | fn generator_hold() -> impl Sized {
-   |                        ^^^^^^^^^^ expands to self-referential type
+   |                        ^^^^^^^^^^ expands to a recursive type
    |
    = note: expanded type is `[generator@$DIR/recursive-impl-trait-type.rs:58:5: 62:6 {impl Sized, ()}]`
 
@@ -98,7 +98,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:69:26
    |
 LL | fn mutual_recursion() -> impl Sync {
-   |                          ^^^^^^^^^ expands to self-referential type
+   |                          ^^^^^^^^^ expands to a recursive type
    |
    = note: type resolves to itself
 
@@ -106,7 +106,7 @@ error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type.rs:73:28
    |
 LL | fn mutual_recursion_b() -> impl Sized {
-   |                            ^^^^^^^^^^ expands to self-referential type
+   |                            ^^^^^^^^^^ expands to a recursive type
    |
    = note: type resolves to itself
 
