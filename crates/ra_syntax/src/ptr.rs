@@ -36,7 +36,7 @@ impl SyntaxNodePtr {
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct AstPtr<N: AstNode> {
     raw: SyntaxNodePtr,
-    _ty: PhantomData<N>,
+    _ty: PhantomData<fn() -> N>,
 }
 
 impl<N: AstNode> Copy for AstPtr<N> {}
