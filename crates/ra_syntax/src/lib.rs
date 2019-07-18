@@ -38,7 +38,7 @@ use ra_text_edit::AtomTextEdit;
 use crate::syntax_node::GreenNode;
 
 pub use crate::{
-    ast::AstNode,
+    ast::{AstNode, Pat, PatKind},
     parsing::{classify_literal, tokenize, Token},
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::{Location, SyntaxError, SyntaxErrorKind},

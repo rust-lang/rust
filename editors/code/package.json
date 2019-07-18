@@ -433,6 +433,15 @@
                 }
             },
             {
+                "id": "ralsp.variable.mut",
+                "description": "Color for mutable variables",
+                "defaults": {
+                    "dark": "#4e65c9",
+                    "light": "#263199",
+                    "highContrast": "#4e65c9"
+                }
+            },
+            {
                 "id": "ralsp.module",
                 "description": "Color for modules",
                 "defaults": {

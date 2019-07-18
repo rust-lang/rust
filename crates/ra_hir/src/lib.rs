@@ -68,6 +68,7 @@ pub use self::{
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     source_id::{AstIdMap, ErasedFileAstId},
     ty::{display::HirDisplay, ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor},
+    type_ref::Mutability,
 };
 
 pub use self::code_model::{

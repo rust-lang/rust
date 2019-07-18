@@ -1,9 +1,11 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use hir::{Mutability, Ty};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    ast, AstNode, Direction, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T,
+    ast, AstNode, Direction, Pat, PatKind, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*,
+    TextRange, T,
 };
 
 use crate::{db::RootDatabase, FileId};
@@ -28,6 +30,27 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
         | T![return] => true,
         _ => false,
     }
+}
+
+fn is_variable_mutable(db: &RootDatabase, analyzer: &hir::SourceAnalyzer, pat: &Pat) -> bool {
+    let ty = analyzer.type_of_pat(db, pat).unwrap_or(Ty::Unknown);
+    let is_ty_mut = {
+        if let Some((_, mutability)) = ty.as_reference() {
+            match mutability {
+                Mutability::Shared => false,
+                Mutability::Mut => true,
+            }
+        } else {
+            false
+        }
+    };
+
+    let is_pat_mut = match pat.kind() {
+        PatKind::BindPat(bind_pat) => bind_pat.is_mutable(),
+        _ => false,
+    };
+
+    is_ty_mut || is_pat_mut
 }
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
@@ -97,7 +120,11 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                                 calc_binding_hash(file_id, &text, *shadow_count)
                             });
 
-                            "variable"
+                            if is_variable_mutable(db, &analyzer, ptr.to_node(root)) {
+                                "variable.mut"
+                            } else {
+                                "variable"
+                            }
                         }
                         Some(SelfParam(_)) => "type",
                         Some(GenericParam(_)) => "type",
@@ -109,7 +136,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             }
             NAME => {
                 if let Some(name) = node.as_node().and_then(ast::Name::cast) {
-                    if name.syntax().ancestors().any(|x| ast::BindPat::cast(x).is_some()) {
+                    let analyzer = hir::SourceAnalyzer::new(db, file_id, name.syntax(), None);
+                    if let Some(pat) = name.syntax().ancestors().find_map(Pat::cast) {
                         binding_hash = Some({
                             let text = name.syntax().text().to_smol_string();
                             let shadow_count =
@@ -117,7 +145,12 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                             *shadow_count += 1;
                             calc_binding_hash(file_id, &text, *shadow_count)
                         });
-                        "variable"
+
+                        if is_variable_mutable(db, &analyzer, pat) {
+                            "variable.mut"
+                        } else {
+                            "variable"
+                        }
                     } else if name
                         .syntax()
                         .parent()
@@ -241,22 +274,23 @@ fn html_escape(text: &str) -> String {
 
 const STYLE: &str = "
 <style>
-body       { margin: 0; }
-pre        { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
+body                { margin: 0; }
+pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
 
-.comment   { color: #7F9F7F; }
-.string    { color: #CC9393; }
-.function  { color: #93E0E3; }
-.parameter { color: #94BFF3; }
-.builtin   { color: #DD6718; }
-.text      { color: #DCDCCC; }
-.attribute { color: #BFEBBF; }
-.literal   { color: #DFAF8F; }
-.macro     { color: #DFAF8F; }
+.comment            { color: #7F9F7F; }
+.string             { color: #CC9393; }
+.function           { color: #93E0E3; }
+.parameter          { color: #94BFF3; }
+.builtin            { color: #DD6718; }
+.text               { color: #DCDCCC; }
+.attribute          { color: #BFEBBF; }
+.literal            { color: #DFAF8F; }
+.macro              { color: #DFAF8F; }
+.variable\\.mut     { color: #DFAF8F; }
 
-.keyword           { color: #F0DFAF; }
-.keyword\\.unsafe  { color: #F0DFAF; font-weight: bold; }
-.keyword\\.control { color: #DC8CC3; }
+.keyword            { color: #F0DFAF; }
+.keyword\\.unsafe   { color: #F0DFAF; font-weight: bold; }
+.keyword\\.control  { color: #DC8CC3; }
 </style>
 ";
 
@@ -289,12 +323,18 @@ fn main() {
         vec.push(Foo { x: 0, y: 1 });
     }
     unsafe { vec.set_len(0); }
+
+    let mut x = 42;
+    let y = &mut x;
+    let z = &y;
+
+    y;
 }
 "#
             .trim(),
         );
         let dst_file = project_dir().join("crates/ra_ide_api/src/snapshots/highlighting.html");
-        let actual_html = &analysis.highlight_as_html(file_id, true).unwrap();
+        let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
         let expected_html = &read_text(&dst_file);
         std::fs::write(dst_file, &actual_html).unwrap();
         assert_eq_text!(expected_html, actual_html);

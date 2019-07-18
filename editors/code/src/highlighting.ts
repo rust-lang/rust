@@ -56,6 +56,7 @@ export class Highlighter {
             colorContrib('literal'),
             colorContrib('macro'),
             colorContrib('variable'),
+            colorContrib('variable.mut'),
             colorContrib('field'),
             colorContrib('module')
         ];
