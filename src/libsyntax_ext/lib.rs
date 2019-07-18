@@ -1,4 +1,5 @@
-//! Syntax extensions in the Rust compiler.
+//! This crate contains implementations of built-in macros and other code generating facilities
+//! injecting code into the crate before it is lowered to HIR.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
@@ -32,7 +33,7 @@ mod source_util;
 mod test;
 mod trace_macros;
 
-pub mod proc_macro_decls;
+pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
 
