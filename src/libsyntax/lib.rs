@@ -18,11 +18,16 @@
 #![feature(label_break_value)]
 #![feature(mem_take)]
 #![feature(nll)]
+#![feature(proc_macro_diagnostic)]
+#![feature(proc_macro_internals)]
+#![feature(proc_macro_span)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
+
+extern crate proc_macro;
 
 pub use errors;
 use rustc_data_structures::sync::Lock;
@@ -162,13 +167,14 @@ pub mod print {
 }
 
 pub mod ext {
+    mod placeholders;
+    mod proc_macro_server;
+
     pub use syntax_pos::hygiene;
     pub mod allocator;
     pub mod base;
     pub mod build;
-    pub mod derive;
     pub mod expand;
-    pub mod placeholders;
     pub mod proc_macro;
 
     pub mod tt {
