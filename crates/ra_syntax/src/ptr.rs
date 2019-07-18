@@ -1,5 +1,6 @@
-use crate::{AstNode, SyntaxKind, SyntaxNode, TextRange};
 use std::{iter::successors, marker::PhantomData};
+
+use crate::{AstNode, SyntaxKind, SyntaxNode, TextRange};
 
 /// A pointer to a syntax node inside a file. It can be used to remember a
 /// specific node across reparses of the same file.
@@ -14,9 +15,9 @@ impl SyntaxNodePtr {
         SyntaxNodePtr { range: node.range(), kind: node.kind() }
     }
 
-    pub fn to_node(self, root: &SyntaxNode) -> &SyntaxNode {
+    pub fn to_node(self, root: &SyntaxNode) -> SyntaxNode {
         assert!(root.parent().is_none());
-        successors(Some(root), |&node| {
+        successors(Some(root.clone()), |node| {
             node.children().find(|it| self.range.is_subrange(&it.range()))
         })
         .find(|it| it.range() == self.range && it.kind() == self.kind)
@@ -51,7 +52,7 @@ impl<N: AstNode> AstPtr<N> {
         AstPtr { raw: SyntaxNodePtr::new(node.syntax()), _ty: PhantomData }
     }
 
-    pub fn to_node(self, root: &SyntaxNode) -> &N {
+    pub fn to_node(self, root: &SyntaxNode) -> N {
         let syntax_node = self.raw.to_node(root);
         N::cast(syntax_node).unwrap()
     }
@@ -75,5 +76,5 @@ fn test_local_syntax_ptr() {
     let field = file.syntax().descendants().find_map(ast::NamedFieldDef::cast).unwrap();
     let ptr = SyntaxNodePtr::new(field.syntax());
     let field_syntax = ptr.to_node(file.syntax());
-    assert_eq!(field.syntax(), &*field_syntax);
+    assert_eq!(field.syntax(), &field_syntax);
 }

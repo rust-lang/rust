@@ -5,7 +5,7 @@ use crate::{
     SyntaxKind::*,
 };
 
-pub(crate) fn validate_block_node(node: &ast::Block, errors: &mut Vec<SyntaxError>) {
+pub(crate) fn validate_block_node(node: ast::Block, errors: &mut Vec<SyntaxError>) {
     if let Some(parent) = node.syntax().parent() {
         match parent.kind() {
             FN_DEF => return,

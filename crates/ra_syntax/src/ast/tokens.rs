@@ -6,23 +6,23 @@ use crate::{
     SyntaxToken,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Comment<'a>(SyntaxToken<'a>);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Comment(SyntaxToken);
 
-impl<'a> AstToken<'a> for Comment<'a> {
-    fn cast(token: SyntaxToken<'a>) -> Option<Self> {
+impl AstToken for Comment {
+    fn cast(token: SyntaxToken) -> Option<Self> {
         if token.kind() == COMMENT {
             Some(Comment(token))
         } else {
             None
         }
     }
-    fn syntax(&self) -> SyntaxToken<'a> {
-        self.0
+    fn syntax(&self) -> &SyntaxToken {
+        &self.0
     }
 }
 
-impl<'a> Comment<'a> {
+impl Comment {
     pub fn kind(&self) -> CommentKind {
         kind_by_prefix(self.text())
     }
@@ -90,22 +90,22 @@ fn prefix_by_kind(kind: CommentKind) -> &'static str {
     unreachable!()
 }
 
-pub struct Whitespace<'a>(SyntaxToken<'a>);
+pub struct Whitespace(SyntaxToken);
 
-impl<'a> AstToken<'a> for Whitespace<'a> {
-    fn cast(token: SyntaxToken<'a>) -> Option<Self> {
+impl AstToken for Whitespace {
+    fn cast(token: SyntaxToken) -> Option<Self> {
         if token.kind() == WHITESPACE {
             Some(Whitespace(token))
         } else {
             None
         }
     }
-    fn syntax(&self) -> SyntaxToken<'a> {
-        self.0
+    fn syntax(&self) -> &SyntaxToken {
+        &self.0
     }
 }
 
-impl<'a> Whitespace<'a> {
+impl Whitespace {
     pub fn spans_multiple_lines(&self) -> bool {
         let text = self.text();
         text.find('\n').map_or(false, |idx| text[idx + 1..].contains('\n'))

@@ -10,37 +10,37 @@ use crate::{
 };
 
 pub trait TypeAscriptionOwner: AstNode {
-    fn ascribed_type(&self) -> Option<&ast::TypeRef> {
+    fn ascribed_type(&self) -> Option<ast::TypeRef> {
         child_opt(self)
     }
 }
 
 pub trait NameOwner: AstNode {
-    fn name(&self) -> Option<&ast::Name> {
+    fn name(&self) -> Option<ast::Name> {
         child_opt(self)
     }
 }
 
 pub trait VisibilityOwner: AstNode {
-    fn visibility(&self) -> Option<&ast::Visibility> {
+    fn visibility(&self) -> Option<ast::Visibility> {
         child_opt(self)
     }
 }
 
 pub trait LoopBodyOwner: AstNode {
-    fn loop_body(&self) -> Option<&ast::Block> {
+    fn loop_body(&self) -> Option<ast::Block> {
         child_opt(self)
     }
 }
 
 pub trait TryBlockBodyOwner: AstNode {
-    fn try_body(&self) -> Option<&ast::Block> {
+    fn try_body(&self) -> Option<ast::Block> {
         child_opt(self)
     }
 }
 
 pub trait ArgListOwner: AstNode {
-    fn arg_list(&self) -> Option<&ast::ArgList> {
+    fn arg_list(&self) -> Option<ast::ArgList> {
         child_opt(self)
     }
 }
@@ -51,10 +51,10 @@ pub trait FnDefOwner: AstNode {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ItemOrMacro<'a> {
-    Item(&'a ast::ModuleItem),
-    Macro(&'a ast::MacroCall),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ItemOrMacro {
+    Item(ast::ModuleItem),
+    Macro(ast::MacroCall),
 }
 
 pub trait ModuleItemOwner: AstNode {
@@ -67,14 +67,14 @@ pub trait ModuleItemOwner: AstNode {
 }
 
 #[derive(Debug)]
-pub struct ItemOrMacroIter<'a>(SyntaxNodeChildren<'a>);
+pub struct ItemOrMacroIter(SyntaxNodeChildren);
 
-impl<'a> Iterator for ItemOrMacroIter<'a> {
-    type Item = ItemOrMacro<'a>;
-    fn next(&mut self) -> Option<ItemOrMacro<'a>> {
+impl Iterator for ItemOrMacroIter {
+    type Item = ItemOrMacro;
+    fn next(&mut self) -> Option<ItemOrMacro> {
         loop {
             let n = self.0.next()?;
-            if let Some(item) = ast::ModuleItem::cast(n) {
+            if let Some(item) = ast::ModuleItem::cast(n.clone()) {
                 return Some(ItemOrMacro::Item(item));
             }
             if let Some(call) = ast::MacroCall::cast(n) {
@@ -85,17 +85,17 @@ impl<'a> Iterator for ItemOrMacroIter<'a> {
 }
 
 pub trait TypeParamsOwner: AstNode {
-    fn type_param_list(&self) -> Option<&ast::TypeParamList> {
+    fn type_param_list(&self) -> Option<ast::TypeParamList> {
         child_opt(self)
     }
 
-    fn where_clause(&self) -> Option<&ast::WhereClause> {
+    fn where_clause(&self) -> Option<ast::WhereClause> {
         child_opt(self)
     }
 }
 
 pub trait TypeBoundsOwner: AstNode {
-    fn type_bound_list(&self) -> Option<&ast::TypeBoundList> {
+    fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
         child_opt(self)
     }
 }
@@ -148,19 +148,19 @@ pub trait DocCommentsOwner: AstNode {
     }
 }
 
-pub struct CommentIter<'a> {
-    iter: SyntaxElementChildren<'a>,
+pub struct CommentIter {
+    iter: SyntaxElementChildren,
 }
 
-impl<'a> Iterator for CommentIter<'a> {
-    type Item = ast::Comment<'a>;
-    fn next(&mut self) -> Option<ast::Comment<'a>> {
-        self.iter.by_ref().find_map(|el| el.as_token().and_then(ast::Comment::cast))
+impl Iterator for CommentIter {
+    type Item = ast::Comment;
+    fn next(&mut self) -> Option<ast::Comment> {
+        self.iter.by_ref().find_map(|el| el.as_token().cloned().and_then(ast::Comment::cast))
     }
 }
 
 pub trait DefaultTypeParamOwner: AstNode {
-    fn default_type(&self) -> Option<&ast::PathType> {
+    fn default_type(&self) -> Option<ast::PathType> {
         child_opt(self)
     }
 }

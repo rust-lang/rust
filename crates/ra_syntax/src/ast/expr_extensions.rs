@@ -8,20 +8,20 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ElseBranch<'a> {
-    Block(&'a ast::Block),
-    IfExpr(&'a ast::IfExpr),
+pub enum ElseBranch {
+    Block(ast::Block),
+    IfExpr(ast::IfExpr),
 }
 
 impl ast::IfExpr {
-    pub fn then_branch(&self) -> Option<&ast::Block> {
+    pub fn then_branch(&self) -> Option<ast::Block> {
         self.blocks().nth(0)
     }
     pub fn else_branch(&self) -> Option<ElseBranch> {
         let res = match self.blocks().nth(1) {
             Some(block) => ElseBranch::Block(block),
             None => {
-                let elif: &ast::IfExpr = child_opt(self)?;
+                let elif: ast::IfExpr = child_opt(self)?;
                 ElseBranch::IfExpr(elif)
             }
         };
@@ -60,7 +60,7 @@ impl ast::PrefixExpr {
     }
 
     pub fn op_token(&self) -> Option<SyntaxToken> {
-        self.syntax().first_child_or_token()?.as_token()
+        self.syntax().first_child_or_token()?.as_token().cloned()
     }
 }
 
@@ -132,7 +132,7 @@ pub enum BinOp {
 
 impl ast::BinExpr {
     fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
-        self.syntax().children_with_tokens().filter_map(|it| it.as_token()).find_map(|c| {
+        self.syntax().children_with_tokens().filter_map(|it| it.as_token().cloned()).find_map(|c| {
             match c.kind() {
                 T![||] => Some((c, BinOp::BooleanOr)),
                 T![&&] => Some((c, BinOp::BooleanAnd)),
@@ -178,15 +178,15 @@ impl ast::BinExpr {
         self.op_details().map(|t| t.0)
     }
 
-    pub fn lhs(&self) -> Option<&ast::Expr> {
+    pub fn lhs(&self) -> Option<ast::Expr> {
         children(self).nth(0)
     }
 
-    pub fn rhs(&self) -> Option<&ast::Expr> {
+    pub fn rhs(&self) -> Option<ast::Expr> {
         children(self).nth(1)
     }
 
-    pub fn sub_exprs(&self) -> (Option<&ast::Expr>, Option<&ast::Expr>) {
+    pub fn sub_exprs(&self) -> (Option<ast::Expr>, Option<ast::Expr>) {
         let mut children = children(self);
         let first = children.next();
         let second = children.next();
@@ -194,9 +194,9 @@ impl ast::BinExpr {
     }
 }
 
-pub enum ArrayExprKind<'a> {
-    Repeat { initializer: Option<&'a ast::Expr>, repeat: Option<&'a ast::Expr> },
-    ElementList(AstChildren<'a, ast::Expr>),
+pub enum ArrayExprKind {
+    Repeat { initializer: Option<ast::Expr>, repeat: Option<ast::Expr> },
+    ElementList(AstChildren<ast::Expr>),
 }
 
 impl ast::ArrayExpr {
@@ -275,12 +275,12 @@ impl ast::Literal {
 #[test]
 fn test_literal_with_attr() {
     let parse = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);
-    let lit = parse.tree.syntax().descendants().find_map(ast::Literal::cast).unwrap();
+    let lit = parse.tree().syntax().descendants().find_map(ast::Literal::cast).unwrap();
     assert_eq!(lit.token().text(), r#""Hello""#);
 }
 
 impl ast::NamedField {
-    pub fn parent_struct_lit(&self) -> &ast::StructLit {
+    pub fn parent_struct_lit(&self) -> ast::StructLit {
         self.syntax().ancestors().find_map(ast::StructLit::cast).unwrap()
     }
 }

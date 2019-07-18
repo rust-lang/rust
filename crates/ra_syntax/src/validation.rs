@@ -19,13 +19,13 @@ pub(crate) fn validate(file: &SourceFile) -> Vec<SyntaxError> {
             .visit::<ast::Literal, _>(validate_literal)
             .visit::<ast::Block, _>(block::validate_block_node)
             .visit::<ast::FieldExpr, _>(field_expr::validate_field_expr_node)
-            .accept(node);
+            .accept(&node);
     }
     errors
 }
 
 // FIXME: kill duplication
-fn validate_literal(literal: &ast::Literal, acc: &mut Vec<SyntaxError>) {
+fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     let token = literal.token();
     let text = token.text().as_str();
     match token.kind() {
