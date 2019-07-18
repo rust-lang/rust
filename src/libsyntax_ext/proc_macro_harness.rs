@@ -38,7 +38,7 @@ struct CollectProcMacros<'a> {
     is_test_crate: bool,
 }
 
-pub fn modify(sess: &ParseSess,
+pub fn inject(sess: &ParseSess,
               resolver: &mut dyn (::syntax::ext::base::Resolver),
               mut krate: ast::Crate,
               is_proc_macro_crate: bool,

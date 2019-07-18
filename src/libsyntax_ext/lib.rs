@@ -1,4 +1,5 @@
-//! Syntax extensions in the Rust compiler.
+//! This crate contains implementations of built-in macros and other code generating facilities
+//! injecting code into the crate before it is lowered to HIR.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
@@ -10,16 +11,12 @@
 #![feature(mem_take)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(unicode_internals)]
-
-extern crate proc_macro;
 
 use crate::deriving::*;
 
 use syntax::ast::Ident;
 use syntax::edition::Edition;
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
-use syntax::ext::source_util;
 use syntax::symbol::sym;
 
 mod error_codes;
@@ -42,7 +39,7 @@ mod test;
 mod trace_macros;
 
 pub mod plugin_macro_defs;
-pub mod proc_macro_decls;
+pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
 
