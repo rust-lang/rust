@@ -559,10 +559,10 @@ declare_features! (
     // Allows `if/while p && let q = r && ...` chains.
     (active, let_chains, "1.37.0", Some(53667), None),
 
-    // #[repr(transparent)] on enums.
+    // Allows #[repr(transparent)] on enums (RFC 2645).
     (active, transparent_enums, "1.37.0", Some(60405), None),
 
-    // #[repr(transparent)] on unions.
+    // Allows #[repr(transparent)] on unions (RFC 2645).
     (active, transparent_unions, "1.37.0", Some(60405), None),
 
     // Allows explicit discriminants on non-unit enum variants.
@@ -576,6 +576,9 @@ declare_features! (
 
     // Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests
     (active, cfg_doctest, "1.37.0", Some(62210), None),
+
+    // Allows `[x; N]` where `x` is a constant (RFC 2203).
+    (active, const_in_array_repeat_expressions, "1.37.0", Some(49147), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

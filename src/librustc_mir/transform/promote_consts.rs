@@ -60,6 +60,9 @@ pub enum Candidate {
     /// Borrow of a constant temporary.
     Ref(Location),
 
+    /// Promotion of the `x` in `[x; 32]`.
+    Repeat(Location),
+
     /// Currently applied to function calls where the callee has the unstable
     /// `#[rustc_args_required_const]` attribute as well as the SIMD shuffle
     /// intrinsic. The intrinsic requires the arguments are indeed constant and
@@ -322,6 +325,17 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         _ => bug!()
                     }
                 }
+                Candidate::Repeat(loc) => {
+                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    match statement.kind {
+                        StatementKind::Assign(_, box Rvalue::Repeat(ref mut operand, _)) => {
+                            let ty = operand.ty(local_decls, self.tcx);
+                            let span = statement.source_info.span;
+                            mem::replace(operand, Operand::Copy(promoted_place(ty, span)))
+                        }
+                        _ => bug!()
+                    }
+                },
                 Candidate::Argument { bb, index } => {
                     let terminator = blocks[bb].terminator_mut();
                     match terminator.kind {
@@ -380,6 +394,7 @@ pub fn promote_candidates<'tcx>(
 
     for candidate in candidates.into_iter().rev() {
         match candidate {
+            Candidate::Repeat(Location { block, statement_index }) |
             Candidate::Ref(Location { block, statement_index }) => {
                 match body[block].statements[statement_index].kind {
                     StatementKind::Assign(Place::Base(PlaceBase::Local(local)), _) => {

@@ -728,84 +728,97 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let mut qualifs = self.qualifs_in_value(source);
 
-        if let ValueSource::Rvalue(&Rvalue::Ref(_, kind, ref place)) = source {
-            // Getting `true` from `HasMutInterior::in_rvalue` means
-            // the borrowed place is disallowed from being borrowed,
-            // due to either a mutable borrow (with some exceptions),
-            // or an shared borrow of a value with interior mutability.
-            // Then `HasMutInterior` is replaced with `IsNotPromotable`,
-            // to avoid duplicate errors (e.g. from reborrowing).
-            if qualifs[HasMutInterior] {
-                qualifs[HasMutInterior] = false;
-                qualifs[IsNotPromotable] = true;
+        match source {
+            ValueSource::Rvalue(&Rvalue::Ref(_, kind, ref place)) => {
+                // Getting `true` from `HasMutInterior::in_rvalue` means
+                // the borrowed place is disallowed from being borrowed,
+                // due to either a mutable borrow (with some exceptions),
+                // or an shared borrow of a value with interior mutability.
+                // Then `HasMutInterior` is replaced with `IsNotPromotable`,
+                // to avoid duplicate errors (e.g. from reborrowing).
+                if qualifs[HasMutInterior] {
+                    qualifs[HasMutInterior] = false;
+                    qualifs[IsNotPromotable] = true;
 
-                if self.mode.requires_const_checking() {
-                    if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-                        if let BorrowKind::Mut { .. } = kind {
-                            let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
-                                                        "references in {}s may only refer \
-                                                            to immutable values", self.mode);
-                            err.span_label(self.span, format!("{}s require immutable values",
-                                                                self.mode));
-                            if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                                err.note("References in statics and constants may only refer to \
-                                        immutable values.\n\n\
-                                        Statics are shared everywhere, and if they refer to \
-                                        mutable data one might violate memory safety since \
-                                        holding multiple mutable references to shared data is \
-                                        not allowed.\n\n\
-                                        If you really want global mutable state, try using \
-                                        static mut or a global UnsafeCell.");
+                    if self.mode.requires_const_checking() {
+                        if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                            if let BorrowKind::Mut { .. } = kind {
+                                let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
+                                                               "references in {}s may only refer \
+                                                                to immutable values", self.mode);
+                                err.span_label(self.span, format!("{}s require immutable values",
+                                                                    self.mode));
+                                if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                                    err.note("References in statics and constants may only refer \
+                                              to immutable values.\n\n\
+                                              Statics are shared everywhere, and if they refer to \
+                                              mutable data one might violate memory safety since \
+                                              holding multiple mutable references to shared data \
+                                              is not allowed.\n\n\
+                                              If you really want global mutable state, try using \
+                                              static mut or a global UnsafeCell.");
+                                }
+                                err.emit();
+                            } else {
+                                span_err!(self.tcx.sess, self.span, E0492,
+                                          "cannot borrow a constant which may contain \
+                                           interior mutability, create a static instead");
                             }
-                            err.emit();
-                        } else {
-                            span_err!(self.tcx.sess, self.span, E0492,
-                                    "cannot borrow a constant which may contain \
-                                    interior mutability, create a static instead");
                         }
                     }
-                }
-            } else if let BorrowKind::Mut { .. } | BorrowKind::Shared = kind {
-                // Don't promote BorrowKind::Shallow borrows, as they don't
-                // reach codegen.
+                } else if let BorrowKind::Mut { .. } | BorrowKind::Shared = kind {
+                    // Don't promote BorrowKind::Shallow borrows, as they don't
+                    // reach codegen.
 
-                // We might have a candidate for promotion.
-                let candidate = Candidate::Ref(location);
-                // Start by traversing to the "base", with non-deref projections removed.
-                let mut place = place;
-                while let Place::Projection(ref proj) = *place {
-                    if proj.elem == ProjectionElem::Deref {
-                        break;
+                    // We might have a candidate for promotion.
+                    let candidate = Candidate::Ref(location);
+                    // Start by traversing to the "base", with non-deref projections removed.
+                    let mut place = place;
+                    while let Place::Projection(ref proj) = *place {
+                        if proj.elem == ProjectionElem::Deref {
+                            break;
+                        }
+                        place = &proj.base;
                     }
-                    place = &proj.base;
-                }
-                debug!("qualify_consts: promotion candidate: place={:?}", place);
-                // We can only promote interior borrows of promotable temps (non-temps
-                // don't get promoted anyway).
-                // (If we bailed out of the loop due to a `Deref` above, we will definitely
-                // not enter the conditional here.)
-                if let Place::Base(PlaceBase::Local(local)) = *place {
-                    if self.body.local_kind(local) == LocalKind::Temp {
-                        debug!("qualify_consts: promotion candidate: local={:?}", local);
-                        // The borrowed place doesn't have `HasMutInterior`
-                        // (from `in_rvalue`), so we can safely ignore
-                        // `HasMutInterior` from the local's qualifications.
-                        // This allows borrowing fields which don't have
-                        // `HasMutInterior`, from a type that does, e.g.:
-                        // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                        let mut local_qualifs = self.qualifs_in_local(local);
-                        // Any qualifications, except HasMutInterior (see above), disqualify
-                        // from promotion.
-                        // This is, in particular, the "implicit promotion" version of
-                        // the check making sure that we don't run drop glue during const-eval.
-                        local_qualifs[HasMutInterior] = false;
-                        if !local_qualifs.0.iter().any(|&qualif| qualif) {
-                            debug!("qualify_consts: promotion candidate: {:?}", candidate);
-                            self.promotion_candidates.push(candidate);
+                    debug!("qualify_consts: promotion candidate: place={:?}", place);
+                    // We can only promote interior borrows of promotable temps (non-temps
+                    // don't get promoted anyway).
+                    // (If we bailed out of the loop due to a `Deref` above, we will definitely
+                    // not enter the conditional here.)
+                    if let Place::Base(PlaceBase::Local(local)) = *place {
+                        if self.body.local_kind(local) == LocalKind::Temp {
+                            debug!("qualify_consts: promotion candidate: local={:?}", local);
+                            // The borrowed place doesn't have `HasMutInterior`
+                            // (from `in_rvalue`), so we can safely ignore
+                            // `HasMutInterior` from the local's qualifications.
+                            // This allows borrowing fields which don't have
+                            // `HasMutInterior`, from a type that does, e.g.:
+                            // `let _: &'static _ = &(Cell::new(1), 2).1;`
+                            let mut local_qualifs = self.qualifs_in_local(local);
+                            // Any qualifications, except HasMutInterior (see above), disqualify
+                            // from promotion.
+                            // This is, in particular, the "implicit promotion" version of
+                            // the check making sure that we don't run drop glue during const-eval.
+                            local_qualifs[HasMutInterior] = false;
+                            if !local_qualifs.0.iter().any(|&qualif| qualif) {
+                                debug!("qualify_consts: promotion candidate: {:?}", candidate);
+                                self.promotion_candidates.push(candidate);
+                            }
                         }
                     }
                 }
-            }
+            },
+            ValueSource::Rvalue(&Rvalue::Repeat(ref operand, _)) => {
+                let candidate = Candidate::Repeat(location);
+                let not_promotable = IsNotImplicitlyPromotable::in_operand(self, operand) ||
+                                     IsNotPromotable::in_operand(self, operand);
+                debug!("assign: self.def_id={:?} operand={:?}", self.def_id, operand);
+                if !not_promotable && self.tcx.features().const_in_array_repeat_expressions {
+                    debug!("assign: candidate={:?}", candidate);
+                    self.promotion_candidates.push(candidate);
+                }
+            },
+            _ => {},
         }
 
         let mut dest = dest;
@@ -935,15 +948,20 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         debug!("qualify_const: promotion_candidates={:?}", self.promotion_candidates);
         for candidate in &self.promotion_candidates {
             match *candidate {
+                Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
+                    if let StatementKind::Assign(_, box Rvalue::Repeat(
+                        Operand::Move(Place::Base(PlaceBase::Local(index))),
+                        _
+                    )) = self.body[bb].statements[stmt_idx].kind {
+                        promoted_temps.insert(index);
+                    }
+                }
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                    match self.body[bb].statements[stmt_idx].kind {
-                        StatementKind::Assign(
-                            _,
-                            box Rvalue::Ref(_, _, Place::Base(PlaceBase::Local(index)))
-                        ) => {
-                            promoted_temps.insert(index);
-                        }
-                        _ => {}
+                    if let StatementKind::Assign(
+                        _,
+                        box Rvalue::Ref(_, _, Place::Base(PlaceBase::Local(index)))
+                    ) = self.body[bb].statements[stmt_idx].kind {
+                        promoted_temps.insert(index);
                     }
                 }
                 Candidate::Argument { .. } => {}

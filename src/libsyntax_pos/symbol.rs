@@ -199,6 +199,7 @@ symbols! {
         const_fn_union,
         const_generics,
         const_indexing,
+        const_in_array_repeat_expressions,
         const_let,
         const_panic,
         const_raw_ptr_deref,
