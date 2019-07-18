@@ -2,7 +2,7 @@ use crate::subtree_source::SubtreeTokenSource;
 use crate::ExpandError;
 use ra_parser::{ParseError, TreeSink};
 use ra_syntax::{
-    ast, AstNode, Parse, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxNode,
+    ast, AstNode, AstToken, Parse, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxNode,
     SyntaxTreeBuilder, TextRange, TextUnit, T,
 };
 use tt::buffer::{Cursor, TokenBuffer};
@@ -116,8 +116,6 @@ impl TokenMap {
 /// and strips the ending `*/`
 /// And then quote the string, which is needed to convert to `tt::Literal`
 fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
-    use ast::AstToken;
-
     let prefix_len = comment.prefix().len();
     let mut text = &comment.text()[prefix_len..];
 
@@ -132,9 +130,8 @@ fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
     text.into()
 }
 
-fn convert_doc_comment<'a>(token: &ra_syntax::SyntaxToken<'a>) -> Option<Vec<tt::TokenTree>> {
-    use ast::AstToken;
-    let comment = ast::Comment::cast(*token)?;
+fn convert_doc_comment(token: &ra_syntax::SyntaxToken) -> Option<Vec<tt::TokenTree>> {
+    let comment = ast::Comment::cast(token.clone())?;
     let doc = comment.kind().doc?;
 
     // Make `doc="\" Comments\""
@@ -245,7 +242,7 @@ fn convert_tt(
                 }
             }
             SyntaxElement::Node(node) => {
-                let child = convert_tt(token_map, global_offset, node)?.into();
+                let child = convert_tt(token_map, global_offset, &node)?.into();
                 token_trees.push(child);
             }
         };
