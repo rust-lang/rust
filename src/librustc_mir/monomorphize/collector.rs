@@ -1143,6 +1143,11 @@ fn create_mono_items_for_default_impls<'tcx>(
                    def_id_to_string(tcx, impl_def_id));
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
+                let param_env = ty::ParamEnv::reveal_all();
+                let trait_ref = tcx.normalize_erasing_regions(
+                    param_env,
+                    trait_ref,
+                );
                 let overridden_methods: FxHashSet<_> =
                     impl_item_refs.iter()
                                   .map(|iiref| iiref.ident.modern())
@@ -1165,9 +1170,8 @@ fn create_mono_items_for_default_impls<'tcx>(
                             }
                         }
                     });
-
                     let instance = ty::Instance::resolve(tcx,
-                                                         ty::ParamEnv::reveal_all(),
+                                                         param_env,
                                                          method.def_id,
                                                          substs).unwrap();
 
