@@ -283,14 +283,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .parameter          { color: #94BFF3; }
 .builtin            { color: #DD6718; }
 .text               { color: #DCDCCC; }
-.attribute          { color: #BFEBBF; }
-.literal            { color: #DFAF8F; }
-.macro              { color: #DFAF8F; }
-.variable\\.mut     { color: #DFAF8F; }
+.attribute          { color: #94BFF3; }
+.literal            { color: #BFEBBF; }
+.macro              { color: #94BFF3; }
+.variable           { color: #DCDCCC; }
+.variable\\.mut     { color: #DCDCCC; text-decoration: underline; }
 
 .keyword            { color: #F0DFAF; }
-.keyword\\.unsafe   { color: #F0DFAF; font-weight: bold; }
-.keyword\\.control  { color: #DC8CC3; }
+.keyword\\.unsafe   { color: #DFAF8F; }
+.keyword\\.control  { color: #F0DFAF; font-weight: bold; }
 </style>
 ";
 
