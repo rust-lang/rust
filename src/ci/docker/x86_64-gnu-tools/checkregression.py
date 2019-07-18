@@ -35,7 +35,7 @@ if __name__ == '__main__':
                 'The state of "{}" has {} from "{}" to "{}"'
                 .format(tool, verb, state, new_state)
             )
-            if tool not in REGRESSION_OK:
+            if not (verb == 'regressed' and tool in REGRESSION_OK):
                 regressed = True
 
     if regressed:
