@@ -1,13 +1,12 @@
-use syntax::ast::{ItemKind, Mutability, Ty, TyKind, Unsafety, VisibilityKind};
-use syntax::ast::{self, Arg, Attribute, Expr, FnHeader, Generics, Ident, Item};
+use syntax::ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafety};
+use syntax::ast::{self, Arg, Attribute, Expr, FnHeader, Generics, Ident};
 use syntax::attr::check_builtin_macro_attribute;
 use syntax::ext::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
-use syntax::source_map::respan;
-use syntax::symbol::{kw, sym};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
 
 pub fn expand(
@@ -36,52 +35,31 @@ pub fn expand(
         span,
         kind: AllocatorKind::Global,
         global: item.ident,
-        core: Ident::with_empty_ctxt(sym::core),
         cx: ecx,
     };
 
-    // We will generate a new submodule. To `use` the static from that module, we need to get
-    // the `super::...` path.
-    let super_path = f.cx.path(f.span, vec![Ident::with_empty_ctxt(kw::Super), f.global]);
+    // Generate item statements for the allocator methods.
+    let stmts = ALLOCATOR_METHODS.iter().map(|method| f.allocator_fn(method)).collect();
 
-    // Generate the items in the submodule
-    let mut items = vec![
-        // import `core` to use allocators
-        f.cx.item_extern_crate(f.span, f.core),
-        // `use` the `global_allocator` in `super`
-        f.cx.item_use_simple(
-            f.span,
-            respan(f.span.shrink_to_lo(), VisibilityKind::Inherited),
-            super_path,
-        ),
-    ];
+    // Generate anonymous constant serving as container for the allocator methods.
+    let const_ty = ecx.ty(span, TyKind::Tup(Vec::new()));
+    let const_body = ecx.expr_block(ecx.block(span, stmts));
+    let const_item =
+        ecx.item_const(span, Ident::with_empty_ctxt(kw::Underscore), const_ty, const_body);
 
-    // Add the allocator methods to the submodule
-    items.extend(
-        ALLOCATOR_METHODS
-            .iter()
-            .map(|method| f.allocator_fn(method)),
-    );
-
-    // Generate the submodule itself
-    let name = f.kind.fn_name("allocator_abi");
-    let allocator_abi = Ident::from_str(&name).gensym();
-    let module = f.cx.item_mod(span, span, allocator_abi, Vec::new(), items);
-
-    // Return the item and new submodule
-    vec![Annotatable::Item(item), Annotatable::Item(module)]
+    // Return the original item and the new methods.
+    vec![Annotatable::Item(item), Annotatable::Item(const_item)]
 }
 
 struct AllocFnFactory<'a, 'b> {
     span: Span,
     kind: AllocatorKind,
     global: Ident,
-    core: Ident,
     cx: &'b ExtCtxt<'a>,
 }
 
 impl AllocFnFactory<'_, '_> {
-    fn allocator_fn(&self, method: &AllocatorMethod) -> P<Item> {
+    fn allocator_fn(&self, method: &AllocatorMethod) -> Stmt {
         let mut abi_args = Vec::new();
         let mut i = 0;
         let ref mut mk = || {
@@ -105,25 +83,22 @@ impl AllocFnFactory<'_, '_> {
             Generics::default(),
             self.cx.block_expr(output_expr),
         );
-        self.cx.item(
+        let item = self.cx.item(
             self.span,
             Ident::from_str(&self.kind.fn_name(method.name)),
             self.attrs(),
             kind,
-        )
+        );
+        self.cx.stmt_item(self.span, item)
     }
 
     fn call_allocator(&self, method: &str, mut args: Vec<P<Expr>>) -> P<Expr> {
-        let method = self.cx.path(
-            self.span,
-            vec![
-                self.core,
-                Ident::from_str("alloc"),
-                Ident::from_str("GlobalAlloc"),
-                Ident::from_str(method),
-            ],
-        );
-        let method = self.cx.expr_path(method);
+        let method = self.cx.std_path(&[
+            Symbol::intern("alloc"),
+            Symbol::intern("GlobalAlloc"),
+            Symbol::intern(method),
+        ]);
+        let method = self.cx.expr_path(self.cx.path(self.span, method));
         let allocator = self.cx.path_ident(self.span, self.global);
         let allocator = self.cx.expr_path(allocator);
         let allocator = self.cx.expr_addr_of(self.span, allocator);
@@ -153,16 +128,12 @@ impl AllocFnFactory<'_, '_> {
                 args.push(self.cx.arg(self.span, size, ty_usize.clone()));
                 args.push(self.cx.arg(self.span, align, ty_usize));
 
-                let layout_new = self.cx.path(
-                    self.span,
-                    vec![
-                        self.core,
-                        Ident::from_str("alloc"),
-                        Ident::from_str("Layout"),
-                        Ident::from_str("from_size_align_unchecked"),
-                    ],
-                );
-                let layout_new = self.cx.expr_path(layout_new);
+                let layout_new = self.cx.std_path(&[
+                    Symbol::intern("alloc"),
+                    Symbol::intern("Layout"),
+                    Symbol::intern("from_size_align_unchecked"),
+                ]);
+                let layout_new = self.cx.expr_path(self.cx.path(self.span, layout_new));
                 let size = self.cx.expr_ident(self.span, size);
                 let align = self.cx.expr_ident(self.span, align);
                 let layout = self.cx.expr_call(self.span, layout_new, vec![size, align]);

@@ -13,9 +13,10 @@ fn main() {
     #[global_allocator]
     pub static GLOBAL: A = A(AtomicUsize::new(0));
 
+    let n = GLOBAL.0.load(Ordering::SeqCst);
     let s = Box::new(0);
     helper::work_with(&s);
-    assert_eq!(GLOBAL.0.load(Ordering::SeqCst), 1);
+    assert_eq!(GLOBAL.0.load(Ordering::SeqCst), n + 1);
     drop(s);
-    assert_eq!(GLOBAL.0.load(Ordering::SeqCst), 2);
+    assert_eq!(GLOBAL.0.load(Ordering::SeqCst), n + 2);
 }
