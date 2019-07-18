@@ -5,7 +5,7 @@ import sys
 import json
 
 # Regressions for these tools do not cause failure.
-REGRESSION_OK = ["rustc-guide", "miri"]
+REGRESSION_OK = ["rustc-guide", "miri", "embedded-book"]
 
 if __name__ == '__main__':
     os_name = sys.argv[1]
