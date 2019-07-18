@@ -37,12 +37,14 @@ struct TestCtxt<'a> {
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
-pub fn modify_for_testing(sess: &ParseSess,
-                          resolver: &mut dyn Resolver,
-                          should_test: bool,
-                          krate: &mut ast::Crate,
-                          span_diagnostic: &errors::Handler,
-                          features: &Features) {
+pub fn inject(
+    sess: &ParseSess,
+    resolver: &mut dyn Resolver,
+    should_test: bool,
+    krate: &mut ast::Crate,
+    span_diagnostic: &errors::Handler,
+    features: &Features,
+) {
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use __test::main as some_name;`. This needs to be
     // unconditional, so that the attribute is still marked as used in

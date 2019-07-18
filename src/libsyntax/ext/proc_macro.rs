@@ -231,7 +231,7 @@ crate fn add_derived_markers<T: HasAttrs>(
         names.insert(unwrap_or!(path.segments.get(0), continue).ident.name);
     }
 
-    let span = span.fresh_expansion(cx.current_expansion.mark, ExpnInfo::allow_unstable(
+    let span = span.fresh_expansion(cx.current_expansion.id, ExpnInfo::allow_unstable(
         ExpnKind::Macro(MacroKind::Derive, Symbol::intern(&pretty_name)), span,
         cx.parse_sess.edition, cx.allow_derive_markers.clone(),
     ));
