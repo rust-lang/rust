@@ -278,7 +278,12 @@ pub fn register_plugins<'a>(
 
     krate = time(sess, "crate injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| &**s);
-        syntax::std_inject::maybe_inject_crates_ref(krate, alt_std_name, sess.edition())
+        let (krate, name) =
+            syntax_ext::standard_library_imports::inject(krate, alt_std_name, sess.edition());
+        if let Some(name) = name {
+            sess.parse_sess.injected_crate_name.set(name);
+        }
+        krate
     });
 
     let registrars = time(sess, "plugin loading", || {

@@ -43,6 +43,7 @@ mod trace_macros;
 
 pub mod plugin_macro_defs;
 pub mod proc_macro_decls;
+pub mod standard_library_imports;
 pub mod test_harness;
 
 pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, edition: Edition) {

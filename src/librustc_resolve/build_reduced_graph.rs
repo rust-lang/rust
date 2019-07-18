@@ -34,7 +34,6 @@ use syntax::ext::hygiene::ExpnId;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
 use syntax::span_err;
-use syntax::std_inject::injected_crate_name;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 
@@ -367,8 +366,10 @@ impl<'a> Resolver<'a> {
                 };
 
                 self.populate_module_if_necessary(module);
-                if injected_crate_name().map_or(false, |name| ident.name.as_str() == name) {
-                    self.injected_crate = Some(module);
+                if let Some(name) = self.session.parse_sess.injected_crate_name.try_get() {
+                    if name.as_str() == ident.name.as_str() {
+                        self.injected_crate = Some(module);
+                    }
                 }
 
                 let used = self.process_legacy_macro_imports(item, module, &parent_scope);
