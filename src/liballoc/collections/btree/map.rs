@@ -200,7 +200,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
             }
         }
 
-        if self.len() == 0 {
+        if self.is_empty() {
             // Ideally we'd call `BTreeMap::new` here, but that has the `K:
             // Ord` constraint, which this method lacks.
             BTreeMap {
@@ -759,12 +759,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "btree_append", since = "1.11.0")]
     pub fn append(&mut self, other: &mut Self) {
         // Do we have to append anything at all?
-        if other.len() == 0 {
+        if other.is_empty() {
             return;
         }
 
         // We can just swap `self` and `other` if `self` is empty.
-        if self.len() == 0 {
+        if self.is_empty() {
             mem::swap(self, other);
             return;
         }
