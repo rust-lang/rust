@@ -9,7 +9,7 @@ use ra_db::{
     FileTextQuery, SourceRootId,
 };
 use ra_prof::{memory_usage, Bytes};
-use ra_syntax::{ast, AstNode, Parse, SyntaxNode, TreeArc};
+use ra_syntax::{ast, AstNode, Parse, SyntaxNode};
 
 use crate::{
     db::RootDatabase,
@@ -96,15 +96,15 @@ impl FromIterator<TableEntry<FileId, Parse<ast::SourceFile>>> for SyntaxTreeStat
     }
 }
 
-impl FromIterator<TableEntry<MacroFile, Option<TreeArc<SyntaxNode>>>> for SyntaxTreeStats {
+impl FromIterator<TableEntry<MacroFile, Option<Parse<SyntaxNode>>>> for SyntaxTreeStats {
     fn from_iter<T>(iter: T) -> SyntaxTreeStats
     where
-        T: IntoIterator<Item = TableEntry<MacroFile, Option<TreeArc<SyntaxNode>>>>,
+        T: IntoIterator<Item = TableEntry<MacroFile, Option<Parse<SyntaxNode>>>>,
     {
         let mut res = SyntaxTreeStats::default();
         for entry in iter {
             res.total += 1;
-            if let Some(tree) = entry.value.and_then(|it| it) {
+            if let Some(tree) = entry.value.and_then(|it| it).map(|it| it.tree().to_owned()) {
                 res.retained += 1;
                 res.retained_size += tree.memory_size_of_subtree();
             }

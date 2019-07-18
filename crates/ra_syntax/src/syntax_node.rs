@@ -18,7 +18,8 @@ use rowan::{GreenNodeBuilder, TransparentNewType};
 
 use crate::{
     syntax_error::{SyntaxError, SyntaxErrorKind},
-    AstNode, SmolStr, SourceFile, SyntaxKind, SyntaxNodePtr, SyntaxText, TextRange, TextUnit,
+    AstNode, Parse, SmolStr, SourceFile, SyntaxKind, SyntaxNodePtr, SyntaxText, TextRange,
+    TextUnit,
 };
 
 pub use rowan::WalkEvent;
@@ -594,13 +595,13 @@ impl SyntaxTreeBuilder {
         (green, self.errors)
     }
 
-    pub fn finish(self) -> (TreeArc<SyntaxNode>, Vec<SyntaxError>) {
+    pub fn finish(self) -> Parse<SyntaxNode> {
         let (green, errors) = self.finish_raw();
         let node = SyntaxNode::new(green);
         if cfg!(debug_assertions) {
             crate::validation::validate_block_structure(&node);
         }
-        (node, errors)
+        Parse::new(node, errors)
     }
 
     pub fn token(&mut self, kind: SyntaxKind, text: SmolStr) {

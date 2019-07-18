@@ -35,7 +35,7 @@ use std::{fmt::Write, sync::Arc};
 
 use ra_text_edit::AtomTextEdit;
 
-use crate::syntax_node::{GreenNode, SyntaxNodeWrapper};
+use crate::syntax_node::GreenNode;
 
 pub use crate::{
     ast::{AstNode, AstToken},
@@ -43,8 +43,8 @@ pub use crate::{
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::{Location, SyntaxError, SyntaxErrorKind},
     syntax_node::{
-        Direction, InsertPosition, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
-        TreeArc, WalkEvent,
+        Direction, InsertPosition, SyntaxElement, SyntaxNode, SyntaxNodeWrapper, SyntaxToken,
+        SyntaxTreeBuilder, TreeArc, WalkEvent,
     },
     syntax_text::SyntaxText,
 };
@@ -88,6 +88,12 @@ impl<T: SyntaxNodeWrapper> Parse<T> {
         } else {
             Err(self.errors)
         }
+    }
+}
+
+impl<T: AstNode> Parse<T> {
+    pub fn to_syntax(this: Self) -> Parse<SyntaxNode> {
+        Parse { tree: this.tree().syntax().to_owned(), errors: this.errors }
     }
 }
 
