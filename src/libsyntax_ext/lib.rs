@@ -6,6 +6,7 @@
 #![deny(unused_lifetimes)]
 
 #![feature(decl_macro)]
+#![feature(mem_take)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 
@@ -27,10 +28,10 @@ mod global_asm;
 mod log_syntax;
 mod source_util;
 mod test;
-mod test_case;
 mod trace_macros;
 
 pub mod proc_macro_decls;
+pub mod test_harness;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
@@ -128,7 +129,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         )),
         allow_internal_unstable: allow_internal_unstable.clone(),
         ..SyntaxExtension::default(
-            SyntaxExtensionKind::LegacyAttr(Box::new(test_case::expand)), edition
+            SyntaxExtensionKind::LegacyAttr(Box::new(test::expand_test_case)), edition
         )
     });
     register(sym::test, SyntaxExtension {
