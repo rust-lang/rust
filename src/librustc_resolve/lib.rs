@@ -52,7 +52,7 @@ use syntax::ast::{CRATE_NODE_ID, Arm, IsAsync, BindingMode, Block, Crate, Expr, 
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
-use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::ast::{QSelf, TraitItem, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::ptr::P;
 use syntax::{span_err, struct_span_err, unwrap_or, walk_list};
 
@@ -1053,6 +1053,7 @@ impl<'a, R> Rib<'a, R> {
 /// This refers to the thing referred by a name. The difference between `Res` and `Item` is that
 /// items are visible in their whole block, while `Res`es only from the place they are defined
 /// forward.
+#[derive(Debug)]
 enum LexicalScopeBinding<'a> {
     Item(&'a NameBinding<'a>),
     Res(Res),
@@ -1601,6 +1602,9 @@ pub struct Resolver<'a> {
     /// The trait that the current context can refer to.
     current_trait_ref: Option<(Module<'a>, TraitRef)>,
 
+    /// The current trait's associated types' ident, used for diagnostic suggestions.
+    current_trait_assoc_types: Vec<Ident>,
+
     /// The current self type if inside an impl (used for better errors).
     current_self_type: Option<Ty>,
 
@@ -1971,6 +1975,7 @@ impl<'a> Resolver<'a> {
             label_ribs: Vec::new(),
 
             current_trait_ref: None,
+            current_trait_assoc_types: Vec::new(),
             current_self_type: None,
             current_self_item: None,
             last_import_segment: false,
@@ -2579,32 +2584,36 @@ impl<'a> Resolver<'a> {
                         walk_list!(this, visit_param_bound, bounds);
 
                         for trait_item in trait_items {
-                            let generic_params = HasGenericParams(&trait_item.generics,
-                                                                    AssocItemRibKind);
-                            this.with_generic_param_rib(generic_params, |this| {
-                                match trait_item.node {
-                                    TraitItemKind::Const(ref ty, ref default) => {
-                                        this.visit_ty(ty);
+                            this.with_trait_items(trait_items, |this| {
+                                let generic_params = HasGenericParams(
+                                    &trait_item.generics,
+                                    AssocItemRibKind,
+                                );
+                                this.with_generic_param_rib(generic_params, |this| {
+                                    match trait_item.node {
+                                        TraitItemKind::Const(ref ty, ref default) => {
+                                            this.visit_ty(ty);
 
-                                        // Only impose the restrictions of
-                                        // ConstRibKind for an actual constant
-                                        // expression in a provided default.
-                                        if let Some(ref expr) = *default{
-                                            this.with_constant_rib(|this| {
-                                                this.visit_expr(expr);
-                                            });
+                                            // Only impose the restrictions of
+                                            // ConstRibKind for an actual constant
+                                            // expression in a provided default.
+                                            if let Some(ref expr) = *default{
+                                                this.with_constant_rib(|this| {
+                                                    this.visit_expr(expr);
+                                                });
+                                            }
                                         }
-                                    }
-                                    TraitItemKind::Method(_, _) => {
-                                        visit::walk_trait_item(this, trait_item)
-                                    }
-                                    TraitItemKind::Type(..) => {
-                                        visit::walk_trait_item(this, trait_item)
-                                    }
-                                    TraitItemKind::Macro(_) => {
-                                        panic!("unexpanded macro in resolve!")
-                                    }
-                                };
+                                        TraitItemKind::Method(_, _) => {
+                                            visit::walk_trait_item(this, trait_item)
+                                        }
+                                        TraitItemKind::Type(..) => {
+                                            visit::walk_trait_item(this, trait_item)
+                                        }
+                                        TraitItemKind::Macro(_) => {
+                                            panic!("unexpanded macro in resolve!")
+                                        }
+                                    };
+                                });
                             });
                         }
                     });
@@ -2771,6 +2780,22 @@ impl<'a> Resolver<'a> {
         let previous_value = replace(&mut self.current_self_item, Some(self_item.id));
         let result = f(self);
         self.current_self_item = previous_value;
+        result
+    }
+
+    /// When evaluating a `trait` use its associated types' idents for suggestionsa in E0412.
+    fn with_trait_items<T, F>(&mut self, trait_items: &Vec<TraitItem>, f: F) -> T
+        where F: FnOnce(&mut Resolver<'_>) -> T
+    {
+        let trait_assoc_types = replace(
+            &mut self.current_trait_assoc_types,
+            trait_items.iter().filter_map(|item| match &item.node {
+                TraitItemKind::Type(bounds, _) if bounds.len() == 0 => Some(item.ident),
+                _ => None,
+            }).collect(),
+        );
+        let result = f(self);
+        self.current_trait_assoc_types = trait_assoc_types;
         result
     }
 
@@ -3464,8 +3489,12 @@ impl<'a> Resolver<'a> {
     }
 
     fn self_type_is_available(&mut self, span: Span) -> bool {
-        let binding = self.resolve_ident_in_lexical_scope(Ident::with_empty_ctxt(kw::SelfUpper),
-                                                          TypeNS, None, span);
+        let binding = self.resolve_ident_in_lexical_scope(
+            Ident::with_empty_ctxt(kw::SelfUpper),
+            TypeNS,
+            None,
+            span,
+        );
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 
@@ -4095,13 +4124,12 @@ impl<'a> Resolver<'a> {
         res
     }
 
-    fn lookup_assoc_candidate<FilterFn>(&mut self,
-                                        ident: Ident,
-                                        ns: Namespace,
-                                        filter_fn: FilterFn)
-                                        -> Option<AssocSuggestion>
-        where FilterFn: Fn(Res) -> bool
-    {
+    fn lookup_assoc_candidate<FilterFn: Fn(Res) -> bool>(
+        &mut self,
+        ident: Ident,
+        ns: Namespace,
+        filter_fn: FilterFn,
+    ) -> Option<AssocSuggestion> {
         fn extract_node_id(t: &Ty) -> Option<NodeId> {
             match t.node {
                 TyKind::Path(None, _) => Some(t.id),
@@ -4133,6 +4161,12 @@ impl<'a> Resolver<'a> {
             }
         }
 
+        for assoc_type_ident in &self.current_trait_assoc_types {
+            if *assoc_type_ident == ident {
+                return Some(AssocSuggestion::AssocItem);
+            }
+        }
+
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref {
             if let Ok(binding) = self.resolve_ident_in_module(
@@ -4145,6 +4179,7 @@ impl<'a> Resolver<'a> {
                 ) {
                 let res = binding.res();
                 if filter_fn(res) {
+                    debug!("extract_node_id res not filtered");
                     return Some(if self.has_self.contains(&res.def_id()) {
                         AssocSuggestion::MethodWithSelf
                     } else {
