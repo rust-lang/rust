@@ -247,6 +247,7 @@ pub enum InterpError<'tcx, O> {
     DanglingPointerDeref,
     DoubleFree,
     InvalidMemoryAccess,
+    FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
     InvalidFunctionPointer,
     InvalidBool,
     InvalidDiscriminant(ScalarMaybeUndef),
@@ -266,11 +267,13 @@ pub enum InterpError<'tcx, O> {
     Unimplemented(String),
     DerefFunctionPointer,
     ExecuteMemory,
+    // asd
     BoundsCheck { len: O, index: O },
     Overflow(mir::BinOp),
     OverflowNeg,
     DivisionByZero,
     RemainderByZero,
+    // asd
     Intrinsic(String),
     InvalidChar(u128),
     StackFrameLimitReached,
@@ -280,6 +283,29 @@ pub enum InterpError<'tcx, O> {
     AlignmentCheckFailed {
         required: Align,
         has: Align,
+    },
+    MemoryLockViolation {
+        ptr: Pointer,
+        len: u64,
+        frame: usize,
+        access: AccessKind,
+        lock: Lock,
+    },
+    MemoryAcquireConflict {
+        ptr: Pointer,
+        len: u64,
+        kind: AccessKind,
+        lock: Lock,
+    },
+    InvalidMemoryLockRelease {
+        ptr: Pointer,
+        len: u64,
+        frame: usize,
+        lock: Lock,
+    },
+    DeallocatedLockedMemory {
+        ptr: Pointer,
+        lock: Lock,
     },
     ValidationFailure(String),
     CalledClosureAsFunction,
@@ -298,12 +324,7 @@ pub enum InterpError<'tcx, O> {
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
-    Panic {
-        msg: Symbol,
-        line: u32,
-        col: u32,
-        file: Symbol,
-    },
+    Panic(EvalErrorPanic<'tcx, O>),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
     UnimplementedTraitSelection,
@@ -317,6 +338,16 @@ pub enum InterpError<'tcx, O> {
     GeneratorResumedAfterReturn,
     GeneratorResumedAfterPanic,
     InfiniteLoop,
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub enum EvalErrorPanic<'tcx, O> {
+    Panic,
+    BoundsCheck { len: O, index: O },
+    Overflow(mir::BinOp),
+    OverflowNeg,
+    DivisionByZero,
+    RemainderByZero,
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
