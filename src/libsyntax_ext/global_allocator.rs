@@ -1,162 +1,95 @@
-use log::debug;
-use smallvec::{smallvec, SmallVec};
-use syntax::{
-    ast::{
-        self, Arg, Attribute, Crate, Expr, FnHeader, Generics, Ident, Item, ItemKind,
-        Mac, Mod, Mutability, Ty, TyKind, Unsafety, VisibilityKind,
-    },
-    attr,
-    source_map::{
-        respan, ExpnInfo, ExpnKind,
-    },
-    ext::{
-        allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS},
-        base::{ExtCtxt, MacroKind, Resolver},
-        build::AstBuilder,
-        expand::ExpansionConfig,
-        hygiene::ExpnId,
-    },
-    mut_visit::{self, MutVisitor},
-    parse::ParseSess,
-    ptr::P,
-    symbol::{kw, sym}
-};
+use errors::Applicability;
+use syntax::ast::{self, Arg, Attribute, Expr, FnHeader, Generics, Ident, Item};
+use syntax::ast::{ItemKind, Mutability, Ty, TyKind, Unsafety, VisibilityKind};
+use syntax::source_map::respan;
+use syntax::ext::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
+use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax::ext::build::AstBuilder;
+use syntax::ext::hygiene::SyntaxContext;
+use syntax::ptr::P;
+use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
-pub fn modify(
-    sess: &ParseSess,
-    resolver: &mut dyn Resolver,
-    krate: &mut Crate,
-    crate_name: String,
-    handler: &errors::Handler,
-) {
-    ExpandAllocatorDirectives {
-        handler,
-        sess,
-        resolver,
-        found: false,
-        crate_name: Some(crate_name),
-        in_submod: -1, // -1 to account for the "root" module
-    }.visit_crate(krate);
-}
-
-struct ExpandAllocatorDirectives<'a> {
-    found: bool,
-    handler: &'a errors::Handler,
-    sess: &'a ParseSess,
-    resolver: &'a mut dyn Resolver,
-    crate_name: Option<String>,
-
-    // For now, we disallow `global_allocator` in submodules because hygiene is hard. Keep track of
-    // whether we are in a submodule or not. If `in_submod > 0` we are in a submodule.
-    in_submod: isize,
-}
-
-impl MutVisitor for ExpandAllocatorDirectives<'_> {
-    fn flat_map_item(&mut self, item: P<Item>) -> SmallVec<[P<Item>; 1]> {
-        debug!("in submodule {}", self.in_submod);
-
-        if !attr::contains_name(&item.attrs, sym::global_allocator) {
-            return mut_visit::noop_flat_map_item(item, self);
-        }
-
-        match item.node {
-            ItemKind::Static(..) => {}
-            _ => {
-                self.handler
-                    .span_err(item.span, "allocators must be statics");
-                return smallvec![item];
-            }
-        }
-
-        if self.in_submod > 0 {
-            self.handler
-                .span_err(item.span, "`global_allocator` cannot be used in submodules");
-            return smallvec![item];
-        }
-
-        if self.found {
-            self.handler
-                .span_err(item.span, "cannot define more than one `#[global_allocator]`");
-            return smallvec![item];
-        }
-        self.found = true;
-
-        // Create a new expansion for the generated allocator code.
-        let span = item.span.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
-            ExpnKind::Macro(MacroKind::Attr, sym::global_allocator), item.span, self.sess.edition,
-            [sym::rustc_attrs][..].into(),
-        ));
-
-        // Create an expansion config
-        let ecfg = ExpansionConfig::default(self.crate_name.take().unwrap());
-
-        // Generate a bunch of new items using the AllocFnFactory
-        let mut f = AllocFnFactory {
-            span,
-            kind: AllocatorKind::Global,
-            global: item.ident,
-            core: Ident::with_empty_ctxt(sym::core),
-            cx: ExtCtxt::new(self.sess, ecfg, self.resolver),
-        };
-
-        // We will generate a new submodule. To `use` the static from that module, we need to get
-        // the `super::...` path.
-        let super_path = f.cx.path(f.span, vec![Ident::with_empty_ctxt(kw::Super), f.global]);
-
-        // Generate the items in the submodule
-        let mut items = vec![
-            // import `core` to use allocators
-            f.cx.item_extern_crate(f.span, f.core),
-            // `use` the `global_allocator` in `super`
-            f.cx.item_use_simple(
-                f.span,
-                respan(f.span.shrink_to_lo(), VisibilityKind::Inherited),
-                super_path,
-            ),
-        ];
-
-        // Add the allocator methods to the submodule
-        items.extend(
-            ALLOCATOR_METHODS
-                .iter()
-                .map(|method| f.allocator_fn(method)),
-        );
-
-        // Generate the submodule itself
-        let name = f.kind.fn_name("allocator_abi");
-        let allocator_abi = Ident::from_str(&name).gensym();
-        let module = f.cx.item_mod(span, span, allocator_abi, Vec::new(), items);
-        let module = f.cx.monotonic_expander().flat_map_item(module).pop().unwrap();
-
-        // Return the item and new submodule
-        smallvec![item, module]
+pub fn expand(
+    ecx: &mut ExtCtxt<'_>,
+    span: Span,
+    meta_item: &ast::MetaItem,
+    item: Annotatable,
+) -> Vec<Annotatable> {
+    if !meta_item.is_word() {
+        let msg = format!("malformed `{}` attribute input", meta_item.path);
+        ecx.parse_sess.span_diagnostic.struct_span_err(span, &msg)
+            .span_suggestion(
+                span,
+                "must be of the form",
+                format!("`#[{}]`", meta_item.path),
+                Applicability::MachineApplicable
+            ).emit();
     }
 
-    // If we enter a submodule, take note.
-    fn visit_mod(&mut self, m: &mut Mod) {
-        debug!("enter submodule");
-        self.in_submod += 1;
-        mut_visit::noop_visit_mod(m, self);
-        self.in_submod -= 1;
-        debug!("exit submodule");
-    }
+    let not_static = |item: Annotatable| {
+        ecx.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
+        vec![item]
+    };
+    let item = match item {
+        Annotatable::Item(item) => match item.node {
+            ItemKind::Static(..) => item,
+            _ => return not_static(Annotatable::Item(item)),
+        }
+        _ => return not_static(item),
+    };
 
-    // `visit_mac` is disabled by default. Enable it here.
-    fn visit_mac(&mut self, mac: &mut Mac) {
-        mut_visit::noop_visit_mac(mac, self)
-    }
+    // Generate a bunch of new items using the AllocFnFactory
+    let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(ecx.current_expansion.mark));
+    let f = AllocFnFactory {
+        span,
+        kind: AllocatorKind::Global,
+        global: item.ident,
+        core: Ident::with_empty_ctxt(sym::core),
+        cx: ecx,
+    };
+
+    // We will generate a new submodule. To `use` the static from that module, we need to get
+    // the `super::...` path.
+    let super_path = f.cx.path(f.span, vec![Ident::with_empty_ctxt(kw::Super), f.global]);
+
+    // Generate the items in the submodule
+    let mut items = vec![
+        // import `core` to use allocators
+        f.cx.item_extern_crate(f.span, f.core),
+        // `use` the `global_allocator` in `super`
+        f.cx.item_use_simple(
+            f.span,
+            respan(f.span.shrink_to_lo(), VisibilityKind::Inherited),
+            super_path,
+        ),
+    ];
+
+    // Add the allocator methods to the submodule
+    items.extend(
+        ALLOCATOR_METHODS
+            .iter()
+            .map(|method| f.allocator_fn(method)),
+    );
+
+    // Generate the submodule itself
+    let name = f.kind.fn_name("allocator_abi");
+    let allocator_abi = Ident::from_str(&name).gensym();
+    let module = f.cx.item_mod(span, span, allocator_abi, Vec::new(), items);
+
+    // Return the item and new submodule
+    vec![Annotatable::Item(item), Annotatable::Item(module)]
 }
 
-struct AllocFnFactory<'a> {
+struct AllocFnFactory<'a, 'b> {
     span: Span,
     kind: AllocatorKind,
     global: Ident,
     core: Ident,
-    cx: ExtCtxt<'a>,
+    cx: &'b ExtCtxt<'a>,
 }
 
-impl AllocFnFactory<'_> {
+impl AllocFnFactory<'_, '_> {
     fn allocator_fn(&self, method: &AllocatorMethod) -> P<Item> {
         let mut abi_args = Vec::new();
         let mut i = 0;

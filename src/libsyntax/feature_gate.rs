@@ -1117,7 +1117,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                             "the `#[rustc_const_unstable]` attribute \
                                             is an internal feature",
                                             cfg_fn!(rustc_const_unstable))),
-    (sym::global_allocator, Normal, template!(Word), Ungated),
     (sym::default_lib_allocator, Whitelisted, template!(Word), Gated(Stability::Unstable,
                                             sym::allocator_internals,
                                             "the `#[default_lib_allocator]` \

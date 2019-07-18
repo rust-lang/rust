@@ -344,7 +344,7 @@ fn get_and_check_lib_features(base_src_path: &Path,
                 Ok((name, f)) => {
                     let mut check_features = |f: &Feature, list: &Features, display: &str| {
                         if let Some(ref s) = list.get(name) {
-                            if f.tracking_issue != s.tracking_issue {
+                            if f.tracking_issue != s.tracking_issue && f.level != Status::Stable {
                                 tidy_error!(bad,
                                             "{}:{}: mismatches the `issue` in {}",
                                             file.display(),

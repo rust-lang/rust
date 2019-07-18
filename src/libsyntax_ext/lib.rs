@@ -29,6 +29,7 @@ mod concat_idents;
 mod env;
 mod format;
 mod format_foreign;
+mod global_allocator;
 mod global_asm;
 mod log_syntax;
 mod proc_macro_server;
@@ -37,7 +38,6 @@ mod test_case;
 mod trace_macros;
 
 pub mod deriving;
-pub mod global_allocator;
 pub mod proc_macro_decls;
 pub mod proc_macro_impl;
 
@@ -150,6 +150,12 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         allow_internal_unstable,
         ..SyntaxExtension::default(
             SyntaxExtensionKind::LegacyAttr(Box::new(test::expand_bench)), edition
+        )
+    });
+    register(sym::global_allocator, SyntaxExtension {
+        allow_internal_unstable: Some([sym::rustc_attrs][..].into()),
+        ..SyntaxExtension::default(
+            SyntaxExtensionKind::LegacyAttr(Box::new(global_allocator::expand)), edition
         )
     });
 
