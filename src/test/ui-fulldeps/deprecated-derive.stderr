@@ -4,5 +4,5 @@ warning: use of deprecated item 'Encodable': derive(Encodable) is deprecated in 
 LL | #[derive(Encodable)]
    |          ^^^^^^^^^
    |
-   = note: #[warn(deprecated)] on by default
+   = note: `#[warn(deprecated)]` on by default
 

@@ -6,7 +6,7 @@ LL | |
 LL | |         while true { break }; // but here we cite the whole loop
    | |____________________________^ help: use `loop`
    |
-   = note: #[warn(while_true)] on by default
+   = note: `#[warn(while_true)]` on by default
 
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:6:16

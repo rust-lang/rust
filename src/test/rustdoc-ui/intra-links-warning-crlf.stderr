@@ -4,7 +4,7 @@ warning: `[error]` cannot be resolved, ignoring it...
 LL | /// [error]
    |      ^^^^^ cannot be resolved, ignoring
    |
-   = note: #[warn(intra_doc_link_resolution_failure)] on by default
+   = note: `#[warn(intra_doc_link_resolution_failure)]` on by default
    = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 warning: `[error1]` cannot be resolved, ignoring it...

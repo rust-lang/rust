@@ -4,5 +4,5 @@ warning: unreachable block in `if` expression
 LL | fn foo() { if (return) { } }
    |                        ^^^
    |
-   = note: #[warn(unreachable_code)] on by default
+   = note: `#[warn(unreachable_code)]` on by default
 

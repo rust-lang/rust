@@ -94,19 +94,19 @@ declare_lint! {
 declare_lint! {
     pub UNUSED_FEATURES,
     Warn,
-    "unused features found in crate-level #[feature] directives"
+    "unused features found in crate-level `#[feature]` directives"
 }
 
 declare_lint! {
     pub STABLE_FEATURES,
     Warn,
-    "stable features found in #[feature] directive"
+    "stable features found in `#[feature]` directive"
 }
 
 declare_lint! {
     pub UNKNOWN_CRATE_TYPES,
     Deny,
-    "unknown crate type found in #[crate_type] directive"
+    "unknown crate type found in `#[crate_type]` directive"
 }
 
 declare_lint! {

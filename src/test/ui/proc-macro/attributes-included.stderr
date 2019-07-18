@@ -9,5 +9,5 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(unused_variables)] implied by #[warn(unused)]
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 

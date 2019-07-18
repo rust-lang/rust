@@ -4,7 +4,7 @@ warning: lint name `test_lint` is deprecated and may not have an effect in the f
 LL | #![cfg_attr(foo, warn(test_lint))]
    |                       ^^^^^^^^^ help: change it to: `clippy::test_lint`
    |
-   = note: #[warn(renamed_and_removed_lints)] on by default
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
 
 warning: lint name `clippy_group` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
   --> $DIR/lint-tool-test.rs:11:9
@@ -24,7 +24,7 @@ warning: unknown lint: `this_lint_does_not_exist`
 LL | #[deny(this_lint_does_not_exist)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: #[warn(unknown_lints)] on by default
+   = note: `#[warn(unknown_lints)]` on by default
 
 warning: lint name `test_lint` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
   --> $DIR/lint-tool-test.rs:8:23
@@ -43,7 +43,7 @@ note: lint level defined here
    |
 LL | #![deny(clippy_group)]
    |         ^^^^^^^^^^^^
-   = note: #[deny(clippy::test_lint)] implied by #[deny(clippy::group)]
+   = note: `#[deny(clippy::test_lint)]` implied by `#[deny(clippy::group)]`
 
 error: item is named 'lintmetoo'
   --> $DIR/lint-tool-test.rs:22:5
@@ -56,7 +56,7 @@ note: lint level defined here
    |
 LL | #![deny(clippy_group)]
    |         ^^^^^^^^^^^^
-   = note: #[deny(clippy::test_group)] implied by #[deny(clippy::group)]
+   = note: `#[deny(clippy::test_group)]` implied by `#[deny(clippy::group)]`
 
 error: aborting due to 2 previous errors
 

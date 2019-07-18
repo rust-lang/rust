@@ -4,7 +4,7 @@ error: ambiguous associated item
 LL |     fn f() -> Self::V { 0 }
    |               ^^^^^^^ help: use fully-qualified syntax: `<E as Tr>::V`
    |
-   = note: #[deny(ambiguous_associated_items)] on by default
+   = note: `#[deny(ambiguous_associated_items)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57644 <https://github.com/rust-lang/rust/issues/57644>
 note: `V` could refer to variant defined here

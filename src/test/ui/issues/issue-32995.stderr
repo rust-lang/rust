@@ -4,7 +4,7 @@ error: parenthesized type parameters may only be used with a `Fn` trait
 LL |     let x: usize() = 1;
    |                 ^^
    |
-   = note: #[deny(parenthesized_params_in_types_and_modules)] on by default
+   = note: `#[deny(parenthesized_params_in_types_and_modules)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 

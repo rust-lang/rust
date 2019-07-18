@@ -13,7 +13,7 @@ note: lint level defined here
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
-   = note: #[deny(private_doc_tests)] implied by #[deny(rustdoc)]
+   = note: `#[deny(private_doc_tests)]` implied by `#[deny(rustdoc)]`
 
 error: `[error]` cannot be resolved, ignoring it...
   --> $DIR/lint-group.rs:9:29
@@ -26,7 +26,7 @@ note: lint level defined here
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
-   = note: #[deny(intra_doc_link_resolution_failure)] implied by #[deny(rustdoc)]
+   = note: `#[deny(intra_doc_link_resolution_failure)]` implied by `#[deny(rustdoc)]`
    = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 error: Missing code example in this documentation
@@ -40,7 +40,7 @@ note: lint level defined here
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
-   = note: #[deny(missing_doc_code_examples)] implied by #[deny(rustdoc)]
+   = note: `#[deny(missing_doc_code_examples)]` implied by `#[deny(rustdoc)]`
 
 error: aborting due to 3 previous errors
 
