@@ -1,7 +1,13 @@
+error: malformed `bench` attribute input
+  --> $DIR/issue-43106-gating-of-bench.rs:15:1
+   |
+LL | #![bench                   = "4100"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[bench]`
+
 error[E0601]: `main` function not found in crate `issue_43106_gating_of_bench`
    |
    = note: consider adding a `main` function to `$DIR/issue-43106-gating-of-bench.rs`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0601`.

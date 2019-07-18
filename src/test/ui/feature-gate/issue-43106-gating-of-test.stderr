@@ -1,7 +1,13 @@
+error: malformed `test` attribute input
+  --> $DIR/issue-43106-gating-of-test.rs:10:1
+   |
+LL | #![test                    = "4200"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[test]`
+
 error[E0601]: `main` function not found in crate `issue_43106_gating_of_test`
    |
    = note: consider adding a `main` function to `$DIR/issue-43106-gating-of-test.rs`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0601`.

@@ -1,31 +1,22 @@
-use errors::Applicability;
-use syntax::ast::{self, Arg, Attribute, Expr, FnHeader, Generics, Ident, Item};
 use syntax::ast::{ItemKind, Mutability, Ty, TyKind, Unsafety, VisibilityKind};
-use syntax::source_map::respan;
+use syntax::ast::{self, Arg, Attribute, Expr, FnHeader, Generics, Ident, Item};
+use syntax::attr::check_builtin_macro_attribute;
 use syntax::ext::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
+use syntax::source_map::respan;
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
 pub fn expand(
     ecx: &mut ExtCtxt<'_>,
-    span: Span,
+    _span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
 ) -> Vec<Annotatable> {
-    if !meta_item.is_word() {
-        let msg = format!("malformed `{}` attribute input", meta_item.path);
-        ecx.parse_sess.span_diagnostic.struct_span_err(span, &msg)
-            .span_suggestion(
-                span,
-                "must be of the form",
-                format!("`#[{}]`", meta_item.path),
-                Applicability::MachineApplicable
-            ).emit();
-    }
+    check_builtin_macro_attribute(ecx, meta_item, sym::global_allocator);
 
     let not_static = |item: Annotatable| {
         ecx.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
