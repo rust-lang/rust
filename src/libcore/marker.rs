@@ -431,6 +431,9 @@ macro_rules! impls{
                 $t
             }
         }
+
+        #[stable(feature = "pin", since = "1.33.0")]
+        impl<T:?Sized> Unpin for $t<T> { }
         )
 }
 
