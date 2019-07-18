@@ -4,8 +4,7 @@ use hir::{Mutability, Ty};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    ast, AstNode, Direction, Pat, PatKind, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*,
-    TextRange, T,
+    ast, AstNode, Direction, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T,
 };
 
 use crate::{db::RootDatabase, FileId};
@@ -32,7 +31,7 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
     }
 }
 
-fn is_variable_mutable(db: &RootDatabase, analyzer: &hir::SourceAnalyzer, pat: &Pat) -> bool {
+fn is_variable_mutable(db: &RootDatabase, analyzer: &hir::SourceAnalyzer, pat: &ast::Pat) -> bool {
     let ty = analyzer.type_of_pat(db, pat).unwrap_or(Ty::Unknown);
     let is_ty_mut = {
         if let Some((_, mutability)) = ty.as_reference() {
@@ -46,7 +45,7 @@ fn is_variable_mutable(db: &RootDatabase, analyzer: &hir::SourceAnalyzer, pat: &
     };
 
     let is_pat_mut = match pat.kind() {
-        PatKind::BindPat(bind_pat) => bind_pat.is_mutable(),
+        ast::PatKind::BindPat(bind_pat) => bind_pat.is_mutable(),
         _ => false,
     };
 
@@ -137,7 +136,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME => {
                 if let Some(name) = node.as_node().and_then(ast::Name::cast) {
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name.syntax(), None);
-                    if let Some(pat) = name.syntax().ancestors().find_map(Pat::cast) {
+                    if let Some(pat) = name.syntax().ancestors().find_map(ast::Pat::cast) {
                         binding_hash = Some({
                             let text = name.syntax().text().to_smol_string();
                             let shadow_count =
