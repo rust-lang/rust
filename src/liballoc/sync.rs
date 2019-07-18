@@ -703,7 +703,7 @@ impl<T> Arc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.dealloc(self.mem.cast(), self.layout.clone());
+                    Global.dealloc(self.mem.cast(), self.layout);
                 }
             }
         }
