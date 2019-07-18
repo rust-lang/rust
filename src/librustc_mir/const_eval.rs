@@ -13,10 +13,10 @@ use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
-use rustc::ty::subst::{Subst, SubstsRef};
+use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
-use crate::interpret::alloc_type_name;
+use crate::interpret::eval_nulary_intrinsic;
 
 use syntax::source_map::{Span, DUMMY_SP};
 
@@ -619,48 +619,6 @@ pub fn const_eval_provider<'tcx>(
     tcx.const_eval_raw(key).and_then(|val| {
         validate_and_turn_into_const(tcx, val, key)
     })
-}
-
-fn eval_nulary_intrinsic<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    def_id: DefId,
-    substs: SubstsRef<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
-    let tp_ty = substs.type_at(0);
-    let name = &*tcx.item_name(def_id).as_str();
-    match name {
-        "type_name" => {
-            let alloc = alloc_type_name(tcx, tp_ty);
-            tcx.mk_const(ty::Const {
-                val: ConstValue::Slice {
-                    data: alloc,
-                    start: 0,
-                    end: alloc.bytes.len(),
-                },
-                ty: tcx.mk_static_str(),
-            })
-        },
-        "needs_drop" => ty::Const::from_bool(tcx, tp_ty.needs_drop(tcx, param_env)),
-        "size_of" |
-        "min_align_of" |
-        "pref_align_of" => {
-            let layout = tcx.layout_of(param_env.and(tp_ty)).unwrap();
-            let n = match name {
-                "pref_align_of" => layout.align.pref.bytes(),
-                "min_align_of" => layout.align.abi.bytes(),
-                "size_of" => layout.size.bytes(),
-                _ => bug!(),
-            };
-            ty::Const::from_usize(tcx, n)
-        },
-        "type_id" => ty::Const::from_bits(
-            tcx,
-            tcx.type_id_hash(tp_ty).into(),
-            param_env.and(tcx.types.u64),
-        ),
-        other => bug!("`{}` is not a zero arg intrinsic", other),
-    }
 }
 
 pub fn const_eval_raw_provider<'tcx>(

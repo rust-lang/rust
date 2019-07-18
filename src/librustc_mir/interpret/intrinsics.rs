@@ -5,16 +5,17 @@
 use syntax::symbol::Symbol;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
+use rustc::ty::subst::SubstsRef;
+use rustc::hir::def_id::DefId;
+use rustc::ty::TyCtxt;
 use rustc::mir::BinOp;
-use rustc::mir::interpret::{InterpResult, Scalar, GlobalId};
+use rustc::mir::interpret::{InterpResult, Scalar, GlobalId, ConstValue};
 
 use super::{
     Machine, PlaceTy, OpTy, InterpCx,
 };
 
 mod type_name;
-
-pub(crate) use type_name::alloc_type_name;
 
 fn numeric_intrinsic<'tcx, Tag>(
     name: &str,
@@ -35,6 +36,49 @@ fn numeric_intrinsic<'tcx, Tag>(
         _ => bug!("not a numeric intrinsic: {}", name),
     };
     Ok(Scalar::from_uint(bits_out, size))
+}
+
+
+crate fn eval_nulary_intrinsic<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+) -> &'tcx ty::Const<'tcx> {
+    let tp_ty = substs.type_at(0);
+    let name = &*tcx.item_name(def_id).as_str();
+    match name {
+        "type_name" => {
+            let alloc = type_name::alloc_type_name(tcx, tp_ty);
+            tcx.mk_const(ty::Const {
+                val: ConstValue::Slice {
+                    data: alloc,
+                    start: 0,
+                    end: alloc.bytes.len(),
+                },
+                ty: tcx.mk_static_str(),
+            })
+        },
+        "needs_drop" => ty::Const::from_bool(tcx, tp_ty.needs_drop(tcx, param_env)),
+        "size_of" |
+        "min_align_of" |
+        "pref_align_of" => {
+            let layout = tcx.layout_of(param_env.and(tp_ty)).unwrap();
+            let n = match name {
+                "pref_align_of" => layout.align.pref.bytes(),
+                "min_align_of" => layout.align.abi.bytes(),
+                "size_of" => layout.size.bytes(),
+                _ => bug!(),
+            };
+            ty::Const::from_usize(tcx, n)
+        },
+        "type_id" => ty::Const::from_bits(
+            tcx,
+            tcx.type_id_hash(tp_ty).into(),
+            param_env.and(tcx.types.u64),
+        ),
+        other => bug!("`{}` is not a zero arg intrinsic", other),
+    }
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
