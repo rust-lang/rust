@@ -6,7 +6,7 @@ use std::{
 use mbe::MacroRules;
 use ra_db::{salsa, FileId};
 use ra_prof::profile;
-use ra_syntax::{ast, AstNode, SyntaxNode, TreeArc};
+use ra_syntax::{ast, AstNode, Parse, SyntaxNode, TreeArc};
 
 use crate::{AstDatabase, AstId, DefDatabase, FileAstId, InternDatabase, Module, Source};
 
@@ -61,14 +61,16 @@ impl HirFileId {
     ) -> Option<TreeArc<SyntaxNode>> {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => Some(db.parse(file_id).tree().syntax().to_owned()),
-            HirFileIdRepr::Macro(macro_file) => db.parse_macro(macro_file),
+            HirFileIdRepr::Macro(macro_file) => {
+                db.parse_macro(macro_file).map(|it| it.tree().to_owned())
+            }
         }
     }
 
     pub(crate) fn parse_macro_query(
         db: &impl AstDatabase,
         macro_file: MacroFile,
-    ) -> Option<TreeArc<SyntaxNode>> {
+    ) -> Option<Parse<SyntaxNode>> {
         let _p = profile("parse_macro_query");
         let macro_call_id = macro_file.macro_call_id;
         let tt = db
@@ -85,10 +87,8 @@ impl HirFileId {
             })
             .ok()?;
         match macro_file.macro_file_kind {
-            MacroFileKind::Items => Some(mbe::token_tree_to_ast_item_list(&tt).syntax().to_owned()),
-            MacroFileKind::Expr => {
-                mbe::token_tree_to_expr(&tt).ok().map(|it| it.syntax().to_owned())
-            }
+            MacroFileKind::Items => Some(Parse::to_syntax(mbe::token_tree_to_ast_item_list(&tt))),
+            MacroFileKind::Expr => mbe::token_tree_to_expr(&tt).ok().map(Parse::to_syntax),
         }
     }
 }
