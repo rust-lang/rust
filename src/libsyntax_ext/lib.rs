@@ -7,6 +7,7 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
+#![feature(mem_take)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(unicode_internals)]
@@ -38,11 +39,11 @@ mod global_asm;
 mod log_syntax;
 mod source_util;
 mod test;
-mod test_case;
 mod trace_macros;
 
 pub mod plugin_macro_defs;
 pub mod proc_macro_decls;
+pub mod test_harness;
 
 pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, edition: Edition) {
     let mut register = |name, kind| resolver.register_builtin_macro(
@@ -89,7 +90,7 @@ pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, e
         bench: test::expand_bench,
         global_allocator: global_allocator::expand,
         test: test::expand_test,
-        test_case: test_case::expand,
+        test_case: test::expand_test_case,
     }
 
     register_derive! {

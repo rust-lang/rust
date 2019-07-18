@@ -456,7 +456,7 @@ fn configure_and_expand_inner<'a>(
     sess.profiler(|p| p.end_activity("macro expansion"));
 
     time(sess, "maybe building test harness", || {
-        syntax::test::modify_for_testing(
+        syntax_ext::test_harness::modify_for_testing(
             &sess.parse_sess,
             &mut resolver,
             sess.opts.test,

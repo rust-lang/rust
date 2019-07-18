@@ -156,7 +156,6 @@ pub mod show_span;
 pub mod std_inject;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
-pub mod test;
 pub mod tokenstream;
 pub mod visit;
 
