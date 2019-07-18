@@ -3,7 +3,7 @@
 use itertools::Itertools;
 use ra_syntax::{
     ast::{self, AstNode, AstToken},
-    SyntaxKind,
+    SmolStr, SyntaxKind,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, T,
 };
@@ -15,12 +15,12 @@ pub fn reindent(text: &str, indent: &str) -> String {
 }
 
 /// If the node is on the beginning of the line, calculate indent.
-pub fn leading_indent(node: &SyntaxNode) -> Option<&str> {
+pub fn leading_indent(node: &SyntaxNode) -> Option<SmolStr> {
     for token in prev_tokens(node.first_token()?) {
-        if let Some(ws) = ast::Whitespace::cast(token) {
+        if let Some(ws) = ast::Whitespace::cast(token.clone()) {
             let ws_text = ws.text();
             if let Some(pos) = ws_text.rfind('\n') {
-                return Some(&ws_text[pos + 1..]);
+                return Some(ws_text[pos + 1..].into());
             }
         }
         if token.text().contains('\n') {
@@ -31,17 +31,17 @@ pub fn leading_indent(node: &SyntaxNode) -> Option<&str> {
 }
 
 fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
-    successors(token.prev_token(), |&token| token.prev_token())
+    successors(token.prev_token(), |token| token.prev_token())
 }
 
-pub fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
+pub fn extract_trivial_expression(block: &ast::Block) -> Option<ast::Expr> {
     let expr = block.expr()?;
     if expr.syntax().text().contains('\n') {
         return None;
     }
     let non_trivial_children = block.syntax().children().filter(|it| match it.kind() {
         WHITESPACE | T!['{'] | T!['}'] => false,
-        _ => it != &expr.syntax(),
+        _ => it != expr.syntax(),
     });
     if non_trivial_children.count() > 0 {
         return None;
