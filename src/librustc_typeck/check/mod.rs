@@ -759,40 +759,40 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 fn primary_body_of(
     tcx: TyCtxt<'_>,
     id: hir::HirId,
-) -> Option<(hir::BodyId, Option<&hir::FnHeader>, Option<&hir::FnDecl>)> {
+) -> Option<(hir::BodyId, Option<&hir::Ty>, Option<&hir::FnHeader>, Option<&hir::FnDecl>)> {
     match tcx.hir().get(id) {
         Node::Item(item) => {
             match item.node {
-                hir::ItemKind::Const(_, body) |
-                hir::ItemKind::Static(_, _, body) =>
-                    Some((body, None, None)),
+                hir::ItemKind::Const(ref ty, body) |
+                hir::ItemKind::Static(ref ty, _, body) =>
+                    Some((body, Some(ty), None, None)),
                 hir::ItemKind::Fn(ref decl, ref header, .., body) =>
-                    Some((body, Some(header), Some(decl))),
+                    Some((body, None, Some(header), Some(decl))),
                 _ =>
                     None,
             }
         }
         Node::TraitItem(item) => {
             match item.node {
-                hir::TraitItemKind::Const(_, Some(body)) =>
-                    Some((body, None, None)),
+                hir::TraitItemKind::Const(ref ty, Some(body)) =>
+                    Some((body, Some(ty), None, None)),
                 hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) =>
-                    Some((body, Some(&sig.header), Some(&sig.decl))),
+                    Some((body, None, Some(&sig.header), Some(&sig.decl))),
                 _ =>
                     None,
             }
         }
         Node::ImplItem(item) => {
             match item.node {
-                hir::ImplItemKind::Const(_, body) =>
-                    Some((body, None, None)),
+                hir::ImplItemKind::Const(ref ty, body) =>
+                    Some((body, Some(ty), None, None)),
                 hir::ImplItemKind::Method(ref sig, body) =>
-                    Some((body, Some(&sig.header), Some(&sig.decl))),
+                    Some((body, None, Some(&sig.header), Some(&sig.decl))),
                 _ =>
                     None,
             }
         }
-        Node::AnonConst(constant) => Some((constant.body, None, None)),
+        Node::AnonConst(constant) => Some((constant.body, None, None, None)),
         _ => None,
     }
 }
@@ -825,7 +825,7 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
-    let (body_id, fn_header, fn_decl) = primary_body_of(tcx, id)
+    let (body_id, body_ty, fn_header, fn_decl) = primary_body_of(tcx, id)
         .unwrap_or_else(|| {
             span_bug!(span, "can't type-check body of {:?}", def_id);
         });
@@ -856,7 +856,10 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
             fcx
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-            let expected_type = tcx.type_of(def_id);
+            let expected_type = body_ty.and_then(|ty| match ty.node {
+                hir::TyKind::Infer => Some(AstConv::ast_ty_to_ty(&fcx, ty)),
+                _ => None
+            }).unwrap_or_else(|| tcx.type_of(def_id));
             let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
