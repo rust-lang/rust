@@ -9,7 +9,7 @@ use ra_db::{
     FileTextQuery, SourceRootId,
 };
 use ra_prof::{memory_usage, Bytes};
-use ra_syntax::{AstNode, Parse, SyntaxNode, TreeArc};
+use ra_syntax::{ast, AstNode, Parse, SyntaxNode, TreeArc};
 
 use crate::{
     db::RootDatabase,
@@ -79,10 +79,10 @@ impl fmt::Display for SyntaxTreeStats {
     }
 }
 
-impl FromIterator<TableEntry<FileId, Parse>> for SyntaxTreeStats {
+impl FromIterator<TableEntry<FileId, Parse<ast::SourceFile>>> for SyntaxTreeStats {
     fn from_iter<T>(iter: T) -> SyntaxTreeStats
     where
-        T: IntoIterator<Item = TableEntry<FileId, Parse>>,
+        T: IntoIterator<Item = TableEntry<FileId, Parse<ast::SourceFile>>>,
     {
         let mut res = SyntaxTreeStats::default();
         for entry in iter {

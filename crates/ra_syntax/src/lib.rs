@@ -35,7 +35,7 @@ use std::{fmt::Write, sync::Arc};
 
 use ra_text_edit::AtomTextEdit;
 
-use crate::syntax_node::GreenNode;
+use crate::syntax_node::{GreenNode, SyntaxNodeWrapper};
 
 pub use crate::{
     ast::{AstNode, AstToken},
@@ -57,14 +57,24 @@ pub use rowan::{SmolStr, TextRange, TextUnit};
 ///
 /// Note that we always produce a syntax tree, even for completely invalid
 /// files.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Parse {
-    tree: TreeArc<SourceFile>,
+#[derive(Debug, PartialEq, Eq)]
+pub struct Parse<T: SyntaxNodeWrapper> {
+    tree: TreeArc<T>,
     errors: Arc<Vec<SyntaxError>>,
 }
 
-impl Parse {
-    pub fn tree(&self) -> &SourceFile {
+impl<T: SyntaxNodeWrapper> Clone for Parse<T> {
+    fn clone(&self) -> Parse<T> {
+        Parse { tree: self.tree.clone(), errors: self.errors.clone() }
+    }
+}
+
+impl<T: SyntaxNodeWrapper> Parse<T> {
+    fn new(tree: TreeArc<T>, errors: Vec<SyntaxError>) -> Parse<T> {
+        Parse { tree, errors: Arc::new(errors) }
+    }
+
+    pub fn tree(&self) -> &T {
         &*self.tree
     }
 
@@ -72,18 +82,16 @@ impl Parse {
         &*self.errors
     }
 
-    pub fn ok(self) -> Result<TreeArc<SourceFile>, Arc<Vec<SyntaxError>>> {
+    pub fn ok(self) -> Result<TreeArc<T>, Arc<Vec<SyntaxError>>> {
         if self.errors.is_empty() {
             Ok(self.tree)
         } else {
             Err(self.errors)
         }
     }
+}
 
-    pub fn reparse(&self, edit: &AtomTextEdit) -> Parse {
-        self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
-    }
-
+impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
         let mut buf = self.tree.syntax().debug_dump();
         for err in self.errors.iter() {
@@ -92,7 +100,11 @@ impl Parse {
         buf
     }
 
-    fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<Parse> {
+    pub fn reparse(&self, edit: &AtomTextEdit) -> Parse<SourceFile> {
+        self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
+    }
+
+    fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<Parse<SourceFile>> {
         // FIXME: validation errors are not handled here
         parsing::incremental_reparse(self.tree.syntax(), edit, self.errors.to_vec()).map(
             |(green_node, errors, _reparsed_range)| Parse {
@@ -102,9 +114,16 @@ impl Parse {
         )
     }
 
-    fn full_reparse(&self, edit: &AtomTextEdit) -> Parse {
+    fn full_reparse(&self, edit: &AtomTextEdit) -> Parse<SourceFile> {
         let text = edit.apply(self.tree.syntax().text().to_string());
         SourceFile::parse(&text)
+    }
+}
+
+impl Parse<SyntaxNode> {
+    pub fn cast<T: AstNode>(self) -> Option<Parse<T>> {
+        let node = T::cast(&self.tree)?;
+        Some(Parse { tree: node.to_owned(), errors: self.errors })
     }
 }
 
@@ -121,7 +140,7 @@ impl SourceFile {
         TreeArc::cast(root)
     }
 
-    pub fn parse(text: &str) -> Parse {
+    pub fn parse(text: &str) -> Parse<SourceFile> {
         let (green, mut errors) = parsing::parse_text(text);
         let tree = SourceFile::new(green);
         errors.extend(validation::validate(&tree));

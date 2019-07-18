@@ -169,7 +169,9 @@ impl SymbolIndex {
         self.map.as_fst().size() + self.symbols.len() * mem::size_of::<FileSymbol>()
     }
 
-    pub(crate) fn for_files(files: impl ParallelIterator<Item = (FileId, Parse)>) -> SymbolIndex {
+    pub(crate) fn for_files(
+        files: impl ParallelIterator<Item = (FileId, Parse<ast::SourceFile>)>,
+    ) -> SymbolIndex {
         let symbols = files
             .flat_map(|(file_id, file)| source_file_to_file_symbols(file.tree(), file_id))
             .collect::<Vec<_>>();

@@ -43,7 +43,7 @@ pub(crate) struct CompletionContext<'a> {
 impl<'a> CompletionContext<'a> {
     pub(super) fn new(
         db: &'a db::RootDatabase,
-        original_parse: &'a Parse,
+        original_parse: &'a Parse<ast::SourceFile>,
         position: FilePosition,
     ) -> Option<CompletionContext<'a>> {
         let module = source_binder::module_from_position(db, position);
@@ -83,7 +83,7 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    fn fill(&mut self, original_parse: &'a Parse, offset: TextUnit) {
+    fn fill(&mut self, original_parse: &'a Parse<ast::SourceFile>, offset: TextUnit) {
         // Insert a fake ident to get a valid parse tree. We will use this file
         // to determine context, though the original_file will be used for
         // actual completion.
