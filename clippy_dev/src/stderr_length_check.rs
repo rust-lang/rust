@@ -7,7 +7,7 @@ use std::io::prelude::*;
 // The maximum length allowed for stderr files.
 //
 // We limit this because small files are easier to deal with than bigger files.
-const LIMIT: usize = 320;
+const LIMIT: usize = 275;
 
 pub fn check() {
     let stderr_files = stderr_files();
