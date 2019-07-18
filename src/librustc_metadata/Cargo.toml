@@ -21,5 +21,4 @@ rustc_target = { path = "../librustc_target" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 stable_deref_trait = "1.0.0"
 syntax = { path = "../libsyntax" }
-syntax_ext = { path = "../libsyntax_ext" }
 syntax_pos = { path = "../libsyntax_pos" }

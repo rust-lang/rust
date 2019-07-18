@@ -3008,7 +3008,6 @@ dependencies = [
  "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
- "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",
 ]
 

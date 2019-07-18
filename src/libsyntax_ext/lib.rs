@@ -8,9 +8,6 @@
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(nll)]
-#![feature(proc_macro_diagnostic)]
-#![feature(proc_macro_internals)]
-#![feature(proc_macro_span)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(unicode_internals)]
 
@@ -32,22 +29,20 @@ mod cfg;
 mod compile_error;
 mod concat;
 mod concat_idents;
+mod deriving;
 mod env;
 mod format;
 mod format_foreign;
 mod global_allocator;
 mod global_asm;
 mod log_syntax;
-mod proc_macro_server;
 mod source_util;
 mod test;
 mod test_case;
 mod trace_macros;
 
-pub mod deriving;
 pub mod plugin_macro_defs;
 pub mod proc_macro_decls;
-pub mod proc_macro_impl;
 
 pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, edition: Edition) {
     let mut register = |name, kind| resolver.register_builtin_macro(

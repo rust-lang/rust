@@ -586,8 +586,7 @@ impl<'a> CrateLoader<'a> {
         use std::{env, mem};
         use crate::dynamic_lib::DynamicLibrary;
         use proc_macro::bridge::client::ProcMacro;
-        use syntax_ext::deriving::custom::ProcMacroDerive;
-        use syntax_ext::proc_macro_impl::{AttrProcMacro, BangProcMacro};
+        use syntax::ext::proc_macro::{BangProcMacro, AttrProcMacro, ProcMacroDerive};
 
         let path = match dylib {
             Some(dylib) => dylib,
