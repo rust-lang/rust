@@ -273,11 +273,6 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             debug_assert_eq!(self.cx.body.terminator_loc(location.block), location,);
 
             if self.cx.initialized_at_terminator(location.block, mpi) {
-                // FIXME: this analysis (the initialization tracking) should be
-                // done in Polonius, but isn't yet.
-                if let Some(facts) = self.cx.typeck.borrowck_context.all_facts {
-                    facts.var_drop_used.push((local, self.cx.location_table.mid_index(location)));
-                }
                 if self.drop_live_at.insert(drop_point) {
                     self.drop_locations.push(location);
                     self.stack.push(drop_point);

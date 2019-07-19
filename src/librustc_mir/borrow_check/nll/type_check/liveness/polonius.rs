@@ -13,6 +13,7 @@ struct LivenessPointFactsExtractor<'me> {
     var_defined: &'me mut VarPointRelations,
     var_used: &'me mut VarPointRelations,
     location_table: &'me LocationTable,
+    var_drop_used: &'me mut VarPointRelations,
 }
 
 // A Visitor to walk through the MIR and extract point-wise facts
@@ -30,6 +31,11 @@ impl LivenessPointFactsExtractor<'_> {
         debug!("LivenessFactsExtractor::insert_use()");
         self.var_used.push((local, self.location_to_index(location)));
     }
+
+    fn insert_drop_use(&mut self, local: Local, location: Location) {
+        debug!("LivenessFactsExtractor::insert_drop_use()");
+        self.var_drop_used.push((local, self.location_to_index(location)));
+    }
 }
 
 impl Visitor<'tcx> for LivenessPointFactsExtractor<'_> {
@@ -37,8 +43,8 @@ impl Visitor<'tcx> for LivenessPointFactsExtractor<'_> {
         match categorize(context) {
             Some(DefUse::Def) => self.insert_def(local, location),
             Some(DefUse::Use) => self.insert_use(local, location),
+            Some(DefUse::Drop) => self.insert_drop_use(local, location),
             _ => (),
-            // NOTE: Drop handling is now done in trace()
         }
     }
 }
@@ -65,6 +71,7 @@ pub(super) fn populate_var_liveness_facts(
         LivenessPointFactsExtractor {
             var_defined: &mut facts.var_defined,
             var_used: &mut facts.var_used,
+            var_drop_used: &mut facts.var_drop_used,
             location_table,
         }
         .visit_body(mir);

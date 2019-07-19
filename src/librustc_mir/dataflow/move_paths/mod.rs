@@ -1,9 +1,10 @@
 use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::indexed_vec::{Idx, IndexVec, Enumerated};
 use smallvec::SmallVec;
 use syntax_pos::{Span};
+use core::slice::Iter;
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
@@ -261,6 +262,12 @@ impl MovePathLookup {
 
     pub fn find_local(&self, local: Local) -> MovePathIndex {
         self.locals[local]
+    }
+
+    /// An enumerated iterator of `local`s and their associated
+    /// `MovePathIndex`es.
+    pub fn iter_locals_enumerated(&self) -> Enumerated<Local, Iter<'_, MovePathIndex>> {
+        self.locals.iter_enumerated()
     }
 }
 
