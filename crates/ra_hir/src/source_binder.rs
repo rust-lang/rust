@@ -181,7 +181,7 @@ pub enum PathResolution {
     /// An item
     Def(crate::ModuleDef),
     /// A local binding (only value namespace)
-    LocalBinding(Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>),
+    LocalBinding(Either<AstPtr<ast::BindPat>, AstPtr<ast::SelfParam>>),
     /// A generic parameter
     GenericParam(u32),
     SelfType(crate::ImplBlock),
@@ -307,7 +307,18 @@ impl SourceAnalyzer {
         let res = match res {
             crate::Resolution::Def(it) => PathResolution::Def(it),
             crate::Resolution::LocalBinding(it) => {
-                PathResolution::LocalBinding(self.body_source_map.as_ref()?.pat_syntax(it)?)
+                // We get a `PatId` from resolver, but it actually can only
+                // point at `BindPat`, and not at the arbitrary pattern.
+                let pat_ptr = self.body_source_map.as_ref()?.pat_syntax(it)?;
+                let pat_ptr = match pat_ptr {
+                    Either::A(pat) => {
+                        let pat: AstPtr<ast::BindPat> =
+                            pat.cast_checking_kind(|kind| kind == BIND_PAT).unwrap();
+                        Either::A(pat)
+                    }
+                    Either::B(self_param) => Either::B(self_param),
+                };
+                PathResolution::LocalBinding(pat_ptr)
             }
             crate::Resolution::GenericParam(it) => PathResolution::GenericParam(it),
             crate::Resolution::SelfType(it) => PathResolution::SelfType(it),

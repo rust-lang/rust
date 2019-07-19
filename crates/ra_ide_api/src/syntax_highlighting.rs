@@ -4,10 +4,17 @@ use hir::{Mutability, Ty};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    ast, AstNode, Direction, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T,
+    ast::{self, NameOwner},
+    AstNode, Direction, SmolStr, SyntaxElement, SyntaxKind,
+    SyntaxKind::*,
+    TextRange, T,
 };
 
-use crate::{db::RootDatabase, FileId};
+use crate::{
+    db::RootDatabase,
+    name_ref_kind::{classify_name_ref, NameRefKind::*},
+    FileId,
+};
 
 #[derive(Debug)]
 pub struct HighlightedRange {
@@ -31,25 +38,24 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
     }
 }
 
-fn is_variable_mutable(db: &RootDatabase, analyzer: &hir::SourceAnalyzer, pat: ast::Pat) -> bool {
-    let ty = analyzer.type_of_pat(db, &pat).unwrap_or(Ty::Unknown);
-    let is_ty_mut = {
-        if let Some((_, mutability)) = ty.as_reference() {
-            match mutability {
-                Mutability::Shared => false,
-                Mutability::Mut => true,
-            }
-        } else {
-            false
+fn is_variable_mutable(
+    db: &RootDatabase,
+    analyzer: &hir::SourceAnalyzer,
+    pat: ast::BindPat,
+) -> bool {
+    if pat.is_mutable() {
+        return true;
+    }
+
+    let ty = analyzer.type_of_pat(db, &pat.into()).unwrap_or(Ty::Unknown);
+    if let Some((_, mutability)) = ty.as_reference() {
+        match mutability {
+            Mutability::Shared => false,
+            Mutability::Mut => true,
         }
-    };
-
-    let is_pat_mut = match pat.kind() {
-        ast::PatKind::BindPat(bind_pat) => bind_pat.is_mutable(),
-        _ => false,
-    };
-
-    is_ty_mut || is_pat_mut
+    } else {
+        false
+    }
 }
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
@@ -81,44 +87,45 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
         }
         let mut binding_hash = None;
         let tag = match node.kind() {
+            FN_DEF => {
+                bindings_shadow_count.clear();
+                continue;
+            }
             COMMENT => "comment",
             STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
             ATTR => "attribute",
             NAME_REF => {
                 if let Some(name_ref) = node.as_node().cloned().and_then(ast::NameRef::cast) {
-                    // FIXME: revisit this after #1340
-                    use crate::name_ref_kind::{classify_name_ref, NameRefKind::*};
-                    use hir::{ImplItem, ModuleDef};
-
                     // FIXME: try to reuse the SourceAnalyzers
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
                     match classify_name_ref(db, &analyzer, &name_ref) {
                         Some(Method(_)) => "function",
                         Some(Macro(_)) => "macro",
                         Some(FieldAccess(_)) => "field",
-                        Some(AssocItem(ImplItem::Method(_))) => "function",
-                        Some(AssocItem(ImplItem::Const(_))) => "constant",
-                        Some(AssocItem(ImplItem::TypeAlias(_))) => "type",
-                        Some(Def(ModuleDef::Module(_))) => "module",
-                        Some(Def(ModuleDef::Function(_))) => "function",
-                        Some(Def(ModuleDef::Struct(_))) => "type",
-                        Some(Def(ModuleDef::Union(_))) => "type",
-                        Some(Def(ModuleDef::Enum(_))) => "type",
-                        Some(Def(ModuleDef::EnumVariant(_))) => "constant",
-                        Some(Def(ModuleDef::Const(_))) => "constant",
-                        Some(Def(ModuleDef::Static(_))) => "constant",
-                        Some(Def(ModuleDef::Trait(_))) => "type",
-                        Some(Def(ModuleDef::TypeAlias(_))) => "type",
-                        Some(Def(ModuleDef::BuiltinType(_))) => "type",
+                        Some(AssocItem(hir::ImplItem::Method(_))) => "function",
+                        Some(AssocItem(hir::ImplItem::Const(_))) => "constant",
+                        Some(AssocItem(hir::ImplItem::TypeAlias(_))) => "type",
+                        Some(Def(hir::ModuleDef::Module(_))) => "module",
+                        Some(Def(hir::ModuleDef::Function(_))) => "function",
+                        Some(Def(hir::ModuleDef::Struct(_))) => "type",
+                        Some(Def(hir::ModuleDef::Union(_))) => "type",
+                        Some(Def(hir::ModuleDef::Enum(_))) => "type",
+                        Some(Def(hir::ModuleDef::EnumVariant(_))) => "constant",
+                        Some(Def(hir::ModuleDef::Const(_))) => "constant",
+                        Some(Def(hir::ModuleDef::Static(_))) => "constant",
+                        Some(Def(hir::ModuleDef::Trait(_))) => "type",
+                        Some(Def(hir::ModuleDef::TypeAlias(_))) => "type",
+                        Some(Def(hir::ModuleDef::BuiltinType(_))) => "type",
                         Some(SelfType(_)) => "type",
                         Some(Pat(ptr)) => {
-                            binding_hash = Some({
-                                let text =
-                                    ptr.syntax_node_ptr().to_node(&root).text().to_smol_string();
+                            let pat = ptr.to_node(&root);
+                            if let Some(name) = pat.name() {
+                                let text = name.text();
                                 let shadow_count =
                                     bindings_shadow_count.entry(text.clone()).or_default();
-                                calc_binding_hash(file_id, &text, *shadow_count)
-                            });
+                                binding_hash =
+                                    Some(calc_binding_hash(file_id, &text, *shadow_count))
+                            }
 
                             if is_variable_mutable(db, &analyzer, ptr.to_node(&root)) {
                                 "variable.mut"
@@ -137,14 +144,14 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME => {
                 if let Some(name) = node.as_node().cloned().and_then(ast::Name::cast) {
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name.syntax(), None);
-                    if let Some(pat) = name.syntax().ancestors().find_map(ast::Pat::cast) {
-                        binding_hash = Some({
-                            let text = name.syntax().text().to_smol_string();
+                    if let Some(pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
+                        if let Some(name) = pat.name() {
+                            let text = name.text();
                             let shadow_count =
-                                bindings_shadow_count.entry(text.clone()).or_insert(0);
+                                bindings_shadow_count.entry(text.clone()).or_default();
                             *shadow_count += 1;
-                            calc_binding_hash(file_id, &text, *shadow_count)
-                        });
+                            binding_hash = Some(calc_binding_hash(file_id, &text, *shadow_count))
+                        }
 
                         if is_variable_mutable(db, &analyzer, pat) {
                             "variable.mut"
@@ -352,6 +359,10 @@ fn main() {
 
     let x = "other color please!";
     let y = x.to_string();
+}
+
+fn bar() {
+    let mut hello = "hello";
 }
 "#
             .trim(),
