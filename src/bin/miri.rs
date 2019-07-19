@@ -21,24 +21,24 @@ use hex::FromHexError;
 
 use rustc_interface::interface;
 use rustc::hir::def_id::LOCAL_CRATE;
+use rustc_driver::Compilation;
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
-    fn after_parsing(&mut self, compiler: &interface::Compiler) -> bool {
+    fn after_parsing(&mut self, compiler: &interface::Compiler) -> Compilation {
         let attr = (
             syntax::symbol::Symbol::intern("miri"),
             syntax::feature_gate::AttributeType::Whitelisted,
         );
         compiler.session().plugin_attributes.borrow_mut().push(attr);
 
-        // Continue execution
-        true
+        Compilation::Continue
     }
 
-    fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
+    fn after_analysis(&mut self, compiler: &interface::Compiler) -> Compilation {
         init_late_loggers();
         compiler.session().abort_if_errors();
 
@@ -54,8 +54,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
         compiler.session().abort_if_errors();
 
-        // Don't continue execution
-        false
+        Compilation::Stop
     }
 }
 

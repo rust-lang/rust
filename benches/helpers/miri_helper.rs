@@ -8,6 +8,7 @@ extern crate test;
 use self::miri::eval_main;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
+use rustc_driver::Compilation;
 use crate::test::Bencher;
 
 struct MiriCompilerCalls<'a> {
@@ -15,7 +16,7 @@ struct MiriCompilerCalls<'a> {
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
-    fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
+    fn after_analysis(&mut self, compiler: &interface::Compiler) -> Compilation {
         compiler.session().abort_if_errors();
 
         compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
@@ -31,8 +32,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
 
         compiler.session().abort_if_errors();
 
-        // Don't continue execution
-        false
+        Compilation::Stop
     }
 }
 
