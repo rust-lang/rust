@@ -1547,11 +1547,10 @@ dependencies = [
 
 [[package]]
 name = "lzma-sys"
-version = "0.1.10"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
- "filetime 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -4282,7 +4281,7 @@ name = "xz2"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "lzma-sys 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lzma-sys 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -4437,7 +4436,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum log_settings 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "19af41f0565d7c19b2058153ad0b42d4d5ce89ec4dbf06ed6741114a8b63e7cd"
 "checksum lsp-codec 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "169d737ad89cf8ddd82d1804d9122f54568c49377665157277cc90d747b1d31a"
 "checksum lsp-types 0.57.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b62b77309737b1e262b3bbf37ff8faa740562c633b14702afe9be85dbcb6f88a"
-"checksum lzma-sys 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "d1eaa027402541975218bb0eec67d6b0412f6233af96e0d096d31dbdfd22e614"
+"checksum lzma-sys 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "16b5c59c57cc4d39e7999f50431aa312ea78af7c93b23fbb0c3567bd672e7f35"
 "checksum mac 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 "checksum macro-utils 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f2c4deaccc2ead6a28c16c0ba82f07d52b6475397415ce40876e559b0b0ea510"
 "checksum maplit 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "08cbb6b4fef96b6d77bfc40ec491b1690c779e77b05cd9f07f787ed376fd4c43"
