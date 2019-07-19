@@ -1996,9 +1996,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         self.report_mutability_error(
                             place,
                             span,
-                            &Place {
-                                base: _place_err.0.clone(),
-                                projection: _place_err.1.clone(),
+                            PlaceRef {
+                                base: _place_err.0,
+                                projection: _place_err.1,
                             },
                             error_access,
                             location,
@@ -2033,9 +2033,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             self.report_mutability_error(
                 place,
                 span,
-                &Place {
-                    base: the_place_err.0.clone(),
-                    projection: the_place_err.1.clone(),
+                PlaceRef {
+                    base: the_place_err.0,
+                    projection: the_place_err.1,
                 },
                 error_access,
                 location,

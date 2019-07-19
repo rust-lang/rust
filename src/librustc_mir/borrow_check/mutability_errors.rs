@@ -2,7 +2,9 @@ use core::unicode::property::Pattern_White_Space;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::mir::{self, BindingForm, ClearCrossCrate, Local, Location, Body};
-use rustc::mir::{Mutability, Place, PlaceBase, Projection, ProjectionElem, Static, StaticKind};
+use rustc::mir::{
+    Mutability, Place, PlaceRef, PlaceBase, Projection, ProjectionElem, Static, StaticKind
+};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
@@ -25,7 +27,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &mut self,
         access_place: &Place<'tcx>,
         span: Span,
-        the_place_err: &Place<'tcx>,
+        the_place_err: PlaceRef<'cx, 'tcx>,
         error_access: AccessKind,
         location: Location,
     ) {
@@ -44,7 +46,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
         match the_place_err {
-            Place {
+            PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: None,
             } => {
@@ -62,7 +64,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            Place {
+            PlaceRef {
                 base: _,
                 projection:
                     Some(box Projection {
@@ -83,7 +85,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            Place {
+            PlaceRef {
                 base: _,
                 projection:
                     Some(box Projection {
@@ -91,13 +93,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         elem: ProjectionElem::Deref,
                     }),
             } => {
-                if the_place_err.base == PlaceBase::Local(Local::new(1)) &&
+                if the_place_err.base == &PlaceBase::Local(Local::new(1)) &&
                     base.is_none() &&
                     !self.upvars.is_empty() {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     debug_assert!(self.body.local_decls[Local::new(1)].ty.is_region_ptr());
                     debug_assert!(is_closure_or_generator(
-                        the_place_err.ty(self.body, self.infcx.tcx).ty
+                        Place::ty_from(
+                            the_place_err.base,
+                            the_place_err.projection,
+                            self.body,
+                            self.infcx.tcx
+                        )
+                        .ty
                     ));
 
                     reason =
@@ -138,7 +146,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            Place {
+            PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
                         kind: StaticKind::Promoted(_),
@@ -147,7 +155,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: None,
             } => unreachable!(),
 
-            Place {
+            PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
                         kind: StaticKind::Static(def_id),
@@ -168,7 +176,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            Place {
+            PlaceRef {
                 base: _,
                 projection:
                     Some(box Projection {
@@ -176,7 +184,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         elem: ProjectionElem::Index(_),
                     }),
             }
-            | Place {
+            | PlaceRef {
                 base: _,
                 projection:
                     Some(box Projection {
@@ -184,14 +192,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         elem: ProjectionElem::ConstantIndex { .. },
                     }),
             }
-            | Place {
+            | PlaceRef {
                 base: _,
                 projection: Some(box Projection {
                     base: _,
                     elem: ProjectionElem::Subslice { .. },
                 }),
             }
-            | Place {
+            | PlaceRef {
                 base: _,
                 projection: Some(box Projection {
                     base: _,
@@ -252,7 +260,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // something like `*((*_1).0`. The local that we get will be a reference to the
             // struct we've got a field access of (it must be a reference since there's a deref
             // after the field access).
-            Place {
+            PlaceRef {
                 base,
                 projection: Some(box Projection {
                     base: Some(box Projection {
@@ -282,7 +290,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             },
 
             // Suggest removing a `&mut` from the use of a mutable reference.
-            Place {
+            PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: None,
             } if {
@@ -318,7 +326,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             // We want to suggest users use `let mut` for local (user
             // variable) mutations...
-            Place {
+            PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: None,
             } if self.body.local_decls[*local].can_be_made_mutable() => {
@@ -339,7 +347,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             // Also suggest adding mut for upvars
-            Place {
+            PlaceRef {
                 base,
                 projection: Some(box Projection {
                     base: proj_base,
@@ -375,7 +383,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // complete hack to approximate old AST-borrowck
             // diagnostic: if the span starts with a mutable borrow of
             // a local variable, then just suggest the user remove it.
-            Place {
+            PlaceRef {
                 base: PlaceBase::Local(_),
                 projection: None,
             } if {
@@ -390,7 +398,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.span_label(span, "try removing `&mut` here");
             }
 
-            Place {
+            PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: Some(box Projection {
                     base: None,
@@ -417,7 +425,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             //
             // FIXME: can this case be generalized to work for an
             // arbitrary base for the projection?
-            Place {
+            PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: Some(box Projection {
                     base: None,
@@ -500,7 +508,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            Place {
+            PlaceRef {
                 base,
                 projection: Some(box Projection {
                     base: None,
@@ -517,7 +525,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 );
             }
 
-            Place {
+            PlaceRef {
                 base: _,
                 projection: Some(box Projection {
                     base: _,
