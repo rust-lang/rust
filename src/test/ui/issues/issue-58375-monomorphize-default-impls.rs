@@ -1,6 +1,8 @@
 // Make sure that the mono-item collector does not crash when trying to
 // instantiate a default impl for DecodeUtf16<<u8 as A>::Item>
 // See https://github.com/rust-lang/rust/issues/58375
+
+// build-pass
 // compile-flags:-C link-dead-code
 
 #![crate_type = "rlib"]
@@ -19,5 +21,4 @@ impl A for u8 {
     type Item = char;
 }
 
-impl Arbitrary for DecodeUtf16<<u8 as A>::Item>  {
-}
+impl Arbitrary for DecodeUtf16<<u8 as A>::Item> {}

@@ -1,3 +1,8 @@
+// ignore-android
+// ignore-cloudabi
+// ignore-emscripten
+// ignore-sgx
+
 #![feature(rustc_private)]
 
 fn main() {
