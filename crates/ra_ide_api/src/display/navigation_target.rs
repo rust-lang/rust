@@ -91,24 +91,11 @@ impl NavigationTarget {
     pub(crate) fn from_pat(
         db: &RootDatabase,
         file_id: FileId,
-        pat: AstPtr<ast::Pat>,
+        pat: AstPtr<ast::BindPat>,
     ) -> NavigationTarget {
         let parse = db.parse(file_id);
-        let (name, full_range) = match pat.to_node(parse.tree().syntax()).kind() {
-            ast::PatKind::BindPat(pat) => return NavigationTarget::from_bind_pat(file_id, &pat),
-            _ => ("_".into(), pat.syntax_node_ptr().range()),
-        };
-
-        NavigationTarget {
-            file_id,
-            name,
-            full_range,
-            focus_range: None,
-            kind: NAME,
-            container_name: None,
-            description: None, //< No documentation for Description
-            docs: None,        //< No documentation for Pattern
-        }
+        let pat = pat.to_node(parse.tree().syntax());
+        NavigationTarget::from_bind_pat(file_id, &pat)
     }
 
     pub(crate) fn from_self_param(

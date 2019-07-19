@@ -11,7 +11,7 @@ pub enum NameRefKind {
     AssocItem(hir::ImplItem),
     Def(hir::ModuleDef),
     SelfType(hir::Ty),
-    Pat(AstPtr<ast::Pat>),
+    Pat(AstPtr<ast::BindPat>),
     SelfParam(AstPtr<ast::SelfParam>),
     GenericParam(u32),
 }
