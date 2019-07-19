@@ -77,6 +77,7 @@
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
+#![cfg_attr(not(bootstrap), feature(const_in_array_repeat_expressions))]
 #![feature(dispatch_from_dyn)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
