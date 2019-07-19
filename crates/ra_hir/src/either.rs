@@ -25,6 +25,12 @@ impl<A, B> Either<A, B> {
             Either::B(b) => Either::B(f2(b)),
         }
     }
+    pub fn map_a<U, F>(self, f: F) -> Either<U, B>
+    where
+        F: FnOnce(A) -> U,
+    {
+        self.map(f, |it| it)
+    }
     pub fn a(self) -> Option<A> {
         match self {
             Either::A(it) => Some(it),

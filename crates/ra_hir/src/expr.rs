@@ -564,11 +564,7 @@ where
                         .else_branch()
                         .map(|b| match b {
                             ast::ElseBranch::Block(it) => self.collect_block(it),
-                            ast::ElseBranch::IfExpr(elif) => {
-                                let expr: ast::Expr =
-                                    ast::Expr::cast(elif.syntax().clone()).unwrap();
-                                self.collect_expr(expr)
-                            }
+                            ast::ElseBranch::IfExpr(elif) => self.collect_expr(elif.into()),
                         })
                         .unwrap_or_else(|| self.empty_block());
                     let placeholder_pat = self.pats.alloc(Pat::Missing);

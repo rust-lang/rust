@@ -61,12 +61,8 @@ impl<N: AstNode> AstPtr<N> {
         self.raw
     }
 
-    // FIXME: extend AstNode to do this safely
-    pub fn cast_checking_kind<U: AstNode>(
-        self,
-        cond: impl FnOnce(SyntaxKind) -> bool,
-    ) -> Option<AstPtr<U>> {
-        if !cond(self.raw.kind()) {
+    pub fn cast<U: AstNode>(self) -> Option<AstPtr<U>> {
+        if !U::can_cast(self.raw.kind()) {
             return None;
         }
         Some(AstPtr { raw: self.raw, _ty: PhantomData })

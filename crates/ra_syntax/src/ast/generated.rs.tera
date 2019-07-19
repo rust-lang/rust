@@ -12,18 +12,34 @@ the below applies to the result of this template
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
 use crate::{
-    SyntaxNode, SyntaxKind::*,
+    SyntaxNode, SyntaxKind::{self, *},
     ast::{self, AstNode},
 };
 {% for node, methods in ast %}
 // {{ node }}
-
-{%- if methods.enum %}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct {{ node }} {
     pub(crate) syntax: SyntaxNode,
 }
 
+impl AstNode for {{ node }} {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            {%- if methods.enum %}
+            {% for kind in methods.enum %} | {{ kind | SCREAM }} {%- endfor -%}
+            {% else %}
+            {{ node | SCREAM }}
+            {%- endif %} => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some({{ node }} { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+{% if methods.enum %}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum {{ node }}Kind {
 {%- for kind in methods.enum %}
@@ -33,25 +49,9 @@ pub enum {{ node }}Kind {
 
 {%- for kind in methods.enum %}
 impl From<{{ kind }}> for {{ node }} {
-    fn from(n: {{ kind }}) -> {{ node }} {
-        {{ node }}::cast(n.syntax).unwrap()
-    }
+    fn from(n: {{ kind }}) -> {{ node }} { {{ node }} { syntax: n.syntax } }
 }
 {%- endfor %}
-
-
-impl AstNode for {{ node }} {
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            {%- for kind in methods.enum %}
-            | {{ kind | SCREAM }}
-            {%- endfor %} => Some({{ node }} { syntax }),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
 impl {{ node }} {
     pub fn kind(&self) -> {{ node }}Kind {
         match self.syntax.kind() {
@@ -62,22 +62,6 @@ impl {{ node }} {
         }
     }
 }
-{% else %}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct {{ node }} {
-    pub(crate) syntax: SyntaxNode,
-}
-
-impl AstNode for {{ node }} {
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            {{ node | SCREAM }} => Some({{ node }} { syntax }),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
 {% endif %}
 {% if methods.traits -%}
 

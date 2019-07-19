@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 
 use crate::{
     syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
-    SmolStr,
+    SmolStr, SyntaxKind,
 };
 
 pub use self::{
@@ -26,6 +26,8 @@ pub use self::{
 /// the same representation: a pointer to the tree root and a pointer to the
 /// node itself.
 pub trait AstNode: Clone {
+    fn can_cast(kind: SyntaxKind) -> bool;
+
     fn cast(syntax: SyntaxNode) -> Option<Self>
     where
         Self: Sized;
