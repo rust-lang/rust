@@ -1313,7 +1313,7 @@ dependencies = [
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_parser 0.1.0",
  "ra_text_edit 0.1.0",
- "rowan 0.5.5 (git+https://github.com/rust-analyzer/rowan?branch=cursor)",
+ "rowan 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1584,11 +1584,11 @@ dependencies = [
 
 [[package]]
 name = "rowan"
-version = "0.5.5"
-source = "git+https://github.com/rust-analyzer/rowan?branch=cursor#d41b21587487f8b372ee779e37c557b873ba0715"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "colosseum 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "text_unit 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2275,7 +2275,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0e7790c7f1cc73d831d28dc5a7deb316a006e7848e6a7f467cdb10a0a9e0fb1c"
 "checksum remove_dir_all 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4a83fa3702a688b9359eccba92d153ac33fd2e8462f9e0e3fdf155239ea7792e"
 "checksum ron 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "17f52a24414403f81528b67488cf8edc4eda977d3af1646bb6b106a600ead78f"
-"checksum rowan 0.5.5 (git+https://github.com/rust-analyzer/rowan?branch=cursor)" = "<none>"
+"checksum rowan 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0c433ffe99ac9b96fa9882805d05eee5d750c9202fb42d0546c556e5d70d54be"
 "checksum rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)" = "a7f4dccf6f4891ebcc0c39f9b6eb1a83b9bf5d747cb439ec6fba4f3b977038af"
 "checksum rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
