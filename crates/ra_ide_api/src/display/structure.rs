@@ -156,7 +156,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             }
             decl(mc)
         })
-        .visit(|let_statement: &ast::LetStmt| {
+        .visit(|let_statement: ast::LetStmt| {
             let let_syntax = let_statement.syntax();
 
             let mut label = String::new();
