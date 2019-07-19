@@ -15,7 +15,7 @@ pub struct AddRetag;
 /// (Concurrent accesses by other threads are no problem as these are anyway non-atomic
 /// copies.  Data races are UB.)
 fn is_stable(
-    place: &Place<'_>,
+    place: PlaceRef<'_, '_>,
 ) -> bool {
     if let Some(proj) = &place.projection {
         match proj.elem {
@@ -32,9 +32,9 @@ fn is_stable(
             ProjectionElem::ConstantIndex { .. } |
             ProjectionElem::Subslice { .. } |
             ProjectionElem::Downcast { .. } =>
-                is_stable(&Place {
-                    base: place.base.clone(),
-                    projection: proj.base.clone(),
+                is_stable(PlaceRef {
+                    base: place.base,
+                    projection: &proj.base,
                 }),
         }
     } else {
@@ -79,7 +79,8 @@ impl MirPass for AddRetag {
         let needs_retag = |place: &Place<'tcx>| {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
-            is_stable(place) && may_have_reference(place.ty(&*local_decls, tcx).ty, tcx)
+            is_stable(place.as_place_ref())
+                && may_have_reference(place.ty(&*local_decls, tcx).ty, tcx)
         };
 
         // PART 1
