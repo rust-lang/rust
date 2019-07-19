@@ -75,7 +75,6 @@
 #![feature(const_fn)]
 #![feature(const_fn_union)]
 #![cfg_attr(not(bootstrap), feature(const_generics))]
-#![cfg_attr(not(bootstrap), feature(const_in_array_repeat_expressions))]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
