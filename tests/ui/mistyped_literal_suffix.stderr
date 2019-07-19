@@ -4,7 +4,7 @@ error: mistyped literal suffix
 LL |     let fail14 = 2_32;
    |                  ^^^^ help: did you mean to write: `2_i32`
    |
-   = note: #[deny(clippy::mistyped_literal_suffixes)] on by default
+   = note: `#[deny(clippy::mistyped_literal_suffixes)]` on by default
 
 error: mistyped literal suffix
   --> $DIR/mistyped_literal_suffix.rs:7:18

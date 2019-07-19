@@ -111,7 +111,7 @@ error: infinite iteration detected
 LL |         let _: HashSet<i32> = (0..).collect(); // Infinite iter
    |                               ^^^^^^^^^^^^^^^
    |
-   = note: #[deny(clippy::infinite_iter)] on by default
+   = note: `#[deny(clippy::infinite_iter)]` on by default
 
 error: aborting due to 15 previous errors
 

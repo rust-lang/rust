@@ -4,7 +4,7 @@ error: you are deriving `Hash` but have implemented `PartialEq` explicitly
 LL | #[derive(Hash)]
    |          ^^^^
    |
-   = note: #[deny(clippy::derive_hash_xor_eq)] on by default
+   = note: `#[deny(clippy::derive_hash_xor_eq)]` on by default
 note: `PartialEq` implemented here
   --> $DIR/derive.rs:19:1
    |

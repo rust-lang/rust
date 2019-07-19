@@ -236,7 +236,7 @@ error: this `if` has the same condition as a previous if
 LL |     } else if true {
    |               ^^^^
    |
-   = note: #[deny(clippy::ifs_same_cond)] on by default
+   = note: `#[deny(clippy::ifs_same_cond)]` on by default
 note: same as this
   --> $DIR/if_same_then_else.rs:235:8
    |

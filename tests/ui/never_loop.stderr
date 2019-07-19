@@ -10,7 +10,7 @@ LL | |         break;
 LL | |     }
    | |_____^
    |
-   = note: #[deny(clippy::never_loop)] on by default
+   = note: `#[deny(clippy::never_loop)]` on by default
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:32:5

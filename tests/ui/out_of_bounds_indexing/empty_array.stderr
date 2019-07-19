@@ -4,7 +4,7 @@ error: index out of bounds: the len is 0 but the index is 0
 LL |     empty[0];
    |     ^^^^^^^^
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: range is out of bounds
   --> $DIR/empty_array.rs:7:12
