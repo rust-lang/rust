@@ -1280,7 +1280,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         fake_borrows: &'b FxHashSet<Place<'tcx>>,
         temp_span: Span,
-    ) -> Vec<(Place<'tcx>, Local)> {
+    ) -> Vec<(PlaceRef<'b, 'tcx>, Local)> {
         let tcx = self.hir.tcx();
 
         debug!("add_fake_borrows fake_borrows = {:?}", fake_borrows);
@@ -1296,15 +1296,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Insert a shallow borrow after a deref. For other
                     // projections the borrow of prefix_cursor will
                     // conflict with any mutation of base.
-                    all_fake_borrows.push(Place {
-                        base: place.base.clone(),
-                        projection: base.clone(),
+                    all_fake_borrows.push(PlaceRef {
+                        base: &place.base,
+                        projection: base,
                     });
                 }
                 prefix_cursor = base;
             }
 
-            all_fake_borrows.push(place.clone());
+            all_fake_borrows.push(place.as_place_ref());
         }
 
         // Deduplicate and ensure a deterministic order.
@@ -1314,7 +1314,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("add_fake_borrows all_fake_borrows = {:?}", all_fake_borrows);
 
         all_fake_borrows.into_iter().map(|matched_place| {
-            let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
+            let fake_borrow_deref_ty = Place::ty_from(
+                matched_place.base,
+                matched_place.projection,
+                &self.local_decls,
+                tcx,
+            )
+            .ty;
             let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
             let fake_borrow_temp = self.local_decls.push(
                 LocalDecl::new_temp(fake_borrow_ty, temp_span)
@@ -1345,7 +1351,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         guard: Option<Guard<'tcx>>,
-        fake_borrows: &Vec<(Place<'tcx>, Local)>,
+        fake_borrows: &Vec<(PlaceRef<'_, 'tcx>, Local)>,
         scrutinee_span: Span,
         region_scope: region::Scope,
     ) -> BasicBlock {
@@ -1480,7 +1486,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let borrow = Rvalue::Ref(
                     re_erased,
                     BorrowKind::Shallow,
-                    place.clone(),
+                    Place {
+                        base: place.base.clone(),
+                        projection: place.projection.clone(),
+                    },
                 );
                 self.cfg.push_assign(
                     block,

@@ -1826,7 +1826,7 @@ newtype_index! {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PlaceRef<'a, 'tcx> {
     pub base: &'a PlaceBase<'tcx>,
     pub projection: &'a Option<Box<Projection<'tcx>>>,
