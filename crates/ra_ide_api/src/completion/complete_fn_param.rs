@@ -20,7 +20,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         let _ = visitor_ctx(&mut params)
             .visit::<ast::SourceFile, _>(process)
             .visit::<ast::ItemList, _>(process)
-            .accept(node);
+            .accept(&node);
     }
     params
         .into_iter()
@@ -38,10 +38,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
                 .add_to(acc)
         });
 
-    fn process<'a, N: ast::FnDefOwner>(
-        node: &'a N,
-        params: &mut FxHashMap<String, (u32, &'a ast::Param)>,
-    ) {
+    fn process<N: ast::FnDefOwner>(node: N, params: &mut FxHashMap<String, (u32, ast::Param)>) {
         node.functions().filter_map(|it| it.param_list()).flat_map(|it| it.params()).for_each(
             |param| {
                 let text = param.syntax().text().to_string();

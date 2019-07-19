@@ -16,7 +16,7 @@ pub trait Visitor<'a>: Sized {
     fn visit<N, F>(self, f: F) -> Vis<Self, N, F>
     where
         N: AstNode + 'a,
-        F: FnOnce(&'a N) -> Self::Output,
+        F: FnOnce(N) -> Self::Output,
     {
         Vis { inner: self, f, ph: PhantomData }
     }
@@ -29,7 +29,7 @@ pub trait VisitorCtx<'a>: Sized {
     fn visit<N, F>(self, f: F) -> VisCtx<Self, N, F>
     where
         N: AstNode + 'a,
-        F: FnOnce(&'a N, Self::Ctx) -> Self::Output,
+        F: FnOnce(N, Self::Ctx) -> Self::Output,
     {
         VisCtx { inner: self, f, ph: PhantomData }
     }
@@ -74,13 +74,13 @@ impl<'a, V, N, F> Visitor<'a> for Vis<V, N, F>
 where
     V: Visitor<'a>,
     N: AstNode + 'a,
-    F: FnOnce(&'a N) -> <V as Visitor<'a>>::Output,
+    F: FnOnce(N) -> <V as Visitor<'a>>::Output,
 {
     type Output = <V as Visitor<'a>>::Output;
 
     fn accept(self, node: &'a SyntaxNode) -> Option<Self::Output> {
         let Vis { inner, f, .. } = self;
-        inner.accept(node).or_else(|| N::cast(node).map(f))
+        inner.accept(node).or_else(|| N::cast(node.clone()).map(f))
     }
 }
 
@@ -95,14 +95,14 @@ impl<'a, V, N, F> VisitorCtx<'a> for VisCtx<V, N, F>
 where
     V: VisitorCtx<'a>,
     N: AstNode + 'a,
-    F: FnOnce(&'a N, <V as VisitorCtx<'a>>::Ctx) -> <V as VisitorCtx<'a>>::Output,
+    F: FnOnce(N, <V as VisitorCtx<'a>>::Ctx) -> <V as VisitorCtx<'a>>::Output,
 {
     type Output = <V as VisitorCtx<'a>>::Output;
     type Ctx = <V as VisitorCtx<'a>>::Ctx;
 
     fn accept(self, node: &'a SyntaxNode) -> Result<Self::Output, Self::Ctx> {
         let VisCtx { inner, f, .. } = self;
-        inner.accept(node).or_else(|ctx| match N::cast(node) {
+        inner.accept(node).or_else(|ctx| match N::cast(node.clone()) {
             None => Err(ctx),
             Some(node) => Ok(f(node, ctx)),
         })

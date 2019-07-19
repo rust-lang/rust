@@ -9,7 +9,7 @@ fn check_file_invariants(file: &SourceFile) {
 
 pub fn check_parser(text: &str) {
     let file = SourceFile::parse(text);
-    check_file_invariants(&file.tree);
+    check_file_invariants(&file.tree());
 }
 
 #[derive(Debug, Clone)]
@@ -45,16 +45,16 @@ impl CheckReparse {
     pub fn run(&self) {
         let parse = SourceFile::parse(&self.text);
         let new_parse = parse.reparse(&self.edit);
-        check_file_invariants(&new_parse.tree);
-        assert_eq!(&new_parse.tree.syntax().text().to_string(), &self.edited_text);
+        check_file_invariants(&new_parse.tree());
+        assert_eq!(&new_parse.tree().syntax().text().to_string(), &self.edited_text);
         let full_reparse = SourceFile::parse(&self.edited_text);
         for (a, b) in
-            new_parse.tree.syntax().descendants().zip(full_reparse.tree.syntax().descendants())
+            new_parse.tree().syntax().descendants().zip(full_reparse.tree().syntax().descendants())
         {
             if (a.kind(), a.range()) != (b.kind(), b.range()) {
-                eprint!("original:\n{}", parse.tree.syntax().debug_dump());
-                eprint!("reparsed:\n{}", new_parse.tree.syntax().debug_dump());
-                eprint!("full reparse:\n{}", full_reparse.tree.syntax().debug_dump());
+                eprint!("original:\n{}", parse.tree().syntax().debug_dump());
+                eprint!("reparsed:\n{}", new_parse.tree().syntax().debug_dump());
+                eprint!("full reparse:\n{}", full_reparse.tree().syntax().debug_dump());
                 assert_eq!(
                     format!("{:?}", a),
                     format!("{:?}", b),

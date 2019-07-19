@@ -31,7 +31,7 @@ pub mod ast;
 #[doc(hidden)]
 pub mod fuzz;
 
-use std::{fmt::Write, sync::Arc};
+use std::{fmt::Write, marker::PhantomData, sync::Arc};
 
 use ra_text_edit::AtomTextEdit;
 
@@ -43,8 +43,8 @@ pub use crate::{
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::{Location, SyntaxError, SyntaxErrorKind},
     syntax_node::{
-        Direction, InsertPosition, SyntaxElement, SyntaxNode, SyntaxNodeWrapper, SyntaxToken,
-        SyntaxTreeBuilder, TreeArc, WalkEvent,
+        Direction, InsertPosition, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
+        WalkEvent,
     },
     syntax_text::SyntaxText,
 };
@@ -58,48 +58,63 @@ pub use rowan::{SmolStr, TextRange, TextUnit};
 /// Note that we always produce a syntax tree, even for completely invalid
 /// files.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Parse<T: SyntaxNodeWrapper> {
-    tree: TreeArc<T>,
+pub struct Parse<T> {
+    green: GreenNode,
     errors: Arc<Vec<SyntaxError>>,
+    _ty: PhantomData<fn() -> T>,
 }
 
-impl<T: SyntaxNodeWrapper> Clone for Parse<T> {
+impl<T> Clone for Parse<T> {
     fn clone(&self) -> Parse<T> {
-        Parse { tree: self.tree.clone(), errors: self.errors.clone() }
+        Parse { green: self.green.clone(), errors: self.errors.clone(), _ty: PhantomData }
     }
 }
 
-impl<T: SyntaxNodeWrapper> Parse<T> {
-    fn new(tree: TreeArc<T>, errors: Vec<SyntaxError>) -> Parse<T> {
-        Parse { tree, errors: Arc::new(errors) }
+impl<T> Parse<T> {
+    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> Parse<T> {
+        Parse { green, errors: Arc::new(errors), _ty: PhantomData }
     }
 
-    pub fn tree(&self) -> &T {
-        &*self.tree
+    pub fn syntax_node(&self) -> SyntaxNode {
+        SyntaxNode::new(self.green.clone())
+    }
+}
+
+impl<T: AstNode> Parse<T> {
+    pub fn to_syntax(self) -> Parse<SyntaxNode> {
+        Parse { green: self.green, errors: self.errors, _ty: PhantomData }
+    }
+
+    pub fn tree(&self) -> T {
+        T::cast(self.syntax_node()).unwrap()
     }
 
     pub fn errors(&self) -> &[SyntaxError] {
         &*self.errors
     }
 
-    pub fn ok(self) -> Result<TreeArc<T>, Arc<Vec<SyntaxError>>> {
+    pub fn ok(self) -> Result<T, Arc<Vec<SyntaxError>>> {
         if self.errors.is_empty() {
-            Ok(self.tree)
+            Ok(self.tree())
         } else {
             Err(self.errors)
         }
     }
 }
 
-impl<T: AstNode> Parse<T> {
-    pub fn to_syntax(this: Self) -> Parse<SyntaxNode> {
-        Parse { tree: this.tree().syntax().to_owned(), errors: this.errors }
+impl Parse<SyntaxNode> {
+    pub fn cast<N: AstNode>(self) -> Option<Parse<N>> {
+        if N::cast(self.syntax_node()).is_some() {
+            Some(Parse { green: self.green, errors: self.errors, _ty: PhantomData })
+        } else {
+            None
+        }
     }
 }
 
 impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
-        let mut buf = self.tree.syntax().debug_dump();
+        let mut buf = self.tree().syntax().debug_dump();
         for err in self.errors.iter() {
             writeln!(buf, "error {:?}: {}", err.location(), err.kind()).unwrap();
         }
@@ -112,24 +127,18 @@ impl Parse<SourceFile> {
 
     fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<Parse<SourceFile>> {
         // FIXME: validation errors are not handled here
-        parsing::incremental_reparse(self.tree.syntax(), edit, self.errors.to_vec()).map(
+        parsing::incremental_reparse(self.tree().syntax(), edit, self.errors.to_vec()).map(
             |(green_node, errors, _reparsed_range)| Parse {
-                tree: SourceFile::new(green_node),
+                green: green_node,
                 errors: Arc::new(errors),
+                _ty: PhantomData,
             },
         )
     }
 
     fn full_reparse(&self, edit: &AtomTextEdit) -> Parse<SourceFile> {
-        let text = edit.apply(self.tree.syntax().text().to_string());
+        let text = edit.apply(self.tree().syntax().text().to_string());
         SourceFile::parse(&text)
-    }
-}
-
-impl Parse<SyntaxNode> {
-    pub fn cast<T: AstNode>(self) -> Option<Parse<T>> {
-        let node = T::cast(&self.tree)?;
-        Some(Parse { tree: node.to_owned(), errors: self.errors })
     }
 }
 
@@ -137,20 +146,19 @@ impl Parse<SyntaxNode> {
 pub use crate::ast::SourceFile;
 
 impl SourceFile {
-    fn new(green: GreenNode) -> TreeArc<SourceFile> {
+    fn new(green: GreenNode) -> SourceFile {
         let root = SyntaxNode::new(green);
         if cfg!(debug_assertions) {
             validation::validate_block_structure(&root);
         }
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        TreeArc::cast(root)
+        SourceFile::cast(root).unwrap()
     }
 
     pub fn parse(text: &str) -> Parse<SourceFile> {
         let (green, mut errors) = parsing::parse_text(text);
-        let tree = SourceFile::new(green);
-        errors.extend(validation::validate(&tree));
-        Parse { tree, errors: Arc::new(errors) }
+        errors.extend(validation::validate(&SourceFile::new(green.clone())));
+        Parse { green, errors: Arc::new(errors), _ty: PhantomData }
     }
 }
 
@@ -170,14 +178,14 @@ fn api_walkthrough() {
     // The `parse` method returns a `Parse` -- a pair of syntax tree and a list
     // of errors. That is, syntax tree is constructed even in presence of errors.
     let parse = SourceFile::parse(source_code);
-    assert!(parse.errors.is_empty());
+    assert!(parse.errors().is_empty());
 
-    // Due to the way ownership is set up, owned syntax Nodes always live behind
-    // a `TreeArc` smart pointer. `TreeArc` is roughly an `std::sync::Arc` which
-    // points to the whole file instead of an individual node.
-    let file: TreeArc<SourceFile> = parse.tree;
+    // The `tree` method returns an owned syntax node of type `SourceFile`.
+    // Owned nodes are cheap: inside, they are `Rc` handles to the underling data.
+    let file: SourceFile = parse.tree();
 
-    // `SourceFile` is the root of the syntax tree. We can iterate file's items:
+    // `SourceFile` is the root of the syntax tree. We can iterate file's items.
+    // Let's fetch the `foo` function.
     let mut func = None;
     for item in file.items() {
         match item.kind() {
@@ -185,31 +193,26 @@ fn api_walkthrough() {
             _ => unreachable!(),
         }
     }
-    // The returned items are always references.
-    let func: &ast::FnDef = func.unwrap();
-
-    // All nodes implement `ToOwned` trait, with `Owned = TreeArc<Self>`.
-    // `to_owned` is a cheap operation: atomic increment.
-    let _owned_func: TreeArc<ast::FnDef> = func.to_owned();
+    let func: ast::FnDef = func.unwrap();
 
     // Each AST node has a bunch of getters for children. All getters return
     // `Option`s though, to account for incomplete code. Some getters are common
     // for several kinds of node. In this case, a trait like `ast::NameOwner`
     // usually exists. By convention, all ast types should be used with `ast::`
     // qualifier.
-    let name: Option<&ast::Name> = func.name();
+    let name: Option<ast::Name> = func.name();
     let name = name.unwrap();
     assert_eq!(name.text(), "foo");
 
     // Let's get the `1 + 1` expression!
-    let block: &ast::Block = func.body().unwrap();
-    let expr: &ast::Expr = block.expr().unwrap();
+    let block: ast::Block = func.body().unwrap();
+    let expr: ast::Expr = block.expr().unwrap();
 
     // "Enum"-like nodes are represented using the "kind" pattern. It allows us
     // to match exhaustively against all flavors of nodes, while maintaining
     // internal representation flexibility. The drawback is that one can't write
     // nested matches as one pattern.
-    let bin_expr: &ast::BinExpr = match expr.kind() {
+    let bin_expr: ast::BinExpr = match expr.kind() {
         ast::ExprKind::BinExpr(e) => e,
         _ => unreachable!(),
     };
@@ -219,22 +222,13 @@ fn api_walkthrough() {
     let expr_syntax: &SyntaxNode = expr.syntax();
 
     // Note how `expr` and `bin_expr` are in fact the same node underneath:
-    assert!(std::ptr::eq(expr_syntax, bin_expr.syntax()));
+    assert!(expr_syntax == bin_expr.syntax());
 
     // To go from CST to AST, `AstNode::cast` function is used:
-    let expr = match ast::Expr::cast(expr_syntax) {
+    let _expr: ast::Expr = match ast::Expr::cast(expr_syntax.clone()) {
         Some(e) => e,
         None => unreachable!(),
     };
-
-    // Note how expr is also a reference!
-    let expr: &ast::Expr = expr;
-
-    // This is possible because the underlying representation is the same:
-    assert_eq!(
-        expr as *const ast::Expr as *const u8,
-        expr_syntax as *const SyntaxNode as *const u8
-    );
 
     // The two properties each syntax node has is a `SyntaxKind`:
     assert_eq!(expr_syntax.kind(), SyntaxKind::BIN_EXPR);
@@ -248,7 +242,7 @@ fn api_walkthrough() {
     assert_eq!(text.to_string(), "1 + 1");
 
     // There's a bunch of traversal methods on `SyntaxNode`:
-    assert_eq!(expr_syntax.parent(), Some(block.syntax()));
+    assert_eq!(expr_syntax.parent().as_ref(), Some(block.syntax()));
     assert_eq!(block.syntax().first_child_or_token().map(|it| it.kind()), Some(T!['{']));
     assert_eq!(
         expr_syntax.next_sibling_or_token().map(|it| it.kind()),
@@ -257,7 +251,7 @@ fn api_walkthrough() {
 
     // As well as some iterator helpers:
     let f = expr_syntax.ancestors().find_map(ast::FnDef::cast);
-    assert_eq!(f, Some(&*func));
+    assert_eq!(f, Some(func));
     assert!(expr_syntax.siblings_with_tokens(Direction::Next).any(|it| it.kind() == T!['}']));
     assert_eq!(
         expr_syntax.descendants_with_tokens().count(),
@@ -272,7 +266,7 @@ fn api_walkthrough() {
     for event in expr_syntax.preorder_with_tokens() {
         match event {
             WalkEvent::Enter(node) => {
-                let text = match node {
+                let text = match &node {
                     SyntaxElement::Node(it) => it.text().to_string(),
                     SyntaxElement::Token(it) => it.text().to_string(),
                 };
@@ -319,7 +313,7 @@ fn api_walkthrough() {
     let mut exprs_visit = Vec::new();
     for node in file.syntax().descendants() {
         if let Some(result) =
-            visitor().visit::<ast::Expr, _>(|expr| expr.syntax().text().to_string()).accept(node)
+            visitor().visit::<ast::Expr, _>(|expr| expr.syntax().text().to_string()).accept(&node)
         {
             exprs_visit.push(result);
         }

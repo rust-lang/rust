@@ -5,7 +5,7 @@ use std::{
 };
 
 use ra_arena::{impl_arena_id, Arena, RawId};
-use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr, TreeArc};
+use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr};
 
 use crate::{AstDatabase, HirFileId};
 
@@ -42,9 +42,9 @@ impl<N: AstNode> AstId<N> {
         self.file_id
     }
 
-    pub(crate) fn to_node(&self, db: &impl AstDatabase) -> TreeArc<N> {
+    pub(crate) fn to_node(&self, db: &impl AstDatabase) -> N {
         let syntax_node = db.ast_id_to_node(self.file_id, self.file_ast_id.raw);
-        N::cast(&syntax_node).unwrap().to_owned()
+        N::cast(syntax_node).unwrap()
     }
 }
 
@@ -93,7 +93,7 @@ pub struct AstIdMap {
 impl AstIdMap {
     pub(crate) fn ast_id_map_query(db: &impl AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
         let map = if let Some(node) = db.parse_or_expand(file_id) {
-            AstIdMap::from_source(&*node)
+            AstIdMap::from_source(&node)
         } else {
             AstIdMap::default()
         };
@@ -104,9 +104,9 @@ impl AstIdMap {
         db: &impl AstDatabase,
         file_id: HirFileId,
         ast_id: ErasedFileAstId,
-    ) -> TreeArc<SyntaxNode> {
+    ) -> SyntaxNode {
         let node = db.parse_or_expand(file_id).unwrap();
-        db.ast_id_map(file_id).arena[ast_id].to_node(&*node).to_owned()
+        db.ast_id_map(file_id).arena[ast_id].to_node(&node)
     }
 
     pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
@@ -131,7 +131,7 @@ impl AstIdMap {
         // change parent's id. This means that, say, adding a new function to a
         // trait does not change ids of top-level items, which helps caching.
         bfs(node, |it| {
-            if let Some(module_item) = ast::ModuleItem::cast(it) {
+            if let Some(module_item) = ast::ModuleItem::cast(it.clone()) {
                 res.alloc(module_item.syntax());
             } else if let Some(macro_call) = ast::MacroCall::cast(it) {
                 res.alloc(macro_call.syntax());
@@ -146,8 +146,8 @@ impl AstIdMap {
 }
 
 /// Walks the subtree in bfs order, calling `f` for each node.
-fn bfs(node: &SyntaxNode, mut f: impl FnMut(&SyntaxNode)) {
-    let mut curr_layer = vec![node];
+fn bfs(node: &SyntaxNode, mut f: impl FnMut(SyntaxNode)) {
+    let mut curr_layer = vec![node.clone()];
     let mut next_layer = vec![];
     while !curr_layer.is_empty() {
         curr_layer.drain(..).for_each(|node| {

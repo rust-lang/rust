@@ -16,7 +16,7 @@ pub(crate) fn add_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         let start_offset = nominal.syntax().range().end();
         let mut buf = String::new();
         buf.push_str("\n\nimpl");
-        if let Some(type_params) = type_params {
+        if let Some(type_params) = &type_params {
             type_params.syntax().text().push_to(&mut buf);
         }
         buf.push_str(" ");
@@ -25,9 +25,9 @@ pub(crate) fn add_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
             let lifetime_params = type_params
                 .lifetime_params()
                 .filter_map(|it| it.lifetime_token())
-                .map(|it| it.text());
+                .map(|it| it.text().clone());
             let type_params =
-                type_params.type_params().filter_map(|it| it.name()).map(|it| it.text());
+                type_params.type_params().filter_map(|it| it.name()).map(|it| it.text().clone());
             join(lifetime_params.chain(type_params)).surround_with("<", ">").to_buf(&mut buf);
         }
         buf.push_str(" {\n");

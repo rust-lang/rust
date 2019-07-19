@@ -5,7 +5,7 @@ use ra_syntax::{ast, AstNode};
 use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let if_expr: &ast::IfExpr = ctx.node_at_offset()?;
+    let if_expr: ast::IfExpr = ctx.node_at_offset()?;
     let cond = if_expr.condition()?;
     let pat = cond.pat()?;
     let expr = cond.expr()?;
@@ -25,16 +25,11 @@ pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) ->
     ctx.build()
 }
 
-fn build_match_expr(
-    expr: &ast::Expr,
-    pat1: &ast::Pat,
-    arm1: &ast::Block,
-    arm2: &ast::Block,
-) -> String {
+fn build_match_expr(expr: ast::Expr, pat1: ast::Pat, arm1: ast::Block, arm2: ast::Block) -> String {
     let mut buf = String::new();
     buf.push_str(&format!("match {} {{\n", expr.syntax().text()));
-    buf.push_str(&format!("    {} => {}\n", pat1.syntax().text(), format_arm(arm1)));
-    buf.push_str(&format!("    _ => {}\n", format_arm(arm2)));
+    buf.push_str(&format!("    {} => {}\n", pat1.syntax().text(), format_arm(&arm1)));
+    buf.push_str(&format!("    _ => {}\n", format_arm(&arm2)));
     buf.push_str("}");
     buf
 }

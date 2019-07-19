@@ -9,8 +9,8 @@ pub use rowan::TokenAtOffset;
 pub fn find_token_at_offset(node: &SyntaxNode, offset: TextUnit) -> TokenAtOffset<SyntaxToken> {
     match node.0.token_at_offset(offset) {
         TokenAtOffset::None => TokenAtOffset::None,
-        TokenAtOffset::Single(n) => TokenAtOffset::Single(n.into()),
-        TokenAtOffset::Between(l, r) => TokenAtOffset::Between(l.into(), r.into()),
+        TokenAtOffset::Single(n) => TokenAtOffset::Single(SyntaxToken(n)),
+        TokenAtOffset::Between(l, r) => TokenAtOffset::Between(SyntaxToken(l), SyntaxToken(r)),
     }
 }
 
@@ -22,7 +22,7 @@ pub fn find_token_at_offset(node: &SyntaxNode, offset: TextUnit) -> TokenAtOffse
 pub fn ancestors_at_offset(
     node: &SyntaxNode,
     offset: TextUnit,
-) -> impl Iterator<Item = &SyntaxNode> {
+) -> impl Iterator<Item = SyntaxNode> {
     find_token_at_offset(node, offset)
         .map(|token| token.parent().ancestors())
         .kmerge_by(|node1, node2| node1.range().len() < node2.range().len())
@@ -37,7 +37,7 @@ pub fn ancestors_at_offset(
 /// ```
 ///
 /// then the shorter node will be silently preferred.
-pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<&N> {
+pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<N> {
     ancestors_at_offset(syntax, offset).find_map(N::cast)
 }
 
@@ -59,5 +59,5 @@ pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Optio
 }
 
 pub fn find_covering_element(root: &SyntaxNode, range: TextRange) -> SyntaxElement {
-    root.0.covering_node(range).into()
+    SyntaxElement::new(root.0.covering_node(range))
 }

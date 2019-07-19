@@ -6,7 +6,7 @@ use std::{
 use mbe::MacroRules;
 use ra_db::{salsa, FileId};
 use ra_prof::profile;
-use ra_syntax::{ast, AstNode, Parse, SyntaxNode, TreeArc};
+use ra_syntax::{ast, AstNode, Parse, SyntaxNode};
 
 use crate::{AstDatabase, AstId, DefDatabase, FileAstId, InternDatabase, Module, Source};
 
@@ -58,11 +58,11 @@ impl HirFileId {
     pub(crate) fn parse_or_expand_query(
         db: &impl AstDatabase,
         file_id: HirFileId,
-    ) -> Option<TreeArc<SyntaxNode>> {
+    ) -> Option<SyntaxNode> {
         match file_id.0 {
-            HirFileIdRepr::File(file_id) => Some(db.parse(file_id).tree().syntax().to_owned()),
+            HirFileIdRepr::File(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
             HirFileIdRepr::Macro(macro_file) => {
-                db.parse_macro(macro_file).map(|it| it.tree().to_owned())
+                db.parse_macro(macro_file).map(|it| it.syntax_node())
             }
         }
     }
@@ -123,7 +123,7 @@ pub struct MacroDefId(pub(crate) AstId<ast::MacroCall>);
 pub(crate) fn macro_def_query(db: &impl AstDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
     let macro_call = id.0.to_node(db);
     let arg = macro_call.token_tree()?;
-    let (tt, _) = mbe::ast_to_token_tree(arg).or_else(|| {
+    let (tt, _) = mbe::ast_to_token_tree(&arg).or_else(|| {
         log::warn!("fail on macro_def to token tree: {:#?}", arg);
         None
     })?;
@@ -138,7 +138,7 @@ pub(crate) fn macro_arg_query(db: &impl AstDatabase, id: MacroCallId) -> Option<
     let loc = id.loc(db);
     let macro_call = loc.ast_id.to_node(db);
     let arg = macro_call.token_tree()?;
-    let (tt, _) = mbe::ast_to_token_tree(arg)?;
+    let (tt, _) = mbe::ast_to_token_tree(&arg)?;
     Some(Arc::new(tt))
 }
 
@@ -262,7 +262,7 @@ pub(crate) trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
         let loc = ItemLoc { module: ctx.module, ast_id: ast_id.with_file_id(ctx.file_id) };
         Self::intern(ctx.db, loc)
     }
-    fn source(self, db: &(impl AstDatabase + DefDatabase)) -> Source<TreeArc<N>> {
+    fn source(self, db: &(impl AstDatabase + DefDatabase)) -> Source<N> {
         let loc = self.lookup_intern(db);
         let ast = loc.ast_id.to_node(db);
         Source { file_id: loc.ast_id.file_id(), ast }

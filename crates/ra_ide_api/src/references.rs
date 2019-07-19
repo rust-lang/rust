@@ -50,11 +50,11 @@ pub(crate) fn find_all_refs(
     position: FilePosition,
 ) -> Option<ReferenceSearchResult> {
     let parse = db.parse(position.file_id);
-    let (binding, analyzer) = find_binding(db, parse.tree(), position)?;
-    let declaration = NavigationTarget::from_bind_pat(position.file_id, binding);
+    let (binding, analyzer) = find_binding(db, &parse.tree(), position)?;
+    let declaration = NavigationTarget::from_bind_pat(position.file_id, &binding);
 
     let references = analyzer
-        .find_all_refs(binding)
+        .find_all_refs(&binding)
         .into_iter()
         .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
         .collect::<Vec<_>>();
@@ -63,9 +63,9 @@ pub(crate) fn find_all_refs(
 
     fn find_binding<'a>(
         db: &RootDatabase,
-        source_file: &'a SourceFile,
+        source_file: &SourceFile,
         position: FilePosition,
-    ) -> Option<(&'a ast::BindPat, hir::SourceAnalyzer)> {
+    ) -> Option<(ast::BindPat, hir::SourceAnalyzer)> {
         let syntax = source_file.syntax();
         if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
             let analyzer = hir::SourceAnalyzer::new(db, position.file_id, binding.syntax(), None);
@@ -73,7 +73,7 @@ pub(crate) fn find_all_refs(
         };
         let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
-        let resolved = analyzer.resolve_local_name(name_ref)?;
+        let resolved = analyzer.resolve_local_name(&name_ref)?;
         if let Either::A(ptr) = resolved.ptr() {
             if let ast::PatKind::BindPat(binding) = ptr.to_node(source_file.syntax()).kind() {
                 return Some((binding, analyzer));
@@ -89,10 +89,10 @@ pub(crate) fn rename(
     new_name: &str,
 ) -> Option<SourceChange> {
     let parse = db.parse(position.file_id);
-    let syntax = parse.tree().syntax();
-
-    if let Some((ast_name, ast_module)) = find_name_and_module_at_offset(syntax, position) {
-        rename_mod(db, ast_name, ast_module, position, new_name)
+    if let Some((ast_name, ast_module)) =
+        find_name_and_module_at_offset(parse.tree().syntax(), position)
+    {
+        rename_mod(db, &ast_name, &ast_module, position, new_name)
     } else {
         rename_reference(db, position, new_name)
     }
@@ -101,14 +101,10 @@ pub(crate) fn rename(
 fn find_name_and_module_at_offset(
     syntax: &SyntaxNode,
     position: FilePosition,
-) -> Option<(&ast::Name, &ast::Module)> {
-    let ast_name = find_node_at_offset::<ast::Name>(syntax, position.offset);
-    let ast_name_parent = ast::Module::cast(ast_name?.syntax().parent()?);
-
-    if let (Some(ast_module), Some(name)) = (ast_name_parent, ast_name) {
-        return Some((name, ast_module));
-    }
-    None
+) -> Option<(ast::Name, ast::Module)> {
+    let ast_name = find_node_at_offset::<ast::Name>(syntax, position.offset)?;
+    let ast_module = ast::Module::cast(ast_name.syntax().parent()?)?;
+    Some((ast_name, ast_module))
 }
 
 fn source_edit_from_fileid_range(
@@ -135,7 +131,8 @@ fn rename_mod(
 ) -> Option<SourceChange> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
-    if let Some(module) = source_binder::module_from_declaration(db, position.file_id, &ast_module)
+    if let Some(module) =
+        source_binder::module_from_declaration(db, position.file_id, ast_module.clone())
     {
         let src = module.definition_source(db);
         let file_id = src.file_id.as_original_file();

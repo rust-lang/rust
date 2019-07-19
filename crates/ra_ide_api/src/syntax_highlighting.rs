@@ -31,8 +31,8 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
     }
 }
 
-fn is_variable_mutable(db: &RootDatabase, analyzer: &hir::SourceAnalyzer, pat: &ast::Pat) -> bool {
-    let ty = analyzer.type_of_pat(db, pat).unwrap_or(Ty::Unknown);
+fn is_variable_mutable(db: &RootDatabase, analyzer: &hir::SourceAnalyzer, pat: ast::Pat) -> bool {
+    let ty = analyzer.type_of_pat(db, &pat).unwrap_or(Ty::Unknown);
     let is_ty_mut = {
         if let Some((_, mutability)) = ty.as_reference() {
             match mutability {
@@ -55,7 +55,7 @@ fn is_variable_mutable(db: &RootDatabase, analyzer: &hir::SourceAnalyzer, pat: &
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
     let parse = db.parse(file_id);
-    let root = parse.tree().syntax();
+    let root = parse.tree().syntax().clone();
 
     fn calc_binding_hash(file_id: FileId, text: &SmolStr, shadow_count: u32) -> u64 {
         fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
@@ -70,6 +70,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
     }
 
     // Visited nodes to handle highlighting priorities
+    // FIXME: retain only ranges here
     let mut highlighted: FxHashSet<SyntaxElement> = FxHashSet::default();
     let mut bindings_shadow_count: FxHashMap<SmolStr, u32> = FxHashMap::default();
 
@@ -84,14 +85,14 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
             ATTR => "attribute",
             NAME_REF => {
-                if let Some(name_ref) = node.as_node().and_then(ast::NameRef::cast) {
+                if let Some(name_ref) = node.as_node().cloned().and_then(ast::NameRef::cast) {
                     // FIXME: revisit this after #1340
                     use crate::name_ref_kind::{classify_name_ref, NameRefKind::*};
                     use hir::{ImplItem, ModuleDef};
 
                     // FIXME: try to reuse the SourceAnalyzers
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-                    match classify_name_ref(db, &analyzer, name_ref) {
+                    match classify_name_ref(db, &analyzer, &name_ref) {
                         Some(Method(_)) => "function",
                         Some(Macro(_)) => "macro",
                         Some(FieldAccess(_)) => "field",
@@ -113,13 +114,13 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         Some(Pat(ptr)) => {
                             binding_hash = Some({
                                 let text =
-                                    ptr.syntax_node_ptr().to_node(root).text().to_smol_string();
+                                    ptr.syntax_node_ptr().to_node(&root).text().to_smol_string();
                                 let shadow_count =
                                     bindings_shadow_count.entry(text.clone()).or_default();
                                 calc_binding_hash(file_id, &text, *shadow_count)
                             });
 
-                            if is_variable_mutable(db, &analyzer, ptr.to_node(root)) {
+                            if is_variable_mutable(db, &analyzer, ptr.to_node(&root)) {
                                 "variable.mut"
                             } else {
                                 "variable"
@@ -134,7 +135,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 }
             }
             NAME => {
-                if let Some(name) = node.as_node().and_then(ast::Name::cast) {
+                if let Some(name) = node.as_node().cloned().and_then(ast::Name::cast) {
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name.syntax(), None);
                     if let Some(pat) = name.syntax().ancestors().find_map(ast::Pat::cast) {
                         binding_hash = Some({
@@ -176,12 +177,11 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             k if is_control_keyword(k) => "keyword.control",
             k if k.is_keyword() => "keyword",
             _ => {
-                // let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-                if let Some(macro_call) = node.as_node().and_then(ast::MacroCall::cast) {
+                if let Some(macro_call) = node.as_node().cloned().and_then(ast::MacroCall::cast) {
                     if let Some(path) = macro_call.path() {
                         if let Some(segment) = path.segment() {
                             if let Some(name_ref) = segment.name_ref() {
-                                highlighted.insert(name_ref.syntax().into());
+                                highlighted.insert(name_ref.syntax().clone().into());
                                 let range_start = name_ref.syntax().range().start();
                                 let mut range_end = name_ref.syntax().range().end();
                                 for sibling in path.syntax().siblings_with_tokens(Direction::Next) {
@@ -230,7 +230,8 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     let mut buf = String::new();
     buf.push_str(&STYLE);
     buf.push_str("<pre><code>");
-    let tokens = parse.tree().syntax().descendants_with_tokens().filter_map(|it| it.as_token());
+    let tokens =
+        parse.tree().syntax().descendants_with_tokens().filter_map(|it| it.as_token().cloned());
     for token in tokens {
         could_intersect.retain(|it| token.range().start() <= it.range.end());
         while let Some(r) = ranges.get(frontier) {

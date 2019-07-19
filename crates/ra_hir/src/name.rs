@@ -75,7 +75,7 @@ impl AsName for ast::Name {
     }
 }
 
-impl<'a> AsName for ast::FieldKind<'a> {
+impl AsName for ast::FieldKind {
     fn as_name(&self) -> Name {
         match self {
             ast::FieldKind::Name(nr) => nr.as_name(),

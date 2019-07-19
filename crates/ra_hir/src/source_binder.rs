@@ -37,7 +37,7 @@ pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Option<Mod
 pub fn module_from_declaration(
     db: &impl HirDatabase,
     file_id: FileId,
-    decl: &ast::Module,
+    decl: ast::Module,
 ) -> Option<Module> {
     let parent_module = module_from_file_id(db, file_id);
     let child_name = decl.name();
@@ -50,8 +50,8 @@ pub fn module_from_declaration(
 /// Locates the module by position in the source code.
 pub fn module_from_position(db: &impl HirDatabase, position: FilePosition) -> Option<Module> {
     let parse = db.parse(position.file_id);
-    match find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset) {
-        Some(m) if !m.has_semi() => module_from_inline(db, position.file_id, m),
+    match &find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset) {
+        Some(m) if !m.has_semi() => module_from_inline(db, position.file_id, m.clone()),
         _ => module_from_file_id(db, position.file_id),
     }
 }
@@ -59,12 +59,12 @@ pub fn module_from_position(db: &impl HirDatabase, position: FilePosition) -> Op
 fn module_from_inline(
     db: &impl HirDatabase,
     file_id: FileId,
-    module: &ast::Module,
+    module: ast::Module,
 ) -> Option<Module> {
     assert!(!module.has_semi());
     let file_id = file_id.into();
     let ast_id_map = db.ast_id_map(file_id);
-    let item_id = ast_id_map.ast_id(module).with_file_id(file_id);
+    let item_id = ast_id_map.ast_id(&module).with_file_id(file_id);
     module_from_source(db, file_id, Some(item_id))
 }
 
@@ -127,16 +127,16 @@ fn try_get_resolver_for_node(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<Resolver> {
-    if let Some(module) = ast::Module::cast(node) {
+    if let Some(module) = ast::Module::cast(node.clone()) {
         Some(module_from_declaration(db, file_id, module)?.resolver(db))
-    } else if let Some(_) = ast::SourceFile::cast(node) {
+    } else if let Some(_) = ast::SourceFile::cast(node.clone()) {
         Some(module_from_source(db, file_id.into(), None)?.resolver(db))
-    } else if let Some(s) = ast::StructDef::cast(node) {
+    } else if let Some(s) = ast::StructDef::cast(node.clone()) {
         let module = module_from_child_node(db, file_id, s.syntax())?;
-        Some(struct_from_module(db, module, s).resolver(db))
-    } else if let Some(e) = ast::EnumDef::cast(node) {
+        Some(struct_from_module(db, module, &s).resolver(db))
+    } else if let Some(e) = ast::EnumDef::cast(node.clone()) {
         let module = module_from_child_node(db, file_id, e.syntax())?;
-        Some(enum_from_module(db, module, e).resolver(db))
+        Some(enum_from_module(db, module, &e).resolver(db))
     } else if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
         Some(def_with_body_from_child_node(db, file_id, node)?.resolver(db))
     } else {
@@ -153,14 +153,14 @@ fn def_with_body_from_child_node(
     let module = module_from_child_node(db, file_id, node)?;
     let ctx = LocationCtx::new(db, module, file_id.into());
     node.ancestors().find_map(|node| {
-        if let Some(def) = ast::FnDef::cast(node) {
-            return Some(Function { id: ctx.to_def(def) }.into());
+        if let Some(def) = ast::FnDef::cast(node.clone()) {
+            return Some(Function { id: ctx.to_def(&def) }.into());
         }
-        if let Some(def) = ast::ConstDef::cast(node) {
-            return Some(Const { id: ctx.to_def(def) }.into());
+        if let Some(def) = ast::ConstDef::cast(node.clone()) {
+            return Some(Const { id: ctx.to_def(&def) }.into());
         }
-        if let Some(def) = ast::StaticDef::cast(node) {
-            return Some(Static { id: ctx.to_def(def) }.into());
+        if let Some(def) = ast::StaticDef::cast(node.clone()) {
+            return Some(Static { id: ctx.to_def(&def) }.into());
         }
         None
     })
@@ -237,7 +237,7 @@ impl SourceAnalyzer {
             SourceAnalyzer {
                 resolver: node
                     .ancestors()
-                    .find_map(|node| try_get_resolver_for_node(db, file_id, node))
+                    .find_map(|node| try_get_resolver_for_node(db, file_id, &node))
                     .unwrap_or_default(),
                 body_source_map: None,
                 infer: None,
@@ -257,17 +257,17 @@ impl SourceAnalyzer {
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
-        let expr_id = self.body_source_map.as_ref()?.node_expr(call.into())?;
+        let expr_id = self.body_source_map.as_ref()?.node_expr(&call.clone().into())?;
         self.infer.as_ref()?.method_resolution(expr_id)
     }
 
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<crate::StructField> {
-        let expr_id = self.body_source_map.as_ref()?.node_expr(field.into())?;
+        let expr_id = self.body_source_map.as_ref()?.node_expr(&field.clone().into())?;
         self.infer.as_ref()?.field_resolution(expr_id)
     }
 
     pub fn resolve_variant(&self, struct_lit: &ast::StructLit) -> Option<crate::VariantDef> {
-        let expr_id = self.body_source_map.as_ref()?.node_expr(struct_lit.into())?;
+        let expr_id = self.body_source_map.as_ref()?.node_expr(&struct_lit.clone().into())?;
         self.infer.as_ref()?.variant_resolution(expr_id)
     }
 
@@ -290,18 +290,18 @@ impl SourceAnalyzer {
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &ast::Path) -> Option<PathResolution> {
         if let Some(path_expr) = path.syntax().parent().and_then(ast::PathExpr::cast) {
-            let expr_id = self.body_source_map.as_ref()?.node_expr(path_expr.into())?;
+            let expr_id = self.body_source_map.as_ref()?.node_expr(&path_expr.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_expr(expr_id) {
                 return Some(PathResolution::AssocItem(assoc));
             }
         }
         if let Some(path_pat) = path.syntax().parent().and_then(ast::PathPat::cast) {
-            let pat_id = self.body_source_map.as_ref()?.node_pat(path_pat.into())?;
+            let pat_id = self.body_source_map.as_ref()?.node_pat(&path_pat.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
                 return Some(PathResolution::AssocItem(assoc));
             }
         }
-        let hir_path = crate::Path::from_ast(path)?;
+        let hir_path = crate::Path::from_ast(path.clone())?;
         let res = self.resolver.resolve_path_without_assoc_items(db, &hir_path);
         let res = res.clone().take_types().or_else(|| res.take_values())?;
         let res = match res {
@@ -343,12 +343,12 @@ impl SourceAnalyzer {
         // FIXME: at least, this should work with any DefWithBody, but ideally
         // this should be hir-based altogether
         let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
-        let ptr = Either::A(AstPtr::new(pat.into()));
+        let ptr = Either::A(AstPtr::new(&ast::Pat::from(pat.clone())));
         fn_def
             .syntax()
             .descendants()
             .filter_map(ast::NameRef::cast)
-            .filter(|name_ref| match self.resolve_local_name(*name_ref) {
+            .filter(|name_ref| match self.resolve_local_name(&name_ref) {
                 None => false,
                 Some(entry) => entry.ptr() == ptr,
             })
@@ -411,7 +411,7 @@ fn scope_for(
     node: &SyntaxNode,
 ) -> Option<ScopeId> {
     node.ancestors()
-        .map(SyntaxNodePtr::new)
+        .map(|it| SyntaxNodePtr::new(&it))
         .filter_map(|ptr| source_map.syntax_expr(ptr))
         .find_map(|it| scopes.scope_for(it))
 }

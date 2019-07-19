@@ -4,7 +4,7 @@ use std::sync::Arc;
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AstNode},
-    AstPtr, SourceFile, TreeArc,
+    AstPtr, SourceFile,
 };
 
 use crate::{
@@ -28,9 +28,9 @@ impl ImplSourceMap {
         self.map.insert(impl_id, AstPtr::new(impl_block))
     }
 
-    pub fn get(&self, source: &ModuleSource, impl_id: ImplId) -> TreeArc<ast::ImplBlock> {
+    pub fn get(&self, source: &ModuleSource, impl_id: ImplId) -> ast::ImplBlock {
         let file = match source {
-            ModuleSource::SourceFile(file) => &*file,
+            ModuleSource::SourceFile(file) => file.clone(),
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
         };
 
@@ -45,8 +45,8 @@ pub struct ImplBlock {
 }
 
 impl HasSource for ImplBlock {
-    type Ast = TreeArc<ast::ImplBlock>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ImplBlock>> {
+    type Ast = ast::ImplBlock;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::ImplBlock> {
         let source_map = db.impls_in_module_with_source_map(self.module).1;
         let src = self.module.definition_source(db);
         Source { file_id: src.file_id, ast: source_map.get(&src.ast, self.impl_id) }
@@ -132,9 +132,9 @@ impl ImplData {
             item_list
                 .impl_items()
                 .map(|item_node| match item_node.kind() {
-                    ast::ImplItemKind::FnDef(it) => Function { id: ctx.to_def(it) }.into(),
-                    ast::ImplItemKind::ConstDef(it) => Const { id: ctx.to_def(it) }.into(),
-                    ast::ImplItemKind::TypeAliasDef(it) => TypeAlias { id: ctx.to_def(it) }.into(),
+                    ast::ImplItemKind::FnDef(it) => Function { id: ctx.to_def(&it) }.into(),
+                    ast::ImplItemKind::ConstDef(it) => Const { id: ctx.to_def(&it) }.into(),
+                    ast::ImplItemKind::TypeAliasDef(it) => TypeAlias { id: ctx.to_def(&it) }.into(),
                 })
                 .collect()
         } else {
@@ -202,20 +202,20 @@ impl ModuleImplBlocks {
 
         let src = m.module.definition_source(db);
         let node = match &src.ast {
-            ModuleSource::SourceFile(node) => node.syntax(),
+            ModuleSource::SourceFile(node) => node.syntax().clone(),
             ModuleSource::Module(node) => {
-                node.item_list().expect("inline module should have item list").syntax()
+                node.item_list().expect("inline module should have item list").syntax().clone()
             }
         };
 
         for impl_block_ast in node.children().filter_map(ast::ImplBlock::cast) {
-            let impl_block = ImplData::from_ast(db, src.file_id, m.module, impl_block_ast);
+            let impl_block = ImplData::from_ast(db, src.file_id, m.module, &impl_block_ast);
             let id = m.impls.alloc(impl_block);
             for &impl_item in &m.impls[id].items {
                 m.impls_by_def.insert(impl_item, id);
             }
 
-            source_map.insert(id, impl_block_ast);
+            source_map.insert(id, &impl_block_ast);
         }
 
         m

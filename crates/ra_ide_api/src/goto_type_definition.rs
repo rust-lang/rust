@@ -13,15 +13,17 @@ pub(crate) fn goto_type_definition(
         token
             .parent()
             .ancestors()
-            .find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
+            .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())
     })?;
 
-    let analyzer = hir::SourceAnalyzer::new(db, position.file_id, node, None);
+    let analyzer = hir::SourceAnalyzer::new(db, position.file_id, &node, None);
 
-    let ty: hir::Ty = if let Some(ty) = ast::Expr::cast(node).and_then(|e| analyzer.type_of(db, e))
+    let ty: hir::Ty = if let Some(ty) =
+        ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))
     {
         ty
-    } else if let Some(ty) = ast::Pat::cast(node).and_then(|p| analyzer.type_of_pat(db, p)) {
+    } else if let Some(ty) = ast::Pat::cast(node.clone()).and_then(|p| analyzer.type_of_pat(db, &p))
+    {
         ty
     } else {
         return None;

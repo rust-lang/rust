@@ -49,7 +49,7 @@ pub(crate) enum Assist {
 pub(crate) struct AssistCtx<'a, DB> {
     pub(crate) db: &'a DB,
     pub(crate) frange: FileRange,
-    source_file: &'a SourceFile,
+    source_file: SourceFile,
     should_compute_edit: bool,
     assist: Assist,
 }
@@ -59,7 +59,7 @@ impl<'a, DB> Clone for AssistCtx<'a, DB> {
         AssistCtx {
             db: self.db,
             frange: self.frange,
-            source_file: self.source_file,
+            source_file: self.source_file.clone(),
             should_compute_edit: self.should_compute_edit,
             assist: self.assist.clone(),
         }
@@ -104,18 +104,18 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         Some(self.assist)
     }
 
-    pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken<'a>> {
+    pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
         find_token_at_offset(self.source_file.syntax(), self.frange.range.start())
     }
 
-    pub(crate) fn node_at_offset<N: AstNode>(&self) -> Option<&'a N> {
+    pub(crate) fn node_at_offset<N: AstNode>(&self) -> Option<N> {
         find_node_at_offset(self.source_file.syntax(), self.frange.range.start())
     }
-    pub(crate) fn covering_element(&self) -> SyntaxElement<'a> {
+    pub(crate) fn covering_element(&self) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), self.frange.range)
     }
 
-    pub(crate) fn covering_node_for_range(&self, range: TextRange) -> SyntaxElement<'a> {
+    pub(crate) fn covering_node_for_range(&self, range: TextRange) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), range)
     }
 }
@@ -139,7 +139,7 @@ impl AssistBuilder {
     ) {
         let mut replace_with = replace_with.into();
         if let Some(indent) = leading_indent(node) {
-            replace_with = reindent(&replace_with, indent)
+            replace_with = reindent(&replace_with, &indent)
         }
         self.replace(node.range(), replace_with)
     }

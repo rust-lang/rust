@@ -12,25 +12,25 @@ use ra_syntax::{
     SyntaxNode, TextRange, T,
 };
 
-fn collect_path_segments_raw<'a>(
-    segments: &mut Vec<&'a ast::PathSegment>,
-    mut path: &'a ast::Path,
+fn collect_path_segments_raw(
+    segments: &mut Vec<ast::PathSegment>,
+    mut path: ast::Path,
 ) -> Option<usize> {
     let oldlen = segments.len();
     loop {
         let mut children = path.syntax().children_with_tokens();
         let (first, second, third) = (
-            children.next().map(|n| (n, n.kind())),
-            children.next().map(|n| (n, n.kind())),
-            children.next().map(|n| (n, n.kind())),
+            children.next().map(|n| (n.clone(), n.kind())),
+            children.next().map(|n| (n.clone(), n.kind())),
+            children.next().map(|n| (n.clone(), n.kind())),
         );
         match (first, second, third) {
             (Some((subpath, PATH)), Some((_, T![::])), Some((segment, PATH_SEGMENT))) => {
-                path = ast::Path::cast(subpath.as_node()?)?;
-                segments.push(ast::PathSegment::cast(segment.as_node()?)?);
+                path = ast::Path::cast(subpath.as_node()?.clone())?;
+                segments.push(ast::PathSegment::cast(segment.as_node()?.clone())?);
             }
             (Some((segment, PATH_SEGMENT)), _, _) => {
-                segments.push(ast::PathSegment::cast(segment.as_node()?)?);
+                segments.push(ast::PathSegment::cast(segment.as_node()?.clone())?);
                 break;
             }
             (_, _, _) => return None,
@@ -60,7 +60,7 @@ fn fmt_segments_raw(segments: &[SmolStr], buf: &mut String) {
 }
 
 // Returns the numeber of common segments.
-fn compare_path_segments(left: &[SmolStr], right: &[&ast::PathSegment]) -> usize {
+fn compare_path_segments(left: &[SmolStr], right: &[ast::PathSegment]) -> usize {
     left.iter().zip(right).filter(|(l, r)| compare_path_segment(l, r)).count()
 }
 
@@ -81,12 +81,12 @@ fn compare_path_segment_with_name(a: &SmolStr, b: &ast::Name) -> bool {
     a == b.text()
 }
 
-#[derive(Copy, Clone)]
-enum ImportAction<'a> {
+#[derive(Clone)]
+enum ImportAction {
     Nothing,
     // Add a brand new use statement.
     AddNewUse {
-        anchor: Option<&'a SyntaxNode>, // anchor node
+        anchor: Option<SyntaxNode>, // anchor node
         add_after_anchor: bool,
     },
 
@@ -94,9 +94,9 @@ enum ImportAction<'a> {
     AddNestedImport {
         // how may segments matched with the target path
         common_segments: usize,
-        path_to_split: &'a ast::Path,
+        path_to_split: ast::Path,
         // the first segment of path_to_split we want to add into the new nested list
-        first_segment_to_split: Option<&'a ast::PathSegment>,
+        first_segment_to_split: Option<ast::PathSegment>,
         // Wether to add 'self' in addition to the target path
         add_self: bool,
     },
@@ -104,20 +104,20 @@ enum ImportAction<'a> {
     AddInTreeList {
         common_segments: usize,
         // The UseTreeList where to add the target path
-        tree_list: &'a ast::UseTreeList,
+        tree_list: ast::UseTreeList,
         add_self: bool,
     },
 }
 
-impl<'a> ImportAction<'a> {
-    fn add_new_use(anchor: Option<&'a SyntaxNode>, add_after_anchor: bool) -> Self {
+impl ImportAction {
+    fn add_new_use(anchor: Option<SyntaxNode>, add_after_anchor: bool) -> Self {
         ImportAction::AddNewUse { anchor, add_after_anchor }
     }
 
     fn add_nested_import(
         common_segments: usize,
-        path_to_split: &'a ast::Path,
-        first_segment_to_split: Option<&'a ast::PathSegment>,
+        path_to_split: ast::Path,
+        first_segment_to_split: Option<ast::PathSegment>,
         add_self: bool,
     ) -> Self {
         ImportAction::AddNestedImport {
@@ -130,14 +130,14 @@ impl<'a> ImportAction<'a> {
 
     fn add_in_tree_list(
         common_segments: usize,
-        tree_list: &'a ast::UseTreeList,
+        tree_list: ast::UseTreeList,
         add_self: bool,
     ) -> Self {
         ImportAction::AddInTreeList { common_segments, tree_list, add_self }
     }
 
-    fn better<'b>(left: &'b ImportAction<'a>, right: &'b ImportAction<'a>) -> &'b ImportAction<'a> {
-        if left.is_better(right) {
+    fn better(left: ImportAction, right: ImportAction) -> ImportAction {
+        if left.is_better(&right) {
             left
         } else {
             right
@@ -166,12 +166,12 @@ impl<'a> ImportAction<'a> {
 
 // Find out the best ImportAction to import target path against current_use_tree.
 // If current_use_tree has a nested import the function gets called recursively on every UseTree inside a UseTreeList.
-fn walk_use_tree_for_best_action<'a>(
-    current_path_segments: &mut Vec<&'a ast::PathSegment>, // buffer containing path segments
-    current_parent_use_tree_list: Option<&'a ast::UseTreeList>, // will be Some value if we are in a nested import
-    current_use_tree: &'a ast::UseTree, // the use tree we are currently examinating
-    target: &[SmolStr],                 // the path we want to import
-) -> ImportAction<'a> {
+fn walk_use_tree_for_best_action(
+    current_path_segments: &mut Vec<ast::PathSegment>, // buffer containing path segments
+    current_parent_use_tree_list: Option<ast::UseTreeList>, // will be Some value if we are in a nested import
+    current_use_tree: ast::UseTree, // the use tree we are currently examinating
+    target: &[SmolStr],             // the path we want to import
+) -> ImportAction {
     // We save the number of segments in the buffer so we can restore the correct segments
     // before returning. Recursive call will add segments so we need to delete them.
     let prev_len = current_path_segments.len();
@@ -188,32 +188,36 @@ fn walk_use_tree_for_best_action<'a>(
                     .syntax()
                     .ancestors()
                     .find_map(ast::UseItem::cast)
-                    .map(AstNode::syntax),
+                    .map(|it| it.syntax().clone()),
                 true,
             );
         }
     };
 
     // This can happen only if current_use_tree is a direct child of a UseItem
-    if let Some(name) = alias.and_then(ast::NameOwner::name) {
-        if compare_path_segment_with_name(&target[0], name) {
+    if let Some(name) = alias.and_then(|it| it.name()) {
+        if compare_path_segment_with_name(&target[0], &name) {
             return ImportAction::Nothing;
         }
     }
 
-    collect_path_segments_raw(current_path_segments, path);
+    collect_path_segments_raw(current_path_segments, path.clone());
 
     // We compare only the new segments added in the line just above.
     // The first prev_len segments were already compared in 'parent' recursive calls.
     let left = target.split_at(prev_len).1;
     let right = current_path_segments.split_at(prev_len).1;
-    let common = compare_path_segments(left, right);
+    let common = compare_path_segments(left, &right);
     let mut action = match common {
         0 => ImportAction::add_new_use(
             // e.g: target is std::fmt and we can have
             // use foo::bar
             // We add a brand new use statement
-            current_use_tree.syntax().ancestors().find_map(ast::UseItem::cast).map(AstNode::syntax),
+            current_use_tree
+                .syntax()
+                .ancestors()
+                .find_map(ast::UseItem::cast)
+                .map(|it| it.syntax().clone()),
             true,
         ),
         common if common == left.len() && left.len() == right.len() => {
@@ -223,9 +227,9 @@ fn walk_use_tree_for_best_action<'a>(
             if let Some(list) = tree_list {
                 // In case 2 we need to add self to the nested list
                 // unless it's already there
-                let has_self = list.use_trees().map(ast::UseTree::path).any(|p| {
-                    p.and_then(ast::Path::segment)
-                        .and_then(ast::PathSegment::kind)
+                let has_self = list.use_trees().map(|it| it.path()).any(|p| {
+                    p.and_then(|it| it.segment())
+                        .and_then(|it| it.kind())
                         .filter(|k| *k == ast::PathSegmentKind::SelfKw)
                         .is_some()
                 });
@@ -248,7 +252,7 @@ fn walk_use_tree_for_best_action<'a>(
             ImportAction::add_nested_import(
                 prev_len + common,
                 path,
-                Some(segments_to_split[0]),
+                Some(segments_to_split[0].clone()),
                 false,
             )
         }
@@ -263,14 +267,18 @@ fn walk_use_tree_for_best_action<'a>(
                     .syntax()
                     .ancestors()
                     .find_map(ast::UseItem::cast)
-                    .map(AstNode::syntax),
+                    .map(|it| it.syntax().clone()),
                 true,
             );
             if let Some(list) = tree_list {
                 // Case 2, check recursively if the path is already imported in the nested list
                 for u in list.use_trees() {
-                    let child_action =
-                        walk_use_tree_for_best_action(current_path_segments, Some(list), u, target);
+                    let child_action = walk_use_tree_for_best_action(
+                        current_path_segments,
+                        Some(list.clone()),
+                        u,
+                        target,
+                    );
                     if child_action.is_better(&better_action) {
                         better_action = child_action;
                         if let ImportAction::Nothing = better_action {
@@ -291,7 +299,7 @@ fn walk_use_tree_for_best_action<'a>(
             ImportAction::add_nested_import(
                 prev_len + common,
                 path,
-                Some(segments_to_split[0]),
+                Some(segments_to_split[0].clone()),
                 true,
             )
         }
@@ -302,7 +310,7 @@ fn walk_use_tree_for_best_action<'a>(
             ImportAction::add_nested_import(
                 prev_len + common,
                 path,
-                Some(segments_to_split[0]),
+                Some(segments_to_split[0].clone()),
                 false,
             )
         }
@@ -311,7 +319,7 @@ fn walk_use_tree_for_best_action<'a>(
 
     // If we are inside a UseTreeList adding a use statement become adding to the existing
     // tree list.
-    action = match (current_parent_use_tree_list, action) {
+    action = match (current_parent_use_tree_list, action.clone()) {
         (Some(use_tree_list), ImportAction::AddNewUse { .. }) => {
             ImportAction::add_in_tree_list(prev_len, use_tree_list, false)
         }
@@ -323,19 +331,20 @@ fn walk_use_tree_for_best_action<'a>(
     action
 }
 
-fn best_action_for_target<'b, 'a: 'b>(
-    container: &'a SyntaxNode,
-    anchor: &'a SyntaxNode,
-    target: &'b [SmolStr],
-) -> ImportAction<'a> {
+fn best_action_for_target(
+    container: SyntaxNode,
+    anchor: SyntaxNode,
+    target: &[SmolStr],
+) -> ImportAction {
     let mut storage = Vec::with_capacity(16); // this should be the only allocation
     let best_action = container
         .children()
         .filter_map(ast::UseItem::cast)
-        .filter_map(ast::UseItem::use_tree)
+        .filter_map(|it| it.use_tree())
         .map(|u| walk_use_tree_for_best_action(&mut storage, None, u, target))
-        .fold(None, |best, a| {
-            best.and_then(|best| Some(*ImportAction::better(&best, &a))).or_else(|| Some(a))
+        .fold(None, |best, a| match best {
+            Some(best) => Some(ImportAction::better(best, a)),
+            None => Some(a),
         });
 
     match best_action {
@@ -386,7 +395,7 @@ fn make_assist(action: &ImportAction, target: &[SmolStr], edit: &mut TextEditBui
 }
 
 fn make_assist_add_new_use(
-    anchor: &Option<&SyntaxNode>,
+    anchor: &Option<SyntaxNode>,
     after: bool,
     target: &[SmolStr],
     edit: &mut TextEditBuilder,
@@ -396,7 +405,7 @@ fn make_assist_add_new_use(
         let mut buf = String::new();
         if after {
             buf.push_str("\n");
-            if let Some(spaces) = indent {
+            if let Some(spaces) = &indent {
                 buf.push_str(spaces);
             }
         }
@@ -405,8 +414,8 @@ fn make_assist_add_new_use(
         buf.push_str(";");
         if !after {
             buf.push_str("\n\n");
-            if let Some(spaces) = indent {
-                buf.push_str(spaces);
+            if let Some(spaces) = &indent {
+                buf.push_str(&spaces);
             }
         }
         let position = if after { anchor.range().end() } else { anchor.range().start() };
@@ -444,7 +453,7 @@ fn make_assist_add_in_tree_list(
 
 fn make_assist_add_nested_import(
     path: &ast::Path,
-    first_segment_to_split: &Option<&ast::PathSegment>,
+    first_segment_to_split: &Option<ast::PathSegment>,
     target: &[SmolStr],
     add_self: bool,
     edit: &mut TextEditBuilder,
@@ -482,7 +491,7 @@ fn apply_auto_import(
     target: &[SmolStr],
     edit: &mut TextEditBuilder,
 ) {
-    let action = best_action_for_target(container, path.syntax(), target);
+    let action = best_action_for_target(container.clone(), path.syntax().clone(), target);
     make_assist(&action, target, edit);
     if let Some(last) = path.segment() {
         // Here we are assuming the assist will provide a  correct use statement
@@ -522,26 +531,26 @@ pub fn auto_import_text_edit(
     edit: &mut TextEditBuilder,
 ) {
     let container = position.ancestors().find_map(|n| {
-        if let Some(module) = ast::Module::cast(n) {
-            return module.item_list().map(ast::AstNode::syntax);
+        if let Some(module) = ast::Module::cast(n.clone()) {
+            return module.item_list().map(|it| it.syntax().clone());
         }
-        ast::SourceFile::cast(n).map(ast::AstNode::syntax)
+        ast::SourceFile::cast(n).map(|it| it.syntax().clone())
     });
 
     if let Some(container) = container {
-        let action = best_action_for_target(container, anchor, target);
+        let action = best_action_for_target(container, anchor.clone(), target);
         make_assist(&action, target, edit);
     }
 }
 
 pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let path: &ast::Path = ctx.node_at_offset()?;
+    let path: ast::Path = ctx.node_at_offset()?;
     // We don't want to mess with use statements
     if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
         return None;
     }
 
-    let hir_path = hir::Path::from_ast(path)?;
+    let hir_path = hir::Path::from_ast(path.clone())?;
     let segments = collect_hir_path_segments(&hir_path);
     if segments.len() < 2 {
         return None;
@@ -554,7 +563,7 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
                 format!("import {} in mod {}", fmt_segments(&segments), name.text()),
                 |edit| {
                     let mut text_edit = TextEditBuilder::default();
-                    apply_auto_import(item_list.syntax(), path, &segments, &mut text_edit);
+                    apply_auto_import(item_list.syntax(), &path, &segments, &mut text_edit);
                     edit.set_edit_builder(text_edit);
                 },
             );
@@ -566,7 +575,7 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
             format!("import {} in the current file", fmt_segments(&segments)),
             |edit| {
                 let mut text_edit = TextEditBuilder::default();
-                apply_auto_import(current_file.syntax(), path, &segments, &mut text_edit);
+                apply_auto_import(current_file.syntax(), &path, &segments, &mut text_edit);
                 edit.set_edit_builder(text_edit);
             },
         );

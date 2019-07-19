@@ -4,10 +4,7 @@
 use std::sync::Arc;
 
 use ra_arena::{impl_arena_id, Arena, RawId};
-use ra_syntax::{
-    ast::{self, NameOwner, StructKind, TypeAscriptionOwner},
-    TreeArc,
-};
+use ra_syntax::ast::{self, NameOwner, StructKind, TypeAscriptionOwner};
 
 use crate::{
     type_ref::TypeRef, AsName, AstDatabase, Crate, DefDatabase, Enum, EnumVariant, FieldSource,
@@ -59,11 +56,11 @@ impl StructData {
         struct_: Struct,
     ) -> Arc<StructData> {
         let src = struct_.source(db);
-        Arc::new(StructData::new(&*src.ast))
+        Arc::new(StructData::new(&src.ast))
     }
 }
 
-fn variants(enum_def: &ast::EnumDef) -> impl Iterator<Item = &ast::EnumVariant> {
+fn variants(enum_def: &ast::EnumDef) -> impl Iterator<Item = ast::EnumVariant> {
     enum_def.variant_list().into_iter().flat_map(|it| it.variants())
 }
 
@@ -71,9 +68,9 @@ impl EnumVariant {
     pub(crate) fn source_impl(
         self,
         db: &(impl DefDatabase + AstDatabase),
-    ) -> Source<TreeArc<ast::EnumVariant>> {
+    ) -> Source<ast::EnumVariant> {
         let src = self.parent.source(db);
-        let ast = variants(&*src.ast)
+        let ast = variants(&src.ast)
             .zip(db.enum_data(self.parent).variants.iter())
             .find(|(_syntax, (id, _))| *id == self.id)
             .unwrap()
@@ -96,7 +93,7 @@ impl EnumData {
     pub(crate) fn enum_data_query(db: &(impl DefDatabase + AstDatabase), e: Enum) -> Arc<EnumData> {
         let src = e.source(db);
         let name = src.ast.name().map(|n| n.as_name());
-        let variants = variants(&*src.ast)
+        let variants = variants(&src.ast)
             .map(|var| EnumVariantData {
                 name: var.name().map(|it| it.as_name()),
                 variant_data: Arc::new(VariantData::new(var.kind())),

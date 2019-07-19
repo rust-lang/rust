@@ -6,8 +6,8 @@ use crate::{Assist, AssistCtx, AssistId};
 /// Flip binary expression assist.
 pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let expr = ctx.node_at_offset::<BinExpr>()?;
-    let lhs = expr.lhs()?.syntax();
-    let rhs = expr.rhs()?.syntax();
+    let lhs = expr.lhs()?.syntax().clone();
+    let rhs = expr.rhs()?.syntax().clone();
     let op_range = expr.op_token()?.range();
     // The assist should be applied only if the cursor is on the operator
     let cursor_in_range = ctx.frange.range.is_subrange(&op_range);

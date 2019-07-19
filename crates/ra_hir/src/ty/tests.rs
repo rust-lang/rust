@@ -3086,7 +3086,7 @@ fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
     let analyzer = SourceAnalyzer::new(db, pos.file_id, expr.syntax(), Some(pos.offset));
-    let ty = analyzer.type_of(db, expr).unwrap();
+    let ty = analyzer.type_of(db, &expr).unwrap();
     ty.display(db).to_string()
 }
 
@@ -3126,7 +3126,7 @@ fn infer(content: &str) -> String {
         types.sort_by_key(|(ptr, _)| (ptr.range().start(), ptr.range().end()));
         for (syntax_ptr, ty) in &types {
             let node = syntax_ptr.to_node(source_file.syntax());
-            let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node) {
+            let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.clone()) {
                 (self_param.self_kw_token().range(), "self".to_string())
             } else {
                 (syntax_ptr.range(), node.text().to_string().replace("\n", " "))
@@ -3137,7 +3137,7 @@ fn infer(content: &str) -> String {
 
     for node in source_file.syntax().descendants() {
         if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
-            let analyzer = SourceAnalyzer::new(&db, file_id, node, None);
+            let analyzer = SourceAnalyzer::new(&db, file_id, &node, None);
             infer_def(analyzer.inference_result(), analyzer.body_source_map());
         }
     }
@@ -3179,7 +3179,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         let node =
             algo::find_token_at_offset(file.syntax(), pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
-            SourceAnalyzer::new(&db, pos.file_id, node, None);
+            SourceAnalyzer::new(&db, pos.file_id, &node, None);
         });
         assert!(format!("{:?}", events).contains("infer"))
     }
@@ -3200,7 +3200,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         let node =
             algo::find_token_at_offset(file.syntax(), pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
-            SourceAnalyzer::new(&db, pos.file_id, node, None);
+            SourceAnalyzer::new(&db, pos.file_id, &node, None);
         });
         assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
     }

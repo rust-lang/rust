@@ -50,7 +50,7 @@ use ra_db::{
     salsa::{self, ParallelDatabase},
     CheckCanceled, SourceDatabase,
 };
-use ra_syntax::{SourceFile, TextRange, TextUnit, TreeArc};
+use ra_syntax::{SourceFile, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 use relative_path::RelativePathBuf;
 
@@ -325,8 +325,8 @@ impl Analysis {
     }
 
     /// Gets the syntax tree of the file.
-    pub fn parse(&self, file_id: FileId) -> TreeArc<SourceFile> {
-        self.db.parse(file_id).tree().to_owned()
+    pub fn parse(&self, file_id: FileId) -> SourceFile {
+        self.db.parse(file_id).tree()
     }
 
     /// Gets the file's `LineIndex`: data structure to convert between absolute
@@ -360,7 +360,7 @@ impl Analysis {
         let parse = self.db.parse(frange.file_id);
         let file_edit = SourceFileEdit {
             file_id: frange.file_id,
-            edit: join_lines::join_lines(parse.tree(), frange.range),
+            edit: join_lines::join_lines(&parse.tree(), frange.range),
         };
         SourceChange::source_file_edit("join lines", file_edit)
     }
@@ -393,13 +393,13 @@ impl Analysis {
     /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
         let parse = self.db.parse(file_id);
-        file_structure(parse.tree())
+        file_structure(&parse.tree())
     }
 
     /// Returns the set of folding ranges.
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
         let parse = self.db.parse(file_id);
-        folding_ranges::folding_ranges(parse.tree())
+        folding_ranges::folding_ranges(&parse.tree())
     }
 
     /// Fuzzy searches for a symbol.

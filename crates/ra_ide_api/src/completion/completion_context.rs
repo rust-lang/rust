@@ -16,11 +16,11 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a db::RootDatabase,
     pub(super) analyzer: hir::SourceAnalyzer,
     pub(super) offset: TextUnit,
-    pub(super) token: SyntaxToken<'a>,
+    pub(super) token: SyntaxToken,
     pub(super) module: Option<hir::Module>,
-    pub(super) function_syntax: Option<&'a ast::FnDef>,
-    pub(super) use_item_syntax: Option<&'a ast::UseItem>,
-    pub(super) struct_lit_syntax: Option<&'a ast::StructLit>,
+    pub(super) function_syntax: Option<ast::FnDef>,
+    pub(super) use_item_syntax: Option<ast::UseItem>,
+    pub(super) struct_lit_syntax: Option<ast::StructLit>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
@@ -35,7 +35,7 @@ pub(crate) struct CompletionContext<'a> {
     /// Something is typed at the "top" level, in module or impl/trait.
     pub(super) is_new_item: bool,
     /// The receiver if this is a field or method access, i.e. writing something.<|>
-    pub(super) dot_receiver: Option<&'a ast::Expr>,
+    pub(super) dot_receiver: Option<ast::Expr>,
     /// If this is a call (method or function) in particular, i.e. the () are already there.
     pub(super) is_call: bool,
 }
@@ -50,7 +50,7 @@ impl<'a> CompletionContext<'a> {
         let token =
             find_token_at_offset(original_parse.tree().syntax(), position.offset).left_biased()?;
         let analyzer =
-            hir::SourceAnalyzer::new(db, position.file_id, token.parent(), Some(position.offset));
+            hir::SourceAnalyzer::new(db, position.file_id, &token.parent(), Some(position.offset));
         let mut ctx = CompletionContext {
             db,
             analyzer,
@@ -109,7 +109,7 @@ impl<'a> CompletionContext<'a> {
             if is_node::<ast::BindPat>(name.syntax()) {
                 let bind_pat = name.syntax().ancestors().find_map(ast::BindPat::cast).unwrap();
                 let parent = bind_pat.syntax().parent();
-                if parent.and_then(ast::MatchArm::cast).is_some()
+                if parent.clone().and_then(ast::MatchArm::cast).is_some()
                     || parent.and_then(ast::Condition::cast).is_some()
                 {
                     self.is_pat_binding = true;
@@ -122,7 +122,7 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    fn classify_name_ref(&mut self, original_file: &'a SourceFile, name_ref: &ast::NameRef) {
+    fn classify_name_ref(&mut self, original_file: SourceFile, name_ref: ast::NameRef) {
         let name_range = name_ref.syntax().range();
         if name_ref.syntax().parent().and_then(ast::NamedField::cast).is_some() {
             self.struct_lit_syntax = find_node_at_offset(original_file.syntax(), self.offset);
@@ -153,7 +153,7 @@ impl<'a> CompletionContext<'a> {
             None => return,
         };
 
-        if let Some(segment) = ast::PathSegment::cast(parent) {
+        if let Some(segment) = ast::PathSegment::cast(parent.clone()) {
             let path = segment.parent_path();
             self.is_call = path
                 .syntax()
@@ -162,7 +162,7 @@ impl<'a> CompletionContext<'a> {
                 .and_then(|it| it.syntax().parent().and_then(ast::CallExpr::cast))
                 .is_some();
 
-            if let Some(mut path) = hir::Path::from_ast(path) {
+            if let Some(mut path) = hir::Path::from_ast(path.clone()) {
                 if !path.is_ident() {
                     path.segments.pop().unwrap();
                     self.path_prefix = Some(path);
@@ -179,7 +179,7 @@ impl<'a> CompletionContext<'a> {
                     .syntax()
                     .ancestors()
                     .find_map(|node| {
-                        if let Some(stmt) = ast::ExprStmt::cast(node) {
+                        if let Some(stmt) = ast::ExprStmt::cast(node.clone()) {
                             return Some(stmt.syntax().range() == name_ref.syntax().range());
                         }
                         if let Some(block) = ast::Block::cast(node) {
@@ -203,7 +203,7 @@ impl<'a> CompletionContext<'a> {
                 }
             }
         }
-        if let Some(field_expr) = ast::FieldExpr::cast(parent) {
+        if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
             // The receiver comes before the point of insertion of the fake
             // ident, so it should have the same range in the non-modified file
             self.dot_receiver = field_expr
@@ -222,7 +222,7 @@ impl<'a> CompletionContext<'a> {
     }
 }
 
-fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<&N> {
+fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
     find_covering_element(syntax, range).ancestors().find_map(N::cast)
 }
 

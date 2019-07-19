@@ -179,7 +179,8 @@ mod tests {
         let macro_definition =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-        let (definition_tt, _) = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
+        let (definition_tt, _) =
+            ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
         parse(&definition_tt)
     }
 

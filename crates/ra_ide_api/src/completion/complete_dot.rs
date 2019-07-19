@@ -5,10 +5,11 @@ use rustc_hash::FxHashSet;
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    let receiver_ty = match ctx.dot_receiver.and_then(|it| ctx.analyzer.type_of(ctx.db, it)) {
-        Some(it) => it,
-        None => return,
-    };
+    let receiver_ty =
+        match ctx.dot_receiver.as_ref().and_then(|it| ctx.analyzer.type_of(ctx.db, it)) {
+            Some(it) => it,
+            None => return,
+        };
     if !ctx.is_call {
         complete_fields(acc, ctx, receiver_ty.clone());
     }

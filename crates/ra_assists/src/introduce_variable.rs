@@ -20,8 +20,8 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
         return None;
     }
     let expr = node.ancestors().find_map(valid_target_expr)?;
-    let (anchor_stmt, wrap_in_block) = anchor_stmt(expr)?;
-    let indent = anchor_stmt.prev_sibling_or_token()?.as_token()?;
+    let (anchor_stmt, wrap_in_block) = anchor_stmt(expr.clone())?;
+    let indent = anchor_stmt.prev_sibling_or_token()?.as_token()?.clone();
     if indent.kind() != WHITESPACE {
         return None;
     }
@@ -37,9 +37,9 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
         };
 
         expr.syntax().text().push_to(&mut buf);
-        let full_stmt = ast::ExprStmt::cast(anchor_stmt);
-        let is_full_stmt = if let Some(expr_stmt) = full_stmt {
-            Some(expr.syntax()) == expr_stmt.expr().map(|e| e.syntax())
+        let full_stmt = ast::ExprStmt::cast(anchor_stmt.clone());
+        let is_full_stmt = if let Some(expr_stmt) = &full_stmt {
+            Some(expr.syntax().clone()) == expr_stmt.expr().map(|e| e.syntax().clone())
         } else {
             false
         };
@@ -81,7 +81,7 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
 
 /// Check whether the node is a valid expression which can be extracted to a variable.
 /// In general that's true for any expression, but in some cases that would produce invalid code.
-fn valid_target_expr(node: &SyntaxNode) -> Option<&ast::Expr> {
+fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
     match node.kind() {
         PATH_EXPR => None,
         BREAK_EXPR => ast::BreakExpr::cast(node).and_then(|e| e.expr()),
@@ -96,14 +96,10 @@ fn valid_target_expr(node: &SyntaxNode) -> Option<&ast::Expr> {
 /// to produce correct code.
 /// It can be a statement, the last in a block expression or a wanna be block
 /// expression like a lambda or match arm.
-fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
+fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
     expr.syntax().ancestors().find_map(|node| {
-        if ast::Stmt::cast(node).is_some() {
-            return Some((node, false));
-        }
-
         if let Some(expr) = node.parent().and_then(ast::Block::cast).and_then(|it| it.expr()) {
-            if expr.syntax() == node {
+            if expr.syntax() == &node {
                 tested_by!(test_introduce_var_last_expr);
                 return Some((node, false));
             }
@@ -113,6 +109,10 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
             if parent.kind() == MATCH_ARM || parent.kind() == LAMBDA_EXPR {
                 return Some((node, true));
             }
+        }
+
+        if ast::Stmt::cast(node.clone()).is_some() {
+            return Some((node, false));
         }
 
         None

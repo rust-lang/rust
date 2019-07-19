@@ -26,8 +26,8 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     parse.tree().syntax().descendants().filter_map(|i| runnable(db, file_id, i)).collect()
 }
 
-fn runnable(db: &RootDatabase, file_id: FileId, item: &SyntaxNode) -> Option<Runnable> {
-    if let Some(fn_def) = ast::FnDef::cast(item) {
+fn runnable(db: &RootDatabase, file_id: FileId, item: SyntaxNode) -> Option<Runnable> {
+    if let Some(fn_def) = ast::FnDef::cast(item.clone()) {
         runnable_fn(fn_def)
     } else if let Some(m) = ast::Module::cast(item) {
         runnable_mod(db, file_id, m)
@@ -36,8 +36,8 @@ fn runnable(db: &RootDatabase, file_id: FileId, item: &SyntaxNode) -> Option<Run
     }
 }
 
-fn runnable_fn(fn_def: &ast::FnDef) -> Option<Runnable> {
-    let name = fn_def.name()?.text();
+fn runnable_fn(fn_def: ast::FnDef) -> Option<Runnable> {
+    let name = fn_def.name()?.text().clone();
     let kind = if name == "main" {
         RunnableKind::Bin
     } else if fn_def.has_atom_attr("test") {
@@ -50,7 +50,7 @@ fn runnable_fn(fn_def: &ast::FnDef) -> Option<Runnable> {
     Some(Runnable { range: fn_def.syntax().range(), kind })
 }
 
-fn runnable_mod(db: &RootDatabase, file_id: FileId, module: &ast::Module) -> Option<Runnable> {
+fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Option<Runnable> {
     let has_test_function = module
         .item_list()?
         .items()

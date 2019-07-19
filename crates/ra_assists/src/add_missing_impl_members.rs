@@ -5,8 +5,8 @@ use crate::{
 
 use hir::{db::HirDatabase, HasSource};
 use ra_db::FilePosition;
-use ra_syntax::ast::{self, AstNode, ImplItem, ImplItemKind, NameOwner};
-use ra_syntax::{SmolStr, TreeArc};
+use ra_syntax::ast::{self, AstNode, ImplItemKind, NameOwner};
+use ra_syntax::SmolStr;
 
 #[derive(PartialEq)]
 enum AddMissingImplMembersMode {
@@ -46,16 +46,16 @@ fn add_missing_impl_members_inner(
         let position = FilePosition { file_id, offset: impl_node.syntax().range().start() };
         let analyzer = hir::SourceAnalyzer::new(ctx.db, position.file_id, impl_node.syntax(), None);
 
-        resolve_target_trait_def(ctx.db, &analyzer, impl_node)?
+        resolve_target_trait_def(ctx.db, &analyzer, &impl_node)?
     };
 
-    let def_name = |kind| -> Option<&SmolStr> {
+    let def_name = |kind| -> Option<SmolStr> {
         match kind {
-            ImplItemKind::FnDef(def) => def.name(),
-            ImplItemKind::TypeAliasDef(def) => def.name(),
-            ImplItemKind::ConstDef(def) => def.name(),
+            ast::ImplItemKind::FnDef(def) => def.name(),
+            ast::ImplItemKind::TypeAliasDef(def) => def.name(),
+            ast::ImplItemKind::ConstDef(def) => def.name(),
         }
-        .map(ast::Name::text)
+        .map(|it| it.text().clone())
     };
 
     let trait_items = trait_def.item_list()?.impl_items();
@@ -78,18 +78,13 @@ fn add_missing_impl_members_inner(
 
     ctx.add_action(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
-        let items: Vec<_> = missing_items
-            .into_iter()
-            .map(|it| match it.kind() {
-                ImplItemKind::FnDef(def) => {
-                    strip_docstring(ImplItem::cast(add_body(def).syntax()).unwrap())
-                }
-                _ => strip_docstring(it),
-            })
-            .collect();
+        let items = missing_items.into_iter().map(|it| match it.kind() {
+            ImplItemKind::FnDef(def) => strip_docstring(add_body(def).into()),
+            _ => strip_docstring(it),
+        });
         let mut ast_editor = AstEditor::new(impl_item_list);
 
-        ast_editor.append_items(items.iter().map(|it| &**it));
+        ast_editor.append_items(items);
 
         let first_new_item = ast_editor.ast().impl_items().nth(n_existing_items).unwrap();
         let cursor_position = first_new_item.syntax().range().start();
@@ -101,14 +96,14 @@ fn add_missing_impl_members_inner(
     ctx.build()
 }
 
-fn strip_docstring(item: &ast::ImplItem) -> TreeArc<ast::ImplItem> {
+fn strip_docstring(item: ast::ImplItem) -> ast::ImplItem {
     let mut ast_editor = AstEditor::new(item);
     ast_editor.strip_attrs_and_docs();
     ast_editor.ast().to_owned()
 }
 
-fn add_body(fn_def: &ast::FnDef) -> TreeArc<ast::FnDef> {
-    let mut ast_editor = AstEditor::new(fn_def);
+fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
+    let mut ast_editor = AstEditor::new(fn_def.clone());
     if fn_def.body().is_none() {
         ast_editor.set_body(&AstBuilder::<ast::Block>::single_expr(
             &AstBuilder::<ast::Expr>::unimplemented(),
@@ -123,9 +118,12 @@ fn resolve_target_trait_def(
     db: &impl HirDatabase,
     analyzer: &hir::SourceAnalyzer,
     impl_block: &ast::ImplBlock,
-) -> Option<TreeArc<ast::TraitDef>> {
-    let ast_path =
-        impl_block.target_trait().map(AstNode::syntax).and_then(ast::PathType::cast)?.path()?;
+) -> Option<ast::TraitDef> {
+    let ast_path = impl_block
+        .target_trait()
+        .map(|it| it.syntax().clone())
+        .and_then(ast::PathType::cast)?
+        .path()?;
 
     match analyzer.resolve_path(db, &ast_path) {
         Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).ast),

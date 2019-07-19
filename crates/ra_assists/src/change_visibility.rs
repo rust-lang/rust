@@ -35,7 +35,7 @@ fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         if parent.children().any(|child| child.kind() == VISIBILITY) {
             return None;
         }
-        (vis_offset(parent), keyword.range())
+        (vis_offset(&parent), keyword.range())
     } else {
         let ident = ctx.token_at_offset().find(|leaf| leaf.kind() == IDENT)?;
         let field = ident.parent().ancestors().find_map(ast::NamedFieldDef::cast)?;
@@ -65,7 +65,7 @@ fn vis_offset(node: &SyntaxNode) -> TextUnit {
         .unwrap_or_else(|| node.range().start())
 }
 
-fn change_vis(mut ctx: AssistCtx<impl HirDatabase>, vis: &ast::Visibility) -> Option<Assist> {
+fn change_vis(mut ctx: AssistCtx<impl HirDatabase>, vis: ast::Visibility) -> Option<Assist> {
     if vis.syntax().text() == "pub" {
         ctx.add_action(AssistId("change_visibility"), "change to pub(crate)", |edit| {
             edit.target(vis.syntax().range());

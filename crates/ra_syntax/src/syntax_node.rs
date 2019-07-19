@@ -7,14 +7,13 @@
 //! modules just wraps its API.
 
 use std::{
-    borrow::Borrow,
     fmt::{self, Write},
     iter::successors,
     ops::RangeInclusive,
 };
 
 use ra_parser::ParseError;
-use rowan::{GreenNodeBuilder, TransparentNewType};
+use rowan::GreenNodeBuilder;
 
 use crate::{
     syntax_error::{SyntaxError, SyntaxErrorKind},
@@ -33,86 +32,8 @@ pub enum InsertPosition<T> {
     After(T),
 }
 
-/// Marker trait for CST and AST nodes
-pub trait SyntaxNodeWrapper: TransparentNewType<Repr = rowan::SyntaxNode> {}
-impl<T: TransparentNewType<Repr = rowan::SyntaxNode>> SyntaxNodeWrapper for T {}
-
-/// An owning smart pointer for CST or AST node.
-#[derive(PartialEq, Eq, Hash)]
-pub struct TreeArc<T: SyntaxNodeWrapper>(pub(crate) rowan::TreeArc<T>);
-
-impl<T: SyntaxNodeWrapper> Borrow<T> for TreeArc<T> {
-    fn borrow(&self) -> &T {
-        &*self
-    }
-}
-
-impl<T> TreeArc<T>
-where
-    T: SyntaxNodeWrapper,
-{
-    pub(crate) fn cast<U>(this: TreeArc<T>) -> TreeArc<U>
-    where
-        U: SyntaxNodeWrapper,
-    {
-        TreeArc(rowan::TreeArc::cast(this.0))
-    }
-}
-
-impl<T> std::ops::Deref for TreeArc<T>
-where
-    T: SyntaxNodeWrapper,
-{
-    type Target = T;
-    fn deref(&self) -> &T {
-        self.0.deref()
-    }
-}
-
-impl<T> PartialEq<T> for TreeArc<T>
-where
-    T: SyntaxNodeWrapper,
-    T: PartialEq<T>,
-{
-    fn eq(&self, other: &T) -> bool {
-        let t: &T = self;
-        t == other
-    }
-}
-
-impl<T> Clone for TreeArc<T>
-where
-    T: SyntaxNodeWrapper,
-{
-    fn clone(&self) -> TreeArc<T> {
-        TreeArc(self.0.clone())
-    }
-}
-
-impl<T> fmt::Debug for TreeArc<T>
-where
-    T: SyntaxNodeWrapper,
-    T: fmt::Debug,
-{
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.0, fmt)
-    }
-}
-
-#[derive(PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct SyntaxNode(pub(crate) rowan::SyntaxNode);
-unsafe impl TransparentNewType for SyntaxNode {
-    type Repr = rowan::SyntaxNode;
-}
-
-impl ToOwned for SyntaxNode {
-    type Owned = TreeArc<SyntaxNode>;
-    fn to_owned(&self) -> TreeArc<SyntaxNode> {
-        let ptr = TreeArc(self.0.to_owned());
-        TreeArc::cast(ptr)
-    }
-}
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub struct SyntaxNode(pub(crate) rowan::cursor::SyntaxNode);
 
 impl fmt::Debug for SyntaxNode {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -133,9 +54,9 @@ pub enum Direction {
 }
 
 impl SyntaxNode {
-    pub(crate) fn new(green: GreenNode) -> TreeArc<SyntaxNode> {
-        let ptr = TreeArc(rowan::SyntaxNode::new(green, None));
-        TreeArc::cast(ptr)
+    pub(crate) fn new(green: GreenNode) -> SyntaxNode {
+        let inner = rowan::cursor::SyntaxNode::new_root(green);
+        SyntaxNode(inner)
     }
 
     pub fn kind(&self) -> SyntaxKind {
@@ -143,47 +64,47 @@ impl SyntaxNode {
     }
 
     pub fn range(&self) -> TextRange {
-        self.0.range()
+        self.0.text_range()
     }
 
     pub fn text(&self) -> SyntaxText {
         SyntaxText::new(self)
     }
 
-    pub fn parent(&self) -> Option<&SyntaxNode> {
-        self.0.parent().map(SyntaxNode::from_repr)
+    pub fn parent(&self) -> Option<SyntaxNode> {
+        self.0.parent().map(SyntaxNode)
     }
 
-    pub fn first_child(&self) -> Option<&SyntaxNode> {
-        self.0.first_child().map(SyntaxNode::from_repr)
+    pub fn first_child(&self) -> Option<SyntaxNode> {
+        self.0.first_child().map(SyntaxNode)
     }
 
     pub fn first_child_or_token(&self) -> Option<SyntaxElement> {
-        self.0.first_child_or_token().map(SyntaxElement::from)
+        self.0.first_child_or_token().map(SyntaxElement::new)
     }
 
-    pub fn last_child(&self) -> Option<&SyntaxNode> {
-        self.0.last_child().map(SyntaxNode::from_repr)
+    pub fn last_child(&self) -> Option<SyntaxNode> {
+        self.0.last_child().map(SyntaxNode)
     }
 
     pub fn last_child_or_token(&self) -> Option<SyntaxElement> {
-        self.0.last_child_or_token().map(SyntaxElement::from)
+        self.0.last_child_or_token().map(SyntaxElement::new)
     }
 
-    pub fn next_sibling(&self) -> Option<&SyntaxNode> {
-        self.0.next_sibling().map(SyntaxNode::from_repr)
+    pub fn next_sibling(&self) -> Option<SyntaxNode> {
+        self.0.next_sibling().map(SyntaxNode)
     }
 
     pub fn next_sibling_or_token(&self) -> Option<SyntaxElement> {
-        self.0.next_sibling_or_token().map(SyntaxElement::from)
+        self.0.next_sibling_or_token().map(SyntaxElement::new)
     }
 
-    pub fn prev_sibling(&self) -> Option<&SyntaxNode> {
-        self.0.prev_sibling().map(SyntaxNode::from_repr)
+    pub fn prev_sibling(&self) -> Option<SyntaxNode> {
+        self.0.prev_sibling().map(SyntaxNode)
     }
 
     pub fn prev_sibling_or_token(&self) -> Option<SyntaxElement> {
-        self.0.prev_sibling_or_token().map(SyntaxElement::from)
+        self.0.prev_sibling_or_token().map(SyntaxElement::new)
     }
 
     pub fn children(&self) -> SyntaxNodeChildren {
@@ -195,18 +116,18 @@ impl SyntaxNode {
     }
 
     pub fn first_token(&self) -> Option<SyntaxToken> {
-        self.0.first_token().map(SyntaxToken::from)
+        self.0.first_token().map(SyntaxToken)
     }
 
     pub fn last_token(&self) -> Option<SyntaxToken> {
-        self.0.last_token().map(SyntaxToken::from)
+        self.0.last_token().map(SyntaxToken)
     }
 
-    pub fn ancestors(&self) -> impl Iterator<Item = &SyntaxNode> {
-        successors(Some(self), |&node| node.parent())
+    pub fn ancestors(&self) -> impl Iterator<Item = SyntaxNode> {
+        successors(Some(self.clone()), |node| node.parent())
     }
 
-    pub fn descendants(&self) -> impl Iterator<Item = &SyntaxNode> {
+    pub fn descendants(&self) -> impl Iterator<Item = SyntaxNode> {
         self.preorder().filter_map(|event| match event {
             WalkEvent::Enter(node) => Some(node),
             WalkEvent::Leave(_) => None,
@@ -220,8 +141,8 @@ impl SyntaxNode {
         })
     }
 
-    pub fn siblings(&self, direction: Direction) -> impl Iterator<Item = &SyntaxNode> {
-        successors(Some(self), move |&node| match direction {
+    pub fn siblings(&self, direction: Direction) -> impl Iterator<Item = SyntaxNode> {
+        successors(Some(self.clone()), move |node| match direction {
             Direction::Next => node.next_sibling(),
             Direction::Prev => node.prev_sibling(),
         })
@@ -231,29 +152,29 @@ impl SyntaxNode {
         &self,
         direction: Direction,
     ) -> impl Iterator<Item = SyntaxElement> {
-        let me: SyntaxElement = self.into();
+        let me: SyntaxElement = self.clone().into();
         successors(Some(me), move |el| match direction {
             Direction::Next => el.next_sibling_or_token(),
             Direction::Prev => el.prev_sibling_or_token(),
         })
     }
 
-    pub fn preorder(&self) -> impl Iterator<Item = WalkEvent<&SyntaxNode>> {
+    pub fn preorder(&self) -> impl Iterator<Item = WalkEvent<SyntaxNode>> {
         self.0.preorder().map(|event| match event {
-            WalkEvent::Enter(n) => WalkEvent::Enter(SyntaxNode::from_repr(n)),
-            WalkEvent::Leave(n) => WalkEvent::Leave(SyntaxNode::from_repr(n)),
+            WalkEvent::Enter(n) => WalkEvent::Enter(SyntaxNode(n)),
+            WalkEvent::Leave(n) => WalkEvent::Leave(SyntaxNode(n)),
         })
     }
 
     pub fn preorder_with_tokens(&self) -> impl Iterator<Item = WalkEvent<SyntaxElement>> {
         self.0.preorder_with_tokens().map(|event| match event {
-            WalkEvent::Enter(n) => WalkEvent::Enter(n.into()),
-            WalkEvent::Leave(n) => WalkEvent::Leave(n.into()),
+            WalkEvent::Enter(n) => WalkEvent::Enter(SyntaxElement::new(n)),
+            WalkEvent::Leave(n) => WalkEvent::Leave(SyntaxElement::new(n)),
         })
     }
 
     pub fn memory_size_of_subtree(&self) -> usize {
-        self.0.memory_size_of_subtree()
+        0
     }
 
     pub fn debug_dump(&self) -> String {
@@ -290,11 +211,11 @@ impl SyntaxNode {
     ///
     /// This is a type-unsafe low-level editing API, if you need to use it,
     /// prefer to create a type-safe abstraction on top of it instead.
-    pub fn insert_children<'a>(
+    pub fn insert_children(
         &self,
-        position: InsertPosition<SyntaxElement<'_>>,
-        to_insert: impl Iterator<Item = SyntaxElement<'a>>,
-    ) -> TreeArc<SyntaxNode> {
+        position: InsertPosition<SyntaxElement>,
+        to_insert: impl Iterator<Item = SyntaxElement>,
+    ) -> SyntaxNode {
         let mut delta = TextUnit::default();
         let to_insert = to_insert.map(|element| {
             delta += element.text_len();
@@ -303,7 +224,7 @@ impl SyntaxNode {
 
         let old_children = self.0.green().children();
 
-        let new_children = match position {
+        let new_children = match &position {
             InsertPosition::First => {
                 to_insert.chain(old_children.iter().cloned()).collect::<Box<[_]>>()
             }
@@ -312,7 +233,7 @@ impl SyntaxNode {
             }
             InsertPosition::Before(anchor) | InsertPosition::After(anchor) => {
                 let take_anchor = if let InsertPosition::After(_) = position { 1 } else { 0 };
-                let split_at = self.position_of_child(anchor) + take_anchor;
+                let split_at = self.position_of_child(anchor.clone()) + take_anchor;
                 let (before, after) = old_children.split_at(split_at);
                 before
                     .iter()
@@ -330,13 +251,13 @@ impl SyntaxNode {
     ///
     /// This is a type-unsafe low-level editing API, if you need to use it,
     /// prefer to create a type-safe abstraction on top of it instead.
-    pub fn replace_children<'a>(
+    pub fn replace_children(
         &self,
-        to_delete: RangeInclusive<SyntaxElement<'_>>,
-        to_insert: impl Iterator<Item = SyntaxElement<'a>>,
-    ) -> TreeArc<SyntaxNode> {
-        let start = self.position_of_child(*to_delete.start());
-        let end = self.position_of_child(*to_delete.end());
+        to_delete: RangeInclusive<SyntaxElement>,
+        to_insert: impl Iterator<Item = SyntaxElement>,
+    ) -> SyntaxNode {
+        let start = self.position_of_child(to_delete.start().clone());
+        let end = self.position_of_child(to_delete.end().clone());
         let old_children = self.0.green().children();
 
         let new_children = old_children[..start]
@@ -348,7 +269,7 @@ impl SyntaxNode {
         self.with_children(new_children)
     }
 
-    fn with_children(&self, new_children: Box<[rowan::GreenElement]>) -> TreeArc<SyntaxNode> {
+    fn with_children(&self, new_children: Box<[rowan::GreenElement]>) -> SyntaxNode {
         let len = new_children.iter().map(|it| it.text_len()).sum::<TextUnit>();
         let new_node = GreenNode::new(rowan::SyntaxKind(self.kind() as u16), new_children);
         let new_file_node = self.replace_with(new_node);
@@ -364,7 +285,7 @@ impl SyntaxNode {
     fn position_of_child(&self, child: SyntaxElement) -> usize {
         self.children_with_tokens()
             .position(|it| it == child)
-            .expect("elemetn is not a child of current element")
+            .expect("element is not a child of current element")
     }
 }
 
@@ -377,11 +298,11 @@ fn to_green_element(element: SyntaxElement) -> rowan::GreenElement {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SyntaxToken<'a>(pub(crate) rowan::SyntaxToken<'a>);
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct SyntaxToken(pub(crate) rowan::cursor::SyntaxToken);
 
 //FIXME: always output text
-impl<'a> fmt::Debug for SyntaxToken<'a> {
+impl fmt::Debug for SyntaxToken {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}@{:?}", self.kind(), self.range())?;
         if self.text().len() < 25 {
@@ -398,60 +319,54 @@ impl<'a> fmt::Debug for SyntaxToken<'a> {
     }
 }
 
-impl<'a> fmt::Display for SyntaxToken<'a> {
+impl fmt::Display for SyntaxToken {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self.text(), fmt)
     }
 }
 
-impl<'a> From<rowan::SyntaxToken<'a>> for SyntaxToken<'a> {
-    fn from(t: rowan::SyntaxToken<'a>) -> Self {
-        SyntaxToken(t)
-    }
-}
-
-impl<'a> SyntaxToken<'a> {
+impl SyntaxToken {
     pub fn kind(&self) -> SyntaxKind {
         self.0.kind().0.into()
     }
 
-    pub fn text(&self) -> &'a SmolStr {
+    pub fn text(&self) -> &SmolStr {
         self.0.text()
     }
 
     pub fn range(&self) -> TextRange {
-        self.0.range()
+        self.0.text_range()
     }
 
-    pub fn parent(&self) -> &'a SyntaxNode {
-        SyntaxNode::from_repr(self.0.parent())
+    pub fn parent(&self) -> SyntaxNode {
+        SyntaxNode(self.0.parent())
     }
 
-    pub fn next_sibling_or_token(&self) -> Option<SyntaxElement<'a>> {
-        self.0.next_sibling_or_token().map(SyntaxElement::from)
+    pub fn next_sibling_or_token(&self) -> Option<SyntaxElement> {
+        self.0.next_sibling_or_token().map(SyntaxElement::new)
     }
 
-    pub fn prev_sibling_or_token(&self) -> Option<SyntaxElement<'a>> {
-        self.0.prev_sibling_or_token().map(SyntaxElement::from)
+    pub fn prev_sibling_or_token(&self) -> Option<SyntaxElement> {
+        self.0.prev_sibling_or_token().map(SyntaxElement::new)
     }
 
     pub fn siblings_with_tokens(
         &self,
         direction: Direction,
-    ) -> impl Iterator<Item = SyntaxElement<'a>> {
-        let me: SyntaxElement = (*self).into();
+    ) -> impl Iterator<Item = SyntaxElement> {
+        let me: SyntaxElement = self.clone().into();
         successors(Some(me), move |el| match direction {
             Direction::Next => el.next_sibling_or_token(),
             Direction::Prev => el.prev_sibling_or_token(),
         })
     }
 
-    pub fn next_token(&self) -> Option<SyntaxToken<'a>> {
-        self.0.next_token().map(SyntaxToken::from)
+    pub fn next_token(&self) -> Option<SyntaxToken> {
+        self.0.next_token().map(SyntaxToken)
     }
 
-    pub fn prev_token(&self) -> Option<SyntaxToken<'a>> {
-        self.0.prev_token().map(SyntaxToken::from)
+    pub fn prev_token(&self) -> Option<SyntaxToken> {
+        self.0.prev_token().map(SyntaxToken)
     }
 
     pub(crate) fn replace_with(&self, new_token: GreenToken) -> GreenNode {
@@ -459,13 +374,25 @@ impl<'a> SyntaxToken<'a> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum SyntaxElement<'a> {
-    Node(&'a SyntaxNode),
-    Token(SyntaxToken<'a>),
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum SyntaxElement {
+    Node(SyntaxNode),
+    Token(SyntaxToken),
 }
 
-impl<'a> fmt::Display for SyntaxElement<'a> {
+impl From<SyntaxNode> for SyntaxElement {
+    fn from(node: SyntaxNode) -> Self {
+        SyntaxElement::Node(node)
+    }
+}
+
+impl From<SyntaxToken> for SyntaxElement {
+    fn from(token: SyntaxToken) -> Self {
+        SyntaxElement::Token(token)
+    }
+}
+
+impl fmt::Display for SyntaxElement {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
             SyntaxElement::Node(it) => fmt::Display::fmt(it, fmt),
@@ -474,7 +401,14 @@ impl<'a> fmt::Display for SyntaxElement<'a> {
     }
 }
 
-impl<'a> SyntaxElement<'a> {
+impl SyntaxElement {
+    pub(crate) fn new(el: rowan::cursor::SyntaxElement) -> Self {
+        match el {
+            rowan::cursor::SyntaxElement::Node(it) => SyntaxElement::Node(SyntaxNode(it)),
+            rowan::cursor::SyntaxElement::Token(it) => SyntaxElement::Token(SyntaxToken(it)),
+        }
+    }
+
     pub fn kind(&self) -> SyntaxKind {
         match self {
             SyntaxElement::Node(it) => it.kind(),
@@ -482,40 +416,47 @@ impl<'a> SyntaxElement<'a> {
         }
     }
 
-    pub fn as_node(&self) -> Option<&'a SyntaxNode> {
+    pub fn as_node(&self) -> Option<&SyntaxNode> {
         match self {
-            SyntaxElement::Node(node) => Some(*node),
+            SyntaxElement::Node(node) => Some(node),
             SyntaxElement::Token(_) => None,
         }
     }
 
-    pub fn as_token(&self) -> Option<SyntaxToken<'a>> {
+    pub fn as_token(&self) -> Option<&SyntaxToken> {
         match self {
             SyntaxElement::Node(_) => None,
-            SyntaxElement::Token(token) => Some(*token),
+            SyntaxElement::Token(token) => Some(token),
         }
     }
 
-    pub fn next_sibling_or_token(&self) -> Option<SyntaxElement<'a>> {
+    pub fn next_sibling_or_token(&self) -> Option<SyntaxElement> {
         match self {
             SyntaxElement::Node(it) => it.next_sibling_or_token(),
             SyntaxElement::Token(it) => it.next_sibling_or_token(),
         }
     }
 
-    pub fn prev_sibling_or_token(&self) -> Option<SyntaxElement<'a>> {
+    pub fn prev_sibling_or_token(&self) -> Option<SyntaxElement> {
         match self {
             SyntaxElement::Node(it) => it.prev_sibling_or_token(),
             SyntaxElement::Token(it) => it.prev_sibling_or_token(),
         }
     }
 
-    pub fn ancestors(&self) -> impl Iterator<Item = &'a SyntaxNode> {
+    pub fn ancestors(&self) -> impl Iterator<Item = SyntaxNode> {
         match self {
-            SyntaxElement::Node(it) => it,
+            SyntaxElement::Node(it) => it.clone(),
             SyntaxElement::Token(it) => it.parent(),
         }
         .ancestors()
+    }
+
+    pub fn range(&self) -> TextRange {
+        match self {
+            SyntaxElement::Node(it) => it.range(),
+            SyntaxElement::Token(it) => it.range(),
+        }
     }
 
     fn text_len(&self) -> TextUnit {
@@ -526,55 +467,23 @@ impl<'a> SyntaxElement<'a> {
     }
 }
 
-impl<'a> From<rowan::SyntaxElement<'a>> for SyntaxElement<'a> {
-    fn from(el: rowan::SyntaxElement<'a>) -> Self {
-        match el {
-            rowan::SyntaxElement::Node(n) => SyntaxElement::Node(SyntaxNode::from_repr(n)),
-            rowan::SyntaxElement::Token(t) => SyntaxElement::Token(t.into()),
-        }
+#[derive(Clone, Debug)]
+pub struct SyntaxNodeChildren(rowan::cursor::SyntaxNodeChildren);
+
+impl Iterator for SyntaxNodeChildren {
+    type Item = SyntaxNode;
+    fn next(&mut self) -> Option<SyntaxNode> {
+        self.0.next().map(SyntaxNode)
     }
 }
 
-impl<'a> From<&'a SyntaxNode> for SyntaxElement<'a> {
-    fn from(node: &'a SyntaxNode) -> SyntaxElement<'a> {
-        SyntaxElement::Node(node)
-    }
-}
+#[derive(Clone, Debug)]
+pub struct SyntaxElementChildren(rowan::cursor::SyntaxElementChildren);
 
-impl<'a> From<SyntaxToken<'a>> for SyntaxElement<'a> {
-    fn from(token: SyntaxToken<'a>) -> SyntaxElement<'a> {
-        SyntaxElement::Token(token)
-    }
-}
-
-impl<'a> SyntaxElement<'a> {
-    pub fn range(&self) -> TextRange {
-        match self {
-            SyntaxElement::Node(it) => it.range(),
-            SyntaxElement::Token(it) => it.range(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct SyntaxNodeChildren<'a>(rowan::SyntaxNodeChildren<'a>);
-
-impl<'a> Iterator for SyntaxNodeChildren<'a> {
-    type Item = &'a SyntaxNode;
-
-    fn next(&mut self) -> Option<&'a SyntaxNode> {
-        self.0.next().map(SyntaxNode::from_repr)
-    }
-}
-
-#[derive(Debug)]
-pub struct SyntaxElementChildren<'a>(rowan::SyntaxElementChildren<'a>);
-
-impl<'a> Iterator for SyntaxElementChildren<'a> {
-    type Item = SyntaxElement<'a>;
-
-    fn next(&mut self) -> Option<SyntaxElement<'a>> {
-        self.0.next().map(SyntaxElement::from)
+impl Iterator for SyntaxElementChildren {
+    type Item = SyntaxElement;
+    fn next(&mut self) -> Option<SyntaxElement> {
+        self.0.next().map(SyntaxElement::new)
     }
 }
 
@@ -601,7 +510,7 @@ impl SyntaxTreeBuilder {
         if cfg!(debug_assertions) {
             crate::validation::validate_block_structure(&node);
         }
-        Parse::new(node, errors)
+        Parse::new(node.0.green().clone(), errors)
     }
 
     pub fn token(&mut self, kind: SyntaxKind, text: SmolStr) {

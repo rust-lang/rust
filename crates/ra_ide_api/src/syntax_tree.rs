@@ -18,7 +18,7 @@ pub(crate) fn syntax_tree(
         let node = match algo::find_covering_element(parse.tree().syntax(), text_range) {
             SyntaxElement::Node(node) => node,
             SyntaxElement::Token(token) => {
-                if let Some(tree) = syntax_tree_for_string(token, text_range) {
+                if let Some(tree) = syntax_tree_for_string(&token, text_range) {
                     return tree;
                 }
                 token.parent()
@@ -33,7 +33,7 @@ pub(crate) fn syntax_tree(
 
 /// Attempts parsing the selected contents of a string literal
 /// as rust syntax and returns its syntax tree
-fn syntax_tree_for_string(token: SyntaxToken, text_range: TextRange) -> Option<String> {
+fn syntax_tree_for_string(token: &SyntaxToken, text_range: TextRange) -> Option<String> {
     // When the range is inside a string
     // we'll attempt parsing it as rust syntax
     // to provide the syntax tree of the contents of the string
@@ -43,7 +43,7 @@ fn syntax_tree_for_string(token: SyntaxToken, text_range: TextRange) -> Option<S
     }
 }
 
-fn syntax_tree_for_token(node: SyntaxToken, text_range: TextRange) -> Option<String> {
+fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<String> {
     // Range of the full node
     let node_range = node.range();
     let text = node.text().to_string();

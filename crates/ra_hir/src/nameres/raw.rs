@@ -3,7 +3,7 @@ use std::{ops::Index, sync::Arc};
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, AstPtr, SmolStr, SourceFile, TreeArc,
+    AstNode, AstPtr, SmolStr, SourceFile,
 };
 use test_utils::tested_by;
 
@@ -32,7 +32,7 @@ pub struct ImportSourceMap {
 }
 
 type ImportSourcePtr = Either<AstPtr<ast::UseTree>, AstPtr<ast::ExternCrateItem>>;
-type ImportSource = Either<TreeArc<ast::UseTree>, TreeArc<ast::ExternCrateItem>>;
+type ImportSource = Either<ast::UseTree, ast::ExternCrateItem>;
 
 impl ImportSourcePtr {
     fn to_node(self, file: &SourceFile) -> ImportSource {
@@ -50,11 +50,11 @@ impl ImportSourceMap {
 
     pub(crate) fn get(&self, source: &ModuleSource, import: ImportId) -> ImportSource {
         let file = match source {
-            ModuleSource::SourceFile(file) => &*file,
+            ModuleSource::SourceFile(file) => file.clone(),
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
         };
 
-        self.map[import].to_node(file)
+        self.map[import].to_node(&file)
     }
 }
 
@@ -76,8 +76,8 @@ impl RawItems {
             source_map: ImportSourceMap::default(),
         };
         if let Some(node) = db.parse_or_expand(file_id) {
-            if let Some(source_file) = ast::SourceFile::cast(&node) {
-                collector.process_module(None, &*source_file);
+            if let Some(source_file) = ast::SourceFile::cast(node) {
+                collector.process_module(None, source_file);
             }
         }
         (Arc::new(collector.raw_items), Arc::new(collector.source_map))
@@ -188,7 +188,7 @@ struct RawItemsCollector {
 }
 
 impl RawItemsCollector {
-    fn process_module(&mut self, current_module: Option<Module>, body: &impl ast::ModuleItemOwner) {
+    fn process_module(&mut self, current_module: Option<Module>, body: impl ast::ModuleItemOwner) {
         for item_or_macro in body.items_with_macros() {
             match item_or_macro {
                 ast::ItemOrMacro::Macro(m) => self.add_macro(current_module, m),
@@ -197,7 +197,7 @@ impl RawItemsCollector {
         }
     }
 
-    fn add_item(&mut self, current_module: Option<Module>, item: &ast::ModuleItem) {
+    fn add_item(&mut self, current_module: Option<Module>, item: ast::ModuleItem) {
         let (kind, name) = match item.kind() {
             ast::ModuleItemKind::Module(module) => {
                 self.add_module(current_module, module);
@@ -216,7 +216,7 @@ impl RawItemsCollector {
                 return;
             }
             ast::ModuleItemKind::StructDef(it) => {
-                let id = self.source_ast_id_map.ast_id(it);
+                let id = self.source_ast_id_map.ast_id(&it);
                 let name = it.name();
                 if it.is_union() {
                     (DefKind::Union(id), name)
@@ -225,22 +225,22 @@ impl RawItemsCollector {
                 }
             }
             ast::ModuleItemKind::EnumDef(it) => {
-                (DefKind::Enum(self.source_ast_id_map.ast_id(it)), it.name())
+                (DefKind::Enum(self.source_ast_id_map.ast_id(&it)), it.name())
             }
             ast::ModuleItemKind::FnDef(it) => {
-                (DefKind::Function(self.source_ast_id_map.ast_id(it)), it.name())
+                (DefKind::Function(self.source_ast_id_map.ast_id(&it)), it.name())
             }
             ast::ModuleItemKind::TraitDef(it) => {
-                (DefKind::Trait(self.source_ast_id_map.ast_id(it)), it.name())
+                (DefKind::Trait(self.source_ast_id_map.ast_id(&it)), it.name())
             }
             ast::ModuleItemKind::TypeAliasDef(it) => {
-                (DefKind::TypeAlias(self.source_ast_id_map.ast_id(it)), it.name())
+                (DefKind::TypeAlias(self.source_ast_id_map.ast_id(&it)), it.name())
             }
             ast::ModuleItemKind::ConstDef(it) => {
-                (DefKind::Const(self.source_ast_id_map.ast_id(it)), it.name())
+                (DefKind::Const(self.source_ast_id_map.ast_id(&it)), it.name())
             }
             ast::ModuleItemKind::StaticDef(it) => {
-                (DefKind::Static(self.source_ast_id_map.ast_id(it)), it.name())
+                (DefKind::Static(self.source_ast_id_map.ast_id(&it)), it.name())
             }
         };
         if let Some(name) = name {
@@ -250,14 +250,14 @@ impl RawItemsCollector {
         }
     }
 
-    fn add_module(&mut self, current_module: Option<Module>, module: &ast::Module) {
+    fn add_module(&mut self, current_module: Option<Module>, module: ast::Module) {
         let name = match module.name() {
             Some(it) => it.as_name(),
             None => return,
         };
 
-        let attr_path = extract_mod_path_attribute(module);
-        let ast_id = self.source_ast_id_map.ast_id(module);
+        let attr_path = extract_mod_path_attribute(&module);
+        let ast_id = self.source_ast_id_map.ast_id(&module);
         if module.has_semi() {
             let item =
                 self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id, attr_path });
@@ -278,10 +278,10 @@ impl RawItemsCollector {
         tested_by!(name_res_works_for_broken_modules);
     }
 
-    fn add_use_item(&mut self, current_module: Option<Module>, use_item: &ast::UseItem) {
+    fn add_use_item(&mut self, current_module: Option<Module>, use_item: ast::UseItem) {
         let is_prelude = use_item.has_atom_attr("prelude_import");
 
-        Path::expand_use_item(use_item, |path, use_tree, is_glob, alias| {
+        Path::expand_use_item(&use_item, |path, use_tree, is_glob, alias| {
             let import_data =
                 ImportData { path, alias, is_glob, is_prelude, is_extern_crate: false };
             self.push_import(current_module, import_data, Either::A(AstPtr::new(use_tree)));
@@ -291,11 +291,11 @@ impl RawItemsCollector {
     fn add_extern_crate_item(
         &mut self,
         current_module: Option<Module>,
-        extern_crate: &ast::ExternCrateItem,
+        extern_crate: ast::ExternCrateItem,
     ) {
         if let Some(name_ref) = extern_crate.name_ref() {
-            let path = Path::from_name_ref(name_ref);
-            let alias = extern_crate.alias().and_then(|a| a.name()).map(AsName::as_name);
+            let path = Path::from_name_ref(&name_ref);
+            let alias = extern_crate.alias().and_then(|a| a.name()).map(|it| it.as_name());
             let import_data = ImportData {
                 path,
                 alias,
@@ -303,18 +303,18 @@ impl RawItemsCollector {
                 is_prelude: false,
                 is_extern_crate: true,
             };
-            self.push_import(current_module, import_data, Either::B(AstPtr::new(extern_crate)));
+            self.push_import(current_module, import_data, Either::B(AstPtr::new(&extern_crate)));
         }
     }
 
-    fn add_macro(&mut self, current_module: Option<Module>, m: &ast::MacroCall) {
+    fn add_macro(&mut self, current_module: Option<Module>, m: ast::MacroCall) {
         let path = match m.path().and_then(Path::from_ast) {
             Some(it) => it,
             _ => return,
         };
 
         let name = m.name().map(|it| it.as_name());
-        let ast_id = self.source_ast_id_map.ast_id(m);
+        let ast_id = self.source_ast_id_map.ast_id(&m);
         let export = m.has_atom_attr("macro_export");
         let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export });
         self.push_item(current_module, RawItem::Macro(m));

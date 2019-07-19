@@ -76,17 +76,17 @@ impl GenericParams {
         generics.parent_params = parent.map(|p| db.generic_params(p));
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
         match def {
-            GenericDef::Function(it) => generics.fill(&*it.source(db).ast, start),
-            GenericDef::Struct(it) => generics.fill(&*it.source(db).ast, start),
-            GenericDef::Union(it) => generics.fill(&*it.source(db).ast, start),
-            GenericDef::Enum(it) => generics.fill(&*it.source(db).ast, start),
+            GenericDef::Function(it) => generics.fill(&it.source(db).ast, start),
+            GenericDef::Struct(it) => generics.fill(&it.source(db).ast, start),
+            GenericDef::Union(it) => generics.fill(&it.source(db).ast, start),
+            GenericDef::Enum(it) => generics.fill(&it.source(db).ast, start),
             GenericDef::Trait(it) => {
                 // traits get the Self type as an implicit first type parameter
                 generics.params.push(GenericParam { idx: start, name: SELF_TYPE, default: None });
-                generics.fill(&*it.source(db).ast, start + 1);
+                generics.fill(&it.source(db).ast, start + 1);
             }
-            GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).ast, start),
-            GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).ast, start),
+            GenericDef::TypeAlias(it) => generics.fill(&it.source(db).ast, start),
+            GenericDef::ImplBlock(it) => generics.fill(&it.source(db).ast, start),
             GenericDef::EnumVariant(_) => {}
         }
 
@@ -102,9 +102,9 @@ impl GenericParams {
         }
     }
 
-    fn fill_params(&mut self, params: &ast::TypeParamList, start: u32) {
+    fn fill_params(&mut self, params: ast::TypeParamList, start: u32) {
         for (idx, type_param) in params.type_params().enumerate() {
-            let name = type_param.name().map(AsName::as_name).unwrap_or_else(Name::missing);
+            let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             let default = type_param.default_type().and_then(|t| t.path()).and_then(Path::from_ast);
 
             let param = GenericParam { idx: idx as u32 + start, name: name.clone(), default };
@@ -121,7 +121,7 @@ impl GenericParams {
         }
     }
 
-    fn fill_where_predicates(&mut self, where_clause: &ast::WhereClause) {
+    fn fill_where_predicates(&mut self, where_clause: ast::WhereClause) {
         for pred in where_clause.predicates() {
             let type_ref = match pred.type_ref() {
                 Some(type_ref) => type_ref,
@@ -134,7 +134,7 @@ impl GenericParams {
         }
     }
 
-    fn add_where_predicate_from_bound(&mut self, bound: &ast::TypeBound, type_ref: TypeRef) {
+    fn add_where_predicate_from_bound(&mut self, bound: ast::TypeBound, type_ref: TypeRef) {
         let path = bound
             .type_ref()
             .and_then(|tr| match tr.kind() {

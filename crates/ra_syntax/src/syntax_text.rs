@@ -16,29 +16,36 @@ impl<'a> SyntaxText<'a> {
         SyntaxText { node, range: node.range() }
     }
 
-    pub fn chunks(&self) -> impl Iterator<Item = &'a str> {
+    pub fn chunks(&self) -> impl Iterator<Item = SmolStr> {
         let range = self.range;
         self.node.descendants_with_tokens().filter_map(move |el| match el {
             SyntaxElement::Token(t) => {
                 let text = t.text();
                 let range = range.intersection(&t.range())?;
-                let range = range - t.range().start();
-                Some(&text[range])
+                let res = if range == t.range() {
+                    t.text().clone()
+                } else {
+                    let range = range - t.range().start();
+                    text[range].into()
+                };
+                Some(res)
             }
             SyntaxElement::Node(_) => None,
         })
     }
 
     pub fn push_to(&self, buf: &mut String) {
-        self.chunks().for_each(|it| buf.push_str(it));
+        self.chunks().for_each(|it| buf.push_str(it.as_str()));
     }
 
     pub fn to_string(&self) -> String {
-        self.chunks().collect()
+        let mut buf = String::new();
+        self.push_to(&mut buf);
+        buf
     }
 
     pub fn to_smol_string(&self) -> SmolStr {
-        self.chunks().collect()
+        self.to_string().into()
     }
 
     pub fn contains(&self, c: char) -> bool {
@@ -52,7 +59,7 @@ impl<'a> SyntaxText<'a> {
                 let pos: TextUnit = (pos as u32).into();
                 return Some(acc + pos);
             }
-            acc += TextUnit::of_str(chunk);
+            acc += TextUnit::of_str(chunk.as_str());
         }
         None
     }
@@ -97,7 +104,7 @@ impl<'a> SyntaxText<'a> {
         let mut start: TextUnit = 0.into();
         let offset = offset.into();
         for chunk in self.chunks() {
-            let end = start + TextUnit::of_str(chunk);
+            let end = start + TextUnit::of_str(chunk.as_str());
             if start <= offset && offset < end {
                 let off: usize = u32::from(offset - start) as usize;
                 return Some(chunk[off..].chars().next().unwrap());
@@ -129,7 +136,7 @@ impl From<SyntaxText<'_>> for String {
 impl PartialEq<str> for SyntaxText<'_> {
     fn eq(&self, mut rhs: &str) -> bool {
         for chunk in self.chunks() {
-            if !rhs.starts_with(chunk) {
+            if !rhs.starts_with(chunk.as_str()) {
                 return false;
             }
             rhs = &rhs[chunk.len()..];

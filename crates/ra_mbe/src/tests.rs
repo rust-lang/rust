@@ -37,8 +37,8 @@ impl_froms!(TokenTree: Leaf, Subtree);
     let macro_invocation =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-    let (definition_tt, _) = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
-    let (invocation_tt, _) = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
+    let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
+    let (invocation_tt, _) = ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
     let rules = crate::MacroRules::parse(&definition_tt).unwrap();
     let expansion = rules.expand(&invocation_tt).unwrap();
     assert_eq!(
@@ -53,7 +53,7 @@ pub(crate) fn create_rules(macro_definition: &str) -> MacroRules {
     let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-    let (definition_tt, _) = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
+    let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
     crate::MacroRules::parse(&definition_tt).unwrap()
 }
 
@@ -62,34 +62,25 @@ pub(crate) fn expand(rules: &MacroRules, invocation: &str) -> tt::Subtree {
     let macro_invocation =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-    let (invocation_tt, _) = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
+    let (invocation_tt, _) = ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
     rules.expand(&invocation_tt).unwrap()
 }
 
-pub(crate) fn expand_to_items(
-    rules: &MacroRules,
-    invocation: &str,
-) -> ra_syntax::TreeArc<ast::MacroItems> {
+pub(crate) fn expand_to_items(rules: &MacroRules, invocation: &str) -> ast::MacroItems {
     let expanded = expand(rules, invocation);
-    token_tree_to_macro_items(&expanded).unwrap().tree().to_owned()
+    token_tree_to_macro_items(&expanded).unwrap().tree()
 }
 
 #[allow(unused)]
-pub(crate) fn expand_to_stmts(
-    rules: &MacroRules,
-    invocation: &str,
-) -> ra_syntax::TreeArc<ast::MacroStmts> {
+pub(crate) fn expand_to_stmts(rules: &MacroRules, invocation: &str) -> ast::MacroStmts {
     let expanded = expand(rules, invocation);
-    token_tree_to_macro_stmts(&expanded).unwrap().tree().to_owned()
+    token_tree_to_macro_stmts(&expanded).unwrap().tree()
 }
 
-pub(crate) fn expand_to_expr(
-    rules: &MacroRules,
-    invocation: &str,
-) -> ra_syntax::TreeArc<ast::Expr> {
+pub(crate) fn expand_to_expr(rules: &MacroRules, invocation: &str) -> ast::Expr {
     let expanded = expand(rules, invocation);
-    token_tree_to_expr(&expanded).unwrap().tree().to_owned()
+    token_tree_to_expr(&expanded).unwrap().tree()
 }
 
 pub(crate) fn text_to_tokentree(text: &str) -> tt::Subtree {
@@ -97,7 +88,7 @@ pub(crate) fn text_to_tokentree(text: &str) -> tt::Subtree {
     let wrapped = format!("wrap_macro!( {} )", text);
     let wrapped = ast::SourceFile::parse(&wrapped);
     let wrapped = wrapped.tree().syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-    let mut wrapped = ast_to_token_tree(wrapped).unwrap().0;
+    let mut wrapped = ast_to_token_tree(&wrapped).unwrap().0;
     wrapped.delimiter = tt::Delimiter::None;
 
     wrapped
@@ -164,8 +155,8 @@ pub(crate) fn assert_expansion(
 
     let (expanded_tree, expected_tree) = match kind {
         MacroKind::Items => {
-            let expanded_tree = token_tree_to_macro_items(&expanded).unwrap().tree().to_owned();
-            let expected_tree = token_tree_to_macro_items(&expected).unwrap().tree().to_owned();
+            let expanded_tree = token_tree_to_macro_items(&expanded).unwrap().tree();
+            let expected_tree = token_tree_to_macro_items(&expected).unwrap().tree();
 
             (
                 debug_dump_ignore_spaces(expanded_tree.syntax()).trim().to_string(),
@@ -174,8 +165,8 @@ pub(crate) fn assert_expansion(
         }
 
         MacroKind::Stmts => {
-            let expanded_tree = token_tree_to_macro_stmts(&expanded).unwrap().tree().to_owned();
-            let expected_tree = token_tree_to_macro_stmts(&expected).unwrap().tree().to_owned();
+            let expanded_tree = token_tree_to_macro_stmts(&expanded).unwrap().tree();
+            let expected_tree = token_tree_to_macro_stmts(&expected).unwrap().tree();
 
             (
                 debug_dump_ignore_spaces(expanded_tree.syntax()).trim().to_string(),
@@ -419,7 +410,7 @@ fn test_expand_to_item_list() {
             ",
     );
     let expansion = expand(&rules, "structs!(Foo, Bar);");
-    let tree = token_tree_to_macro_items(&expansion).unwrap().tree().to_owned();
+    let tree = token_tree_to_macro_items(&expansion).unwrap().tree();
     assert_eq!(
         tree.syntax().debug_dump().trim(),
         r#"
@@ -537,7 +528,7 @@ fn test_tt_to_stmts() {
     );
 
     let expanded = expand(&rules, "foo!{}");
-    let stmts = token_tree_to_macro_stmts(&expanded).unwrap().tree().to_owned();
+    let stmts = token_tree_to_macro_stmts(&expanded).unwrap().tree();
 
     assert_eq!(
         stmts.syntax().debug_dump().trim(),

@@ -61,7 +61,7 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
     db.check_canceled();
     let parse = db.parse(file_id);
 
-    let symbols = source_file_to_file_symbols(parse.tree(), file_id);
+    let symbols = source_file_to_file_symbols(&parse.tree(), file_id);
 
     // FIXME: add macros here
 
@@ -173,7 +173,7 @@ impl SymbolIndex {
         files: impl ParallelIterator<Item = (FileId, Parse<ast::SourceFile>)>,
     ) -> SymbolIndex {
         let symbols = files
-            .flat_map(|(file_id, file)| source_file_to_file_symbols(file.tree(), file_id))
+            .flat_map(|(file_id, file)| source_file_to_file_symbols(&file.tree(), file_id))
             .collect::<Vec<_>>();
         SymbolIndex::new(symbols)
     }
@@ -249,7 +249,7 @@ fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec
     for event in source_file.syntax().preorder() {
         match event {
             WalkEvent::Enter(node) => {
-                if let Some(mut symbol) = to_file_symbol(node, file_id) {
+                if let Some(mut symbol) = to_file_symbol(&node, file_id) {
                     symbol.container_name = stack.last().cloned();
 
                     stack.push(symbol.name.clone());
@@ -258,7 +258,7 @@ fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec
             }
 
             WalkEvent::Leave(node) => {
-                if to_symbol(node).is_some() {
+                if to_symbol(&node).is_some() {
                     stack.pop();
                 }
             }
@@ -269,7 +269,7 @@ fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec
 }
 
 fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
-    fn decl<N: NameOwner>(node: &N) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
+    fn decl<N: NameOwner>(node: N) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
         let name = node.name()?;
         let name_range = name.syntax().range();
         let name = name.text().clone();

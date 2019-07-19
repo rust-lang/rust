@@ -5,7 +5,7 @@ use ra_syntax::{
     ast::{self, DocCommentsOwner},
     AstNode, AstPtr, SmolStr,
     SyntaxKind::{self, NAME},
-    SyntaxNode, TextRange, TreeArc,
+    SyntaxNode, TextRange,
 };
 
 use super::short_label::ShortLabel;
@@ -169,7 +169,7 @@ impl NavigationTarget {
         let file_id = src.file_id.original_file(db);
         match src.ast {
             FieldSource::Named(it) => {
-                NavigationTarget::from_named(file_id, &*it, it.doc_comment_text(), it.short_label())
+                NavigationTarget::from_named(file_id, &it, it.doc_comment_text(), it.short_label())
             }
             FieldSource::Pos(it) => {
                 NavigationTarget::from_syntax(file_id, "".into(), None, it.syntax(), None, None)
@@ -179,13 +179,13 @@ impl NavigationTarget {
 
     pub(crate) fn from_def_source<A, D>(db: &RootDatabase, def: D) -> NavigationTarget
     where
-        D: HasSource<Ast = TreeArc<A>>,
+        D: HasSource<Ast = A>,
         A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
     {
         let src = def.source(db);
         NavigationTarget::from_named(
             src.file_id.original_file(db),
-            &*src.ast,
+            &src.ast,
             src.ast.doc_comment_text(),
             src.ast.short_label(),
         )
@@ -249,7 +249,7 @@ impl NavigationTarget {
         log::debug!("nav target {}", src.ast.syntax().debug_dump());
         NavigationTarget::from_named(
             src.file_id.original_file(db),
-            &*src.ast,
+            &src.ast,
             src.ast.doc_comment_text(),
             None,
         )
@@ -318,22 +318,18 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
     let parse = db.parse(symbol.file_id);
     let node = symbol.ptr.to_node(parse.tree().syntax()).to_owned();
 
-    fn doc_comments<N: ast::DocCommentsOwner>(node: &N) -> Option<String> {
-        node.doc_comment_text()
-    }
-
     visitor()
-        .visit(doc_comments::<ast::FnDef>)
-        .visit(doc_comments::<ast::StructDef>)
-        .visit(doc_comments::<ast::EnumDef>)
-        .visit(doc_comments::<ast::TraitDef>)
-        .visit(doc_comments::<ast::Module>)
-        .visit(doc_comments::<ast::TypeAliasDef>)
-        .visit(doc_comments::<ast::ConstDef>)
-        .visit(doc_comments::<ast::StaticDef>)
-        .visit(doc_comments::<ast::NamedFieldDef>)
-        .visit(doc_comments::<ast::EnumVariant>)
-        .visit(doc_comments::<ast::MacroCall>)
+        .visit(|it: ast::FnDef| it.doc_comment_text())
+        .visit(|it: ast::StructDef| it.doc_comment_text())
+        .visit(|it: ast::EnumDef| it.doc_comment_text())
+        .visit(|it: ast::TraitDef| it.doc_comment_text())
+        .visit(|it: ast::Module| it.doc_comment_text())
+        .visit(|it: ast::TypeAliasDef| it.doc_comment_text())
+        .visit(|it: ast::ConstDef| it.doc_comment_text())
+        .visit(|it: ast::StaticDef| it.doc_comment_text())
+        .visit(|it: ast::NamedFieldDef| it.doc_comment_text())
+        .visit(|it: ast::EnumVariant| it.doc_comment_text())
+        .visit(|it: ast::MacroCall| it.doc_comment_text())
         .accept(&node)?
 }
 
@@ -345,15 +341,15 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
     let node = symbol.ptr.to_node(parse.tree().syntax()).to_owned();
 
     visitor()
-        .visit(|node: &ast::FnDef| node.short_label())
-        .visit(|node: &ast::StructDef| node.short_label())
-        .visit(|node: &ast::EnumDef| node.short_label())
-        .visit(|node: &ast::TraitDef| node.short_label())
-        .visit(|node: &ast::Module| node.short_label())
-        .visit(|node: &ast::TypeAliasDef| node.short_label())
-        .visit(|node: &ast::ConstDef| node.short_label())
-        .visit(|node: &ast::StaticDef| node.short_label())
-        .visit(|node: &ast::NamedFieldDef| node.short_label())
-        .visit(|node: &ast::EnumVariant| node.short_label())
+        .visit(|node: ast::FnDef| node.short_label())
+        .visit(|node: ast::StructDef| node.short_label())
+        .visit(|node: ast::EnumDef| node.short_label())
+        .visit(|node: ast::TraitDef| node.short_label())
+        .visit(|node: ast::Module| node.short_label())
+        .visit(|node: ast::TypeAliasDef| node.short_label())
+        .visit(|node: ast::ConstDef| node.short_label())
+        .visit(|node: ast::StaticDef| node.short_label())
+        .visit(|node: ast::NamedFieldDef| node.short_label())
+        .visit(|node: ast::EnumVariant| node.short_label())
         .accept(&node)?
 }

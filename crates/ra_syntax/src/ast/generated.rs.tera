@@ -11,92 +11,71 @@ the below applies to the result of this template
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
-use rowan::TransparentNewType;
-
 use crate::{
     SyntaxNode, SyntaxKind::*,
-    syntax_node::{TreeArc},
     ast::{self, AstNode},
 };
 {% for node, methods in ast %}
 // {{ node }}
 
 {%- if methods.enum %}
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct {{ node }} {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for {{ node }} {
-    type Repr = rowan::SyntaxNode;
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum {{ node }}Kind<'a> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum {{ node }}Kind {
 {%- for kind in methods.enum %}
-    {{ kind }}(&'a {{ kind }}),
+    {{ kind }}({{ kind }}),
 {%- endfor %}
 }
 
 {%- for kind in methods.enum %}
-impl<'a> From<&'a {{ kind }}> for &'a {{ node }} {
-    fn from(n: &'a {{ kind }}) -> &'a {{ node }} {
-        {{ node }}::cast(&n.syntax).unwrap()
+impl From<{{ kind }}> for {{ node }} {
+    fn from(n: {{ kind }}) -> {{ node }} {
+        {{ node }}::cast(n.syntax).unwrap()
     }
 }
 {%- endfor %}
 
 
 impl AstNode for {{ node }} {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             {%- for kind in methods.enum %}
             | {{ kind | SCREAM }}
-            {%- endfor %} => Some({{ node }}::from_repr(syntax.into_repr())),
+            {%- endfor %} => Some({{ node }} { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for {{ node }} {
-    type Owned = TreeArc<{{ node }}>;
-    fn to_owned(&self) -> TreeArc<{{ node }}> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 impl {{ node }} {
     pub fn kind(&self) -> {{ node }}Kind {
         match self.syntax.kind() {
             {%- for kind in methods.enum %}
-            {{ kind | SCREAM }} => {{ node }}Kind::{{ kind }}({{ kind }}::cast(&self.syntax).unwrap()),
+            {{ kind | SCREAM }} => {{ node }}Kind::{{ kind }}({{ kind }}::cast(self.syntax.clone()).unwrap()),
             {%- endfor %}
             _ => unreachable!(),
         }
     }
 }
 {% else %}
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct {{ node }} {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for {{ node }} {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for {{ node }} {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            {{ node | SCREAM }} => Some({{ node }}::from_repr(syntax.into_repr())),
+            {{ node | SCREAM }} => Some({{ node }} { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for {{ node }} {
-    type Owned = TreeArc<{{ node }}>;
-    fn to_owned(&self) -> TreeArc<{{ node }}> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 {% endif %}
@@ -113,7 +92,7 @@ impl {{ node }} {
 {%- for m in methods.collections -%}
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
-    pub fn {{ method_name }}(&self) -> impl Iterator<Item = &{{ ChildName }}> {
+    pub fn {{ method_name }}(&self) -> impl Iterator<Item = {{ ChildName }}> {
         super::children(self)
     }
 {% endfor -%}
@@ -129,7 +108,7 @@ impl {{ node }} {
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
 {%- endif %}
-    pub fn {{ method_name }}(&self) -> Option<&{{ ChildName }}> {
+    pub fn {{ method_name }}(&self) -> Option<{{ ChildName }}> {
         super::child_opt(self)
     }
 {% endfor -%}

@@ -4,7 +4,7 @@
 use itertools::Itertools;
 
 use crate::{
-    ast::{self, child_opt, children, AstNode},
+    ast::{self, child_opt, children, AstNode, SyntaxNode},
     SmolStr, SyntaxElement,
     SyntaxKind::*,
     SyntaxToken, T,
@@ -13,15 +13,20 @@ use ra_parser::SyntaxKind;
 
 impl ast::Name {
     pub fn text(&self) -> &SmolStr {
-        let ident = self.syntax().first_child_or_token().unwrap().as_token().unwrap();
-        ident.text()
+        text_of_first_token(self.syntax())
     }
 }
 
 impl ast::NameRef {
     pub fn text(&self) -> &SmolStr {
-        let ident = self.syntax().first_child_or_token().unwrap().as_token().unwrap();
-        ident.text()
+        text_of_first_token(self.syntax())
+    }
+}
+
+fn text_of_first_token(node: &SyntaxNode) -> &SmolStr {
+    match node.0.green().children().first() {
+        Some(rowan::GreenElement::Token(it)) => it.text(),
+        _ => panic!(),
     }
 }
 
@@ -50,10 +55,10 @@ impl ast::Attr {
         }
     }
 
-    pub fn as_call(&self) -> Option<(SmolStr, &ast::TokenTree)> {
+    pub fn as_call(&self) -> Option<(SmolStr, ast::TokenTree)> {
         let tt = self.value()?;
         let (_bra, attr, args, _ket) = tt.syntax().children_with_tokens().collect_tuple()?;
-        let args = ast::TokenTree::cast(args.as_node()?)?;
+        let args = ast::TokenTree::cast(args.as_node()?.clone())?;
         if attr.kind() == IDENT {
             Some((attr.as_token()?.text().clone(), args))
         } else {
@@ -86,16 +91,16 @@ impl ast::Attr {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PathSegmentKind<'a> {
-    Name(&'a ast::NameRef),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PathSegmentKind {
+    Name(ast::NameRef),
     SelfKw,
     SuperKw,
     CrateKw,
 }
 
 impl ast::PathSegment {
-    pub fn parent_path(&self) -> &ast::Path {
+    pub fn parent_path(&self) -> ast::Path {
         self.syntax()
             .parent()
             .and_then(ast::Path::cast)
@@ -125,7 +130,7 @@ impl ast::PathSegment {
 }
 
 impl ast::Path {
-    pub fn parent_path(&self) -> Option<&ast::Path> {
+    pub fn parent_path(&self) -> Option<ast::Path> {
         self.syntax().parent().and_then(ast::Path::cast)
     }
 }
@@ -146,7 +151,7 @@ impl ast::UseTree {
 }
 
 impl ast::UseTreeList {
-    pub fn parent_use_tree(&self) -> &ast::UseTree {
+    pub fn parent_use_tree(&self) -> ast::UseTree {
         self.syntax()
             .parent()
             .and_then(ast::UseTree::cast)
@@ -155,21 +160,21 @@ impl ast::UseTreeList {
 }
 
 impl ast::ImplBlock {
-    pub fn target_type(&self) -> Option<&ast::TypeRef> {
+    pub fn target_type(&self) -> Option<ast::TypeRef> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),
             _ => None,
         }
     }
 
-    pub fn target_trait(&self) -> Option<&ast::TypeRef> {
+    pub fn target_trait(&self) -> Option<ast::TypeRef> {
         match self.target() {
             (Some(t), Some(_)) => Some(t),
             _ => None,
         }
     }
 
-    fn target(&self) -> (Option<&ast::TypeRef>, Option<&ast::TypeRef>) {
+    fn target(&self) -> (Option<ast::TypeRef>, Option<ast::TypeRef>) {
         let mut types = children(self);
         let first = types.next();
         let second = types.next();
@@ -182,13 +187,13 @@ impl ast::ImplBlock {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum StructKind<'a> {
-    Tuple(&'a ast::PosFieldDefList),
-    Named(&'a ast::NamedFieldDefList),
+pub enum StructKind {
+    Tuple(ast::PosFieldDefList),
+    Named(ast::NamedFieldDefList),
     Unit,
 }
 
-impl StructKind<'_> {
+impl StructKind {
     fn from_node<N: AstNode>(node: &N) -> StructKind {
         if let Some(nfdl) = child_opt::<_, ast::NamedFieldDefList>(node) {
             StructKind::Named(nfdl)
@@ -218,7 +223,7 @@ impl ast::StructDef {
 }
 
 impl ast::EnumVariant {
-    pub fn parent_enum(&self) -> &ast::EnumDef {
+    pub fn parent_enum(&self) -> ast::EnumDef {
         self.syntax()
             .parent()
             .and_then(|it| it.parent())
@@ -231,10 +236,10 @@ impl ast::EnumVariant {
 }
 
 impl ast::FnDef {
-    pub fn semicolon_token(&self) -> Option<SyntaxToken<'_>> {
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .last_child_or_token()
-            .and_then(|it| it.as_token())
+            .and_then(|it| it.as_token().cloned())
             .filter(|it| it.kind() == T![;])
     }
 }
@@ -258,9 +263,9 @@ impl ast::ExprStmt {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FieldKind<'a> {
-    Name(&'a ast::NameRef),
-    Index(SyntaxToken<'a>),
+pub enum FieldKind {
+    Name(ast::NameRef),
+    Index(SyntaxToken),
 }
 
 impl ast::FieldExpr {
@@ -271,6 +276,7 @@ impl ast::FieldExpr {
             .find(|c| c.kind() == SyntaxKind::INT_NUMBER || c.kind() == SyntaxKind::FLOAT_NUMBER)
             .as_ref()
             .and_then(SyntaxElement::as_token)
+            .cloned()
     }
 
     pub fn field_access(&self) -> Option<FieldKind> {
@@ -326,7 +332,7 @@ impl ast::SelfParam {
     pub fn self_kw_token(&self) -> SyntaxToken {
         self.syntax()
             .children_with_tokens()
-            .filter_map(|it| it.as_token())
+            .filter_map(|it| it.as_token().cloned())
             .find(|it| it.kind() == T![self])
             .expect("invalid tree: self param must have self")
     }
@@ -355,7 +361,7 @@ impl ast::LifetimeParam {
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
-            .filter_map(|it| it.as_token())
+            .filter_map(|it| it.as_token().cloned())
             .find(|it| it.kind() == LIFETIME)
     }
 }
@@ -364,7 +370,7 @@ impl ast::WherePred {
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
-            .filter_map(|it| it.as_token())
+            .filter_map(|it| it.as_token().cloned())
             .find(|it| it.kind() == LIFETIME)
     }
 }

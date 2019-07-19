@@ -9,37 +9,25 @@
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
-use rowan::TransparentNewType;
-
 use crate::{
     SyntaxNode, SyntaxKind::*,
-    syntax_node::{TreeArc},
     ast::{self, AstNode},
 };
 
 // Alias
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Alias {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Alias {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Alias {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ALIAS => Some(Alias::from_repr(syntax.into_repr())),
+            ALIAS => Some(Alias { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Alias {
-    type Owned = TreeArc<Alias>;
-    fn to_owned(&self) -> TreeArc<Alias> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -47,463 +35,337 @@ impl ast::NameOwner for Alias {}
 impl Alias {}
 
 // ArgList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArgList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ArgList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ArgList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ARG_LIST => Some(ArgList::from_repr(syntax.into_repr())),
+            ARG_LIST => Some(ArgList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ArgList {
-    type Owned = TreeArc<ArgList>;
-    fn to_owned(&self) -> TreeArc<ArgList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ArgList {
-    pub fn args(&self) -> impl Iterator<Item = &Expr> {
+    pub fn args(&self) -> impl Iterator<Item = Expr> {
         super::children(self)
     }
 }
 
 // ArrayExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ArrayExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ArrayExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ARRAY_EXPR => Some(ArrayExpr::from_repr(syntax.into_repr())),
+            ARRAY_EXPR => Some(ArrayExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ArrayExpr {
-    type Owned = TreeArc<ArrayExpr>;
-    fn to_owned(&self) -> TreeArc<ArrayExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ArrayExpr {
-    pub fn exprs(&self) -> impl Iterator<Item = &Expr> {
+    pub fn exprs(&self) -> impl Iterator<Item = Expr> {
         super::children(self)
     }
 }
 
 // ArrayType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ArrayType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ArrayType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ARRAY_TYPE => Some(ArrayType::from_repr(syntax.into_repr())),
+            ARRAY_TYPE => Some(ArrayType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ArrayType {
-    type Owned = TreeArc<ArrayType>;
-    fn to_owned(&self) -> TreeArc<ArrayType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ArrayType {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // AssocTypeArg
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssocTypeArg {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for AssocTypeArg {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for AssocTypeArg {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ASSOC_TYPE_ARG => Some(AssocTypeArg::from_repr(syntax.into_repr())),
+            ASSOC_TYPE_ARG => Some(AssocTypeArg { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for AssocTypeArg {
-    type Owned = TreeArc<AssocTypeArg>;
-    fn to_owned(&self) -> TreeArc<AssocTypeArg> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl AssocTypeArg {
-    pub fn name_ref(&self) -> Option<&NameRef> {
+    pub fn name_ref(&self) -> Option<NameRef> {
         super::child_opt(self)
     }
 
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // Attr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Attr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Attr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Attr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ATTR => Some(Attr::from_repr(syntax.into_repr())),
+            ATTR => Some(Attr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for Attr {
-    type Owned = TreeArc<Attr>;
-    fn to_owned(&self) -> TreeArc<Attr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl Attr {
-    pub fn value(&self) -> Option<&TokenTree> {
+    pub fn value(&self) -> Option<TokenTree> {
         super::child_opt(self)
     }
 }
 
 // BinExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BinExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for BinExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for BinExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            BIN_EXPR => Some(BinExpr::from_repr(syntax.into_repr())),
+            BIN_EXPR => Some(BinExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for BinExpr {
-    type Owned = TreeArc<BinExpr>;
-    fn to_owned(&self) -> TreeArc<BinExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl BinExpr {}
 
 // BindPat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BindPat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for BindPat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for BindPat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            BIND_PAT => Some(BindPat::from_repr(syntax.into_repr())),
+            BIND_PAT => Some(BindPat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for BindPat {
-    type Owned = TreeArc<BindPat>;
-    fn to_owned(&self) -> TreeArc<BindPat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::NameOwner for BindPat {}
 impl BindPat {
-    pub fn pat(&self) -> Option<&Pat> {
+    pub fn pat(&self) -> Option<Pat> {
         super::child_opt(self)
     }
 }
 
 // Block
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Block {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Block {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Block {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            BLOCK => Some(Block::from_repr(syntax.into_repr())),
+            BLOCK => Some(Block { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Block {
-    type Owned = TreeArc<Block>;
-    fn to_owned(&self) -> TreeArc<Block> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::AttrsOwner for Block {}
 impl Block {
-    pub fn statements(&self) -> impl Iterator<Item = &Stmt> {
+    pub fn statements(&self) -> impl Iterator<Item = Stmt> {
         super::children(self)
     }
 
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // BlockExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BlockExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for BlockExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for BlockExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            BLOCK_EXPR => Some(BlockExpr::from_repr(syntax.into_repr())),
+            BLOCK_EXPR => Some(BlockExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for BlockExpr {
-    type Owned = TreeArc<BlockExpr>;
-    fn to_owned(&self) -> TreeArc<BlockExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl BlockExpr {
-    pub fn block(&self) -> Option<&Block> {
+    pub fn block(&self) -> Option<Block> {
         super::child_opt(self)
     }
 }
 
 // BreakExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BreakExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for BreakExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for BreakExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            BREAK_EXPR => Some(BreakExpr::from_repr(syntax.into_repr())),
+            BREAK_EXPR => Some(BreakExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for BreakExpr {
-    type Owned = TreeArc<BreakExpr>;
-    fn to_owned(&self) -> TreeArc<BreakExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl BreakExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // CallExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for CallExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for CallExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            CALL_EXPR => Some(CallExpr::from_repr(syntax.into_repr())),
+            CALL_EXPR => Some(CallExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for CallExpr {
-    type Owned = TreeArc<CallExpr>;
-    fn to_owned(&self) -> TreeArc<CallExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::ArgListOwner for CallExpr {}
 impl CallExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // CastExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CastExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for CastExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for CastExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            CAST_EXPR => Some(CastExpr::from_repr(syntax.into_repr())),
+            CAST_EXPR => Some(CastExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for CastExpr {
-    type Owned = TreeArc<CastExpr>;
-    fn to_owned(&self) -> TreeArc<CastExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl CastExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // Condition
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Condition {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Condition {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Condition {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            CONDITION => Some(Condition::from_repr(syntax.into_repr())),
+            CONDITION => Some(Condition { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for Condition {
-    type Owned = TreeArc<Condition>;
-    fn to_owned(&self) -> TreeArc<Condition> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl Condition {
-    pub fn pat(&self) -> Option<&Pat> {
+    pub fn pat(&self) -> Option<Pat> {
         super::child_opt(self)
     }
 
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // ConstDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ConstDef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ConstDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            CONST_DEF => Some(ConstDef::from_repr(syntax.into_repr())),
+            CONST_DEF => Some(ConstDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for ConstDef {
-    type Owned = TreeArc<ConstDef>;
-    fn to_owned(&self) -> TreeArc<ConstDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -514,62 +376,44 @@ impl ast::AttrsOwner for ConstDef {}
 impl ast::DocCommentsOwner for ConstDef {}
 impl ast::TypeAscriptionOwner for ConstDef {}
 impl ConstDef {
-    pub fn body(&self) -> Option<&Expr> {
+    pub fn body(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // ContinueExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ContinueExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ContinueExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ContinueExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            CONTINUE_EXPR => Some(ContinueExpr::from_repr(syntax.into_repr())),
+            CONTINUE_EXPR => Some(ContinueExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for ContinueExpr {
-    type Owned = TreeArc<ContinueExpr>;
-    fn to_owned(&self) -> TreeArc<ContinueExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ContinueExpr {}
 
 // DynTraitType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynTraitType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for DynTraitType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for DynTraitType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            DYN_TRAIT_TYPE => Some(DynTraitType::from_repr(syntax.into_repr())),
+            DYN_TRAIT_TYPE => Some(DynTraitType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for DynTraitType {
-    type Owned = TreeArc<DynTraitType>;
-    fn to_owned(&self) -> TreeArc<DynTraitType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -577,28 +421,19 @@ impl ast::TypeBoundsOwner for DynTraitType {}
 impl DynTraitType {}
 
 // EnumDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for EnumDef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for EnumDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ENUM_DEF => Some(EnumDef::from_repr(syntax.into_repr())),
+            ENUM_DEF => Some(EnumDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for EnumDef {
-    type Owned = TreeArc<EnumDef>;
-    fn to_owned(&self) -> TreeArc<EnumDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -608,34 +443,25 @@ impl ast::TypeParamsOwner for EnumDef {}
 impl ast::AttrsOwner for EnumDef {}
 impl ast::DocCommentsOwner for EnumDef {}
 impl EnumDef {
-    pub fn variant_list(&self) -> Option<&EnumVariantList> {
+    pub fn variant_list(&self) -> Option<EnumVariantList> {
         super::child_opt(self)
     }
 }
 
 // EnumVariant
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for EnumVariant {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for EnumVariant {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ENUM_VARIANT => Some(EnumVariant::from_repr(syntax.into_repr())),
+            ENUM_VARIANT => Some(EnumVariant { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for EnumVariant {
-    type Owned = TreeArc<EnumVariant>;
-    fn to_owned(&self) -> TreeArc<EnumVariant> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -643,234 +469,221 @@ impl ast::NameOwner for EnumVariant {}
 impl ast::DocCommentsOwner for EnumVariant {}
 impl ast::AttrsOwner for EnumVariant {}
 impl EnumVariant {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // EnumVariantList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariantList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for EnumVariantList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for EnumVariantList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ENUM_VARIANT_LIST => Some(EnumVariantList::from_repr(syntax.into_repr())),
+            ENUM_VARIANT_LIST => Some(EnumVariantList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for EnumVariantList {
-    type Owned = TreeArc<EnumVariantList>;
-    fn to_owned(&self) -> TreeArc<EnumVariantList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl EnumVariantList {
-    pub fn variants(&self) -> impl Iterator<Item = &EnumVariant> {
+    pub fn variants(&self) -> impl Iterator<Item = EnumVariant> {
         super::children(self)
     }
 }
 
 // Expr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Expr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Expr {
-    type Repr = rowan::SyntaxNode;
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ExprKind<'a> {
-    TupleExpr(&'a TupleExpr),
-    ArrayExpr(&'a ArrayExpr),
-    ParenExpr(&'a ParenExpr),
-    PathExpr(&'a PathExpr),
-    LambdaExpr(&'a LambdaExpr),
-    IfExpr(&'a IfExpr),
-    LoopExpr(&'a LoopExpr),
-    ForExpr(&'a ForExpr),
-    WhileExpr(&'a WhileExpr),
-    ContinueExpr(&'a ContinueExpr),
-    BreakExpr(&'a BreakExpr),
-    Label(&'a Label),
-    BlockExpr(&'a BlockExpr),
-    ReturnExpr(&'a ReturnExpr),
-    MatchExpr(&'a MatchExpr),
-    StructLit(&'a StructLit),
-    CallExpr(&'a CallExpr),
-    IndexExpr(&'a IndexExpr),
-    MethodCallExpr(&'a MethodCallExpr),
-    FieldExpr(&'a FieldExpr),
-    TryExpr(&'a TryExpr),
-    TryBlockExpr(&'a TryBlockExpr),
-    CastExpr(&'a CastExpr),
-    RefExpr(&'a RefExpr),
-    PrefixExpr(&'a PrefixExpr),
-    RangeExpr(&'a RangeExpr),
-    BinExpr(&'a BinExpr),
-    Literal(&'a Literal),
-    MacroCall(&'a MacroCall),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExprKind {
+    TupleExpr(TupleExpr),
+    ArrayExpr(ArrayExpr),
+    ParenExpr(ParenExpr),
+    PathExpr(PathExpr),
+    LambdaExpr(LambdaExpr),
+    IfExpr(IfExpr),
+    LoopExpr(LoopExpr),
+    ForExpr(ForExpr),
+    WhileExpr(WhileExpr),
+    ContinueExpr(ContinueExpr),
+    BreakExpr(BreakExpr),
+    Label(Label),
+    BlockExpr(BlockExpr),
+    ReturnExpr(ReturnExpr),
+    MatchExpr(MatchExpr),
+    StructLit(StructLit),
+    CallExpr(CallExpr),
+    IndexExpr(IndexExpr),
+    MethodCallExpr(MethodCallExpr),
+    FieldExpr(FieldExpr),
+    TryExpr(TryExpr),
+    TryBlockExpr(TryBlockExpr),
+    CastExpr(CastExpr),
+    RefExpr(RefExpr),
+    PrefixExpr(PrefixExpr),
+    RangeExpr(RangeExpr),
+    BinExpr(BinExpr),
+    Literal(Literal),
+    MacroCall(MacroCall),
 }
-impl<'a> From<&'a TupleExpr> for &'a Expr {
-    fn from(n: &'a TupleExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<TupleExpr> for Expr {
+    fn from(n: TupleExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ArrayExpr> for &'a Expr {
-    fn from(n: &'a ArrayExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<ArrayExpr> for Expr {
+    fn from(n: ArrayExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ParenExpr> for &'a Expr {
-    fn from(n: &'a ParenExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<ParenExpr> for Expr {
+    fn from(n: ParenExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a PathExpr> for &'a Expr {
-    fn from(n: &'a PathExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<PathExpr> for Expr {
+    fn from(n: PathExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a LambdaExpr> for &'a Expr {
-    fn from(n: &'a LambdaExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<LambdaExpr> for Expr {
+    fn from(n: LambdaExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a IfExpr> for &'a Expr {
-    fn from(n: &'a IfExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<IfExpr> for Expr {
+    fn from(n: IfExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a LoopExpr> for &'a Expr {
-    fn from(n: &'a LoopExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<LoopExpr> for Expr {
+    fn from(n: LoopExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ForExpr> for &'a Expr {
-    fn from(n: &'a ForExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<ForExpr> for Expr {
+    fn from(n: ForExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a WhileExpr> for &'a Expr {
-    fn from(n: &'a WhileExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<WhileExpr> for Expr {
+    fn from(n: WhileExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ContinueExpr> for &'a Expr {
-    fn from(n: &'a ContinueExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<ContinueExpr> for Expr {
+    fn from(n: ContinueExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a BreakExpr> for &'a Expr {
-    fn from(n: &'a BreakExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<BreakExpr> for Expr {
+    fn from(n: BreakExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a Label> for &'a Expr {
-    fn from(n: &'a Label) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<Label> for Expr {
+    fn from(n: Label) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a BlockExpr> for &'a Expr {
-    fn from(n: &'a BlockExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<BlockExpr> for Expr {
+    fn from(n: BlockExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ReturnExpr> for &'a Expr {
-    fn from(n: &'a ReturnExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<ReturnExpr> for Expr {
+    fn from(n: ReturnExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a MatchExpr> for &'a Expr {
-    fn from(n: &'a MatchExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<MatchExpr> for Expr {
+    fn from(n: MatchExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a StructLit> for &'a Expr {
-    fn from(n: &'a StructLit) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<StructLit> for Expr {
+    fn from(n: StructLit) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a CallExpr> for &'a Expr {
-    fn from(n: &'a CallExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<CallExpr> for Expr {
+    fn from(n: CallExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a IndexExpr> for &'a Expr {
-    fn from(n: &'a IndexExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<IndexExpr> for Expr {
+    fn from(n: IndexExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a MethodCallExpr> for &'a Expr {
-    fn from(n: &'a MethodCallExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<MethodCallExpr> for Expr {
+    fn from(n: MethodCallExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a FieldExpr> for &'a Expr {
-    fn from(n: &'a FieldExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<FieldExpr> for Expr {
+    fn from(n: FieldExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TryExpr> for &'a Expr {
-    fn from(n: &'a TryExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<TryExpr> for Expr {
+    fn from(n: TryExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TryBlockExpr> for &'a Expr {
-    fn from(n: &'a TryBlockExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<TryBlockExpr> for Expr {
+    fn from(n: TryBlockExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a CastExpr> for &'a Expr {
-    fn from(n: &'a CastExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<CastExpr> for Expr {
+    fn from(n: CastExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a RefExpr> for &'a Expr {
-    fn from(n: &'a RefExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<RefExpr> for Expr {
+    fn from(n: RefExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a PrefixExpr> for &'a Expr {
-    fn from(n: &'a PrefixExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<PrefixExpr> for Expr {
+    fn from(n: PrefixExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a RangeExpr> for &'a Expr {
-    fn from(n: &'a RangeExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<RangeExpr> for Expr {
+    fn from(n: RangeExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a BinExpr> for &'a Expr {
-    fn from(n: &'a BinExpr) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<BinExpr> for Expr {
+    fn from(n: BinExpr) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a Literal> for &'a Expr {
-    fn from(n: &'a Literal) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<Literal> for Expr {
+    fn from(n: Literal) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a MacroCall> for &'a Expr {
-    fn from(n: &'a MacroCall) -> &'a Expr {
-        Expr::cast(&n.syntax).unwrap()
+impl From<MacroCall> for Expr {
+    fn from(n: MacroCall) -> Expr {
+        Expr::cast(n.syntax).unwrap()
     }
 }
 
 
 impl AstNode for Expr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             | TUPLE_EXPR
             | ARRAY_EXPR
@@ -900,50 +713,45 @@ impl AstNode for Expr {
             | RANGE_EXPR
             | BIN_EXPR
             | LITERAL
-            | MACRO_CALL => Some(Expr::from_repr(syntax.into_repr())),
+            | MACRO_CALL => Some(Expr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for Expr {
-    type Owned = TreeArc<Expr>;
-    fn to_owned(&self) -> TreeArc<Expr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 impl Expr {
     pub fn kind(&self) -> ExprKind {
         match self.syntax.kind() {
-            TUPLE_EXPR => ExprKind::TupleExpr(TupleExpr::cast(&self.syntax).unwrap()),
-            ARRAY_EXPR => ExprKind::ArrayExpr(ArrayExpr::cast(&self.syntax).unwrap()),
-            PAREN_EXPR => ExprKind::ParenExpr(ParenExpr::cast(&self.syntax).unwrap()),
-            PATH_EXPR => ExprKind::PathExpr(PathExpr::cast(&self.syntax).unwrap()),
-            LAMBDA_EXPR => ExprKind::LambdaExpr(LambdaExpr::cast(&self.syntax).unwrap()),
-            IF_EXPR => ExprKind::IfExpr(IfExpr::cast(&self.syntax).unwrap()),
-            LOOP_EXPR => ExprKind::LoopExpr(LoopExpr::cast(&self.syntax).unwrap()),
-            FOR_EXPR => ExprKind::ForExpr(ForExpr::cast(&self.syntax).unwrap()),
-            WHILE_EXPR => ExprKind::WhileExpr(WhileExpr::cast(&self.syntax).unwrap()),
-            CONTINUE_EXPR => ExprKind::ContinueExpr(ContinueExpr::cast(&self.syntax).unwrap()),
-            BREAK_EXPR => ExprKind::BreakExpr(BreakExpr::cast(&self.syntax).unwrap()),
-            LABEL => ExprKind::Label(Label::cast(&self.syntax).unwrap()),
-            BLOCK_EXPR => ExprKind::BlockExpr(BlockExpr::cast(&self.syntax).unwrap()),
-            RETURN_EXPR => ExprKind::ReturnExpr(ReturnExpr::cast(&self.syntax).unwrap()),
-            MATCH_EXPR => ExprKind::MatchExpr(MatchExpr::cast(&self.syntax).unwrap()),
-            STRUCT_LIT => ExprKind::StructLit(StructLit::cast(&self.syntax).unwrap()),
-            CALL_EXPR => ExprKind::CallExpr(CallExpr::cast(&self.syntax).unwrap()),
-            INDEX_EXPR => ExprKind::IndexExpr(IndexExpr::cast(&self.syntax).unwrap()),
-            METHOD_CALL_EXPR => ExprKind::MethodCallExpr(MethodCallExpr::cast(&self.syntax).unwrap()),
-            FIELD_EXPR => ExprKind::FieldExpr(FieldExpr::cast(&self.syntax).unwrap()),
-            TRY_EXPR => ExprKind::TryExpr(TryExpr::cast(&self.syntax).unwrap()),
-            TRY_BLOCK_EXPR => ExprKind::TryBlockExpr(TryBlockExpr::cast(&self.syntax).unwrap()),
-            CAST_EXPR => ExprKind::CastExpr(CastExpr::cast(&self.syntax).unwrap()),
-            REF_EXPR => ExprKind::RefExpr(RefExpr::cast(&self.syntax).unwrap()),
-            PREFIX_EXPR => ExprKind::PrefixExpr(PrefixExpr::cast(&self.syntax).unwrap()),
-            RANGE_EXPR => ExprKind::RangeExpr(RangeExpr::cast(&self.syntax).unwrap()),
-            BIN_EXPR => ExprKind::BinExpr(BinExpr::cast(&self.syntax).unwrap()),
-            LITERAL => ExprKind::Literal(Literal::cast(&self.syntax).unwrap()),
-            MACRO_CALL => ExprKind::MacroCall(MacroCall::cast(&self.syntax).unwrap()),
+            TUPLE_EXPR => ExprKind::TupleExpr(TupleExpr::cast(self.syntax.clone()).unwrap()),
+            ARRAY_EXPR => ExprKind::ArrayExpr(ArrayExpr::cast(self.syntax.clone()).unwrap()),
+            PAREN_EXPR => ExprKind::ParenExpr(ParenExpr::cast(self.syntax.clone()).unwrap()),
+            PATH_EXPR => ExprKind::PathExpr(PathExpr::cast(self.syntax.clone()).unwrap()),
+            LAMBDA_EXPR => ExprKind::LambdaExpr(LambdaExpr::cast(self.syntax.clone()).unwrap()),
+            IF_EXPR => ExprKind::IfExpr(IfExpr::cast(self.syntax.clone()).unwrap()),
+            LOOP_EXPR => ExprKind::LoopExpr(LoopExpr::cast(self.syntax.clone()).unwrap()),
+            FOR_EXPR => ExprKind::ForExpr(ForExpr::cast(self.syntax.clone()).unwrap()),
+            WHILE_EXPR => ExprKind::WhileExpr(WhileExpr::cast(self.syntax.clone()).unwrap()),
+            CONTINUE_EXPR => ExprKind::ContinueExpr(ContinueExpr::cast(self.syntax.clone()).unwrap()),
+            BREAK_EXPR => ExprKind::BreakExpr(BreakExpr::cast(self.syntax.clone()).unwrap()),
+            LABEL => ExprKind::Label(Label::cast(self.syntax.clone()).unwrap()),
+            BLOCK_EXPR => ExprKind::BlockExpr(BlockExpr::cast(self.syntax.clone()).unwrap()),
+            RETURN_EXPR => ExprKind::ReturnExpr(ReturnExpr::cast(self.syntax.clone()).unwrap()),
+            MATCH_EXPR => ExprKind::MatchExpr(MatchExpr::cast(self.syntax.clone()).unwrap()),
+            STRUCT_LIT => ExprKind::StructLit(StructLit::cast(self.syntax.clone()).unwrap()),
+            CALL_EXPR => ExprKind::CallExpr(CallExpr::cast(self.syntax.clone()).unwrap()),
+            INDEX_EXPR => ExprKind::IndexExpr(IndexExpr::cast(self.syntax.clone()).unwrap()),
+            METHOD_CALL_EXPR => ExprKind::MethodCallExpr(MethodCallExpr::cast(self.syntax.clone()).unwrap()),
+            FIELD_EXPR => ExprKind::FieldExpr(FieldExpr::cast(self.syntax.clone()).unwrap()),
+            TRY_EXPR => ExprKind::TryExpr(TryExpr::cast(self.syntax.clone()).unwrap()),
+            TRY_BLOCK_EXPR => ExprKind::TryBlockExpr(TryBlockExpr::cast(self.syntax.clone()).unwrap()),
+            CAST_EXPR => ExprKind::CastExpr(CastExpr::cast(self.syntax.clone()).unwrap()),
+            REF_EXPR => ExprKind::RefExpr(RefExpr::cast(self.syntax.clone()).unwrap()),
+            PREFIX_EXPR => ExprKind::PrefixExpr(PrefixExpr::cast(self.syntax.clone()).unwrap()),
+            RANGE_EXPR => ExprKind::RangeExpr(RangeExpr::cast(self.syntax.clone()).unwrap()),
+            BIN_EXPR => ExprKind::BinExpr(BinExpr::cast(self.syntax.clone()).unwrap()),
+            LITERAL => ExprKind::Literal(Literal::cast(self.syntax.clone()).unwrap()),
+            MACRO_CALL => ExprKind::MacroCall(MacroCall::cast(self.syntax.clone()).unwrap()),
             _ => unreachable!(),
         }
     }
@@ -952,201 +760,147 @@ impl Expr {
 impl Expr {}
 
 // ExprStmt
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExprStmt {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ExprStmt {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ExprStmt {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            EXPR_STMT => Some(ExprStmt::from_repr(syntax.into_repr())),
+            EXPR_STMT => Some(ExprStmt { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ExprStmt {
-    type Owned = TreeArc<ExprStmt>;
-    fn to_owned(&self) -> TreeArc<ExprStmt> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ExprStmt {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // ExternCrateItem
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternCrateItem {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ExternCrateItem {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ExternCrateItem {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            EXTERN_CRATE_ITEM => Some(ExternCrateItem::from_repr(syntax.into_repr())),
+            EXTERN_CRATE_ITEM => Some(ExternCrateItem { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ExternCrateItem {
-    type Owned = TreeArc<ExternCrateItem>;
-    fn to_owned(&self) -> TreeArc<ExternCrateItem> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ExternCrateItem {
-    pub fn name_ref(&self) -> Option<&NameRef> {
+    pub fn name_ref(&self) -> Option<NameRef> {
         super::child_opt(self)
     }
 
-    pub fn alias(&self) -> Option<&Alias> {
+    pub fn alias(&self) -> Option<Alias> {
         super::child_opt(self)
     }
 }
 
 // FieldExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for FieldExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for FieldExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            FIELD_EXPR => Some(FieldExpr::from_repr(syntax.into_repr())),
+            FIELD_EXPR => Some(FieldExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for FieldExpr {
-    type Owned = TreeArc<FieldExpr>;
-    fn to_owned(&self) -> TreeArc<FieldExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl FieldExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 
-    pub fn name_ref(&self) -> Option<&NameRef> {
+    pub fn name_ref(&self) -> Option<NameRef> {
         super::child_opt(self)
     }
 }
 
 // FieldPat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldPat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for FieldPat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for FieldPat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            FIELD_PAT => Some(FieldPat::from_repr(syntax.into_repr())),
+            FIELD_PAT => Some(FieldPat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for FieldPat {
-    type Owned = TreeArc<FieldPat>;
-    fn to_owned(&self) -> TreeArc<FieldPat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::NameOwner for FieldPat {}
 impl FieldPat {
-    pub fn pat(&self) -> Option<&Pat> {
+    pub fn pat(&self) -> Option<Pat> {
         super::child_opt(self)
     }
 }
 
 // FieldPatList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldPatList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for FieldPatList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for FieldPatList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            FIELD_PAT_LIST => Some(FieldPatList::from_repr(syntax.into_repr())),
+            FIELD_PAT_LIST => Some(FieldPatList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for FieldPatList {
-    type Owned = TreeArc<FieldPatList>;
-    fn to_owned(&self) -> TreeArc<FieldPatList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl FieldPatList {
-    pub fn field_pats(&self) -> impl Iterator<Item = &FieldPat> {
+    pub fn field_pats(&self) -> impl Iterator<Item = FieldPat> {
         super::children(self)
     }
 
-    pub fn bind_pats(&self) -> impl Iterator<Item = &BindPat> {
+    pub fn bind_pats(&self) -> impl Iterator<Item = BindPat> {
         super::children(self)
     }
 }
 
 // FnDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for FnDef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for FnDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            FN_DEF => Some(FnDef::from_repr(syntax.into_repr())),
+            FN_DEF => Some(FnDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for FnDef {
-    type Owned = TreeArc<FnDef>;
-    fn to_owned(&self) -> TreeArc<FnDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1156,246 +910,192 @@ impl ast::TypeParamsOwner for FnDef {}
 impl ast::AttrsOwner for FnDef {}
 impl ast::DocCommentsOwner for FnDef {}
 impl FnDef {
-    pub fn param_list(&self) -> Option<&ParamList> {
+    pub fn param_list(&self) -> Option<ParamList> {
         super::child_opt(self)
     }
 
-    pub fn body(&self) -> Option<&Block> {
+    pub fn body(&self) -> Option<Block> {
         super::child_opt(self)
     }
 
-    pub fn ret_type(&self) -> Option<&RetType> {
+    pub fn ret_type(&self) -> Option<RetType> {
         super::child_opt(self)
     }
 }
 
 // FnPointerType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnPointerType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for FnPointerType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for FnPointerType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            FN_POINTER_TYPE => Some(FnPointerType::from_repr(syntax.into_repr())),
+            FN_POINTER_TYPE => Some(FnPointerType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for FnPointerType {
-    type Owned = TreeArc<FnPointerType>;
-    fn to_owned(&self) -> TreeArc<FnPointerType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl FnPointerType {
-    pub fn param_list(&self) -> Option<&ParamList> {
+    pub fn param_list(&self) -> Option<ParamList> {
         super::child_opt(self)
     }
 
-    pub fn ret_type(&self) -> Option<&RetType> {
+    pub fn ret_type(&self) -> Option<RetType> {
         super::child_opt(self)
     }
 }
 
 // ForExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ForExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ForExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            FOR_EXPR => Some(ForExpr::from_repr(syntax.into_repr())),
+            FOR_EXPR => Some(ForExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for ForExpr {
-    type Owned = TreeArc<ForExpr>;
-    fn to_owned(&self) -> TreeArc<ForExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::LoopBodyOwner for ForExpr {}
 impl ForExpr {
-    pub fn pat(&self) -> Option<&Pat> {
+    pub fn pat(&self) -> Option<Pat> {
         super::child_opt(self)
     }
 
-    pub fn iterable(&self) -> Option<&Expr> {
+    pub fn iterable(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // ForType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ForType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ForType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ForType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            FOR_TYPE => Some(ForType::from_repr(syntax.into_repr())),
+            FOR_TYPE => Some(ForType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ForType {
-    type Owned = TreeArc<ForType>;
-    fn to_owned(&self) -> TreeArc<ForType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ForType {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // IfExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IfExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for IfExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for IfExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            IF_EXPR => Some(IfExpr::from_repr(syntax.into_repr())),
+            IF_EXPR => Some(IfExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for IfExpr {
-    type Owned = TreeArc<IfExpr>;
-    fn to_owned(&self) -> TreeArc<IfExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl IfExpr {
-    pub fn condition(&self) -> Option<&Condition> {
+    pub fn condition(&self) -> Option<Condition> {
         super::child_opt(self)
     }
 }
 
 // ImplBlock
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplBlock {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ImplBlock {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ImplBlock {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            IMPL_BLOCK => Some(ImplBlock::from_repr(syntax.into_repr())),
+            IMPL_BLOCK => Some(ImplBlock { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for ImplBlock {
-    type Owned = TreeArc<ImplBlock>;
-    fn to_owned(&self) -> TreeArc<ImplBlock> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::TypeParamsOwner for ImplBlock {}
 impl ast::AttrsOwner for ImplBlock {}
 impl ImplBlock {
-    pub fn item_list(&self) -> Option<&ItemList> {
+    pub fn item_list(&self) -> Option<ItemList> {
         super::child_opt(self)
     }
 }
 
 // ImplItem
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplItem {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ImplItem {
-    type Repr = rowan::SyntaxNode;
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImplItemKind<'a> {
-    FnDef(&'a FnDef),
-    TypeAliasDef(&'a TypeAliasDef),
-    ConstDef(&'a ConstDef),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImplItemKind {
+    FnDef(FnDef),
+    TypeAliasDef(TypeAliasDef),
+    ConstDef(ConstDef),
 }
-impl<'a> From<&'a FnDef> for &'a ImplItem {
-    fn from(n: &'a FnDef) -> &'a ImplItem {
-        ImplItem::cast(&n.syntax).unwrap()
+impl From<FnDef> for ImplItem {
+    fn from(n: FnDef) -> ImplItem {
+        ImplItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TypeAliasDef> for &'a ImplItem {
-    fn from(n: &'a TypeAliasDef) -> &'a ImplItem {
-        ImplItem::cast(&n.syntax).unwrap()
+impl From<TypeAliasDef> for ImplItem {
+    fn from(n: TypeAliasDef) -> ImplItem {
+        ImplItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ConstDef> for &'a ImplItem {
-    fn from(n: &'a ConstDef) -> &'a ImplItem {
-        ImplItem::cast(&n.syntax).unwrap()
+impl From<ConstDef> for ImplItem {
+    fn from(n: ConstDef) -> ImplItem {
+        ImplItem::cast(n.syntax).unwrap()
     }
 }
 
 
 impl AstNode for ImplItem {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             | FN_DEF
             | TYPE_ALIAS_DEF
-            | CONST_DEF => Some(ImplItem::from_repr(syntax.into_repr())),
+            | CONST_DEF => Some(ImplItem { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ImplItem {
-    type Owned = TreeArc<ImplItem>;
-    fn to_owned(&self) -> TreeArc<ImplItem> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 impl ImplItem {
     pub fn kind(&self) -> ImplItemKind {
         match self.syntax.kind() {
-            FN_DEF => ImplItemKind::FnDef(FnDef::cast(&self.syntax).unwrap()),
-            TYPE_ALIAS_DEF => ImplItemKind::TypeAliasDef(TypeAliasDef::cast(&self.syntax).unwrap()),
-            CONST_DEF => ImplItemKind::ConstDef(ConstDef::cast(&self.syntax).unwrap()),
+            FN_DEF => ImplItemKind::FnDef(FnDef::cast(self.syntax.clone()).unwrap()),
+            TYPE_ALIAS_DEF => ImplItemKind::TypeAliasDef(TypeAliasDef::cast(self.syntax.clone()).unwrap()),
+            CONST_DEF => ImplItemKind::ConstDef(ConstDef::cast(self.syntax.clone()).unwrap()),
             _ => unreachable!(),
         }
     }
@@ -1404,28 +1104,19 @@ impl ImplItem {
 impl ImplItem {}
 
 // ImplTraitType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplTraitType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ImplTraitType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ImplTraitType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            IMPL_TRAIT_TYPE => Some(ImplTraitType::from_repr(syntax.into_repr())),
+            IMPL_TRAIT_TYPE => Some(ImplTraitType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for ImplTraitType {
-    type Owned = TreeArc<ImplTraitType>;
-    fn to_owned(&self) -> TreeArc<ImplTraitType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1433,219 +1124,156 @@ impl ast::TypeBoundsOwner for ImplTraitType {}
 impl ImplTraitType {}
 
 // IndexExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IndexExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for IndexExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for IndexExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            INDEX_EXPR => Some(IndexExpr::from_repr(syntax.into_repr())),
+            INDEX_EXPR => Some(IndexExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for IndexExpr {
-    type Owned = TreeArc<IndexExpr>;
-    fn to_owned(&self) -> TreeArc<IndexExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl IndexExpr {}
 
 // ItemList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ItemList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ItemList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ItemList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            ITEM_LIST => Some(ItemList::from_repr(syntax.into_repr())),
+            ITEM_LIST => Some(ItemList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for ItemList {
-    type Owned = TreeArc<ItemList>;
-    fn to_owned(&self) -> TreeArc<ItemList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::FnDefOwner for ItemList {}
 impl ast::ModuleItemOwner for ItemList {}
 impl ItemList {
-    pub fn impl_items(&self) -> impl Iterator<Item = &ImplItem> {
+    pub fn impl_items(&self) -> impl Iterator<Item = ImplItem> {
         super::children(self)
     }
 }
 
 // Label
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Label {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Label {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Label {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            LABEL => Some(Label::from_repr(syntax.into_repr())),
+            LABEL => Some(Label { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Label {
-    type Owned = TreeArc<Label>;
-    fn to_owned(&self) -> TreeArc<Label> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl Label {}
 
 // LambdaExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LambdaExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for LambdaExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for LambdaExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            LAMBDA_EXPR => Some(LambdaExpr::from_repr(syntax.into_repr())),
+            LAMBDA_EXPR => Some(LambdaExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for LambdaExpr {
-    type Owned = TreeArc<LambdaExpr>;
-    fn to_owned(&self) -> TreeArc<LambdaExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl LambdaExpr {
-    pub fn param_list(&self) -> Option<&ParamList> {
+    pub fn param_list(&self) -> Option<ParamList> {
         super::child_opt(self)
     }
 
-    pub fn body(&self) -> Option<&Expr> {
+    pub fn body(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // LetStmt
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LetStmt {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for LetStmt {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for LetStmt {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            LET_STMT => Some(LetStmt::from_repr(syntax.into_repr())),
+            LET_STMT => Some(LetStmt { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for LetStmt {
-    type Owned = TreeArc<LetStmt>;
-    fn to_owned(&self) -> TreeArc<LetStmt> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::TypeAscriptionOwner for LetStmt {}
 impl LetStmt {
-    pub fn pat(&self) -> Option<&Pat> {
+    pub fn pat(&self) -> Option<Pat> {
         super::child_opt(self)
     }
 
-    pub fn initializer(&self) -> Option<&Expr> {
+    pub fn initializer(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // LifetimeArg
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LifetimeArg {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for LifetimeArg {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for LifetimeArg {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            LIFETIME_ARG => Some(LifetimeArg::from_repr(syntax.into_repr())),
+            LIFETIME_ARG => Some(LifetimeArg { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for LifetimeArg {
-    type Owned = TreeArc<LifetimeArg>;
-    fn to_owned(&self) -> TreeArc<LifetimeArg> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl LifetimeArg {}
 
 // LifetimeParam
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LifetimeParam {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for LifetimeParam {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for LifetimeParam {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            LIFETIME_PARAM => Some(LifetimeParam::from_repr(syntax.into_repr())),
+            LIFETIME_PARAM => Some(LifetimeParam { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for LifetimeParam {
-    type Owned = TreeArc<LifetimeParam>;
-    fn to_owned(&self) -> TreeArc<LifetimeParam> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1653,88 +1281,61 @@ impl ast::AttrsOwner for LifetimeParam {}
 impl LifetimeParam {}
 
 // Literal
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Literal {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Literal {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Literal {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            LITERAL => Some(Literal::from_repr(syntax.into_repr())),
+            LITERAL => Some(Literal { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Literal {
-    type Owned = TreeArc<Literal>;
-    fn to_owned(&self) -> TreeArc<Literal> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl Literal {}
 
 // LiteralPat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralPat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for LiteralPat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for LiteralPat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            LITERAL_PAT => Some(LiteralPat::from_repr(syntax.into_repr())),
+            LITERAL_PAT => Some(LiteralPat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for LiteralPat {
-    type Owned = TreeArc<LiteralPat>;
-    fn to_owned(&self) -> TreeArc<LiteralPat> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl LiteralPat {
-    pub fn literal(&self) -> Option<&Literal> {
+    pub fn literal(&self) -> Option<Literal> {
         super::child_opt(self)
     }
 }
 
 // LoopExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoopExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for LoopExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for LoopExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            LOOP_EXPR => Some(LoopExpr::from_repr(syntax.into_repr())),
+            LOOP_EXPR => Some(LoopExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for LoopExpr {
-    type Owned = TreeArc<LoopExpr>;
-    fn to_owned(&self) -> TreeArc<LoopExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1742,28 +1343,19 @@ impl ast::LoopBodyOwner for LoopExpr {}
 impl LoopExpr {}
 
 // MacroCall
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for MacroCall {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for MacroCall {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            MACRO_CALL => Some(MacroCall::from_repr(syntax.into_repr())),
+            MACRO_CALL => Some(MacroCall { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for MacroCall {
-    type Owned = TreeArc<MacroCall>;
-    fn to_owned(&self) -> TreeArc<MacroCall> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1771,38 +1363,29 @@ impl ast::NameOwner for MacroCall {}
 impl ast::AttrsOwner for MacroCall {}
 impl ast::DocCommentsOwner for MacroCall {}
 impl MacroCall {
-    pub fn token_tree(&self) -> Option<&TokenTree> {
+    pub fn token_tree(&self) -> Option<TokenTree> {
         super::child_opt(self)
     }
 
-    pub fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<Path> {
         super::child_opt(self)
     }
 }
 
 // MacroItems
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroItems {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for MacroItems {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for MacroItems {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            MACRO_ITEMS => Some(MacroItems::from_repr(syntax.into_repr())),
+            MACRO_ITEMS => Some(MacroItems { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for MacroItems {
-    type Owned = TreeArc<MacroItems>;
-    fn to_owned(&self) -> TreeArc<MacroItems> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -1811,247 +1394,184 @@ impl ast::FnDefOwner for MacroItems {}
 impl MacroItems {}
 
 // MacroStmts
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroStmts {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for MacroStmts {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for MacroStmts {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            MACRO_STMTS => Some(MacroStmts::from_repr(syntax.into_repr())),
+            MACRO_STMTS => Some(MacroStmts { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for MacroStmts {
-    type Owned = TreeArc<MacroStmts>;
-    fn to_owned(&self) -> TreeArc<MacroStmts> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl MacroStmts {
-    pub fn statements(&self) -> impl Iterator<Item = &Stmt> {
+    pub fn statements(&self) -> impl Iterator<Item = Stmt> {
         super::children(self)
     }
 
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // MatchArm
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchArm {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for MatchArm {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for MatchArm {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            MATCH_ARM => Some(MatchArm::from_repr(syntax.into_repr())),
+            MATCH_ARM => Some(MatchArm { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for MatchArm {
-    type Owned = TreeArc<MatchArm>;
-    fn to_owned(&self) -> TreeArc<MatchArm> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::AttrsOwner for MatchArm {}
 impl MatchArm {
-    pub fn pats(&self) -> impl Iterator<Item = &Pat> {
+    pub fn pats(&self) -> impl Iterator<Item = Pat> {
         super::children(self)
     }
 
-    pub fn guard(&self) -> Option<&MatchGuard> {
+    pub fn guard(&self) -> Option<MatchGuard> {
         super::child_opt(self)
     }
 
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // MatchArmList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchArmList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for MatchArmList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for MatchArmList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            MATCH_ARM_LIST => Some(MatchArmList::from_repr(syntax.into_repr())),
+            MATCH_ARM_LIST => Some(MatchArmList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for MatchArmList {
-    type Owned = TreeArc<MatchArmList>;
-    fn to_owned(&self) -> TreeArc<MatchArmList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::AttrsOwner for MatchArmList {}
 impl MatchArmList {
-    pub fn arms(&self) -> impl Iterator<Item = &MatchArm> {
+    pub fn arms(&self) -> impl Iterator<Item = MatchArm> {
         super::children(self)
     }
 }
 
 // MatchExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for MatchExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for MatchExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            MATCH_EXPR => Some(MatchExpr::from_repr(syntax.into_repr())),
+            MATCH_EXPR => Some(MatchExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for MatchExpr {
-    type Owned = TreeArc<MatchExpr>;
-    fn to_owned(&self) -> TreeArc<MatchExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl MatchExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 
-    pub fn match_arm_list(&self) -> Option<&MatchArmList> {
+    pub fn match_arm_list(&self) -> Option<MatchArmList> {
         super::child_opt(self)
     }
 }
 
 // MatchGuard
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchGuard {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for MatchGuard {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for MatchGuard {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            MATCH_GUARD => Some(MatchGuard::from_repr(syntax.into_repr())),
+            MATCH_GUARD => Some(MatchGuard { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for MatchGuard {
-    type Owned = TreeArc<MatchGuard>;
-    fn to_owned(&self) -> TreeArc<MatchGuard> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl MatchGuard {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // MethodCallExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MethodCallExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for MethodCallExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for MethodCallExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            METHOD_CALL_EXPR => Some(MethodCallExpr::from_repr(syntax.into_repr())),
+            METHOD_CALL_EXPR => Some(MethodCallExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for MethodCallExpr {
-    type Owned = TreeArc<MethodCallExpr>;
-    fn to_owned(&self) -> TreeArc<MethodCallExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::ArgListOwner for MethodCallExpr {}
 impl MethodCallExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 
-    pub fn name_ref(&self) -> Option<&NameRef> {
+    pub fn name_ref(&self) -> Option<NameRef> {
         super::child_opt(self)
     }
 
-    pub fn type_arg_list(&self) -> Option<&TypeArgList> {
+    pub fn type_arg_list(&self) -> Option<TypeArgList> {
         super::child_opt(self)
     }
 }
 
 // Module
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Module {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Module {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Module {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            MODULE => Some(Module::from_repr(syntax.into_repr())),
+            MODULE => Some(Module { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Module {
-    type Owned = TreeArc<Module>;
-    fn to_owned(&self) -> TreeArc<Module> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2060,94 +1580,90 @@ impl ast::NameOwner for Module {}
 impl ast::AttrsOwner for Module {}
 impl ast::DocCommentsOwner for Module {}
 impl Module {
-    pub fn item_list(&self) -> Option<&ItemList> {
+    pub fn item_list(&self) -> Option<ItemList> {
         super::child_opt(self)
     }
 }
 
 // ModuleItem
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ModuleItem {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ModuleItem {
-    type Repr = rowan::SyntaxNode;
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ModuleItemKind<'a> {
-    StructDef(&'a StructDef),
-    EnumDef(&'a EnumDef),
-    FnDef(&'a FnDef),
-    TraitDef(&'a TraitDef),
-    TypeAliasDef(&'a TypeAliasDef),
-    ImplBlock(&'a ImplBlock),
-    UseItem(&'a UseItem),
-    ExternCrateItem(&'a ExternCrateItem),
-    ConstDef(&'a ConstDef),
-    StaticDef(&'a StaticDef),
-    Module(&'a Module),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModuleItemKind {
+    StructDef(StructDef),
+    EnumDef(EnumDef),
+    FnDef(FnDef),
+    TraitDef(TraitDef),
+    TypeAliasDef(TypeAliasDef),
+    ImplBlock(ImplBlock),
+    UseItem(UseItem),
+    ExternCrateItem(ExternCrateItem),
+    ConstDef(ConstDef),
+    StaticDef(StaticDef),
+    Module(Module),
 }
-impl<'a> From<&'a StructDef> for &'a ModuleItem {
-    fn from(n: &'a StructDef) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<StructDef> for ModuleItem {
+    fn from(n: StructDef) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a EnumDef> for &'a ModuleItem {
-    fn from(n: &'a EnumDef) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<EnumDef> for ModuleItem {
+    fn from(n: EnumDef) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a FnDef> for &'a ModuleItem {
-    fn from(n: &'a FnDef) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<FnDef> for ModuleItem {
+    fn from(n: FnDef) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TraitDef> for &'a ModuleItem {
-    fn from(n: &'a TraitDef) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<TraitDef> for ModuleItem {
+    fn from(n: TraitDef) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TypeAliasDef> for &'a ModuleItem {
-    fn from(n: &'a TypeAliasDef) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<TypeAliasDef> for ModuleItem {
+    fn from(n: TypeAliasDef) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ImplBlock> for &'a ModuleItem {
-    fn from(n: &'a ImplBlock) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<ImplBlock> for ModuleItem {
+    fn from(n: ImplBlock) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a UseItem> for &'a ModuleItem {
-    fn from(n: &'a UseItem) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<UseItem> for ModuleItem {
+    fn from(n: UseItem) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ExternCrateItem> for &'a ModuleItem {
-    fn from(n: &'a ExternCrateItem) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<ExternCrateItem> for ModuleItem {
+    fn from(n: ExternCrateItem) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ConstDef> for &'a ModuleItem {
-    fn from(n: &'a ConstDef) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<ConstDef> for ModuleItem {
+    fn from(n: ConstDef) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a StaticDef> for &'a ModuleItem {
-    fn from(n: &'a StaticDef) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<StaticDef> for ModuleItem {
+    fn from(n: StaticDef) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a Module> for &'a ModuleItem {
-    fn from(n: &'a Module) -> &'a ModuleItem {
-        ModuleItem::cast(&n.syntax).unwrap()
+impl From<Module> for ModuleItem {
+    fn from(n: Module) -> ModuleItem {
+        ModuleItem::cast(n.syntax).unwrap()
     }
 }
 
 
 impl AstNode for ModuleItem {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             | STRUCT_DEF
             | ENUM_DEF
@@ -2159,32 +1675,27 @@ impl AstNode for ModuleItem {
             | EXTERN_CRATE_ITEM
             | CONST_DEF
             | STATIC_DEF
-            | MODULE => Some(ModuleItem::from_repr(syntax.into_repr())),
+            | MODULE => Some(ModuleItem { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ModuleItem {
-    type Owned = TreeArc<ModuleItem>;
-    fn to_owned(&self) -> TreeArc<ModuleItem> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 impl ModuleItem {
     pub fn kind(&self) -> ModuleItemKind {
         match self.syntax.kind() {
-            STRUCT_DEF => ModuleItemKind::StructDef(StructDef::cast(&self.syntax).unwrap()),
-            ENUM_DEF => ModuleItemKind::EnumDef(EnumDef::cast(&self.syntax).unwrap()),
-            FN_DEF => ModuleItemKind::FnDef(FnDef::cast(&self.syntax).unwrap()),
-            TRAIT_DEF => ModuleItemKind::TraitDef(TraitDef::cast(&self.syntax).unwrap()),
-            TYPE_ALIAS_DEF => ModuleItemKind::TypeAliasDef(TypeAliasDef::cast(&self.syntax).unwrap()),
-            IMPL_BLOCK => ModuleItemKind::ImplBlock(ImplBlock::cast(&self.syntax).unwrap()),
-            USE_ITEM => ModuleItemKind::UseItem(UseItem::cast(&self.syntax).unwrap()),
-            EXTERN_CRATE_ITEM => ModuleItemKind::ExternCrateItem(ExternCrateItem::cast(&self.syntax).unwrap()),
-            CONST_DEF => ModuleItemKind::ConstDef(ConstDef::cast(&self.syntax).unwrap()),
-            STATIC_DEF => ModuleItemKind::StaticDef(StaticDef::cast(&self.syntax).unwrap()),
-            MODULE => ModuleItemKind::Module(Module::cast(&self.syntax).unwrap()),
+            STRUCT_DEF => ModuleItemKind::StructDef(StructDef::cast(self.syntax.clone()).unwrap()),
+            ENUM_DEF => ModuleItemKind::EnumDef(EnumDef::cast(self.syntax.clone()).unwrap()),
+            FN_DEF => ModuleItemKind::FnDef(FnDef::cast(self.syntax.clone()).unwrap()),
+            TRAIT_DEF => ModuleItemKind::TraitDef(TraitDef::cast(self.syntax.clone()).unwrap()),
+            TYPE_ALIAS_DEF => ModuleItemKind::TypeAliasDef(TypeAliasDef::cast(self.syntax.clone()).unwrap()),
+            IMPL_BLOCK => ModuleItemKind::ImplBlock(ImplBlock::cast(self.syntax.clone()).unwrap()),
+            USE_ITEM => ModuleItemKind::UseItem(UseItem::cast(self.syntax.clone()).unwrap()),
+            EXTERN_CRATE_ITEM => ModuleItemKind::ExternCrateItem(ExternCrateItem::cast(self.syntax.clone()).unwrap()),
+            CONST_DEF => ModuleItemKind::ConstDef(ConstDef::cast(self.syntax.clone()).unwrap()),
+            STATIC_DEF => ModuleItemKind::StaticDef(StaticDef::cast(self.syntax.clone()).unwrap()),
+            MODULE => ModuleItemKind::Module(Module::cast(self.syntax.clone()).unwrap()),
             _ => unreachable!(),
         }
     }
@@ -2193,120 +1704,84 @@ impl ModuleItem {
 impl ModuleItem {}
 
 // Name
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Name {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Name {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            NAME => Some(Name::from_repr(syntax.into_repr())),
+            NAME => Some(Name { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Name {
-    type Owned = TreeArc<Name>;
-    fn to_owned(&self) -> TreeArc<Name> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl Name {}
 
 // NameRef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NameRef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for NameRef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for NameRef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            NAME_REF => Some(NameRef::from_repr(syntax.into_repr())),
+            NAME_REF => Some(NameRef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for NameRef {
-    type Owned = TreeArc<NameRef>;
-    fn to_owned(&self) -> TreeArc<NameRef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl NameRef {}
 
 // NamedField
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NamedField {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for NamedField {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for NamedField {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            NAMED_FIELD => Some(NamedField::from_repr(syntax.into_repr())),
+            NAMED_FIELD => Some(NamedField { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for NamedField {
-    type Owned = TreeArc<NamedField>;
-    fn to_owned(&self) -> TreeArc<NamedField> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl NamedField {
-    pub fn name_ref(&self) -> Option<&NameRef> {
+    pub fn name_ref(&self) -> Option<NameRef> {
         super::child_opt(self)
     }
 
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // NamedFieldDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NamedFieldDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for NamedFieldDef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for NamedFieldDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            NAMED_FIELD_DEF => Some(NamedFieldDef::from_repr(syntax.into_repr())),
+            NAMED_FIELD_DEF => Some(NamedFieldDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for NamedFieldDef {
-    type Owned = TreeArc<NamedFieldDef>;
-    fn to_owned(&self) -> TreeArc<NamedFieldDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -2318,149 +1793,113 @@ impl ast::TypeAscriptionOwner for NamedFieldDef {}
 impl NamedFieldDef {}
 
 // NamedFieldDefList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NamedFieldDefList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for NamedFieldDefList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for NamedFieldDefList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            NAMED_FIELD_DEF_LIST => Some(NamedFieldDefList::from_repr(syntax.into_repr())),
+            NAMED_FIELD_DEF_LIST => Some(NamedFieldDefList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for NamedFieldDefList {
-    type Owned = TreeArc<NamedFieldDefList>;
-    fn to_owned(&self) -> TreeArc<NamedFieldDefList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl NamedFieldDefList {
-    pub fn fields(&self) -> impl Iterator<Item = &NamedFieldDef> {
+    pub fn fields(&self) -> impl Iterator<Item = NamedFieldDef> {
         super::children(self)
     }
 }
 
 // NamedFieldList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NamedFieldList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for NamedFieldList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for NamedFieldList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            NAMED_FIELD_LIST => Some(NamedFieldList::from_repr(syntax.into_repr())),
+            NAMED_FIELD_LIST => Some(NamedFieldList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for NamedFieldList {
-    type Owned = TreeArc<NamedFieldList>;
-    fn to_owned(&self) -> TreeArc<NamedFieldList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl NamedFieldList {
-    pub fn fields(&self) -> impl Iterator<Item = &NamedField> {
+    pub fn fields(&self) -> impl Iterator<Item = NamedField> {
         super::children(self)
     }
 
-    pub fn spread(&self) -> Option<&Expr> {
+    pub fn spread(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // NeverType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NeverType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for NeverType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for NeverType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            NEVER_TYPE => Some(NeverType::from_repr(syntax.into_repr())),
+            NEVER_TYPE => Some(NeverType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for NeverType {
-    type Owned = TreeArc<NeverType>;
-    fn to_owned(&self) -> TreeArc<NeverType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl NeverType {}
 
 // NominalDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NominalDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for NominalDef {
-    type Repr = rowan::SyntaxNode;
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NominalDefKind<'a> {
-    StructDef(&'a StructDef),
-    EnumDef(&'a EnumDef),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NominalDefKind {
+    StructDef(StructDef),
+    EnumDef(EnumDef),
 }
-impl<'a> From<&'a StructDef> for &'a NominalDef {
-    fn from(n: &'a StructDef) -> &'a NominalDef {
-        NominalDef::cast(&n.syntax).unwrap()
+impl From<StructDef> for NominalDef {
+    fn from(n: StructDef) -> NominalDef {
+        NominalDef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a EnumDef> for &'a NominalDef {
-    fn from(n: &'a EnumDef) -> &'a NominalDef {
-        NominalDef::cast(&n.syntax).unwrap()
+impl From<EnumDef> for NominalDef {
+    fn from(n: EnumDef) -> NominalDef {
+        NominalDef::cast(n.syntax).unwrap()
     }
 }
 
 
 impl AstNode for NominalDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             | STRUCT_DEF
-            | ENUM_DEF => Some(NominalDef::from_repr(syntax.into_repr())),
+            | ENUM_DEF => Some(NominalDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for NominalDef {
-    type Owned = TreeArc<NominalDef>;
-    fn to_owned(&self) -> TreeArc<NominalDef> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 impl NominalDef {
     pub fn kind(&self) -> NominalDefKind {
         match self.syntax.kind() {
-            STRUCT_DEF => NominalDefKind::StructDef(StructDef::cast(&self.syntax).unwrap()),
-            ENUM_DEF => NominalDefKind::EnumDef(EnumDef::cast(&self.syntax).unwrap()),
+            STRUCT_DEF => NominalDefKind::StructDef(StructDef::cast(self.syntax.clone()).unwrap()),
+            ENUM_DEF => NominalDefKind::EnumDef(EnumDef::cast(self.syntax.clone()).unwrap()),
             _ => unreachable!(),
         }
     }
@@ -2472,215 +1911,175 @@ impl ast::AttrsOwner for NominalDef {}
 impl NominalDef {}
 
 // Param
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Param {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Param {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Param {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PARAM => Some(Param::from_repr(syntax.into_repr())),
+            PARAM => Some(Param { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Param {
-    type Owned = TreeArc<Param>;
-    fn to_owned(&self) -> TreeArc<Param> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::TypeAscriptionOwner for Param {}
 impl Param {
-    pub fn pat(&self) -> Option<&Pat> {
+    pub fn pat(&self) -> Option<Pat> {
         super::child_opt(self)
     }
 }
 
 // ParamList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParamList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ParamList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ParamList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PARAM_LIST => Some(ParamList::from_repr(syntax.into_repr())),
+            PARAM_LIST => Some(ParamList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ParamList {
-    type Owned = TreeArc<ParamList>;
-    fn to_owned(&self) -> TreeArc<ParamList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ParamList {
-    pub fn params(&self) -> impl Iterator<Item = &Param> {
+    pub fn params(&self) -> impl Iterator<Item = Param> {
         super::children(self)
     }
 
-    pub fn self_param(&self) -> Option<&SelfParam> {
+    pub fn self_param(&self) -> Option<SelfParam> {
         super::child_opt(self)
     }
 }
 
 // ParenExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ParenExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ParenExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PAREN_EXPR => Some(ParenExpr::from_repr(syntax.into_repr())),
+            PAREN_EXPR => Some(ParenExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ParenExpr {
-    type Owned = TreeArc<ParenExpr>;
-    fn to_owned(&self) -> TreeArc<ParenExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ParenExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // ParenType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ParenType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ParenType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PAREN_TYPE => Some(ParenType::from_repr(syntax.into_repr())),
+            PAREN_TYPE => Some(ParenType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ParenType {
-    type Owned = TreeArc<ParenType>;
-    fn to_owned(&self) -> TreeArc<ParenType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ParenType {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // Pat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Pat {
-    type Repr = rowan::SyntaxNode;
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PatKind<'a> {
-    RefPat(&'a RefPat),
-    BindPat(&'a BindPat),
-    PlaceholderPat(&'a PlaceholderPat),
-    PathPat(&'a PathPat),
-    StructPat(&'a StructPat),
-    TupleStructPat(&'a TupleStructPat),
-    TuplePat(&'a TuplePat),
-    SlicePat(&'a SlicePat),
-    RangePat(&'a RangePat),
-    LiteralPat(&'a LiteralPat),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PatKind {
+    RefPat(RefPat),
+    BindPat(BindPat),
+    PlaceholderPat(PlaceholderPat),
+    PathPat(PathPat),
+    StructPat(StructPat),
+    TupleStructPat(TupleStructPat),
+    TuplePat(TuplePat),
+    SlicePat(SlicePat),
+    RangePat(RangePat),
+    LiteralPat(LiteralPat),
 }
-impl<'a> From<&'a RefPat> for &'a Pat {
-    fn from(n: &'a RefPat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<RefPat> for Pat {
+    fn from(n: RefPat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a BindPat> for &'a Pat {
-    fn from(n: &'a BindPat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<BindPat> for Pat {
+    fn from(n: BindPat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a PlaceholderPat> for &'a Pat {
-    fn from(n: &'a PlaceholderPat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<PlaceholderPat> for Pat {
+    fn from(n: PlaceholderPat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a PathPat> for &'a Pat {
-    fn from(n: &'a PathPat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<PathPat> for Pat {
+    fn from(n: PathPat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a StructPat> for &'a Pat {
-    fn from(n: &'a StructPat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<StructPat> for Pat {
+    fn from(n: StructPat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TupleStructPat> for &'a Pat {
-    fn from(n: &'a TupleStructPat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<TupleStructPat> for Pat {
+    fn from(n: TupleStructPat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TuplePat> for &'a Pat {
-    fn from(n: &'a TuplePat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<TuplePat> for Pat {
+    fn from(n: TuplePat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a SlicePat> for &'a Pat {
-    fn from(n: &'a SlicePat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<SlicePat> for Pat {
+    fn from(n: SlicePat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a RangePat> for &'a Pat {
-    fn from(n: &'a RangePat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<RangePat> for Pat {
+    fn from(n: RangePat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a LiteralPat> for &'a Pat {
-    fn from(n: &'a LiteralPat) -> &'a Pat {
-        Pat::cast(&n.syntax).unwrap()
+impl From<LiteralPat> for Pat {
+    fn from(n: LiteralPat) -> Pat {
+        Pat::cast(n.syntax).unwrap()
     }
 }
 
 
 impl AstNode for Pat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             | REF_PAT
             | BIND_PAT
@@ -2691,31 +2090,26 @@ impl AstNode for Pat {
             | TUPLE_PAT
             | SLICE_PAT
             | RANGE_PAT
-            | LITERAL_PAT => Some(Pat::from_repr(syntax.into_repr())),
+            | LITERAL_PAT => Some(Pat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for Pat {
-    type Owned = TreeArc<Pat>;
-    fn to_owned(&self) -> TreeArc<Pat> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 impl Pat {
     pub fn kind(&self) -> PatKind {
         match self.syntax.kind() {
-            REF_PAT => PatKind::RefPat(RefPat::cast(&self.syntax).unwrap()),
-            BIND_PAT => PatKind::BindPat(BindPat::cast(&self.syntax).unwrap()),
-            PLACEHOLDER_PAT => PatKind::PlaceholderPat(PlaceholderPat::cast(&self.syntax).unwrap()),
-            PATH_PAT => PatKind::PathPat(PathPat::cast(&self.syntax).unwrap()),
-            STRUCT_PAT => PatKind::StructPat(StructPat::cast(&self.syntax).unwrap()),
-            TUPLE_STRUCT_PAT => PatKind::TupleStructPat(TupleStructPat::cast(&self.syntax).unwrap()),
-            TUPLE_PAT => PatKind::TuplePat(TuplePat::cast(&self.syntax).unwrap()),
-            SLICE_PAT => PatKind::SlicePat(SlicePat::cast(&self.syntax).unwrap()),
-            RANGE_PAT => PatKind::RangePat(RangePat::cast(&self.syntax).unwrap()),
-            LITERAL_PAT => PatKind::LiteralPat(LiteralPat::cast(&self.syntax).unwrap()),
+            REF_PAT => PatKind::RefPat(RefPat::cast(self.syntax.clone()).unwrap()),
+            BIND_PAT => PatKind::BindPat(BindPat::cast(self.syntax.clone()).unwrap()),
+            PLACEHOLDER_PAT => PatKind::PlaceholderPat(PlaceholderPat::cast(self.syntax.clone()).unwrap()),
+            PATH_PAT => PatKind::PathPat(PathPat::cast(self.syntax.clone()).unwrap()),
+            STRUCT_PAT => PatKind::StructPat(StructPat::cast(self.syntax.clone()).unwrap()),
+            TUPLE_STRUCT_PAT => PatKind::TupleStructPat(TupleStructPat::cast(self.syntax.clone()).unwrap()),
+            TUPLE_PAT => PatKind::TuplePat(TuplePat::cast(self.syntax.clone()).unwrap()),
+            SLICE_PAT => PatKind::SlicePat(SlicePat::cast(self.syntax.clone()).unwrap()),
+            RANGE_PAT => PatKind::RangePat(RangePat::cast(self.syntax.clone()).unwrap()),
+            LITERAL_PAT => PatKind::LiteralPat(LiteralPat::cast(self.syntax.clone()).unwrap()),
             _ => unreachable!(),
         }
     }
@@ -2724,598 +2118,427 @@ impl Pat {
 impl Pat {}
 
 // Path
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Path {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Path {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PATH => Some(Path::from_repr(syntax.into_repr())),
+            PATH => Some(Path { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for Path {
-    type Owned = TreeArc<Path>;
-    fn to_owned(&self) -> TreeArc<Path> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl Path {
-    pub fn segment(&self) -> Option<&PathSegment> {
+    pub fn segment(&self) -> Option<PathSegment> {
         super::child_opt(self)
     }
 
-    pub fn qualifier(&self) -> Option<&Path> {
+    pub fn qualifier(&self) -> Option<Path> {
         super::child_opt(self)
     }
 }
 
 // PathExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PathExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PathExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PATH_EXPR => Some(PathExpr::from_repr(syntax.into_repr())),
+            PATH_EXPR => Some(PathExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for PathExpr {
-    type Owned = TreeArc<PathExpr>;
-    fn to_owned(&self) -> TreeArc<PathExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl PathExpr {
-    pub fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<Path> {
         super::child_opt(self)
     }
 }
 
 // PathPat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathPat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PathPat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PathPat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PATH_PAT => Some(PathPat::from_repr(syntax.into_repr())),
+            PATH_PAT => Some(PathPat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for PathPat {
-    type Owned = TreeArc<PathPat>;
-    fn to_owned(&self) -> TreeArc<PathPat> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl PathPat {
-    pub fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<Path> {
         super::child_opt(self)
     }
 }
 
 // PathSegment
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathSegment {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PathSegment {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PathSegment {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PATH_SEGMENT => Some(PathSegment::from_repr(syntax.into_repr())),
+            PATH_SEGMENT => Some(PathSegment { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for PathSegment {
-    type Owned = TreeArc<PathSegment>;
-    fn to_owned(&self) -> TreeArc<PathSegment> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl PathSegment {
-    pub fn name_ref(&self) -> Option<&NameRef> {
+    pub fn name_ref(&self) -> Option<NameRef> {
         super::child_opt(self)
     }
 
-    pub fn type_arg_list(&self) -> Option<&TypeArgList> {
+    pub fn type_arg_list(&self) -> Option<TypeArgList> {
         super::child_opt(self)
     }
 }
 
 // PathType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PathType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PathType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PATH_TYPE => Some(PathType::from_repr(syntax.into_repr())),
+            PATH_TYPE => Some(PathType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for PathType {
-    type Owned = TreeArc<PathType>;
-    fn to_owned(&self) -> TreeArc<PathType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl PathType {
-    pub fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<Path> {
         super::child_opt(self)
     }
 }
 
 // PlaceholderPat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlaceholderPat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PlaceholderPat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PlaceholderPat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PLACEHOLDER_PAT => Some(PlaceholderPat::from_repr(syntax.into_repr())),
+            PLACEHOLDER_PAT => Some(PlaceholderPat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for PlaceholderPat {
-    type Owned = TreeArc<PlaceholderPat>;
-    fn to_owned(&self) -> TreeArc<PlaceholderPat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl PlaceholderPat {}
 
 // PlaceholderType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlaceholderType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PlaceholderType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PlaceholderType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PLACEHOLDER_TYPE => Some(PlaceholderType::from_repr(syntax.into_repr())),
+            PLACEHOLDER_TYPE => Some(PlaceholderType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for PlaceholderType {
-    type Owned = TreeArc<PlaceholderType>;
-    fn to_owned(&self) -> TreeArc<PlaceholderType> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl PlaceholderType {}
 
 // PointerType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PointerType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PointerType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PointerType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            POINTER_TYPE => Some(PointerType::from_repr(syntax.into_repr())),
+            POINTER_TYPE => Some(PointerType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for PointerType {
-    type Owned = TreeArc<PointerType>;
-    fn to_owned(&self) -> TreeArc<PointerType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl PointerType {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // PosFieldDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PosFieldDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PosFieldDef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PosFieldDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            POS_FIELD_DEF => Some(PosFieldDef::from_repr(syntax.into_repr())),
+            POS_FIELD_DEF => Some(PosFieldDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for PosFieldDef {
-    type Owned = TreeArc<PosFieldDef>;
-    fn to_owned(&self) -> TreeArc<PosFieldDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::VisibilityOwner for PosFieldDef {}
 impl ast::AttrsOwner for PosFieldDef {}
 impl PosFieldDef {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // PosFieldDefList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PosFieldDefList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PosFieldDefList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PosFieldDefList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            POS_FIELD_DEF_LIST => Some(PosFieldDefList::from_repr(syntax.into_repr())),
+            POS_FIELD_DEF_LIST => Some(PosFieldDefList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for PosFieldDefList {
-    type Owned = TreeArc<PosFieldDefList>;
-    fn to_owned(&self) -> TreeArc<PosFieldDefList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl PosFieldDefList {
-    pub fn fields(&self) -> impl Iterator<Item = &PosFieldDef> {
+    pub fn fields(&self) -> impl Iterator<Item = PosFieldDef> {
         super::children(self)
     }
 }
 
 // PrefixExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PrefixExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PrefixExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for PrefixExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            PREFIX_EXPR => Some(PrefixExpr::from_repr(syntax.into_repr())),
+            PREFIX_EXPR => Some(PrefixExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for PrefixExpr {
-    type Owned = TreeArc<PrefixExpr>;
-    fn to_owned(&self) -> TreeArc<PrefixExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl PrefixExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // RangeExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangeExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for RangeExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for RangeExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            RANGE_EXPR => Some(RangeExpr::from_repr(syntax.into_repr())),
+            RANGE_EXPR => Some(RangeExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for RangeExpr {
-    type Owned = TreeArc<RangeExpr>;
-    fn to_owned(&self) -> TreeArc<RangeExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl RangeExpr {}
 
 // RangePat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangePat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for RangePat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for RangePat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            RANGE_PAT => Some(RangePat::from_repr(syntax.into_repr())),
+            RANGE_PAT => Some(RangePat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for RangePat {
-    type Owned = TreeArc<RangePat>;
-    fn to_owned(&self) -> TreeArc<RangePat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl RangePat {}
 
 // RefExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for RefExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for RefExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            REF_EXPR => Some(RefExpr::from_repr(syntax.into_repr())),
+            REF_EXPR => Some(RefExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for RefExpr {
-    type Owned = TreeArc<RefExpr>;
-    fn to_owned(&self) -> TreeArc<RefExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl RefExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // RefPat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefPat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for RefPat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for RefPat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            REF_PAT => Some(RefPat::from_repr(syntax.into_repr())),
+            REF_PAT => Some(RefPat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for RefPat {
-    type Owned = TreeArc<RefPat>;
-    fn to_owned(&self) -> TreeArc<RefPat> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl RefPat {
-    pub fn pat(&self) -> Option<&Pat> {
+    pub fn pat(&self) -> Option<Pat> {
         super::child_opt(self)
     }
 }
 
 // ReferenceType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReferenceType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ReferenceType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ReferenceType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            REFERENCE_TYPE => Some(ReferenceType::from_repr(syntax.into_repr())),
+            REFERENCE_TYPE => Some(ReferenceType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ReferenceType {
-    type Owned = TreeArc<ReferenceType>;
-    fn to_owned(&self) -> TreeArc<ReferenceType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ReferenceType {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // RetType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RetType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for RetType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for RetType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            RET_TYPE => Some(RetType::from_repr(syntax.into_repr())),
+            RET_TYPE => Some(RetType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for RetType {
-    type Owned = TreeArc<RetType>;
-    fn to_owned(&self) -> TreeArc<RetType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl RetType {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // ReturnExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReturnExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for ReturnExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for ReturnExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            RETURN_EXPR => Some(ReturnExpr::from_repr(syntax.into_repr())),
+            RETURN_EXPR => Some(ReturnExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for ReturnExpr {
-    type Owned = TreeArc<ReturnExpr>;
-    fn to_owned(&self) -> TreeArc<ReturnExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ReturnExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // SelfParam
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for SelfParam {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for SelfParam {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            SELF_PARAM => Some(SelfParam::from_repr(syntax.into_repr())),
+            SELF_PARAM => Some(SelfParam { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for SelfParam {
-    type Owned = TreeArc<SelfParam>;
-    fn to_owned(&self) -> TreeArc<SelfParam> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3323,122 +2546,86 @@ impl ast::TypeAscriptionOwner for SelfParam {}
 impl SelfParam {}
 
 // SlicePat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SlicePat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for SlicePat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for SlicePat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            SLICE_PAT => Some(SlicePat::from_repr(syntax.into_repr())),
+            SLICE_PAT => Some(SlicePat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for SlicePat {
-    type Owned = TreeArc<SlicePat>;
-    fn to_owned(&self) -> TreeArc<SlicePat> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl SlicePat {}
 
 // SliceType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SliceType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for SliceType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for SliceType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            SLICE_TYPE => Some(SliceType::from_repr(syntax.into_repr())),
+            SLICE_TYPE => Some(SliceType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for SliceType {
-    type Owned = TreeArc<SliceType>;
-    fn to_owned(&self) -> TreeArc<SliceType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl SliceType {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // SourceFile
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceFile {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for SourceFile {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for SourceFile {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            SOURCE_FILE => Some(SourceFile::from_repr(syntax.into_repr())),
+            SOURCE_FILE => Some(SourceFile { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for SourceFile {
-    type Owned = TreeArc<SourceFile>;
-    fn to_owned(&self) -> TreeArc<SourceFile> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::ModuleItemOwner for SourceFile {}
 impl ast::FnDefOwner for SourceFile {}
 impl SourceFile {
-    pub fn modules(&self) -> impl Iterator<Item = &Module> {
+    pub fn modules(&self) -> impl Iterator<Item = Module> {
         super::children(self)
     }
 }
 
 // StaticDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StaticDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for StaticDef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for StaticDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            STATIC_DEF => Some(StaticDef::from_repr(syntax.into_repr())),
+            STATIC_DEF => Some(StaticDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for StaticDef {
-    type Owned = TreeArc<StaticDef>;
-    fn to_owned(&self) -> TreeArc<StaticDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3449,59 +2636,50 @@ impl ast::AttrsOwner for StaticDef {}
 impl ast::DocCommentsOwner for StaticDef {}
 impl ast::TypeAscriptionOwner for StaticDef {}
 impl StaticDef {
-    pub fn body(&self) -> Option<&Expr> {
+    pub fn body(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // Stmt
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Stmt {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Stmt {
-    type Repr = rowan::SyntaxNode;
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StmtKind<'a> {
-    ExprStmt(&'a ExprStmt),
-    LetStmt(&'a LetStmt),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StmtKind {
+    ExprStmt(ExprStmt),
+    LetStmt(LetStmt),
 }
-impl<'a> From<&'a ExprStmt> for &'a Stmt {
-    fn from(n: &'a ExprStmt) -> &'a Stmt {
-        Stmt::cast(&n.syntax).unwrap()
+impl From<ExprStmt> for Stmt {
+    fn from(n: ExprStmt) -> Stmt {
+        Stmt::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a LetStmt> for &'a Stmt {
-    fn from(n: &'a LetStmt) -> &'a Stmt {
-        Stmt::cast(&n.syntax).unwrap()
+impl From<LetStmt> for Stmt {
+    fn from(n: LetStmt) -> Stmt {
+        Stmt::cast(n.syntax).unwrap()
     }
 }
 
 
 impl AstNode for Stmt {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             | EXPR_STMT
-            | LET_STMT => Some(Stmt::from_repr(syntax.into_repr())),
+            | LET_STMT => Some(Stmt { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for Stmt {
-    type Owned = TreeArc<Stmt>;
-    fn to_owned(&self) -> TreeArc<Stmt> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 impl Stmt {
     pub fn kind(&self) -> StmtKind {
         match self.syntax.kind() {
-            EXPR_STMT => StmtKind::ExprStmt(ExprStmt::cast(&self.syntax).unwrap()),
-            LET_STMT => StmtKind::LetStmt(LetStmt::cast(&self.syntax).unwrap()),
+            EXPR_STMT => StmtKind::ExprStmt(ExprStmt::cast(self.syntax.clone()).unwrap()),
+            LET_STMT => StmtKind::LetStmt(LetStmt::cast(self.syntax.clone()).unwrap()),
             _ => unreachable!(),
         }
     }
@@ -3510,28 +2688,19 @@ impl Stmt {
 impl Stmt {}
 
 // StructDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for StructDef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for StructDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            STRUCT_DEF => Some(StructDef::from_repr(syntax.into_repr())),
+            STRUCT_DEF => Some(StructDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for StructDef {
-    type Owned = TreeArc<StructDef>;
-    fn to_owned(&self) -> TreeArc<StructDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3543,128 +2712,92 @@ impl ast::DocCommentsOwner for StructDef {}
 impl StructDef {}
 
 // StructLit
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructLit {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for StructLit {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for StructLit {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            STRUCT_LIT => Some(StructLit::from_repr(syntax.into_repr())),
+            STRUCT_LIT => Some(StructLit { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for StructLit {
-    type Owned = TreeArc<StructLit>;
-    fn to_owned(&self) -> TreeArc<StructLit> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl StructLit {
-    pub fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<Path> {
         super::child_opt(self)
     }
 
-    pub fn named_field_list(&self) -> Option<&NamedFieldList> {
+    pub fn named_field_list(&self) -> Option<NamedFieldList> {
         super::child_opt(self)
     }
 }
 
 // StructPat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructPat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for StructPat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for StructPat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            STRUCT_PAT => Some(StructPat::from_repr(syntax.into_repr())),
+            STRUCT_PAT => Some(StructPat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for StructPat {
-    type Owned = TreeArc<StructPat>;
-    fn to_owned(&self) -> TreeArc<StructPat> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl StructPat {
-    pub fn field_pat_list(&self) -> Option<&FieldPatList> {
+    pub fn field_pat_list(&self) -> Option<FieldPatList> {
         super::child_opt(self)
     }
 
-    pub fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<Path> {
         super::child_opt(self)
     }
 }
 
 // TokenTree
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TokenTree {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TokenTree {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TokenTree {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TOKEN_TREE => Some(TokenTree::from_repr(syntax.into_repr())),
+            TOKEN_TREE => Some(TokenTree { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for TokenTree {
-    type Owned = TreeArc<TokenTree>;
-    fn to_owned(&self) -> TreeArc<TokenTree> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl TokenTree {}
 
 // TraitDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TraitDef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TraitDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TRAIT_DEF => Some(TraitDef::from_repr(syntax.into_repr())),
+            TRAIT_DEF => Some(TraitDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for TraitDef {
-    type Owned = TreeArc<TraitDef>;
-    fn to_owned(&self) -> TreeArc<TraitDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3675,34 +2808,25 @@ impl ast::DocCommentsOwner for TraitDef {}
 impl ast::TypeParamsOwner for TraitDef {}
 impl ast::TypeBoundsOwner for TraitDef {}
 impl TraitDef {
-    pub fn item_list(&self) -> Option<&ItemList> {
+    pub fn item_list(&self) -> Option<ItemList> {
         super::child_opt(self)
     }
 }
 
 // TryBlockExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryBlockExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TryBlockExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TryBlockExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TRY_BLOCK_EXPR => Some(TryBlockExpr::from_repr(syntax.into_repr())),
+            TRY_BLOCK_EXPR => Some(TryBlockExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for TryBlockExpr {
-    type Owned = TreeArc<TryBlockExpr>;
-    fn to_owned(&self) -> TreeArc<TryBlockExpr> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3710,192 +2834,138 @@ impl ast::TryBlockBodyOwner for TryBlockExpr {}
 impl TryBlockExpr {}
 
 // TryExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TryExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TryExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TRY_EXPR => Some(TryExpr::from_repr(syntax.into_repr())),
+            TRY_EXPR => Some(TryExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TryExpr {
-    type Owned = TreeArc<TryExpr>;
-    fn to_owned(&self) -> TreeArc<TryExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TryExpr {
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn expr(&self) -> Option<Expr> {
         super::child_opt(self)
     }
 }
 
 // TupleExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TupleExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TupleExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TUPLE_EXPR => Some(TupleExpr::from_repr(syntax.into_repr())),
+            TUPLE_EXPR => Some(TupleExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TupleExpr {
-    type Owned = TreeArc<TupleExpr>;
-    fn to_owned(&self) -> TreeArc<TupleExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TupleExpr {
-    pub fn exprs(&self) -> impl Iterator<Item = &Expr> {
+    pub fn exprs(&self) -> impl Iterator<Item = Expr> {
         super::children(self)
     }
 }
 
 // TuplePat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TuplePat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TuplePat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TuplePat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TUPLE_PAT => Some(TuplePat::from_repr(syntax.into_repr())),
+            TUPLE_PAT => Some(TuplePat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TuplePat {
-    type Owned = TreeArc<TuplePat>;
-    fn to_owned(&self) -> TreeArc<TuplePat> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TuplePat {
-    pub fn args(&self) -> impl Iterator<Item = &Pat> {
+    pub fn args(&self) -> impl Iterator<Item = Pat> {
         super::children(self)
     }
 }
 
 // TupleStructPat
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleStructPat {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TupleStructPat {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TupleStructPat {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TUPLE_STRUCT_PAT => Some(TupleStructPat::from_repr(syntax.into_repr())),
+            TUPLE_STRUCT_PAT => Some(TupleStructPat { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TupleStructPat {
-    type Owned = TreeArc<TupleStructPat>;
-    fn to_owned(&self) -> TreeArc<TupleStructPat> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TupleStructPat {
-    pub fn args(&self) -> impl Iterator<Item = &Pat> {
+    pub fn args(&self) -> impl Iterator<Item = Pat> {
         super::children(self)
     }
 
-    pub fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<Path> {
         super::child_opt(self)
     }
 }
 
 // TupleType
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleType {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TupleType {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TupleType {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TUPLE_TYPE => Some(TupleType::from_repr(syntax.into_repr())),
+            TUPLE_TYPE => Some(TupleType { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TupleType {
-    type Owned = TreeArc<TupleType>;
-    fn to_owned(&self) -> TreeArc<TupleType> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TupleType {
-    pub fn fields(&self) -> impl Iterator<Item = &TypeRef> {
+    pub fn fields(&self) -> impl Iterator<Item = TypeRef> {
         super::children(self)
     }
 }
 
 // TypeAliasDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAliasDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TypeAliasDef {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TypeAliasDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TYPE_ALIAS_DEF => Some(TypeAliasDef::from_repr(syntax.into_repr())),
+            TYPE_ALIAS_DEF => Some(TypeAliasDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for TypeAliasDef {
-    type Owned = TreeArc<TypeAliasDef>;
-    fn to_owned(&self) -> TreeArc<TypeAliasDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -3906,170 +2976,125 @@ impl ast::AttrsOwner for TypeAliasDef {}
 impl ast::DocCommentsOwner for TypeAliasDef {}
 impl ast::TypeBoundsOwner for TypeAliasDef {}
 impl TypeAliasDef {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // TypeArg
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArg {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TypeArg {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TypeArg {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TYPE_ARG => Some(TypeArg::from_repr(syntax.into_repr())),
+            TYPE_ARG => Some(TypeArg { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TypeArg {
-    type Owned = TreeArc<TypeArg>;
-    fn to_owned(&self) -> TreeArc<TypeArg> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TypeArg {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // TypeArgList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArgList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TypeArgList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TypeArgList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TYPE_ARG_LIST => Some(TypeArgList::from_repr(syntax.into_repr())),
+            TYPE_ARG_LIST => Some(TypeArgList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TypeArgList {
-    type Owned = TreeArc<TypeArgList>;
-    fn to_owned(&self) -> TreeArc<TypeArgList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TypeArgList {
-    pub fn type_args(&self) -> impl Iterator<Item = &TypeArg> {
+    pub fn type_args(&self) -> impl Iterator<Item = TypeArg> {
         super::children(self)
     }
 
-    pub fn lifetime_args(&self) -> impl Iterator<Item = &LifetimeArg> {
+    pub fn lifetime_args(&self) -> impl Iterator<Item = LifetimeArg> {
         super::children(self)
     }
 
-    pub fn assoc_type_args(&self) -> impl Iterator<Item = &AssocTypeArg> {
+    pub fn assoc_type_args(&self) -> impl Iterator<Item = AssocTypeArg> {
         super::children(self)
     }
 }
 
 // TypeBound
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBound {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TypeBound {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TypeBound {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TYPE_BOUND => Some(TypeBound::from_repr(syntax.into_repr())),
+            TYPE_BOUND => Some(TypeBound { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TypeBound {
-    type Owned = TreeArc<TypeBound>;
-    fn to_owned(&self) -> TreeArc<TypeBound> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TypeBound {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // TypeBoundList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBoundList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TypeBoundList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TypeBoundList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TYPE_BOUND_LIST => Some(TypeBoundList::from_repr(syntax.into_repr())),
+            TYPE_BOUND_LIST => Some(TypeBoundList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TypeBoundList {
-    type Owned = TreeArc<TypeBoundList>;
-    fn to_owned(&self) -> TreeArc<TypeBoundList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TypeBoundList {
-    pub fn bounds(&self) -> impl Iterator<Item = &TypeBound> {
+    pub fn bounds(&self) -> impl Iterator<Item = TypeBound> {
         super::children(self)
     }
 }
 
 // TypeParam
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParam {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TypeParam {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TypeParam {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TYPE_PARAM => Some(TypeParam::from_repr(syntax.into_repr())),
+            TYPE_PARAM => Some(TypeParam { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for TypeParam {
-    type Owned = TreeArc<TypeParam>;
-    fn to_owned(&self) -> TreeArc<TypeParam> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
@@ -4080,136 +3105,123 @@ impl ast::DefaultTypeParamOwner for TypeParam {}
 impl TypeParam {}
 
 // TypeParamList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParamList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TypeParamList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for TypeParamList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            TYPE_PARAM_LIST => Some(TypeParamList::from_repr(syntax.into_repr())),
+            TYPE_PARAM_LIST => Some(TypeParamList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TypeParamList {
-    type Owned = TreeArc<TypeParamList>;
-    fn to_owned(&self) -> TreeArc<TypeParamList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl TypeParamList {
-    pub fn type_params(&self) -> impl Iterator<Item = &TypeParam> {
+    pub fn type_params(&self) -> impl Iterator<Item = TypeParam> {
         super::children(self)
     }
 
-    pub fn lifetime_params(&self) -> impl Iterator<Item = &LifetimeParam> {
+    pub fn lifetime_params(&self) -> impl Iterator<Item = LifetimeParam> {
         super::children(self)
     }
 }
 
 // TypeRef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeRef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for TypeRef {
-    type Repr = rowan::SyntaxNode;
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TypeRefKind<'a> {
-    ParenType(&'a ParenType),
-    TupleType(&'a TupleType),
-    NeverType(&'a NeverType),
-    PathType(&'a PathType),
-    PointerType(&'a PointerType),
-    ArrayType(&'a ArrayType),
-    SliceType(&'a SliceType),
-    ReferenceType(&'a ReferenceType),
-    PlaceholderType(&'a PlaceholderType),
-    FnPointerType(&'a FnPointerType),
-    ForType(&'a ForType),
-    ImplTraitType(&'a ImplTraitType),
-    DynTraitType(&'a DynTraitType),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TypeRefKind {
+    ParenType(ParenType),
+    TupleType(TupleType),
+    NeverType(NeverType),
+    PathType(PathType),
+    PointerType(PointerType),
+    ArrayType(ArrayType),
+    SliceType(SliceType),
+    ReferenceType(ReferenceType),
+    PlaceholderType(PlaceholderType),
+    FnPointerType(FnPointerType),
+    ForType(ForType),
+    ImplTraitType(ImplTraitType),
+    DynTraitType(DynTraitType),
 }
-impl<'a> From<&'a ParenType> for &'a TypeRef {
-    fn from(n: &'a ParenType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<ParenType> for TypeRef {
+    fn from(n: ParenType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TupleType> for &'a TypeRef {
-    fn from(n: &'a TupleType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<TupleType> for TypeRef {
+    fn from(n: TupleType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a NeverType> for &'a TypeRef {
-    fn from(n: &'a NeverType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<NeverType> for TypeRef {
+    fn from(n: NeverType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a PathType> for &'a TypeRef {
-    fn from(n: &'a PathType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<PathType> for TypeRef {
+    fn from(n: PathType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a PointerType> for &'a TypeRef {
-    fn from(n: &'a PointerType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<PointerType> for TypeRef {
+    fn from(n: PointerType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ArrayType> for &'a TypeRef {
-    fn from(n: &'a ArrayType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<ArrayType> for TypeRef {
+    fn from(n: ArrayType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a SliceType> for &'a TypeRef {
-    fn from(n: &'a SliceType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<SliceType> for TypeRef {
+    fn from(n: SliceType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ReferenceType> for &'a TypeRef {
-    fn from(n: &'a ReferenceType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<ReferenceType> for TypeRef {
+    fn from(n: ReferenceType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a PlaceholderType> for &'a TypeRef {
-    fn from(n: &'a PlaceholderType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<PlaceholderType> for TypeRef {
+    fn from(n: PlaceholderType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a FnPointerType> for &'a TypeRef {
-    fn from(n: &'a FnPointerType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<FnPointerType> for TypeRef {
+    fn from(n: FnPointerType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ForType> for &'a TypeRef {
-    fn from(n: &'a ForType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<ForType> for TypeRef {
+    fn from(n: ForType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a ImplTraitType> for &'a TypeRef {
-    fn from(n: &'a ImplTraitType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<ImplTraitType> for TypeRef {
+    fn from(n: ImplTraitType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a DynTraitType> for &'a TypeRef {
-    fn from(n: &'a DynTraitType) -> &'a TypeRef {
-        TypeRef::cast(&n.syntax).unwrap()
+impl From<DynTraitType> for TypeRef {
+    fn from(n: DynTraitType) -> TypeRef {
+        TypeRef::cast(n.syntax).unwrap()
     }
 }
 
 
 impl AstNode for TypeRef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             | PAREN_TYPE
             | TUPLE_TYPE
@@ -4223,34 +3235,29 @@ impl AstNode for TypeRef {
             | FN_POINTER_TYPE
             | FOR_TYPE
             | IMPL_TRAIT_TYPE
-            | DYN_TRAIT_TYPE => Some(TypeRef::from_repr(syntax.into_repr())),
+            | DYN_TRAIT_TYPE => Some(TypeRef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for TypeRef {
-    type Owned = TreeArc<TypeRef>;
-    fn to_owned(&self) -> TreeArc<TypeRef> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 impl TypeRef {
     pub fn kind(&self) -> TypeRefKind {
         match self.syntax.kind() {
-            PAREN_TYPE => TypeRefKind::ParenType(ParenType::cast(&self.syntax).unwrap()),
-            TUPLE_TYPE => TypeRefKind::TupleType(TupleType::cast(&self.syntax).unwrap()),
-            NEVER_TYPE => TypeRefKind::NeverType(NeverType::cast(&self.syntax).unwrap()),
-            PATH_TYPE => TypeRefKind::PathType(PathType::cast(&self.syntax).unwrap()),
-            POINTER_TYPE => TypeRefKind::PointerType(PointerType::cast(&self.syntax).unwrap()),
-            ARRAY_TYPE => TypeRefKind::ArrayType(ArrayType::cast(&self.syntax).unwrap()),
-            SLICE_TYPE => TypeRefKind::SliceType(SliceType::cast(&self.syntax).unwrap()),
-            REFERENCE_TYPE => TypeRefKind::ReferenceType(ReferenceType::cast(&self.syntax).unwrap()),
-            PLACEHOLDER_TYPE => TypeRefKind::PlaceholderType(PlaceholderType::cast(&self.syntax).unwrap()),
-            FN_POINTER_TYPE => TypeRefKind::FnPointerType(FnPointerType::cast(&self.syntax).unwrap()),
-            FOR_TYPE => TypeRefKind::ForType(ForType::cast(&self.syntax).unwrap()),
-            IMPL_TRAIT_TYPE => TypeRefKind::ImplTraitType(ImplTraitType::cast(&self.syntax).unwrap()),
-            DYN_TRAIT_TYPE => TypeRefKind::DynTraitType(DynTraitType::cast(&self.syntax).unwrap()),
+            PAREN_TYPE => TypeRefKind::ParenType(ParenType::cast(self.syntax.clone()).unwrap()),
+            TUPLE_TYPE => TypeRefKind::TupleType(TupleType::cast(self.syntax.clone()).unwrap()),
+            NEVER_TYPE => TypeRefKind::NeverType(NeverType::cast(self.syntax.clone()).unwrap()),
+            PATH_TYPE => TypeRefKind::PathType(PathType::cast(self.syntax.clone()).unwrap()),
+            POINTER_TYPE => TypeRefKind::PointerType(PointerType::cast(self.syntax.clone()).unwrap()),
+            ARRAY_TYPE => TypeRefKind::ArrayType(ArrayType::cast(self.syntax.clone()).unwrap()),
+            SLICE_TYPE => TypeRefKind::SliceType(SliceType::cast(self.syntax.clone()).unwrap()),
+            REFERENCE_TYPE => TypeRefKind::ReferenceType(ReferenceType::cast(self.syntax.clone()).unwrap()),
+            PLACEHOLDER_TYPE => TypeRefKind::PlaceholderType(PlaceholderType::cast(self.syntax.clone()).unwrap()),
+            FN_POINTER_TYPE => TypeRefKind::FnPointerType(FnPointerType::cast(self.syntax.clone()).unwrap()),
+            FOR_TYPE => TypeRefKind::ForType(ForType::cast(self.syntax.clone()).unwrap()),
+            IMPL_TRAIT_TYPE => TypeRefKind::ImplTraitType(ImplTraitType::cast(self.syntax.clone()).unwrap()),
+            DYN_TRAIT_TYPE => TypeRefKind::DynTraitType(DynTraitType::cast(self.syntax.clone()).unwrap()),
             _ => unreachable!(),
         }
     }
@@ -4259,232 +3266,169 @@ impl TypeRef {
 impl TypeRef {}
 
 // UseItem
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseItem {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for UseItem {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for UseItem {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            USE_ITEM => Some(UseItem::from_repr(syntax.into_repr())),
+            USE_ITEM => Some(UseItem { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for UseItem {
-    type Owned = TreeArc<UseItem>;
-    fn to_owned(&self) -> TreeArc<UseItem> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::AttrsOwner for UseItem {}
 impl UseItem {
-    pub fn use_tree(&self) -> Option<&UseTree> {
+    pub fn use_tree(&self) -> Option<UseTree> {
         super::child_opt(self)
     }
 }
 
 // UseTree
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTree {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for UseTree {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for UseTree {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            USE_TREE => Some(UseTree::from_repr(syntax.into_repr())),
+            USE_TREE => Some(UseTree { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for UseTree {
-    type Owned = TreeArc<UseTree>;
-    fn to_owned(&self) -> TreeArc<UseTree> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl UseTree {
-    pub fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<Path> {
         super::child_opt(self)
     }
 
-    pub fn use_tree_list(&self) -> Option<&UseTreeList> {
+    pub fn use_tree_list(&self) -> Option<UseTreeList> {
         super::child_opt(self)
     }
 
-    pub fn alias(&self) -> Option<&Alias> {
+    pub fn alias(&self) -> Option<Alias> {
         super::child_opt(self)
     }
 }
 
 // UseTreeList
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTreeList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for UseTreeList {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for UseTreeList {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            USE_TREE_LIST => Some(UseTreeList::from_repr(syntax.into_repr())),
+            USE_TREE_LIST => Some(UseTreeList { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for UseTreeList {
-    type Owned = TreeArc<UseTreeList>;
-    fn to_owned(&self) -> TreeArc<UseTreeList> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl UseTreeList {
-    pub fn use_trees(&self) -> impl Iterator<Item = &UseTree> {
+    pub fn use_trees(&self) -> impl Iterator<Item = UseTree> {
         super::children(self)
     }
 }
 
 // Visibility
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Visibility {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for Visibility {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for Visibility {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            VISIBILITY => Some(Visibility::from_repr(syntax.into_repr())),
+            VISIBILITY => Some(Visibility { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Visibility {
-    type Owned = TreeArc<Visibility>;
-    fn to_owned(&self) -> TreeArc<Visibility> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl Visibility {}
 
 // WhereClause
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhereClause {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for WhereClause {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for WhereClause {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            WHERE_CLAUSE => Some(WhereClause::from_repr(syntax.into_repr())),
+            WHERE_CLAUSE => Some(WhereClause { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for WhereClause {
-    type Owned = TreeArc<WhereClause>;
-    fn to_owned(&self) -> TreeArc<WhereClause> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl WhereClause {
-    pub fn predicates(&self) -> impl Iterator<Item = &WherePred> {
+    pub fn predicates(&self) -> impl Iterator<Item = WherePred> {
         super::children(self)
     }
 }
 
 // WherePred
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePred {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for WherePred {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for WherePred {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            WHERE_PRED => Some(WherePred::from_repr(syntax.into_repr())),
+            WHERE_PRED => Some(WherePred { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for WherePred {
-    type Owned = TreeArc<WherePred>;
-    fn to_owned(&self) -> TreeArc<WherePred> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
 impl ast::TypeBoundsOwner for WherePred {}
 impl WherePred {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
+    pub fn type_ref(&self) -> Option<TypeRef> {
         super::child_opt(self)
     }
 }
 
 // WhileExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhileExpr {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for WhileExpr {
-    type Repr = rowan::SyntaxNode;
-}
 
 impl AstNode for WhileExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
-            WHILE_EXPR => Some(WhileExpr::from_repr(syntax.into_repr())),
+            WHILE_EXPR => Some(WhileExpr { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for WhileExpr {
-    type Owned = TreeArc<WhileExpr>;
-    fn to_owned(&self) -> TreeArc<WhileExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
 
 impl ast::LoopBodyOwner for WhileExpr {}
 impl WhileExpr {
-    pub fn condition(&self) -> Option<&Condition> {
+    pub fn condition(&self) -> Option<Condition> {
         super::child_opt(self)
     }
 }

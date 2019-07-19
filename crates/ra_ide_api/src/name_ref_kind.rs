@@ -26,7 +26,7 @@ pub(crate) fn classify_name_ref(
     // Check if it is a method
     if let Some(method_call) = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast) {
         tested_by!(goto_definition_works_for_methods);
-        if let Some(func) = analyzer.resolve_method_call(method_call) {
+        if let Some(func) = analyzer.resolve_method_call(&method_call) {
             return Some(Method(func));
         }
     }
@@ -40,7 +40,7 @@ pub(crate) fn classify_name_ref(
         .and_then(ast::MacroCall::cast)
     {
         tested_by!(goto_definition_works_for_macros);
-        if let Some(mac) = analyzer.resolve_macro_call(db, macro_call) {
+        if let Some(mac) = analyzer.resolve_macro_call(db, &macro_call) {
             return Some(Macro(mac));
         }
     }
@@ -48,7 +48,7 @@ pub(crate) fn classify_name_ref(
     // It could also be a field access
     if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::FieldExpr::cast) {
         tested_by!(goto_definition_works_for_fields);
-        if let Some(field) = analyzer.resolve_field(field_expr) {
+        if let Some(field) = analyzer.resolve_field(&field_expr) {
             return Some(FieldAccess(field));
         };
     }
@@ -59,7 +59,7 @@ pub(crate) fn classify_name_ref(
 
         let struct_lit = field_expr.syntax().ancestors().find_map(ast::StructLit::cast);
 
-        if let Some(ty) = struct_lit.and_then(|lit| analyzer.type_of(db, lit.into())) {
+        if let Some(ty) = struct_lit.and_then(|lit| analyzer.type_of(db, &lit.into())) {
             if let Some((hir::AdtDef::Struct(s), _)) = ty.as_adt() {
                 let hir_path = hir::Path::from_name_ref(name_ref);
                 let hir_name = hir_path.as_ident().unwrap();
@@ -73,7 +73,7 @@ pub(crate) fn classify_name_ref(
 
     // General case, a path or a local:
     if let Some(path) = name_ref.syntax().ancestors().find_map(ast::Path::cast) {
-        if let Some(resolved) = analyzer.resolve_path(db, path) {
+        if let Some(resolved) = analyzer.resolve_path(db, &path) {
             return match resolved {
                 hir::PathResolution::Def(def) => Some(Def(def)),
                 hir::PathResolution::LocalBinding(Either::A(pat)) => Some(Pat(pat)),

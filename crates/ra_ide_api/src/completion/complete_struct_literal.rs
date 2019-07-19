@@ -4,8 +4,8 @@ use crate::completion::{CompletionContext, Completions};
 
 /// Complete fields in fields literals.
 pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionContext) {
-    let (ty, variant) = match ctx.struct_lit_syntax.and_then(|it| {
-        Some((ctx.analyzer.type_of(ctx.db, it.into())?, ctx.analyzer.resolve_variant(it)?))
+    let (ty, variant) = match ctx.struct_lit_syntax.as_ref().and_then(|it| {
+        Some((ctx.analyzer.type_of(ctx.db, &it.clone().into())?, ctx.analyzer.resolve_variant(it)?))
     }) {
         Some(it) => it,
         _ => return,

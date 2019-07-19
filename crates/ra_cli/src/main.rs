@@ -7,7 +7,7 @@ use clap::{App, Arg, SubCommand};
 use flexi_logger::Logger;
 use ra_ide_api::{file_structure, Analysis};
 use ra_prof::profile;
-use ra_syntax::{AstNode, SourceFile, TreeArc};
+use ra_syntax::{AstNode, SourceFile};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -100,9 +100,9 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn file() -> Result<TreeArc<SourceFile>> {
+fn file() -> Result<SourceFile> {
     let text = read_stdin()?;
-    Ok(SourceFile::parse(&text).tree().to_owned())
+    Ok(SourceFile::parse(&text).tree())
 }
 
 fn read_stdin() -> Result<String> {

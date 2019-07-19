@@ -41,7 +41,7 @@ fn reparse_token<'node>(
     root: &'node SyntaxNode,
     edit: &AtomTextEdit,
 ) -> Option<(GreenNode, TextRange)> {
-    let token = algo::find_covering_element(root, edit.delete).as_token()?;
+    let token = algo::find_covering_element(root, edit.delete).as_token()?.clone();
     match token.kind() {
         WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
             if token.kind() == WHITESPACE || token.kind() == COMMENT {
@@ -51,7 +51,7 @@ fn reparse_token<'node>(
                 }
             }
 
-            let text = get_text_after_edit(token.into(), &edit);
+            let text = get_text_after_edit(token.clone().into(), &edit);
             let lex_tokens = tokenize(&text);
             let lex_token = match lex_tokens[..] {
                 [lex_token] if lex_token.kind == token.kind() => lex_token,
@@ -81,7 +81,7 @@ fn reparse_block<'node>(
     edit: &AtomTextEdit,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
-    let text = get_text_after_edit(node.into(), &edit);
+    let text = get_text_after_edit(node.clone().into(), &edit);
     let tokens = tokenize(&text);
     if !is_balanced(&tokens) {
         return None;
@@ -109,7 +109,7 @@ fn is_contextual_kw(text: &str) -> bool {
     }
 }
 
-fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(&SyntaxNode, Reparser)> {
+fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(SyntaxNode, Reparser)> {
     let node = algo::find_covering_element(node, range);
     let mut ancestors = match node {
         SyntaxElement::Token(it) => it.parent().ancestors(),
@@ -167,8 +167,6 @@ fn merge_errors(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use test_utils::{assert_eq_text, extract_range};
 
     use super::*;
@@ -180,18 +178,18 @@ mod tests {
         let after = edit.apply(before.clone());
 
         let fully_reparsed = SourceFile::parse(&after);
-        let incrementally_reparsed = {
+        let incrementally_reparsed: Parse<SourceFile> = {
             let f = SourceFile::parse(&before);
             let edit = AtomTextEdit { delete: range, insert: replace_with.to_string() };
             let (green, new_errors, range) =
-                incremental_reparse(f.tree.syntax(), &edit, f.errors.to_vec()).unwrap();
+                incremental_reparse(f.tree().syntax(), &edit, f.errors.to_vec()).unwrap();
             assert_eq!(range.len(), reparsed_len.into(), "reparsed fragment has wrong length");
-            Parse { tree: SourceFile::new(green), errors: Arc::new(new_errors) }
+            Parse::new(green, new_errors)
         };
 
         assert_eq_text!(
-            &fully_reparsed.tree.syntax().debug_dump(),
-            &incrementally_reparsed.tree.syntax().debug_dump(),
+            &fully_reparsed.tree().syntax().debug_dump(),
+            &incrementally_reparsed.tree().syntax().debug_dump(),
         );
     }
 

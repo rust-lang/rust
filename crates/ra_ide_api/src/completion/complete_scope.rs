@@ -20,8 +20,8 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
                     let mut builder = TextEditBuilder::default();
                     builder.replace(ctx.source_range(), name.to_string());
                     auto_import::auto_import_text_edit(
-                        ctx.token.parent(),
-                        ctx.token.parent(),
+                        &ctx.token.parent(),
+                        &ctx.token.parent(),
                         &path,
                         &mut builder,
                     );

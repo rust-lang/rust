@@ -16,18 +16,18 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
     if bind_pat.is_mutable() {
         return None;
     }
-    let initializer_expr = let_stmt.initializer();
+    let initializer_expr = let_stmt.initializer()?;
     let delete_range = if let Some(whitespace) = let_stmt
         .syntax()
         .next_sibling_or_token()
-        .and_then(|it| ast::Whitespace::cast(it.as_token()?))
+        .and_then(|it| ast::Whitespace::cast(it.as_token()?.clone()))
     {
         TextRange::from_to(let_stmt.syntax().range().start(), whitespace.syntax().range().end())
     } else {
         let_stmt.syntax().range()
     };
     let analyzer = hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, bind_pat.syntax(), None);
-    let refs = analyzer.find_all_refs(bind_pat);
+    let refs = analyzer.find_all_refs(&bind_pat);
 
     let mut wrap_in_parens = vec![true; refs.len()];
 
@@ -45,7 +45,7 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
             }
         };
 
-        wrap_in_parens[i] = match (initializer_expr?.kind(), usage_parent.kind()) {
+        wrap_in_parens[i] = match (initializer_expr.kind(), usage_parent.kind()) {
             (ExprKind::CallExpr(_), _)
             | (ExprKind::IndexExpr(_), _)
             | (ExprKind::MethodCallExpr(_), _)
@@ -71,7 +71,7 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
         };
     }
 
-    let init_str = initializer_expr?.syntax().text().to_string();
+    let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
 
     ctx.add_action(

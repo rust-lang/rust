@@ -42,7 +42,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
             TokenAtOffset::None => return None,
             TokenAtOffset::Single(l) => {
                 if string_kinds.contains(&l.kind()) {
-                    extend_single_word_in_comment_or_string(l, offset).unwrap_or_else(|| l.range())
+                    extend_single_word_in_comment_or_string(&l, offset).unwrap_or_else(|| l.range())
                 } else {
                     l.range()
                 }
@@ -56,7 +56,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
             if token.range() != range {
                 return Some(token.range());
             }
-            if let Some(comment) = ast::Comment::cast(token) {
+            if let Some(comment) = ast::Comment::cast(token.clone()) {
                 if let Some(range) = extend_comments(comment) {
                     return Some(range);
                 }
@@ -73,7 +73,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
     let node = node.ancestors().take_while(|n| n.range() == node.range()).last().unwrap();
 
     if node.parent().map(|n| list_kinds.contains(&n.kind())) == Some(true) {
-        if let Some(range) = extend_list_item(node) {
+        if let Some(range) = extend_list_item(&node) {
             return Some(range);
         }
     }
@@ -82,7 +82,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
 }
 
 fn extend_single_word_in_comment_or_string(
-    leaf: SyntaxToken,
+    leaf: &SyntaxToken,
     offset: TextUnit,
 ) -> Option<TextRange> {
     let text: &str = leaf.text();
@@ -131,9 +131,9 @@ fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextUnit) -> TextRange 
     ws.range()
 }
 
-fn pick_best<'a>(l: SyntaxToken<'a>, r: SyntaxToken<'a>) -> SyntaxToken<'a> {
-    return if priority(r) > priority(l) { r } else { l };
-    fn priority(n: SyntaxToken) -> usize {
+fn pick_best<'a>(l: SyntaxToken, r: SyntaxToken) -> SyntaxToken {
+    return if priority(&r) > priority(&l) { r } else { l };
+    fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {
             WHITESPACE => 0,
             IDENT | T![self] | T![super] | T![crate] | LIFETIME => 2,
@@ -156,7 +156,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
                 SyntaxElement::Token(it) => is_single_line_ws(it),
             })
             .next()
-            .and_then(|it| it.as_token())
+            .and_then(|it| it.as_token().cloned())
             .filter(|node| node.kind() == T![,])
     }
 
@@ -167,7 +167,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
         // Include any following whitespace when comma if after list item.
         let final_node = comma_node
             .next_sibling_or_token()
-            .and_then(|it| it.as_token())
+            .and_then(|it| it.as_token().cloned())
             .filter(|node| is_single_line_ws(node))
             .unwrap_or(comma_node);
 
@@ -178,8 +178,8 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
 }
 
 fn extend_comments(comment: ast::Comment) -> Option<TextRange> {
-    let prev = adj_comments(comment, Direction::Prev);
-    let next = adj_comments(comment, Direction::Next);
+    let prev = adj_comments(&comment, Direction::Prev);
+    let next = adj_comments(&comment, Direction::Next);
     if prev != next {
         Some(TextRange::from_to(prev.syntax().range().start(), next.syntax().range().end()))
     } else {
@@ -187,14 +187,14 @@ fn extend_comments(comment: ast::Comment) -> Option<TextRange> {
     }
 }
 
-fn adj_comments(comment: ast::Comment, dir: Direction) -> ast::Comment {
-    let mut res = comment;
+fn adj_comments(comment: &ast::Comment, dir: Direction) -> ast::Comment {
+    let mut res = comment.clone();
     for element in comment.syntax().siblings_with_tokens(dir) {
         let token = match element.as_token() {
             None => break,
             Some(token) => token,
         };
-        if let Some(c) = ast::Comment::cast(token) {
+        if let Some(c) = ast::Comment::cast(token.clone()) {
             res = c
         } else if token.kind() != WHITESPACE || token.text().contains("\n\n") {
             break;
