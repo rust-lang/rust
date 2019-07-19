@@ -173,10 +173,6 @@ impl SyntaxNode {
         })
     }
 
-    pub fn memory_size_of_subtree(&self) -> usize {
-        0
-    }
-
     pub fn debug_dump(&self) -> String {
         let mut level = 0;
         let mut buf = String::new();
