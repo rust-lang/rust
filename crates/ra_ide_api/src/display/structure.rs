@@ -162,6 +162,10 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             let mut label = String::new();
             collapse_ws(let_syntax, &mut label);
 
+            if let_statement.ascribed_type().is_some() {
+                return None;
+            }
+
             let pat = match let_statement.pat()?.kind() {
                 PatKind::BindPat(bind_pat) => bind_pat,
                 _ => return None,
