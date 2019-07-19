@@ -6,14 +6,15 @@ use std::{
 use crate::{SmolStr, SyntaxElement, SyntaxNode, TextRange, TextUnit};
 
 #[derive(Clone)]
-pub struct SyntaxText<'a> {
-    node: &'a SyntaxNode,
+pub struct SyntaxText {
+    node: SyntaxNode,
     range: TextRange,
 }
 
-impl<'a> SyntaxText<'a> {
-    pub(crate) fn new(node: &'a SyntaxNode) -> SyntaxText<'a> {
-        SyntaxText { node, range: node.range() }
+impl SyntaxText {
+    pub(crate) fn new(node: SyntaxNode) -> SyntaxText {
+        let range = node.range();
+        SyntaxText { node, range }
     }
 
     pub fn try_fold_chunks<T, F, E>(&self, init: T, mut f: F) -> Result<T, E>
@@ -95,7 +96,7 @@ impl<'a> SyntaxText<'a> {
         self.range.is_empty()
     }
 
-    pub fn slice(&self, range: impl ops::RangeBounds<TextUnit>) -> SyntaxText<'a> {
+    pub fn slice(&self, range: impl ops::RangeBounds<TextUnit>) -> SyntaxText {
         let start = match range.start_bound() {
             Bound::Included(&b) => b,
             Bound::Excluded(_) => panic!("utf-aware slicing can't work this way"),
@@ -123,7 +124,7 @@ impl<'a> SyntaxText<'a> {
             self.range,
             range,
         );
-        SyntaxText { node: self.node, range }
+        SyntaxText { node: self.node.clone(), range }
     }
 
     pub fn char_at(&self, offset: impl Into<TextUnit>) -> Option<char> {
@@ -149,25 +150,25 @@ fn found<T>(res: Result<(), T>) -> Option<T> {
     }
 }
 
-impl<'a> fmt::Debug for SyntaxText<'a> {
+impl fmt::Debug for SyntaxText {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.to_string(), f)
     }
 }
 
-impl<'a> fmt::Display for SyntaxText<'a> {
+impl fmt::Display for SyntaxText {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.to_string(), f)
     }
 }
 
-impl From<SyntaxText<'_>> for String {
+impl From<SyntaxText> for String {
     fn from(text: SyntaxText) -> String {
         text.to_string()
     }
 }
 
-impl PartialEq<str> for SyntaxText<'_> {
+impl PartialEq<str> for SyntaxText {
     fn eq(&self, mut rhs: &str) -> bool {
         self.try_for_each_chunk(|chunk| {
             if !rhs.starts_with(chunk) {
@@ -180,7 +181,7 @@ impl PartialEq<str> for SyntaxText<'_> {
     }
 }
 
-impl PartialEq<&'_ str> for SyntaxText<'_> {
+impl PartialEq<&'_ str> for SyntaxText {
     fn eq(&self, rhs: &&str) -> bool {
         self == *rhs
     }
