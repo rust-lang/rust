@@ -166,15 +166,16 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 return None;
             }
 
-            let pat = match let_statement.pat()?.kind() {
-                PatKind::BindPat(bind_pat) => bind_pat,
+            let pat_range = match let_statement.pat()?.kind() {
+                PatKind::BindPat(bind_pat) => bind_pat.syntax().range(),
+                PatKind::TuplePat(tuple_pat) => tuple_pat.syntax().range(),
                 _ => return None,
             };
 
             Some(StructureNode {
                 parent: None,
                 label,
-                navigation_range: pat.syntax().range(),
+                navigation_range: pat_range,
                 node_range: let_syntax.range(),
                 kind: let_syntax.kind(),
                 detail: None,
