@@ -9,7 +9,7 @@ use ra_db::{
     FileTextQuery, SourceRootId,
 };
 use ra_prof::{memory_usage, Bytes};
-use ra_syntax::{ast, AstNode, Parse, SyntaxNode};
+use ra_syntax::{ast, Parse, SyntaxNode};
 
 use crate::{
     db::RootDatabase,
@@ -70,12 +70,11 @@ impl FromIterator<TableEntry<FileId, Arc<String>>> for FilesStats {
 pub(crate) struct SyntaxTreeStats {
     total: usize,
     pub(crate) retained: usize,
-    retained_size: Bytes,
 }
 
 impl fmt::Display for SyntaxTreeStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} trees, {} ({}) retained", self.total, self.retained, self.retained_size,)
+        write!(fmt, "{} trees, {} retained", self.total, self.retained)
     }
 }
 
@@ -87,10 +86,7 @@ impl FromIterator<TableEntry<FileId, Parse<ast::SourceFile>>> for SyntaxTreeStat
         let mut res = SyntaxTreeStats::default();
         for entry in iter {
             res.total += 1;
-            if let Some(tree) = entry.value.as_ref().map(|it| it.tree()) {
-                res.retained += 1;
-                res.retained_size += tree.syntax().memory_size_of_subtree();
-            }
+            res.retained += entry.value.is_some() as usize;
         }
         res
     }
@@ -104,10 +100,7 @@ impl FromIterator<TableEntry<MacroFile, Option<Parse<SyntaxNode>>>> for SyntaxTr
         let mut res = SyntaxTreeStats::default();
         for entry in iter {
             res.total += 1;
-            if let Some(tree) = entry.value.and_then(|it| it).map(|it| it.syntax_node()) {
-                res.retained += 1;
-                res.retained_size += tree.memory_size_of_subtree();
-            }
+            res.retained += entry.value.is_some() as usize;
         }
         res
     }
