@@ -155,7 +155,7 @@ pub struct CommentIter {
 impl Iterator for CommentIter {
     type Item = ast::Comment;
     fn next(&mut self) -> Option<ast::Comment> {
-        self.iter.by_ref().find_map(|el| el.as_token().cloned().and_then(ast::Comment::cast))
+        self.iter.by_ref().find_map(|el| el.into_token().and_then(ast::Comment::cast))
     }
 }
 

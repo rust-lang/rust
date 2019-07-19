@@ -299,7 +299,7 @@ mod tokens {
             .tree()
             .syntax()
             .descendants_with_tokens()
-            .filter_map(|it| it.as_token().cloned())
+            .filter_map(|it| it.into_token())
             .find(|it| it.kind() == T![,])
             .unwrap()
     }
@@ -309,7 +309,7 @@ mod tokens {
             .tree()
             .syntax()
             .descendants_with_tokens()
-            .filter_map(|it| it.as_token().cloned())
+            .filter_map(|it| it.into_token())
             .find(|it| it.kind() == WHITESPACE && it.text().as_str() == " ")
             .unwrap()
     }
@@ -320,7 +320,7 @@ mod tokens {
             .tree()
             .syntax()
             .descendants_with_tokens()
-            .filter_map(|it| it.as_token().cloned())
+            .filter_map(|it| it.into_token())
             .find(|it| it.kind() == WHITESPACE && it.text().as_str() == "\n")
             .unwrap()
     }
@@ -332,7 +332,7 @@ mod tokens {
             WsBuilder(SourceFile::parse(text).ok().unwrap())
         }
         pub(crate) fn ws(&self) -> SyntaxToken {
-            self.0.syntax().first_child_or_token().unwrap().as_token().cloned().unwrap()
+            self.0.syntax().first_child_or_token().unwrap().into_token().unwrap()
         }
     }
 
