@@ -68,7 +68,7 @@ impl SyntaxNode {
     }
 
     pub fn text(&self) -> SyntaxText {
-        SyntaxText::new(self)
+        SyntaxText::new(self.clone())
     }
 
     pub fn parent(&self) -> Option<SyntaxNode> {

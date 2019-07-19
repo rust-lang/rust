@@ -238,7 +238,7 @@ fn api_walkthrough() {
 
     // You can get node's text as a `SyntaxText` object, which will traverse the
     // tree collecting token's text:
-    let text: SyntaxText<'_> = expr_syntax.text();
+    let text: SyntaxText = expr_syntax.text();
     assert_eq!(text.to_string(), "1 + 1");
 
     // There's a bunch of traversal methods on `SyntaxNode`:
