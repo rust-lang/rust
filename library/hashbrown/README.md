@@ -32,7 +32,7 @@ The original C++ version of SwissTable can be found [here], and this
 
 Compared to `std::collections::HashMap`:
 
-```
+```text
  name               stdhash ns/iter  hashbrown ns/iter  diff ns/iter    diff %  speedup
  find_existing      23,831           2,935                   -20,896   -87.68%   x 8.12
  find_nonexisting   25,326           2,283                   -23,043   -90.99%  x 11.09
@@ -45,7 +45,7 @@ Compared to `std::collections::HashMap`:
 
 Compared to `rustc_hash::FxHashMap` (standard `HashMap` using `FxHash` instead of `SipHash`):
 
-```
+```text
  name               fxhash ns/iter  hashbrown ns/iter  diff ns/iter    diff %  speedup
  find_existing      5,951           2,935                    -3,016   -50.68%   x 2.03
  find_nonexisting   4,637           2,283                    -2,354   -50.77%   x 2.03
@@ -69,7 +69,9 @@ Then:
 
 ```rust
 use hashbrown::HashMap;
+
 let mut map = HashMap::new();
+map.insert(1, "one");
 ```
 
 This crate has the following Cargo features:

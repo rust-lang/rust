@@ -18,7 +18,8 @@
         ptr_offset_from,
         test,
         core_intrinsics,
-        dropck_eyepatch
+        dropck_eyepatch,
+        cfg_doctest,
     )
 )]
 #![warn(missing_docs)]
@@ -34,6 +35,10 @@ extern crate std;
 extern crate alloc;
 #[cfg(not(has_extern_crate_alloc))]
 extern crate std as alloc;
+
+#[cfg(feature = "nightly")]
+#[cfg(doctest)]
+doc_comment::doctest!("../README.md");
 
 #[macro_use]
 mod macros;
