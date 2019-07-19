@@ -40,7 +40,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let item_msg;
         let reason;
         let mut opt_source = None;
-        let access_place_desc = self.describe_place(access_place);
+        let access_place_desc = self.describe_place(access_place.as_place_ref());
         debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
         match the_place_err {
@@ -236,7 +236,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     format!(
                         "mutable borrow occurs due to use of `{}` in closure",
                         // always Some() if the message is printed.
-                        self.describe_place(access_place).unwrap_or_default(),
+                        self.describe_place(access_place.as_place_ref()).unwrap_or_default(),
                     )
                 );
                 borrow_span

@@ -304,7 +304,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             region,
                         );
                     if let Some(region_name) = region_name {
-                        let opt_place_desc = self.describe_place(&borrow.borrowed_place);
+                        let opt_place_desc =
+                            self.describe_place(borrow.borrowed_place.as_place_ref());
                         BorrowExplanation::MustBeValidFor {
                             category,
                             from_closure,

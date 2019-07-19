@@ -121,8 +121,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// End-user visible description of `place` if one can be found. If the
     /// place is a temporary for instance, None will be returned.
-    pub(super) fn describe_place(&self, place: &Place<'tcx>) -> Option<String> {
-        self.describe_place_with_options(place.as_place_ref(), IncludingDowncast(false))
+    pub(super) fn describe_place(&self, place_ref: PlaceRef<'cx, 'tcx>) -> Option<String> {
+        self.describe_place_with_options(place_ref, IncludingDowncast(false))
     }
 
     /// End-user visible description of `place` if one can be found. If the
