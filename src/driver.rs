@@ -63,7 +63,7 @@ fn test_arg_value() {
 struct ClippyCallbacks;
 
 impl rustc_driver::Callbacks for ClippyCallbacks {
-    fn after_parsing(&mut self, compiler: &interface::Compiler) -> bool {
+    fn after_parsing(&mut self, compiler: &interface::Compiler) -> rustc_driver::Compilation {
         let sess = compiler.session();
         let mut registry = rustc_plugin::registry::Registry::new(
             sess,
@@ -107,7 +107,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         sess.plugin_attributes.borrow_mut().extend(attributes);
 
         // Continue execution
-        true
+        rustc_driver::Compilation::Continue
     }
 }
 
