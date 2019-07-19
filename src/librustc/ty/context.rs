@@ -21,7 +21,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{self, Body, interpret, ProjectionKind};
+use crate::mir::{Body, interpret, ProjectionKind};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -1295,40 +1295,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn lang_items(self) -> &'tcx middle::lang_items::LanguageItems {
         self.get_lang_items(LOCAL_CRATE)
-    }
-
-    /// Due to missing llvm support for lowering 128 bit math to software emulation
-    /// (on some targets), the lowering can be done in MIR.
-    ///
-    /// This function only exists until said support is implemented.
-    pub fn is_binop_lang_item(&self, def_id: DefId) -> Option<(mir::BinOp, bool)> {
-        let items = self.lang_items();
-        let def_id = Some(def_id);
-        if items.i128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
-        else if items.u128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
-        else if items.i128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
-        else if items.u128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
-        else if items.i128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
-        else if items.u128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
-        else if items.i128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
-        else if items.u128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
-        else if items.i128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
-        else if items.u128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
-        else if items.i128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
-        else if items.u128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
-        else if items.i128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
-        else if items.u128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
-        else if items.i128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
-        else if items.u128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
-        else if items.i128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
-        else if items.u128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
-        else if items.i128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
-        else if items.u128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
-        else if items.i128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
-        else if items.u128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
-        else if items.i128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
-        else if items.u128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
-        else { None }
     }
 
     pub fn stability(self) -> &'tcx stability::Index<'tcx> {

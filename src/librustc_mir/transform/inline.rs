@@ -232,13 +232,6 @@ impl Inliner<'tcx> {
             return false;
         }
 
-        // Do not inline {u,i}128 lang items, codegen const eval depends
-        // on detecting calls to these lang items and intercepting them
-        if tcx.is_binop_lang_item(callsite.callee).is_some() {
-            debug!("    not inlining 128bit integer lang item");
-            return false;
-        }
-
         let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee);
 
         let hinted = match codegen_fn_attrs.inline {

@@ -1406,10 +1406,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     saturating_float_casts: bool = (false, parse_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
          the max/min integer respectively, and NaN is mapped to 0"),
-    lower_128bit_ops: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "rewrite operators on i128 and u128 into lang item calls (typically provided \
-         by compiler-builtins) so codegen doesn't need to support them,
-         overriding the default for the current target"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
         "generate human-readable, predictable names for codegen units"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
