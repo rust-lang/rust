@@ -531,9 +531,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     elem: ProjectionElem::Deref,
                 }),
             } => {
-                let place = Place {
-                    base: base.clone(),
-                    projection: base_proj.clone(),
+                let place = PlaceRef {
+                    base,
+                    projection: base_proj,
                 };
 
                 // Not projected from the implicit `self` in a closure.
