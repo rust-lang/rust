@@ -39,7 +39,7 @@ use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
 use syntax::source_map::SourceMap;
-use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
+use syntax::ext::hygiene::{ExpnId, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::MacroKind;
@@ -141,7 +141,7 @@ enum ScopeSet {
 #[derive(Clone, Debug)]
 pub struct ParentScope<'a> {
     module: Module<'a>,
-    expansion: Mark,
+    expansion: ExpnId,
     legacy: LegacyScope<'a>,
     derives: Vec<ast::Path>,
 }
@@ -1178,7 +1178,7 @@ pub struct ModuleData<'a> {
     builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
-    unresolved_invocations: RefCell<FxHashSet<Mark>>,
+    unresolved_invocations: RefCell<FxHashSet<ExpnId>>,
 
     no_implicit_prelude: bool,
 
@@ -1196,7 +1196,7 @@ pub struct ModuleData<'a> {
     /// Span of the module itself. Used for error reporting.
     span: Span,
 
-    expansion: Mark,
+    expansion: ExpnId,
 }
 
 type Module<'a> = &'a ModuleData<'a>;
@@ -1205,7 +1205,7 @@ impl<'a> ModuleData<'a> {
     fn new(parent: Option<Module<'a>>,
            kind: ModuleKind,
            normal_ancestor_id: DefId,
-           expansion: Mark,
+           expansion: ExpnId,
            span: Span) -> Self {
         ModuleData {
             parent,
@@ -1304,7 +1304,7 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
     ambiguity: Option<(&'a NameBinding<'a>, AmbiguityKind)>,
-    expansion: Mark,
+    expansion: ExpnId,
     span: Span,
     vis: ty::Visibility,
 }
@@ -1513,7 +1513,7 @@ impl<'a> NameBinding<'a> {
     // in some later round and screw up our previously found resolution.
     // See more detailed explanation in
     // https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
-    fn may_appear_after(&self, invoc_parent_expansion: Mark, binding: &NameBinding<'_>) -> bool {
+    fn may_appear_after(&self, invoc_parent_expansion: ExpnId, binding: &NameBinding<'_>) -> bool {
         // self > max(invoc, binding) => !(self <= invoc || self <= binding)
         // Expansions are partially ordered, so "may appear after" is an inversion of
         // "certainly appears before or simultaneously" and includes unordered cases.
@@ -1686,13 +1686,13 @@ pub struct Resolver<'a> {
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
-    macro_defs: FxHashMap<Mark, DefId>,
+    macro_defs: FxHashMap<ExpnId, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
     unused_macros: NodeMap<Span>,
     proc_macro_stubs: NodeSet,
 
-    /// Maps the `Mark` of an expansion to its containing module or block.
-    invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
+    /// Maps the `ExpnId` of an expansion to its containing module or block.
+    invocations: FxHashMap<ExpnId, &'a InvocationData<'a>>,
 
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
@@ -1918,7 +1918,7 @@ impl<'a> Resolver<'a> {
         );
         let graph_root = arenas.alloc_module(ModuleData {
             no_implicit_prelude: attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
-            ..ModuleData::new(None, root_module_kind, root_def_id, Mark::root(), krate.span)
+            ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
         let mut module_map = FxHashMap::default();
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
@@ -1941,11 +1941,11 @@ impl<'a> Resolver<'a> {
         }
 
         let mut invocations = FxHashMap::default();
-        invocations.insert(Mark::root(),
+        invocations.insert(ExpnId::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
 
         let mut macro_defs = FxHashMap::default();
-        macro_defs.insert(Mark::root(), root_def_id);
+        macro_defs.insert(ExpnId::root(), root_def_id);
 
         let features = session.features_untracked();
         let non_macro_attr =
@@ -2014,7 +2014,7 @@ impl<'a> Resolver<'a> {
             dummy_binding: arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Res(Res::Err, false),
                 ambiguity: None,
-                expansion: Mark::root(),
+                expansion: ExpnId::root(),
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
@@ -2070,7 +2070,7 @@ impl<'a> Resolver<'a> {
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
-            match self.macro_defs.get(&ctxt.outer()) {
+            match self.macro_defs.get(&ctxt.outer_expn()) {
                 Some(&def_id) => return def_id,
                 None => ctxt.remove_mark(),
             };
@@ -2095,10 +2095,10 @@ impl<'a> Resolver<'a> {
         parent: Module<'a>,
         kind: ModuleKind,
         normal_ancestor_id: DefId,
-        expansion: Mark,
+        expn_id: ExpnId,
         span: Span,
     ) -> Module<'a> {
-        let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expansion, span);
+        let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expn_id, span);
         self.arenas.alloc_module(module)
     }
 
@@ -2243,7 +2243,7 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::CrateRoot => match ns {
                     TypeNS => {
-                        ident.span.adjust(Mark::root());
+                        ident.span.adjust(ExpnId::root());
                         Scope::ExternPrelude
                     }
                     ValueNS | MacroNS => break,
@@ -2253,7 +2253,7 @@ impl<'a> Resolver<'a> {
                     match self.hygienic_lexical_parent(module, &mut ident.span) {
                         Some(parent_module) => Scope::Module(parent_module),
                         None => {
-                            ident.span.adjust(Mark::root());
+                            ident.span.adjust(ExpnId::root());
                             match ns {
                                 TypeNS => Scope::ExternPrelude,
                                 ValueNS => Scope::StdLibPrelude,
@@ -2399,7 +2399,7 @@ impl<'a> Resolver<'a> {
         }
 
         if !module.no_implicit_prelude {
-            ident.span.adjust(Mark::root());
+            ident.span.adjust(ExpnId::root());
             if ns == TypeNS {
                 if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
                     return Some(LexicalScopeBinding::Item(binding));
@@ -2407,7 +2407,7 @@ impl<'a> Resolver<'a> {
             }
             if ns == TypeNS && KNOWN_TOOLS.contains(&ident.name) {
                 let binding = (Res::ToolMod, ty::Visibility::Public,
-                               DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
+                               DUMMY_SP, ExpnId::root()).to_name_binding(self.arenas);
                 return Some(LexicalScopeBinding::Item(binding));
             }
             if let Some(prelude) = self.prelude {
@@ -2428,7 +2428,7 @@ impl<'a> Resolver<'a> {
 
     fn hygienic_lexical_parent(&mut self, module: Module<'a>, span: &mut Span)
                                -> Option<Module<'a>> {
-        if !module.expansion.outer_is_descendant_of(span.ctxt()) {
+        if !module.expansion.outer_expn_is_descendant_of(span.ctxt()) {
             return Some(self.macro_def_scope(span.remove_mark()));
         }
 
@@ -2464,7 +2464,7 @@ impl<'a> Resolver<'a> {
             module.expansion.is_descendant_of(parent.expansion) {
                 // The macro is a proc macro derive
                 if module.expansion.looks_like_proc_macro_derive() {
-                    if parent.expansion.outer_is_descendant_of(span.ctxt()) {
+                    if parent.expansion.outer_expn_is_descendant_of(span.ctxt()) {
                         *poisoned = Some(node_id);
                         return module.parent;
                     }
@@ -2506,7 +2506,7 @@ impl<'a> Resolver<'a> {
                 }
             }
             ModuleOrUniformRoot::ExternPrelude => {
-                ident.span.modernize_and_adjust(Mark::root());
+                ident.span.modernize_and_adjust(ExpnId::root());
             }
             ModuleOrUniformRoot::CrateRootAndExternPrelude |
             ModuleOrUniformRoot::CurrentScope => {
@@ -2552,7 +2552,7 @@ impl<'a> Resolver<'a> {
             result
         } else {
             ctxt = ctxt.modern();
-            ctxt.adjust(Mark::root())
+            ctxt.adjust(ExpnId::root())
         };
         let module = match mark {
             Some(def) => self.macro_def_scope(def),
@@ -5063,7 +5063,7 @@ impl<'a> Resolver<'a> {
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(&crate_root);
-                Some((crate_root, ty::Visibility::Public, DUMMY_SP, Mark::root())
+                Some((crate_root, ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                     .to_name_binding(self.arenas))
             }
         })

@@ -2,7 +2,7 @@ use crate::hir::map::definitions::*;
 use crate::hir::def_id::DefIndex;
 
 use syntax::ast::*;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax::visit;
 use syntax::symbol::{kw, sym};
 use syntax::parse::token::{self, Token};
@@ -12,11 +12,11 @@ use syntax_pos::Span;
 pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
     parent_def: DefIndex,
-    expansion: Mark,
+    expansion: ExpnId,
 }
 
 impl<'a> DefCollector<'a> {
-    pub fn new(definitions: &'a mut Definitions, expansion: Mark) -> Self {
+    pub fn new(definitions: &'a mut Definitions, expansion: ExpnId) -> Self {
         let parent_def = definitions.invocation_parent(expansion);
         DefCollector { definitions, parent_def, expansion }
     }
@@ -75,7 +75,7 @@ impl<'a> DefCollector<'a> {
     }
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
-        self.definitions.set_invocation_parent(id.placeholder_to_mark(), self.parent_def);
+        self.definitions.set_invocation_parent(id.placeholder_to_expn_id(), self.parent_def);
     }
 }
 

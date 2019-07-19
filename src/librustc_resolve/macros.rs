@@ -16,7 +16,7 @@ use syntax::attr::{self, StabilityLevel};
 use syntax::ext::base::{self, Indeterminate};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
-use syntax::ext::hygiene::{self, Mark, ExpnInfo, ExpnKind};
+use syntax::ext::hygiene::{self, ExpnId, ExpnInfo, ExpnKind};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
@@ -135,19 +135,19 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.session.next_node_id()
     }
 
-    fn get_module_scope(&mut self, id: ast::NodeId) -> Mark {
-        let span = DUMMY_SP.fresh_expansion(Mark::root(), ExpnInfo::default(
+    fn get_module_scope(&mut self, id: ast::NodeId) -> ExpnId {
+        let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::default(
             ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
         ));
-        let mark = span.ctxt().outer();
+        let expn_id = span.ctxt().outer_expn();
         let module = self.module_map[&self.definitions.local_def_id(id)];
-        self.definitions.set_invocation_parent(mark, module.def_id().unwrap().index);
-        self.invocations.insert(mark, self.arenas.alloc_invocation_data(InvocationData {
+        self.definitions.set_invocation_parent(expn_id, module.def_id().unwrap().index);
+        self.invocations.insert(expn_id, self.arenas.alloc_invocation_data(InvocationData {
             module,
             parent_legacy_scope: LegacyScope::Empty,
             output_legacy_scope: Cell::new(None),
         }));
-        mark
+        expn_id
     }
 
     fn resolve_dollar_crates(&mut self) {
@@ -160,15 +160,15 @@ impl<'a> base::Resolver for Resolver<'a> {
         });
     }
 
-    fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
-                                            derives: &[Mark]) {
-        fragment.visit_with(&mut DefCollector::new(&mut self.definitions, mark));
+    fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment,
+                                            derives: &[ExpnId]) {
+        fragment.visit_with(&mut DefCollector::new(&mut self.definitions, expn_id));
 
-        let invocation = self.invocations[&mark];
+        let invocation = self.invocations[&expn_id];
         self.current_module = invocation.module;
-        self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
+        self.current_module.unresolved_invocations.borrow_mut().remove(&expn_id);
         self.current_module.unresolved_invocations.borrow_mut().extend(derives);
-        let parent_def = self.definitions.invocation_parent(mark);
+        let parent_def = self.definitions.invocation_parent(expn_id);
         for &derive_invoc_id in derives {
             self.definitions.set_invocation_parent(derive_invoc_id, parent_def);
         }
@@ -176,7 +176,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         let mut visitor = BuildReducedGraphVisitor {
             resolver: self,
             current_legacy_scope: invocation.parent_legacy_scope,
-            expansion: mark,
+            expansion: expn_id,
         };
         fragment.visit_with(&mut visitor);
         invocation.output_legacy_scope.set(Some(visitor.current_legacy_scope));
@@ -194,7 +194,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             ambiguity: None,
             span: DUMMY_SP,
             vis: ty::Visibility::Public,
-            expansion: Mark::root(),
+            expansion: ExpnId::root(),
         });
         if self.builtin_macros.insert(ident.name, binding).is_some() {
             self.session.span_err(ident.span,
@@ -206,7 +206,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         ImportResolver { resolver: self }.resolve_imports()
     }
 
-    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
+    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate> {
         let (path, kind, derives_in_scope, after_derive) = match invoc.kind {
             InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
@@ -223,16 +223,16 @@ impl<'a> base::Resolver for Resolver<'a> {
         let (ext, res) = self.smart_resolve_macro_path(path, kind, &parent_scope, force)?;
 
         let span = invoc.span();
-        invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, fast_print_path(path)));
+        invoc.expansion_data.id.set_expn_info(ext.expn_info(span, fast_print_path(path)));
 
         if let Res::Def(_, def_id) = res {
             if after_derive {
                 self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
             }
-            self.macro_defs.insert(invoc.expansion_data.mark, def_id);
+            self.macro_defs.insert(invoc.expansion_data.id, def_id);
             let normal_module_def_id =
-                self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
-            self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
+                self.macro_def_scope(invoc.expansion_data.id).normal_ancestor_id;
+            self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.id,
                                                             normal_module_def_id);
         }
 
@@ -250,10 +250,10 @@ impl<'a> base::Resolver for Resolver<'a> {
 
 impl<'a> Resolver<'a> {
     pub fn dummy_parent_scope(&self) -> ParentScope<'a> {
-        self.invoc_parent_scope(Mark::root(), Vec::new())
+        self.invoc_parent_scope(ExpnId::root(), Vec::new())
     }
 
-    fn invoc_parent_scope(&self, invoc_id: Mark, derives: Vec<ast::Path>) -> ParentScope<'a> {
+    fn invoc_parent_scope(&self, invoc_id: ExpnId, derives: Vec<ast::Path>) -> ParentScope<'a> {
         let invoc = self.invocations[&invoc_id];
         ParentScope {
             module: invoc.module.nearest_item_scope(),
@@ -460,7 +460,7 @@ impl<'a> Resolver<'a> {
                                                       &parent_scope, true, force) {
                             Ok((Some(ext), _)) => if ext.helper_attrs.contains(&ident.name) {
                                 let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                               ty::Visibility::Public, derive.span, Mark::root())
+                                               ty::Visibility::Public, derive.span, ExpnId::root())
                                                .to_name_binding(this.arenas);
                                 result = Ok((binding, Flags::empty()));
                                 break;
@@ -541,7 +541,7 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::BuiltinAttrs => if is_builtin_attr_name(ident.name) {
                     let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
-                                   ty::Visibility::Public, DUMMY_SP, Mark::root())
+                                   ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                                    .to_name_binding(this.arenas);
                     Ok((binding, Flags::PRELUDE))
                 } else {
@@ -550,7 +550,7 @@ impl<'a> Resolver<'a> {
                 Scope::LegacyPluginHelpers => if this.session.plugin_attributes.borrow().iter()
                                                      .any(|(name, _)| ident.name == *name) {
                     let binding = (Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
-                                   ty::Visibility::Public, DUMMY_SP, Mark::root())
+                                   ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                                    .to_name_binding(this.arenas);
                     Ok((binding, Flags::PRELUDE))
                 } else {
@@ -563,7 +563,7 @@ impl<'a> Resolver<'a> {
                     )),
                 }
                 Scope::ToolPrelude => if KNOWN_TOOLS.contains(&ident.name) {
-                    let binding = (Res::ToolMod, ty::Visibility::Public, DUMMY_SP, Mark::root())
+                    let binding = (Res::ToolMod, ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                                    .to_name_binding(this.arenas);
                     Ok((binding, Flags::PRELUDE))
                 } else {
@@ -588,7 +588,7 @@ impl<'a> Resolver<'a> {
                                                  .get(&ident.name).cloned() {
                     Some(prim_ty) => {
                         let binding = (Res::PrimTy(prim_ty), ty::Visibility::Public,
-                                       DUMMY_SP, Mark::root()).to_name_binding(this.arenas);
+                                       DUMMY_SP, ExpnId::root()).to_name_binding(this.arenas);
                         Ok((binding, Flags::PRELUDE))
                     }
                     None => Err(Determinacy::Determined)
@@ -688,7 +688,7 @@ impl<'a> Resolver<'a> {
             // the last segment, so we are certainly working with a single-segment attribute here.)
             assert!(ns == MacroNS);
             let binding = (Res::NonMacroAttr(NonMacroAttrKind::Custom),
-                           ty::Visibility::Public, orig_ident.span, Mark::root())
+                           ty::Visibility::Public, orig_ident.span, ExpnId::root())
                            .to_name_binding(self.arenas);
             Ok(binding)
         } else {
@@ -846,7 +846,7 @@ impl<'a> Resolver<'a> {
 
     pub fn define_macro(&mut self,
                         item: &ast::Item,
-                        expansion: Mark,
+                        expansion: ExpnId,
                         current_legacy_scope: &mut LegacyScope<'a>) {
         let (ext, ident, span, is_legacy) = match &item.node {
             ItemKind::MacroDef(def) => {

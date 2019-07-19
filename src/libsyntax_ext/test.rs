@@ -59,7 +59,7 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    let ctxt = SyntaxContext::empty().apply_mark(cx.current_expansion.mark);
+    let ctxt = SyntaxContext::empty().apply_mark(cx.current_expansion.id);
     let (sp, attr_sp) = (item.span.with_ctxt(ctxt), attr_sp.with_ctxt(ctxt));
 
     // Gensym "test" so we can extern crate without conflicting with any local names

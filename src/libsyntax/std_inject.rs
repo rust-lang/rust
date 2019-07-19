@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::attr;
 use crate::edition::Edition;
-use crate::ext::hygiene::{Mark, MacroKind};
+use crate::ext::hygiene::{ExpnId, MacroKind};
 use crate::symbol::{Ident, Symbol, kw, sym};
 use crate::source_map::{ExpnInfo, ExpnKind, dummy_spanned, respan};
 use crate::ptr::P;
@@ -75,7 +75,7 @@ pub fn maybe_inject_crates_ref(
 
     INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
 
-    let span = DUMMY_SP.fresh_expansion(Mark::root(), ExpnInfo::allow_unstable(
+    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::std_inject), DUMMY_SP, edition,
         [sym::prelude_import][..].into(),
     ));
