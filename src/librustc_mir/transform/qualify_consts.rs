@@ -865,14 +865,9 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 (base, Some(proj)) => {
                     // Catch more errors in the destination. `visit_place` also checks various
                     // projection rules like union field access and raw pointer deref
-                    self.visit_place(
-                        &Place {
-                            base: base.clone(),
-                            projection: dest_projection.clone(),
-                        },
-                        PlaceContext::MutatingUse(MutatingUseContext::Store),
-                        location
-                    );
+                    let context = PlaceContext::MutatingUse(MutatingUseContext::Store);
+                    self.visit_place_base(base, context, location);
+                    self.visit_projection(base, proj, context, location);
                     dest_projection = &proj.base;
                 },
                 (&PlaceBase::Static(box Static {
