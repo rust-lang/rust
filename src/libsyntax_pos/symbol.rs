@@ -604,6 +604,7 @@ symbols! {
         rustc_then_this_would_need,
         rustc_variance,
         rustdoc,
+        rustfmt,
         rust_eh_personality,
         rust_eh_unwind_resume,
         rust_oom,

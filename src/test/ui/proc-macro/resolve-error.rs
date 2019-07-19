@@ -24,11 +24,11 @@ macro_rules! attr_proc_mac {
 struct Foo;
 
 // Interpreted as a feature gated custom attribute
-#[attr_proc_macra] //~ ERROR attribute `attr_proc_macra` is currently unknown
+#[attr_proc_macra] //~ ERROR cannot find attribute macro `attr_proc_macra` in this scope
 struct Bar;
 
 // Interpreted as a feature gated custom attribute
-#[FooWithLongNan] //~ ERROR attribute `FooWithLongNan` is currently unknown
+#[FooWithLongNan] //~ ERROR cannot find attribute macro `FooWithLongNan` in this scope
 struct Asdf;
 
 #[derive(Dlone)]

@@ -26,6 +26,6 @@ fn main() {
     Opaque; //~ ERROR cannot find value `Opaque` in this scope
 
     transparent; // OK
-    semitransparent; //~ ERROR cannot find value `semitransparent` in this scope
-    opaque; //~ ERROR cannot find value `opaque` in this scope
+    semitransparent; //~ ERROR expected value, found macro `semitransparent`
+    opaque; //~ ERROR expected value, found macro `opaque`
 }

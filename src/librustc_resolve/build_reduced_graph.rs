@@ -3,11 +3,11 @@
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
-use crate::macros::{InvocationData, ParentScope, LegacyScope};
+use crate::macros::{InvocationData, LegacyScope};
 use crate::resolve_imports::ImportDirective;
 use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
-use crate::{ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
+use crate::{ModuleOrUniformRoot, ParentScope, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
 use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
 use crate::{resolve_error, resolve_struct_error, ResolutionError, Determinacy};
 

@@ -2,7 +2,7 @@ error: cannot find macro `inline!` in this scope
   --> $DIR/macro-path-prelude-fail-3.rs:2:5
    |
 LL |     inline!();
-   |     ^^^^^^ help: you could try the macro: `line`
+   |     ^^^^^^ help: a macro with a similar name exists: `line`
 
 error: aborting due to previous error
 

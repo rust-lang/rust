@@ -398,4 +398,12 @@ impl<Id> Res<Id> {
             Res::Err => Res::Err,
         }
     }
+
+    pub fn macro_kind(self) -> Option<MacroKind> {
+        match self {
+            Res::Def(DefKind::Macro(kind), _) => Some(kind),
+            Res::NonMacroAttr(..) => Some(MacroKind::Attr),
+            _ => None,
+        }
+    }
 }

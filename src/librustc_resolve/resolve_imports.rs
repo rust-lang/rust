@@ -1,15 +1,15 @@
 use ImportDirectiveSubclass::*;
 
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, Weak};
+use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, ParentScope, Weak};
 use crate::Determinacy::{self, *};
 use crate::Namespace::{self, TypeNS, MacroNS};
 use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use crate::{Resolver, Segment};
 use crate::{names_to_string, module_to_string};
-use crate::{resolve_error, ResolutionError, Suggestion};
+use crate::{resolve_error, ResolutionError};
 use crate::ModuleKind;
-use crate::macros::ParentScope;
+use crate::diagnostics::Suggestion;
 
 use errors::Applicability;
 
