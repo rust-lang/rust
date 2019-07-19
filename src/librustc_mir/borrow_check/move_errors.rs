@@ -283,15 +283,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             while let Some(box Projection { base: Some(ref proj), .. }) = base_static {
                 base_static = &proj.base;
             }
-            let base_static = Place {
-                base: place.base.clone(),
-                projection: base_static.clone(),
+            let base_static = PlaceRef {
+                base: &place.base,
+                projection: base_static,
             };
 
             format!(
                 "`{:?}` as `{:?}` is a static item",
                 self.describe_place(place.as_place_ref()).unwrap(),
-                self.describe_place(base_static.as_place_ref()).unwrap(),
+                self.describe_place(base_static).unwrap(),
             )
         };
 
