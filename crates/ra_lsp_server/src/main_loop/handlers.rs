@@ -9,7 +9,8 @@ use lsp_types::{
     TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
-    AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity,
+    AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, InlayKind, Query,
+    RunnableKind, Severity,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
@@ -685,13 +686,14 @@ pub fn handle_code_lens(
     params: req::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let analysis = world.analysis();
+    let line_index = analysis.file_line_index(file_id);
 
     let mut lenses: Vec<CodeLens> = Default::default();
     let workspace_root = world.workspace_root_for(file_id);
 
     // Gather runnables
-    for runnable in world.analysis().runnables(file_id)? {
+    for runnable in analysis.runnables(file_id)? {
         let title = match &runnable.kind {
             RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => Some("▶️Run Test"),
             RunnableKind::Bench { .. } => Some("Run Bench"),
@@ -726,39 +728,51 @@ pub fn handle_code_lens(
         }
     }
 
-    lenses.extend(world.analysis().file_structure(file_id).into_iter().filter_map(|it| {
-        match it.kind {
-            // Handle impls
-            SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => {
+    // Handle impls
+    lenses.extend(
+        analysis
+            .file_structure(file_id)
+            .into_iter()
+            .filter(|it| match it.kind {
+                SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
+                _ => false,
+            })
+            .map(|it| {
                 let range = it.node_range.conv_with(&line_index);
                 let pos = range.start;
                 let lens_params =
                     req::TextDocumentPositionParams::new(params.text_document.clone(), pos);
-                Some(CodeLens {
+                CodeLens {
                     range,
                     command: None,
                     data: Some(to_value(CodeLensResolveData::Impls(lens_params)).unwrap()),
-                })
-            }
-            // handle let statements
-            SyntaxKind::LET_STMT => world
-                .analysis()
-                .type_of(FileRange { range: it.navigation_range, file_id })
-                .ok()
-                .and_then(std::convert::identity)
-                .filter(|resolved_type| "{unknown}" != resolved_type)
-                .map(|resolved_type| CodeLens {
-                    range: it.node_range.conv_with(&line_index),
-                    command: Some(Command {
-                        title: resolved_type,
-                        command: String::new(),
-                        arguments: None,
-                    }),
-                    data: None,
+                }
+            }),
+    );
+
+    lenses.extend(
+        analysis
+            .inlay_hints(file_id)
+            .into_iter()
+            .filter(|hint| hint.inlay_kind == InlayKind::LetBinding)
+            .filter_map(|inlay_hint| {
+                let resolved_type = analysis
+                    .type_of(FileRange { range: inlay_hint.range, file_id })
+                    .ok()
+                    .and_then(std::convert::identity)
+                    .filter(|resolved_type| "{unknown}" != resolved_type);
+                resolved_type.map(|resolved_type| (resolved_type, inlay_hint.range))
+            })
+            .map(|(resolved_type, range)| CodeLens {
+                range: range.conv_with(&line_index),
+                command: Some(Command {
+                    title: resolved_type,
+                    command: String::new(),
+                    arguments: None,
                 }),
-            _ => None,
-        }
-    }));
+                data: None,
+            }),
+    );
     Ok(Some(lenses))
 }
 

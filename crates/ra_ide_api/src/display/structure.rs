@@ -1,6 +1,5 @@
 use crate::TextRange;
 
-use ra_syntax::ast::PatKind;
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
     ast::{self, AttrsOwner, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
@@ -155,32 +154,6 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 return None;
             }
             decl(mc)
-        })
-        .visit(|let_statement: ast::LetStmt| {
-            let let_syntax = let_statement.syntax();
-
-            let mut label = String::new();
-            collapse_ws(let_syntax, &mut label);
-
-            if let_statement.ascribed_type().is_some() {
-                return None;
-            }
-
-            let pat_range = match let_statement.pat()?.kind() {
-                PatKind::BindPat(bind_pat) => bind_pat.syntax().range(),
-                PatKind::TuplePat(tuple_pat) => tuple_pat.syntax().range(),
-                _ => return None,
-            };
-
-            Some(StructureNode {
-                parent: None,
-                label,
-                navigation_range: pat_range,
-                node_range: let_syntax.range(),
-                kind: let_syntax.kind(),
-                detail: None,
-                deprecated: false,
-            })
         })
         .accept(&node)?
 }
