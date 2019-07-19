@@ -429,30 +429,21 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_init(&mut self, place: PlaceRef<'cx, 'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, place);
 
-        let place = match place.projection {
-            // Check if we are assigning into a field of a union, if so, lookup the place
-            // of the union so it is marked as initialized again.
-            Some(box Projection {
-                base: proj_base,
-                elem: ProjectionElem::Field(_, _),
-            }) => {
-                if let ty::Adt(def, _) =
-                    Place::ty_from(place.base, proj_base, self.builder.body, self.builder.tcx)
-                        .ty
-                        .sty
-                {
-                    if def.is_union() {
-                        PlaceRef { base: place.base, projection: proj_base }
-                    } else {
-                        place
-                    }
-                } else {
-                    place
+        let mut place = place;
+
+        // Check if we are assigning into a field of a union, if so, lookup the place
+        // of the union so it is marked as initialized again.
+        if let Some(box Projection { base: proj_base, elem: ProjectionElem::Field(_, _) }) =
+            place.projection
+        {
+            if let ty::Adt(def, _) =
+                Place::ty_from(place.base, proj_base, self.builder.body, self.builder.tcx).ty.sty
+            {
+                if def.is_union() {
+                    place = PlaceRef { base: place.base, projection: proj_base }
                 }
             }
-
-            _ => place
-        };
+        }
 
         if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(place) {
             let init = self.builder.data.inits.push(Init {
