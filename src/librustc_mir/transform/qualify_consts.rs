@@ -1199,10 +1199,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         MutatingUseContext::Borrow,
                     ),
                 };
-                self.visit_place(&Place {
-                    base: place.base.clone(),
-                    projection: proj.clone(),
-                }, ctx, location);
+                self.visit_place_base(&place.base, ctx, location);
+                if let Some(proj) = proj {
+                    self.visit_projection(&place.base, proj, ctx, location);
+                }
             } else {
                 self.super_rvalue(rvalue, location);
             }
