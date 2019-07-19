@@ -272,9 +272,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             let name = self.upvars[var_index].name.to_string();
                             buf.push_str(&name);
                         } else {
-                            let field_name = self.describe_field(&Place {
-                                base: (*base).clone(),
-                                projection: proj.base.clone(),
+                            let field_name = self.describe_field(PlaceRef {
+                                base: base,
+                                projection: &proj.base,
                             }, field);
                             self.append_place_to_string(
                                 PlaceRef {
@@ -343,31 +343,32 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// End-user visible description of the `field`nth field of `base`
-    fn describe_field(&self, place: &Place<'tcx>, field: Field) -> String {
+    fn describe_field(&self, place: PlaceRef<'cx, 'tcx>, field: Field) -> String {
         // FIXME Place2 Make this work iteratively
         match place {
-            Place {
+            PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: None,
             } => {
                 let local = &self.body.local_decls[*local];
                 self.describe_field_from_ty(&local.ty, field, None)
             }
-            Place {
+            PlaceRef {
                 base: PlaceBase::Static(static_),
                 projection: None,
             } =>
                 self.describe_field_from_ty(&static_.ty, field, None),
-            Place {
+            PlaceRef {
                 base,
                 projection: Some(proj),
             } => match proj.elem {
-                ProjectionElem::Deref => self.describe_field(&Place {
-                    base: base.clone(),
-                    projection: proj.base.clone(),
+                ProjectionElem::Deref => self.describe_field(PlaceRef {
+                    base,
+                    projection: &proj.base,
                 }, field),
                 ProjectionElem::Downcast(_, variant_index) => {
-                    let base_ty = place.ty(self.body, self.infcx.tcx).ty;
+                    let base_ty =
+                        Place::ty_from(place.base, place.projection, self.body, self.infcx.tcx).ty;
                     self.describe_field_from_ty(&base_ty, field, Some(variant_index))
                 }
                 ProjectionElem::Field(_, field_type) => {
@@ -376,9 +377,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
-                    self.describe_field(&Place {
-                        base: base.clone(),
-                        projection: proj.base.clone(),
+                    self.describe_field(PlaceRef {
+                        base,
+                        projection: &proj.base,
                     }, field)
                 }
             },
