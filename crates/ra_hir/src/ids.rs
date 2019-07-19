@@ -362,7 +362,16 @@ impl MacroCallId {
     pub fn debug_dump(self, db: &impl AstDatabase) -> String {
         let loc = self.loc(db);
         let node = loc.ast_id.to_node(db);
-        let syntax_str = node.syntax().text().chunks().collect::<Vec<_>>().join(" ");
+        let syntax_str = {
+            let mut res = String::new();
+            node.syntax().text().for_each_chunk(|chunk| {
+                if !res.is_empty() {
+                    res.push(' ')
+                }
+                res.push_str(chunk)
+            });
+            res
+        };
 
         // dump the file name
         let file_id: HirFileId = self.loc(db).ast_id.file_id();

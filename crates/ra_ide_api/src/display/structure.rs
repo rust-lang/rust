@@ -83,12 +83,12 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 
     fn collapse_ws(node: &SyntaxNode, output: &mut String) {
         let mut can_insert_ws = false;
-        for chunk in node.text().chunks() {
+        node.text().for_each_chunk(|chunk| {
             for line in chunk.lines() {
                 let line = line.trim();
                 if line.is_empty() {
                     if can_insert_ws {
-                        output.push_str(" ");
+                        output.push(' ');
                         can_insert_ws = false;
                     }
                 } else {
@@ -96,7 +96,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                     can_insert_ws = true;
                 }
             }
-        }
+        })
     }
 
     visitor()
