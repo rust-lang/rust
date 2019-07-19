@@ -726,29 +726,39 @@ pub fn handle_code_lens(
         }
     }
 
-    // Handle impls
-    lenses.extend(
-        world
-            .analysis()
-            .file_structure(file_id)
-            .into_iter()
-            .filter(|it| match it.kind {
-                SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
-                _ => false,
-            })
-            .map(|it| {
+    lenses.extend(world.analysis().file_structure(file_id).into_iter().filter_map(|it| {
+        match it.kind {
+            // Handle impls
+            SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => {
                 let range = it.node_range.conv_with(&line_index);
                 let pos = range.start;
                 let lens_params =
                     req::TextDocumentPositionParams::new(params.text_document.clone(), pos);
-                CodeLens {
+                Some(CodeLens {
                     range,
                     command: None,
                     data: Some(to_value(CodeLensResolveData::Impls(lens_params)).unwrap()),
-                }
-            }),
-    );
-
+                })
+            }
+            // handle let statements
+            SyntaxKind::LET_STMT => world
+                .analysis()
+                .type_of(FileRange { range: it.navigation_range, file_id })
+                .ok()
+                .and_then(std::convert::identity)
+                .filter(|resolved_type| "{unknown}" != resolved_type)
+                .map(|resolved_type| CodeLens {
+                    range: it.node_range.conv_with(&line_index),
+                    command: Some(Command {
+                        title: resolved_type,
+                        command: String::new(),
+                        arguments: None,
+                    }),
+                    data: None,
+                }),
+            _ => None,
+        }
+    }));
     Ok(Some(lenses))
 }
 
