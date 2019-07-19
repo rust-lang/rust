@@ -124,9 +124,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     reason = ", as it is immutable for the pattern guard".to_string();
                 } else {
-                    let source = self.borrowed_content_source(&Place {
-                        base: the_place_err.base.clone(),
-                        projection: base.clone(),
+                    let source = self.borrowed_content_source(PlaceRef {
+                        base: the_place_err.base,
+                        projection: base,
                     });
                     let pointer_type = source.describe_for_immutable_place();
                     opt_source = Some(source);

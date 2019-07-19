@@ -481,14 +481,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     pub(super) fn borrowed_content_source(
         &self,
-        deref_base: &Place<'tcx>,
+        deref_base: PlaceRef<'cx, 'tcx>,
     ) -> BorrowedContentSource<'tcx> {
         let tcx = self.infcx.tcx;
 
         // Look up the provided place and work out the move path index for it,
         // we'll use this to check whether it was originally from an overloaded
         // operator.
-        match self.move_data.rev_lookup.find(deref_base.as_place_ref()) {
+        match self.move_data.rev_lookup.find(deref_base) {
             LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => {
                 debug!("borrowed_content_source: mpi={:?}", mpi);
 
@@ -533,7 +533,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // If we didn't find an overloaded deref or index, then assume it's a
         // built in deref and check the type of the base.
-        let base_ty = deref_base.ty(self.body, tcx).ty;
+        let base_ty = Place::ty_from(deref_base.base, deref_base.projection, self.body, tcx).ty;
         if base_ty.is_unsafe_ptr() {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_pointer() {

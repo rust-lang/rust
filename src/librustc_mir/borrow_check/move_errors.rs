@@ -312,18 +312,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .find_map(|p| self.is_upvar_field_projection(p));
 
         let deref_base = match deref_target_place.projection {
-            Some(box Projection { ref base, elem: ProjectionElem::Deref }) => Place {
-                base: deref_target_place.base.clone(),
-                projection: base.clone(),
+            Some(box Projection { ref base, elem: ProjectionElem::Deref }) => PlaceRef {
+                base: &deref_target_place.base,
+                projection: base,
             },
             _ => bug!("deref_target_place is not a deref projection"),
         };
 
-        if let Place {
+        if let PlaceRef {
             base: PlaceBase::Local(local),
             projection: None,
         } = deref_base {
-            let decl = &self.body.local_decls[local];
+            let decl = &self.body.local_decls[*local];
             if decl.is_ref_for_guard() {
                 let mut err = self.cannot_move_out_of(
                     span,
@@ -391,7 +391,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 diag
             }
             _ => {
-                let source = self.borrowed_content_source(&deref_base);
+                let source = self.borrowed_content_source(deref_base);
                 match (
                     self.describe_place(move_place.as_place_ref()),
                     source.describe_for_named_place(),
