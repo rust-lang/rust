@@ -178,3 +178,7 @@ fn issue_2210() {}
 /// This should not cause the lint to trigger:
 /// #REQ-data-family.lint_partof_exists
 fn issue_2343() {}
+
+/// This should not cause an ICE:
+/// __|_ _|__||_|
+fn pulldown_cmark_crash() {}
