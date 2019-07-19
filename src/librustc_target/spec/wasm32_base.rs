@@ -132,6 +132,14 @@ pub fn options() -> TargetOptions {
         // non-relative calls and such later on).
         relocation_model: "static".to_string(),
 
+        // When the atomics feature is activated then these two keys matter,
+        // otherwise they're basically ignored by the standard library. In this
+        // mode, however, the `#[thread_local]` attribute works (i.e.
+        // `has_elf_tls`) and we need to get it to work by specifying
+        // `local-exec` as that's all that's implemented in LLVM today for wasm.
+        has_elf_tls: true,
+        tls_model: "local-exec".to_string(),
+
         .. Default::default()
     }
 }

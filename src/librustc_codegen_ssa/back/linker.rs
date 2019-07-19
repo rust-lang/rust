@@ -904,6 +904,9 @@ impl<'a> WasmLd<'a> {
         //   linker will synthesize this function, and so we need to make sure
         //   that our usage of `--export` below won't accidentally cause this
         //   function to get deleted.
+        //
+        // * `--export=*tls*` - when `#[thread_local]` symbols are used these
+        //   symbols are how the TLS segments are initialized and configured.
         let atomics = sess.opts.cg.target_feature.contains("+atomics") ||
             sess.target.target.options.features.contains("+atomics");
         if atomics {
@@ -912,6 +915,10 @@ impl<'a> WasmLd<'a> {
             cmd.arg("--import-memory");
             cmd.arg("--passive-segments");
             cmd.arg("--export=__wasm_init_memory");
+            cmd.arg("--export=__wasm_init_tls");
+            cmd.arg("--export=__tls_size");
+            cmd.arg("--export=__tls_align");
+            cmd.arg("--export=__tls_base");
         }
         WasmLd { cmd, sess, info }
     }

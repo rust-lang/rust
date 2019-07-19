@@ -37,6 +37,8 @@ pub mod stack_overflow;
 pub mod thread;
 pub mod time;
 pub mod stdio;
+pub mod thread_local;
+pub mod fast_thread_local;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
@@ -48,13 +50,10 @@ cfg_if::cfg_if! {
         pub mod mutex;
         #[path = "rwlock_atomics.rs"]
         pub mod rwlock;
-        #[path = "thread_local_atomics.rs"]
-        pub mod thread_local;
     } else {
         pub mod condvar;
         pub mod mutex;
         pub mod rwlock;
-        pub mod thread_local;
     }
 }
 
