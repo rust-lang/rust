@@ -2850,9 +2850,7 @@ impl<'a> Parser<'a> {
 
         match (self.expr_is_complete(&lhs), AssocOp::from_token(&self.token)) {
             (true, None) => {
-                if last_type_ascription_set {
-                    self.last_type_ascription = None;
-                }
+                self.last_type_ascription = None;
                 // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
                 return Ok(lhs);
             }
@@ -2867,18 +2865,14 @@ impl<'a> Parser<'a> {
             // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
             // `if x { a } else { b } && if y { c } else { d }`
             if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
-                if last_type_ascription_set {
-                    self.last_type_ascription = None;
-                }
+                self.last_type_ascription = None;
                 // These cases are ambiguous and can't be identified in the parser alone
                 let sp = self.sess.source_map().start_point(self.token.span);
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
                 return Ok(lhs);
             }
             (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => {
-                if last_type_ascription_set {
-                    self.last_type_ascription = None;
-                }
+                self.last_type_ascription = None;
                 return Ok(lhs);
             }
             (true, Some(_)) => {

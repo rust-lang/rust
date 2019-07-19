@@ -327,8 +327,8 @@ impl<'a> Parser<'a> {
             self.token.is_keyword(kw::Return) ||
             self.token.is_keyword(kw::While)
         );
-        let cm = self.sess.source_map();
-        match (cm.lookup_line(self.token.span.lo()), cm.lookup_line(sp.lo())) {
+        let sm = self.sess.source_map();
+        match (sm.lookup_line(self.token.span.lo()), sm.lookup_line(sp.lo())) {
             (Ok(ref a), Ok(ref b)) if a.line != b.line && is_semi_suggestable => {
                 // The spans are in different lines, expected `;` and found `let` or `return`.
                 // High likelihood that it is only a missing `;`.
@@ -376,9 +376,9 @@ impl<'a> Parser<'a> {
         maybe_expected_semicolon: bool,
     ) {
         if let Some((sp, likely_path)) = self.last_type_ascription {
-            let cm = self.sess.source_map();
-            let next_pos = cm.lookup_char_pos(self.token.span.lo());
-            let op_pos = cm.lookup_char_pos(sp.hi());
+            let sm = self.sess.source_map();
+            let next_pos = sm.lookup_char_pos(self.token.span.lo());
+            let op_pos = sm.lookup_char_pos(sp.hi());
 
             if likely_path {
                 err.span_suggestion(
@@ -814,8 +814,8 @@ impl<'a> Parser<'a> {
                 return Ok(recovered);
             }
         }
-        let cm = self.sess.source_map();
-        match (cm.lookup_line(prev_sp.lo()), cm.lookup_line(sp.lo())) {
+        let sm = self.sess.source_map();
+        match (sm.lookup_line(prev_sp.lo()), sm.lookup_line(sp.lo())) {
             (Ok(ref a), Ok(ref b)) if a.line == b.line => {
                 // When the spans are in the same line, it means that the only content
                 // between them is whitespace, point only at the found token.
