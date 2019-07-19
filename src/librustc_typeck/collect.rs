@@ -160,6 +160,16 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Utility types and common code for the above passes.
 
+fn bad_placeholder_type(tcx: TyCtxt<'tcx>, span: Span) -> errors::DiagnosticBuilder<'tcx> {
+    let mut diag = tcx.sess.struct_span_err_with_code(
+        span,
+        "the type placeholder `_` is not allowed within types on item signatures",
+        DiagnosticId::Error("E0121".into()),
+    );
+    diag.span_label(span, "not allowed in type signatures");
+    diag
+}
+
 impl ItemCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id }
@@ -191,12 +201,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        self.tcx().sess.struct_span_err_with_code(
-            span,
-            "the type placeholder `_` is not allowed within types on item signatures",
-            DiagnosticId::Error("E0121".into()),
-        ).span_label(span, "not allowed in type signatures")
-         .emit();
+        bad_placeholder_type(self.tcx(), span).emit();
 
         self.tcx().types.err
     }
@@ -207,12 +212,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
-        self.tcx().sess.struct_span_err_with_code(
-            span,
-            "the const placeholder `_` is not allowed within types on item signatures",
-            DiagnosticId::Error("E0121".into()),
-        ).span_label(span, "not allowed in type signatures")
-         .emit();
+        bad_placeholder_type(self.tcx(), span).emit();
 
         self.tcx().consts.err
     }
@@ -1682,6 +1682,15 @@ fn find_existential_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 }
 
+pub fn get_infer_ret_ty(output: &'_ hir::FunctionRetTy) -> Option<&hir::Ty> {
+    if let hir::FunctionRetTy::Return(ref ty) = output {
+        if let hir::TyKind::Infer = ty.node {
+            return Some(&**ty)
+        }
+    }
+    None
+}
+
 fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
     use rustc::hir::*;
     use rustc::hir::Node::*;
@@ -1692,18 +1701,41 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
-            node: TraitItemKind::Method(sig, _),
+            node: TraitItemKind::Method(MethodSig { header, decl }, TraitMethod::Provided(_)),
             ..
         })
         | ImplItem(hir::ImplItem {
-            node: ImplItemKind::Method(sig, _),
+            node: ImplItemKind::Method(MethodSig { header, decl }, _),
             ..
-        }) => AstConv::ty_of_fn(&icx, sig.header.unsafety, sig.header.abi, &sig.decl),
-
-        Item(hir::Item {
+        })
+        | Item(hir::Item {
             node: ItemKind::Fn(decl, header, _, _),
             ..
-        }) => AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl),
+        }) => match get_infer_ret_ty(&decl.output) {
+            Some(ty) => {
+                let fn_sig = tcx.typeck_tables_of(def_id).liberated_fn_sigs()[hir_id];
+                let mut diag = bad_placeholder_type(tcx, ty.span);
+                let ret_ty = fn_sig.output();
+                if ret_ty != tcx.types.err  {
+                    diag.span_suggestion(
+                        ty.span,
+                        "replace `_` with the correct return type",
+                        ret_ty.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                diag.emit();
+                ty::Binder::bind(fn_sig)
+            },
+            None => AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
+        },
+
+        TraitItem(hir::TraitItem {
+            node: TraitItemKind::Method(MethodSig { header, decl }, _),
+            ..
+        }) => {
+            AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
+        },
 
         ForeignItem(&hir::ForeignItem {
             node: ForeignItemKind::Fn(ref fn_decl, _, _),
