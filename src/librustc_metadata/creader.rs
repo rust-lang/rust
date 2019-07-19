@@ -938,14 +938,14 @@ impl<'a> CrateLoader<'a> {
             }
             match global_allocator {
                 Some(Some(other_crate)) => {
-                    self.sess.err(&format!("the #[global_allocator] in {} \
+                    self.sess.err(&format!("the `#[global_allocator]` in {} \
                                             conflicts with this global \
                                             allocator in: {}",
                                            other_crate,
                                            data.root.name));
                 }
                 Some(None) => {
-                    self.sess.err(&format!("the #[global_allocator] in this \
+                    self.sess.err(&format!("the `#[global_allocator]` in this \
                                             crate conflicts with global \
                                             allocator in: {}", data.root.name));
                 }
@@ -971,7 +971,7 @@ impl<'a> CrateLoader<'a> {
         if !has_default {
             self.sess.err("no global memory allocator found but one is \
                            required; link to std or \
-                           add #[global_allocator] to a static item \
+                           add `#[global_allocator]` to a static item \
                            that implements the GlobalAlloc trait.");
         }
         self.sess.allocator_kind.set(Some(AllocatorKind::DefaultLib));

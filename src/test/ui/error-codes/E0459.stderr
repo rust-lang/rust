@@ -1,4 +1,4 @@
-error[E0459]: #[link(...)] specified without `name = "foo"`
+error[E0459]: `#[link(...)]` specified without `name = "foo"`
   --> $DIR/E0459.rs:1:1
    |
 LL | #[link(kind = "dylib")] extern {}
