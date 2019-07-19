@@ -104,7 +104,7 @@ impl FromIterator<TableEntry<MacroFile, Option<Parse<SyntaxNode>>>> for SyntaxTr
         let mut res = SyntaxTreeStats::default();
         for entry in iter {
             res.total += 1;
-            if let Some(tree) = entry.value.and_then(|it| it).map(|it| it.tree().to_owned()) {
+            if let Some(tree) = entry.value.and_then(|it| it).map(|it| it.syntax_node()) {
                 res.retained += 1;
                 res.retained_size += tree.memory_size_of_subtree();
             }

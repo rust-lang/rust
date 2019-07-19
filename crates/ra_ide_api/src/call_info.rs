@@ -11,24 +11,24 @@ use crate::{db::RootDatabase, CallInfo, FilePosition, FunctionSignature};
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
     let parse = db.parse(position.file_id);
-    let syntax = parse.tree().syntax();
+    let syntax = parse.tree().syntax().clone();
 
     // Find the calling expression and it's NameRef
-    let calling_node = FnCallNode::with_node(syntax, position.offset)?;
+    let calling_node = FnCallNode::with_node(&syntax, position.offset)?;
     let name_ref = calling_node.name_ref()?;
 
     let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
-    let function = match calling_node {
+    let function = match &calling_node {
         FnCallNode::CallExpr(expr) => {
             //FIXME: apply subst
-            let (callable_def, _subst) = analyzer.type_of(db, expr.expr()?)?.as_callable()?;
+            let (callable_def, _subst) = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::Function(it) => it,
                 //FIXME: handle other callables
                 _ => return None,
             }
         }
-        FnCallNode::MethodCallExpr(expr) => analyzer.resolve_method_call(expr)?,
+        FnCallNode::MethodCallExpr(expr) => analyzer.resolve_method_call(&expr)?,
     };
 
     let mut call_info = CallInfo::new(db, function);
@@ -73,13 +73,13 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     Some(call_info)
 }
 
-enum FnCallNode<'a> {
-    CallExpr(&'a ast::CallExpr),
-    MethodCallExpr(&'a ast::MethodCallExpr),
+enum FnCallNode {
+    CallExpr(ast::CallExpr),
+    MethodCallExpr(ast::MethodCallExpr),
 }
 
-impl<'a> FnCallNode<'a> {
-    fn with_node(syntax: &'a SyntaxNode, offset: TextUnit) -> Option<FnCallNode<'a>> {
+impl FnCallNode {
+    fn with_node(syntax: &SyntaxNode, offset: TextUnit) -> Option<FnCallNode> {
         if let Some(expr) = find_node_at_offset::<ast::CallExpr>(syntax, offset) {
             return Some(FnCallNode::CallExpr(expr));
         }
@@ -89,8 +89,8 @@ impl<'a> FnCallNode<'a> {
         None
     }
 
-    fn name_ref(&self) -> Option<&'a ast::NameRef> {
-        match *self {
+    fn name_ref(&self) -> Option<ast::NameRef> {
+        match self {
             FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()?.kind() {
                 ast::ExprKind::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
                 _ => return None,
@@ -102,8 +102,8 @@ impl<'a> FnCallNode<'a> {
         }
     }
 
-    fn arg_list(&self) -> Option<&'a ast::ArgList> {
-        match *self {
+    fn arg_list(&self) -> Option<ast::ArgList> {
+        match self {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
         }

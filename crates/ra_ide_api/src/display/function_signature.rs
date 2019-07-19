@@ -38,7 +38,7 @@ impl FunctionSignature {
     pub(crate) fn from_hir(db: &db::RootDatabase, function: hir::Function) -> Self {
         let doc = function.docs(db);
         let ast_node = function.source(db).ast;
-        FunctionSignature::from(&*ast_node).with_doc_opt(doc)
+        FunctionSignature::from(&ast_node).with_doc_opt(doc)
     }
 }
 

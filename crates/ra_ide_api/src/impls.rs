@@ -9,19 +9,19 @@ pub(crate) fn goto_implementation(
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let parse = db.parse(position.file_id);
-    let syntax = parse.tree().syntax();
+    let syntax = parse.tree().syntax().clone();
 
     let module = source_binder::module_from_position(db, position)?;
 
-    if let Some(nominal_def) = find_node_at_offset::<ast::NominalDef>(syntax, position.offset) {
+    if let Some(nominal_def) = find_node_at_offset::<ast::NominalDef>(&syntax, position.offset) {
         return Some(RangeInfo::new(
             nominal_def.syntax().range(),
-            impls_for_def(db, nominal_def, module)?,
+            impls_for_def(db, &nominal_def, module)?,
         ));
-    } else if let Some(trait_def) = find_node_at_offset::<ast::TraitDef>(syntax, position.offset) {
+    } else if let Some(trait_def) = find_node_at_offset::<ast::TraitDef>(&syntax, position.offset) {
         return Some(RangeInfo::new(
             trait_def.syntax().range(),
-            impls_for_trait(db, trait_def, module)?,
+            impls_for_trait(db, &trait_def, module)?,
         ));
     }
 

@@ -11,7 +11,8 @@ use ra_text_edit::TextEditBuilder;
 
 fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
     let edit = {
-        let receiver_range = ctx.dot_receiver.expect("no receiver available").syntax().range();
+        let receiver_range =
+            ctx.dot_receiver.as_ref().expect("no receiver available").syntax().range();
         let delete_range = TextRange::from_to(receiver_range.start(), ctx.source_range().end());
         let mut builder = TextEditBuilder::default();
         builder.replace(delete_range, snippet.to_string());
@@ -38,9 +39,9 @@ fn is_bool_or_unknown(ty: Option<Ty>) -> bool {
 }
 
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
-    if let Some(dot_receiver) = ctx.dot_receiver {
+    if let Some(dot_receiver) = &ctx.dot_receiver {
         let receiver_text = dot_receiver.syntax().text().to_string();
-        let receiver_ty = ctx.analyzer.type_of(ctx.db, dot_receiver);
+        let receiver_ty = ctx.analyzer.type_of(ctx.db, &dot_receiver);
         if is_bool_or_unknown(receiver_ty) {
             postfix_snippet(ctx, "if", "if expr {}", &format!("if {} {{$0}}", receiver_text))
                 .add_to(acc);

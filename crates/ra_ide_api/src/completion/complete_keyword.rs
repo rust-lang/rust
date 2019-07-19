@@ -52,7 +52,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         return;
     }
 
-    let fn_def = match ctx.function_syntax {
+    let fn_def = match &ctx.function_syntax {
         Some(it) => it,
         None => return,
     };
@@ -65,7 +65,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         acc.add(keyword(ctx, "else", "else {$0}"));
         acc.add(keyword(ctx, "else if", "else if $0 {}"));
     }
-    if is_in_loop_body(ctx.token) {
+    if is_in_loop_body(&ctx.token) {
         if ctx.can_be_stmt {
             acc.add(keyword(ctx, "continue", "continue;"));
             acc.add(keyword(ctx, "break", "break;"));
@@ -74,19 +74,19 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
             acc.add(keyword(ctx, "break", "break"));
         }
     }
-    acc.add_all(complete_return(ctx, fn_def, ctx.can_be_stmt));
+    acc.add_all(complete_return(ctx, &fn_def, ctx.can_be_stmt));
 }
 
-fn is_in_loop_body(leaf: SyntaxToken) -> bool {
+fn is_in_loop_body(leaf: &SyntaxToken) -> bool {
     for node in leaf.parent().ancestors() {
         if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
             break;
         }
         let loop_body = visitor()
-            .visit::<ast::ForExpr, _>(LoopBodyOwner::loop_body)
-            .visit::<ast::WhileExpr, _>(LoopBodyOwner::loop_body)
-            .visit::<ast::LoopExpr, _>(LoopBodyOwner::loop_body)
-            .accept(node);
+            .visit::<ast::ForExpr, _>(|it| it.loop_body())
+            .visit::<ast::WhileExpr, _>(|it| it.loop_body())
+            .visit::<ast::LoopExpr, _>(|it| it.loop_body())
+            .accept(&node);
         if let Some(Some(body)) = loop_body {
             if leaf.range().is_subrange(&body.syntax().range()) {
                 return true;

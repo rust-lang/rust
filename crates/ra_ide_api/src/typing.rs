@@ -1,14 +1,15 @@
-use crate::{db::RootDatabase, SourceChange, SourceFileEdit};
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
 use ra_syntax::{
     algo::{find_node_at_offset, find_token_at_offset, TokenAtOffset},
     ast::{self, AstToken},
-    AstNode, SourceFile,
+    AstNode, SmolStr, SourceFile,
     SyntaxKind::*,
     SyntaxToken, TextRange, TextUnit,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
+
+use crate::{db::RootDatabase, SourceChange, SourceFileEdit};
 
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
     let parse = db.parse(position.file_id);
@@ -43,15 +44,15 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
     )
 }
 
-fn node_indent<'a>(file: &'a SourceFile, token: SyntaxToken) -> Option<&'a str> {
+fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
     let ws = match find_token_at_offset(file.syntax(), token.range().start()) {
         TokenAtOffset::Between(l, r) => {
-            assert!(r == token);
+            assert!(r == *token);
             l
         }
         TokenAtOffset::Single(n) => {
-            assert!(n == token);
-            return Some("");
+            assert!(n == *token);
+            return Some("".into());
         }
         TokenAtOffset::None => unreachable!(),
     };
@@ -60,12 +61,12 @@ fn node_indent<'a>(file: &'a SourceFile, token: SyntaxToken) -> Option<&'a str> 
     }
     let text = ws.text();
     let pos = text.rfind('\n').map(|it| it + 1).unwrap_or(0);
-    Some(&text[pos..])
+    Some(text[pos..].into())
 }
 
 pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<TextEdit> {
     assert_eq!(file.syntax().text().char_at(eq_offset), Some('='));
-    let let_stmt: &ast::LetStmt = find_node_at_offset(file.syntax(), eq_offset)?;
+    let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), eq_offset)?;
     if let_stmt.has_semi() {
         return None;
     }
@@ -141,7 +142,7 @@ mod tests {
             edit.insert(offset, "=".to_string());
             let before = edit.finish().apply(&before);
             let parse = SourceFile::parse(&before);
-            if let Some(result) = on_eq_typed(parse.tree(), offset) {
+            if let Some(result) = on_eq_typed(&parse.tree(), offset) {
                 let actual = result.apply(&before);
                 assert_eq_text!(after, &actual);
             } else {

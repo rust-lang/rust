@@ -26,7 +26,7 @@ mod tests {
         fn do_check(before: &str, after: &str) {
             let (pos, before) = extract_offset(before);
             let parse = SourceFile::parse(&before);
-            let new_pos = match matching_brace(parse.tree(), pos) {
+            let new_pos = match matching_brace(&parse.tree(), pos) {
                 None => pos,
                 Some(pos) => pos,
             };

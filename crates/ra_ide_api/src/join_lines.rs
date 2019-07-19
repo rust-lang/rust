@@ -27,7 +27,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
         SyntaxElement::Token(token) => token.parent(),
     };
     let mut edit = TextEditBuilder::default();
-    for token in node.descendants_with_tokens().filter_map(|it| it.as_token()) {
+    for token in node.descendants_with_tokens().filter_map(|it| it.as_token().cloned()) {
         let range = match range.intersection(&token.range()) {
             Some(range) => range,
             None => continue,
@@ -37,7 +37,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
             let pos: TextUnit = (pos as u32).into();
             let off = token.range().start() + range.start() + pos;
             if !edit.invalidates_offset(off) {
-                remove_newline(&mut edit, token, off);
+                remove_newline(&mut edit, &token, off);
             }
         }
     }
@@ -45,7 +45,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     edit.finish()
 }
 
-fn remove_newline(edit: &mut TextEditBuilder, token: SyntaxToken, offset: TextUnit) {
+fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextUnit) {
     if token.kind() != WHITESPACE || token.text().bytes().filter(|&b| b == b'\n').count() != 1 {
         // The node is either the first or the last in the file
         let suff = &token.text()[TextRange::from_to(
@@ -98,9 +98,10 @@ fn remove_newline(edit: &mut TextEditBuilder, token: SyntaxToken, offset: TextUn
             TextRange::from_to(prev.range().start(), token.range().end()),
             space.to_string(),
         );
-    } else if let (Some(_), Some(next)) =
-        (prev.as_token().and_then(ast::Comment::cast), next.as_token().and_then(ast::Comment::cast))
-    {
+    } else if let (Some(_), Some(next)) = (
+        prev.as_token().cloned().and_then(ast::Comment::cast),
+        next.as_token().cloned().and_then(ast::Comment::cast),
+    ) {
         // Removes: newline (incl. surrounding whitespace), start of the next comment
         edit.delete(TextRange::from_to(
             token.range().start(),
@@ -113,16 +114,16 @@ fn remove_newline(edit: &mut TextEditBuilder, token: SyntaxToken, offset: TextUn
 }
 
 fn has_comma_after(node: &SyntaxNode) -> bool {
-    match non_trivia_sibling(node.into(), Direction::Next) {
+    match non_trivia_sibling(node.clone().into(), Direction::Next) {
         Some(n) => n.kind() == T![,],
         _ => false,
     }
 }
 
-fn join_single_expr_block(edit: &mut TextEditBuilder, token: SyntaxToken) -> Option<()> {
+fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {
     let block = ast::Block::cast(token.parent())?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
-    let expr = extract_trivial_expression(block)?;
+    let expr = extract_trivial_expression(&block)?;
 
     let block_range = block_expr.syntax().range();
     let mut buf = expr.syntax().text().to_string();
@@ -139,7 +140,7 @@ fn join_single_expr_block(edit: &mut TextEditBuilder, token: SyntaxToken) -> Opt
     Some(())
 }
 
-fn join_single_use_tree(edit: &mut TextEditBuilder, token: SyntaxToken) -> Option<()> {
+fn join_single_use_tree(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(token.parent())?;
     let (tree,) = use_tree_list.use_trees().collect_tuple()?;
     edit.replace(use_tree_list.syntax().range(), tree.syntax().text().to_string());
@@ -504,7 +505,7 @@ fn foo() {
     fn check_join_lines_sel(before: &str, after: &str) {
         let (sel, before) = extract_range(before);
         let parse = SourceFile::parse(&before);
-        let result = join_lines(parse.tree(), sel);
+        let result = join_lines(&parse.tree(), sel);
         let actual = result.apply(&before);
         assert_eq_text!(after, &actual);
     }

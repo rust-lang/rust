@@ -30,7 +30,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     for element in file.syntax().descendants_with_tokens() {
         // Fold items that span multiple lines
         if let Some(kind) = fold_kind(element.kind()) {
-            let is_multiline = match element {
+            let is_multiline = match &element {
                 SyntaxElement::Node(node) => node.text().contains('\n'),
                 SyntaxElement::Token(token) => token.text().contains('\n'),
             };
@@ -56,7 +56,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
             SyntaxElement::Node(node) => {
                 // Fold groups of imports
                 if node.kind() == USE_ITEM && !visited_imports.contains(&node) {
-                    if let Some(range) = contiguous_range_for_group(node, &mut visited_imports) {
+                    if let Some(range) = contiguous_range_for_group(&node, &mut visited_imports) {
                         res.push(Fold { range, kind: FoldKind::Imports })
                     }
                 }
@@ -65,7 +65,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 if node.kind() == MODULE && !has_visibility(&node) && !visited_mods.contains(&node)
                 {
                     if let Some(range) =
-                        contiguous_range_for_group_unless(node, has_visibility, &mut visited_mods)
+                        contiguous_range_for_group_unless(&node, has_visibility, &mut visited_mods)
                     {
                         res.push(Fold { range, kind: FoldKind::Mods })
                     }
@@ -88,24 +88,24 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
 }
 
 fn has_visibility(node: &SyntaxNode) -> bool {
-    ast::Module::cast(node).and_then(|m| m.visibility()).is_some()
+    ast::Module::cast(node.clone()).and_then(|m| m.visibility()).is_some()
 }
 
-fn contiguous_range_for_group<'a>(
-    first: &'a SyntaxNode,
-    visited: &mut FxHashSet<&'a SyntaxNode>,
+fn contiguous_range_for_group(
+    first: &SyntaxNode,
+    visited: &mut FxHashSet<SyntaxNode>,
 ) -> Option<TextRange> {
     contiguous_range_for_group_unless(first, |_| false, visited)
 }
 
-fn contiguous_range_for_group_unless<'a>(
-    first: &'a SyntaxNode,
-    unless: impl Fn(&'a SyntaxNode) -> bool,
-    visited: &mut FxHashSet<&'a SyntaxNode>,
+fn contiguous_range_for_group_unless(
+    first: &SyntaxNode,
+    unless: impl Fn(&SyntaxNode) -> bool,
+    visited: &mut FxHashSet<SyntaxNode>,
 ) -> Option<TextRange> {
-    visited.insert(first);
+    visited.insert(first.clone());
 
-    let mut last = first;
+    let mut last = first.clone();
     for element in first.siblings_with_tokens(Direction::Next) {
         let node = match element {
             SyntaxElement::Token(token) => {
@@ -123,15 +123,15 @@ fn contiguous_range_for_group_unless<'a>(
         };
 
         // Stop if we find a node that doesn't belong to the group
-        if node.kind() != first.kind() || unless(node) {
+        if node.kind() != first.kind() || unless(&node) {
             break;
         }
 
-        visited.insert(node);
+        visited.insert(node.clone());
         last = node;
     }
 
-    if first != last {
+    if first != &last {
         Some(TextRange::from_to(first.range().start(), last.range().end()))
     } else {
         // The group consists of only one element, therefore it cannot be folded
@@ -139,11 +139,11 @@ fn contiguous_range_for_group_unless<'a>(
     }
 }
 
-fn contiguous_range_for_comment<'a>(
-    first: ast::Comment<'a>,
-    visited: &mut FxHashSet<ast::Comment<'a>>,
+fn contiguous_range_for_comment(
+    first: ast::Comment,
+    visited: &mut FxHashSet<ast::Comment>,
 ) -> Option<TextRange> {
-    visited.insert(first);
+    visited.insert(first.clone());
 
     // Only fold comments of the same flavor
     let group_kind = first.kind();
@@ -151,11 +151,11 @@ fn contiguous_range_for_comment<'a>(
         return None;
     }
 
-    let mut last = first;
+    let mut last = first.clone();
     for element in first.syntax().siblings_with_tokens(Direction::Next) {
         match element {
             SyntaxElement::Token(token) => {
-                if let Some(ws) = ast::Whitespace::cast(token) {
+                if let Some(ws) = ast::Whitespace::cast(token.clone()) {
                     if !ws.spans_multiple_lines() {
                         // Ignore whitespace without blank lines
                         continue;
@@ -163,7 +163,7 @@ fn contiguous_range_for_comment<'a>(
                 }
                 if let Some(c) = ast::Comment::cast(token) {
                     if c.kind() == group_kind {
-                        visited.insert(c);
+                        visited.insert(c.clone());
                         last = c;
                         continue;
                     }
@@ -193,7 +193,7 @@ mod tests {
     fn do_check(text: &str, fold_kinds: &[FoldKind]) {
         let (ranges, text) = extract_ranges(text, "fold");
         let parse = SourceFile::parse(&text);
-        let folds = folding_ranges(parse.tree());
+        let folds = folding_ranges(&parse.tree());
 
         assert_eq!(
             folds.len(),

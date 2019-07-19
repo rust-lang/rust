@@ -35,8 +35,8 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     }));
 
     for node in parse.tree().syntax().descendants() {
-        check_unnecessary_braces_in_use_statement(&mut res, file_id, node);
-        check_struct_shorthand_initialization(&mut res, file_id, node);
+        check_unnecessary_braces_in_use_statement(&mut res, file_id, &node);
+        check_struct_shorthand_initialization(&mut res, file_id, &node);
     }
     let res = RefCell::new(res);
     let mut sink = DiagnosticSink::new(|d| {
@@ -60,7 +60,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     })
     .on::<hir::diagnostics::MissingFields, _>(|d| {
         let node = d.ast(db);
-        let mut ast_editor = AstEditor::new(&*node);
+        let mut ast_editor = AstEditor::new(node);
         for f in d.missed_fields.iter() {
             ast_editor.append_field(&AstBuilder::<NamedField>::from_name(f));
         }
@@ -94,11 +94,11 @@ fn check_unnecessary_braces_in_use_statement(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<()> {
-    let use_tree_list = ast::UseTreeList::cast(node)?;
+    let use_tree_list = ast::UseTreeList::cast(node.clone())?;
     if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
         let range = use_tree_list.syntax().range();
         let edit =
-            text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(single_use_tree)
+            text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(&single_use_tree)
                 .unwrap_or_else(|| {
                     let to_replace = single_use_tree.syntax().text().to_string();
                     let mut edit_builder = TextEditBuilder::default();
@@ -141,7 +141,7 @@ fn check_struct_shorthand_initialization(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<()> {
-    let struct_lit = ast::StructLit::cast(node)?;
+    let struct_lit = ast::StructLit::cast(node.clone())?;
     let named_field_list = struct_lit.named_field_list()?;
     for named_field in named_field_list.fields() {
         if let (Some(name_ref), Some(expr)) = (named_field.name_ref(), named_field.expr()) {
@@ -184,7 +184,7 @@ mod tests {
         let parse = SourceFile::parse(code);
         let mut diagnostics = Vec::new();
         for node in parse.tree().syntax().descendants() {
-            func(&mut diagnostics, FileId(0), node);
+            func(&mut diagnostics, FileId(0), &node);
         }
         assert!(diagnostics.is_empty());
     }
@@ -193,7 +193,7 @@ mod tests {
         let parse = SourceFile::parse(before);
         let mut diagnostics = Vec::new();
         for node in parse.tree().syntax().descendants() {
-            func(&mut diagnostics, FileId(0), node);
+            func(&mut diagnostics, FileId(0), &node);
         }
         let diagnostic =
             diagnostics.pop().unwrap_or_else(|| panic!("no diagnostics for:\n{}\n", before));

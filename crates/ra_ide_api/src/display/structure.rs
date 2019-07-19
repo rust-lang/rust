@@ -24,14 +24,14 @@ pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
     for event in file.syntax().preorder() {
         match event {
             WalkEvent::Enter(node) => {
-                if let Some(mut symbol) = structure_node(node) {
+                if let Some(mut symbol) = structure_node(&node) {
                     symbol.parent = stack.last().copied();
                     stack.push(res.len());
                     res.push(symbol);
                 }
             }
             WalkEvent::Leave(node) => {
-                if structure_node(node).is_some() {
+                if structure_node(&node).is_some() {
                     stack.pop().unwrap();
                 }
             }
@@ -41,19 +41,20 @@ pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
 }
 
 fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
-    fn decl<N: NameOwner + AttrsOwner>(node: &N) -> Option<StructureNode> {
+    fn decl<N: NameOwner + AttrsOwner>(node: N) -> Option<StructureNode> {
         decl_with_detail(node, None)
     }
 
     fn decl_with_ascription<N: NameOwner + AttrsOwner + TypeAscriptionOwner>(
-        node: &N,
+        node: N,
     ) -> Option<StructureNode> {
-        decl_with_type_ref(node, node.ascribed_type())
+        let ty = node.ascribed_type();
+        decl_with_type_ref(node, ty)
     }
 
     fn decl_with_type_ref<N: NameOwner + AttrsOwner>(
-        node: &N,
-        type_ref: Option<&ast::TypeRef>,
+        node: N,
+        type_ref: Option<ast::TypeRef>,
     ) -> Option<StructureNode> {
         let detail = type_ref.map(|type_ref| {
             let mut detail = String::new();
@@ -64,7 +65,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
     }
 
     fn decl_with_detail<N: NameOwner + AttrsOwner>(
-        node: &N,
+        node: N,
         detail: Option<String>,
     ) -> Option<StructureNode> {
         let name = node.name()?;
@@ -82,22 +83,24 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 
     fn collapse_ws(node: &SyntaxNode, output: &mut String) {
         let mut can_insert_ws = false;
-        for line in node.text().chunks().flat_map(|chunk| chunk.lines()) {
-            let line = line.trim();
-            if line.is_empty() {
-                if can_insert_ws {
-                    output.push_str(" ");
-                    can_insert_ws = false;
+        for chunk in node.text().chunks() {
+            for line in chunk.lines() {
+                let line = line.trim();
+                if line.is_empty() {
+                    if can_insert_ws {
+                        output.push_str(" ");
+                        can_insert_ws = false;
+                    }
+                } else {
+                    output.push_str(line);
+                    can_insert_ws = true;
                 }
-            } else {
-                output.push_str(line);
-                can_insert_ws = true;
             }
         }
     }
 
     visitor()
-        .visit(|fn_def: &ast::FnDef| {
+        .visit(|fn_def: ast::FnDef| {
             let mut detail = String::from("fn");
             if let Some(type_param_list) = fn_def.type_param_list() {
                 collapse_ws(type_param_list.syntax(), &mut detail);
@@ -117,11 +120,14 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
         .visit(decl::<ast::EnumVariant>)
         .visit(decl::<ast::TraitDef>)
         .visit(decl::<ast::Module>)
-        .visit(|td: &ast::TypeAliasDef| decl_with_type_ref(td, td.type_ref()))
+        .visit(|td: ast::TypeAliasDef| {
+            let ty = td.type_ref();
+            decl_with_type_ref(td, ty)
+        })
         .visit(decl_with_ascription::<ast::NamedFieldDef>)
         .visit(decl_with_ascription::<ast::ConstDef>)
         .visit(decl_with_ascription::<ast::StaticDef>)
-        .visit(|im: &ast::ImplBlock| {
+        .visit(|im: ast::ImplBlock| {
             let target_type = im.target_type()?;
             let target_trait = im.target_trait();
             let label = match target_trait {
@@ -142,14 +148,14 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             };
             Some(node)
         })
-        .visit(|mc: &ast::MacroCall| {
+        .visit(|mc: ast::MacroCall| {
             let first_token = mc.syntax().first_token().unwrap();
             if first_token.text().as_str() != "macro_rules" {
                 return None;
             }
             decl(mc)
         })
-        .accept(node)?
+        .accept(&node)?
 }
 
 #[cfg(test)]

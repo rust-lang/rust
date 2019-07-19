@@ -6,7 +6,7 @@ use ra_syntax::{
         visit::{visitor, Visitor},
     },
     ast::{self, DocCommentsOwner},
-    AstNode, TreeArc,
+    AstNode,
 };
 
 use crate::{
@@ -104,7 +104,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
         let mut no_fallback = false;
 
-        match classify_name_ref(db, &analyzer, name_ref) {
+        match classify_name_ref(db, &analyzer, &name_ref) {
             Some(Method(it)) => res.extend(from_def_source(db, it)),
             Some(Macro(it)) => {
                 let src = it.source(db);
@@ -163,7 +163,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
         if res.is_empty() && !no_fallback {
             // Fallback index based approach:
-            let symbols = crate::symbol_index::index_resolve(db, name_ref);
+            let symbols = crate::symbol_index::index_resolve(db, &name_ref);
             for sym in symbols {
                 let docs = docs_from_symbol(db, &sym);
                 let desc = description_from_symbol(db, &sym);
@@ -177,34 +177,32 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     } else if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
         if let Some(parent) = name.syntax().parent() {
             let text = visitor()
-                .visit(|node: &ast::StructDef| {
+                .visit(|node: ast::StructDef| {
                     hover_text(node.doc_comment_text(), node.short_label())
                 })
-                .visit(|node: &ast::EnumDef| {
+                .visit(|node: ast::EnumDef| hover_text(node.doc_comment_text(), node.short_label()))
+                .visit(|node: ast::EnumVariant| {
                     hover_text(node.doc_comment_text(), node.short_label())
                 })
-                .visit(|node: &ast::EnumVariant| {
+                .visit(|node: ast::FnDef| hover_text(node.doc_comment_text(), node.short_label()))
+                .visit(|node: ast::TypeAliasDef| {
                     hover_text(node.doc_comment_text(), node.short_label())
                 })
-                .visit(|node: &ast::FnDef| hover_text(node.doc_comment_text(), node.short_label()))
-                .visit(|node: &ast::TypeAliasDef| {
+                .visit(|node: ast::ConstDef| {
                     hover_text(node.doc_comment_text(), node.short_label())
                 })
-                .visit(|node: &ast::ConstDef| {
+                .visit(|node: ast::StaticDef| {
                     hover_text(node.doc_comment_text(), node.short_label())
                 })
-                .visit(|node: &ast::StaticDef| {
+                .visit(|node: ast::TraitDef| {
                     hover_text(node.doc_comment_text(), node.short_label())
                 })
-                .visit(|node: &ast::TraitDef| {
+                .visit(|node: ast::NamedFieldDef| {
                     hover_text(node.doc_comment_text(), node.short_label())
                 })
-                .visit(|node: &ast::NamedFieldDef| {
-                    hover_text(node.doc_comment_text(), node.short_label())
-                })
-                .visit(|node: &ast::Module| hover_text(node.doc_comment_text(), node.short_label()))
-                .visit(|node: &ast::MacroCall| hover_text(node.doc_comment_text(), None))
-                .accept(parent);
+                .visit(|node: ast::Module| hover_text(node.doc_comment_text(), node.short_label()))
+                .visit(|node: ast::MacroCall| hover_text(node.doc_comment_text(), None))
+                .accept(&parent);
 
             if let Some(text) = text {
                 res.extend(text);
@@ -217,8 +215,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     }
 
     if range.is_none() {
-        let node = ancestors_at_offset(file.syntax(), position.offset)
-            .find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())?;
+        let node = ancestors_at_offset(file.syntax(), position.offset).find(|n| {
+            ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some()
+        })?;
         let frange = FileRange { file_id: position.file_id, range: node.range() };
         res.extend(type_of(db, frange).map(rust_code_markup));
         range = Some(node.range());
@@ -233,7 +232,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
     fn from_def_source<A, D>(db: &RootDatabase, def: D) -> Option<String>
     where
-        D: HasSource<Ast = TreeArc<A>>,
+        D: HasSource<Ast = A>,
         A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
     {
         let src = def.source(db);
@@ -243,17 +242,17 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     let parse = db.parse(frange.file_id);
-    let syntax = parse.tree().syntax();
-    let leaf_node = find_covering_element(syntax, frange.range);
+    let leaf_node = find_covering_element(parse.tree().syntax(), frange.range);
     // if we picked identifier, expand to pattern/expression
     let node = leaf_node
         .ancestors()
         .take_while(|it| it.range() == leaf_node.range())
-        .find(|&it| ast::Expr::cast(it).is_some() || ast::Pat::cast(it).is_some())?;
-    let analyzer = hir::SourceAnalyzer::new(db, frange.file_id, node, None);
-    let ty = if let Some(ty) = ast::Expr::cast(node).and_then(|e| analyzer.type_of(db, e)) {
+        .find(|it| ast::Expr::cast(it.clone()).is_some() || ast::Pat::cast(it.clone()).is_some())?;
+    let analyzer = hir::SourceAnalyzer::new(db, frange.file_id, &node, None);
+    let ty = if let Some(ty) = ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))
+    {
         ty
-    } else if let Some(ty) = ast::Pat::cast(node).and_then(|p| analyzer.type_of_pat(db, p)) {
+    } else if let Some(ty) = ast::Pat::cast(node).and_then(|p| analyzer.type_of_pat(db, &p)) {
         ty
     } else {
         return None;
