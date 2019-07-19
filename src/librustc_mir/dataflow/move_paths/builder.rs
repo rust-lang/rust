@@ -274,9 +274,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     // move-path for the interior so it will be separate from
                     // the exterior.
                     self.create_move_path(&place.clone().deref());
-                    self.gather_init(place, InitKind::Shallow);
+                    self.gather_init(place.as_place_ref(), InitKind::Shallow);
                 } else {
-                    self.gather_init(place, InitKind::Deep);
+                    self.gather_init(place.as_place_ref(), InitKind::Deep);
                 }
                 self.gather_rvalue(rval);
             }
@@ -286,7 +286,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::InlineAsm(ref asm) => {
                 for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
                     if !kind.is_indirect {
-                        self.gather_init(output, InitKind::Deep);
+                        self.gather_init(output.as_place_ref(), InitKind::Deep);
                     }
                 }
                 for (_, input) in asm.inputs.iter() {
@@ -376,7 +376,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 self.create_move_path(location);
                 self.gather_operand(value);
-                self.gather_init(location, InitKind::Deep);
+                self.gather_init(location.as_place_ref(), InitKind::Deep);
             }
             TerminatorKind::Call {
                 ref func,
@@ -391,7 +391,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 }
                 if let Some((ref destination, _bb)) = *destination {
                     self.create_move_path(destination);
-                    self.gather_init(destination, InitKind::NonPanicPathOnly);
+                    self.gather_init(destination.as_place_ref(), InitKind::NonPanicPathOnly);
                 }
             }
         }
@@ -426,35 +426,35 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         self.builder.data.loc_map[self.loc].push(move_out);
     }
 
-    fn gather_init(&mut self, place: &Place<'tcx>, kind: InitKind) {
+    fn gather_init(&mut self, place: PlaceRef<'cx, 'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, place);
 
         let place = match place.projection {
             // Check if we are assigning into a field of a union, if so, lookup the place
             // of the union so it is marked as initialized again.
             Some(box Projection {
-                base: ref proj_base,
+                base: proj_base,
                 elem: ProjectionElem::Field(_, _),
             }) => {
                 if let ty::Adt(def, _) =
-                    Place::ty_from(&place.base, proj_base, self.builder.body, self.builder.tcx)
+                    Place::ty_from(place.base, proj_base, self.builder.body, self.builder.tcx)
                         .ty
                         .sty
                 {
                     if def.is_union() {
-                        Place { base: place.base.clone(), projection: proj_base.clone() }
+                        PlaceRef { base: place.base, projection: proj_base }
                     } else {
-                        place.clone()
+                        place
                     }
                 } else {
-                    place.clone()
+                    place
                 }
             }
 
-            _ => place.clone()
+            _ => place
         };
 
-        if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(place.as_place_ref()) {
+        if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(place) {
             let init = self.builder.data.inits.push(Init {
                 location: InitLocation::Statement(self.loc),
                 path,
