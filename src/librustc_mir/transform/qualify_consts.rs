@@ -877,14 +877,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 (&PlaceBase::Static(box Static{ kind: _, .. }), None) => {
                     // Catch more errors in the destination. `visit_place` also checks that we
                     // do not try to access statics from constants or try to mutate statics
-                    self.visit_place(
-                        &Place {
-                            base: dest.base.clone(),
-                            projection: dest_projection.clone(),
-                        },
-                        PlaceContext::MutatingUse(MutatingUseContext::Store),
-                        location
-                    );
+                    let context = PlaceContext::MutatingUse(MutatingUseContext::Store);
+                    self.visit_place_base(&dest.base, context, location);
                     return;
                 }
             }
