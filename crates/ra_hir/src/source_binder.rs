@@ -309,15 +309,11 @@ impl SourceAnalyzer {
             crate::Resolution::LocalBinding(it) => {
                 // We get a `PatId` from resolver, but it actually can only
                 // point at `BindPat`, and not at the arbitrary pattern.
-                let pat_ptr = self.body_source_map.as_ref()?.pat_syntax(it)?;
-                let pat_ptr = match pat_ptr {
-                    Either::A(pat) => {
-                        let pat: AstPtr<ast::BindPat> =
-                            pat.cast_checking_kind(|kind| kind == BIND_PAT).unwrap();
-                        Either::A(pat)
-                    }
-                    Either::B(self_param) => Either::B(self_param),
-                };
+                let pat_ptr = self
+                    .body_source_map
+                    .as_ref()?
+                    .pat_syntax(it)?
+                    .map_a(|ptr| ptr.cast::<ast::BindPat>().unwrap());
                 PathResolution::LocalBinding(pat_ptr)
             }
             crate::Resolution::GenericParam(it) => PathResolution::GenericParam(it),
