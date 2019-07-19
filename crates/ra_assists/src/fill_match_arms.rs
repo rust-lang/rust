@@ -27,7 +27,7 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
         let mut arm_iter = arm_list.arms();
         let first = arm_iter.next();
 
-        match first {
+        match &first {
             // If there arm list is empty or there is only one trivial arm, then proceed.
             Some(arm) if is_trivial_arm(arm) => {
                 if arm_iter.next() != None {
@@ -44,7 +44,7 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
 
     let expr = match_expr.expr()?;
     let analyzer = hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, expr.syntax(), None);
-    let match_expr_ty = analyzer.type_of(ctx.db, expr)?;
+    let match_expr_ty = analyzer.type_of(ctx.db, &expr)?;
     let enum_def = analyzer.autoderef(ctx.db, match_expr_ty).find_map(|ty| match ty.as_adt() {
         Some((AdtDef::Enum(e), _)) => Some(e),
         _ => None,

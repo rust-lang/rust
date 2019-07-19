@@ -18,9 +18,9 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
 
     ctx.add_action(AssistId("move_guard_to_arm_body"), "move guard to arm body", |edit| {
         edit.target(guard.syntax().range());
-        let offseting_amount = match space_before_guard {
+        let offseting_amount = match &space_before_guard {
             Some(SyntaxElement::Token(tok)) => {
-                if let Some(_) = ast::Whitespace::cast(tok) {
+                if let Some(_) = ast::Whitespace::cast(tok.clone()) {
                     let ele = space_before_guard.unwrap().range();
                     edit.delete(ele);
                     ele.len()
@@ -39,11 +39,11 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
 }
 
 pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let match_arm: &MatchArm = ctx.node_at_offset::<MatchArm>()?;
+    let match_arm: MatchArm = ctx.node_at_offset::<MatchArm>()?;
     let last_match_pat = match_arm.pats().last()?;
 
     let arm_body = match_arm.expr()?;
-    let if_expr: &IfExpr = IfExpr::cast(arm_body.syntax())?;
+    let if_expr: IfExpr = IfExpr::cast(arm_body.syntax().clone())?;
     let cond = if_expr.condition()?;
     let then_block = if_expr.then_branch()?;
 
@@ -65,7 +65,7 @@ pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>)
             edit.target(if_expr.syntax().range());
             let then_only_expr = then_block.statements().next().is_none();
 
-            match then_block.expr() {
+            match &then_block.expr() {
                 Some(then_expr) if then_only_expr => {
                     edit.replace(if_expr.syntax().range(), then_expr.syntax().text())
                 }

@@ -8,7 +8,7 @@ use ra_syntax::{
 pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let macro_call = ctx.node_at_offset::<ast::MacroCall>()?;
 
-    if !is_valid_macrocall(macro_call, "dbg")? {
+    if !is_valid_macrocall(&macro_call, "dbg")? {
         return None;
     }
 
@@ -35,7 +35,7 @@ pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
     };
 
     let macro_content = {
-        let macro_args = macro_call.token_tree()?.syntax();
+        let macro_args = macro_call.token_tree()?.syntax().clone();
         let range = macro_args.range();
         let start = range.start() + TextUnit::of_char('(');
         let end = range.end() - TextUnit::of_char(')');
@@ -65,7 +65,7 @@ fn is_valid_macrocall(macro_call: &ast::MacroCall, macro_name: &str) -> Option<b
         return None;
     }
 
-    let node = macro_call.token_tree()?.syntax();
+    let node = macro_call.token_tree()?.syntax().clone();
     let first_child = node.first_child_or_token()?;
     let last_child = node.last_child_or_token()?;
 

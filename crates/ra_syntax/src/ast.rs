@@ -25,7 +25,7 @@ pub use self::{
 /// conversion itself has zero runtime cost: ast and syntax nodes have exactly
 /// the same representation: a pointer to the tree root and a pointer to the
 /// node itself.
-pub trait AstNode {
+pub trait AstNode: Clone {
     fn cast(syntax: SyntaxNode) -> Option<Self>
     where
         Self: Sized;
