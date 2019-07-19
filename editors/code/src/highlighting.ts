@@ -28,12 +28,14 @@ export class Highlighter {
         string,
         vscode.TextEditorDecorationType
     > {
-        const colorContrib = (
-            tag: string
+        const decoration = (
+            tag: string,
+            textDecoration?: string
         ): [string, vscode.TextEditorDecorationType] => {
             const color = new vscode.ThemeColor('ralsp.' + tag);
             const decor = vscode.window.createTextEditorDecorationType({
-                color
+                color,
+                textDecoration
             });
             return [tag, decor];
         };
@@ -41,24 +43,24 @@ export class Highlighter {
         const decorations: Iterable<
             [string, vscode.TextEditorDecorationType]
         > = [
-            colorContrib('comment'),
-            colorContrib('string'),
-            colorContrib('keyword'),
-            colorContrib('keyword.control'),
-            colorContrib('keyword.unsafe'),
-            colorContrib('function'),
-            colorContrib('parameter'),
-            colorContrib('constant'),
-            colorContrib('type'),
-            colorContrib('builtin'),
-            colorContrib('text'),
-            colorContrib('attribute'),
-            colorContrib('literal'),
-            colorContrib('macro'),
-            colorContrib('variable'),
-            colorContrib('variable.mut'),
-            colorContrib('field'),
-            colorContrib('module')
+            decoration('comment'),
+            decoration('string'),
+            decoration('keyword'),
+            decoration('keyword.control'),
+            decoration('keyword.unsafe'),
+            decoration('function'),
+            decoration('parameter'),
+            decoration('constant'),
+            decoration('type'),
+            decoration('builtin'),
+            decoration('text'),
+            decoration('attribute'),
+            decoration('literal'),
+            decoration('macro'),
+            decoration('variable'),
+            decoration('variable.mut', 'underline'),
+            decoration('field'),
+            decoration('module')
         ];
 
         return new Map<string, vscode.TextEditorDecorationType>(decorations);
@@ -92,7 +94,10 @@ export class Highlighter {
         }
 
         const byTag: Map<string, vscode.Range[]> = new Map();
-        const colorfulIdents: Map<string, vscode.Range[]> = new Map();
+        const colorfulIdents: Map<
+            string,
+            [vscode.Range[], boolean]
+        > = new Map();
         const rainbowTime = Server.config.rainbowHighlightingOn;
 
         for (const tag of this.decorations.keys()) {
@@ -106,10 +111,11 @@ export class Highlighter {
 
             if (rainbowTime && d.bindingHash) {
                 if (!colorfulIdents.has(d.bindingHash)) {
-                    colorfulIdents.set(d.bindingHash, []);
+                    const mut = d.tag.endsWith('.mut');
+                    colorfulIdents.set(d.bindingHash, [[], mut]);
                 }
                 colorfulIdents
-                    .get(d.bindingHash)!
+                    .get(d.bindingHash)![0]
                     .push(
                         Server.client.protocol2CodeConverter.asRange(d.range)
                     );
@@ -130,10 +136,11 @@ export class Highlighter {
             editor.setDecorations(dec, ranges);
         }
 
-        for (const [hash, ranges] of colorfulIdents.entries()) {
+        for (const [hash, [ranges, mut]] of colorfulIdents.entries()) {
+            const textDecoration = mut ? 'underline' : undefined;
             const dec = vscode.window.createTextEditorDecorationType({
-                light: { color: fancify(hash, 'light') },
-                dark: { color: fancify(hash, 'dark') }
+                light: { color: fancify(hash, 'light'), textDecoration },
+                dark: { color: fancify(hash, 'dark'), textDecoration }
             });
             editor.setDecorations(dec, ranges);
         }

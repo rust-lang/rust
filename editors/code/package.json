@@ -436,9 +436,9 @@
                 "id": "ralsp.variable.mut",
                 "description": "Color for mutable variables",
                 "defaults": {
-                    "dark": "#4e65c9",
-                    "light": "#263199",
-                    "highContrast": "#4e65c9"
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
                 }
             },
             {
