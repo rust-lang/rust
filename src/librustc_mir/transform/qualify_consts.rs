@@ -185,9 +185,9 @@ trait Qualif {
         base: &PlaceBase<'tcx>,
         proj: &Projection<'tcx>,
     ) -> bool {
-        let base_qualif = Self::in_place(cx, &Place {
-            base: base.clone(),
-            projection: proj.base.clone(),
+        let base_qualif = Self::in_place(cx, PlaceRef {
+            base,
+            projection: &proj.base,
         });
         let qualif = base_qualif && Self::mask_for_ty(
             cx,
@@ -214,36 +214,36 @@ trait Qualif {
         Self::in_projection_structurally(cx, base, proj)
     }
 
-    fn in_place(cx: &ConstCx<'_, 'tcx>, place: &Place<'tcx>) -> bool {
-        match *place {
-            Place {
+    fn in_place(cx: &ConstCx<'_, 'tcx>, place: PlaceRef<'_, 'tcx>) -> bool {
+        match place {
+            PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: None,
-            } => Self::in_local(cx, local),
-            Place {
+            } => Self::in_local(cx, *local),
+            PlaceRef {
                 base: PlaceBase::Static(box Static {
                     kind: StaticKind::Promoted(_),
                     ..
                 }),
                 projection: None,
             } => bug!("qualifying already promoted MIR"),
-            Place {
-                base: PlaceBase::Static(ref static_),
+            PlaceRef {
+                base: PlaceBase::Static(static_),
                 projection: None,
             } => {
                 Self::in_static(cx, static_)
             },
-            Place {
-                ref base,
-                projection: Some(ref proj),
-            } => Self::in_projection(cx, &base, proj),
+            PlaceRef {
+                base,
+                projection: Some(proj),
+            } => Self::in_projection(cx, base, proj),
         }
     }
 
     fn in_operand(cx: &ConstCx<'_, 'tcx>, operand: &Operand<'tcx>) -> bool {
         match *operand {
             Operand::Copy(ref place) |
-            Operand::Move(ref place) => Self::in_place(cx, place),
+            Operand::Move(ref place) => Self::in_place(cx, place.as_place_ref()),
 
             Operand::Constant(ref constant) => {
                 if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
@@ -272,7 +272,7 @@ trait Qualif {
             Rvalue::NullaryOp(..) => false,
 
             Rvalue::Discriminant(ref place) |
-            Rvalue::Len(ref place) => Self::in_place(cx, place),
+            Rvalue::Len(ref place) => Self::in_place(cx, place.as_place_ref()),
 
             Rvalue::Use(ref operand) |
             Rvalue::Repeat(ref operand, _) |
@@ -290,15 +290,15 @@ trait Qualif {
                     if let ProjectionElem::Deref = proj.elem {
                         let base_ty = Place::ty_from(&place.base, &proj.base, cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.sty {
-                            return Self::in_place(cx, &Place {
-                                base: place.base.clone(),
-                                projection: proj.base.clone(),
+                            return Self::in_place(cx, PlaceRef {
+                                base: &place.base,
+                                projection: &proj.base,
                             });
                         }
                     }
                 }
 
-                Self::in_place(cx, place)
+                Self::in_place(cx, place.as_place_ref())
             }
 
             Rvalue::Aggregate(_, ref operands) => {
