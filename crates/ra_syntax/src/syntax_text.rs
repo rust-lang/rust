@@ -95,18 +95,21 @@ impl<'a> SyntaxText<'a> {
         self.range.is_empty()
     }
 
-    /// NB, the offsets here are absolute, and this probably doesn't make sense!
     pub fn slice(&self, range: impl ops::RangeBounds<TextUnit>) -> SyntaxText<'a> {
         let start = match range.start_bound() {
-            Bound::Included(b) => *b,
-            Bound::Excluded(b) => *b + TextUnit::from(1u32),
-            Bound::Unbounded => self.range.start(),
+            Bound::Included(&b) => b,
+            Bound::Excluded(_) => panic!("utf-aware slicing can't work this way"),
+            Bound::Unbounded => 0.into(),
         };
         let end = match range.end_bound() {
-            Bound::Included(b) => *b + TextUnit::from(1u32),
-            Bound::Excluded(b) => *b,
-            Bound::Unbounded => self.range.end(),
+            Bound::Included(_) => panic!("utf-aware slicing can't work this way"),
+            Bound::Excluded(&b) => b,
+            Bound::Unbounded => self.len(),
         };
+        assert!(start <= end);
+        let len = end - start;
+        let start = self.range.start() + start;
+        let end = start + len;
         assert!(
             start <= end,
             "invalid slice, range: {:?}, slice: {:?}",

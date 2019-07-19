@@ -36,11 +36,10 @@ pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
 
     let macro_content = {
         let macro_args = macro_call.token_tree()?.syntax().clone();
-        let range = macro_args.range();
-        let start = range.start() + TextUnit::of_char('(');
-        let end = range.end() - TextUnit::of_char(')');
 
-        macro_args.text().slice(start..end).to_string()
+        let text = macro_args.text();
+        let without_parens = TextUnit::of_char('(')..text.len() - TextUnit::of_char(')');
+        text.slice(without_parens).to_string()
     };
 
     ctx.add_action(AssistId("remove_dbg"), "remove dbg!()", |edit| {
