@@ -297,7 +297,6 @@ fn to_green_element(element: SyntaxElement) -> rowan::GreenElement {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxToken(pub(crate) rowan::cursor::SyntaxToken);
 
-//FIXME: always output text
 impl fmt::Debug for SyntaxToken {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}@{:?}", self.kind(), self.range())?;

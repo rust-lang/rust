@@ -16,26 +16,48 @@ impl<'a> SyntaxText<'a> {
         SyntaxText { node, range: node.range() }
     }
 
-    pub fn chunks(&self) -> impl Iterator<Item = SmolStr> {
-        let range = self.range;
-        self.node.descendants_with_tokens().filter_map(move |el| match el {
-            SyntaxElement::Token(t) => {
-                let text = t.text();
-                let range = range.intersection(&t.range())?;
-                let res = if range == t.range() {
-                    t.text().clone()
-                } else {
-                    let range = range - t.range().start();
-                    text[range].into()
-                };
-                Some(res)
-            }
-            SyntaxElement::Node(_) => None,
+    pub fn try_fold_chunks<T, F, E>(&self, init: T, mut f: F) -> Result<T, E>
+    where
+        F: FnMut(T, &str) -> Result<T, E>,
+    {
+        self.node.descendants_with_tokens().try_fold(init, move |acc, element| {
+            let res = match element {
+                SyntaxElement::Token(token) => {
+                    let range = match self.range.intersection(&token.range()) {
+                        None => return Ok(acc),
+                        Some(it) => it,
+                    };
+                    let slice = if range == token.range() {
+                        token.text()
+                    } else {
+                        let range = range - token.range().start();
+                        &token.text()[range]
+                    };
+                    f(acc, slice)?
+                }
+                SyntaxElement::Node(_) => acc,
+            };
+            Ok(res)
         })
     }
 
+    pub fn try_for_each_chunk<F: FnMut(&str) -> Result<(), E>, E>(
+        &self,
+        mut f: F,
+    ) -> Result<(), E> {
+        self.try_fold_chunks((), move |(), chunk| f(chunk))
+    }
+
+    pub fn for_each_chunk<F: FnMut(&str)>(&self, mut f: F) {
+        enum Void {}
+        match self.try_for_each_chunk(|chunk| Ok::<(), Void>(f(chunk))) {
+            Ok(()) => (),
+            Err(void) => match void {},
+        }
+    }
+
     pub fn push_to(&self, buf: &mut String) {
-        self.chunks().for_each(|it| buf.push_str(it.as_str()));
+        self.for_each_chunk(|chunk| buf.push_str(chunk))
     }
 
     pub fn to_string(&self) -> String {
@@ -49,19 +71,20 @@ impl<'a> SyntaxText<'a> {
     }
 
     pub fn contains(&self, c: char) -> bool {
-        self.chunks().any(|it| it.contains(c))
+        self.try_for_each_chunk(|chunk| if chunk.contains(c) { Err(()) } else { Ok(()) }).is_err()
     }
 
     pub fn find(&self, c: char) -> Option<TextUnit> {
         let mut acc: TextUnit = 0.into();
-        for chunk in self.chunks() {
+        let res = self.try_for_each_chunk(|chunk| {
             if let Some(pos) = chunk.find(c) {
                 let pos: TextUnit = (pos as u32).into();
-                return Some(acc + pos);
+                return Err(acc + pos);
             }
-            acc += TextUnit::of_str(chunk.as_str());
-        }
-        None
+            acc += TextUnit::of_str(chunk);
+            Ok(())
+        });
+        found(res)
     }
 
     pub fn len(&self) -> TextUnit {
@@ -101,17 +124,25 @@ impl<'a> SyntaxText<'a> {
     }
 
     pub fn char_at(&self, offset: impl Into<TextUnit>) -> Option<char> {
-        let mut start: TextUnit = 0.into();
         let offset = offset.into();
-        for chunk in self.chunks() {
-            let end = start + TextUnit::of_str(chunk.as_str());
+        let mut start: TextUnit = 0.into();
+        let res = self.try_for_each_chunk(|chunk| {
+            let end = start + TextUnit::of_str(chunk);
             if start <= offset && offset < end {
                 let off: usize = u32::from(offset - start) as usize;
-                return Some(chunk[off..].chars().next().unwrap());
+                return Err(chunk[off..].chars().next().unwrap());
             }
             start = end;
-        }
-        None
+            Ok(())
+        });
+        found(res)
+    }
+}
+
+fn found<T>(res: Result<(), T>) -> Option<T> {
+    match res {
+        Ok(()) => None,
+        Err(it) => Some(it),
     }
 }
 
@@ -135,13 +166,14 @@ impl From<SyntaxText<'_>> for String {
 
 impl PartialEq<str> for SyntaxText<'_> {
     fn eq(&self, mut rhs: &str) -> bool {
-        for chunk in self.chunks() {
-            if !rhs.starts_with(chunk.as_str()) {
-                return false;
+        self.try_for_each_chunk(|chunk| {
+            if !rhs.starts_with(chunk) {
+                return Err(());
             }
             rhs = &rhs[chunk.len()..];
-        }
-        rhs.is_empty()
+            Ok(())
+        })
+        .is_ok()
     }
 }
 
