@@ -423,7 +423,21 @@ impl SyntaxElement {
         }
     }
 
+    pub fn into_node(self) -> Option<SyntaxNode> {
+        match self {
+            SyntaxElement::Node(node) => Some(node),
+            SyntaxElement::Token(_) => None,
+        }
+    }
+
     pub fn as_token(&self) -> Option<&SyntaxToken> {
+        match self {
+            SyntaxElement::Node(_) => None,
+            SyntaxElement::Token(token) => Some(token),
+        }
+    }
+
+    pub fn into_token(self) -> Option<SyntaxToken> {
         match self {
             SyntaxElement::Node(_) => None,
             SyntaxElement::Token(token) => Some(token),

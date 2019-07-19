@@ -237,8 +237,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     let mut buf = String::new();
     buf.push_str(&STYLE);
     buf.push_str("<pre><code>");
-    let tokens =
-        parse.tree().syntax().descendants_with_tokens().filter_map(|it| it.as_token().cloned());
+    let tokens = parse.tree().syntax().descendants_with_tokens().filter_map(|it| it.into_token());
     for token in tokens {
         could_intersect.retain(|it| token.range().start() <= it.range.end());
         while let Some(r) = ranges.get(frontier) {

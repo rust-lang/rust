@@ -60,7 +60,7 @@ impl ast::PrefixExpr {
     }
 
     pub fn op_token(&self) -> Option<SyntaxToken> {
-        self.syntax().first_child_or_token()?.as_token().cloned()
+        self.syntax().first_child_or_token()?.into_token()
     }
 }
 
@@ -132,41 +132,41 @@ pub enum BinOp {
 
 impl ast::BinExpr {
     fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
-        self.syntax().children_with_tokens().filter_map(|it| it.as_token().cloned()).find_map(|c| {
-            match c.kind() {
-                T![||] => Some((c, BinOp::BooleanOr)),
-                T![&&] => Some((c, BinOp::BooleanAnd)),
-                T![==] => Some((c, BinOp::EqualityTest)),
-                T![!=] => Some((c, BinOp::NegatedEqualityTest)),
-                T![<=] => Some((c, BinOp::LesserEqualTest)),
-                T![>=] => Some((c, BinOp::GreaterEqualTest)),
-                T![<] => Some((c, BinOp::LesserTest)),
-                T![>] => Some((c, BinOp::GreaterTest)),
-                T![+] => Some((c, BinOp::Addition)),
-                T![*] => Some((c, BinOp::Multiplication)),
-                T![-] => Some((c, BinOp::Subtraction)),
-                T![/] => Some((c, BinOp::Division)),
-                T![%] => Some((c, BinOp::Remainder)),
-                T![<<] => Some((c, BinOp::LeftShift)),
-                T![>>] => Some((c, BinOp::RightShift)),
-                T![^] => Some((c, BinOp::BitwiseXor)),
-                T![|] => Some((c, BinOp::BitwiseOr)),
-                T![&] => Some((c, BinOp::BitwiseAnd)),
-                T![..] => Some((c, BinOp::RangeRightOpen)),
-                T![..=] => Some((c, BinOp::RangeRightClosed)),
-                T![=] => Some((c, BinOp::Assignment)),
-                T![+=] => Some((c, BinOp::AddAssign)),
-                T![/=] => Some((c, BinOp::DivAssign)),
-                T![*=] => Some((c, BinOp::MulAssign)),
-                T![%=] => Some((c, BinOp::RemAssign)),
-                T![>>=] => Some((c, BinOp::ShrAssign)),
-                T![<<=] => Some((c, BinOp::ShlAssign)),
-                T![-=] => Some((c, BinOp::SubAssign)),
-                T![|=] => Some((c, BinOp::BitOrAssign)),
-                T![&=] => Some((c, BinOp::BitAndAssign)),
-                T![^=] => Some((c, BinOp::BitXorAssign)),
-                _ => None,
-            }
+        self.syntax().children_with_tokens().filter_map(|it| it.into_token()).find_map(|c| match c
+            .kind()
+        {
+            T![||] => Some((c, BinOp::BooleanOr)),
+            T![&&] => Some((c, BinOp::BooleanAnd)),
+            T![==] => Some((c, BinOp::EqualityTest)),
+            T![!=] => Some((c, BinOp::NegatedEqualityTest)),
+            T![<=] => Some((c, BinOp::LesserEqualTest)),
+            T![>=] => Some((c, BinOp::GreaterEqualTest)),
+            T![<] => Some((c, BinOp::LesserTest)),
+            T![>] => Some((c, BinOp::GreaterTest)),
+            T![+] => Some((c, BinOp::Addition)),
+            T![*] => Some((c, BinOp::Multiplication)),
+            T![-] => Some((c, BinOp::Subtraction)),
+            T![/] => Some((c, BinOp::Division)),
+            T![%] => Some((c, BinOp::Remainder)),
+            T![<<] => Some((c, BinOp::LeftShift)),
+            T![>>] => Some((c, BinOp::RightShift)),
+            T![^] => Some((c, BinOp::BitwiseXor)),
+            T![|] => Some((c, BinOp::BitwiseOr)),
+            T![&] => Some((c, BinOp::BitwiseAnd)),
+            T![..] => Some((c, BinOp::RangeRightOpen)),
+            T![..=] => Some((c, BinOp::RangeRightClosed)),
+            T![=] => Some((c, BinOp::Assignment)),
+            T![+=] => Some((c, BinOp::AddAssign)),
+            T![/=] => Some((c, BinOp::DivAssign)),
+            T![*=] => Some((c, BinOp::MulAssign)),
+            T![%=] => Some((c, BinOp::RemAssign)),
+            T![>>=] => Some((c, BinOp::ShrAssign)),
+            T![<<=] => Some((c, BinOp::ShlAssign)),
+            T![-=] => Some((c, BinOp::SubAssign)),
+            T![|=] => Some((c, BinOp::BitOrAssign)),
+            T![&=] => Some((c, BinOp::BitAndAssign)),
+            T![^=] => Some((c, BinOp::BitXorAssign)),
+            _ => None,
         })
     }
 

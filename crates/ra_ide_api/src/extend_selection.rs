@@ -156,7 +156,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
                 SyntaxElement::Token(it) => is_single_line_ws(it),
             })
             .next()
-            .and_then(|it| it.as_token().cloned())
+            .and_then(|it| it.into_token())
             .filter(|node| node.kind() == T![,])
     }
 
@@ -167,7 +167,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
         // Include any following whitespace when comma if after list item.
         let final_node = comma_node
             .next_sibling_or_token()
-            .and_then(|it| it.as_token().cloned())
+            .and_then(|it| it.into_token())
             .filter(|node| is_single_line_ws(node))
             .unwrap_or(comma_node);
 

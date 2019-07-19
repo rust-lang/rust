@@ -239,7 +239,7 @@ impl ast::FnDef {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .last_child_or_token()
-            .and_then(|it| it.as_token().cloned())
+            .and_then(|it| it.into_token())
             .filter(|it| it.kind() == T![;])
     }
 }
@@ -332,7 +332,7 @@ impl ast::SelfParam {
     pub fn self_kw_token(&self) -> SyntaxToken {
         self.syntax()
             .children_with_tokens()
-            .filter_map(|it| it.as_token().cloned())
+            .filter_map(|it| it.into_token())
             .find(|it| it.kind() == T![self])
             .expect("invalid tree: self param must have self")
     }
@@ -361,7 +361,7 @@ impl ast::LifetimeParam {
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
-            .filter_map(|it| it.as_token().cloned())
+            .filter_map(|it| it.into_token())
             .find(|it| it.kind() == LIFETIME)
     }
 }
@@ -370,7 +370,7 @@ impl ast::WherePred {
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
-            .filter_map(|it| it.as_token().cloned())
+            .filter_map(|it| it.into_token())
             .find(|it| it.kind() == LIFETIME)
     }
 }

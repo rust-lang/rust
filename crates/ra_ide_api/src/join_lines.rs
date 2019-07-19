@@ -27,7 +27,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
         SyntaxElement::Token(token) => token.parent(),
     };
     let mut edit = TextEditBuilder::default();
-    for token in node.descendants_with_tokens().filter_map(|it| it.as_token().cloned()) {
+    for token in node.descendants_with_tokens().filter_map(|it| it.into_token()) {
         let range = match range.intersection(&token.range()) {
             Some(range) => range,
             None => continue,
