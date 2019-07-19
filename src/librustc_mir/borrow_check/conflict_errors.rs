@@ -730,7 +730,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }, borrow_span));
 
         if let StorageDeadOrDrop::Destructor(dropped_ty) =
-            self.classify_drop_access_kind(&borrow.borrowed_place)
+            self.classify_drop_access_kind(borrow.borrowed_place.as_place_ref())
         {
             // If a borrow of path `B` conflicts with drop of `D` (and
             // we're not in the uninteresting case where `B` is a
@@ -1505,16 +1505,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err.buffer(&mut self.errors_buffer);
     }
 
-    fn classify_drop_access_kind(&self, place: &Place<'tcx>) -> StorageDeadOrDrop<'tcx> {
+    fn classify_drop_access_kind(&self, place: PlaceRef<'cx, 'tcx>) -> StorageDeadOrDrop<'tcx> {
         let tcx = self.infcx.tcx;
         match place.projection {
             None => {
                 StorageDeadOrDrop::LocalStorageDead
             }
             Some(box Projection { ref base, ref elem }) => {
-                let base_access = self.classify_drop_access_kind(&Place {
-                    base: place.base.clone(),
-                    projection: base.clone(),
+                let base_access = self.classify_drop_access_kind(PlaceRef {
+                    base: place.base,
+                    projection: base,
                 });
                 match elem {
                     ProjectionElem::Deref => match base_access {
