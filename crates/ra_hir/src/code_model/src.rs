@@ -1,4 +1,4 @@
-use ra_syntax::{ast, TreeArc};
+use ra_syntax::ast;
 
 use crate::{
     ids::AstItemDef, AstDatabase, Const, DefDatabase, Enum, EnumVariant, FieldSource, Function,
@@ -34,7 +34,7 @@ impl Module {
     pub fn declaration_source(
         self,
         db: &(impl DefDatabase + AstDatabase),
-    ) -> Option<Source<TreeArc<ast::Module>>> {
+    ) -> Option<Source<ast::Module>> {
         let def_map = db.crate_def_map(self.krate);
         let decl = def_map[self.module_id].declaration?;
         let ast = decl.to_node(db);
@@ -49,62 +49,62 @@ impl HasSource for StructField {
     }
 }
 impl HasSource for Struct {
-    type Ast = TreeArc<ast::StructDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
+    type Ast = ast::StructDef;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::StructDef> {
         self.id.source(db)
     }
 }
 impl HasSource for Union {
-    type Ast = TreeArc<ast::StructDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
+    type Ast = ast::StructDef;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::StructDef> {
         self.id.source(db)
     }
 }
 impl HasSource for Enum {
-    type Ast = TreeArc<ast::EnumDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::EnumDef>> {
+    type Ast = ast::EnumDef;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::EnumDef> {
         self.id.source(db)
     }
 }
 impl HasSource for EnumVariant {
-    type Ast = TreeArc<ast::EnumVariant>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::EnumVariant>> {
+    type Ast = ast::EnumVariant;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::EnumVariant> {
         self.source_impl(db)
     }
 }
 impl HasSource for Function {
-    type Ast = TreeArc<ast::FnDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::FnDef>> {
+    type Ast = ast::FnDef;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::FnDef> {
         self.id.source(db)
     }
 }
 impl HasSource for Const {
-    type Ast = TreeArc<ast::ConstDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ConstDef>> {
+    type Ast = ast::ConstDef;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::ConstDef> {
         self.id.source(db)
     }
 }
 impl HasSource for Static {
-    type Ast = TreeArc<ast::StaticDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StaticDef>> {
+    type Ast = ast::StaticDef;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::StaticDef> {
         self.id.source(db)
     }
 }
 impl HasSource for Trait {
-    type Ast = TreeArc<ast::TraitDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::TraitDef>> {
+    type Ast = ast::TraitDef;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::TraitDef> {
         self.id.source(db)
     }
 }
 impl HasSource for TypeAlias {
-    type Ast = TreeArc<ast::TypeAliasDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::TypeAliasDef>> {
+    type Ast = ast::TypeAliasDef;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::TypeAliasDef> {
         self.id.source(db)
     }
 }
 impl HasSource for MacroDef {
-    type Ast = TreeArc<ast::MacroCall>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::MacroCall>> {
+    type Ast = ast::MacroCall;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::MacroCall> {
         Source { file_id: self.id.0.file_id(), ast: self.id.0.to_node(db) }
     }
 }

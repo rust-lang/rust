@@ -71,21 +71,21 @@ pub(crate) fn documentation_query(
     def: DocDef,
 ) -> Option<Documentation> {
     match def {
-        DocDef::Module(it) => docs_from_ast(&*it.declaration_source(db)?.ast),
+        DocDef::Module(it) => docs_from_ast(&it.declaration_source(db)?.ast),
         DocDef::StructField(it) => match it.source(db).ast {
-            FieldSource::Named(named) => docs_from_ast(&*named),
+            FieldSource::Named(named) => docs_from_ast(&named),
             FieldSource::Pos(..) => None,
         },
-        DocDef::Struct(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::Enum(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::EnumVariant(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::Static(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::Const(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::Function(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::Union(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::Trait(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::TypeAlias(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::MacroDef(it) => docs_from_ast(&*it.source(db).ast),
+        DocDef::Struct(it) => docs_from_ast(&it.source(db).ast),
+        DocDef::Enum(it) => docs_from_ast(&it.source(db).ast),
+        DocDef::EnumVariant(it) => docs_from_ast(&it.source(db).ast),
+        DocDef::Static(it) => docs_from_ast(&it.source(db).ast),
+        DocDef::Const(it) => docs_from_ast(&it.source(db).ast),
+        DocDef::Function(it) => docs_from_ast(&it.source(db).ast),
+        DocDef::Union(it) => docs_from_ast(&it.source(db).ast),
+        DocDef::Trait(it) => docs_from_ast(&it.source(db).ast),
+        DocDef::TypeAlias(it) => docs_from_ast(&it.source(db).ast),
+        DocDef::MacroDef(it) => docs_from_ast(&it.source(db).ast),
     }
 }
 

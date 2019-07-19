@@ -31,9 +31,9 @@ impl TraitData {
             item_list
                 .impl_items()
                 .map(|item_node| match item_node.kind() {
-                    ast::ImplItemKind::FnDef(it) => Function { id: ctx.to_def(it) }.into(),
-                    ast::ImplItemKind::ConstDef(it) => Const { id: ctx.to_def(it) }.into(),
-                    ast::ImplItemKind::TypeAliasDef(it) => TypeAlias { id: ctx.to_def(it) }.into(),
+                    ast::ImplItemKind::FnDef(it) => Function { id: ctx.to_def(&it) }.into(),
+                    ast::ImplItemKind::ConstDef(it) => Const { id: ctx.to_def(&it) }.into(),
+                    ast::ImplItemKind::TypeAliasDef(it) => TypeAlias { id: ctx.to_def(&it) }.into(),
                 })
                 .collect()
         } else {

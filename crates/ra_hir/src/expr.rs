@@ -550,7 +550,7 @@ where
         self.exprs.alloc(block)
     }
 
-    fn collect_expr(&mut self, expr: &ast::Expr) -> ExprId {
+    fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
         let syntax_ptr = SyntaxNodePtr::new(expr.syntax());
         match expr.kind() {
             ast::ExprKind::IfExpr(e) => {
@@ -565,7 +565,8 @@ where
                         .map(|b| match b {
                             ast::ElseBranch::Block(it) => self.collect_block(it),
                             ast::ElseBranch::IfExpr(elif) => {
-                                let expr: &ast::Expr = ast::Expr::cast(elif.syntax()).unwrap();
+                                let expr: ast::Expr =
+                                    ast::Expr::cast(elif.syntax().clone()).unwrap();
                                 self.collect_expr(expr)
                             }
                         })
@@ -582,7 +583,7 @@ where
                     let else_branch = e.else_branch().map(|b| match b {
                         ast::ElseBranch::Block(it) => self.collect_block(it),
                         ast::ElseBranch::IfExpr(elif) => {
-                            let expr: &ast::Expr = ast::Expr::cast(elif.syntax()).unwrap();
+                            let expr: ast::Expr = ast::Expr::cast(elif.syntax().clone()).unwrap();
                             self.collect_expr(expr)
                         }
                     });
@@ -689,7 +690,7 @@ where
                 let struct_lit = if let Some(nfl) = e.named_field_list() {
                     let fields = nfl
                         .fields()
-                        .inspect(|field| field_ptrs.push(AstPtr::new(*field)))
+                        .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .map(|field| StructLitField {
                             name: field
                                 .name_ref()
@@ -699,7 +700,7 @@ where
                                 self.collect_expr(e)
                             } else if let Some(nr) = field.name_ref() {
                                 // field shorthand
-                                let id = self.exprs.alloc(Expr::Path(Path::from_name_ref(nr)));
+                                let id = self.exprs.alloc(Expr::Path(Path::from_name_ref(&nr)));
                                 self.source_map
                                     .expr_map
                                     .insert(SyntaxNodePtr::new(nr.syntax()), id);
@@ -837,7 +838,7 @@ where
                 let ast_id = self
                     .db
                     .ast_id_map(self.current_file_id)
-                    .ast_id(e)
+                    .ast_id(&e)
                     .with_file_id(self.current_file_id);
 
                 if let Some(path) = e.path().and_then(Path::from_ast) {
@@ -845,11 +846,11 @@ where
                         let call_id = MacroCallLoc { def: def.id, ast_id }.id(self.db);
                         let file_id = call_id.as_file(MacroFileKind::Expr);
                         if let Some(node) = self.db.parse_or_expand(file_id) {
-                            if let Some(expr) = ast::Expr::cast(&*node) {
+                            if let Some(expr) = ast::Expr::cast(node) {
                                 log::debug!("macro expansion {}", expr.syntax().debug_dump());
                                 let old_file_id =
                                     std::mem::replace(&mut self.current_file_id, file_id);
-                                let id = self.collect_expr(&expr);
+                                let id = self.collect_expr(expr);
                                 self.current_file_id = old_file_id;
                                 return id;
                             }
@@ -863,7 +864,7 @@ where
         }
     }
 
-    fn collect_expr_opt(&mut self, expr: Option<&ast::Expr>) -> ExprId {
+    fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
         if let Some(expr) = expr {
             self.collect_expr(expr)
         } else {
@@ -871,7 +872,7 @@ where
         }
     }
 
-    fn collect_block(&mut self, block: &ast::Block) -> ExprId {
+    fn collect_block(&mut self, block: ast::Block) -> ExprId {
         let statements = block
             .statements()
             .map(|s| match s.kind() {
@@ -890,7 +891,7 @@ where
         self.alloc_expr(Expr::Block { statements, tail }, SyntaxNodePtr::new(block.syntax()))
     }
 
-    fn collect_block_opt(&mut self, block: Option<&ast::Block>) -> ExprId {
+    fn collect_block_opt(&mut self, block: Option<ast::Block>) -> ExprId {
         if let Some(block) = block {
             self.collect_block(block)
         } else {
@@ -898,7 +899,7 @@ where
         }
     }
 
-    fn collect_pat(&mut self, pat: &ast::Pat) -> PatId {
+    fn collect_pat(&mut self, pat: ast::Pat) -> PatId {
         let pattern = match pat.kind() {
             ast::PatKind::BindPat(bp) => {
                 let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
@@ -932,7 +933,8 @@ where
                 let mut fields: Vec<_> = field_pat_list
                     .bind_pats()
                     .filter_map(|bind_pat| {
-                        let ast_pat = ast::Pat::cast(bind_pat.syntax()).expect("bind pat is a pat");
+                        let ast_pat =
+                            ast::Pat::cast(bind_pat.syntax().clone()).expect("bind pat is a pat");
                         let pat = self.collect_pat(ast_pat);
                         let name = bind_pat.name()?.as_name();
                         Some(FieldPat { name, pat })
@@ -953,11 +955,11 @@ where
             ast::PatKind::LiteralPat(_) => Pat::Missing,
             ast::PatKind::SlicePat(_) | ast::PatKind::RangePat(_) => Pat::Missing,
         };
-        let ptr = AstPtr::new(pat);
+        let ptr = AstPtr::new(&pat);
         self.alloc_pat(pattern, Either::A(ptr))
     }
 
-    fn collect_pat_opt(&mut self, pat: Option<&ast::Pat>) -> PatId {
+    fn collect_pat_opt(&mut self, pat: Option<ast::Pat>) -> PatId {
         if let Some(pat) = pat {
             self.collect_pat(pat)
         } else {
@@ -965,20 +967,20 @@ where
         }
     }
 
-    fn collect_const_body(&mut self, node: &ast::ConstDef) {
+    fn collect_const_body(&mut self, node: ast::ConstDef) {
         let body = self.collect_expr_opt(node.body());
         self.body_expr = Some(body);
     }
 
-    fn collect_static_body(&mut self, node: &ast::StaticDef) {
+    fn collect_static_body(&mut self, node: ast::StaticDef) {
         let body = self.collect_expr_opt(node.body());
         self.body_expr = Some(body);
     }
 
-    fn collect_fn_body(&mut self, node: &ast::FnDef) {
+    fn collect_fn_body(&mut self, node: ast::FnDef) {
         if let Some(param_list) = node.param_list() {
             if let Some(self_param) = param_list.self_param() {
-                let ptr = AstPtr::new(self_param);
+                let ptr = AstPtr::new(&self_param);
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
                         name: SELF_PARAM,
@@ -1027,17 +1029,17 @@ pub(crate) fn body_with_source_map_query(
         DefWithBody::Const(ref c) => {
             let src = c.source(db);
             collector = ExprCollector::new(def, src.file_id, def.resolver(db), db);
-            collector.collect_const_body(&src.ast)
+            collector.collect_const_body(src.ast)
         }
         DefWithBody::Function(ref f) => {
             let src = f.source(db);
             collector = ExprCollector::new(def, src.file_id, def.resolver(db), db);
-            collector.collect_fn_body(&src.ast)
+            collector.collect_fn_body(src.ast)
         }
         DefWithBody::Static(ref s) => {
             let src = s.source(db);
             collector = ExprCollector::new(def, src.file_id, def.resolver(db), db);
-            collector.collect_static_body(&src.ast)
+            collector.collect_static_body(src.ast)
         }
     }
 

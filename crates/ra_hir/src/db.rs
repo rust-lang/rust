@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use ra_db::{salsa, SourceDatabase};
-use ra_syntax::{ast, Parse, SmolStr, SyntaxNode, TreeArc};
+use ra_syntax::{ast, Parse, SmolStr, SyntaxNode};
 
 use crate::{
     adt::{EnumData, StructData},
@@ -62,11 +62,11 @@ pub trait AstDatabase: InternDatabase {
 
     #[salsa::transparent]
     #[salsa::invoke(crate::source_id::AstIdMap::file_item_query)]
-    fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> TreeArc<SyntaxNode>;
+    fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> SyntaxNode;
 
     #[salsa::transparent]
     #[salsa::invoke(crate::ids::HirFileId::parse_or_expand_query)]
-    fn parse_or_expand(&self, file_id: HirFileId) -> Option<TreeArc<SyntaxNode>>;
+    fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode>;
 
     #[salsa::invoke(crate::ids::HirFileId::parse_macro_query)]
     fn parse_macro(&self, macro_file: ids::MacroFile) -> Option<Parse<SyntaxNode>>;

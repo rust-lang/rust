@@ -47,9 +47,9 @@ pub enum PathKind {
 
 impl Path {
     /// Calls `cb` with all paths, represented by this use item.
-    pub fn expand_use_item<'a>(
-        item: &'a ast::UseItem,
-        mut cb: impl FnMut(Path, &'a ast::UseTree, bool, Option<Name>),
+    pub fn expand_use_item(
+        item: &ast::UseItem,
+        mut cb: impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
     ) {
         if let Some(tree) = item.use_tree() {
             expand_use_tree(None, tree, &mut cb);
@@ -57,7 +57,7 @@ impl Path {
     }
 
     /// Converts an `ast::Path` to `Path`. Works with use trees.
-    pub fn from_ast(mut path: &ast::Path) -> Option<Path> {
+    pub fn from_ast(mut path: ast::Path) -> Option<Path> {
         let mut kind = PathKind::Plain;
         let mut segments = Vec::new();
         loop {
@@ -87,7 +87,7 @@ impl Path {
                     break;
                 }
             }
-            path = match qualifier(path) {
+            path = match qualifier(&path) {
                 Some(it) => it,
                 None => break,
             };
@@ -95,7 +95,7 @@ impl Path {
         segments.reverse();
         return Some(Path { kind, segments });
 
-        fn qualifier(path: &ast::Path) -> Option<&ast::Path> {
+        fn qualifier(path: &ast::Path) -> Option<ast::Path> {
             if let Some(q) = path.qualifier() {
                 return Some(q);
             }
@@ -136,7 +136,7 @@ impl Path {
 }
 
 impl GenericArgs {
-    pub(crate) fn from_ast(node: &ast::TypeArgList) -> Option<GenericArgs> {
+    pub(crate) fn from_ast(node: ast::TypeArgList) -> Option<GenericArgs> {
         let mut args = Vec::new();
         for type_arg in node.type_args() {
             let type_ref = TypeRef::from_ast_opt(type_arg.type_ref());
@@ -160,10 +160,10 @@ impl From<Name> for Path {
     }
 }
 
-fn expand_use_tree<'a>(
+fn expand_use_tree(
     prefix: Option<Path>,
-    tree: &'a ast::UseTree,
-    cb: &mut impl FnMut(Path, &'a ast::UseTree, bool, Option<Name>),
+    tree: ast::UseTree,
+    cb: &mut impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
@@ -188,7 +188,7 @@ fn expand_use_tree<'a>(
                 if let Some(segment) = ast_path.segment() {
                     if segment.kind() == Some(ast::PathSegmentKind::SelfKw) {
                         if let Some(prefix) = prefix {
-                            cb(prefix, tree, false, alias);
+                            cb(prefix, &tree, false, alias);
                             return;
                         }
                     }
@@ -196,7 +196,7 @@ fn expand_use_tree<'a>(
             }
             if let Some(path) = convert_path(prefix, ast_path) {
                 let is_glob = tree.has_star();
-                cb(path, tree, is_glob, alias)
+                cb(path, &tree, is_glob, alias)
             }
             // FIXME: report errors somewhere
             // We get here if we do
@@ -204,7 +204,7 @@ fn expand_use_tree<'a>(
     }
 }
 
-fn convert_path(prefix: Option<Path>, path: &ast::Path) -> Option<Path> {
+fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
     let prefix =
         if let Some(qual) = path.qualifier() { Some(convert_path(prefix, qual)?) } else { prefix };
     let segment = path.segment()?;

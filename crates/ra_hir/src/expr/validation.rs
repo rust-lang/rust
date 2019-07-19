@@ -79,7 +79,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             .and_then(StructLit::cast)
             .and_then(|lit| lit.named_field_list())
         {
-            let field_list_ptr = AstPtr::new(field_list_node);
+            let field_list_ptr = AstPtr::new(&field_list_node);
             self.sink.push(MissingFields {
                 file: file_id,
                 field_list: field_list_ptr,

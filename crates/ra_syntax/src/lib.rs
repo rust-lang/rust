@@ -75,7 +75,7 @@ impl<T> Parse<T> {
         Parse { green, errors: Arc::new(errors), _ty: PhantomData }
     }
 
-    fn syntax_node(&self) -> SyntaxNode {
+    pub fn syntax_node(&self) -> SyntaxNode {
         SyntaxNode::new(self.green.clone())
     }
 }

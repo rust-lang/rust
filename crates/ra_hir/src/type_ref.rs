@@ -56,7 +56,7 @@ pub enum TypeRef {
 
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub(crate) fn from_ast(node: &ast::TypeRef) -> Self {
+    pub(crate) fn from_ast(node: ast::TypeRef) -> Self {
         use ra_syntax::ast::TypeRefKind::*;
         match node.kind() {
             ParenType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
@@ -95,7 +95,7 @@ impl TypeRef {
         }
     }
 
-    pub(crate) fn from_ast_opt(node: Option<&ast::TypeRef>) -> Self {
+    pub(crate) fn from_ast_opt(node: Option<ast::TypeRef>) -> Self {
         if let Some(node) = node {
             TypeRef::from_ast(node)
         } else {

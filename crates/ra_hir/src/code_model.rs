@@ -4,10 +4,7 @@ pub(crate) mod docs;
 use std::sync::Arc;
 
 use ra_db::{CrateId, Edition, FileId, SourceRootId};
-use ra_syntax::{
-    ast::{self, NameOwner, TypeAscriptionOwner},
-    TreeArc,
-};
+use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
     adt::{EnumVariantId, StructFieldId, VariantDef},
@@ -155,8 +152,8 @@ impl_froms!(
 );
 
 pub enum ModuleSource {
-    SourceFile(TreeArc<ast::SourceFile>),
-    Module(TreeArc<ast::Module>),
+    SourceFile(ast::SourceFile),
+    Module(ast::Module),
 }
 
 impl ModuleSource {
@@ -199,7 +196,7 @@ impl Module {
         self,
         db: &impl HirDatabase,
         import: ImportId,
-    ) -> Either<TreeArc<ast::UseTree>, TreeArc<ast::ExternCrateItem>> {
+    ) -> Either<ast::UseTree, ast::ExternCrateItem> {
         let src = self.definition_source(db);
         let (_, source_map) = db.raw_items_with_source_map(src.file_id);
         source_map.get(&src.ast, import)
@@ -321,8 +318,8 @@ pub struct StructField {
 
 #[derive(Debug)]
 pub enum FieldSource {
-    Named(TreeArc<ast::NamedFieldDef>),
-    Pos(TreeArc<ast::PosFieldDef>),
+    Named(ast::NamedFieldDef),
+    Pos(ast::PosFieldDef),
 }
 
 impl StructField {
@@ -736,7 +733,7 @@ impl ConstData {
         konst: Const,
     ) -> Arc<ConstData> {
         let node = konst.source(db).ast;
-        const_data_for(&*node)
+        const_data_for(&node)
     }
 
     pub(crate) fn static_data_query(
@@ -744,7 +741,7 @@ impl ConstData {
         konst: Static,
     ) -> Arc<ConstData> {
         let node = konst.source(db).ast;
-        const_data_for(&*node)
+        const_data_for(&node)
     }
 }
 
