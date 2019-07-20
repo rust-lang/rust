@@ -20,7 +20,6 @@
 //! [Swift]: <https://github.com/apple/swift/blob/13d593df6f359d0cb2fc81cfaac273297c539455/lib/Syntax/README.md>
 
 mod syntax_node;
-mod syntax_text;
 mod syntax_error;
 mod parsing;
 mod validation;
@@ -43,14 +42,13 @@ pub use crate::{
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::{Location, SyntaxError, SyntaxErrorKind},
     syntax_node::{
-        Direction, InsertPosition, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
-        WalkEvent,
+        Direction, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
+        SyntaxTreeBuilder, WalkEvent,
     },
-    syntax_text::SyntaxText,
 };
 pub use ra_parser::SyntaxKind;
 pub use ra_parser::T;
-pub use rowan::{SmolStr, TextRange, TextUnit};
+pub use rowan::{SmolStr, SyntaxText, TextRange, TextUnit};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.
@@ -76,7 +74,7 @@ impl<T> Parse<T> {
     }
 
     pub fn syntax_node(&self) -> SyntaxNode {
-        SyntaxNode::new(self.green.clone())
+        SyntaxNode::new_root(self.green.clone())
     }
 }
 
@@ -147,7 +145,7 @@ pub use crate::ast::SourceFile;
 
 impl SourceFile {
     fn new(green: GreenNode) -> SourceFile {
-        let root = SyntaxNode::new(green);
+        let root = SyntaxNode::new_root(green);
         if cfg!(debug_assertions) {
             validation::validate_block_structure(&root);
         }
@@ -267,8 +265,8 @@ fn api_walkthrough() {
         match event {
             WalkEvent::Enter(node) => {
                 let text = match &node {
-                    SyntaxElement::Node(it) => it.text().to_string(),
-                    SyntaxElement::Token(it) => it.text().to_string(),
+                    NodeOrToken::Node(it) => it.text().to_string(),
+                    NodeOrToken::Token(it) => it.text().to_string(),
                 };
                 buf += &format!("{:indent$}{:?} {:?}\n", " ", text, node.kind(), indent = indent);
                 indent += 2;

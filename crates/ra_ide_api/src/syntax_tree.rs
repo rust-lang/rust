@@ -1,7 +1,7 @@
 use crate::db::RootDatabase;
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    algo, AstNode, SourceFile, SyntaxElement,
+    algo, AstNode, NodeOrToken, SourceFile,
     SyntaxKind::{RAW_STRING, STRING},
     SyntaxToken, TextRange,
 };
@@ -16,8 +16,8 @@ pub(crate) fn syntax_tree(
     let parse = db.parse(file_id);
     if let Some(text_range) = text_range {
         let node = match algo::find_covering_element(parse.tree().syntax(), text_range) {
-            SyntaxElement::Node(node) => node,
-            SyntaxElement::Token(token) => {
+            NodeOrToken::Node(node) => node,
+            NodeOrToken::Token(token) => {
                 if let Some(tree) = syntax_tree_for_string(&token, text_range) {
                     return tree;
                 }

@@ -1,4 +1,4 @@
-use ra_syntax::{ast, AstNode};
+use ra_syntax::{ast, AstNode, NodeOrToken};
 
 use super::*;
 
@@ -118,11 +118,11 @@ pub fn debug_dump_ignore_spaces(node: &ra_syntax::SyntaxNode) -> String {
         match event {
             WalkEvent::Enter(element) => {
                 match element {
-                    ra_syntax::SyntaxElement::Node(node) => {
+                    NodeOrToken::Node(node) => {
                         indent!();
                         writeln!(buf, "{:?}", node.kind()).unwrap();
                     }
-                    ra_syntax::SyntaxElement::Token(token) => match token.kind() {
+                    NodeOrToken::Token(token) => match token.kind() {
                         ra_syntax::SyntaxKind::WHITESPACE => {}
                         _ => {
                             indent!();
