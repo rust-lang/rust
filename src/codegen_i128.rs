@@ -30,19 +30,9 @@ pub fn maybe_codegen<'a, 'tcx>(
         BinOp::Mul => {
             let res = if checked {
                 if is_signed {
-                    let oflow_place = CPlace::new_stack_slot(fx, fx.tcx.types.i32);
-                    let oflow_addr = oflow_place.to_addr(fx);
-                    let oflow_addr = CValue::by_val(oflow_addr, fx.layout_of(fx.tcx.mk_mut_ptr(fx.tcx.types.i32)));
-                    let val = fx.easy_call("__muloti4", &[lhs, rhs, oflow_addr], fx.tcx.types.i128);
-                    let val = val.load_scalar(fx);
-                    let oflow = oflow_place.to_cvalue(fx).load_scalar(fx);
-                    let oflow = fx.bcx.ins().icmp_imm(IntCC::NotEqual, oflow, 0);
-                    let oflow = fx.bcx.ins().bint(types::I8, oflow);
-                    CValue::by_val_pair(val, oflow, fx.layout_of(out_ty))
+                    fx.easy_call("__rust_i128_mulo", &[lhs, rhs], out_ty)
                 } else {
-                    // FIXME implement it
-                let out_layout = fx.layout_of(out_ty);
-                    return Some(crate::trap::trap_unreachable_ret_value(fx, out_layout, format!("unimplemented 128bit checked binop unsigned mul")));
+                    fx.easy_call("__rust_u128_mulo", &[lhs, rhs], out_ty)
                 }
             } else {
                 let val_ty = if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
@@ -51,32 +41,20 @@ pub fn maybe_codegen<'a, 'tcx>(
             return Some(res);
         }
         BinOp::Div => {
-            let res = if checked {
-                // FIXME implement it
-                let out_layout = fx.layout_of(out_ty);
-                return Some(crate::trap::trap_unreachable_ret_value(fx, out_layout, format!("unimplemented 128bit checked binop div")));
+            assert!(!checked);
+            if is_signed {
+                Some(fx.easy_call("__divti3", &[lhs, rhs], fx.tcx.types.i128))
             } else {
-                if is_signed {
-                    fx.easy_call("__divti3", &[lhs, rhs], fx.tcx.types.i128)
-                } else {
-                    fx.easy_call("__udivti3", &[lhs, rhs], fx.tcx.types.u128)
-                }
-            };
-            return Some(res);
+                Some(fx.easy_call("__udivti3", &[lhs, rhs], fx.tcx.types.u128))
+            }
         }
         BinOp::Rem => {
-            let res = if checked {
-                // FIXME implement it
-                let out_layout = fx.layout_of(out_ty);
-                return Some(crate::trap::trap_unreachable_ret_value(fx, out_layout, format!("unimplemented 128bit checked binop rem")));
+            assert!(!checked);
+            if is_signed {
+                Some(fx.easy_call("__modti3", &[lhs, rhs], fx.tcx.types.i128))
             } else {
-                if is_signed {
-                    fx.easy_call("__modti3", &[lhs, rhs], fx.tcx.types.i128)
-                } else {
-                    fx.easy_call("__umodti3", &[lhs, rhs], fx.tcx.types.u128)
-                }
-            };
-            return Some(res);
+                Some(fx.easy_call("__umodti3", &[lhs, rhs], fx.tcx.types.u128))
+            }
         }
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => {
             assert!(!checked);
@@ -140,8 +118,9 @@ pub fn maybe_codegen<'a, 'tcx>(
                         Some(CValue::by_val(val, fx.layout_of(fx.tcx.types.i128)))
                     }
                     (BinOp::Shl, _) => {
+                        let val_ty = if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
                         let val = fx.bcx.ins().iconcat(all_zeros, lhs_lsb);
-                        Some(CValue::by_val(val, fx.layout_of(out_ty)))
+                        Some(CValue::by_val(val, fx.layout_of(val_ty)))
                     }
                     _ => None
                 };

@@ -252,14 +252,12 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         &mut self,
         name: &str,
         input_tys: Vec<types::Type>,
-        output_ty: Option<types::Type>,
+        output_tys: Vec<types::Type>,
         args: &[Value],
-    ) -> Option<Value> {
+    ) -> &[Value] {
         let sig = Signature {
             params: input_tys.iter().cloned().map(AbiParam::new).collect(),
-            returns: output_ty
-                .map(|output_ty| vec![AbiParam::new(output_ty)])
-                .unwrap_or(Vec::new()),
+            returns: output_tys.iter().cloned().map(AbiParam::new).collect(),
             call_conv: CallConv::SystemV,
         };
         let func_id = self
@@ -271,12 +269,9 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             .declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         self.add_comment(call_inst, format!("easy_call {}", name));
-        if output_ty.is_none() {
-            return None;
-        }
         let results = self.bcx.inst_results(call_inst);
-        assert_eq!(results.len(), 1);
-        Some(results[0])
+        assert!(results.len() <= 2, "{}", results.len());
+        results
     }
 
     pub fn easy_call(
@@ -295,23 +290,22 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             })
             .unzip();
         let return_layout = self.layout_of(return_ty);
-        let return_ty = if let ty::Tuple(tup) = return_ty.sty {
-            if !tup.is_empty() {
-                bug!("easy_call( (...) -> <non empty tuple> ) is not allowed");
-            }
-            None
+        let return_tys = if let ty::Tuple(tup) = return_ty.sty {
+            tup.types().map(|ty| self.clif_type(ty).unwrap()).collect()
         } else {
-            Some(self.clif_type(return_ty).unwrap())
+            vec![self.clif_type(return_ty).unwrap()]
         };
-        if let Some(val) = self.lib_call(name, input_tys, return_ty, &args) {
-            CValue::by_val(val, return_layout)
-        } else {
-            CValue::by_ref(
+        let ret_vals = self.lib_call(name, input_tys, return_tys, &args);
+        match *ret_vals {
+            [] => CValue::by_ref(
                 self.bcx
                     .ins()
                     .iconst(self.pointer_type, self.pointer_type.bytes() as i64),
                 return_layout,
-            )
+            ),
+            [val] => CValue::by_val(val, return_layout),
+            [val, extra] => CValue::by_val_pair(val, extra, return_layout),
+            _ => unreachable!(),
         }
     }
 
