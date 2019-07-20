@@ -362,8 +362,11 @@ mod prim_unit { }
 ///
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
-/// Working with raw pointers in Rust is uncommon,
-/// typically limited to a few patterns.
+/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
+/// Raw pointers can be unaligned or null when unused. However, when a raw pointer is used to
+/// load/store data from/to memory, they must be non-null and aligned.
+/// Storing through a raw pointer (`*ptr = data`) calls `drop` on the old value, so
+/// [`write`] must be used if memory is not already initialized.
 ///
 /// Use the [`null`] and [`null_mut`] functions to create null pointers, and the
 /// [`is_null`] method of the `*const T` and `*mut T` types to check for null.
@@ -442,6 +445,7 @@ mod prim_unit { }
 /// [`offset`]: ../std/primitive.pointer.html#method.offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
 /// [`drop`]: ../std/mem/fn.drop.html
+/// [`write`]: ../std/ptr/fn.write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer { }
 
