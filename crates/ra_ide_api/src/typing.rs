@@ -75,7 +75,7 @@ pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<TextEdit> {
         if expr_range.contains(eq_offset) && eq_offset != expr_range.start() {
             return None;
         }
-        if file.syntax().text().slice(eq_offset..expr_range.start()).contains('\n') {
+        if file.syntax().text().slice(eq_offset..expr_range.start()).contains_char('\n') {
             return None;
         }
     } else {

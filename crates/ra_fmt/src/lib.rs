@@ -36,7 +36,7 @@ fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
 
 pub fn extract_trivial_expression(block: &ast::Block) -> Option<ast::Expr> {
     let expr = block.expr()?;
-    if expr.syntax().text().contains('\n') {
+    if expr.syntax().text().contains_char('\n') {
         return None;
     }
     let non_trivial_children = block.syntax().children().filter(|it| match it.kind() {

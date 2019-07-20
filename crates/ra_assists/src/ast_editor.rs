@@ -95,7 +95,7 @@ impl AstEditor<ast::NamedFieldList> {
         position: InsertPosition<&'_ ast::NamedField>,
         field: &ast::NamedField,
     ) {
-        let is_multiline = self.ast().syntax().text().contains('\n');
+        let is_multiline = self.ast().syntax().text().contains_char('\n');
         let ws;
         let space = if is_multiline {
             ws = tokens::WsBuilder::new(&format!(

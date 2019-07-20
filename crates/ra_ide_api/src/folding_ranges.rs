@@ -31,7 +31,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
         // Fold items that span multiple lines
         if let Some(kind) = fold_kind(element.kind()) {
             let is_multiline = match &element {
-                SyntaxElement::Node(node) => node.text().contains('\n'),
+                SyntaxElement::Node(node) => node.text().contains_char('\n'),
                 SyntaxElement::Token(token) => token.text().contains('\n'),
             };
             if is_multiline {

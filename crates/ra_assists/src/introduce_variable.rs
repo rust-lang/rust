@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -35,8 +37,7 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
             buf.push_str("let var_name = ");
             TextUnit::of_str("let ")
         };
-
-        expr.syntax().text().push_to(&mut buf);
+        write!(buf, "{}", expr.syntax()).unwrap();
         let full_stmt = ast::ExprStmt::cast(anchor_stmt.clone());
         let is_full_stmt = if let Some(expr_stmt) = &full_stmt {
             Some(expr.syntax().clone()) == expr_stmt.expr().map(|e| e.syntax().clone())

@@ -57,25 +57,15 @@ impl SyntaxText {
         }
     }
 
-    pub fn push_to(&self, buf: &mut String) {
-        self.for_each_chunk(|chunk| buf.push_str(chunk))
-    }
-
-    pub fn to_string(&self) -> String {
-        let mut buf = String::new();
-        self.push_to(&mut buf);
-        buf
-    }
-
     pub fn to_smol_string(&self) -> SmolStr {
         self.to_string().into()
     }
 
-    pub fn contains(&self, c: char) -> bool {
+    pub fn contains_char(&self, c: char) -> bool {
         self.try_for_each_chunk(|chunk| if chunk.contains(c) { Err(()) } else { Ok(()) }).is_err()
     }
 
-    pub fn find(&self, c: char) -> Option<TextUnit> {
+    pub fn find_char(&self, c: char) -> Option<TextUnit> {
         let mut acc: TextUnit = 0.into();
         let res = self.try_for_each_chunk(|chunk| {
             if let Some(pos) = chunk.find(c) {
@@ -158,7 +148,7 @@ impl fmt::Debug for SyntaxText {
 
 impl fmt::Display for SyntaxText {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.to_string(), f)
+        self.try_for_each_chunk(|chunk| fmt::Display::fmt(chunk, f))
     }
 }
 
