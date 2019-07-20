@@ -97,6 +97,7 @@ Grammar(
         "return",
         "try",
         "box",
+        "await"
     ],
     contextual_keywords: [
         "auto",
@@ -200,6 +201,7 @@ Grammar(
         "INDEX_EXPR",
         "METHOD_CALL_EXPR",
         "FIELD_EXPR",
+        "AWAIT_EXPR",
         "TRY_EXPR",
         "CAST_EXPR",
 
