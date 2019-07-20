@@ -13,7 +13,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     let range = if range.is_empty() {
         let syntax = file.syntax();
         let text = syntax.text().slice(range.start()..);
-        let pos = match text.find('\n') {
+        let pos = match text.find_char('\n') {
             None => return TextEditBuilder::default().finish(),
             Some(pos) => pos,
         };

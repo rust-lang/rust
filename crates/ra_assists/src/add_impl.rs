@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use hir::db::HirDatabase;
 use join_to_string::join;
 use ra_syntax::{
@@ -17,7 +19,7 @@ pub(crate) fn add_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         let mut buf = String::new();
         buf.push_str("\n\nimpl");
         if let Some(type_params) = &type_params {
-            type_params.syntax().text().push_to(&mut buf);
+            write!(buf, "{}", type_params.syntax()).unwrap();
         }
         buf.push_str(" ");
         buf.push_str(name.text().as_str());

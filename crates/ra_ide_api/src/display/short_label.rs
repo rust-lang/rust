@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use ra_syntax::ast::{self, AstNode, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 pub(crate) trait ShortLabel {
@@ -71,8 +73,7 @@ where
     let mut buf = short_label_from_node(node, prefix)?;
 
     if let Some(type_ref) = node.ascribed_type() {
-        buf.push_str(": ");
-        type_ref.syntax().text().push_to(&mut buf);
+        write!(buf, ": {}", type_ref.syntax()).unwrap();
     }
 
     Some(buf)
@@ -82,7 +83,7 @@ fn short_label_from_node<T>(node: &T, label: &str) -> Option<String>
 where
     T: NameOwner + VisibilityOwner,
 {
-    let mut buf = node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
+    let mut buf = node.visibility().map(|v| format!("{} ", v.syntax())).unwrap_or_default();
     buf.push_str(label);
     buf.push_str(node.name()?.text().as_str());
     Some(buf)
