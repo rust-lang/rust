@@ -65,7 +65,7 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     #[cfg(target_arch = "x86_64")]
     {
         // x86-64 uses %rbx as the base register, so preserve it.
-        asm!("cpuid\n"
+        asm!("cpuid"
              : "={eax}"(eax), "={ebx}"(ebx), "={ecx}"(ecx), "={edx}"(edx)
              : "{eax}"(leaf), "{ecx}"(sub_leaf)
              : "rbx" :);
