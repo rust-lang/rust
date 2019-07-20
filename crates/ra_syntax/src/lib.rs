@@ -114,7 +114,7 @@ impl Parse<SyntaxNode> {
 
 impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
-        let mut buf = self.tree().syntax().debug_dump();
+        let mut buf = format!("{:#?}", self.tree().syntax());
         for err in self.errors.iter() {
             writeln!(buf, "error {:?}: {}", err.location(), err.kind()).unwrap();
         }

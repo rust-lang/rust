@@ -25,9 +25,9 @@ pub(crate) fn syntax_tree(
             }
         };
 
-        node.debug_dump()
+        format!("{:#?}", node)
     } else {
-        parse.tree().syntax().debug_dump()
+        format!("{:#?}", parse.tree().syntax())
     }
 }
 
@@ -85,7 +85,7 @@ fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<St
     // If the "file" parsed without errors,
     // return its syntax
     if parsed.errors().is_empty() {
-        return Some(parsed.tree().syntax().debug_dump());
+        return Some(format!("{:#?}", parsed.tree().syntax()));
     }
 
     None

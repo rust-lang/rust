@@ -412,7 +412,7 @@ fn test_expand_to_item_list() {
     let expansion = expand(&rules, "structs!(Foo, Bar);");
     let tree = token_tree_to_macro_items(&expansion).unwrap().tree();
     assert_eq!(
-        tree.syntax().debug_dump().trim(),
+        format!("{:#?}", tree.syntax()).trim(),
         r#"
 MACRO_ITEMS@[0; 40)
   STRUCT_DEF@[0; 20)
@@ -531,7 +531,7 @@ fn test_tt_to_stmts() {
     let stmts = token_tree_to_macro_stmts(&expanded).unwrap().tree();
 
     assert_eq!(
-        stmts.syntax().debug_dump().trim(),
+        format!("{:#?}", stmts.syntax()).trim(),
         r#"MACRO_STMTS@[0; 15)
   LET_STMT@[0; 7)
     LET_KW@[0; 3) "let"
@@ -669,7 +669,7 @@ fn test_expr_order() {
     );
 
     assert_eq!(
-        expand_to_items(&rules, "foo! { 1 + 1  }").syntax().debug_dump().trim(),
+        format!("{:#?}", expand_to_items(&rules, "foo! { 1 + 1  }").syntax()).trim(),
         r#"MACRO_ITEMS@[0; 15)
   FN_DEF@[0; 15)
     FN_KW@[0; 2) "fn"
@@ -1013,7 +1013,7 @@ fn test_vec() {
     );
 
     assert_eq!(
-        expand_to_expr(&rules, r#"vec![1u32,2];"#).syntax().debug_dump().trim(),
+        format!("{:#?}", expand_to_expr(&rules, r#"vec![1u32,2];"#).syntax()).trim(),
         r#"BLOCK_EXPR@[0; 45)
   BLOCK@[0; 45)
     L_CURLY@[0; 1) "{"

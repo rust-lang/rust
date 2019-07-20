@@ -188,8 +188,8 @@ mod tests {
         };
 
         assert_eq_text!(
-            &fully_reparsed.tree().syntax().debug_dump(),
-            &incrementally_reparsed.tree().syntax().debug_dump(),
+            &format!("{:#?}", fully_reparsed.tree().syntax()),
+            &format!("{:#?}", incrementally_reparsed.tree().syntax()),
         );
     }
 

@@ -89,9 +89,9 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
                     assert_eq!(
                         node.parent(),
                         pair.parent(),
-                        "\nunpaired curleys:\n{}\n{}\n",
+                        "\nunpaired curleys:\n{}\n{:#?}\n",
                         root.text(),
-                        root.debug_dump(),
+                        root,
                     );
                     assert!(
                         node.next_sibling().is_none() && pair.prev_sibling().is_none(),
