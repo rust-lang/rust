@@ -557,8 +557,8 @@ fn inner_parse_loop<'root, 'tt>(
                     // implicitly disallowing OneOrMore from having 0 matches here. Thus, that will
                     // result in a "no rules expected token" error by virtue of this matcher not
                     // working.
-                    if seq.op == quoted::KleeneOp::ZeroOrMore
-                        || seq.op == quoted::KleeneOp::ZeroOrOne
+                    if seq.kleene.op == quoted::KleeneOp::ZeroOrMore
+                        || seq.kleene.op == quoted::KleeneOp::ZeroOrOne
                     {
                         let mut new_item = item.clone();
                         new_item.match_cur += seq.num_captures;
@@ -573,7 +573,7 @@ fn inner_parse_loop<'root, 'tt>(
                     cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos {
                         stack: smallvec![],
                         sep: seq.separator.clone(),
-                        seq_op: Some(seq.op),
+                        seq_op: Some(seq.kleene.op),
                         idx: 0,
                         matches,
                         match_lo: item.match_cur,

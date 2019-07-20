@@ -362,6 +362,12 @@ pub mod parser {
         Warn,
         "ill-formed attribute inputs that were previously accepted and used in practice"
     }
+
+    declare_lint! {
+        pub META_VARIABLE_MISUSE,
+        Allow,
+        "possible meta-variable misuse at macro definition"
+    }
 }
 
 declare_lint! {
@@ -448,6 +454,7 @@ declare_lint_pass! {
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         parser::ILL_FORMED_ATTRIBUTE_INPUT,
+        parser::META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         NESTED_IMPL_TRAIT,
