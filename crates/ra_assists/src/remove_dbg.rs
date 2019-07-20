@@ -12,7 +12,7 @@ pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
         return None;
     }
 
-    let macro_range = macro_call.syntax().range();
+    let macro_range = macro_call.syntax().text_range();
 
     // If the cursor is inside the macro call, we'll try to maintain the cursor
     // position by subtracting the length of dbg!( from the start of the file
@@ -43,7 +43,7 @@ pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
     };
 
     ctx.add_action(AssistId("remove_dbg"), "remove dbg!()", |edit| {
-        edit.target(macro_call.syntax().range());
+        edit.target(macro_call.syntax().text_range());
         edit.replace(macro_range, macro_content);
         edit.set_cursor(cursor_pos);
     });

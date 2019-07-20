@@ -23,11 +23,11 @@ pub(crate) fn goto_definition(
     let syntax = parse.tree().syntax().clone();
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, position.offset) {
         let navs = reference_definition(db, position.file_id, &name_ref).to_vec();
-        return Some(RangeInfo::new(name_ref.syntax().range(), navs.to_vec()));
+        return Some(RangeInfo::new(name_ref.syntax().text_range(), navs.to_vec()));
     }
     if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
         let navs = name_definition(db, position.file_id, &name)?;
-        return Some(RangeInfo::new(name.syntax().range(), navs));
+        return Some(RangeInfo::new(name.syntax().text_range(), navs));
     }
     None
 }

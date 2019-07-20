@@ -15,12 +15,12 @@ pub(crate) fn goto_implementation(
 
     if let Some(nominal_def) = find_node_at_offset::<ast::NominalDef>(&syntax, position.offset) {
         return Some(RangeInfo::new(
-            nominal_def.syntax().range(),
+            nominal_def.syntax().text_range(),
             impls_for_def(db, &nominal_def, module)?,
         ));
     } else if let Some(trait_def) = find_node_at_offset::<ast::TraitDef>(&syntax, position.offset) {
         return Some(RangeInfo::new(
-            trait_def.syntax().range(),
+            trait_def.syntax().text_range(),
             impls_for_trait(db, &trait_def, module)?,
         ));
     }

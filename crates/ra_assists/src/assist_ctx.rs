@@ -141,7 +141,7 @@ impl AssistBuilder {
         if let Some(indent) = leading_indent(node) {
             replace_with = reindent(&replace_with, &indent)
         }
-        self.replace(node.range(), replace_with)
+        self.replace(node.text_range(), replace_with)
     }
 
     pub(crate) fn set_edit_builder(&mut self, edit: TextEditBuilder) {

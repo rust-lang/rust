@@ -73,8 +73,8 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
         Some(StructureNode {
             parent: None,
             label: name.text().to_string(),
-            navigation_range: name.syntax().range(),
-            node_range: node.syntax().range(),
+            navigation_range: name.syntax().text_range(),
+            node_range: node.syntax().text_range(),
             kind: node.syntax().kind(),
             detail,
             deprecated: node.attrs().filter_map(|x| x.as_named()).any(|x| x == "deprecated"),
@@ -140,8 +140,8 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             let node = StructureNode {
                 parent: None,
                 label,
-                navigation_range: target_type.syntax().range(),
-                node_range: im.syntax().range(),
+                navigation_range: target_type.syntax().text_range(),
+                node_range: im.syntax().text_range(),
                 kind: im.syntax().kind(),
                 detail: None,
                 deprecated: false,

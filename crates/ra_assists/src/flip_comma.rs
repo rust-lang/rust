@@ -8,9 +8,9 @@ pub(crate) fn flip_comma(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
     let prev = non_trivia_sibling(comma.clone().into(), Direction::Prev)?;
     let next = non_trivia_sibling(comma.clone().into(), Direction::Next)?;
     ctx.add_action(AssistId("flip_comma"), "flip comma", |edit| {
-        edit.target(comma.range());
-        edit.replace(prev.range(), next.to_string());
-        edit.replace(next.range(), prev.to_string());
+        edit.target(comma.text_range());
+        edit.replace(prev.text_range(), next.to_string());
+        edit.replace(next.text_range(), prev.to_string());
     });
 
     ctx.build()

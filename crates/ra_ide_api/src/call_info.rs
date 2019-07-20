@@ -47,7 +47,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
             // Number of arguments specified at the call site
             let num_args_at_callsite = arg_list.args().count();
 
-            let arg_list_range = arg_list.syntax().range();
+            let arg_list_range = arg_list.syntax().text_range();
             if !arg_list_range.contains_inclusive(position.offset) {
                 tested_by!(call_info_bad_offset);
                 return None;
@@ -57,7 +57,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
                 num_args_at_callsite,
                 arg_list
                     .args()
-                    .take_while(|arg| arg.syntax().range().end() < position.offset)
+                    .take_while(|arg| arg.syntax().text_range().end() < position.offset)
                     .count(),
             );
 

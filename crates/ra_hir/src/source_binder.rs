@@ -361,7 +361,7 @@ impl SourceAnalyzer {
             })
             .map(|name_ref| ReferenceDescriptor {
                 name: name_ref.text().to_string(),
-                range: name_ref.syntax().range(),
+                range: name_ref.syntax().text_range(),
             })
             .collect()
     }

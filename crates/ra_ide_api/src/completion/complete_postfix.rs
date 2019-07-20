@@ -12,7 +12,7 @@ use ra_text_edit::TextEditBuilder;
 fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
     let edit = {
         let receiver_range =
-            ctx.dot_receiver.as_ref().expect("no receiver available").syntax().range();
+            ctx.dot_receiver.as_ref().expect("no receiver available").syntax().text_range();
         let delete_range = TextRange::from_to(receiver_range.start(), ctx.source_range().end());
         let mut builder = TextEditBuilder::default();
         builder.replace(delete_range, snippet.to_string());

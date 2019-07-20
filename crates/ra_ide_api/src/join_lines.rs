@@ -28,14 +28,14 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     };
     let mut edit = TextEditBuilder::default();
     for token in node.descendants_with_tokens().filter_map(|it| it.into_token()) {
-        let range = match range.intersection(&token.range()) {
+        let range = match range.intersection(&token.text_range()) {
             Some(range) => range,
             None => continue,
-        } - token.range().start();
+        } - token.text_range().start();
         let text = token.text();
         for (pos, _) in text[range].bytes().enumerate().filter(|&(_, b)| b == b'\n') {
             let pos: TextUnit = (pos as u32).into();
-            let off = token.range().start() + range.start() + pos;
+            let off = token.text_range().start() + range.start() + pos;
             if !edit.invalidates_offset(off) {
                 remove_newline(&mut edit, &token, off);
             }
@@ -49,7 +49,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
     if token.kind() != WHITESPACE || token.text().bytes().filter(|&b| b == b'\n').count() != 1 {
         // The node is either the first or the last in the file
         let suff = &token.text()[TextRange::from_to(
-            offset - token.range().start() + TextUnit::of_char('\n'),
+            offset - token.text_range().start() + TextUnit::of_char('\n'),
             TextUnit::of_str(token.text()),
         )];
         let spaces = suff.bytes().take_while(|&b| b == b' ').count();
@@ -86,7 +86,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
     let next = token.next_sibling_or_token().unwrap();
     if is_trailing_comma(prev.kind(), next.kind()) {
         // Removes: trailing comma, newline (incl. surrounding whitespace)
-        edit.delete(TextRange::from_to(prev.range().start(), token.range().end()));
+        edit.delete(TextRange::from_to(prev.text_range().start(), token.text_range().end()));
     } else if prev.kind() == T![,] && next.kind() == T!['}'] {
         // Removes: comma, newline (incl. surrounding whitespace)
         let space = if let Some(left) = prev.prev_sibling_or_token() {
@@ -95,7 +95,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
             " "
         };
         edit.replace(
-            TextRange::from_to(prev.range().start(), token.range().end()),
+            TextRange::from_to(prev.text_range().start(), token.text_range().end()),
             space.to_string(),
         );
     } else if let (Some(_), Some(next)) = (
@@ -104,12 +104,12 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
     ) {
         // Removes: newline (incl. surrounding whitespace), start of the next comment
         edit.delete(TextRange::from_to(
-            token.range().start(),
-            next.syntax().range().start() + TextUnit::of_str(next.prefix()),
+            token.text_range().start(),
+            next.syntax().text_range().start() + TextUnit::of_str(next.prefix()),
         ));
     } else {
         // Remove newline but add a computed amount of whitespace characters
-        edit.replace(token.range(), compute_ws(prev.kind(), next.kind()).to_string());
+        edit.replace(token.text_range(), compute_ws(prev.kind(), next.kind()).to_string());
     }
 }
 
@@ -125,7 +125,7 @@ fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Op
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
     let expr = extract_trivial_expression(&block)?;
 
-    let block_range = block_expr.syntax().range();
+    let block_range = block_expr.syntax().text_range();
     let mut buf = expr.syntax().text().to_string();
 
     // Match block needs to have a comma after the block
@@ -143,7 +143,7 @@ fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Op
 fn join_single_use_tree(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(token.parent())?;
     let (tree,) = use_tree_list.use_trees().collect_tuple()?;
-    edit.replace(use_tree_list.syntax().range(), tree.syntax().text().to_string());
+    edit.replace(use_tree_list.syntax().text_range(), tree.syntax().text().to_string());
     Some(())
 }
 

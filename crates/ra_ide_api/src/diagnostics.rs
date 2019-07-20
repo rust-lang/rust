@@ -96,7 +96,7 @@ fn check_unnecessary_braces_in_use_statement(
 ) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.clone())?;
     if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
-        let range = use_tree_list.syntax().range();
+        let range = use_tree_list.syntax().text_range();
         let edit =
             text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(&single_use_tree)
                 .unwrap_or_else(|| {
@@ -126,8 +126,8 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
 ) -> Option<TextEdit> {
     let use_tree_list_node = single_use_tree.syntax().parent()?;
     if single_use_tree.path()?.segment()?.syntax().first_child_or_token()?.kind() == T![self] {
-        let start = use_tree_list_node.prev_sibling_or_token()?.range().start();
-        let end = use_tree_list_node.range().end();
+        let start = use_tree_list_node.prev_sibling_or_token()?.text_range().start();
+        let end = use_tree_list_node.text_range().end();
         let range = TextRange::from_to(start, end);
         let mut edit_builder = TextEditBuilder::default();
         edit_builder.delete(range);
@@ -149,12 +149,12 @@ fn check_struct_shorthand_initialization(
             let field_expr = expr.syntax().text().to_string();
             if field_name == field_expr {
                 let mut edit_builder = TextEditBuilder::default();
-                edit_builder.delete(named_field.syntax().range());
-                edit_builder.insert(named_field.syntax().range().start(), field_name);
+                edit_builder.delete(named_field.syntax().text_range());
+                edit_builder.insert(named_field.syntax().text_range().start(), field_name);
                 let edit = edit_builder.finish();
 
                 acc.push(Diagnostic {
-                    range: named_field.syntax().range(),
+                    range: named_field.syntax().text_range(),
                     message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,
                     fix: Some(SourceChange::source_file_edit(

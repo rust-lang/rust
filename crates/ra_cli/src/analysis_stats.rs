@@ -70,7 +70,7 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
             let src = f.source(db);
             let original_file = src.file_id.original_file(db);
             let path = db.file_relative_path(original_file);
-            let syntax_range = src.ast.syntax().range();
+            let syntax_range = src.ast.syntax().text_range();
             write!(msg, " ({:?} {})", path, syntax_range).unwrap();
         }
         bar.set_message(&msg);

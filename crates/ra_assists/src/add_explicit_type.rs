@@ -16,10 +16,10 @@ pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
         PatKind::BindPat(bind_pat) => bind_pat,
         _ => return None,
     };
-    let pat_range = pat.syntax().range();
+    let pat_range = pat.syntax().text_range();
     // The binding must have a name
     let name = pat.name()?;
-    let name_range = name.syntax().range();
+    let name_range = name.syntax().text_range();
     // Assist not applicable if the type has already been specified
     if stmt.syntax().children_with_tokens().any(|child| child.kind() == T![:]) {
         return None;

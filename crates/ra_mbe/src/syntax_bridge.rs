@@ -19,7 +19,7 @@ pub struct TokenMap {
 pub fn ast_to_token_tree(ast: &ast::TokenTree) -> Option<(tt::Subtree, TokenMap)> {
     let mut token_map = TokenMap::default();
     let node = ast.syntax();
-    let tt = convert_tt(&mut token_map, node.range().start(), node)?;
+    let tt = convert_tt(&mut token_map, node.text_range().start(), node)?;
     Some((tt, token_map))
 }
 
@@ -27,7 +27,7 @@ pub fn ast_to_token_tree(ast: &ast::TokenTree) -> Option<(tt::Subtree, TokenMap)
 /// will consume).
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, TokenMap)> {
     let mut token_map = TokenMap::default();
-    let tt = convert_tt(&mut token_map, node.range().start(), node)?;
+    let tt = convert_tt(&mut token_map, node.text_range().start(), node)?;
     Some((tt, token_map))
 }
 
@@ -229,7 +229,7 @@ fn convert_tt(
                             || token.kind() == IDENT
                             || token.kind() == LIFETIME
                         {
-                            let relative_range = token.range() - global_offset;
+                            let relative_range = token.text_range() - global_offset;
                             let id = token_map.alloc(relative_range);
                             let text = token.text().clone();
                             tt::Leaf::from(tt::Ident { text, id }).into()

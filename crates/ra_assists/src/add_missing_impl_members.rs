@@ -43,7 +43,7 @@ fn add_missing_impl_members_inner(
 
     let trait_def = {
         let file_id = ctx.frange.file_id;
-        let position = FilePosition { file_id, offset: impl_node.syntax().range().start() };
+        let position = FilePosition { file_id, offset: impl_node.syntax().text_range().start() };
         let analyzer = hir::SourceAnalyzer::new(ctx.db, position.file_id, impl_node.syntax(), None);
 
         resolve_target_trait_def(ctx.db, &analyzer, &impl_node)?
@@ -87,7 +87,7 @@ fn add_missing_impl_members_inner(
         ast_editor.append_items(items);
 
         let first_new_item = ast_editor.ast().impl_items().nth(n_existing_items).unwrap();
-        let cursor_position = first_new_item.syntax().range().start();
+        let cursor_position = first_new_item.syntax().text_range().start();
         ast_editor.into_text_edit(edit.text_edit_builder());
 
         edit.set_cursor(cursor_position);

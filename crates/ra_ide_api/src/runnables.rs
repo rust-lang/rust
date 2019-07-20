@@ -47,7 +47,7 @@ fn runnable_fn(fn_def: ast::FnDef) -> Option<Runnable> {
     } else {
         return None;
     };
-    Some(Runnable { range: fn_def.syntax().range(), kind })
+    Some(Runnable { range: fn_def.syntax().text_range(), kind })
 }
 
 fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Option<Runnable> {
@@ -62,7 +62,7 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Opti
     if !has_test_function {
         return None;
     }
-    let range = module.syntax().range();
+    let range = module.syntax().text_range();
     let module = hir::source_binder::module_from_child_node(db, file_id, module.syntax())?;
 
     let path = module.path_to_root(db).into_iter().rev().filter_map(|it| it.name(db)).join("::");

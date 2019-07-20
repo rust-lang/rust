@@ -172,7 +172,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
 
         if !res.is_empty() {
-            range = Some(name_ref.syntax().range())
+            range = Some(name_ref.syntax().text_range())
         }
     } else if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
         if let Some(parent) = name.syntax().parent() {
@@ -210,7 +210,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
 
         if !res.is_empty() && range.is_none() {
-            range = Some(name.syntax().range());
+            range = Some(name.syntax().text_range());
         }
     }
 
@@ -218,9 +218,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         let node = ancestors_at_offset(file.syntax(), position.offset).find(|n| {
             ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some()
         })?;
-        let frange = FileRange { file_id: position.file_id, range: node.range() };
+        let frange = FileRange { file_id: position.file_id, range: node.text_range() };
         res.extend(type_of(db, frange).map(rust_code_markup));
-        range = Some(node.range());
+        range = Some(node.text_range());
     }
 
     let range = range?;
@@ -246,7 +246,7 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     // if we picked identifier, expand to pattern/expression
     let node = leaf_node
         .ancestors()
-        .take_while(|it| it.range() == leaf_node.range())
+        .take_while(|it| it.text_range() == leaf_node.text_range())
         .find(|it| ast::Expr::cast(it.clone()).is_some() || ast::Pat::cast(it.clone()).is_some())?;
     let analyzer = hir::SourceAnalyzer::new(db, frange.file_id, &node, None);
     let ty = if let Some(ty) = ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))

@@ -24,7 +24,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
 
     let prefix = comment.prefix();
     if position.offset
-        < comment.syntax().range().start() + TextUnit::of_str(prefix) + TextUnit::from(1)
+        < comment.syntax().text_range().start() + TextUnit::of_str(prefix) + TextUnit::from(1)
     {
         return None;
     }
@@ -45,7 +45,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
 }
 
 fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
-    let ws = match find_token_at_offset(file.syntax(), token.range().start()) {
+    let ws = match find_token_at_offset(file.syntax(), token.text_range().start()) {
         TokenAtOffset::Between(l, r) => {
             assert!(r == *token);
             l
@@ -71,7 +71,7 @@ pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<TextEdit> {
         return None;
     }
     if let Some(expr) = let_stmt.initializer() {
-        let expr_range = expr.syntax().range();
+        let expr_range = expr.syntax().text_range();
         if expr_range.contains(eq_offset) && eq_offset != expr_range.start() {
             return None;
         }
@@ -81,7 +81,7 @@ pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<TextEdit> {
     } else {
         return None;
     }
-    let offset = let_stmt.syntax().range().end();
+    let offset = let_stmt.syntax().text_range().end();
     let mut edit = TextEditBuilder::default();
     edit.insert(offset, ";".to_string());
     Some(edit.finish())

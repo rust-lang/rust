@@ -48,7 +48,7 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
             if !full_stmt.unwrap().has_semi() {
                 buf.push_str(";");
             }
-            edit.replace(expr.syntax().range(), buf);
+            edit.replace(expr.syntax().text_range(), buf);
         } else {
             buf.push_str(";");
 
@@ -66,14 +66,14 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
                 buf.push_str(text);
             }
 
-            edit.target(expr.syntax().range());
-            edit.replace(expr.syntax().range(), "var_name".to_string());
-            edit.insert(anchor_stmt.range().start(), buf);
+            edit.target(expr.syntax().text_range());
+            edit.replace(expr.syntax().text_range(), "var_name".to_string());
+            edit.insert(anchor_stmt.text_range().start(), buf);
             if wrap_in_block {
-                edit.insert(anchor_stmt.range().end(), " }");
+                edit.insert(anchor_stmt.text_range().end(), " }");
             }
         }
-        edit.set_cursor(anchor_stmt.range().start() + cursor_offset);
+        edit.set_cursor(anchor_stmt.text_range().start() + cursor_offset);
     });
 
     ctx.build()

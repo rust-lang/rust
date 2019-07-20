@@ -356,7 +356,7 @@ fn best_action_for_target(
             // todo: we should include even whitespace blocks as anchor candidates
             let anchor = container
                 .children()
-                .find(|n| n.range().start() < anchor.range().start())
+                .find(|n| n.text_range().start() < anchor.text_range().start())
                 .or_else(|| Some(anchor));
 
             ImportAction::add_new_use(anchor, false)
@@ -418,7 +418,7 @@ fn make_assist_add_new_use(
                 buf.push_str(&spaces);
             }
         }
-        let position = if after { anchor.range().end() } else { anchor.range().start() };
+        let position = if after { anchor.text_range().end() } else { anchor.text_range().start() };
         edit.insert(position, buf);
     }
 }
@@ -434,10 +434,10 @@ fn make_assist_add_in_tree_list(
         let mut buf = String::new();
         let comma = last.syntax().siblings(Direction::Next).find(|n| n.kind() == T![,]);
         let offset = if let Some(comma) = comma {
-            comma.range().end()
+            comma.text_range().end()
         } else {
             buf.push_str(",");
-            last.syntax().range().end()
+            last.syntax().text_range().end()
         };
         if add_self {
             buf.push_str(" self")
@@ -462,11 +462,11 @@ fn make_assist_add_nested_import(
     if let Some(use_tree) = use_tree {
         let (start, add_colon_colon) = if let Some(first_segment_to_split) = first_segment_to_split
         {
-            (first_segment_to_split.syntax().range().start(), false)
+            (first_segment_to_split.syntax().text_range().start(), false)
         } else {
-            (use_tree.syntax().range().end(), true)
+            (use_tree.syntax().text_range().end(), true)
         };
-        let end = use_tree.syntax().range().end();
+        let end = use_tree.syntax().text_range().end();
 
         let mut buf = String::new();
         if add_colon_colon {
@@ -497,8 +497,8 @@ fn apply_auto_import(
         // Here we are assuming the assist will provide a  correct use statement
         // so we can delete the path qualifier
         edit.delete(TextRange::from_to(
-            path.syntax().range().start(),
-            last.syntax().range().start(),
+            path.syntax().text_range().start(),
+            last.syntax().text_range().start(),
         ));
     }
 }

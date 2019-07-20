@@ -15,14 +15,14 @@ pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
         return None;
     }
 
-    let l_curly = colon_colon.range().end();
+    let l_curly = colon_colon.text_range().end();
     let r_curly = match top_path.syntax().parent().and_then(ast::UseTree::cast) {
-        Some(tree) => tree.syntax().range().end(),
-        None => top_path.syntax().range().end(),
+        Some(tree) => tree.syntax().text_range().end(),
+        None => top_path.syntax().text_range().end(),
     };
 
     ctx.add_action(AssistId("split_import"), "split import", |edit| {
-        edit.target(colon_colon.range());
+        edit.target(colon_colon.text_range());
         edit.insert(l_curly, "{");
         edit.insert(r_curly, "}");
         edit.set_cursor(l_curly + TextUnit::of_str("{"));

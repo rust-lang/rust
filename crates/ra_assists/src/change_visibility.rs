@@ -35,14 +35,15 @@ fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         if parent.children().any(|child| child.kind() == VISIBILITY) {
             return None;
         }
-        (vis_offset(&parent), keyword.range())
+        (vis_offset(&parent), keyword.text_range())
     } else {
         let ident = ctx.token_at_offset().find(|leaf| leaf.kind() == IDENT)?;
         let field = ident.parent().ancestors().find_map(ast::NamedFieldDef::cast)?;
-        if field.name()?.syntax().range() != ident.range() && field.visibility().is_some() {
+        if field.name()?.syntax().text_range() != ident.text_range() && field.visibility().is_some()
+        {
             return None;
         }
-        (vis_offset(field.syntax()), ident.range())
+        (vis_offset(field.syntax()), ident.text_range())
     };
 
     ctx.add_action(AssistId("change_visibility"), "make pub(crate)", |edit| {
@@ -61,25 +62,25 @@ fn vis_offset(node: &SyntaxNode) -> TextUnit {
             _ => false,
         })
         .next()
-        .map(|it| it.range().start())
-        .unwrap_or_else(|| node.range().start())
+        .map(|it| it.text_range().start())
+        .unwrap_or_else(|| node.text_range().start())
 }
 
 fn change_vis(mut ctx: AssistCtx<impl HirDatabase>, vis: ast::Visibility) -> Option<Assist> {
     if vis.syntax().text() == "pub" {
         ctx.add_action(AssistId("change_visibility"), "change to pub(crate)", |edit| {
-            edit.target(vis.syntax().range());
-            edit.replace(vis.syntax().range(), "pub(crate)");
-            edit.set_cursor(vis.syntax().range().start())
+            edit.target(vis.syntax().text_range());
+            edit.replace(vis.syntax().text_range(), "pub(crate)");
+            edit.set_cursor(vis.syntax().text_range().start())
         });
 
         return ctx.build();
     }
     if vis.syntax().text() == "pub(crate)" {
         ctx.add_action(AssistId("change_visibility"), "change to pub", |edit| {
-            edit.target(vis.syntax().range());
-            edit.replace(vis.syntax().range(), "pub");
-            edit.set_cursor(vis.syntax().range().start());
+            edit.target(vis.syntax().text_range());
+            edit.replace(vis.syntax().text_range(), "pub");
+            edit.set_cursor(vis.syntax().text_range().start());
         });
 
         return ctx.build();

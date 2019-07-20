@@ -271,7 +271,7 @@ fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec
 fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
     fn decl<N: NameOwner>(node: N) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
         let name = node.name()?;
-        let name_range = name.syntax().range();
+        let name_range = name.syntax().text_range();
         let name = name.text().clone();
         let ptr = SyntaxNodePtr::new(node.syntax());
 

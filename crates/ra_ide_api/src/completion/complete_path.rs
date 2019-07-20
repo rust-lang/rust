@@ -26,7 +26,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 if Some(module) == ctx.module {
                     if let Some(import) = res.import {
                         if let Either::A(use_tree) = module.import_source(ctx.db, import) {
-                            if use_tree.syntax().range().contains_inclusive(ctx.offset) {
+                            if use_tree.syntax().text_range().contains_inclusive(ctx.offset) {
                                 // for `use self::foo<|>`, don't suggest `foo` as a completion
                                 tested_by!(dont_complete_current_use);
                                 continue;

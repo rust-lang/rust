@@ -275,7 +275,7 @@ impl NavigationTarget {
     ) -> NavigationTarget {
         //FIXME: use `_` instead of empty string
         let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
-        let focus_range = node.name().map(|it| it.syntax().range());
+        let focus_range = node.name().map(|it| it.syntax().text_range());
         NavigationTarget::from_syntax(file_id, name, focus_range, node.syntax(), docs, description)
     }
 
@@ -291,7 +291,7 @@ impl NavigationTarget {
             file_id,
             name,
             kind: node.kind(),
-            full_range: node.range(),
+            full_range: node.text_range(),
             focus_range,
             // ptr: Some(LocalSyntaxPtr::new(node)),
             container_name: None,

@@ -12,7 +12,7 @@ pub fn matching_brace(file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {
     let parent = brace_node.parent();
     let matching_kind = BRACES[brace_idx ^ 1];
     let matching_node = parent.children_with_tokens().find(|node| node.kind() == matching_kind)?;
-    Some(matching_node.range().start())
+    Some(matching_node.text_range().start())
 }
 
 #[cfg(test)]

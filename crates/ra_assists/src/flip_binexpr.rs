@@ -8,7 +8,7 @@ pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
     let expr = ctx.node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax().clone();
     let rhs = expr.rhs()?.syntax().clone();
-    let op_range = expr.op_token()?.range();
+    let op_range = expr.op_token()?.text_range();
     // The assist should be applied only if the cursor is on the operator
     let cursor_in_range = ctx.frange.range.is_subrange(&op_range);
     if !cursor_in_range {
@@ -25,8 +25,8 @@ pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
         if let FlipAction::FlipAndReplaceOp(new_op) = action {
             edit.replace(op_range, new_op);
         }
-        edit.replace(lhs.range(), rhs.text());
-        edit.replace(rhs.range(), lhs.text());
+        edit.replace(lhs.text_range(), rhs.text());
+        edit.replace(rhs.text_range(), lhs.text());
     });
 
     ctx.build()

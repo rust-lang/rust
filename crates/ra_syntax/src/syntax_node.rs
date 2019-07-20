@@ -53,7 +53,7 @@ impl fmt::Debug for SyntaxNode {
             assert_eq!(level, 0);
             Ok(())
         } else {
-            write!(f, "{:?}@{:?}", self.kind(), self.range())
+            write!(f, "{:?}@{:?}", self.kind(), self.text_range())
         }
     }
 }
@@ -80,7 +80,7 @@ impl SyntaxNode {
         self.0.kind().0.into()
     }
 
-    pub fn range(&self) -> TextRange {
+    pub fn text_range(&self) -> TextRange {
         self.0.text_range()
     }
 
@@ -291,7 +291,7 @@ pub struct SyntaxToken(pub(crate) rowan::cursor::SyntaxToken);
 
 impl fmt::Debug for SyntaxToken {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{:?}@{:?}", self.kind(), self.range())?;
+        write!(fmt, "{:?}@{:?}", self.kind(), self.text_range())?;
         if self.text().len() < 25 {
             return write!(fmt, " {:?}", self.text());
         }
@@ -321,7 +321,7 @@ impl SyntaxToken {
         self.0.text()
     }
 
-    pub fn range(&self) -> TextRange {
+    pub fn text_range(&self) -> TextRange {
         self.0.text_range()
     }
 
@@ -453,10 +453,10 @@ impl SyntaxElement {
         .ancestors()
     }
 
-    pub fn range(&self) -> TextRange {
+    pub fn text_range(&self) -> TextRange {
         match self {
-            SyntaxElement::Node(it) => it.range(),
-            SyntaxElement::Token(it) => it.range(),
+            SyntaxElement::Node(it) => it.text_range(),
+            SyntaxElement::Token(it) => it.text_range(),
         }
     }
 

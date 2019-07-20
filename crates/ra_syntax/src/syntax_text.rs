@@ -13,7 +13,7 @@ pub struct SyntaxText {
 
 impl SyntaxText {
     pub(crate) fn new(node: SyntaxNode) -> SyntaxText {
-        let range = node.range();
+        let range = node.text_range();
         SyntaxText { node, range }
     }
 
@@ -24,14 +24,14 @@ impl SyntaxText {
         self.node.descendants_with_tokens().try_fold(init, move |acc, element| {
             let res = match element {
                 SyntaxElement::Token(token) => {
-                    let range = match self.range.intersection(&token.range()) {
+                    let range = match self.range.intersection(&token.text_range()) {
                         None => return Ok(acc),
                         Some(it) => it,
                     };
-                    let slice = if range == token.range() {
+                    let slice = if range == token.text_range() {
                         token.text()
                     } else {
-                        let range = range - token.range().start();
+                        let range = range - token.text_range().start();
                         &token.text()[range]
                     };
                     f(acc, slice)?

@@ -22,9 +22,12 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
         .next_sibling_or_token()
         .and_then(|it| ast::Whitespace::cast(it.as_token()?.clone()))
     {
-        TextRange::from_to(let_stmt.syntax().range().start(), whitespace.syntax().range().end())
+        TextRange::from_to(
+            let_stmt.syntax().text_range().start(),
+            whitespace.syntax().text_range().end(),
+        )
     } else {
-        let_stmt.syntax().range()
+        let_stmt.syntax().text_range()
     };
     let analyzer = hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, bind_pat.syntax(), None);
     let refs = analyzer.find_all_refs(&bind_pat);

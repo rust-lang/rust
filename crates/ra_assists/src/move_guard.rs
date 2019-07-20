@@ -17,11 +17,11 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
     let buf = format!("if {} {{ {} }}", guard_conditions.syntax().text(), arm_expr.syntax().text());
 
     ctx.add_action(AssistId("move_guard_to_arm_body"), "move guard to arm body", |edit| {
-        edit.target(guard.syntax().range());
+        edit.target(guard.syntax().text_range());
         let offseting_amount = match &space_before_guard {
             Some(SyntaxElement::Token(tok)) => {
                 if let Some(_) = ast::Whitespace::cast(tok.clone()) {
-                    let ele = space_before_guard.unwrap().range();
+                    let ele = space_before_guard.unwrap().text_range();
                     edit.delete(ele);
                     ele.len()
                 } else {
@@ -31,9 +31,11 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
             _ => TextUnit::from(0),
         };
 
-        edit.delete(guard.syntax().range());
+        edit.delete(guard.syntax().text_range());
         edit.replace_node_and_indent(arm_expr.syntax(), buf);
-        edit.set_cursor(arm_expr.syntax().range().start() + TextUnit::from(3) - offseting_amount);
+        edit.set_cursor(
+            arm_expr.syntax().text_range().start() + TextUnit::from(3) - offseting_amount,
+        );
     });
     ctx.build()
 }
@@ -62,18 +64,18 @@ pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>)
         AssistId("move_arm_cond_to_match_guard"),
         "move condition to match guard",
         |edit| {
-            edit.target(if_expr.syntax().range());
+            edit.target(if_expr.syntax().text_range());
             let then_only_expr = then_block.statements().next().is_none();
 
             match &then_block.expr() {
                 Some(then_expr) if then_only_expr => {
-                    edit.replace(if_expr.syntax().range(), then_expr.syntax().text())
+                    edit.replace(if_expr.syntax().text_range(), then_expr.syntax().text())
                 }
-                _ => edit.replace(if_expr.syntax().range(), then_block.syntax().text()),
+                _ => edit.replace(if_expr.syntax().text_range(), then_block.syntax().text()),
             }
 
-            edit.insert(last_match_pat.syntax().range().end(), buf);
-            edit.set_cursor(last_match_pat.syntax().range().end() + TextUnit::from(1));
+            edit.insert(last_match_pat.syntax().text_range().end(), buf);
+            edit.set_cursor(last_match_pat.syntax().text_range().end() + TextUnit::from(1));
         },
     );
     ctx.build()
