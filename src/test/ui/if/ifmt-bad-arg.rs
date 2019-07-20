@@ -38,7 +38,7 @@ fn main() {
     format!("{} {}", 1, 2, foo=1, bar=2);  //~ ERROR: multiple unused formatting arguments
 
     format!("{foo}", foo=1, foo=2);  //~ ERROR: duplicate argument
-    format!("", foo=1, 2);           //~ ERROR: positional arguments cannot follow
+    format!("{foo} {} {}", foo=1, 2);   //~ ERROR: positional arguments cannot follow
 
     // bad named arguments, #35082
 
