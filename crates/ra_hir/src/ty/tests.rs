@@ -21,6 +21,41 @@ use crate::{
 // update the snapshots.
 
 #[test]
+fn infer_await() {
+    let (mut db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+
+struct IntFuture;
+
+impl Future for IntFuture {
+    type Output = u64;
+}
+
+fn test() {
+    let r = IntFuture;
+    let v = r.await;
+    v<|>;
+}
+
+//- /std.rs
+#[prelude_import] use future::*;
+mod future {
+    trait Future {
+        type Output;
+    }
+}
+
+"#,
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["std"]),
+        "std": ("/std.rs", []),
+    });
+    assert_eq!("u64", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_try() {
     let (mut db, pos) = MockDatabase::with_position(
         r#"

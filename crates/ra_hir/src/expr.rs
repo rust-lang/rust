@@ -220,6 +220,9 @@ pub enum Expr {
         expr: ExprId,
         name: Name,
     },
+    Await {
+        expr: ExprId,
+    },
     Try {
         expr: ExprId,
     },
@@ -359,6 +362,7 @@ impl Expr {
                 f(*rhs);
             }
             Expr::Field { expr, .. }
+            | Expr::Await { expr }
             | Expr::Try { expr }
             | Expr::Cast { expr, .. }
             | Expr::Ref { expr, .. }
@@ -728,6 +732,10 @@ where
                     _ => Name::missing(),
                 };
                 self.alloc_expr(Expr::Field { expr, name }, syntax_ptr)
+            }
+            ast::ExprKind::AwaitExpr(e) => {
+                let expr = self.collect_expr_opt(e.expr());
+                self.alloc_expr(Expr::Await { expr }, syntax_ptr)
             }
             ast::ExprKind::TryExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());

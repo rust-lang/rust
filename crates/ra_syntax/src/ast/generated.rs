@@ -175,6 +175,32 @@ impl Attr {
     }
 }
 
+// AwaitExpr
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AwaitExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+
+impl AstNode for AwaitExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            AWAIT_EXPR => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(AwaitExpr { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+
+impl AwaitExpr {
+    pub fn expr(&self) -> Option<Expr> {
+        super::child_opt(self)
+    }
+}
+
 // BinExpr
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BinExpr {
@@ -566,7 +592,7 @@ pub struct Expr {
 impl AstNode for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-             | TUPLE_EXPR | ARRAY_EXPR | PAREN_EXPR | PATH_EXPR | LAMBDA_EXPR | IF_EXPR | LOOP_EXPR | FOR_EXPR | WHILE_EXPR | CONTINUE_EXPR | BREAK_EXPR | LABEL | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | STRUCT_LIT | CALL_EXPR | INDEX_EXPR | METHOD_CALL_EXPR | FIELD_EXPR | TRY_EXPR | TRY_BLOCK_EXPR | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL => true,
+             | TUPLE_EXPR | ARRAY_EXPR | PAREN_EXPR | PATH_EXPR | LAMBDA_EXPR | IF_EXPR | LOOP_EXPR | FOR_EXPR | WHILE_EXPR | CONTINUE_EXPR | BREAK_EXPR | LABEL | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | STRUCT_LIT | CALL_EXPR | INDEX_EXPR | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | TRY_BLOCK_EXPR | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL => true,
             _ => false,
         }
     }
@@ -599,6 +625,7 @@ pub enum ExprKind {
     IndexExpr(IndexExpr),
     MethodCallExpr(MethodCallExpr),
     FieldExpr(FieldExpr),
+    AwaitExpr(AwaitExpr),
     TryExpr(TryExpr),
     TryBlockExpr(TryBlockExpr),
     CastExpr(CastExpr),
@@ -669,6 +696,9 @@ impl From<MethodCallExpr> for Expr {
 impl From<FieldExpr> for Expr {
     fn from(n: FieldExpr) -> Expr { Expr { syntax: n.syntax } }
 }
+impl From<AwaitExpr> for Expr {
+    fn from(n: AwaitExpr) -> Expr { Expr { syntax: n.syntax } }
+}
 impl From<TryExpr> for Expr {
     fn from(n: TryExpr) -> Expr { Expr { syntax: n.syntax } }
 }
@@ -719,6 +749,7 @@ impl Expr {
             INDEX_EXPR => ExprKind::IndexExpr(IndexExpr::cast(self.syntax.clone()).unwrap()),
             METHOD_CALL_EXPR => ExprKind::MethodCallExpr(MethodCallExpr::cast(self.syntax.clone()).unwrap()),
             FIELD_EXPR => ExprKind::FieldExpr(FieldExpr::cast(self.syntax.clone()).unwrap()),
+            AWAIT_EXPR => ExprKind::AwaitExpr(AwaitExpr::cast(self.syntax.clone()).unwrap()),
             TRY_EXPR => ExprKind::TryExpr(TryExpr::cast(self.syntax.clone()).unwrap()),
             TRY_BLOCK_EXPR => ExprKind::TryBlockExpr(TryBlockExpr::cast(self.syntax.clone()).unwrap()),
             CAST_EXPR => ExprKind::CastExpr(CastExpr::cast(self.syntax.clone()).unwrap()),
