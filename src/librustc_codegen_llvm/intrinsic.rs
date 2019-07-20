@@ -1640,29 +1640,11 @@ fn generic_simd_intrinsic(
                         }
                     },
                     ty::Float(f) => {
-                        // ordered arithmetic reductions take an accumulator
                         let acc = if $ordered {
-                            let acc = args[1].immediate();
-                            // FIXME: https://bugs.llvm.org/show_bug.cgi?id=36734
-                            // * if the accumulator of the fadd isn't 0, incorrect
-                            //   code is generated
-                            // * if the accumulator of the fmul isn't 1, incorrect
-                            //   code is generated
-                            match bx.const_get_real(acc) {
-                                None => return_error!("accumulator of {} is not a constant", $name),
-                                Some((v, loses_info)) => {
-                                    if $name.contains("mul") && v != 1.0_f64 {
-                                        return_error!("accumulator of {} is not 1.0", $name);
-                                    } else if $name.contains("add") && v != 0.0_f64 {
-                                        return_error!("accumulator of {} is not 0.0", $name);
-                                    } else if loses_info {
-                                        return_error!("accumulator of {} loses information", $name);
-                                    }
-                                }
-                            }
-                            acc
+                            // ordered arithmetic reductions take an accumulator
+                            args[1].immediate()
                         } else {
-                            // unordered arithmetic reductions do not:
+                            // unordered arithmetic reductions use the identity accumulator
                             let identity_acc = if $name.contains("mul") { 1.0 } else { 0.0 };
                             match f.bit_width() {
                                 32 => bx.const_real(bx.type_f32(), identity_acc),
@@ -1688,8 +1670,8 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         }
     }
 
-    arith_red!("simd_reduce_add_ordered": vector_reduce_add, vector_reduce_fadd_fast, true);
-    arith_red!("simd_reduce_mul_ordered": vector_reduce_mul, vector_reduce_fmul_fast, true);
+    arith_red!("simd_reduce_add_ordered": vector_reduce_add, vector_reduce_fadd, true);
+    arith_red!("simd_reduce_mul_ordered": vector_reduce_mul, vector_reduce_fmul, true);
     arith_red!("simd_reduce_add_unordered": vector_reduce_add, vector_reduce_fadd_fast, false);
     arith_red!("simd_reduce_mul_unordered": vector_reduce_mul, vector_reduce_fmul_fast, false);
 

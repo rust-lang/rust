@@ -166,25 +166,6 @@ impl CodegenCx<'ll, 'tcx> {
             r
         }
     }
-
-    pub fn const_get_real(&self, v: &'ll Value) -> Option<(f64, bool)> {
-        unsafe {
-            if self.is_const_real(v) {
-                let mut loses_info: llvm::Bool = 0;
-                let r = llvm::LLVMConstRealGetDouble(v, &mut loses_info);
-                let loses_info = if loses_info == 1 { true } else { false };
-                Some((r, loses_info))
-            } else {
-                None
-            }
-        }
-    }
-
-    fn is_const_real(&self, v: &'ll Value) -> bool {
-        unsafe {
-            llvm::LLVMIsAConstantFP(v).is_some()
-        }
-    }
 }
 
 impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
