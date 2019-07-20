@@ -7,7 +7,7 @@
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir::{self, InlineAsm as HirInlineAsm};
-use crate::mir::interpret::{ConstValue, InterpError, Scalar};
+use crate::mir::interpret::{ConstValue, EvalErrorPanic, InterpError::Panic, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::rustc_serialize as serialize;
 use crate::ty::adjustment::PointerCast;
@@ -3087,11 +3087,11 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 }
             }
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let msg = if let InterpError::BoundsCheck { ref len, ref index } = *msg {
-                    InterpError::BoundsCheck {
+                let msg = if let Panic(EvalErrorPanic::BoundsCheck { ref len, ref index }) = *msg {
+                    Panic(EvalErrorPanic::BoundsCheck {
                         len: len.fold_with(folder),
                         index: index.fold_with(folder),
-                    }
+                    })
                 } else {
                     msg.clone()
                 };
@@ -3132,7 +3132,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             }
             Assert { ref cond, ref msg, .. } => {
                 if cond.visit_with(visitor) {
-                    if let InterpError::BoundsCheck { ref len, ref index } = *msg {
+                    if let Panic(EvalErrorPanic::BoundsCheck { ref len, ref index }) = *msg {
                         len.visit_with(visitor) || index.visit_with(visitor)
                     } else {
                         false

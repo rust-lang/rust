@@ -284,11 +284,6 @@ pub enum InterpError<'tcx, O> {
     Unimplemented(String),
     DerefFunctionPointer,
     ExecuteMemory,
-    BoundsCheck { len: O, index: O },
-    Overflow(mir::BinOp),
-    OverflowNeg,
-    DivisionByZero,
-    RemainderByZero,
     Intrinsic(String),
     InvalidChar(u128),
     StackFrameLimitReached,
@@ -331,7 +326,6 @@ pub enum InterpError<'tcx, O> {
     GeneratorResumedAfterPanic,
     InfiniteLoop,
 }
-
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
@@ -383,8 +377,6 @@ impl<'tcx, O> InterpError<'tcx, O> {
                 "tried to dereference a function pointer",
             ExecuteMemory =>
                 "tried to treat a memory pointer as a function pointer",
-            BoundsCheck{..} =>
-                "array index out of bounds",
             Intrinsic(..) =>
                 "intrinsic failed",
             NoMirFor(..) =>
@@ -436,8 +428,32 @@ impl<'tcx, O> InterpError<'tcx, O> {
                 two",
             Unreachable =>
                 "entered unreachable code",
-            Panic { .. } =>
+            Panic(EvalErrorPanic::Panic{..}) =>
                 "the evaluated program panicked",
+            Panic(EvalErrorPanic::BoundsCheck{..}) =>
+                "array index out of bounds",
+            Panic(EvalErrorPanic::Overflow(mir::BinOp::Add)) =>
+                "attempt to add with overflow",
+            Panic(EvalErrorPanic::Overflow(mir::BinOp::Sub)) =>
+                "attempt to subtract with overflow",
+            Panic(EvalErrorPanic::Overflow(mir::BinOp::Mul)) =>
+                "attempt to multiply with overflow",
+            Panic(EvalErrorPanic::Overflow(mir::BinOp::Div)) =>
+                "attempt to divide with overflow",
+            Panic(EvalErrorPanic::Overflow(mir::BinOp::Rem)) =>
+                "attempt to calculate the remainder with overflow",
+            Panic(EvalErrorPanic::OverflowNeg) =>
+                "attempt to negate with overflow",
+            Panic(EvalErrorPanic::Overflow(mir::BinOp::Shr)) =>
+                "attempt to shift right with overflow",
+            Panic(EvalErrorPanic::Overflow(mir::BinOp::Shl)) =>
+                "attempt to shift left with overflow",
+            Panic(EvalErrorPanic::Overflow(op)) =>
+                bug!("{:?} cannot overflow", op),
+            Panic(EvalErrorPanic::DivisionByZero) =>
+                "attempt to divide by zero",
+            Panic(EvalErrorPanic::RemainderByZero) =>
+                "attempt to calculate the remainder with a divisor of zero",
             ReadFromReturnPointer =>
                 "tried to read from the return pointer",
             PathNotFound(_) =>
@@ -450,17 +466,6 @@ impl<'tcx, O> InterpError<'tcx, O> {
                 "encountered overly generic constant",
             ReferencedConstant =>
                 "referenced constant has errors",
-            Overflow(mir::BinOp::Add) => "attempt to add with overflow",
-            Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",
-            Overflow(mir::BinOp::Mul) => "attempt to multiply with overflow",
-            Overflow(mir::BinOp::Div) => "attempt to divide with overflow",
-            Overflow(mir::BinOp::Rem) => "attempt to calculate the remainder with overflow",
-            OverflowNeg => "attempt to negate with overflow",
-            Overflow(mir::BinOp::Shr) => "attempt to shift right with overflow",
-            Overflow(mir::BinOp::Shl) => "attempt to shift left with overflow",
-            Overflow(op) => bug!("{:?} cannot overflow", op),
-            DivisionByZero => "attempt to divide by zero",
-            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
             GeneratorResumedAfterReturn => "generator resumed after completion",
             GeneratorResumedAfterPanic => "generator resumed after panicking",
             InfiniteLoop =>
@@ -507,8 +512,6 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
                     callee_ty, caller_ty),
             FunctionArgCountMismatch =>
                 write!(f, "tried to call a function with incorrect number of arguments"),
-            BoundsCheck { ref len, ref index } =>
-                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
             ReallocatedWrongMemoryKind(ref old, ref new) =>
                 write!(f, "tried to reallocate memory from {} to {}", old, new),
             DeallocatedWrongMemoryKind(ref old, ref new) =>
@@ -532,8 +535,10 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
                 write!(f, "incorrect alloc info: expected size {} and align {}, \
                            got size {} and align {}",
                     size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
-            Panic { .. } =>
-                write!(f, "the evaluated program panicked"),
+            Panic(EvalErrorPanic::Panic { ref msg, line, col, ref file }) =>
+                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
+            Panic(EvalErrorPanic::BoundsCheck { ref len, ref index }) =>
+                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
             InvalidDiscriminant(val) =>
                 write!(f, "encountered invalid enum discriminant {}", val),
             Exit(code) =>
