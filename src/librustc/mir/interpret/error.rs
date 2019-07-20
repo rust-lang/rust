@@ -229,6 +229,24 @@ impl<'tcx> From<InterpError<'tcx, u64>> for InterpErrorInfo<'tcx> {
 pub type AssertMessage<'tcx> = InterpError<'tcx, mir::Operand<'tcx>>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum EvalErrorPanic<O> {
+    Panic {
+        msg: Symbol,
+        line: u32,
+        col: u32,
+        file: Symbol,
+    },
+    BoundsCheck {
+        len: O,
+        index: O,
+    },
+    Overflow(mir::BinOp),
+    OverflowNeg,
+    DivisionByZero,
+    RemainderByZero,
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InterpError<'tcx, O> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant.
@@ -247,7 +265,6 @@ pub enum InterpError<'tcx, O> {
     DanglingPointerDeref,
     DoubleFree,
     InvalidMemoryAccess,
-    FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
     InvalidFunctionPointer,
     InvalidBool,
     InvalidDiscriminant(ScalarMaybeUndef),
@@ -267,13 +284,11 @@ pub enum InterpError<'tcx, O> {
     Unimplemented(String),
     DerefFunctionPointer,
     ExecuteMemory,
-    // asd
     BoundsCheck { len: O, index: O },
     Overflow(mir::BinOp),
     OverflowNeg,
     DivisionByZero,
     RemainderByZero,
-    // asd
     Intrinsic(String),
     InvalidChar(u128),
     StackFrameLimitReached,
@@ -283,29 +298,6 @@ pub enum InterpError<'tcx, O> {
     AlignmentCheckFailed {
         required: Align,
         has: Align,
-    },
-    MemoryLockViolation {
-        ptr: Pointer,
-        len: u64,
-        frame: usize,
-        access: AccessKind,
-        lock: Lock,
-    },
-    MemoryAcquireConflict {
-        ptr: Pointer,
-        len: u64,
-        kind: AccessKind,
-        lock: Lock,
-    },
-    InvalidMemoryLockRelease {
-        ptr: Pointer,
-        len: u64,
-        frame: usize,
-        lock: Lock,
-    },
-    DeallocatedLockedMemory {
-        ptr: Pointer,
-        lock: Lock,
     },
     ValidationFailure(String),
     CalledClosureAsFunction,
@@ -324,7 +316,7 @@ pub enum InterpError<'tcx, O> {
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
-    Panic(EvalErrorPanic<'tcx, O>),
+    Panic(EvalErrorPanic<O>),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
     UnimplementedTraitSelection,
@@ -340,15 +332,6 @@ pub enum InterpError<'tcx, O> {
     InfiniteLoop,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub enum EvalErrorPanic<'tcx, O> {
-    Panic,
-    BoundsCheck { len: O, index: O },
-    Overflow(mir::BinOp),
-    OverflowNeg,
-    DivisionByZero,
-    RemainderByZero,
-}
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
@@ -549,8 +532,8 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
                 write!(f, "incorrect alloc info: expected size {} and align {}, \
                            got size {} and align {}",
                     size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
-            Panic { ref msg, line, col, ref file } =>
-                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
+            Panic { .. } =>
+                write!(f, "the evaluated program panicked"),
             InvalidDiscriminant(val) =>
                 write!(f, "encountered invalid enum discriminant {}", val),
             Exit(code) =>
