@@ -4907,6 +4907,17 @@ fn foo_recursive(n: usize) -> Pin<Box<dyn Future<Output = ()>>> {
 The `Box<...>` ensures that the result is of known size,
 and the pin is required to keep it in the same place in memory.
 "##,
+
+E0902: r##"
+TODO: change error number
+TODO: track_caller: require Rust ABI to use track_caller
+"##,
+
+E0903: r##"
+TODO: change error number
+TODO: track_caller: can't apply in traits
+"##,
+
 ;
 //  E0035, merged into E0087/E0089
 //  E0036, merged into E0087/E0089

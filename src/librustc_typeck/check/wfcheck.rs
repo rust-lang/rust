@@ -172,6 +172,18 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
         _ => None
     };
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
+
+    // Prohibits applying `#[track_caller]` to trait methods
+    for attr in &trait_item.attrs {
+        if attr.check_name(sym::track_caller) {
+            struct_span_err!(
+                tcx.sess,
+                attr.span,
+                E0903,
+                "`#[track_caller]` is not supported for trait items yet."
+            ).emit();
+        }
+    }
 }
 
 pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {

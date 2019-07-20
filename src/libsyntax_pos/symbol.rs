@@ -671,6 +671,7 @@ symbols! {
         tool_attributes,
         tool_lints,
         trace_macros,
+        track_caller,
         trait_alias,
         transmute,
         transparent,
