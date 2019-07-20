@@ -1,5 +1,6 @@
 use rustc_target::spec::{HasTargetSpec, Target};
 
+use cranelift::codegen::ir::{Opcode, InstructionData, ValueDef};
 use cranelift_module::Module;
 
 use crate::prelude::*;
@@ -62,7 +63,7 @@ pub fn codegen_select(bcx: &mut FunctionBuilder, cond: Value, lhs: Value, rhs: V
     let rhs_ty = bcx.func.dfg.value_type(rhs);
     assert_eq!(lhs_ty, rhs_ty);
     if lhs_ty == types::I8 || lhs_ty == types::I16 {
-        // FIXME workaround for missing enocding for select.i8
+        // FIXME workaround for missing encoding for select.i8
         let lhs = bcx.ins().uextend(types::I32, lhs);
         let rhs = bcx.ins().uextend(types::I32, rhs);
         let res = bcx.ins().select(cond, lhs, rhs);
@@ -115,6 +116,49 @@ pub fn clif_intcast<'a, 'tcx: 'a>(
         (_, _) => {
             fx.bcx.ins().ireduce(to, val)
         }
+    }
+}
+
+fn resolve_normal_value_imm(func: &Function, val: Value) -> Option<i64> {
+    if let ValueDef::Result(inst, 0 /*param*/) = func.dfg.value_def(val) {
+        if let InstructionData::UnaryImm {
+            opcode: Opcode::Iconst,
+            imm,
+        } = func.dfg[inst] {
+            Some(imm.into())
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+fn resolve_128bit_value_imm(func: &Function, val: Value) -> Option<u128> {
+    let (lsb, msb) = if let ValueDef::Result(inst, 0 /*param*/) = func.dfg.value_def(val) {
+        if let InstructionData::Binary {
+            opcode: Opcode::Iconcat,
+            args: [lsb, msb],
+        } = func.dfg[inst] {
+            (lsb, msb)
+        } else {
+            return None;
+        }
+    } else {
+        return None;
+    };
+
+    let lsb = resolve_normal_value_imm(func, lsb)? as u64 as u128;
+    let msb = resolve_normal_value_imm(func, msb)? as u64 as u128;
+
+    Some(msb << 64 | lsb)
+}
+
+pub fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
+    if func.dfg.value_type(val) == types::I128 {
+        resolve_128bit_value_imm(func, val)
+    } else {
+        resolve_normal_value_imm(func, val).map(|imm| imm as u64 as u128)
     }
 }
 
