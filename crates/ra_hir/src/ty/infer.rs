@@ -1114,8 +1114,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .unwrap_or(Ty::Unknown);
                 self.insert_type_vars(ty)
             }
-            Expr::Await { .. } => {
-                Ty::Unknown
+            Expr::Await { expr } => {
+                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let ty = match self.resolve_future_future_output() {
+                    Some(future_future_output_alias) => {
+                        let ty = self.new_type_var();
+                        let projection = ProjectionPredicate {
+                            ty: ty.clone(),
+                            projection_ty: ProjectionTy {
+                                associated_ty: future_future_output_alias,
+                                parameters: vec![inner_ty].into(),
+                            },
+                        };
+                        self.obligations.push(Obligation::Projection(projection));
+                        self.resolve_ty_as_possible(&mut vec![], ty)
+                    }
+                    None => Ty::Unknown,
+                };
+                ty
             }
             Expr::Try { expr } => {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());
@@ -1367,6 +1383,28 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match self.resolver.resolve_path_segments(self.db, &ops_try_path).into_fully_resolved() {
             PerNs { types: Some(Def(Trait(trait_))), .. } => {
                 Some(trait_.associated_type_by_name(self.db, name::OK)?)
+            }
+            _ => None,
+        }
+    }
+
+    fn resolve_future_future_output(&self) -> Option<TypeAlias> {
+        let future_future_path = Path {
+            kind: PathKind::Abs,
+            segments: vec![
+                PathSegment { name: name::STD, args_and_bindings: None },
+                PathSegment { name: name::FUTURE_MOD, args_and_bindings: None },
+                PathSegment { name: name::FUTURE_TYPE, args_and_bindings: None },
+            ],
+        };
+
+        match self
+            .resolver
+            .resolve_path_segments(self.db, &future_future_path)
+            .into_fully_resolved()
+        {
+            PerNs { types: Some(Def(Trait(trait_))), .. } => {
+                Some(trait_.associated_type_by_name(self.db, name::OUTPUT)?)
             }
             _ => None,
         }
