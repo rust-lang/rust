@@ -538,7 +538,7 @@ fn find_source_directory_in_iter<I>(iter: I,
         if source_directories_already_tried.contains(&session_dir) ||
            !is_session_directory(&directory_name) ||
            !is_finalized(&directory_name) {
-            debug!("find_source_directory_in_iter - ignoring.");
+            debug!("find_source_directory_in_iter - ignoring");
             continue
         }
 
@@ -693,7 +693,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
             let timestamp = match extract_timestamp_from_session_dir(lock_file_name) {
                 Ok(timestamp) => timestamp,
                 Err(()) => {
-                    debug!("Found lock-file with malformed timestamp: {}",
+                    debug!("found lock-file with malformed timestamp: {}",
                         crate_directory.join(&lock_file_name).display());
                     // Ignore it
                     continue
@@ -746,7 +746,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
         let timestamp = match extract_timestamp_from_session_dir(directory_name) {
             Ok(timestamp) => timestamp,
             Err(()) => {
-                debug!("Found session-dir with malformed timestamp: {}",
+                debug!("found session-dir with malformed timestamp: {}",
                         crate_directory.join(directory_name).display());
                 // Ignore it
                 continue
