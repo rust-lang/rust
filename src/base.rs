@@ -874,6 +874,10 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     out_ty: Ty<'tcx>,
     signed: bool,
 ) -> CValue<'tcx> {
+    if !fx.tcx.sess.overflow_checks() {
+        return trans_int_binop(fx, bin_op, in_lhs, in_rhs, out_ty, signed);
+    }
+
     if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
         assert_eq!(
             in_lhs.layout().ty,
