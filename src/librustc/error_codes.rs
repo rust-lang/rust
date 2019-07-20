@@ -1727,6 +1727,16 @@ each method; it is not possible to annotate the entire impl with an `#[inline]`
 attribute.
 "##,
 
+E0900: r##"
+TODO: change error number
+TODO: track_caller: invalid syntax
+"##,
+
+E0901: r##"
+TODO: change error number
+TODO: track_caller: no naked functions
+"##,
+
 E0522: r##"
 The lang attribute is intended for marking special items that are built-in to
 Rust itself. This includes special traits (like `Copy` and `Sized`) that affect

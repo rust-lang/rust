@@ -483,6 +483,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         )
     ),
     gated!(
+        track_caller, Whitelisted, template!(Word),
+        "the `#[track_caller]` attribute is an experimental feature",
+    ),
+    gated!(
         // Used in resolve:
         prelude_import, Whitelisted, template!(Word),
         "`#[prelude_import]` is for use by rustc only",
