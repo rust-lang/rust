@@ -942,7 +942,8 @@ crate fn check_builtin_attribute(
     // Some of previously accepted forms were used in practice,
     // report them as warnings for now.
     let should_warn = |name| name == sym::doc || name == sym::ignore ||
-                             name == sym::inline || name == sym::link;
+                             name == sym::inline || name == sym::link ||
+                             name == sym::test || name == sym::bench;
 
     match attr.parse_meta(sess) {
         Ok(meta) => if !should_skip(name) && !template.compatible(&meta.node) {
