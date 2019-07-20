@@ -214,9 +214,10 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                             None
                         }).collect();
 
-                        let opt_src_place = items.first().and_then(|x| x.clone()).map(|x| x.2);
+                        let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
                         let opt_size = opt_src_place.and_then(|src_place| {
-                            let src_ty = src_place.ty(body, tcx).ty;
+                            let src_ty =
+                                Place::ty_from(src_place.base, src_place.projection, body, tcx).ty;
                             if let ty::Array(_, ref size_o) = src_ty.sty {
                                 size_o.assert_usize(tcx)
                             } else {
@@ -237,17 +238,17 @@ impl RestoreSubsliceArrayMoveOut {
     // indices is an integer interval. If all checks pass do the replacent.
     // items are Vec<Option<LocalUse, index in source array, source place for init local>>
     fn check_and_patch<'tcx>(candidate: Location,
-                             items: &[Option<(&LocalUse, u32, Place<'tcx>)>],
+                             items: &[Option<(&LocalUse, u32, PlaceRef<'_, 'tcx>)>],
                              opt_size: Option<u64>,
                              patch: &mut MirPatch<'tcx>,
                              dst_place: &Place<'tcx>) {
-        let opt_src_place = items.first().and_then(|x| x.clone()).map(|x| x.2);
+        let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
 
         if opt_size.is_some() && items.iter().all(
-            |l| l.is_some() && l.clone().unwrap().2 == opt_src_place.clone().unwrap()) {
-            let src_place = opt_src_place.clone().unwrap();
+            |l| l.is_some() && l.unwrap().2 == opt_src_place.unwrap()) {
+            let src_place = opt_src_place.unwrap();
 
-            let indices: Vec<_> = items.iter().map(|x| x.clone().unwrap().1).collect();
+            let indices: Vec<_> = items.iter().map(|x| x.unwrap().1).collect();
             for i in 1..indices.len() {
                 if indices[i - 1] + 1 != indices[i] {
                     return;
@@ -258,7 +259,7 @@ impl RestoreSubsliceArrayMoveOut {
             let max = *indices.last().unwrap();
 
             for item in items {
-                let locals_use = item.clone().unwrap().0;
+                let locals_use = item.unwrap().0;
                 patch.make_nop(locals_use.alive.unwrap());
                 patch.make_nop(locals_use.dead.unwrap());
                 patch.make_nop(locals_use.first_use.unwrap());
@@ -279,7 +280,7 @@ impl RestoreSubsliceArrayMoveOut {
     }
 
     fn try_get_item_source<'a, 'tcx>(local_use: &LocalUse,
-                                     body: &'a Body<'tcx>) -> Option<(u32, Place<'tcx>)> {
+                                     body: &'a Body<'tcx>) -> Option<(u32, PlaceRef<'a, 'tcx>)> {
         if let Some(location) = local_use.first_use {
             let block = &body[location.block];
             if block.statements.len() > location.statement_index {
@@ -298,9 +299,9 @@ impl RestoreSubsliceArrayMoveOut {
                             }
                         }),
                     }))) = &statement.kind {
-                    return Some((*offset, Place {
-                        base: base.clone(),
-                        projection: proj_base.clone(),
+                    return Some((*offset, PlaceRef {
+                        base,
+                        projection: proj_base,
                     }))
                 }
             }
