@@ -43,6 +43,7 @@ mod linkage;
 mod main_shim;
 mod metadata;
 mod pretty_clif;
+mod target_features_whitelist;
 mod trap;
 mod unimpl;
 mod unsize;
@@ -164,7 +165,21 @@ impl CodegenBackend for CraneliftCodegenBackend {
         rustc_codegen_utils::symbol_names::provide(providers);
         rustc_codegen_ssa::back::symbol_export::provide(providers);
 
-        providers.target_features_whitelist = |tcx, _cnum| tcx.arena.alloc(FxHashMap::default());
+        providers.target_features_whitelist = |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            if tcx.sess.opts.actually_rustdoc {
+                // rustdoc needs to be able to document functions that use all the features, so
+                // whitelist them all
+                 tcx.arena.alloc(target_features_whitelist::all_known_features()
+                    .map(|(a, b)| (a.to_string(), b))
+                    .collect())
+            } else {
+                tcx.arena.alloc(target_features_whitelist::target_feature_whitelist(tcx.sess)
+                    .iter()
+                    .map(|&(a, b)| (a.to_string(), b))
+                    .collect())
+            }
+        };
     }
     fn provide_extern(&self, providers: &mut Providers) {
         rustc_codegen_ssa::back::symbol_export::provide_extern(providers);

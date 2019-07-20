@@ -656,7 +656,58 @@ fn trans_stmt<'a, 'tcx: 'a>(
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..) => {}
 
-        StatementKind::InlineAsm { .. } => unimpl!("Inline assembly is not supported"),
+        StatementKind::InlineAsm(asm) => {
+            use syntax::ast::Name;
+            let InlineAsm { asm, outputs: _, inputs: _ } = &**asm;
+            let rustc::hir::InlineAsm {
+                asm: asm_code, // Name
+                outputs, // Vec<Name>
+                inputs, // Vec<Name>
+                clobbers, // Vec<Name>
+                volatile, // bool
+                alignstack, // bool
+                dialect, // syntax::ast::AsmDialect
+                asm_str_style: _,
+                ctxt: _,
+            } = asm;
+            match &*asm_code.as_str() {
+                "cpuid" | "cpuid\n" => {
+                    assert_eq!(inputs, &[Name::intern("{eax}"), Name::intern("{ecx}")]);
+
+                    assert_eq!(outputs.len(), 4);
+                    for (i, c) in (&["={eax}", "={ebx}", "={ecx}", "={edx}"]).iter().enumerate() {
+                        assert_eq!(&outputs[i].constraint.as_str(), c);
+                        assert!(!outputs[i].is_rw);
+                        assert!(!outputs[i].is_indirect);
+                    }
+
+                    assert_eq!(clobbers, &[Name::intern("rbx")]);
+
+                    assert!(!volatile);
+                    assert!(!alignstack);
+
+                    crate::trap::trap_unimplemented(fx, "__cpuid_count arch intrinsic is not supported");
+                }
+                "xgetbv" => {
+                    assert_eq!(inputs, &[Name::intern("{ecx}")]);
+
+                    assert_eq!(outputs.len(), 2);
+                    for (i, c) in (&["={eax}", "={edx}"]).iter().enumerate() {
+                        assert_eq!(&outputs[i].constraint.as_str(), c);
+                        assert!(!outputs[i].is_rw);
+                        assert!(!outputs[i].is_indirect);
+                    }
+
+                    assert_eq!(clobbers, &[]);
+
+                    assert!(!volatile);
+                    assert!(!alignstack);
+
+                    crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
+                }
+                _ => unimpl!("Inline assembly is not supported"),
+            }
+        }
     }
 }
 
