@@ -112,6 +112,13 @@ fn run_pass_miri(opt: bool) {
 
 fn compile_fail_miri(opt: bool) {
     compile_fail("tests/compile-fail", &get_target(), opt);
+    if rustc_test_suite().is_none() {
+        // FIXME: Some tests disabled in rustc test suite because
+        // they run with a debug-assertion libstd which changes the errors.
+        // We should build our own libstd for testing, see
+        // <https://github.com/rust-lang/rust/issues/61833>.
+        compile_fail("tests/compile-fail-norustc", &get_target(), opt);
+    }
 }
 
 fn test_runner(_tests: &[&()]) {
