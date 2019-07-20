@@ -1114,6 +1114,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .unwrap_or(Ty::Unknown);
                 self.insert_type_vars(ty)
             }
+            Expr::Await { .. } => {
+                Ty::Unknown
+            }
             Expr::Try { expr } => {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());
                 let ty = match self.resolve_ops_try_ok() {
