@@ -105,6 +105,7 @@ pub enum SyntaxKind {
     RETURN_KW,
     TRY_KW,
     BOX_KW,
+    AWAIT_KW,
     AUTO_KW,
     DEFAULT_KW,
     EXISTENTIAL_KW,
@@ -193,6 +194,7 @@ pub enum SyntaxKind {
     INDEX_EXPR,
     METHOD_CALL_EXPR,
     FIELD_EXPR,
+    AWAIT_EXPR,
     TRY_EXPR,
     CAST_EXPR,
     REF_EXPR,
@@ -338,6 +340,7 @@ macro_rules! T {
     (return) => { $crate::SyntaxKind::RETURN_KW };
     (try) => { $crate::SyntaxKind::TRY_KW };
     (box) => { $crate::SyntaxKind::BOX_KW };
+    (await) => { $crate::SyntaxKind::AWAIT_KW };
     (auto) => { $crate::SyntaxKind::AUTO_KW };
     (default) => { $crate::SyntaxKind::DEFAULT_KW };
     (existential) => { $crate::SyntaxKind::EXISTENTIAL_KW };
@@ -398,6 +401,7 @@ impl SyntaxKind {
             | RETURN_KW
             | TRY_KW
             | BOX_KW
+            | AWAIT_KW
             | AUTO_KW
             | DEFAULT_KW
             | EXISTENTIAL_KW
@@ -572,6 +576,7 @@ impl SyntaxKind {
             RETURN_KW => &SyntaxInfo { name: "RETURN_KW" },
             TRY_KW => &SyntaxInfo { name: "TRY_KW" },
             BOX_KW => &SyntaxInfo { name: "BOX_KW" },
+            AWAIT_KW => &SyntaxInfo { name: "AWAIT_KW" },
             AUTO_KW => &SyntaxInfo { name: "AUTO_KW" },
             DEFAULT_KW => &SyntaxInfo { name: "DEFAULT_KW" },
             EXISTENTIAL_KW => &SyntaxInfo { name: "EXISTENTIAL_KW" },
@@ -660,6 +665,7 @@ impl SyntaxKind {
             INDEX_EXPR => &SyntaxInfo { name: "INDEX_EXPR" },
             METHOD_CALL_EXPR => &SyntaxInfo { name: "METHOD_CALL_EXPR" },
             FIELD_EXPR => &SyntaxInfo { name: "FIELD_EXPR" },
+            AWAIT_EXPR => &SyntaxInfo { name: "AWAIT_EXPR" },
             TRY_EXPR => &SyntaxInfo { name: "TRY_EXPR" },
             CAST_EXPR => &SyntaxInfo { name: "CAST_EXPR" },
             REF_EXPR => &SyntaxInfo { name: "REF_EXPR" },
@@ -752,6 +758,7 @@ impl SyntaxKind {
             "return" => RETURN_KW,
             "try" => TRY_KW,
             "box" => BOX_KW,
+            "await" => AWAIT_KW,
             _ => return None,
         };
         Some(kw)

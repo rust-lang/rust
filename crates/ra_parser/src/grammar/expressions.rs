@@ -393,6 +393,18 @@ fn postfix_expr(
             T![.] if p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth(2) == T![::]) => {
                 method_call_expr(p, lhs)
             }
+            T![.] if p.nth(1) == AWAIT_KW => {
+                // test await_expr
+                // fn foo() {
+                //     x.await;
+                //     x.0.await;
+                //     x.0().await?.hello();
+                // }
+                let m = lhs.precede(p);
+                p.bump();
+                p.bump();
+                m.complete(p, AWAIT_EXPR)
+            }
             T![.] => field_expr(p, lhs),
             // test postfix_range
             // fn foo() { let x = 1..; }
