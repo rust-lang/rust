@@ -166,7 +166,7 @@ fn rename_mod(
         file_id: position.file_id,
         edit: {
             let mut builder = ra_text_edit::TextEditBuilder::default();
-            builder.replace(ast_name.syntax().range(), new_name.into());
+            builder.replace(ast_name.syntax().text_range(), new_name.into());
             builder.finish()
         },
     };

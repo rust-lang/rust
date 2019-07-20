@@ -22,7 +22,10 @@ impl<N: AstNode> AstEditor<N> {
         // FIXME: compute a more fine-grained diff here.
         // If *you* know a nice algorithm to compute diff between two syntax
         // tree, tell me about it!
-        builder.replace(self.original_ast.syntax().range(), self.ast().syntax().text().to_string());
+        builder.replace(
+            self.original_ast.syntax().text_range(),
+            self.ast().syntax().text().to_string(),
+        );
     }
 
     pub fn ast(&self) -> &N {

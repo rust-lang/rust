@@ -33,7 +33,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
             if let Some(end) = text.rfind('\'') {
                 if let Some(without_quotes) = text.get(2..end) {
                     if let Err((off, err)) = unescape::unescape_byte(without_quotes) {
-                        let off = token.range().start() + TextUnit::from_usize(off + 2);
+                        let off = token.text_range().start() + TextUnit::from_usize(off + 2);
                         acc.push(SyntaxError::new(err.into(), off))
                     }
                 }
@@ -43,7 +43,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
             if let Some(end) = text.rfind('\'') {
                 if let Some(without_quotes) = text.get(1..end) {
                     if let Err((off, err)) = unescape::unescape_char(without_quotes) {
-                        let off = token.range().start() + TextUnit::from_usize(off + 1);
+                        let off = token.text_range().start() + TextUnit::from_usize(off + 1);
                         acc.push(SyntaxError::new(err.into(), off))
                     }
                 }
@@ -55,7 +55,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                     unescape::unescape_byte_str(without_quotes, &mut |range, char| {
                         if let Err(err) = char {
                             let off = range.start;
-                            let off = token.range().start() + TextUnit::from_usize(off + 2);
+                            let off = token.text_range().start() + TextUnit::from_usize(off + 2);
                             acc.push(SyntaxError::new(err.into(), off))
                         }
                     })
@@ -68,7 +68,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                     unescape::unescape_str(without_quotes, &mut |range, char| {
                         if let Err(err) = char {
                             let off = range.start;
-                            let off = token.range().start() + TextUnit::from_usize(off + 1);
+                            let off = token.text_range().start() + TextUnit::from_usize(off + 1);
                             acc.push(SyntaxError::new(err.into(), off))
                         }
                     })
@@ -89,9 +89,9 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
                     assert_eq!(
                         node.parent(),
                         pair.parent(),
-                        "\nunpaired curleys:\n{}\n{}\n",
+                        "\nunpaired curleys:\n{}\n{:#?}\n",
                         root.text(),
-                        root.debug_dump(),
+                        root,
                     );
                     assert!(
                         node.next_sibling().is_none() && pair.prev_sibling().is_none(),

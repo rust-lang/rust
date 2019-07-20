@@ -6,11 +6,7 @@
 //! The *real* implementation is in the (language-agnostic) `rowan` crate, this
 //! modules just wraps its API.
 
-use std::{
-    fmt::{self, Write},
-    iter::successors,
-    ops::RangeInclusive,
-};
+use std::{fmt, iter::successors, ops::RangeInclusive};
 
 use ra_parser::ParseError;
 use rowan::GreenNodeBuilder;
@@ -36,8 +32,29 @@ pub enum InsertPosition<T> {
 pub struct SyntaxNode(pub(crate) rowan::cursor::SyntaxNode);
 
 impl fmt::Debug for SyntaxNode {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{:?}@{:?}", self.kind(), self.range())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            let mut level = 0;
+            for event in self.preorder_with_tokens() {
+                match event {
+                    WalkEvent::Enter(element) => {
+                        for _ in 0..level {
+                            write!(f, "  ")?;
+                        }
+                        match element {
+                            SyntaxElement::Node(node) => writeln!(f, "{:?}", node)?,
+                            SyntaxElement::Token(token) => writeln!(f, "{:?}", token)?,
+                        }
+                        level += 1;
+                    }
+                    WalkEvent::Leave(_) => level -= 1,
+                }
+            }
+            assert_eq!(level, 0);
+            Ok(())
+        } else {
+            write!(f, "{:?}@{:?}", self.kind(), self.text_range())
+        }
     }
 }
 
@@ -63,7 +80,7 @@ impl SyntaxNode {
         self.0.kind().0.into()
     }
 
-    pub fn range(&self) -> TextRange {
+    pub fn text_range(&self) -> TextRange {
         self.0.text_range()
     }
 
@@ -173,31 +190,6 @@ impl SyntaxNode {
         })
     }
 
-    pub fn debug_dump(&self) -> String {
-        let mut level = 0;
-        let mut buf = String::new();
-
-        for event in self.preorder_with_tokens() {
-            match event {
-                WalkEvent::Enter(element) => {
-                    for _ in 0..level {
-                        buf.push_str("  ");
-                    }
-                    match element {
-                        SyntaxElement::Node(node) => writeln!(buf, "{:?}", node).unwrap(),
-                        SyntaxElement::Token(token) => writeln!(buf, "{:?}", token).unwrap(),
-                    }
-                    level += 1;
-                }
-                WalkEvent::Leave(_) => level -= 1,
-            }
-        }
-
-        assert_eq!(level, 0);
-
-        buf
-    }
-
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
         self.0.replace_with(replacement)
     }
@@ -299,7 +291,7 @@ pub struct SyntaxToken(pub(crate) rowan::cursor::SyntaxToken);
 
 impl fmt::Debug for SyntaxToken {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{:?}@{:?}", self.kind(), self.range())?;
+        write!(fmt, "{:?}@{:?}", self.kind(), self.text_range())?;
         if self.text().len() < 25 {
             return write!(fmt, " {:?}", self.text());
         }
@@ -329,7 +321,7 @@ impl SyntaxToken {
         self.0.text()
     }
 
-    pub fn range(&self) -> TextRange {
+    pub fn text_range(&self) -> TextRange {
         self.0.text_range()
     }
 
@@ -461,10 +453,10 @@ impl SyntaxElement {
         .ancestors()
     }
 
-    pub fn range(&self) -> TextRange {
+    pub fn text_range(&self) -> TextRange {
         match self {
-            SyntaxElement::Node(it) => it.range(),
-            SyntaxElement::Token(it) => it.range(),
+            SyntaxElement::Node(it) => it.text_range(),
+            SyntaxElement::Token(it) => it.text_range(),
         }
     }
 

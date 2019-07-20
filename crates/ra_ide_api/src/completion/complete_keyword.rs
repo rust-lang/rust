@@ -88,7 +88,7 @@ fn is_in_loop_body(leaf: &SyntaxToken) -> bool {
             .visit::<ast::LoopExpr, _>(|it| it.loop_body())
             .accept(&node);
         if let Some(Some(body)) = loop_body {
-            if leaf.range().is_subrange(&body.syntax().range()) {
+            if leaf.text_range().is_subrange(&body.syntax().text_range()) {
                 return true;
             }
         }

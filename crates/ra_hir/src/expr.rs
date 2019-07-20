@@ -843,7 +843,7 @@ where
                         let file_id = call_id.as_file(MacroFileKind::Expr);
                         if let Some(node) = self.db.parse_or_expand(file_id) {
                             if let Some(expr) = ast::Expr::cast(node) {
-                                log::debug!("macro expansion {}", expr.syntax().debug_dump());
+                                log::debug!("macro expansion {:#?}", expr.syntax());
                                 let old_file_id =
                                     std::mem::replace(&mut self.current_file_id, file_id);
                                 let id = self.collect_expr(expr);

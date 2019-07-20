@@ -32,7 +32,7 @@ pub(crate) fn goto_type_definition(
     let adt_def = analyzer.autoderef(db, ty).find_map(|ty| ty.as_adt().map(|adt| adt.0))?;
 
     let nav = NavigationTarget::from_adt_def(db, adt_def);
-    Some(RangeInfo::new(node.range(), vec![nav]))
+    Some(RangeInfo::new(node.text_range(), vec![nav]))
 }
 
 #[cfg(test)]

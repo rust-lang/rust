@@ -51,10 +51,10 @@ impl CheckReparse {
         for (a, b) in
             new_parse.tree().syntax().descendants().zip(full_reparse.tree().syntax().descendants())
         {
-            if (a.kind(), a.range()) != (b.kind(), b.range()) {
-                eprint!("original:\n{}", parse.tree().syntax().debug_dump());
-                eprint!("reparsed:\n{}", new_parse.tree().syntax().debug_dump());
-                eprint!("full reparse:\n{}", full_reparse.tree().syntax().debug_dump());
+            if (a.kind(), a.text_range()) != (b.kind(), b.text_range()) {
+                eprint!("original:\n{:#?}", parse.tree().syntax());
+                eprint!("reparsed:\n{:#?}", new_parse.tree().syntax());
+                eprint!("full reparse:\n{:#?}", full_reparse.tree().syntax());
                 assert_eq!(
                     format!("{:?}", a),
                     format!("{:?}", b),

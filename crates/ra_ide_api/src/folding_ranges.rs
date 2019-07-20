@@ -35,7 +35,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 SyntaxElement::Token(token) => token.text().contains('\n'),
             };
             if is_multiline {
-                res.push(Fold { range: element.range(), kind });
+                res.push(Fold { range: element.text_range(), kind });
                 continue;
             }
         }
@@ -132,7 +132,7 @@ fn contiguous_range_for_group_unless(
     }
 
     if first != &last {
-        Some(TextRange::from_to(first.range().start(), last.range().end()))
+        Some(TextRange::from_to(first.text_range().start(), last.text_range().end()))
     } else {
         // The group consists of only one element, therefore it cannot be folded
         None
@@ -178,7 +178,10 @@ fn contiguous_range_for_comment(
     }
 
     if first != last {
-        Some(TextRange::from_to(first.syntax().range().start(), last.syntax().range().end()))
+        Some(TextRange::from_to(
+            first.syntax().text_range().start(),
+            last.syntax().text_range().end(),
+        ))
     } else {
         // The group consists of only one element, therefore it cannot be folded
         None

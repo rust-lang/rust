@@ -22,9 +22,9 @@ pub(crate) fn add_derive(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
                 edit.insert(node_start, "#[derive()]\n");
                 node_start + TextUnit::of_str("#[derive(")
             }
-            Some(tt) => tt.syntax().range().end() - TextUnit::of_char(')'),
+            Some(tt) => tt.syntax().text_range().end() - TextUnit::of_char(')'),
         };
-        edit.target(nominal.syntax().range());
+        edit.target(nominal.syntax().text_range());
         edit.set_cursor(offset)
     });
 
@@ -37,7 +37,7 @@ fn derive_insertion_offset(nominal: &ast::NominalDef) -> Option<TextUnit> {
         .syntax()
         .children_with_tokens()
         .find(|it| it.kind() != COMMENT && it.kind() != WHITESPACE)?;
-    Some(non_ws_child.range().start())
+    Some(non_ws_child.text_range().start())
 }
 
 #[cfg(test)]

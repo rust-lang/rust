@@ -84,8 +84,8 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
             buf.push_str(" => (),\n");
         }
         buf.push_str("}");
-        edit.target(match_expr.syntax().range());
-        edit.set_cursor(expr.syntax().range().start());
+        edit.target(match_expr.syntax().text_range());
+        edit.set_cursor(expr.syntax().text_range().start());
         edit.replace_node_and_indent(match_expr.syntax(), buf);
     });
 

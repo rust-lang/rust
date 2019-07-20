@@ -11,9 +11,9 @@ pub(crate) fn add_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
     ctx.add_action(AssistId("add_impl"), "add impl", |edit| {
-        edit.target(nominal.syntax().range());
+        edit.target(nominal.syntax().text_range());
         let type_params = nominal.type_param_list();
-        let start_offset = nominal.syntax().range().end();
+        let start_offset = nominal.syntax().text_range().end();
         let mut buf = String::new();
         buf.push_str("\n\nimpl");
         if let Some(type_params) = &type_params {

@@ -42,19 +42,20 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
             TokenAtOffset::None => return None,
             TokenAtOffset::Single(l) => {
                 if string_kinds.contains(&l.kind()) {
-                    extend_single_word_in_comment_or_string(&l, offset).unwrap_or_else(|| l.range())
+                    extend_single_word_in_comment_or_string(&l, offset)
+                        .unwrap_or_else(|| l.text_range())
                 } else {
-                    l.range()
+                    l.text_range()
                 }
             }
-            TokenAtOffset::Between(l, r) => pick_best(l, r).range(),
+            TokenAtOffset::Between(l, r) => pick_best(l, r).text_range(),
         };
         return Some(leaf_range);
     };
     let node = match find_covering_element(root, range) {
         SyntaxElement::Token(token) => {
-            if token.range() != range {
-                return Some(token.range());
+            if token.text_range() != range {
+                return Some(token.text_range());
             }
             if let Some(comment) = ast::Comment::cast(token.clone()) {
                 if let Some(range) = extend_comments(comment) {
@@ -65,12 +66,12 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
         }
         SyntaxElement::Node(node) => node,
     };
-    if node.range() != range {
-        return Some(node.range());
+    if node.text_range() != range {
+        return Some(node.text_range());
     }
 
     // Using shallowest node with same range allows us to traverse siblings.
-    let node = node.ancestors().take_while(|n| n.range() == node.range()).last().unwrap();
+    let node = node.ancestors().take_while(|n| n.text_range() == node.text_range()).last().unwrap();
 
     if node.parent().map(|n| list_kinds.contains(&n.kind())) == Some(true) {
         if let Some(range) = extend_list_item(&node) {
@@ -78,7 +79,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
         }
     }
 
-    node.parent().map(|it| it.range())
+    node.parent().map(|it| it.text_range())
 }
 
 fn extend_single_word_in_comment_or_string(
@@ -86,7 +87,7 @@ fn extend_single_word_in_comment_or_string(
     offset: TextUnit,
 ) -> Option<TextRange> {
     let text: &str = leaf.text();
-    let cursor_position: u32 = (offset - leaf.range().start()).into();
+    let cursor_position: u32 = (offset - leaf.text_range().start()).into();
 
     let (before, after) = text.split_at(cursor_position as usize);
 
@@ -104,31 +105,31 @@ fn extend_single_word_in_comment_or_string(
     if range.is_empty() {
         None
     } else {
-        Some(range + leaf.range().start())
+        Some(range + leaf.text_range().start())
     }
 }
 
 fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextUnit) -> TextRange {
     let ws_text = ws.text();
-    let suffix = TextRange::from_to(offset, ws.range().end()) - ws.range().start();
-    let prefix = TextRange::from_to(ws.range().start(), offset) - ws.range().start();
+    let suffix = TextRange::from_to(offset, ws.text_range().end()) - ws.text_range().start();
+    let prefix = TextRange::from_to(ws.text_range().start(), offset) - ws.text_range().start();
     let ws_suffix = &ws_text.as_str()[suffix];
     let ws_prefix = &ws_text.as_str()[prefix];
     if ws_text.contains('\n') && !ws_suffix.contains('\n') {
         if let Some(node) = ws.next_sibling_or_token() {
             let start = match ws_prefix.rfind('\n') {
-                Some(idx) => ws.range().start() + TextUnit::from((idx + 1) as u32),
-                None => node.range().start(),
+                Some(idx) => ws.text_range().start() + TextUnit::from((idx + 1) as u32),
+                None => node.text_range().start(),
             };
-            let end = if root.text().char_at(node.range().end()) == Some('\n') {
-                node.range().end() + TextUnit::of_char('\n')
+            let end = if root.text().char_at(node.text_range().end()) == Some('\n') {
+                node.text_range().end() + TextUnit::of_char('\n')
             } else {
-                node.range().end()
+                node.text_range().end()
             };
             return TextRange::from_to(start, end);
         }
     }
-    ws.range()
+    ws.text_range()
 }
 
 fn pick_best<'a>(l: SyntaxToken, r: SyntaxToken) -> SyntaxToken {
@@ -161,7 +162,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
     }
 
     if let Some(comma_node) = nearby_comma(node, Direction::Prev) {
-        return Some(TextRange::from_to(comma_node.range().start(), node.range().end()));
+        return Some(TextRange::from_to(comma_node.text_range().start(), node.text_range().end()));
     }
     if let Some(comma_node) = nearby_comma(node, Direction::Next) {
         // Include any following whitespace when comma if after list item.
@@ -171,7 +172,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
             .filter(|node| is_single_line_ws(node))
             .unwrap_or(comma_node);
 
-        return Some(TextRange::from_to(node.range().start(), final_node.range().end()));
+        return Some(TextRange::from_to(node.text_range().start(), final_node.text_range().end()));
     }
 
     None
@@ -181,7 +182,10 @@ fn extend_comments(comment: ast::Comment) -> Option<TextRange> {
     let prev = adj_comments(&comment, Direction::Prev);
     let next = adj_comments(&comment, Direction::Next);
     if prev != next {
-        Some(TextRange::from_to(prev.syntax().range().start(), next.syntax().range().end()))
+        Some(TextRange::from_to(
+            prev.syntax().text_range().start(),
+            next.syntax().text_range().end(),
+        ))
     } else {
         None
     }

@@ -189,11 +189,11 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         if let Some(segment) = path.segment() {
                             if let Some(name_ref) = segment.name_ref() {
                                 highlighted.insert(name_ref.syntax().clone().into());
-                                let range_start = name_ref.syntax().range().start();
-                                let mut range_end = name_ref.syntax().range().end();
+                                let range_start = name_ref.syntax().text_range().start();
+                                let mut range_end = name_ref.syntax().text_range().end();
                                 for sibling in path.syntax().siblings_with_tokens(Direction::Next) {
                                     match sibling.kind() {
-                                        T![!] | IDENT => range_end = sibling.range().end(),
+                                        T![!] | IDENT => range_end = sibling.text_range().end(),
                                         _ => (),
                                     }
                                 }
@@ -209,7 +209,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 continue;
             }
         };
-        res.push(HighlightedRange { range: node.range(), tag, binding_hash })
+        res.push(HighlightedRange { range: node.text_range(), tag, binding_hash })
     }
     res
 }
@@ -239,9 +239,9 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     buf.push_str("<pre><code>");
     let tokens = parse.tree().syntax().descendants_with_tokens().filter_map(|it| it.into_token());
     for token in tokens {
-        could_intersect.retain(|it| token.range().start() <= it.range.end());
+        could_intersect.retain(|it| token.text_range().start() <= it.range.end());
         while let Some(r) = ranges.get(frontier) {
-            if r.range.start() <= token.range().end() {
+            if r.range.start() <= token.text_range().end() {
                 could_intersect.push(r);
                 frontier += 1;
             } else {
@@ -251,7 +251,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         let text = html_escape(&token.text());
         let ranges = could_intersect
             .iter()
-            .filter(|it| token.range().is_subrange(&it.range))
+            .filter(|it| token.text_range().is_subrange(&it.range))
             .collect::<Vec<_>>();
         if ranges.is_empty() {
             buf.push_str(&text);

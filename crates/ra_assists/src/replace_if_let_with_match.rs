@@ -17,9 +17,9 @@ pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) ->
 
     ctx.add_action(AssistId("replace_if_let_with_match"), "replace with match", |edit| {
         let match_expr = build_match_expr(expr, pat, then_block, else_block);
-        edit.target(if_expr.syntax().range());
+        edit.target(if_expr.syntax().text_range());
         edit.replace_node_and_indent(if_expr.syntax(), match_expr);
-        edit.set_cursor(if_expr.syntax().range().start())
+        edit.set_cursor(if_expr.syntax().text_range().start())
     });
 
     ctx.build()

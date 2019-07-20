@@ -55,7 +55,7 @@ fn main() -> Result<()> {
             let _p = profile("parsing");
             let file = file()?;
             if !matches.is_present("no-dump") {
-                println!("{}", file.syntax().debug_dump());
+                println!("{:#?}", file.syntax());
             }
             std::mem::forget(file);
         }

@@ -25,7 +25,7 @@ pub fn ancestors_at_offset(
 ) -> impl Iterator<Item = SyntaxNode> {
     find_token_at_offset(node, offset)
         .map(|token| token.parent().ancestors())
-        .kmerge_by(|node1, node2| node1.range().len() < node2.range().len())
+        .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
 }
 
 /// Finds a node of specific Ast type at offset. Note that this is slightly

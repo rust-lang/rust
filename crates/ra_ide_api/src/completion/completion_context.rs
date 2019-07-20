@@ -78,7 +78,7 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn source_range(&self) -> TextRange {
         match self.token.kind() {
             // workaroud when completion is triggered by trigger characters.
-            IDENT => self.token.range(),
+            IDENT => self.token.text_range(),
             _ => TextRange::offset_len(self.offset, 0.into()),
         }
     }
@@ -123,13 +123,17 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name_ref(&mut self, original_file: SourceFile, name_ref: ast::NameRef) {
-        let name_range = name_ref.syntax().range();
+        let name_range = name_ref.syntax().text_range();
         if name_ref.syntax().parent().and_then(ast::NamedField::cast).is_some() {
             self.struct_lit_syntax = find_node_at_offset(original_file.syntax(), self.offset);
         }
 
-        let top_node =
-            name_ref.syntax().ancestors().take_while(|it| it.range() == name_range).last().unwrap();
+        let top_node = name_ref
+            .syntax()
+            .ancestors()
+            .take_while(|it| it.text_range() == name_range)
+            .last()
+            .unwrap();
 
         match top_node.parent().map(|it| it.kind()) {
             Some(SOURCE_FILE) | Some(ITEM_LIST) => {
@@ -180,23 +184,27 @@ impl<'a> CompletionContext<'a> {
                     .ancestors()
                     .find_map(|node| {
                         if let Some(stmt) = ast::ExprStmt::cast(node.clone()) {
-                            return Some(stmt.syntax().range() == name_ref.syntax().range());
+                            return Some(
+                                stmt.syntax().text_range() == name_ref.syntax().text_range(),
+                            );
                         }
                         if let Some(block) = ast::Block::cast(node) {
                             return Some(
-                                block.expr().map(|e| e.syntax().range())
-                                    == Some(name_ref.syntax().range()),
+                                block.expr().map(|e| e.syntax().text_range())
+                                    == Some(name_ref.syntax().text_range()),
                             );
                         }
                         None
                     })
                     .unwrap_or(false);
 
-                if let Some(off) = name_ref.syntax().range().start().checked_sub(2.into()) {
+                if let Some(off) = name_ref.syntax().text_range().start().checked_sub(2.into()) {
                     if let Some(if_expr) =
                         find_node_at_offset::<ast::IfExpr>(original_file.syntax(), off)
                     {
-                        if if_expr.syntax().range().end() < name_ref.syntax().range().start() {
+                        if if_expr.syntax().text_range().end()
+                            < name_ref.syntax().text_range().start()
+                        {
                             self.after_if = true;
                         }
                     }
@@ -208,14 +216,14 @@ impl<'a> CompletionContext<'a> {
             // ident, so it should have the same range in the non-modified file
             self.dot_receiver = field_expr
                 .expr()
-                .map(|e| e.syntax().range())
+                .map(|e| e.syntax().text_range())
                 .and_then(|r| find_node_with_range(original_file.syntax(), r));
         }
         if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent) {
             // As above
             self.dot_receiver = method_call_expr
                 .expr()
-                .map(|e| e.syntax().range())
+                .map(|e| e.syntax().text_range())
                 .and_then(|r| find_node_with_range(original_file.syntax(), r));
             self.is_call = true;
         }
@@ -229,6 +237,6 @@ fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Op
 fn is_node<N: AstNode>(node: &SyntaxNode) -> bool {
     match node.ancestors().filter_map(N::cast).next() {
         None => false,
-        Some(n) => n.syntax().range() == node.range(),
+        Some(n) => n.syntax().text_range() == node.text_range(),
     }
 }

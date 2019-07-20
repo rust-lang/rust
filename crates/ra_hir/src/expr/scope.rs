@@ -296,7 +296,7 @@ mod tests {
         let local_name_entry = analyzer.resolve_local_name(&name_ref).unwrap();
         let local_name =
             local_name_entry.ptr().either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
-        assert_eq!(local_name.range(), expected_name.syntax().range());
+        assert_eq!(local_name.range(), expected_name.syntax().text_range());
     }
 
     #[test]

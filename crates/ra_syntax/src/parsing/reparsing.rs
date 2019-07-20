@@ -46,7 +46,8 @@ fn reparse_token<'node>(
         WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
             if token.kind() == WHITESPACE || token.kind() == COMMENT {
                 // removing a new line may extends previous token
-                if token.text().to_string()[edit.delete - token.range().start()].contains('\n') {
+                if token.text().to_string()[edit.delete - token.text_range().start()].contains('\n')
+                {
                     return None;
                 }
             }
@@ -62,7 +63,7 @@ fn reparse_token<'node>(
                 return None;
             }
 
-            if let Some(next_char) = root.text().char_at(token.range().end()) {
+            if let Some(next_char) = root.text().char_at(token.text_range().end()) {
                 let tokens_with_next_char = tokenize(&format!("{}{}", text, next_char));
                 if tokens_with_next_char.len() == 1 {
                     return None;
@@ -70,7 +71,7 @@ fn reparse_token<'node>(
             }
 
             let new_token = GreenToken::new(rowan::SyntaxKind(token.kind().into()), text.into());
-            Some((token.replace_with(new_token), token.range()))
+            Some((token.replace_with(new_token), token.text_range()))
         }
         _ => None,
     }
@@ -90,11 +91,12 @@ fn reparse_block<'node>(
     let mut tree_sink = TextTreeSink::new(&text, &tokens);
     reparser.parse(&mut token_source, &mut tree_sink);
     let (green, new_errors) = tree_sink.finish();
-    Some((node.replace_with(green), new_errors, node.range()))
+    Some((node.replace_with(green), new_errors, node.text_range()))
 }
 
 fn get_text_after_edit(element: SyntaxElement, edit: &AtomTextEdit) -> String {
-    let edit = AtomTextEdit::replace(edit.delete - element.range().start(), edit.insert.clone());
+    let edit =
+        AtomTextEdit::replace(edit.delete - element.text_range().start(), edit.insert.clone());
     let text = match element {
         SyntaxElement::Token(token) => token.text().to_string(),
         SyntaxElement::Node(node) => node.text().to_string(),
@@ -188,8 +190,8 @@ mod tests {
         };
 
         assert_eq_text!(
-            &fully_reparsed.tree().syntax().debug_dump(),
-            &incrementally_reparsed.tree().syntax().debug_dump(),
+            &format!("{:#?}", fully_reparsed.tree().syntax()),
+            &format!("{:#?}", incrementally_reparsed.tree().syntax()),
         );
     }
 
