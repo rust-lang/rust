@@ -693,3 +693,83 @@ mod copy_impls {
     impl<T: ?Sized> Copy for &T {}
 
 }
+
+#[cfg(not(bootstrap))]
+mod layout
+{
+    /// When this is the last element of a tuple, specifies that the tuple
+    /// should be laid out in memory like the closure with the rest of the
+    /// tuple types as upvars. Currently for internal use in implementations
+    /// of the `Closure` trait
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    #[lang = "layout_as"]
+    pub struct LayoutAs<T: ?Sized>(super::PhantomData<T>);
+
+    use crate::cmp;
+    use crate::hash::Hash;
+    use crate::hash::Hasher;
+    use crate::fmt::{self, Debug, Write};
+    use crate::intrinsics::type_name;
+
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    impl<T:?Sized> Hash for LayoutAs<T> {
+        #[inline]
+        fn hash<H: Hasher>(&self, _: &mut H) {
+        }
+    }
+
+    // we don't want to implement an heterogeneous PartialOrd/PartialEq
+    // here since it would allow to compare distinct types that
+    // happen to have the same sequence of field types
+
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    impl<T:?Sized> cmp::PartialEq for LayoutAs<T> {
+        fn eq(&self, _other: &LayoutAs<T>) -> bool {
+            true
+        }
+    }
+
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    impl<T:?Sized> cmp::Eq for LayoutAs<T> {
+    }
+
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    impl<T:?Sized> cmp::PartialOrd for LayoutAs<T> {
+        fn partial_cmp(&self, _other: &LayoutAs<T>) -> Option<cmp::Ordering> {
+            Option::Some(cmp::Ordering::Equal)
+        }
+    }
+
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    impl<T:?Sized> cmp::Ord for LayoutAs<T> {
+        fn cmp(&self, _other: &LayoutAs<T>) -> cmp::Ordering {
+            cmp::Ordering::Equal
+        }
+    }
+
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    impl<T:?Sized> Copy for LayoutAs<T> { }
+
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    impl<T:?Sized> Clone for LayoutAs<T> {
+        fn clone(&self) -> LayoutAs<T> {
+            LayoutAs(super::PhantomData)
+        }
+    }
+
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    impl<T:?Sized> Default for LayoutAs<T> {
+        fn default() -> LayoutAs<T> {
+            LayoutAs(super::PhantomData)
+        }
+    }
+
+    #[stable(feature = "closure_traits", since = "1.38.0")]
+    impl<T: ?Sized> Debug for LayoutAs<T> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("LayoutAs<")?;
+            f.write_str(unsafe {type_name::<T>()})?;
+            f.write_char('>')
+        }
+    }
+}

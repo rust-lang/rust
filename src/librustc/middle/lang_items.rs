@@ -402,6 +402,9 @@ language_item_table! {
 
     Arc,                         "arc",                arc,                     Target::Struct;
     Rc,                          "rc",                 rc,                      Target::Struct;
+
+    ClosureTraitLangItem,        "closure_trait",      closure_trait,           Target::Trait;
+    LayoutAsLangitem,            "layout_as",          layout_as_marker,        Target::Struct;
 }
 
 impl<'tcx> TyCtxt<'tcx> {

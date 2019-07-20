@@ -12,6 +12,7 @@ use super::SelectionError;
 use super::{VtableImplData, VtableClosureData, VtableGeneratorData, VtableFnPointerData};
 use super::util;
 
+use core::iter;
 use crate::hir::def_id::DefId;
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1384,10 +1385,41 @@ fn confirm_closure_candidate<'cx, 'tcx>(
            closure_sig,
            obligations);
 
-    confirm_callable_candidate(selcx,
-                               obligation,
-                               closure_sig,
-                               util::TupleArgumentsFlag::No)
+    let trait_ref = obligation.predicate.trait_ref(tcx);
+    let closure_def_id = tcx.lang_items().closure_trait();
+
+    let progress = if Some(trait_ref.def_id) == closure_def_id {
+        // we rely on the fact that closures have the same layout as tuples
+        // made of their upvars with an () at the end
+        // the () at the end is because the last field is not reordered
+        // in tuples since it may be coerced to unsized
+        if let Some(layout_as_did) = tcx.lang_items().layout_as_marker() {
+            let marker = tcx.mk_adt(tcx.adt_def(layout_as_did),
+                tcx.intern_substs(&[obligation.predicate.self_ty().into()]));
+            let inner_type = tcx.mk_tup(vtable.substs.upvar_tys(vtable.closure_def_id, tcx)
+                .chain(iter::once(marker)));
+
+            let predicate = ty::Binder::bind(ty::ProjectionPredicate {
+                projection_ty: ty::ProjectionTy::from_ref_and_name(
+                    tcx,
+                    trait_ref,
+                    Ident::with_empty_ctxt(sym::Inner),
+                ),
+                ty: inner_type
+            });
+
+            confirm_param_env_candidate(selcx, obligation, predicate)
+        } else {
+            Progress::error(tcx)
+        }
+    } else {
+        confirm_callable_candidate(selcx,
+                                obligation,
+                                closure_sig,
+                                util::TupleArgumentsFlag::No)
+    };
+
+    progress
         .with_addl_obligations(vtable.nested)
         .with_addl_obligations(obligations)
 }

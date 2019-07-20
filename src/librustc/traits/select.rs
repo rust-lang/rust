@@ -1748,6 +1748,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates)?;
         } else if lang_items.unsize_trait() == Some(def_id) {
             self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+        } else if lang_items.closure_trait() == Some(def_id) {
+            self.assemble_closure_trait_candidates(obligation, &mut candidates)?;
         } else {
             if lang_items.clone_trait() == Some(def_id) {
                 // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -2037,6 +2039,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
+                candidates.ambiguous = true;
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    /// Checks for the artificial `Closure` trait on closures.
+    fn assemble_closure_trait_candidates(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) -> Result<(), SelectionError<'tcx>> {
+        // Okay to skip binder because the substs on closure types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters
+        match obligation.self_ty().skip_binder().sty {
+            ty::Closure(..) => {
+                debug!(
+                    "assemble_closure_trait_candidates: obligation={:?}",
+                    obligation
+                );
+                candidates.vec.push(ClosureCandidate);
+            }
+            ty::Infer(ty::TyVar(_)) => {
+                debug!("assemble_closure_trait_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
             }
             _ => {}
@@ -3301,8 +3330,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let kind = self.tcx()
             .lang_items()
-            .fn_trait_kind(obligation.predicate.def_id())
-            .unwrap_or_else(|| bug!("closure candidate for non-fn trait {:?}", obligation));
+            .fn_trait_kind(obligation.predicate.def_id());
 
         // Okay to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
@@ -3337,13 +3365,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             trait_ref,
         )?);
 
-        // FIXME: chalk
-        if !self.tcx().sess.opts.debugging_opts.chalk {
-            obligations.push(Obligation::new(
-                obligation.cause.clone(),
-                obligation.param_env,
-                ty::Predicate::ClosureKind(closure_def_id, substs, kind),
-            ));
+        if let Some(kind) = kind {
+            // FIXME: chalk
+            if !self.tcx().sess.opts.debugging_opts.chalk {
+                obligations.push(Obligation::new(
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    ty::Predicate::ClosureKind(closure_def_id, substs, kind),
+                ));
+            }
         }
 
         Ok(VtableClosureData {

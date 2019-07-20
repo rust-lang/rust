@@ -188,7 +188,12 @@ pub fn trait_ref_is_knowable<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
 ) -> Option<Conflict> {
     debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
-    if orphan_check_trait_ref(tcx, trait_ref, InCrate::Remote).is_ok() {
+
+    // internal traits that the user is not allowed to implement
+    let is_internal_sealed_trait = Some(trait_ref.def_id) == tcx.lang_items().closure_trait();
+
+    if !is_internal_sealed_trait
+        && orphan_check_trait_ref(tcx, trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.
 

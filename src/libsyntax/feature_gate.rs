@@ -866,6 +866,8 @@ declare_features! (
     (accepted, repr_align_enum, "1.37.0", Some(57996), None),
     // Allows `const _: TYPE = VALUE`.
     (accepted, underscore_const_names, "1.37.0", Some(54912), None),
+    // Implements Debug, Hash, PartialEq, Eq, PartialOrd, Ord for closures
+    (accepted, closure_traits, "1.38.0", None, None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

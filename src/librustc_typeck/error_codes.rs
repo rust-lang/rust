@@ -2709,6 +2709,11 @@ fn get_bar_good() -> f64 {
 "##,
 */
 
+E0330: r##"
+The Closure trait should not be implemented directly. All implementations of
+Closure are provided automatically by the compiler.
+"##,
+
 E0366: r##"
 An attempt was made to implement `Drop` on a concrete specialization of a
 generic type. An example is shown below:

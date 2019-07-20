@@ -66,6 +66,16 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, tra
         return;
     }
 
+    if did == li.closure_trait() {
+        struct_span_err!(tcx.sess,
+                         span,
+                         E0330,
+                         "explicit impls for the `Closure` trait are not permitted")
+            .span_label(span, "impl of `Closure` not allowed")
+            .emit();
+        return;
+    }
+
     if tcx.features().unboxed_closures {
         // the feature gate allows all Fn traits
         return;

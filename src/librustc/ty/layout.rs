@@ -644,6 +644,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
 
             ty::Tuple(tys) => {
+                // tuples that end with LayoutAs<T> where T is a closure
+                // and where the previous types are the closure T's upvars
+                // must be laid out exactly like the closure T
+
+                // this is currently the case without any explicit action, but we'll need
+                // to explicitly do this if we ever do profile-guided layout or some other
+                // layout algorithm that doesn't only depend on a closure's upvar types
+
                 let kind = if tys.len() == 0 {
                     StructKind::AlwaysSized
                 } else {
