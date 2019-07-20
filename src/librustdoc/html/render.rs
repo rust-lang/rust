@@ -885,7 +885,7 @@ function hideThemeButtonState() {{
     themePicker.style.borderBottomRightRadius = "0";
     themePicker.style.borderBottomLeftRadius = "0";
 }}
-        
+
 function switchThemeButtonState() {{
     if (themes.style.display === "block") {{
         showThemeButtonState();
