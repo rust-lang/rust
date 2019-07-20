@@ -18,7 +18,7 @@ index f2165c6..cdb42c1 100644
  
 +/*
  // Pull in the `core_arch` crate directly into libcore. The contents of
- // `core_arch` are in a different repository: rust-lang-nursery/stdsimd.
+ // `core_arch` are in a different repository: rust-lang/stdarch.
  //
 @@ -235,3 +236,4 @@ mod core_arch;
  
@@ -53,7 +53,7 @@ index 6dd3a6c..c7401e2 100644
  
 +/*
  // Pull in the `std_detect` crate directly into libstd. The contents of
- // `std_detect` are in a different repository: rust-lang-nursery/stdsimd.
+ // `std_detect` are in a different repository: rust-lang/stdarch.
  //
 @@ -505,6 +502,7 @@ mod std_detect;
  #[unstable(feature = "stdsimd", issue = "48556")]

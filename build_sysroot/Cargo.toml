@@ -18,3 +18,7 @@ compiler_builtins = { path = "./compiler_builtins" }
 
 [profile.release]
 debug = true
+
+[profile.dev]
+# FIXME correctly align constants, so that copy_nonoverlapping doesn't complain about alignment
+debug-assertions = false

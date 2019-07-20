@@ -14,7 +14,8 @@ pub fn unsized_info<'a, 'tcx: 'a>(
     target: Ty<'tcx>,
     old_info: Option<Value>,
 ) -> Value {
-    let (source, target) = fx.tcx.struct_lockstep_tails(source, target);
+    let (source, target) =
+        fx.tcx.struct_lockstep_tails_erasing_lifetimes(source, target, ParamEnv::reveal_all());
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => fx
             .bcx
