@@ -26,8 +26,6 @@
 using namespace llvm;
 using namespace llvm::legacy;
 
-extern cl::opt<bool> EnableARMEHABI;
-
 typedef struct LLVMOpaquePass *LLVMPassRef;
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
