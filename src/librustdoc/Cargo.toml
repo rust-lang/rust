@@ -9,7 +9,7 @@ name = "rustdoc"
 path = "lib.rs"
 
 [dependencies]
-pulldown-cmark = { version = "0.5.2", default-features = false }
+pulldown-cmark = { version = "0.5.3", default-features = false }
 minifier = "0.0.30"
 rayon = { version = "0.2.0", package = "rustc-rayon" }
 tempfile = "3"
