@@ -253,11 +253,8 @@ impl<T> MaybeUninit<T> {
     }
 
     /// A promotable constant, equivalent to `uninit()`.
-    #[unstable(
-        feature = "internal_uninit_const",
-        issue = "0",
-        reason = "hack to work around promotability",
-    )]
+    #[unstable(feature = "internal_uninit_const", issue = "0",
+        reason = "hack to work around promotability")]
     pub const UNINIT: Self = Self::uninit();
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
