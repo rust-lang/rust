@@ -9,8 +9,7 @@ use lsp_types::{
     TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
-    AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, InlayKind, Query,
-    RunnableKind, Severity,
+    AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, Query, RunnableKind, Severity,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
@@ -750,29 +749,15 @@ pub fn handle_code_lens(
             }),
     );
 
-    lenses.extend(
-        analysis
-            .inlay_hints(file_id)
-            .into_iter()
-            .filter(|hint| hint.inlay_kind == InlayKind::LetBinding)
-            .filter_map(|inlay_hint| {
-                let resolved_type = analysis
-                    .type_of(FileRange { range: inlay_hint.range, file_id })
-                    .ok()
-                    .and_then(std::convert::identity)
-                    .filter(|resolved_type| "{unknown}" != resolved_type);
-                resolved_type.map(|resolved_type| (resolved_type, inlay_hint.range))
-            })
-            .map(|(resolved_type, range)| CodeLens {
-                range: range.conv_with(&line_index),
-                command: Some(Command {
-                    title: resolved_type,
-                    command: String::new(),
-                    arguments: None,
-                }),
-                data: None,
-            }),
-    );
+    lenses.extend(analysis.inlay_hints(file_id)?.into_iter().map(|inlay_hint| CodeLens {
+        range: inlay_hint.range.conv_with(&line_index),
+        command: Some(Command {
+            title: inlay_hint.inlay_type_string,
+            command: String::new(),
+            arguments: None,
+        }),
+        data: None,
+    }));
     Ok(Some(lenses))
 }
 

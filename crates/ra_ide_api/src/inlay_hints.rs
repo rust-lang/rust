@@ -1,3 +1,6 @@
+use crate::{db::RootDatabase, FileId};
+use hir::{HirDisplay, Ty};
+use ra_syntax::ast::Pat;
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
     ast::{self, PatKind, TypeAscriptionOwner},
@@ -15,63 +18,101 @@ pub struct InlayHint {
     pub range: TextRange,
     pub text: SmolStr,
     pub inlay_kind: InlayKind,
+    pub inlay_type_string: String,
 }
 
-pub(crate) fn inlay_hints(file: &SourceFile) -> Vec<InlayHint> {
-    file.syntax().descendants().map(|node| get_inlay_hints(&node)).flatten().collect()
+pub(crate) fn inlay_hints(db: &RootDatabase, file_id: FileId, file: &SourceFile) -> Vec<InlayHint> {
+    file.syntax()
+        .descendants()
+        .map(|node| get_inlay_hints(db, file_id, &node).unwrap_or_default())
+        .flatten()
+        .collect()
 }
 
-fn get_inlay_hints(node: &SyntaxNode) -> Vec<InlayHint> {
+fn get_inlay_hints(
+    db: &RootDatabase,
+    file_id: FileId,
+    node: &SyntaxNode,
+) -> Option<Vec<InlayHint>> {
     visitor()
         .visit(|let_statement: ast::LetStmt| {
             let let_syntax = let_statement.syntax();
 
             if let_statement.ascribed_type().is_some() {
-                return Vec::new();
+                return None;
             }
 
-            let pat_range = match let_statement.pat().map(|pat| pat.kind()) {
-                Some(PatKind::BindPat(bind_pat)) => bind_pat.syntax().text_range(),
-                Some(PatKind::TuplePat(tuple_pat)) => tuple_pat.syntax().text_range(),
-                _ => return Vec::new(),
+            let let_pat = let_statement.pat()?;
+            let inlay_type_string = get_node_displayable_type(db, file_id, let_syntax, &let_pat)?
+                .display(db)
+                .to_string();;
+
+            let pat_range = match let_pat.kind() {
+                PatKind::BindPat(bind_pat) => bind_pat.syntax().text_range(),
+                PatKind::TuplePat(tuple_pat) => tuple_pat.syntax().text_range(),
+                _ => return None,
             };
 
-            vec![InlayHint {
+            Some(vec![InlayHint {
                 range: pat_range,
                 text: let_syntax.text().to_smol_string(),
                 inlay_kind: InlayKind::LetBinding,
-            }]
+                inlay_type_string,
+            }])
         })
-        .visit(|closure_parameter: ast::LambdaExpr| {
-            if let Some(param_list) = closure_parameter.param_list() {
+        .visit(|closure_parameter: ast::LambdaExpr| match closure_parameter.param_list() {
+            Some(param_list) => Some(
                 param_list
                     .params()
                     .filter(|closure_param| closure_param.ascribed_type().is_none())
-                    .map(|closure_param| {
+                    .filter_map(|closure_param| {
                         let closure_param_syntax = closure_param.syntax();
-                        InlayHint {
+                        let inlay_type_string = get_node_displayable_type(
+                            db,
+                            file_id,
+                            closure_param_syntax,
+                            &closure_param.pat()?,
+                        )?
+                        .display(db)
+                        .to_string();
+                        Some(InlayHint {
                             range: closure_param_syntax.text_range(),
                             text: closure_param_syntax.text().to_smol_string(),
                             inlay_kind: InlayKind::ClosureParameter,
-                        }
+                            inlay_type_string,
+                        })
                     })
-                    .collect()
-            } else {
-                Vec::new()
-            }
+                    .collect(),
+            ),
+            None => None,
         })
-        .accept(&node)
-        .unwrap_or_default()
+        .accept(&node)?
+}
+
+fn get_node_displayable_type(
+    db: &RootDatabase,
+    file_id: FileId,
+    node_syntax: &SyntaxNode,
+    node_pat: &Pat,
+) -> Option<Ty> {
+    let analyzer = hir::SourceAnalyzer::new(db, file_id, node_syntax, None);
+    analyzer.type_of_pat(db, node_pat).and_then(|resolved_type| {
+        if let Ty::Apply(_) = resolved_type {
+            Some(resolved_type)
+        } else {
+            None
+        }
+    })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::mock_analysis::single_file;
     use insta::assert_debug_snapshot_matches;
 
     #[test]
     fn test_inlay_hints() {
-        let file = SourceFile::parse(
+        let (analysis, file_id) = single_file(
             r#"
 struct OuterStruct {}
 
@@ -99,66 +140,45 @@ fn main() {
     let (x, c) = (42, 'a');
     let test = (42, 'a');
 }
-
 "#,
-        )
-        .ok()
-        .unwrap();
-        assert_debug_snapshot_matches!(inlay_hints(&file), @r#"[
+        );
+
+        assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [71; 75),
         text: "let test = 54;",
         inlay_kind: LetBinding,
-    },
-    InlayHint {
-        range: [90; 94),
-        text: "let test = InnerStruct {};",
-        inlay_kind: LetBinding,
+        inlay_type_string: "i32",
     },
     InlayHint {
         range: [121; 125),
         text: "let test = OuterStruct {};",
         inlay_kind: LetBinding,
-    },
-    InlayHint {
-        range: [152; 156),
-        text: "let test = vec![222];",
-        inlay_kind: LetBinding,
-    },
-    InlayHint {
-        range: [178; 186),
-        text: "let mut test = Vec::new();",
-        inlay_kind: LetBinding,
-    },
-    InlayHint {
-        range: [229; 233),
-        text: "let test = test.into_iter().map(|i| i * i).collect::<Vec<_>>();",
-        inlay_kind: LetBinding,
-    },
-    InlayHint {
-        range: [258; 259),
-        text: "i",
-        inlay_kind: ClosureParameter,
+        inlay_type_string: "OuterStruct",
     },
     InlayHint {
         range: [297; 305),
         text: "let mut test = 33;",
         inlay_kind: LetBinding,
+        inlay_type_string: "i32",
     },
     InlayHint {
         range: [417; 426),
         text: "let i_squared = i * i;",
         inlay_kind: LetBinding,
+        inlay_type_string: "u32",
     },
     InlayHint {
         range: [496; 502),
         text: "let (x, c) = (42, \'a\');",
         inlay_kind: LetBinding,
+        inlay_type_string: "(i32, char)",
     },
     InlayHint {
         range: [524; 528),
         text: "let test = (42, \'a\');",
         inlay_kind: LetBinding,
+        inlay_type_string: "(i32, char)",
     },
 ]"#
         );
