@@ -61,7 +61,7 @@ fn get_inlay_hints(node: &SyntaxNode) -> Vec<InlayHint> {
             }
         })
         .accept(&node)
-        .unwrap_or_else(Vec::new)
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -93,7 +93,7 @@ fn main() {
         let i_squared = i * i;
         i_squared
     });
-    
+
     let test: i32 = 33;
 
     let (x, c) = (42, 'a');
@@ -104,7 +104,63 @@ fn main() {
         )
         .ok()
         .unwrap();
-        let hints = inlay_hints(&file);
-        assert_debug_snapshot_matches!("inlay_hints", hints);
+        assert_debug_snapshot_matches!(inlay_hints(&file), @r#"[
+    InlayHint {
+        range: [71; 75),
+        text: "let test = 54;",
+        inlay_kind: LetBinding,
+    },
+    InlayHint {
+        range: [90; 94),
+        text: "let test = InnerStruct {};",
+        inlay_kind: LetBinding,
+    },
+    InlayHint {
+        range: [121; 125),
+        text: "let test = OuterStruct {};",
+        inlay_kind: LetBinding,
+    },
+    InlayHint {
+        range: [152; 156),
+        text: "let test = vec![222];",
+        inlay_kind: LetBinding,
+    },
+    InlayHint {
+        range: [178; 186),
+        text: "let mut test = Vec::new();",
+        inlay_kind: LetBinding,
+    },
+    InlayHint {
+        range: [229; 233),
+        text: "let test = test.into_iter().map(|i| i * i).collect::<Vec<_>>();",
+        inlay_kind: LetBinding,
+    },
+    InlayHint {
+        range: [258; 259),
+        text: "i",
+        inlay_kind: ClosureParameter,
+    },
+    InlayHint {
+        range: [297; 305),
+        text: "let mut test = 33;",
+        inlay_kind: LetBinding,
+    },
+    InlayHint {
+        range: [417; 426),
+        text: "let i_squared = i * i;",
+        inlay_kind: LetBinding,
+    },
+    InlayHint {
+        range: [496; 502),
+        text: "let (x, c) = (42, \'a\');",
+        inlay_kind: LetBinding,
+    },
+    InlayHint {
+        range: [524; 528),
+        text: "let test = (42, \'a\');",
+        inlay_kind: LetBinding,
+    },
+]"#
+        );
     }
 }
