@@ -121,7 +121,7 @@ error[E0562]: `impl Trait` not allowed outside of function and inherent method r
 LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |              ^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(impl_trait_in_bindings)] to the crate attributes to enable
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/feature-gate-associated_type_bounds.rs:60:15
@@ -129,7 +129,7 @@ error[E0562]: `impl Trait` not allowed outside of function and inherent method r
 LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |               ^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(impl_trait_in_bindings)] to the crate attributes to enable
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/feature-gate-associated_type_bounds.rs:67:12
@@ -137,7 +137,7 @@ error[E0562]: `impl Trait` not allowed outside of function and inherent method r
 LL |     let _: impl Tr1<As1: Copy> = S1;
    |            ^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(impl_trait_in_bindings)] to the crate attributes to enable
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error: aborting due to 16 previous errors
 
