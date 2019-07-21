@@ -1,0 +1,12 @@
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item_help.rs:4:15
+   |
+LL | fn test1() -> _ { Some(42) }
+   |               ^
+   |               |
+   |               not allowed in type signatures
+   |               help: replace `_` with the correct return type: `std::option::Option<i32>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0121`.

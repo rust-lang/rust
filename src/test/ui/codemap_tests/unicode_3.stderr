@@ -4,5 +4,5 @@ warning: denote infinite loops with `loop { ... }`
 LL |     let s = "ZͨA͑ͦ͒͋ͤ͑̚L̄͑͋Ĝͨͥ̿͒̽̈́Oͥ͛ͭ!̏"; while true { break; }
    |                       ^^^^^^^^^^ help: use `loop`
    |
-   = note: #[warn(while_true)] on by default
+   = note: `#[warn(while_true)]` on by default
 

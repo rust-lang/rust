@@ -7418,13 +7418,12 @@ impl<'a> Parser<'a> {
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
-                let kw_name = match self.parse_self_arg_with_attrs() {
-                    Ok(Some(_)) => "method",
-                    Ok(None) => "function",
-                    Err(mut err) => {
-                        err.cancel();
-                        "function"
-                    }
+                let kw_name = if let Ok(Some(_)) = self.parse_self_arg_with_attrs()
+                    .map_err(|mut e| e.cancel())
+                {
+                    "method"
+                } else {
+                    "function"
                 };
                 self.consume_block(token::Paren);
                 let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
@@ -7472,7 +7471,9 @@ impl<'a> Parser<'a> {
                 self.eat_to_tokens(&[&token::Gt]);
                 self.bump();  // `>`
                 let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
-                    if let Ok(Some(_)) = self.parse_self_arg_with_attrs() {
+                    if let Ok(Some(_)) = self.parse_self_arg_with_attrs()
+                        .map_err(|mut e| e.cancel())
+                    {
                         ("fn", "method", false)
                     } else {
                         ("fn", "function", false)

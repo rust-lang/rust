@@ -31,7 +31,7 @@ use rustc::hir::def::{
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::{TraitCandidate, TraitMap, GlobMap};
-use rustc::ty::{self, DefIdTree};
+use rustc::ty;
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::{bug, span_bug};
 
@@ -39,7 +39,7 @@ use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
 use syntax::source_map::SourceMap;
-use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
+use syntax::ext::hygiene::{ExpnId, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::MacroKind;
@@ -52,7 +52,7 @@ use syntax::ast::{CRATE_NODE_ID, Arm, IsAsync, BindingMode, Block, Crate, Expr, 
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
-use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::ast::{QSelf, TraitItem, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::ptr::P;
 use syntax::{span_err, struct_span_err, unwrap_or, walk_list};
 
@@ -69,9 +69,10 @@ use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
 
+use diagnostics::{Suggestion, ImportSuggestion};
 use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
-use macros::{InvocationData, LegacyBinding, ParentScope};
+use macros::{InvocationData, LegacyBinding, LegacyScope};
 
 type Res = def::Res<NodeId>;
 
@@ -84,9 +85,7 @@ mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
 
-fn is_known_tool(name: Name) -> bool {
-    ["clippy", "rustfmt"].contains(&&*name.as_str())
-}
+const KNOWN_TOOLS: &[Name] = &[sym::clippy, sym::rustfmt];
 
 enum Weak {
     Yes,
@@ -105,6 +104,29 @@ impl Determinacy {
     }
 }
 
+/// A specific scope in which a name can be looked up.
+/// This enum is currently used only for early resolution (imports and macros),
+/// but not for late resolution yet.
+#[derive(Clone, Copy)]
+enum Scope<'a> {
+    DeriveHelpers,
+    MacroRules(LegacyScope<'a>),
+    CrateRoot,
+    Module(Module<'a>),
+    MacroUsePrelude,
+    BuiltinMacros,
+    BuiltinAttrs,
+    LegacyPluginHelpers,
+    ExternPrelude,
+    ToolPrelude,
+    StdLibPrelude,
+    BuiltinTypes,
+}
+
+/// Names from different contexts may want to visit different subsets of all specific scopes
+/// with different restrictions when looking up the resolution.
+/// This enum is currently used only for early resolution (imports and macros),
+/// but not for late resolution yet.
 enum ScopeSet {
     Import(Namespace),
     AbsolutePath(Namespace),
@@ -112,17 +134,16 @@ enum ScopeSet {
     Module,
 }
 
-/// A free importable items suggested in case of resolution failure.
-struct ImportSuggestion {
-    did: Option<DefId>,
-    path: Path,
-}
-
-/// A field or associated item from self type suggested in case of resolution failure.
-enum AssocSuggestion {
-    Field,
-    MethodWithSelf,
-    AssocItem,
+/// Everything you need to know about a name's location to resolve it.
+/// Serves as a starting point for the scope visitor.
+/// This struct is currently used only for early resolution (imports and macros),
+/// but not for late resolution yet.
+#[derive(Clone, Debug)]
+pub struct ParentScope<'a> {
+    module: Module<'a>,
+    expansion: ExpnId,
+    legacy: LegacyScope<'a>,
+    derives: Vec<ast::Path>,
 }
 
 #[derive(Eq)]
@@ -130,16 +151,6 @@ struct BindingError {
     name: Name,
     origin: BTreeSet<Span>,
     target: BTreeSet<Span>,
-}
-
-struct TypoSuggestion {
-    candidate: Symbol,
-
-    /// The kind of the binding ("crate", "module", etc.)
-    kind: &'static str,
-
-    /// An appropriate article to refer to the binding ("a", "an", etc.)
-    article: &'static str,
 }
 
 impl PartialOrd for BindingError {
@@ -159,9 +170,6 @@ impl Ord for BindingError {
         self.name.cmp(&other.name)
     }
 }
-
-/// A vector of spans and replacements, a message and applicability.
-type Suggestion = (Vec<(Span, String)>, String, Applicability);
 
 enum ResolutionError<'a> {
     /// Error E0401: can't use type or const parameters from outer function.
@@ -1053,6 +1061,7 @@ impl<'a, R> Rib<'a, R> {
 /// This refers to the thing referred by a name. The difference between `Res` and `Item` is that
 /// items are visible in their whole block, while `Res`es only from the place they are defined
 /// forward.
+#[derive(Debug)]
 enum LexicalScopeBinding<'a> {
     Item(&'a NameBinding<'a>),
     Res(Res),
@@ -1169,7 +1178,7 @@ pub struct ModuleData<'a> {
     builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
-    unresolved_invocations: RefCell<FxHashSet<Mark>>,
+    unresolved_invocations: RefCell<FxHashSet<ExpnId>>,
 
     no_implicit_prelude: bool,
 
@@ -1187,7 +1196,7 @@ pub struct ModuleData<'a> {
     /// Span of the module itself. Used for error reporting.
     span: Span,
 
-    expansion: Mark,
+    expansion: ExpnId,
 }
 
 type Module<'a> = &'a ModuleData<'a>;
@@ -1196,7 +1205,7 @@ impl<'a> ModuleData<'a> {
     fn new(parent: Option<Module<'a>>,
            kind: ModuleKind,
            normal_ancestor_id: DefId,
-           expansion: Mark,
+           expansion: ExpnId,
            span: Span) -> Self {
         ModuleData {
             parent,
@@ -1295,7 +1304,7 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
     ambiguity: Option<(&'a NameBinding<'a>, AmbiguityKind)>,
-    expansion: Mark,
+    expansion: ExpnId,
     span: Span,
     vis: ty::Visibility,
 }
@@ -1487,11 +1496,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
-        match self.res() {
-            Res::Def(DefKind::Macro(kind), _) => Some(kind),
-            Res::NonMacroAttr(..) => Some(MacroKind::Attr),
-            _ => None,
-        }
+        self.res().macro_kind()
     }
 
     fn descr(&self) -> &'static str {
@@ -1508,7 +1513,7 @@ impl<'a> NameBinding<'a> {
     // in some later round and screw up our previously found resolution.
     // See more detailed explanation in
     // https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
-    fn may_appear_after(&self, invoc_parent_expansion: Mark, binding: &NameBinding<'_>) -> bool {
+    fn may_appear_after(&self, invoc_parent_expansion: ExpnId, binding: &NameBinding<'_>) -> bool {
         // self > max(invoc, binding) => !(self <= invoc || self <= binding)
         // Expansions are partially ordered, so "may appear after" is an inversion of
         // "certainly appears before or simultaneously" and includes unordered cases.
@@ -1601,6 +1606,9 @@ pub struct Resolver<'a> {
     /// The trait that the current context can refer to.
     current_trait_ref: Option<(Module<'a>, TraitRef)>,
 
+    /// The current trait's associated types' ident, used for diagnostic suggestions.
+    current_trait_assoc_types: Vec<Ident>,
+
     /// The current self type if inside an impl (used for better errors).
     current_self_type: Option<Ty>,
 
@@ -1678,13 +1686,13 @@ pub struct Resolver<'a> {
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
-    macro_defs: FxHashMap<Mark, DefId>,
+    macro_defs: FxHashMap<ExpnId, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
     unused_macros: NodeMap<Span>,
     proc_macro_stubs: NodeSet,
 
-    /// Maps the `Mark` of an expansion to its containing module or block.
-    invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
+    /// Maps the `ExpnId` of an expansion to its containing module or block.
+    invocations: FxHashMap<ExpnId, &'a InvocationData<'a>>,
 
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
@@ -1910,7 +1918,7 @@ impl<'a> Resolver<'a> {
         );
         let graph_root = arenas.alloc_module(ModuleData {
             no_implicit_prelude: attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
-            ..ModuleData::new(None, root_module_kind, root_def_id, Mark::root(), krate.span)
+            ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
         let mut module_map = FxHashMap::default();
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
@@ -1933,11 +1941,11 @@ impl<'a> Resolver<'a> {
         }
 
         let mut invocations = FxHashMap::default();
-        invocations.insert(Mark::root(),
+        invocations.insert(ExpnId::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
 
         let mut macro_defs = FxHashMap::default();
-        macro_defs.insert(Mark::root(), root_def_id);
+        macro_defs.insert(ExpnId::root(), root_def_id);
 
         let features = session.features_untracked();
         let non_macro_attr =
@@ -1971,6 +1979,7 @@ impl<'a> Resolver<'a> {
             label_ribs: Vec::new(),
 
             current_trait_ref: None,
+            current_trait_assoc_types: Vec::new(),
             current_self_type: None,
             current_self_item: None,
             last_import_segment: false,
@@ -2005,7 +2014,7 @@ impl<'a> Resolver<'a> {
             dummy_binding: arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Res(Res::Err, false),
                 ambiguity: None,
-                expansion: Mark::root(),
+                expansion: ExpnId::root(),
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
@@ -2061,7 +2070,7 @@ impl<'a> Resolver<'a> {
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
-            match self.macro_defs.get(&ctxt.outer()) {
+            match self.macro_defs.get(&ctxt.outer_expn()) {
                 Some(&def_id) => return def_id,
                 None => ctxt.remove_mark(),
             };
@@ -2086,10 +2095,10 @@ impl<'a> Resolver<'a> {
         parent: Module<'a>,
         kind: ModuleKind,
         normal_ancestor_id: DefId,
-        expansion: Mark,
+        expn_id: ExpnId,
         span: Span,
     ) -> Module<'a> {
-        let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expansion, span);
+        let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expn_id, span);
         self.arenas.alloc_module(module)
     }
 
@@ -2127,6 +2136,149 @@ impl<'a> Resolver<'a> {
         if directive.is_glob() {
             self.glob_map.entry(directive.id).or_default().insert(ident.name);
         }
+    }
+
+    /// A generic scope visitor.
+    /// Visits scopes in order to resolve some identifier in them or perform other actions.
+    /// If the callback returns `Some` result, we stop visiting scopes and return it.
+    fn visit_scopes<T>(
+        &mut self,
+        scope_set: ScopeSet,
+        parent_scope: &ParentScope<'a>,
+        ident: Ident,
+        mut visitor: impl FnMut(&mut Self, Scope<'a>, Ident) -> Option<T>,
+    ) -> Option<T> {
+        // General principles:
+        // 1. Not controlled (user-defined) names should have higher priority than controlled names
+        //    built into the language or standard library. This way we can add new names into the
+        //    language or standard library without breaking user code.
+        // 2. "Closed set" below means new names cannot appear after the current resolution attempt.
+        // Places to search (in order of decreasing priority):
+        // (Type NS)
+        // 1. FIXME: Ribs (type parameters), there's no necessary infrastructure yet
+        //    (open set, not controlled).
+        // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled).
+        // 3. Extern prelude (open, the open part is from macro expansions, not controlled).
+        // 4. Tool modules (closed, controlled right now, but not in the future).
+        // 5. Standard library prelude (de-facto closed, controlled).
+        // 6. Language prelude (closed, controlled).
+        // (Value NS)
+        // 1. FIXME: Ribs (local variables), there's no necessary infrastructure yet
+        //    (open set, not controlled).
+        // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled).
+        // 3. Standard library prelude (de-facto closed, controlled).
+        // (Macro NS)
+        // 1-3. Derive helpers (open, not controlled). All ambiguities with other names
+        //    are currently reported as errors. They should be higher in priority than preludes
+        //    and probably even names in modules according to the "general principles" above. They
+        //    also should be subject to restricted shadowing because are effectively produced by
+        //    derives (you need to resolve the derive first to add helpers into scope), but they
+        //    should be available before the derive is expanded for compatibility.
+        //    It's mess in general, so we are being conservative for now.
+        // 1-3. `macro_rules` (open, not controlled), loop through legacy scopes. Have higher
+        //    priority than prelude macros, but create ambiguities with macros in modules.
+        // 1-3. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled). Have higher priority than prelude macros, but create
+        //    ambiguities with `macro_rules`.
+        // 4. `macro_use` prelude (open, the open part is from macro expansions, not controlled).
+        // 4a. User-defined prelude from macro-use
+        //    (open, the open part is from macro expansions, not controlled).
+        // 4b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
+        // 5. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
+        // 6. Language prelude: builtin attributes (closed, controlled).
+        // 4-6. Legacy plugin helpers (open, not controlled). Similar to derive helpers,
+        //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
+        //    in prelude, not sure where exactly (creates ambiguities with any other prelude names).
+
+        let rust_2015 = ident.span.rust_2015();
+        let (ns, is_absolute_path) = match scope_set {
+            ScopeSet::Import(ns) => (ns, false),
+            ScopeSet::AbsolutePath(ns) => (ns, true),
+            ScopeSet::Macro(_) => (MacroNS, false),
+            ScopeSet::Module => (TypeNS, false),
+        };
+        let mut scope = match ns {
+            _ if is_absolute_path => Scope::CrateRoot,
+            TypeNS | ValueNS => Scope::Module(parent_scope.module),
+            MacroNS => Scope::DeriveHelpers,
+        };
+        let mut ident = ident.modern();
+        let mut use_prelude = !parent_scope.module.no_implicit_prelude;
+
+        loop {
+            let visit = match scope {
+                Scope::DeriveHelpers => true,
+                Scope::MacroRules(..) => true,
+                Scope::CrateRoot => true,
+                Scope::Module(..) => true,
+                Scope::MacroUsePrelude => use_prelude || rust_2015,
+                Scope::BuiltinMacros => true,
+                Scope::BuiltinAttrs => true,
+                Scope::LegacyPluginHelpers => use_prelude || rust_2015,
+                Scope::ExternPrelude => use_prelude || is_absolute_path,
+                Scope::ToolPrelude => use_prelude,
+                Scope::StdLibPrelude => use_prelude,
+                Scope::BuiltinTypes => true,
+            };
+
+            if visit {
+                if let break_result @ Some(..) = visitor(self, scope, ident) {
+                    return break_result;
+                }
+            }
+
+            scope = match scope {
+                Scope::DeriveHelpers =>
+                    Scope::MacroRules(parent_scope.legacy),
+                Scope::MacroRules(legacy_scope) => match legacy_scope {
+                    LegacyScope::Binding(binding) => Scope::MacroRules(
+                        binding.parent_legacy_scope
+                    ),
+                    LegacyScope::Invocation(invoc) => Scope::MacroRules(
+                        invoc.output_legacy_scope.get().unwrap_or(invoc.parent_legacy_scope)
+                    ),
+                    LegacyScope::Empty => Scope::Module(parent_scope.module),
+                }
+                Scope::CrateRoot => match ns {
+                    TypeNS => {
+                        ident.span.adjust(ExpnId::root());
+                        Scope::ExternPrelude
+                    }
+                    ValueNS | MacroNS => break,
+                }
+                Scope::Module(module) => {
+                    use_prelude = !module.no_implicit_prelude;
+                    match self.hygienic_lexical_parent(module, &mut ident.span) {
+                        Some(parent_module) => Scope::Module(parent_module),
+                        None => {
+                            ident.span.adjust(ExpnId::root());
+                            match ns {
+                                TypeNS => Scope::ExternPrelude,
+                                ValueNS => Scope::StdLibPrelude,
+                                MacroNS => Scope::MacroUsePrelude,
+                            }
+                        }
+                    }
+                }
+                Scope::MacroUsePrelude => Scope::StdLibPrelude,
+                Scope::BuiltinMacros => Scope::BuiltinAttrs,
+                Scope::BuiltinAttrs => Scope::LegacyPluginHelpers,
+                Scope::LegacyPluginHelpers => break, // nowhere else to search
+                Scope::ExternPrelude if is_absolute_path => break,
+                Scope::ExternPrelude => Scope::ToolPrelude,
+                Scope::ToolPrelude => Scope::StdLibPrelude,
+                Scope::StdLibPrelude => match ns {
+                    TypeNS => Scope::BuiltinTypes,
+                    ValueNS => break, // nowhere else to search
+                    MacroNS => Scope::BuiltinMacros,
+                }
+                Scope::BuiltinTypes => break, // nowhere else to search
+            };
+        }
+
+        None
     }
 
     /// This resolves the identifier `ident` in the namespace `ns` in the current lexical scope.
@@ -2247,15 +2399,15 @@ impl<'a> Resolver<'a> {
         }
 
         if !module.no_implicit_prelude {
-            ident.span.adjust(Mark::root());
+            ident.span.adjust(ExpnId::root());
             if ns == TypeNS {
                 if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
                     return Some(LexicalScopeBinding::Item(binding));
                 }
             }
-            if ns == TypeNS && is_known_tool(ident.name) {
+            if ns == TypeNS && KNOWN_TOOLS.contains(&ident.name) {
                 let binding = (Res::ToolMod, ty::Visibility::Public,
-                               DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
+                               DUMMY_SP, ExpnId::root()).to_name_binding(self.arenas);
                 return Some(LexicalScopeBinding::Item(binding));
             }
             if let Some(prelude) = self.prelude {
@@ -2276,7 +2428,7 @@ impl<'a> Resolver<'a> {
 
     fn hygienic_lexical_parent(&mut self, module: Module<'a>, span: &mut Span)
                                -> Option<Module<'a>> {
-        if !module.expansion.outer_is_descendant_of(span.ctxt()) {
+        if !module.expansion.outer_expn_is_descendant_of(span.ctxt()) {
             return Some(self.macro_def_scope(span.remove_mark()));
         }
 
@@ -2312,7 +2464,7 @@ impl<'a> Resolver<'a> {
             module.expansion.is_descendant_of(parent.expansion) {
                 // The macro is a proc macro derive
                 if module.expansion.looks_like_proc_macro_derive() {
-                    if parent.expansion.outer_is_descendant_of(span.ctxt()) {
+                    if parent.expansion.outer_expn_is_descendant_of(span.ctxt()) {
                         *poisoned = Some(node_id);
                         return module.parent;
                     }
@@ -2354,7 +2506,7 @@ impl<'a> Resolver<'a> {
                 }
             }
             ModuleOrUniformRoot::ExternPrelude => {
-                ident.span.modernize_and_adjust(Mark::root());
+                ident.span.modernize_and_adjust(ExpnId::root());
             }
             ModuleOrUniformRoot::CrateRootAndExternPrelude |
             ModuleOrUniformRoot::CurrentScope => {
@@ -2400,7 +2552,7 @@ impl<'a> Resolver<'a> {
             result
         } else {
             ctxt = ctxt.modern();
-            ctxt.adjust(Mark::root())
+            ctxt.adjust(ExpnId::root())
         };
         let module = match mark {
             Some(def) => self.macro_def_scope(def),
@@ -2579,32 +2731,36 @@ impl<'a> Resolver<'a> {
                         walk_list!(this, visit_param_bound, bounds);
 
                         for trait_item in trait_items {
-                            let generic_params = HasGenericParams(&trait_item.generics,
-                                                                    AssocItemRibKind);
-                            this.with_generic_param_rib(generic_params, |this| {
-                                match trait_item.node {
-                                    TraitItemKind::Const(ref ty, ref default) => {
-                                        this.visit_ty(ty);
+                            this.with_trait_items(trait_items, |this| {
+                                let generic_params = HasGenericParams(
+                                    &trait_item.generics,
+                                    AssocItemRibKind,
+                                );
+                                this.with_generic_param_rib(generic_params, |this| {
+                                    match trait_item.node {
+                                        TraitItemKind::Const(ref ty, ref default) => {
+                                            this.visit_ty(ty);
 
-                                        // Only impose the restrictions of
-                                        // ConstRibKind for an actual constant
-                                        // expression in a provided default.
-                                        if let Some(ref expr) = *default{
-                                            this.with_constant_rib(|this| {
-                                                this.visit_expr(expr);
-                                            });
+                                            // Only impose the restrictions of
+                                            // ConstRibKind for an actual constant
+                                            // expression in a provided default.
+                                            if let Some(ref expr) = *default{
+                                                this.with_constant_rib(|this| {
+                                                    this.visit_expr(expr);
+                                                });
+                                            }
                                         }
-                                    }
-                                    TraitItemKind::Method(_, _) => {
-                                        visit::walk_trait_item(this, trait_item)
-                                    }
-                                    TraitItemKind::Type(..) => {
-                                        visit::walk_trait_item(this, trait_item)
-                                    }
-                                    TraitItemKind::Macro(_) => {
-                                        panic!("unexpanded macro in resolve!")
-                                    }
-                                };
+                                        TraitItemKind::Method(_, _) => {
+                                            visit::walk_trait_item(this, trait_item)
+                                        }
+                                        TraitItemKind::Type(..) => {
+                                            visit::walk_trait_item(this, trait_item)
+                                        }
+                                        TraitItemKind::Macro(_) => {
+                                            panic!("unexpanded macro in resolve!")
+                                        }
+                                    };
+                                });
                             });
                         }
                     });
@@ -2771,6 +2927,22 @@ impl<'a> Resolver<'a> {
         let previous_value = replace(&mut self.current_self_item, Some(self_item.id));
         let result = f(self);
         self.current_self_item = previous_value;
+        result
+    }
+
+    /// When evaluating a `trait` use its associated types' idents for suggestionsa in E0412.
+    fn with_trait_items<T, F>(&mut self, trait_items: &Vec<TraitItem>, f: F) -> T
+        where F: FnOnce(&mut Resolver<'_>) -> T
+    {
+        let trait_assoc_types = replace(
+            &mut self.current_trait_assoc_types,
+            trait_items.iter().filter_map(|item| match &item.node {
+                TraitItemKind::Type(bounds, _) if bounds.len() == 0 => Some(item.ident),
+                _ => None,
+            }).collect(),
+        );
+        let result = f(self);
+        self.current_trait_assoc_types = trait_assoc_types;
         result
     }
 
@@ -3464,8 +3636,12 @@ impl<'a> Resolver<'a> {
     }
 
     fn self_type_is_available(&mut self, span: Span) -> bool {
-        let binding = self.resolve_ident_in_lexical_scope(Ident::with_empty_ctxt(kw::SelfUpper),
-                                                          TypeNS, None, span);
+        let binding = self.resolve_ident_in_lexical_scope(
+            Ident::with_empty_ctxt(kw::SelfUpper),
+            TypeNS,
+            None,
+            span,
+        );
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 
@@ -3488,9 +3664,7 @@ impl<'a> Resolver<'a> {
         crate_lint: CrateLint,
     ) -> Option<PartialRes> {
         let mut fin_res = None;
-        // FIXME: can't resolve paths in macro namespace yet, macros are
-        // processed by the little special hack below.
-        for (i, ns) in [primary_ns, TypeNS, ValueNS, /*MacroNS*/].iter().cloned().enumerate() {
+        for (i, ns) in [primary_ns, TypeNS, ValueNS].iter().cloned().enumerate() {
             if i == 0 || ns != primary_ns {
                 match self.resolve_qpath(id, qself, path, ns, span, global_by_default, crate_lint) {
                     // If defer_to_typeck, then resolution > no resolution,
@@ -3499,21 +3673,23 @@ impl<'a> Resolver<'a> {
                                          defer_to_typeck =>
                         return Some(partial_res),
                     partial_res => if fin_res.is_none() { fin_res = partial_res },
-                };
+                }
             }
         }
-        if primary_ns != MacroNS &&
-           (self.macro_names.contains(&path[0].ident.modern()) ||
-            self.builtin_macros.get(&path[0].ident.name).cloned()
-                               .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang) ||
-            self.macro_use_prelude.get(&path[0].ident.name).cloned()
-                                  .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang)) {
-            // Return some dummy definition, it's enough for error reporting.
-            return Some(PartialRes::new(Res::Def(
-                DefKind::Macro(MacroKind::Bang),
-                DefId::local(CRATE_DEF_INDEX),
-            )));
+
+        // `MacroNS`
+        assert!(primary_ns != MacroNS);
+        if qself.is_none() {
+            let path_seg = |seg: &Segment| ast::PathSegment::from_ident(seg.ident);
+            let path = Path { segments: path.iter().map(path_seg).collect(), span };
+            let parent_scope =
+                ParentScope { module: self.current_module, ..self.dummy_parent_scope() };
+            if let Ok((_, res)) =
+                    self.resolve_macro_path(&path, None, &parent_scope, false, false) {
+                return Some(PartialRes::new(res));
+            }
         }
+
         fin_res
     }
 
@@ -4095,189 +4271,6 @@ impl<'a> Resolver<'a> {
         res
     }
 
-    fn lookup_assoc_candidate<FilterFn>(&mut self,
-                                        ident: Ident,
-                                        ns: Namespace,
-                                        filter_fn: FilterFn)
-                                        -> Option<AssocSuggestion>
-        where FilterFn: Fn(Res) -> bool
-    {
-        fn extract_node_id(t: &Ty) -> Option<NodeId> {
-            match t.node {
-                TyKind::Path(None, _) => Some(t.id),
-                TyKind::Rptr(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
-                // This doesn't handle the remaining `Ty` variants as they are not
-                // that commonly the self_type, it might be interesting to provide
-                // support for those in future.
-                _ => None,
-            }
-        }
-
-        // Fields are generally expected in the same contexts as locals.
-        if filter_fn(Res::Local(ast::DUMMY_NODE_ID)) {
-            if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
-                // Look for a field with the same name in the current self_type.
-                if let Some(resolution) = self.partial_res_map.get(&node_id) {
-                    match resolution.base_res() {
-                        Res::Def(DefKind::Struct, did) | Res::Def(DefKind::Union, did)
-                                if resolution.unresolved_segments() == 0 => {
-                            if let Some(field_names) = self.field_names.get(&did) {
-                                if field_names.iter().any(|&field_name| ident.name == field_name) {
-                                    return Some(AssocSuggestion::Field);
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-
-        // Look for associated items in the current trait.
-        if let Some((module, _)) = self.current_trait_ref {
-            if let Ok(binding) = self.resolve_ident_in_module(
-                    ModuleOrUniformRoot::Module(module),
-                    ident,
-                    ns,
-                    None,
-                    false,
-                    module.span,
-                ) {
-                let res = binding.res();
-                if filter_fn(res) {
-                    return Some(if self.has_self.contains(&res.def_id()) {
-                        AssocSuggestion::MethodWithSelf
-                    } else {
-                        AssocSuggestion::AssocItem
-                    });
-                }
-            }
-        }
-
-        None
-    }
-
-    fn lookup_typo_candidate<FilterFn>(
-        &mut self,
-        path: &[Segment],
-        ns: Namespace,
-        filter_fn: FilterFn,
-        span: Span,
-    ) -> Option<TypoSuggestion>
-    where
-        FilterFn: Fn(Res) -> bool,
-    {
-        let add_module_candidates = |module: Module<'_>, names: &mut Vec<TypoSuggestion>| {
-            for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
-                if let Some(binding) = resolution.borrow().binding {
-                    if filter_fn(binding.res()) {
-                        names.push(TypoSuggestion {
-                            candidate: ident.name,
-                            article: binding.res().article(),
-                            kind: binding.res().descr(),
-                        });
-                    }
-                }
-            }
-        };
-
-        let mut names = Vec::new();
-        if path.len() == 1 {
-            // Search in lexical scope.
-            // Walk backwards up the ribs in scope and collect candidates.
-            for rib in self.ribs[ns].iter().rev() {
-                // Locals and type parameters
-                for (ident, &res) in &rib.bindings {
-                    if filter_fn(res) {
-                        names.push(TypoSuggestion {
-                            candidate: ident.name,
-                            article: res.article(),
-                            kind: res.descr(),
-                        });
-                    }
-                }
-                // Items in scope
-                if let ModuleRibKind(module) = rib.kind {
-                    // Items from this module
-                    add_module_candidates(module, &mut names);
-
-                    if let ModuleKind::Block(..) = module.kind {
-                        // We can see through blocks
-                    } else {
-                        // Items from the prelude
-                        if !module.no_implicit_prelude {
-                            names.extend(self.extern_prelude.clone().iter().flat_map(|(ident, _)| {
-                                self.crate_loader
-                                    .maybe_process_path_extern(ident.name, ident.span)
-                                    .and_then(|crate_id| {
-                                        let crate_mod = Res::Def(
-                                            DefKind::Mod,
-                                            DefId {
-                                                krate: crate_id,
-                                                index: CRATE_DEF_INDEX,
-                                            },
-                                        );
-
-                                        if filter_fn(crate_mod) {
-                                            Some(TypoSuggestion {
-                                                candidate: ident.name,
-                                                article: "a",
-                                                kind: "crate",
-                                            })
-                                        } else {
-                                            None
-                                        }
-                                    })
-                            }));
-
-                            if let Some(prelude) = self.prelude {
-                                add_module_candidates(prelude, &mut names);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-            // Add primitive types to the mix
-            if filter_fn(Res::PrimTy(Bool)) {
-                names.extend(
-                    self.primitive_type_table.primitive_types.iter().map(|(name, _)| {
-                        TypoSuggestion {
-                            candidate: *name,
-                            article: "a",
-                            kind: "primitive type",
-                        }
-                    })
-                )
-            }
-        } else {
-            // Search in module.
-            let mod_path = &path[..path.len() - 1];
-            if let PathResult::Module(module) = self.resolve_path_without_parent_scope(
-                mod_path, Some(TypeNS), false, span, CrateLint::No
-            ) {
-                if let ModuleOrUniformRoot::Module(module) = module {
-                    add_module_candidates(module, &mut names);
-                }
-            }
-        }
-
-        let name = path[path.len() - 1].ident.name;
-        // Make sure error reporting is deterministic.
-        names.sort_by_cached_key(|suggestion| suggestion.candidate.as_str());
-
-        match find_best_match_for_name(
-            names.iter().map(|suggestion| &suggestion.candidate),
-            &name.as_str(),
-            None,
-        ) {
-            Some(found) if found != name => names
-                .into_iter()
-                .find(|suggestion| suggestion.candidate == found),
-            _ => None,
-        }
-    }
-
     fn with_resolved_label<F>(&mut self, label: Option<Label>, id: NodeId, f: F)
         where F: FnOnce(&mut Resolver<'_>)
     {
@@ -4571,193 +4564,6 @@ impl<'a> Resolver<'a> {
         import_ids
     }
 
-    fn lookup_import_candidates_from_module<FilterFn>(&mut self,
-                                          lookup_ident: Ident,
-                                          namespace: Namespace,
-                                          start_module: &'a ModuleData<'a>,
-                                          crate_name: Ident,
-                                          filter_fn: FilterFn)
-                                          -> Vec<ImportSuggestion>
-        where FilterFn: Fn(Res) -> bool
-    {
-        let mut candidates = Vec::new();
-        let mut seen_modules = FxHashSet::default();
-        let not_local_module = crate_name.name != kw::Crate;
-        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
-
-        while let Some((in_module,
-                        path_segments,
-                        in_module_is_extern)) = worklist.pop() {
-            self.populate_module_if_necessary(in_module);
-
-            // We have to visit module children in deterministic order to avoid
-            // instabilities in reported imports (#43552).
-            in_module.for_each_child_stable(|ident, ns, name_binding| {
-                // avoid imports entirely
-                if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
-                // avoid non-importable candidates as well
-                if !name_binding.is_importable() { return; }
-
-                // collect results based on the filter function
-                if ident.name == lookup_ident.name && ns == namespace {
-                    let res = name_binding.res();
-                    if filter_fn(res) {
-                        // create the path
-                        let mut segms = path_segments.clone();
-                        if lookup_ident.span.rust_2018() {
-                            // crate-local absolute paths start with `crate::` in edition 2018
-                            // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                            segms.insert(
-                                0, ast::PathSegment::from_ident(crate_name)
-                            );
-                        }
-
-                        segms.push(ast::PathSegment::from_ident(ident));
-                        let path = Path {
-                            span: name_binding.span,
-                            segments: segms,
-                        };
-                        // the entity is accessible in the following cases:
-                        // 1. if it's defined in the same crate, it's always
-                        // accessible (since private entities can be made public)
-                        // 2. if it's defined in another crate, it's accessible
-                        // only if both the module is public and the entity is
-                        // declared as public (due to pruning, we don't explore
-                        // outside crate private modules => no need to check this)
-                        if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
-                            let did = match res {
-                                Res::Def(DefKind::Ctor(..), did) => self.parent(did),
-                                _ => res.opt_def_id(),
-                            };
-                            candidates.push(ImportSuggestion { did, path });
-                        }
-                    }
-                }
-
-                // collect submodules to explore
-                if let Some(module) = name_binding.module() {
-                    // form the path
-                    let mut path_segments = path_segments.clone();
-                    path_segments.push(ast::PathSegment::from_ident(ident));
-
-                    let is_extern_crate_that_also_appears_in_prelude =
-                        name_binding.is_extern_crate() &&
-                        lookup_ident.span.rust_2018();
-
-                    let is_visible_to_user =
-                        !in_module_is_extern || name_binding.vis == ty::Visibility::Public;
-
-                    if !is_extern_crate_that_also_appears_in_prelude && is_visible_to_user {
-                        // add the module to the lookup
-                        let is_extern = in_module_is_extern || name_binding.is_extern_crate();
-                        if seen_modules.insert(module.def_id().unwrap()) {
-                            worklist.push((module, path_segments, is_extern));
-                        }
-                    }
-                }
-            })
-        }
-
-        candidates
-    }
-
-    /// When name resolution fails, this method can be used to look up candidate
-    /// entities with the expected name. It allows filtering them using the
-    /// supplied predicate (which should be used to only accept the types of
-    /// definitions expected, e.g., traits). The lookup spans across all crates.
-    ///
-    /// N.B., the method does not look into imports, but this is not a problem,
-    /// since we report the definitions (thus, the de-aliased imports).
-    fn lookup_import_candidates<FilterFn>(&mut self,
-                                          lookup_ident: Ident,
-                                          namespace: Namespace,
-                                          filter_fn: FilterFn)
-                                          -> Vec<ImportSuggestion>
-        where FilterFn: Fn(Res) -> bool
-    {
-        let mut suggestions = self.lookup_import_candidates_from_module(
-            lookup_ident, namespace, self.graph_root, Ident::with_empty_ctxt(kw::Crate), &filter_fn
-        );
-
-        if lookup_ident.span.rust_2018() {
-            let extern_prelude_names = self.extern_prelude.clone();
-            for (ident, _) in extern_prelude_names.into_iter() {
-                if let Some(crate_id) = self.crate_loader.maybe_process_path_extern(ident.name,
-                                                                                    ident.span) {
-                    let crate_root = self.get_module(DefId {
-                        krate: crate_id,
-                        index: CRATE_DEF_INDEX,
-                    });
-                    self.populate_module_if_necessary(&crate_root);
-
-                    suggestions.extend(self.lookup_import_candidates_from_module(
-                        lookup_ident, namespace, crate_root, ident, &filter_fn));
-                }
-            }
-        }
-
-        suggestions
-    }
-
-    fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
-        let mut result = None;
-        let mut seen_modules = FxHashSet::default();
-        let mut worklist = vec![(self.graph_root, Vec::new())];
-
-        while let Some((in_module, path_segments)) = worklist.pop() {
-            // abort if the module is already found
-            if result.is_some() { break; }
-
-            self.populate_module_if_necessary(in_module);
-
-            in_module.for_each_child_stable(|ident, _, name_binding| {
-                // abort if the module is already found or if name_binding is private external
-                if result.is_some() || !name_binding.vis.is_visible_locally() {
-                    return
-                }
-                if let Some(module) = name_binding.module() {
-                    // form the path
-                    let mut path_segments = path_segments.clone();
-                    path_segments.push(ast::PathSegment::from_ident(ident));
-                    let module_def_id = module.def_id().unwrap();
-                    if module_def_id == def_id {
-                        let path = Path {
-                            span: name_binding.span,
-                            segments: path_segments,
-                        };
-                        result = Some((module, ImportSuggestion { did: Some(def_id), path }));
-                    } else {
-                        // add the module to the lookup
-                        if seen_modules.insert(module_def_id) {
-                            worklist.push((module, path_segments));
-                        }
-                    }
-                }
-            });
-        }
-
-        result
-    }
-
-    fn collect_enum_variants(&mut self, def_id: DefId) -> Option<Vec<Path>> {
-        self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
-            self.populate_module_if_necessary(enum_module);
-
-            let mut variants = Vec::new();
-            enum_module.for_each_child_stable(|ident, _, name_binding| {
-                if let Res::Def(DefKind::Variant, _) = name_binding.res() {
-                    let mut segms = enum_import_suggestion.path.segments.clone();
-                    segms.push(ast::PathSegment::from_ident(ident));
-                    variants.push(Path {
-                        span: name_binding.span,
-                        segments: segms,
-                    });
-                }
-            });
-            variants
-        })
-    }
-
     fn record_partial_res(&mut self, node_id: NodeId, resolution: PartialRes) {
         debug!("(recording res) recording {:?} for {}", resolution, node_id);
         if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
@@ -4975,7 +4781,7 @@ impl<'a> Resolver<'a> {
         for UseError { mut err, candidates, node_id, better } in self.use_injections.drain(..) {
             let (span, found_use) = UsePlacementFinder::check(krate, node_id);
             if !candidates.is_empty() {
-                show_candidates(&mut err, span, &candidates, better, found_use);
+                diagnostics::show_candidates(&mut err, span, &candidates, better, found_use);
             }
             err.emit();
         }
@@ -5257,7 +5063,7 @@ impl<'a> Resolver<'a> {
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(&crate_root);
-                Some((crate_root, ty::Visibility::Public, DUMMY_SP, Mark::root())
+                Some((crate_root, ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                     .to_name_binding(self.arenas))
             }
         })
@@ -5289,72 +5095,6 @@ fn path_names_to_string(path: &Path) -> String {
     names_to_string(&path.segments.iter()
                         .map(|seg| seg.ident)
                         .collect::<Vec<_>>())
-}
-
-/// Gets the stringified path for an enum from an `ImportSuggestion` for an enum variant.
-fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, String) {
-    let variant_path = &suggestion.path;
-    let variant_path_string = path_names_to_string(variant_path);
-
-    let path_len = suggestion.path.segments.len();
-    let enum_path = ast::Path {
-        span: suggestion.path.span,
-        segments: suggestion.path.segments[0..path_len - 1].to_vec(),
-    };
-    let enum_path_string = path_names_to_string(&enum_path);
-
-    (variant_path_string, enum_path_string)
-}
-
-/// When an entity with a given name is not available in scope, we search for
-/// entities with that name in all crates. This method allows outputting the
-/// results of this search in a programmer-friendly way
-fn show_candidates(err: &mut DiagnosticBuilder<'_>,
-                   // This is `None` if all placement locations are inside expansions
-                   span: Option<Span>,
-                   candidates: &[ImportSuggestion],
-                   better: bool,
-                   found_use: bool) {
-
-    // we want consistent results across executions, but candidates are produced
-    // by iterating through a hash map, so make sure they are ordered:
-    let mut path_strings: Vec<_> =
-        candidates.into_iter().map(|c| path_names_to_string(&c.path)).collect();
-    path_strings.sort();
-
-    let better = if better { "better " } else { "" };
-    let msg_diff = match path_strings.len() {
-        1 => " is found in another module, you can import it",
-        _ => "s are found in other modules, you can import them",
-    };
-    let msg = format!("possible {}candidate{} into scope", better, msg_diff);
-
-    if let Some(span) = span {
-        for candidate in &mut path_strings {
-            // produce an additional newline to separate the new use statement
-            // from the directly following item.
-            let additional_newline = if found_use {
-                ""
-            } else {
-                "\n"
-            };
-            *candidate = format!("use {};\n{}", candidate, additional_newline);
-        }
-
-        err.span_suggestions(
-            span,
-            &msg,
-            path_strings.into_iter(),
-            Applicability::Unspecified,
-        );
-    } else {
-        let mut msg = msg;
-        msg.push(':');
-        for candidate in path_strings {
-            msg.push('\n');
-            msg.push_str(&candidate);
-        }
-    }
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.

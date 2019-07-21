@@ -713,7 +713,6 @@ impl Step for Tidy {
             cmd.arg("--verbose");
         }
 
-        let _folder = builder.fold_output(|| "tidy");
         builder.info("tidy check");
         try_run(builder, &mut cmd);
     }
@@ -1310,7 +1309,6 @@ impl Step for Compiletest {
 
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
-        let _folder = builder.fold_output(|| format!("test_{}", suite));
         builder.info(&format!(
             "Check compiletest suite={} mode={} ({} -> {})",
             suite, mode, &compiler.host, target
@@ -1320,7 +1318,6 @@ impl Step for Compiletest {
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
-            let _folder = builder.fold_output(|| format!("test_{}_{}", suite, compare_mode));
             builder.info(&format!(
                 "Check compiletest suite={} mode={} compare_mode={} ({} -> {})",
                 suite, mode, compare_mode, &compiler.host, target
@@ -1364,7 +1361,6 @@ impl Step for DocTest {
         // tests for all files that end in `*.md`
         let mut stack = vec![builder.src.join(self.path)];
         let _time = util::timeit(&builder);
-        let _folder = builder.fold_output(|| format!("test_{}", self.name));
 
         let mut files = Vec::new();
         while let Some(p) = stack.pop() {
@@ -1495,7 +1491,6 @@ impl Step for ErrorIndex {
             .env("CFG_BUILD", &builder.config.build)
             .env("RUSTC_ERROR_METADATA_DST", builder.extended_error_dir());
 
-        let _folder = builder.fold_output(|| "test_error_index");
         builder.info(&format!("Testing error-index stage{}", compiler.stage));
         let _time = util::timeit(&builder);
         builder.run(&mut tool);
@@ -1819,14 +1814,6 @@ impl Step for Crate {
             );
         }
 
-        let _folder = builder.fold_output(|| {
-            format!(
-                "{}_stage{}-{}",
-                test_kind.subcommand(),
-                compiler.stage,
-                krate
-            )
-        });
         builder.info(&format!(
             "{} {} stage{} ({} -> {})",
             test_kind, krate, compiler.stage, &compiler.host, target
@@ -1894,8 +1881,6 @@ impl Step for CrateRustdoc {
             cargo.arg("--quiet");
         }
 
-        let _folder = builder
-            .fold_output(|| format!("{}_stage{}-rustdoc", test_kind.subcommand(), compiler.stage));
         builder.info(&format!(
             "{} rustdoc stage{} ({} -> {})",
             test_kind, compiler.stage, &compiler.host, target

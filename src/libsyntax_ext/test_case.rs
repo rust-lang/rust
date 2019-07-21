@@ -25,7 +25,7 @@ pub fn expand(
 ) -> Vec<Annotatable> {
     if !ecx.ecfg.should_test { return vec![]; }
 
-    let sp = attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(ecx.current_expansion.mark));
+    let sp = attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(ecx.current_expansion.id));
     let mut item = anno_item.expect_item();
     item = item.map(|mut item| {
         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);

@@ -16,7 +16,7 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL |     let _: Box<(Copy) + (?Sized) + (for<'a> Trait<'a>)>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (Copy) + (?Sized) + (for<'a> Trait<'a>)`
    |
-   = note: #[warn(bare_trait_objects)] on by default
+   = note: `#[warn(bare_trait_objects)]` on by default
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/trait-object-trait-parens.rs:9:16

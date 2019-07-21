@@ -7,7 +7,7 @@ use crate::borrow_check::nll::ConstraintDescription;
 use crate::borrow_check::{MirBorrowckCtxt, WriteKind};
 use rustc::mir::{
     CastKind, ConstraintCategory, FakeReadCause, Local, Location, Body, Operand, Place, PlaceBase,
-    Projection, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind,
+    Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::adjustment::{PointerCast};
@@ -252,7 +252,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Some(Cause::LiveVar(local, location)) => {
                 let span = body.source_info(location).span;
                 let spans = self
-                    .move_spans(&Place::from(local), location)
+                    .move_spans(Place::from(local).as_place_ref(), location)
                     .or_else(|| self.borrow_spans(span, location));
 
                 let borrow_location = location;
@@ -272,7 +272,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let mut should_note_order = false;
                 if body.local_decls[local].name.is_some() {
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
-                        if let Place::Base(PlaceBase::Local(borrowed_local)) = place {
+                        if let Place {
+                            base: PlaceBase::Local(borrowed_local),
+                            projection: None,
+                        } = place {
                              if body.local_decls[*borrowed_local].name.is_some()
                                 && local != *borrowed_local
                             {
@@ -301,7 +304,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             region,
                         );
                     if let Some(region_name) = region_name {
-                        let opt_place_desc = self.describe_place(&borrow.borrowed_place);
+                        let opt_place_desc =
+                            self.describe_place(borrow.borrowed_place.as_place_ref());
                         BorrowExplanation::MustBeValidFor {
                             category,
                             from_closure,
@@ -489,8 +493,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
                             Operand::Constant(c) => c.span,
-                            Operand::Copy(Place::Base(PlaceBase::Local(l))) |
-                            Operand::Move(Place::Base(PlaceBase::Local(l))) => {
+                            Operand::Copy(Place {
+                                base: PlaceBase::Local(l),
+                                projection: None,
+                            }) |
+                            Operand::Move(Place {
+                                base: PlaceBase::Local(l),
+                                projection: None,
+                            }) => {
                                 let local_decl = &self.body.local_decls[*l];
                                 if local_decl.name.is_none() {
                                     local_decl.source_info.span
@@ -531,7 +541,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // it which simplifies the termination logic.
         let mut queue = vec![location];
         let mut target = if let Some(&Statement {
-            kind: StatementKind::Assign(Place::Base(PlaceBase::Local(local)), _),
+            kind: StatementKind::Assign(Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            }, _),
             ..
         }) = stmt
         {
@@ -555,13 +568,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 // The only kind of statement that we care about is assignments...
                 if let StatementKind::Assign(place, box rvalue) = &stmt.kind {
-                    let into = match place {
-                        Place::Base(PlaceBase::Local(into)) => into,
-                        Place::Projection(box Projection {
-                            base: Place::Base(PlaceBase::Local(into)),
-                            elem: ProjectionElem::Deref,
-                        }) => into,
-                        _ => {
+                    let into = match place.local_or_deref_local() {
+                        Some(into) => into,
+                        None => {
                             // Continue at the next location.
                             queue.push(current_location.successor_within_block());
                             continue;
@@ -572,11 +581,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // If we see a use, we should check whether it is our data, and if so
                         // update the place that we're looking for to that new place.
                         Rvalue::Use(operand) => match operand {
-                            Operand::Copy(Place::Base(PlaceBase::Local(from)))
-                            | Operand::Move(Place::Base(PlaceBase::Local(from)))
+                            Operand::Copy(Place {
+                                base: PlaceBase::Local(from),
+                                projection: None,
+                            })
+                            | Operand::Move(Place {
+                                base: PlaceBase::Local(from),
+                                projection: None,
+                            })
                                 if *from == target =>
                             {
-                                target = *into;
+                                target = into;
                             }
                             _ => {}
                         },
@@ -585,8 +600,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         Rvalue::Cast(
                             CastKind::Pointer(PointerCast::Unsize), operand, ty
                         ) => match operand {
-                            Operand::Copy(Place::Base(PlaceBase::Local(from)))
-                            | Operand::Move(Place::Base(PlaceBase::Local(from)))
+                            Operand::Copy(Place {
+                                base: PlaceBase::Local(from),
+                                projection: None,
+                            })
+                            | Operand::Move(Place {
+                                base: PlaceBase::Local(from),
+                                projection: None,
+                            })
                                 if *from == target =>
                             {
                                 debug!("was_captured_by_trait_object: ty={:?}", ty);
@@ -616,7 +637,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 debug!("was_captured_by_trait_object: terminator={:?}", terminator);
 
                 if let TerminatorKind::Call {
-                    destination: Some((Place::Base(PlaceBase::Local(dest)), block)),
+                    destination: Some((Place {
+                        base: PlaceBase::Local(dest),
+                        projection: None,
+                    }, block)),
                     args,
                     ..
                 } = &terminator.kind
@@ -627,7 +651,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
                     // Check if one of the arguments to this function is the target place.
                     let found_target = args.iter().any(|arg| {
-                        if let Operand::Move(Place::Base(PlaceBase::Local(potential))) = arg {
+                        if let Operand::Move(Place {
+                            base: PlaceBase::Local(potential),
+                            projection: None,
+                        }) = arg {
                             *potential == target
                         } else {
                             false

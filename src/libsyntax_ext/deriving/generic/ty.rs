@@ -85,7 +85,7 @@ impl<'a> Path<'a> {
             PathKind::Global => cx.path_all(span, true, idents, params, Vec::new()),
             PathKind::Local => cx.path_all(span, false, idents, params, Vec::new()),
             PathKind::Std => {
-                let def_site = DUMMY_SP.apply_mark(cx.current_expansion.mark);
+                let def_site = DUMMY_SP.apply_mark(cx.current_expansion.id);
                 idents.insert(0, Ident::new(kw::DollarCrate, def_site));
                 cx.path_all(span, false, idents, params, Vec::new())
             }

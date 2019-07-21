@@ -428,16 +428,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,
-        place: &mir::Place<'tcx>
+        place_ref: &mir::PlaceRef<'_, 'tcx>
     ) -> PlaceRef<'tcx, Bx::Value> {
-        debug!("codegen_place(place={:?})", place);
-
+        debug!("codegen_place(place_ref={:?})", place_ref);
         let cx = self.cx;
         let tcx = self.cx.tcx();
 
-        let result = match *place {
-            mir::Place::Base(mir::PlaceBase::Local(index)) => {
-                match self.locals[index] {
+        let result = match &place_ref {
+            mir::PlaceRef {
+                base: mir::PlaceBase::Local(index),
+                projection: None,
+            } => {
+                match self.locals[*index] {
                     LocalRef::Place(place) => {
                         return place;
                     }
@@ -445,19 +447,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         return bx.load_operand(place).deref(cx);
                     }
                     LocalRef::Operand(..) => {
-                        bug!("using operand local {:?} as place", place);
+                        bug!("using operand local {:?} as place", place_ref);
                     }
                 }
             }
-            mir::Place::Base(
-                mir::PlaceBase::Static(
-                    box mir::Static { ty, kind: mir::StaticKind::Promoted(promoted) }
-                )
-            ) => {
+            mir::PlaceRef {
+                base: mir::PlaceBase::Static(box mir::Static {
+                    ty,
+                    kind: mir::StaticKind::Promoted(promoted),
+                }),
+                projection: None,
+            } => {
                 let param_env = ty::ParamEnv::reveal_all();
                 let cid = mir::interpret::GlobalId {
                     instance: self.instance,
-                    promoted: Some(promoted),
+                    promoted: Some(*promoted),
                 };
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 match bx.tcx().const_eval(param_env.and(cid)) {
@@ -480,26 +484,41 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
-            mir::Place::Base(
-                mir::PlaceBase::Static(
-                    box mir::Static { ty, kind: mir::StaticKind::Static(def_id) }
-                )
-            ) => {
+            mir::PlaceRef {
+                base: mir::PlaceBase::Static(box mir::Static {
+                    ty,
+                    kind: mir::StaticKind::Static(def_id),
+                }),
+                projection: None,
+            } => {
                 // NB: The layout of a static may be unsized as is the case when working
                 // with a static that is an extern_type.
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                let static_ = bx.get_static(def_id);
+                let static_ = bx.get_static(*def_id);
                 PlaceRef::new_thin_place(bx, static_, layout, layout.align.abi)
             },
-            mir::Place::Projection(box mir::Projection {
-                ref base,
-                elem: mir::ProjectionElem::Deref
-            }) => {
+            mir::PlaceRef {
+                base,
+                projection: Some(box mir::Projection {
+                    base: proj_base,
+                    elem: mir::ProjectionElem::Deref,
+                }),
+            } => {
                 // Load the pointer from its location.
-                self.codegen_consume(bx, base).deref(bx.cx())
+                self.codegen_consume(bx, &mir::PlaceRef {
+                    base,
+                    projection: proj_base,
+                }).deref(bx.cx())
             }
-            mir::Place::Projection(ref projection) => {
-                let cg_base = self.codegen_place(bx, &projection.base);
+            mir::PlaceRef {
+                base,
+                projection: Some(projection),
+            } => {
+                // FIXME turn this recursion into iteration
+                let cg_base = self.codegen_place(bx, &mir::PlaceRef {
+                    base,
+                    projection: &projection.base,
+                });
 
                 match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
@@ -553,13 +572,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         };
-        debug!("codegen_place(place={:?}) => {:?}", place, result);
+        debug!("codegen_place(place={:?}) => {:?}", place_ref, result);
         result
     }
 
-    pub fn monomorphized_place_ty(&self, place: &mir::Place<'tcx>) -> Ty<'tcx> {
+    pub fn monomorphized_place_ty(&self, place_ref: &mir::PlaceRef<'_, 'tcx>) -> Ty<'tcx> {
         let tcx = self.cx.tcx();
-        let place_ty = place.ty(self.mir, tcx);
+        let place_ty = mir::Place::ty_from(place_ref.base, place_ref.projection, self.mir, tcx);
         self.monomorphize(&place_ty.ty)
     }
 }

@@ -455,17 +455,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         mir_place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        use rustc::mir::Place;
         use rustc::mir::PlaceBase;
 
         mir_place.iterate(|place_base, place_projection| {
             let mut op = match place_base {
                 PlaceBase::Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
                 PlaceBase::Local(local) => {
-                    // FIXME use place_projection.is_empty() when is available
                     // Do not use the layout passed in as argument if the base we are looking at
                     // here is not the entire place.
-                    let layout = if let Place::Base(_) = mir_place {
+                    // FIXME use place_projection.is_empty() when is available
+                    let layout = if mir_place.projection.is_none() {
                         layout
                     } else {
                         None

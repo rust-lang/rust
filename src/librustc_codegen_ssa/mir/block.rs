@@ -253,7 +253,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op =
-                    self.codegen_consume(&mut bx, &mir::Place::RETURN_PLACE);
+                    self.codegen_consume(&mut bx, &mir::Place::RETURN_PLACE.as_place_ref());
                 if let Ref(llval, _, align) = op.val {
                     bx.load(llval, align)
                 } else {
@@ -314,7 +314,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return
         }
 
-        let place = self.codegen_place(&mut bx, location);
+        let place = self.codegen_place(&mut bx, &location.as_place_ref());
         let (args1, args2);
         let mut args = if let Some(llextra) = place.llextra {
             args2 = [place.llval, llextra];
@@ -607,18 +607,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // but specified directly in the code. This means it gets promoted
                         // and we can then extract the value by evaluating the promoted.
                         mir::Operand::Copy(
-                            Place::Base(
-                                PlaceBase::Static(
-                                    box Static { kind: StaticKind::Promoted(promoted), ty }
-                                )
-                            )
+                            Place {
+                                base: PlaceBase::Static(box Static {
+                                    kind: StaticKind::Promoted(promoted),
+                                    ty,
+                                }),
+                                projection: None,
+                            }
                         ) |
                         mir::Operand::Move(
-                            Place::Base(
-                                PlaceBase::Static(
-                                    box Static { kind: StaticKind::Promoted(promoted), ty }
-                                )
-                            )
+                            Place {
+                                base: PlaceBase::Static(box Static {
+                                    kind: StaticKind::Promoted(promoted),
+                                    ty,
+                                }),
+                                projection: None,
+                            }
                         ) => {
                             let param_env = ty::ParamEnv::reveal_all();
                             let cid = mir::interpret::GlobalId {
@@ -1098,7 +1102,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
         }
-        let dest = if let mir::Place::Base(mir::PlaceBase::Local(index)) = *dest {
+        let dest = if let mir::Place {
+            base: mir::PlaceBase::Local(index),
+            projection: None,
+        } = *dest {
             match self.locals[index] {
                 LocalRef::Place(dest) => dest,
                 LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
@@ -1128,7 +1135,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         } else {
-            self.codegen_place(bx, dest)
+            self.codegen_place(bx, &mir::PlaceRef {
+                base: &dest.base,
+                projection: &dest.projection,
+            })
         };
         if fn_ret.is_indirect() {
             if dest.align < dest.layout.align.abi {
@@ -1153,12 +1163,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         src: &mir::Operand<'tcx>,
         dst: &mir::Place<'tcx>
     ) {
-        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *dst {
+        if let mir::Place {
+            base: mir::PlaceBase::Local(index),
+            projection: None,
+        } = *dst {
             match self.locals[index] {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
                 LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),
                 LocalRef::Operand(None) => {
-                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(dst));
+                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(&dst.as_place_ref()));
                     assert!(!dst_layout.ty.has_erasable_regions());
                     let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
                     place.storage_live(bx);
@@ -1173,7 +1186,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         } else {
-            let dst = self.codegen_place(bx, dst);
+            let dst = self.codegen_place(bx, &dst.as_place_ref());
             self.codegen_transmute_into(bx, src, dst);
         }
     }

@@ -27,7 +27,7 @@ use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
 use crate::hir;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::lint::builtin::parser::ILL_FORMED_ATTRIBUTE_INPUT;
+use crate::lint::builtin::parser::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
 use crate::session::{Session, DiagnosticMessageId};
 use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
@@ -82,6 +82,7 @@ impl Lint {
     pub fn from_parser_lint_id(lint_id: BufferedEarlyLintId) -> &'static Self {
         match lint_id {
             BufferedEarlyLintId::IllFormedAttributeInput => ILL_FORMED_ATTRIBUTE_INPUT,
+            BufferedEarlyLintId::MetaVariableMisuse => META_VARIABLE_MISUSE,
         }
     }
 
@@ -671,7 +672,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             sess.diag_note_once(
                 &mut err,
                 DiagnosticMessageId::from(lint),
-                &format!("#[{}({})] on by default", level.as_str(), name));
+                &format!("`#[{}({})]` on by default", level.as_str(), name));
         }
         LintSource::CommandLine(lint_flag_val) => {
             let flag = match level {
@@ -706,7 +707,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
                 sess.diag_note_once(&mut err, DiagnosticMessageId::from(lint),
-                                    &format!("#[{}({})] implied by #[{}({})]",
+                                    &format!("`#[{}({})]` implied by `#[{}({})]`",
                                              level_str, name, level_str, lint_attr_name));
             }
         }

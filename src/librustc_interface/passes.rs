@@ -572,7 +572,7 @@ pub fn lower_to_hir(
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !sess.opts.debugging_opts.keep_hygiene_data {
-        syntax::ext::hygiene::clear_markings();
+        syntax::ext::hygiene::clear_syntax_context_map();
     }
 
     Ok(hir_forest)
@@ -688,12 +688,20 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &[Pa
         Ok(())
     })();
 
-    if let Err(e) = result {
-        sess.fatal(&format!(
-            "error writing dependencies to `{}`: {}",
-            deps_filename.display(),
-            e
-        ));
+    match result {
+        Ok(_) => {
+            if sess.opts.debugging_opts.emit_artifact_notifications {
+                 sess.parse_sess.span_diagnostic
+                    .emit_artifact_notification(&deps_filename, "dep-info");
+            }
+        },
+        Err(e) => {
+            sess.fatal(&format!(
+                "error writing dependencies to `{}`: {}",
+                deps_filename.display(),
+                e
+            ))
+        }
     }
 }
 

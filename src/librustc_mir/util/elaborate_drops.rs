@@ -584,10 +584,13 @@ where
             (Rvalue::Ref(
                 tcx.lifetimes.re_erased,
                 BorrowKind::Mut { allow_two_phase_borrow: false },
-                Place::Projection(Box::new(Projection {
-                    base: Place::Base(PlaceBase::Local(cur)),
-                    elem: ProjectionElem::Deref,
-                }))
+                Place {
+                    base: PlaceBase::Local(cur),
+                    projection: Some(Box::new(Projection {
+                        base: None,
+                        elem: ProjectionElem::Deref,
+                    })),
+                }
              ),
              Rvalue::BinaryOp(BinOp::Offset, move_(&Place::from(cur)), one))
         } else {

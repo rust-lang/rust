@@ -174,6 +174,7 @@ pub mod ext {
 
     pub mod tt {
         pub mod transcribe;
+        pub mod macro_check;
         pub mod macro_parser;
         pub mod macro_rules;
         pub mod quoted;

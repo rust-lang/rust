@@ -6,7 +6,7 @@ LL | #[no_mangle] pub const RAH: usize = 5;
    |              |
    |              help: try a static value: `pub static`
    |
-   = note: #[deny(no_mangle_const_items)] on by default
+   = note: `#[deny(no_mangle_const_items)]` on by default
 
 error: aborting due to previous error
 

@@ -1,9 +1,6 @@
-#![allow(dead_code)]
-#![feature(rustc_attrs)]
-
 macro_rules! foo (
     () => (
-        #[derive_Clone] //~ ERROR attribute `derive_Clone` is currently unknown
+        #[derive_Clone] //~ ERROR cannot find attribute macro `derive_Clone` in this scope
         struct T;
     );
 );
@@ -15,7 +12,7 @@ macro_rules! bar (
 foo!();
 
 bar!(
-    #[derive_Clone] //~ ERROR attribute `derive_Clone` is currently unknown
+    #[derive_Clone] //~ ERROR cannot find attribute macro `derive_Clone` in this scope
     struct S;
 );
 

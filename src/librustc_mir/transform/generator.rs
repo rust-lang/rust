@@ -104,11 +104,14 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
                     place: &mut Place<'tcx>,
                     context: PlaceContext,
                     location: Location) {
-        if place.base_local() == Some(self_arg()) {
-            replace_base(place, Place::Projection(Box::new(Projection {
-                base: Place::Base(PlaceBase::Local(self_arg())),
-                elem: ProjectionElem::Deref,
-            })));
+        if place.base == PlaceBase::Local(self_arg()) {
+            replace_base(place, Place {
+                base: PlaceBase::Local(self_arg()),
+                projection: Some(Box::new(Projection {
+                    base: None,
+                    elem: ProjectionElem::Deref,
+                })),
+            });
         } else {
             self.super_place(place, context, location);
         }
@@ -131,11 +134,14 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext,
                     location: Location) {
-        if place.base_local() == Some(self_arg()) {
-            replace_base(place, Place::Projection(Box::new(Projection {
-                base: Place::Base(PlaceBase::Local(self_arg())),
-                elem: ProjectionElem::Field(Field::new(0), self.ref_gen_ty),
-            })));
+        if place.base == PlaceBase::Local(self_arg()) {
+            replace_base(place, Place {
+                base: PlaceBase::Local(self_arg()),
+                projection: Some(Box::new(Projection {
+                    base: None,
+                    elem: ProjectionElem::Field(Field::new(0), self.ref_gen_ty),
+                })),
+            });
         } else {
             self.super_place(place, context, location);
         }
@@ -143,11 +149,13 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
 }
 
 fn replace_base(place: &mut Place<'tcx>, new_base: Place<'tcx>) {
-    if let Place::Projection(proj) = place {
-        replace_base(&mut proj.base, new_base);
-    } else {
-        *place = new_base;
+    let mut projection = &mut place.projection;
+    while let Some(box proj) = projection {
+        projection = &mut proj.base;
     }
+
+    place.base = new_base.base;
+    *projection = new_base.projection;
 }
 
 fn self_arg() -> Local {
@@ -203,10 +211,13 @@ impl TransformVisitor<'tcx> {
         let self_place = Place::from(self_arg());
         let base = self_place.downcast_unnamed(variant_index);
         let field = Projection {
-            base: base,
+            base: base.projection,
             elem: ProjectionElem::Field(Field::new(idx), ty),
         };
-        Place::Projection(Box::new(field))
+        Place {
+            base: base.base,
+            projection: Some(Box::new(field)),
+        }
     }
 
     // Create a statement which changes the discriminant
@@ -245,7 +256,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext,
                     location: Location) {
-        if let Some(l) = place.base_local() {
+        if let PlaceBase::Local(l) = place.base {
             // Replace an Local in the remap with a generator struct access
             if let Some(&(ty, variant_index, idx)) = self.remap.get(&l) {
                 replace_base(place, self.make_field(variant_index, idx, ty));
@@ -835,7 +846,10 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut 
             &Terminator {
                 source_info,
                 kind: TerminatorKind::Drop {
-                    location: Place::Base(PlaceBase::Local(local)),
+                    location: Place {
+                        base: PlaceBase::Local(local),
+                        projection: None,
+                    },
                     target,
                     unwind
                 }

@@ -60,7 +60,7 @@ use syntax::attr;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::errors;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax::print::pprust;
 use syntax::source_map::{respan, ExpnInfo, ExpnKind, DesugaringKind, Spanned};
 use syntax::std_inject;
@@ -437,7 +437,7 @@ impl<'a> LoweringContext<'a> {
                                 owner,
                                 id,
                                 DefPathData::Misc,
-                                Mark::root(),
+                                ExpnId::root(),
                                 tree.prefix.span,
                             );
                             self.lctx.allocate_hir_id_counter(id);
@@ -875,7 +875,7 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        span.fresh_expansion(Mark::root(), ExpnInfo {
+        span.fresh_expansion(ExpnId::root(), ExpnInfo {
             def_site: span,
             allow_internal_unstable,
             ..ExpnInfo::default(ExpnKind::Desugaring(reason), span, self.sess.edition())
@@ -968,7 +968,7 @@ impl<'a> LoweringContext<'a> {
             parent_index,
             node_id,
             DefPathData::LifetimeNs(str_name),
-            Mark::root(),
+            ExpnId::root(),
             span,
         );
 
@@ -1462,7 +1462,7 @@ impl<'a> LoweringContext<'a> {
                         parent_def_index,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
-                        Mark::root(),
+                        ExpnId::root(),
                         DUMMY_SP
                     );
 
@@ -1921,7 +1921,7 @@ impl<'a> LoweringContext<'a> {
                         self.parent,
                         def_node_id,
                         DefPathData::LifetimeNs(name.ident().as_interned_str()),
-                        Mark::root(),
+                        ExpnId::root(),
                         lifetime.span);
 
                     let (name, kind) = match name {

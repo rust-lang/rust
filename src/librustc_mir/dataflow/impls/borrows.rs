@@ -194,7 +194,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     ) {
         debug!("kill_borrows_on_place: place={:?}", place);
 
-        if let Some(local) = place.base_local() {
+        if let PlaceBase::Local(local) = place.base {
             let other_borrows_of_local = self
                 .borrow_set
                 .local_map
@@ -205,7 +205,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             // If the borrowed place is a local with no projections, all other borrows of this
             // local must conflict. This is purely an optimization so we don't have to call
             // `places_conflict` for every borrow.
-            if let Place::Base(PlaceBase::Local(_)) = place {
+            if place.projection.is_none() {
                 trans.kill_all(other_borrows_of_local);
                 return;
             }

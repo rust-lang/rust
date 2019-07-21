@@ -9,7 +9,7 @@ use crate::lint;
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::middle::allocator::AllocatorKind;
 use crate::middle::dependency_format;
-use crate::session::config::{OutputType, SwitchWithOptPath};
+use crate::session::config::{OutputType, PrintRequest, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::util::common::{duration_to_secs_str, ErrorReported};
@@ -1303,15 +1303,18 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // PGO does not work reliably with panic=unwind on Windows. Let's make it
-    // a warning to combine the two for now. It always runs into an assertions
+    // an error to combine the two for now. It always runs into an assertions
     // if LLVM is built with assertions, but without assertions it sometimes
     // does not crash and will probably generate a corrupted binary.
+    // We should only display this error if we're actually going to run PGO.
+    // If we're just supposed to print out some data, don't show the error (#61002).
     if sess.opts.cg.profile_generate.enabled() &&
        sess.target.target.options.is_like_msvc &&
-       sess.panic_strategy() == PanicStrategy::Unwind {
-        sess.warn("Profile-guided optimization does not yet work in conjunction \
-                   with `-Cpanic=unwind` on Windows when targeting MSVC. \
-                   See https://github.com/rust-lang/rust/issues/61002 for details.");
+       sess.panic_strategy() == PanicStrategy::Unwind &&
+       sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs) {
+        sess.err("Profile-guided optimization does not yet work in conjunction \
+                  with `-Cpanic=unwind` on Windows when targeting MSVC. \
+                  See https://github.com/rust-lang/rust/issues/61002 for details.");
     }
 }
 

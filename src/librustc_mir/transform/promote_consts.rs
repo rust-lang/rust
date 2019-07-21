@@ -60,6 +60,9 @@ pub enum Candidate {
     /// Borrow of a constant temporary.
     Ref(Location),
 
+    /// Promotion of the `x` in `[x; 32]`.
+    Repeat(Location),
+
     /// Currently applied to function calls where the callee has the unstable
     /// `#[rustc_args_required_const]` attribute as well as the SIMD shuffle
     /// intrinsic. The intrinsic requires the arguments are indeed constant and
@@ -297,9 +300,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let mut promoted_place = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new_return_place(ty, span);
-                Place::Base(
-                    PlaceBase::Static(box Static{ kind: StaticKind::Promoted(promoted_id), ty })
-                )
+                Place {
+                    base: PlaceBase::Static(box Static {
+                        kind: StaticKind::Promoted(promoted_id),
+                        ty
+                    }),
+                    projection: None,
+                }
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
@@ -307,21 +314,29 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     let ref mut statement = blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
                         StatementKind::Assign(_, box Rvalue::Ref(_, _, ref mut place)) => {
-                            // Find the underlying local for this (necessarily interior) borrow.
-                            let mut place = place;
-                            while let Place::Projection(ref mut proj) = *place {
-                                assert_ne!(proj.elem, ProjectionElem::Deref);
-                                place = &mut proj.base;
-                            };
-
-                            let ty = place.ty(local_decls, self.tcx).ty;
+                            // Use the underlying local for this (necessarily interior) borrow.
+                            let ty = place.base.ty(local_decls).ty;
                             let span = statement.source_info.span;
 
-                            Operand::Move(mem::replace(place, promoted_place(ty, span)))
+                            Operand::Move(Place {
+                                base: mem::replace(&mut place.base, promoted_place(ty, span).base),
+                                projection: None,
+                            })
                         }
                         _ => bug!()
                     }
                 }
+                Candidate::Repeat(loc) => {
+                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    match statement.kind {
+                        StatementKind::Assign(_, box Rvalue::Repeat(ref mut operand, _)) => {
+                            let ty = operand.ty(local_decls, self.tcx);
+                            let span = statement.source_info.span;
+                            mem::replace(operand, Operand::Copy(promoted_place(ty, span)))
+                        }
+                        _ => bug!()
+                    }
+                },
                 Candidate::Argument { bb, index } => {
                     let terminator = blocks[bb].terminator_mut();
                     match terminator.kind {
@@ -380,9 +395,13 @@ pub fn promote_candidates<'tcx>(
 
     for candidate in candidates.into_iter().rev() {
         match candidate {
+            Candidate::Repeat(Location { block, statement_index }) |
             Candidate::Ref(Location { block, statement_index }) => {
                 match body[block].statements[statement_index].kind {
-                    StatementKind::Assign(Place::Base(PlaceBase::Local(local)), _) => {
+                    StatementKind::Assign(Place {
+                        base: PlaceBase::Local(local),
+                        projection: None,
+                    }, _) => {
                         if temps[local] == TempState::PromotedOut {
                             // Already promoted.
                             continue;
@@ -429,7 +448,10 @@ pub fn promote_candidates<'tcx>(
     for block in body.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
-                StatementKind::Assign(Place::Base(PlaceBase::Local(index)), _) |
+                StatementKind::Assign(Place {
+                    base: PlaceBase::Local(index),
+                    projection: None,
+                }, _) |
                 StatementKind::StorageLive(index) |
                 StatementKind::StorageDead(index) => {
                     !promoted(index)
@@ -439,7 +461,10 @@ pub fn promote_candidates<'tcx>(
         });
         let terminator = block.terminator_mut();
         match terminator.kind {
-            TerminatorKind::Drop { location: Place::Base(PlaceBase::Local(index)), target, .. } => {
+            TerminatorKind::Drop { location: Place {
+                base: PlaceBase::Local(index),
+                projection: None,
+            }, target, .. } => {
                 if promoted(index) {
                     terminator.kind = TerminatorKind::Goto {
                         target,

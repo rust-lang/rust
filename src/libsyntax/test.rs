@@ -21,7 +21,7 @@ use crate::entry::{self, EntryPointType};
 use crate::ext::base::{ExtCtxt, Resolver};
 use crate::ext::build::AstBuilder;
 use crate::ext::expand::ExpansionConfig;
-use crate::ext::hygiene::{self, Mark, SyntaxContext, MacroKind};
+use crate::ext::hygiene::{self, ExpnId, SyntaxContext, MacroKind};
 use crate::mut_visit::{*, ExpectOne};
 use crate::feature_gate::Features;
 use crate::util::map_in_place::MapInPlace;
@@ -232,7 +232,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
 
     let name = Ident::from_str("__test_reexports").gensym();
     let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
-    cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
+    cx.ext_cx.current_expansion.id = cx.ext_cx.resolver.get_module_scope(parent);
     let it = cx.ext_cx.monotonic_expander().flat_map_item(P(ast::Item {
         ident: name,
         attrs: Vec::new(),
@@ -303,7 +303,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     //            #![main]
     //            test::test_main_static(&[..tests]);
     //        }
-    let sp = DUMMY_SP.fresh_expansion(Mark::root(), ExpnInfo::allow_unstable(
+    let sp = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, cx.ext_cx.parse_sess.edition,
         [sym::main, sym::test, sym::rustc_attrs][..].into(),
     ));

@@ -1,4 +1,5 @@
 use crate::{build, shim};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Body, MirPhase, Promoted};
 use rustc::ty::{TyCtxt, InstanceDef};
@@ -46,6 +47,7 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
         mir_validated,
         optimized_mir,
         is_mir_available,
+        promoted_mir,
         ..*providers
     };
 }
@@ -295,4 +297,9 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
         &dump_mir::Marker("PreCodegen"),
     ]);
     tcx.arena.alloc(body)
+}
+
+fn promoted_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
+    let body = tcx.optimized_mir(def_id);
+    &body.promoted
 }

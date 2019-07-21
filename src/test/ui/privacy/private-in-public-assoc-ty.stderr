@@ -10,7 +10,7 @@ LL | |         fn infer_exist() -> Self::Exist;
 LL | |     }
    | |_____^
    |
-   = note: #[warn(private_in_public)] on by default
+   = note: `#[warn(private_in_public)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 

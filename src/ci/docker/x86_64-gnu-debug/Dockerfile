@@ -33,7 +33,6 @@ ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --enable-debug \
       --enable-lld \
-      --enable-lldb \
       --enable-optimize \
       --set llvm.use-linker=lld \
       --set target.x86_64-unknown-linux-gnu.linker=clang \

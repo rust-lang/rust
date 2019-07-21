@@ -497,32 +497,48 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let arg_place = unpack!(block = this.as_place(block, arg));
 
         let mutability = match arg_place {
-            Place::Base(PlaceBase::Local(local)) => this.local_decls[local].mutability,
-            Place::Projection(box Projection {
-                base: Place::Base(PlaceBase::Local(local)),
-                elem: ProjectionElem::Deref,
-            }) => {
+            Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } => this.local_decls[local].mutability,
+            Place {
+                base: PlaceBase::Local(local),
+                projection: Some(box Projection {
+                    base: None,
+                    elem: ProjectionElem::Deref,
+                })
+            } => {
                 debug_assert!(
                     this.local_decls[local].is_ref_for_guard(),
                     "Unexpected capture place",
                 );
                 this.local_decls[local].mutability
             }
-            Place::Projection(box Projection {
+            Place {
                 ref base,
-                elem: ProjectionElem::Field(upvar_index, _),
-            })
-            | Place::Projection(box Projection {
-                base:
-                    Place::Projection(box Projection {
-                        ref base,
+                projection: Some(box Projection {
+                    base: ref base_proj,
+                    elem: ProjectionElem::Field(upvar_index, _),
+                }),
+            }
+            | Place {
+                ref base,
+                projection: Some(box Projection {
+                    base: Some(box Projection {
+                        base: ref base_proj,
                         elem: ProjectionElem::Field(upvar_index, _),
                     }),
-                elem: ProjectionElem::Deref,
-            }) => {
+                    elem: ProjectionElem::Deref,
+                }),
+            } => {
+                let place = PlaceRef {
+                    base,
+                    projection: base_proj,
+                };
+
                 // Not projected from the implicit `self` in a closure.
                 debug_assert!(
-                    match base.local_or_deref_local() {
+                    match place.local_or_deref_local() {
                         Some(local) => local == Local::new(1),
                         None => false,
                     },

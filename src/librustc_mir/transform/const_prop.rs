@@ -781,7 +781,10 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 .ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
-                    if let Place::Base(PlaceBase::Local(local)) = *place {
+                    if let Place {
+                        base: PlaceBase::Local(local),
+                        projection: None,
+                    } = *place {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
@@ -821,11 +824,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         // doesn't use the invalid value
                         match cond {
                             Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                let mut place = place;
-                                while let Place::Projection(ref proj) = *place {
-                                    place = &proj.base;
-                                }
-                                if let Place::Base(PlaceBase::Local(local)) = *place {
+                                if let PlaceBase::Local(local) = place.base {
                                     self.remove_const(local);
                                 }
                             },

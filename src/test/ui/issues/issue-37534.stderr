@@ -1,9 +1,9 @@
-error[E0405]: cannot find trait `Hash` in this scope
+error[E0404]: expected trait, found derive macro `Hash`
   --> $DIR/issue-37534.rs:1:16
    |
 LL | struct Foo<T: ?Hash> { }
-   |                ^^^^ not found in this scope
-help: possible candidate is found in another module, you can import it into scope
+   |                ^^^^ not a trait
+help: possible better candidate is found in another module, you can import it into scope
    |
 LL | use std::hash::Hash;
    |
@@ -24,5 +24,5 @@ LL | struct Foo<T: ?Hash> { }
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0392, E0405.
+Some errors have detailed explanations: E0392, E0404.
 For more information about an error, try `rustc --explain E0392`.

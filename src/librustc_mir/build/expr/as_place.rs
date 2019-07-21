@@ -123,10 +123,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 block.and(place)
             }
-            ExprKind::StaticRef { id } => block.and(Place::Base(PlaceBase::Static(Box::new(Static {
-                ty: expr.ty,
-                kind: StaticKind::Static(id),
-            })))),
+            ExprKind::StaticRef { id } => block.and(Place {
+                base: PlaceBase::Static(Box::new(Static {
+                    ty: expr.ty,
+                    kind: StaticKind::Static(id),
+                })),
+                projection: None,
+            }),
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let place = unpack!(block = this.as_place(block, source));

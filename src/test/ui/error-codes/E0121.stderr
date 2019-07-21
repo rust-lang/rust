@@ -2,7 +2,10 @@ error[E0121]: the type placeholder `_` is not allowed within types on item signa
   --> $DIR/E0121.rs:1:13
    |
 LL | fn foo() -> _ { 5 }
-   |             ^ not allowed in type signatures
+   |             ^
+   |             |
+   |             not allowed in type signatures
+   |             help: replace `_` with the correct return type: `i32`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/E0121.rs:3:13

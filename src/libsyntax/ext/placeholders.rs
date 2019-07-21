@@ -2,7 +2,7 @@ use crate::ast::{self, NodeId};
 use crate::source_map::{DUMMY_SP, dummy_spanned};
 use crate::ext::base::ExtCtxt;
 use crate::ext::expand::{AstFragment, AstFragmentKind};
-use crate::ext::hygiene::Mark;
+use crate::ext::hygiene::ExpnId;
 use crate::tokenstream::TokenStream;
 use crate::mut_visit::*;
 use crate::ptr::P;
@@ -84,11 +84,11 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         }
     }
 
-    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment, derives: Vec<Mark>) {
+    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment, derives: Vec<ExpnId>) {
         fragment.mut_visit_with(self);
         if let AstFragment::Items(mut items) = fragment {
             for derive in derives {
-                match self.remove(NodeId::placeholder_from_mark(derive)) {
+                match self.remove(NodeId::placeholder_from_expn_id(derive)) {
                     AstFragment::Items(derived_items) => items.extend(derived_items),
                     _ => unreachable!(),
                 }

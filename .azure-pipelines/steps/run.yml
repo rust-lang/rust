@@ -111,8 +111,8 @@ steps:
   condition: and(succeeded(), not(variables.SKIP_JOB), ne(variables['Agent.OS'], 'Windows_NT'))
   displayName: Check out submodules (Unix)
 - script: |
-    if not exist D:\cache\rustsrc\NUL mkdir D:\cache\rustsrc
-    sh src/ci/init_repo.sh . /d/cache/rustsrc
+    if not exist C:\cache\rustsrc\NUL mkdir C:\cache\rustsrc
+    sh src/ci/init_repo.sh . /c/cache/rustsrc
   condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Windows_NT'))
   displayName: Check out submodules (Windows)
 

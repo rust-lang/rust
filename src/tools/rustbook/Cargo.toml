@@ -14,11 +14,5 @@ version = "0.3.0"
 default-features = false
 features = ["search"]
 
-[dependencies.mdbook_1]
-package = "mdbook"
-version = "0.1.7"
-default-features = false
-features = ["search"]
-
 [target.'cfg(all(target_arch = "x86_64", target_os = "linux"))'.dependencies]
 mdbook-linkcheck = "0.3.0"

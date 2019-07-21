@@ -6,8 +6,6 @@ LL | impl<T: lib::MyCopy> MyTrait for T { }
 ...
 LL | impl MyTrait for (MyType,) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(MyType,)`
-   |
-   = note: upstream crates may add new impl of trait `lib::MyCopy` for type `(MyType,)` in future versions
 
 error: aborting due to previous error
 

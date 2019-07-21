@@ -697,7 +697,7 @@ pub fn const_eval_raw_provider<'tcx>(
                 // promoting runtime code is only allowed to error if it references broken constants
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
-                    let span = tcx.optimized_mir(def_id).promoted[p].span;
+                    let span = tcx.promoted_mir(def_id)[p].span;
                     if let InterpError::ReferencedConstant = err.error {
                         err.report_as_error(
                             tcx.at(span),

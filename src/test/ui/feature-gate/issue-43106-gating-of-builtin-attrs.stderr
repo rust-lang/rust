@@ -192,7 +192,7 @@ warning: the feature `rust1` has been stable since 1.0.0 and no longer requires 
 LL | #![feature(rust1)]
    |            ^^^^^
    |
-   = note: #[warn(stable_features)] on by default
+   = note: `#[warn(stable_features)]` on by default
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:180:5

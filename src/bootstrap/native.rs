@@ -104,7 +104,6 @@ impl Step for Llvm {
             }
         }
 
-        let _folder = builder.fold_output(|| "llvm");
         let descriptor = if emscripten { "Emscripten " } else { "" };
         builder.info(&format!("Building {}LLVM for {}", descriptor, target));
         let _time = util::timeit(&builder);
@@ -151,6 +150,7 @@ impl Step for Llvm {
            .define("WITH_POLLY", "OFF")
            .define("LLVM_ENABLE_TERMINFO", "OFF")
            .define("LLVM_ENABLE_LIBEDIT", "OFF")
+           .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
            .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
@@ -493,7 +493,6 @@ impl Step for Lld {
             return out_dir
         }
 
-        let _folder = builder.fold_output(|| "lld");
         builder.info(&format!("Building LLD for {}", target));
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
@@ -560,7 +559,6 @@ impl Step for TestHelpers {
             return
         }
 
-        let _folder = builder.fold_output(|| "build_test_helpers");
         builder.info("Building test helpers");
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();

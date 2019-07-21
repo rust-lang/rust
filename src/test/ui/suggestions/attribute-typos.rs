@@ -1,11 +1,11 @@
-#[deprcated] //~ ERROR attribute `deprcated` is currently unknown
+#[deprcated] //~ ERROR cannot find attribute macro `deprcated` in this scope
 fn foo() {}
 
-#[tests] //~ ERROR attribute `tests` is currently unknown to the compiler
+#[tests] //~ ERROR cannot find attribute macro `tests` in this scope
 fn bar() {}
 
 #[rustc_err]
-//~^ ERROR attribute `rustc_err` is currently unknown
+//~^ ERROR cannot find attribute macro `rustc_err` in this scope
 //~| ERROR attributes starting with `rustc` are reserved for use by the `rustc` compiler
 
 fn main() {}

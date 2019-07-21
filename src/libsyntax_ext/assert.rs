@@ -25,7 +25,7 @@ pub fn expand_assert<'cx>(
         }
     };
 
-    let sp = sp.apply_mark(cx.current_expansion.mark);
+    let sp = sp.apply_mark(cx.current_expansion.id);
     let panic_call = Mac_ {
         path: Path::from_ident(Ident::new(sym::panic, sp)),
         tts: custom_message.unwrap_or_else(|| {

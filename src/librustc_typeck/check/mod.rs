@@ -746,11 +746,12 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
     tcx.calculate_dtor(def_id, &mut dropck::check_drop_impl)
 }
 
-/// If this `DefId` is a "primary tables entry", returns `Some((body_id, decl))`
-/// with information about it's body-id and fn-decl (if any). Otherwise,
+/// If this `DefId` is a "primary tables entry", returns
+/// `Some((body_id, header, decl))` with information about
+/// it's body-id, fn-header and fn-decl (if any). Otherwise,
 /// returns `None`.
 ///
-/// If this function returns "some", then `typeck_tables(def_id)` will
+/// If this function returns `Some`, then `typeck_tables(def_id)` will
 /// succeed; if it returns `None`, then `typeck_tables(def_id)` may or
 /// may not succeed. In some cases where this function returns `None`
 /// (notably closures), `typeck_tables(def_id)` would wind up
@@ -758,15 +759,15 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 fn primary_body_of(
     tcx: TyCtxt<'_>,
     id: hir::HirId,
-) -> Option<(hir::BodyId, Option<&hir::FnDecl>)> {
+) -> Option<(hir::BodyId, Option<&hir::FnHeader>, Option<&hir::FnDecl>)> {
     match tcx.hir().get(id) {
         Node::Item(item) => {
             match item.node {
                 hir::ItemKind::Const(_, body) |
                 hir::ItemKind::Static(_, _, body) =>
-                    Some((body, None)),
-                hir::ItemKind::Fn(ref decl, .., body) =>
-                    Some((body, Some(decl))),
+                    Some((body, None, None)),
+                hir::ItemKind::Fn(ref decl, ref header, .., body) =>
+                    Some((body, Some(header), Some(decl))),
                 _ =>
                     None,
             }
@@ -774,9 +775,9 @@ fn primary_body_of(
         Node::TraitItem(item) => {
             match item.node {
                 hir::TraitItemKind::Const(_, Some(body)) =>
-                    Some((body, None)),
+                    Some((body, None, None)),
                 hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) =>
-                    Some((body, Some(&sig.decl))),
+                    Some((body, Some(&sig.header), Some(&sig.decl))),
                 _ =>
                     None,
             }
@@ -784,14 +785,14 @@ fn primary_body_of(
         Node::ImplItem(item) => {
             match item.node {
                 hir::ImplItemKind::Const(_, body) =>
-                    Some((body, None)),
+                    Some((body, None, None)),
                 hir::ImplItemKind::Method(ref sig, body) =>
-                    Some((body, Some(&sig.decl))),
+                    Some((body, Some(&sig.header), Some(&sig.decl))),
                 _ =>
                     None,
             }
         }
-        Node::AnonConst(constant) => Some((constant.body, None)),
+        Node::AnonConst(constant) => Some((constant.body, None, None)),
         _ => None,
     }
 }
@@ -824,15 +825,21 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
-    let (body_id, fn_decl) = primary_body_of(tcx, id).unwrap_or_else(|| {
-        span_bug!(span, "can't type-check body of {:?}", def_id);
-    });
+    let (body_id, fn_header, fn_decl) = primary_body_of(tcx, id)
+        .unwrap_or_else(|| {
+            span_bug!(span, "can't type-check body of {:?}", def_id);
+        });
     let body = tcx.hir().body(body_id);
 
     let tables = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
-        let fcx = if let Some(decl) = fn_decl {
-            let fn_sig = tcx.fn_sig(def_id);
+        let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
+            let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
+                let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
+                AstConv::ty_of_fn(&fcx, header.unsafety, header.abi, decl)
+            } else {
+                tcx.fn_sig(def_id)
+            };
 
             check_abi(tcx, span, fn_sig.abi());
 
@@ -1321,7 +1328,7 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, substs: SubstsRef<'tcx>,
             tcx.sess, span, E0720,
             "opaque type expands to a recursive type",
         );
-        err.span_label(span, "expands to self-referential type");
+        err.span_label(span, "expands to a recursive type");
         if let ty::Opaque(..) = partially_expanded_type.sty {
             err.note("type resolves to itself");
         } else {
@@ -1442,11 +1449,14 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
         return
     }
 
-    // For the wasm32 target statics with #[link_section] are placed into custom
+    // For the wasm32 target statics with `#[link_section]` are placed into custom
     // sections of the final output file, but this isn't link custom sections of
     // other executable formats. Namely we can only embed a list of bytes,
     // nothing with pointers to anything else or relocations. If any relocation
     // show up, reject them here.
+    // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
+    // the consumer's responsibility to ensure all bytes that have been read
+    // have defined values.
     let instance = ty::Instance::mono(tcx, id);
     let cid = GlobalId {
         instance,
