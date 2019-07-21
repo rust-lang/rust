@@ -12,15 +12,12 @@ error: expected type, found keyword `loop`
   --> $DIR/lifetime_starts_expressions.rs:6:26
    |
 LL |     loop { break 'label: loop { break 'label 42; }; }
-   |                          ^^^^ expecting a type here because of type ascription
+   |                        - ^^^^ expected type
+   |                        |
+   |                        tried to parse a type due to this type ascription
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-note: this expression expects an ascribed type after the colon
-  --> $DIR/lifetime_starts_expressions.rs:6:12
-   |
-LL |     loop { break 'label: loop { break 'label 42; }; }
-   |            ^^^^^^^^^^^^
-   = help: this might be indicative of a syntax error elsewhere
+   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
 
 error: aborting due to 2 previous errors
 

@@ -15,7 +15,10 @@ LL |         bar(baz: $rest)
    |                - help: try using a semicolon: `;`
 ...
 LL |     foo!(true);
-   |          ^^^^ expecting a type here because of type ascription
+   |          ^^^^ expected type
+   |
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
 
 error: aborting due to 2 previous errors
 

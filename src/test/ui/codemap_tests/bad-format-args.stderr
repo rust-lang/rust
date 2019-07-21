@@ -10,13 +10,13 @@ error: expected token: `,`
   --> $DIR/bad-format-args.rs:3:16
    |
 LL |     format!("" 1);
-   |                ^
+   |                ^ expected `,`
 
 error: expected token: `,`
   --> $DIR/bad-format-args.rs:4:19
    |
 LL |     format!("", 1 1);
-   |                   ^
+   |                   ^ expected `,`
 
 error: aborting due to 3 previous errors
 
