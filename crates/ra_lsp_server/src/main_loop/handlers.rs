@@ -685,14 +685,13 @@ pub fn handle_code_lens(
     params: req::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let analysis = world.analysis();
-    let line_index = analysis.file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id);
 
     let mut lenses: Vec<CodeLens> = Default::default();
     let workspace_root = world.workspace_root_for(file_id);
 
     // Gather runnables
-    for runnable in analysis.runnables(file_id)? {
+    for runnable in world.analysis().runnables(file_id)? {
         let title = match &runnable.kind {
             RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => Some("▶️Run Test"),
             RunnableKind::Bench { .. } => Some("Run Bench"),
@@ -729,7 +728,8 @@ pub fn handle_code_lens(
 
     // Handle impls
     lenses.extend(
-        analysis
+        world
+            .analysis()
             .file_structure(file_id)
             .into_iter()
             .filter(|it| match it.kind {
@@ -749,15 +749,6 @@ pub fn handle_code_lens(
             }),
     );
 
-    lenses.extend(analysis.inlay_hints(file_id)?.into_iter().map(|inlay_hint| CodeLens {
-        range: inlay_hint.range.conv_with(&line_index),
-        command: Some(Command {
-            title: inlay_hint.inlay_type_string,
-            command: String::new(),
-            arguments: None,
-        }),
-        data: None,
-    }));
     Ok(Some(lenses))
 }
 
