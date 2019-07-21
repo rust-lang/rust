@@ -1325,12 +1325,94 @@ fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     check_packed(tcx, span, def_id);
 }
 
+/// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
+/// projections that would result in "inheriting lifetimes".
 fn check_opaque<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     substs: SubstsRef<'tcx>,
     span: Span,
-    origin: &hir::OpaqueTyOrigin
+    origin: &hir::OpaqueTyOrigin,
+) {
+    check_opaque_for_inheriting_lifetimes(tcx, def_id, span);
+    check_opaque_for_cycles(tcx, def_id, substs, span, origin);
+}
+
+/// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
+/// in "inheriting lifetimes".
+fn check_opaque_for_inheriting_lifetimes(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    span: Span,
+) {
+    let item = tcx.hir().expect_item(
+        tcx.hir().as_local_hir_id(def_id).expect("opaque type is not local"));
+    debug!("check_opaque_for_inheriting_lifetimes: def_id={:?} span={:?} item={:?}",
+           def_id, span, item);
+
+    #[derive(Debug)]
+    struct ProhibitOpaqueVisitor<'tcx> {
+        opaque_identity_ty: Ty<'tcx>,
+        generics: &'tcx ty::Generics,
+    };
+
+    impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+            debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
+            if t == self.opaque_identity_ty { false } else { t.super_visit_with(self) }
+        }
+
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+            debug!("check_opaque_for_inheriting_lifetimes: (visit_region) r={:?}", r);
+            if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
+                return *index < self.generics.parent_count as u32;
+            }
+
+            r.super_visit_with(self)
+        }
+    }
+
+    let prohibit_opaque = match item.node {
+        ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::AsyncFn, .. }) |
+        ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn, .. }) => {
+            let mut visitor = ProhibitOpaqueVisitor {
+                opaque_identity_ty: tcx.mk_opaque(
+                    def_id, InternalSubsts::identity_for_item(tcx, def_id)),
+                generics: tcx.generics_of(def_id),
+            };
+            debug!("check_opaque_for_inheriting_lifetimes: visitor={:?}", visitor);
+
+            tcx.predicates_of(def_id).predicates.iter().any(
+                |(predicate, _)| predicate.visit_with(&mut visitor))
+        },
+        _ => false,
+    };
+
+    debug!("check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}", prohibit_opaque);
+    if prohibit_opaque {
+        let is_async = match item.node {
+            ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
+                hir::OpaqueTyOrigin::AsyncFn => true,
+                _ => false,
+            },
+            _ => unreachable!(),
+        };
+
+        tcx.sess.span_err(span, &format!(
+            "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
+             a parent scope",
+            if is_async { "async fn" } else { "impl Trait" },
+        ));
+    }
+}
+
+/// Checks that an opaque type does not contain cycles.
+fn check_opaque_for_cycles<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+    span: Span,
+    origin: &hir::OpaqueTyOrigin,
 ) {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
         if let hir::OpaqueTyOrigin::AsyncFn = origin {
