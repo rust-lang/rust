@@ -37,13 +37,14 @@ use ra_text_edit::AtomTextEdit;
 use crate::syntax_node::GreenNode;
 
 pub use crate::{
+    algo::InsertPosition,
     ast::{AstNode, AstToken},
     parsing::{classify_literal, tokenize, Token},
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::{Location, SyntaxError, SyntaxErrorKind},
     syntax_node::{
-        Direction, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
-        SyntaxTreeBuilder, WalkEvent,
+        Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
+        WalkEvent,
     },
 };
 pub use ra_parser::SyntaxKind;

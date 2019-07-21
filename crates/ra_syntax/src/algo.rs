@@ -5,8 +5,8 @@ use std::ops::RangeInclusive;
 use itertools::Itertools;
 
 use crate::{
-    AstNode, Direction, InsertPosition, NodeOrToken, SourceFile, SyntaxElement, SyntaxNode,
-    SyntaxNodePtr, SyntaxToken, TextRange, TextUnit,
+    AstNode, Direction, NodeOrToken, SourceFile, SyntaxElement, SyntaxNode, SyntaxNodePtr,
+    SyntaxToken, TextRange, TextUnit,
 };
 
 pub use rowan::TokenAtOffset;
@@ -59,6 +59,14 @@ pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Optio
 
 pub fn find_covering_element(root: &SyntaxNode, range: TextRange) -> SyntaxElement {
     root.covering_element(range)
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum InsertPosition<T> {
+    First,
+    Last,
+    Before(T),
+    After(T),
 }
 
 /// Adds specified children (tokens or nodes) to the current node at the

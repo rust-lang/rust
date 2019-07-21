@@ -17,14 +17,6 @@ use crate::{
 pub use rowan::WalkEvent;
 pub(crate) use rowan::{GreenNode, GreenToken};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum InsertPosition<T> {
-    First,
-    Last,
-    Before(T),
-    After(T),
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RustLanguage {}
 impl Language for RustLanguage {
