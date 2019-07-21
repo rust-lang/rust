@@ -21,6 +21,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) function_syntax: Option<ast::FnDef>,
     pub(super) use_item_syntax: Option<ast::UseItem>,
     pub(super) struct_lit_syntax: Option<ast::StructLit>,
+    pub(super) struct_lit_pat: Option<ast::StructPat>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
@@ -60,6 +61,7 @@ impl<'a> CompletionContext<'a> {
             function_syntax: None,
             use_item_syntax: None,
             struct_lit_syntax: None,
+            struct_lit_pat: None,
             is_param: false,
             is_pat_binding: false,
             is_trivial_path: false,
@@ -106,8 +108,7 @@ impl<'a> CompletionContext<'a> {
         // Otherwise, see if this is a declaration. We can use heuristics to
         // suggest declaration names, see `CompletionKind::Magic`.
         if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), offset) {
-            if is_node::<ast::BindPat>(name.syntax()) {
-                let bind_pat = name.syntax().ancestors().find_map(ast::BindPat::cast).unwrap();
+            if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
                 let parent = bind_pat.syntax().parent();
                 if parent.clone().and_then(ast::MatchArm::cast).is_some()
                     || parent.and_then(ast::Condition::cast).is_some()
@@ -118,6 +119,10 @@ impl<'a> CompletionContext<'a> {
             if is_node::<ast::Param>(name.syntax()) {
                 self.is_param = true;
                 return;
+            }
+            if name.syntax().ancestors().find_map(ast::FieldPatList::cast).is_some() {
+                self.struct_lit_pat =
+                    find_node_at_offset(original_parse.tree().syntax(), self.offset);
             }
         }
     }
@@ -235,7 +240,7 @@ fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Op
 }
 
 fn is_node<N: AstNode>(node: &SyntaxNode) -> bool {
-    match node.ancestors().filter_map(N::cast).next() {
+    match node.ancestors().find_map(N::cast) {
         None => false,
         Some(n) => n.syntax().text_range() == node.text_range(),
     }

@@ -1,23 +1,22 @@
-use hir::{Substs, Ty};
+use hir::Substs;
 
 use crate::completion::{CompletionContext, Completions};
 
 /// Complete fields in fields literals.
 pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionContext) {
     let (ty, variant) = match ctx.struct_lit_syntax.as_ref().and_then(|it| {
-        Some((ctx.analyzer.type_of(ctx.db, &it.clone().into())?, ctx.analyzer.resolve_variant(it)?))
+        Some((
+            ctx.analyzer.type_of(ctx.db, &it.clone().into())?,
+            ctx.analyzer.resolve_struct_literal(it)?,
+        ))
     }) {
         Some(it) => it,
         _ => return,
     };
-
-    let ty_substs = match ty {
-        Ty::Apply(it) => it.parameters,
-        _ => Substs::empty(),
-    };
+    let substs = &ty.substs().unwrap_or_else(Substs::empty);
 
     for field in variant.fields(ctx.db) {
-        acc.add_field(ctx, field, &ty_substs);
+        acc.add_field(ctx, field, substs);
     }
 }
 

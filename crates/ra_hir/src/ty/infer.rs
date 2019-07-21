@@ -113,7 +113,8 @@ pub struct InferenceResult {
     method_resolutions: FxHashMap<ExprId, Function>,
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, StructField>,
-    variant_resolutions: FxHashMap<ExprId, VariantDef>,
+    /// For each struct literal, records the variant it resolves to.
+    variant_resolutions: FxHashMap<ExprOrPatId, VariantDef>,
     /// For each associated item record what it resolves to
     assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
     diagnostics: Vec<InferenceDiagnostic>,
@@ -128,8 +129,11 @@ impl InferenceResult {
     pub fn field_resolution(&self, expr: ExprId) -> Option<StructField> {
         self.field_resolutions.get(&expr).copied()
     }
-    pub fn variant_resolution(&self, expr: ExprId) -> Option<VariantDef> {
-        self.variant_resolutions.get(&expr).copied()
+    pub fn variant_resolution_for_expr(&self, id: ExprId) -> Option<VariantDef> {
+        self.variant_resolutions.get(&id.into()).copied()
+    }
+    pub fn variant_resolution_for_pat(&self, id: PatId) -> Option<VariantDef> {
+        self.variant_resolutions.get(&id.into()).copied()
     }
     pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<ImplItem> {
         self.assoc_resolutions.get(&id.into()).copied()
@@ -218,8 +222,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.result.field_resolutions.insert(expr, field);
     }
 
-    fn write_variant_resolution(&mut self, expr: ExprId, variant: VariantDef) {
-        self.result.variant_resolutions.insert(expr, variant);
+    fn write_variant_resolution(&mut self, id: ExprOrPatId, variant: VariantDef) {
+        self.result.variant_resolutions.insert(id, variant);
     }
 
     fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: ImplItem) {
@@ -678,8 +682,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         subpats: &[FieldPat],
         expected: &Ty,
         default_bm: BindingMode,
+        id: PatId,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path);
+        if let Some(variant) = def {
+            self.write_variant_resolution(id.into(), variant);
+        }
 
         self.unify(&ty, expected);
 
@@ -762,7 +770,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm)
             }
             Pat::Struct { path: ref p, args: ref fields } => {
-                self.infer_struct_pat(p.as_ref(), fields, expected, default_bm)
+                self.infer_struct_pat(p.as_ref(), fields, expected, default_bm, pat)
             }
             Pat::Path(path) => {
                 // FIXME use correct resolver for the surrounding expression
@@ -1064,7 +1072,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::StructLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
                 if let Some(variant) = def_id {
-                    self.write_variant_resolution(tgt_expr, variant);
+                    self.write_variant_resolution(tgt_expr.into(), variant);
                 }
 
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
