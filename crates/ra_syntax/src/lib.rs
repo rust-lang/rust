@@ -143,18 +143,17 @@ impl Parse<SourceFile> {
 pub use crate::ast::SourceFile;
 
 impl SourceFile {
-    fn new(green: GreenNode) -> SourceFile {
-        let root = SyntaxNode::new_root(green);
+    pub fn parse(text: &str) -> Parse<SourceFile> {
+        let (green, mut errors) = parsing::parse_text(text);
+        let root = SyntaxNode::new_root(green.clone());
+
         if cfg!(debug_assertions) {
             validation::validate_block_structure(&root);
         }
-        assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        SourceFile::cast(root).unwrap()
-    }
 
-    pub fn parse(text: &str) -> Parse<SourceFile> {
-        let (green, mut errors) = parsing::parse_text(text);
-        errors.extend(validation::validate(&SourceFile::new(green.clone())));
+        errors.extend(validation::validate(&root));
+
+        assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         Parse { green, errors: Arc::new(errors), _ty: PhantomData }
     }
 }
