@@ -5,15 +5,8 @@ use std::ops::RangeInclusive;
 use itertools::Itertools;
 
 use crate::{
-    AstNode, Direction, NodeOrToken, SourceFile, SyntaxElement, SyntaxNode, SyntaxNodePtr,
-    SyntaxToken, TextRange, TextUnit,
+    AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
 };
-
-pub use rowan::TokenAtOffset;
-
-pub fn find_token_at_offset(node: &SyntaxNode, offset: TextUnit) -> TokenAtOffset<SyntaxToken> {
-    node.token_at_offset(offset)
-}
 
 /// Returns ancestors of the node at the offset, sorted by length. This should
 /// do the right thing at an edge, e.g. when searching for expressions at `{
@@ -24,7 +17,7 @@ pub fn ancestors_at_offset(
     node: &SyntaxNode,
     offset: TextUnit,
 ) -> impl Iterator<Item = SyntaxNode> {
-    find_token_at_offset(node, offset)
+    node.token_at_offset(offset)
         .map(|token| token.parent().ancestors())
         .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
 }
@@ -137,14 +130,14 @@ fn with_children(
     let len = new_children.iter().map(|it| it.text_len()).sum::<TextUnit>();
     let new_node =
         rowan::GreenNode::new(rowan::cursor::SyntaxKind(parent.kind() as u16), new_children);
-    let new_file_node = parent.replace_with(new_node);
-    let file = SourceFile::new(new_file_node);
+    let new_root_node = parent.replace_with(new_node);
+    let new_root_node = SyntaxNode::new_root(new_root_node);
 
     // FIXME: use a more elegant way to re-fetch the node (#1185), make
     // `range` private afterwards
     let mut ptr = SyntaxNodePtr::new(parent);
     ptr.range = TextRange::offset_len(ptr.range().start(), len);
-    ptr.to_node(file.syntax()).to_owned()
+    ptr.to_node(&new_root_node)
 }
 
 fn position_of_child(parent: &SyntaxNode, child: SyntaxElement) -> usize {

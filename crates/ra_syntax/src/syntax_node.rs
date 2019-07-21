@@ -14,7 +14,6 @@ use crate::{
     Parse, SmolStr, SyntaxKind, TextUnit,
 };
 
-pub use rowan::WalkEvent;
 pub(crate) use rowan::{GreenNode, GreenToken};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

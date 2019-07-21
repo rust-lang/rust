@@ -1,10 +1,10 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    algo::{find_covering_element, find_token_at_offset, TokenAtOffset},
+    algo::find_covering_element,
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextUnit, T,
+    SyntaxNode, SyntaxToken, TextRange, TextUnit, TokenAtOffset, T,
 };
 
 use crate::{db::RootDatabase, FileRange};
@@ -34,7 +34,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
 
     if range.is_empty() {
         let offset = range.start();
-        let mut leaves = find_token_at_offset(root, offset);
+        let mut leaves = root.token_at_offset(offset);
         if leaves.clone().all(|it| it.kind() == WHITESPACE) {
             return Some(extend_ws(root, leaves.next()?, offset));
         }

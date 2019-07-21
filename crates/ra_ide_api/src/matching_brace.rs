@@ -1,9 +1,11 @@
-use ra_syntax::{algo::find_token_at_offset, ast::AstNode, SourceFile, SyntaxKind, TextUnit, T};
+use ra_syntax::{ast::AstNode, SourceFile, SyntaxKind, TextUnit, T};
 
 pub fn matching_brace(file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {
     const BRACES: &[SyntaxKind] =
         &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>]];
-    let (brace_node, brace_idx) = find_token_at_offset(file.syntax(), offset)
+    let (brace_node, brace_idx) = file
+        .syntax()
+        .token_at_offset(offset)
         .filter_map(|node| {
             let idx = BRACES.iter().position(|&brace| brace == node.kind())?;
             Some((node, idx))

@@ -1,5 +1,5 @@
 use ra_db::SourceDatabase;
-use ra_syntax::{algo::find_token_at_offset, ast, AstNode};
+use ra_syntax::{ast, AstNode};
 
 use crate::{db::RootDatabase, FilePosition, NavigationTarget, RangeInfo};
 
@@ -9,7 +9,7 @@ pub(crate) fn goto_type_definition(
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let parse = db.parse(position.file_id);
 
-    let node = find_token_at_offset(parse.tree().syntax(), position.offset).find_map(|token| {
+    let node = parse.tree().syntax().token_at_offset(position.offset).find_map(|token| {
         token
             .parent()
             .ancestors()

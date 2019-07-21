@@ -44,12 +44,10 @@ pub use crate::{
     syntax_error::{Location, SyntaxError, SyntaxErrorKind},
     syntax_node::{
         Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
-        WalkEvent,
     },
 };
-pub use ra_parser::SyntaxKind;
-pub use ra_parser::T;
-pub use rowan::{SmolStr, SyntaxText, TextRange, TextUnit};
+pub use ra_parser::{SyntaxKind, T};
+pub use rowan::{SmolStr, SyntaxText, TextRange, TextUnit, TokenAtOffset, WalkEvent};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.
