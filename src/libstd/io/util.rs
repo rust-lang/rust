@@ -2,7 +2,7 @@
 
 use crate::fmt;
 use crate::io::{self, Read, Initializer, Write, ErrorKind, BufRead, IoSlice, IoSliceMut};
-use crate::mem;
+use crate::mem::MaybeUninit;
 
 /// Copies the entire contents of a reader into a writer.
 ///
@@ -43,27 +43,23 @@ use crate::mem;
 pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<u64>
     where R: Read, W: Write
 {
-    let mut buf = unsafe {
-        // This is still technically undefined behavior due to creating a reference
-        // to uninitialized data, but within libstd we can rely on more guarantees
-        // than if this code were in an external lib
-
-        // FIXME: This should probably be changed to an array of `MaybeUninit<u8>`
-        // once the `mem::MaybeUninit` slice APIs stabilize
-        let mut buf: mem::MaybeUninit<[u8; super::DEFAULT_BUF_SIZE]> = mem::MaybeUninit::uninit();
-        reader.initializer().initialize(&mut *buf.as_mut_ptr());
-        buf.assume_init()
-    };
+    let mut buf = MaybeUninit::<[u8; super::DEFAULT_BUF_SIZE]>::uninit();
+    // FIXME(#53491): This is calling `get_mut` and `get_ref` on an uninitialized
+    // `MaybeUninit`. Revisit this once we decided whether that is valid or not.
+    // This is still technically undefined behavior due to creating a reference
+    // to uninitialized data, but within libstd we can rely on more guarantees
+    // than if this code were in an external lib.
+    unsafe { reader.initializer().initialize(buf.get_mut()); }
 
     let mut written = 0;
     loop {
-        let len = match reader.read(&mut buf) {
+        let len = match reader.read(unsafe { buf.get_mut() }) {
             Ok(0) => return Ok(written),
             Ok(len) => len,
             Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         };
-        writer.write_all(&buf[..len])?;
+        writer.write_all(unsafe { &buf.get_ref()[..len] })?;
         written += len as u64;
     }
 }
