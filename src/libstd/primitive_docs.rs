@@ -363,8 +363,8 @@ mod prim_unit { }
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
 /// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
-/// Raw pointers can be unaligned or null when unused. However, when a raw pointer is used to
-/// load/store data from/to memory, they must be non-null and aligned.
+/// Raw pointers can be unaligned or null when unused. However, when a raw pointer is
+/// dereferenced (using the `*` operator), it must be non-null and aligned.
 /// Storing through a raw pointer (`*ptr = data`) calls `drop` on the old value, so
 /// [`write`] must be used if memory is not already initialized.
 ///
