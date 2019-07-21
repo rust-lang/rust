@@ -472,7 +472,7 @@ impl Ty {
 
     /// Returns the type parameters of this type if it has some (i.e. is an ADT
     /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
-    fn substs(&self) -> Option<Substs> {
+    pub fn substs(&self) -> Option<Substs> {
         match self {
             Ty::Apply(ApplicationTy { parameters, .. }) => Some(parameters.clone()),
             _ => None,

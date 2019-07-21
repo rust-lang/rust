@@ -266,9 +266,14 @@ impl SourceAnalyzer {
         self.infer.as_ref()?.field_resolution(expr_id)
     }
 
-    pub fn resolve_variant(&self, struct_lit: &ast::StructLit) -> Option<crate::VariantDef> {
+    pub fn resolve_struct_literal(&self, struct_lit: &ast::StructLit) -> Option<crate::VariantDef> {
         let expr_id = self.body_source_map.as_ref()?.node_expr(&struct_lit.clone().into())?;
-        self.infer.as_ref()?.variant_resolution(expr_id)
+        self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
+    }
+
+    pub fn resolve_struct_pattern(&self, struct_pat: &ast::StructPat) -> Option<crate::VariantDef> {
+        let pat_id = self.body_source_map.as_ref()?.node_pat(&struct_pat.clone().into())?;
+        self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
     }
 
     pub fn resolve_macro_call(
