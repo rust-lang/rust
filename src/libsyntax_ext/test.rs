@@ -234,8 +234,17 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
 }
 
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     let ref sd = cx.parse_sess.span_diagnostic;
+
+    if attr::contains_name(&i.attrs, sym::test) {
+        sd.span_warn(
+            i.span,
+            "multiple test attributes, only one is needed"
+        );
+        return false;
+    }
+
+    let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     if let ast::ItemKind::Fn(ref decl, ref header, ref generics, _) = i.node {
         if header.unsafety == ast::Unsafety::Unsafe {
             sd.span_err(
@@ -287,6 +296,16 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
 }
 
 fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
+    let ref sd = cx.parse_sess.span_diagnostic;
+
+    if attr::contains_name(&i.attrs, sym::bench) {
+        sd.span_warn(
+            i.span,
+            "multiple bench attributes, only one is needed"
+        );
+        return false;
+    }
+
     let has_sig = if let ast::ItemKind::Fn(ref decl, _, _, _) = i.node {
         // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.
@@ -296,7 +315,7 @@ fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     };
 
     if !has_sig {
-        cx.parse_sess.span_diagnostic.span_err(i.span, "functions used as benches must have \
+        sd.span_err(i.span, "functions used as benches must have \
             signature `fn(&mut Bencher) -> impl Termination`");
     }
 
