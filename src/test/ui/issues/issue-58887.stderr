@@ -1,0 +1,35 @@
+error[E0601]: `main` function not found in crate `issue_58887`
+   |
+   = note: consider adding a `main` function to `$DIR/issue-58887.rs`
+
+error: type parameter `T` is part of concrete type but not used in parameter list for existential type
+  --> $DIR/issue-58887.rs:16:39
+   |
+LL |       fn unwrap_items(self) -> Self::II {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |         self.map(|x| x.unwrap())
+LL | |     }
+   | |_____^
+
+error: type parameter `E` is part of concrete type but not used in parameter list for existential type
+  --> $DIR/issue-58887.rs:16:39
+   |
+LL |       fn unwrap_items(self) -> Self::II {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |         self.map(|x| x.unwrap())
+LL | |     }
+   | |_____^
+
+error: could not find defining uses
+  --> $DIR/issue-58887.rs:13:5
+   |
+LL |     existential type II: Iterator<Item = T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0601`.
