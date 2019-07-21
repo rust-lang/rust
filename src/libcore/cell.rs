@@ -1113,7 +1113,7 @@ impl<'b> BorrowRef<'b> {
             //    `Ref`s, which is not good practice)
             None
         } else {
-            // Incrementing borrow can result in a reading value (< 0) in these cases:
+            // Incrementing borrow can result in a reading value (> 0) in these cases:
             // 1. It was = 0, i.e. it wasn't borrowed, and we are taking the first read borrow
             // 2. It was > 0 and < isize::max_value(), i.e. there were read borrows, and isize
             //    is large enough to represent having one more read borrow
