@@ -141,11 +141,6 @@
                 "when": "editorTextFocus && editorLangId == rust"
             },
             {
-                "command": "rust-analyzer.extendSelection",
-                "key": "shift+alt+right",
-                "when": "editorTextFocus && editorLangId == rust"
-            },
-            {
                 "command": "rust-analyzer.joinLines",
                 "key": "ctrl+shift+j",
                 "when": "editorTextFocus && editorLangId == rust"
