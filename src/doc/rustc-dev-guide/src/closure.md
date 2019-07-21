@@ -140,7 +140,7 @@ declared in the file [`src/librustc/ty/mod.rs`][ty].
 [upvar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/upvar/index.html
 [ty]:https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/index.html
 
-Before we go any further, let's discuss how we can examine the flow of coontrol through the rustc
+Before we go any further, let's discuss how we can examine the flow of control through the rustc
 codebase. For closures specifically, set the `RUST_LOG` env variable as below and collect the
 output in a file:
 
