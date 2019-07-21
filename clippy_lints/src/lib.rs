@@ -668,7 +668,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         utils::internal_lints::CLIPPY_LINTS_INTERNAL,
         utils::internal_lints::COMPILER_LINT_FUNCTIONS,
         utils::internal_lints::LINT_WITHOUT_LINT_PASS,
-        utils::internal_lints::OUTER_EXPN_INFO,
+        utils::internal_lints::OUTER_EXPN_EXPN_INFO,
     ]);
 
     reg.register_lint_group("clippy::all", Some("clippy"), vec![
