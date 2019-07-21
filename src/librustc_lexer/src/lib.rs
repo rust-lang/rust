@@ -1,6 +1,5 @@
-// We want to be able to build this crate with a stable compiler, so feature
-// flags should be optional.
-#![cfg_attr(not(feature = "unicode-xid"), feature(unicode_internals))]
+// We want to be able to build this crate with a stable compiler, so no
+// `#![feature]` attributes should be added.
 
 mod cursor;
 pub mod unescape;
@@ -507,23 +506,39 @@ impl Cursor<'_> {
 }
 
 pub mod character_properties {
-    // this is Pattern_White_Space
-    #[cfg(feature = "unicode-xid")]
+    // See [UAX #31](http://unicode.org/reports/tr31) for definitions of these
+    // classes.
+
+    // This is Pattern_White_Space.
+    //
+    // Note that this set is stable (ie, it doesn't change with different
+    // Unicode versions), so it's ok to just hard-code the values.
     pub fn is_whitespace(c: char) -> bool {
         match c {
-            '\u{0009}' | '\u{000A}' | '\u{000B}' | '\u{000C}' | '\u{000D}' | '\u{0020}'
-            | '\u{0085}' | '\u{200E}' | '\u{200F}' | '\u{2028}' | '\u{2029}' => true,
+            // Usual ASCII suspects
+            | '\u{0009}' // \t
+            | '\u{000A}' // \n
+            | '\u{000B}' // vertical tab
+            | '\u{000C}' // form feed
+            | '\u{000D}' // \r
+            | '\u{0020}' // space
+
+            // NEXT LINE from latin1
+            | '\u{0085}'
+
+            // Bidi markers
+            | '\u{200E}' // LEFT-TO-RIGHT MARK
+            | '\u{200F}' // RIGHT-TO-LEFT MARK
+
+            // Dedicated whitespace characters from Unicode
+            | '\u{2028}' // LINE SEPARATOR
+            | '\u{2029}' // PARAGRAPH SEPARATOR
+              => true,
             _ => false,
         }
     }
 
-    #[cfg(not(feature = "unicode-xid"))]
-    pub fn is_whitespace(c: char) -> bool {
-        core::unicode::property::Pattern_White_Space(c)
-    }
-
-    // this is XID_Start OR '_' (which formally is not a XID_Start)
-    #[cfg(feature = "unicode-xid")]
+    // This is XID_Start OR '_' (which formally is not a XID_Start).
     pub fn is_id_start(c: char) -> bool {
         ('a' <= c && c <= 'z')
             || ('A' <= c && c <= 'Z')
@@ -531,30 +546,12 @@ pub mod character_properties {
             || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_start(c))
     }
 
-    #[cfg(not(feature = "unicode-xid"))]
-    pub fn is_id_start(c: char) -> bool {
-        ('a' <= c && c <= 'z')
-            || ('A' <= c && c <= 'Z')
-            || c == '_'
-            || (c > '\x7f' && c.is_xid_start())
-    }
-
-    // this is XID_Continue
-    #[cfg(feature = "unicode-xid")]
+    // This is XID_Continue.
     pub fn is_id_continue(c: char) -> bool {
         ('a' <= c && c <= 'z')
             || ('A' <= c && c <= 'Z')
             || ('0' <= c && c <= '9')
             || c == '_'
             || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_continue(c))
-    }
-
-    #[cfg(not(feature = "unicode-xid"))]
-    pub fn is_id_continue(c: char) -> bool {
-        ('a' <= c && c <= 'z')
-            || ('A' <= c && c <= 'Z')
-            || ('0' <= c && c <= '9')
-            || c == '_'
-            || (c > '\x7f' && c.is_xid_continue())
     }
 }

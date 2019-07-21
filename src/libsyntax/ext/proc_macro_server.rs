@@ -6,6 +6,7 @@ use crate::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint}
 
 use errors::{Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
+use rustc_lexer::character_properties::{is_id_start, is_id_continue};
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 use syntax_pos::symbol::{kw, sym, Symbol};
 
@@ -322,8 +323,7 @@ impl Ident {
     fn is_valid(string: &str) -> bool {
         let mut chars = string.chars();
         if let Some(start) = chars.next() {
-            (start == '_' || start.is_xid_start())
-                && chars.all(|cont| cont == '_' || cont.is_xid_continue())
+            is_id_start(start) && chars.all(is_id_continue)
         } else {
             false
         }

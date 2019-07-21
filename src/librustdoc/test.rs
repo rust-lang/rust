@@ -4,6 +4,7 @@ use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::session::{self, config, DiagnosticOutput};
 use rustc::util::common::ErrorReported;
+use rustc_lexer::character_properties::{is_id_start, is_id_continue};
 use syntax::ast;
 use syntax::with_globals;
 use syntax::source_map::SourceMap;
@@ -763,8 +764,8 @@ impl Tester for Collector {
             // We use these headings as test names, so it's good if
             // they're valid identifiers.
             let name = name.chars().enumerate().map(|(i, c)| {
-                    if (i == 0 && c.is_xid_start()) ||
-                        (i != 0 && c.is_xid_continue()) {
+                    if (i == 0 && is_id_start(c)) ||
+                        (i != 0 && is_id_continue(c)) {
                         c
                     } else {
                         '_'
