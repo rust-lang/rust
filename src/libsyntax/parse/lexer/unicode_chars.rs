@@ -3,7 +3,7 @@
 
 use super::StringReader;
 use errors::{Applicability, DiagnosticBuilder};
-use syntax_pos::{Pos, Span, NO_EXPANSION};
+use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
 
 #[rustfmt::skip] // for line breaks
 const UNICODE_ARRAY: &[(char, &str, char)] = &[
@@ -327,6 +327,7 @@ const ASCII_ARRAY: &[(char, &str)] = &[
 
 crate fn check_for_substitution<'a>(
     reader: &StringReader<'a>,
+    pos: BytePos,
     ch: char,
     err: &mut DiagnosticBuilder<'a>,
 ) -> bool {
@@ -335,19 +336,19 @@ crate fn check_for_substitution<'a>(
         None => return false,
     };
 
-    let span = Span::new(reader.pos, reader.next_pos, NO_EXPANSION);
+    let span = Span::new(pos, pos + Pos::from_usize(ch.len_utf8()), NO_EXPANSION);
 
     let ascii_name = match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
         Some((_ascii_char, ascii_name)) => ascii_name,
         None => {
             let msg = format!("substitution character not found for '{}'", ch);
             reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
-            return false
-        },
+            return false;
+        }
     };
 
     // special help suggestion for "directed" double quotes
-    if let Some(s) = reader.peek_delimited('“', '”') {
+    if let Some(s) = peek_delimited(&reader.src[reader.src_index(pos)..], '“', '”') {
         let msg = format!(
             "Unicode characters '“' (Left Double Quotation Mark) and \
              '”' (Right Double Quotation Mark) look like '{}' ({}), but are not",
@@ -355,8 +356,8 @@ crate fn check_for_substitution<'a>(
         );
         err.span_suggestion(
             Span::new(
-                reader.pos,
-                reader.next_pos + Pos::from_usize(s.len()) + Pos::from_usize('”'.len_utf8()),
+                pos,
+                pos + Pos::from_usize('“'.len_utf8() + s.len() + '”'.len_utf8()),
                 NO_EXPANSION,
             ),
             &msg,
@@ -368,26 +369,18 @@ crate fn check_for_substitution<'a>(
             "Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
             ch, u_name, ascii_char, ascii_name
         );
-        err.span_suggestion(
-            span,
-            &msg,
-            ascii_char.to_string(),
-            Applicability::MaybeIncorrect,
-        );
+        err.span_suggestion(span, &msg, ascii_char.to_string(), Applicability::MaybeIncorrect);
     }
     true
 }
 
-impl StringReader<'_> {
-    /// Immutably extract string if found at current position with given delimiters
-    fn peek_delimited(&self, from_ch: char, to_ch: char) -> Option<&str> {
-        let tail = &self.src[self.src_index(self.pos)..];
-        let mut chars = tail.chars();
-        let first_char = chars.next()?;
-        if first_char != from_ch {
-            return None;
-        }
-        let last_char_idx = chars.as_str().find(to_ch)?;
-        Some(&chars.as_str()[..last_char_idx])
+/// Extract string if found at current position with given delimiters
+fn peek_delimited(text: &str, from_ch: char, to_ch: char) -> Option<&str> {
+    let mut chars = text.chars();
+    let first_char = chars.next()?;
+    if first_char != from_ch {
+        return None;
     }
+    let last_char_idx = chars.as_str().find(to_ch)?;
+    Some(&chars.as_str()[..last_char_idx])
 }
