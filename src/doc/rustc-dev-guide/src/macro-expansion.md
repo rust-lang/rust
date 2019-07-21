@@ -19,11 +19,11 @@ whenever we refer to the "example _definition_", we mean the following:
 macro_rules! printer {
     (print $mvar:ident) => {
         println!("{}", $mvar);
-    }
+    };
     (print twice $mvar:ident) => {
         println!("{}", $mvar);
         println!("{}", $mvar);
-    }
+    };
 }
 ```
 
