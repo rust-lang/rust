@@ -1485,8 +1485,8 @@ name = "libtest"
 version = "0.0.2"
 source = "git+https://github.com/gnzlbg/libtest?branch=clippy_ci#1f13f7dd286fd16c76bd61ddcbe162fca9f9d9d2"
 dependencies = [
- "getopts 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.51 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getopts 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "termcolor 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3709,10 +3709,6 @@ dependencies = [
 
 [[package]]
 name = "term"
-version = "0.0.0"
-
-[[package]]
-name = "term"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
@@ -3752,9 +3748,7 @@ name = "test"
 version = "0.0.0"
 dependencies = [
  "libtest 0.0.2 (git+https://github.com/gnzlbg/libtest?branch=clippy_ci)",
- "getopts 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro 0.0.0",
- "term 0.0.0",
 ]
 
 [[package]]
