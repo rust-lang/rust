@@ -1718,11 +1718,11 @@ impl<'tcx> Debug for Statement<'tcx> {
 #[derive(
     Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
 )]
-pub enum Place<'tcx> {
-    Base(PlaceBase<'tcx>),
+pub struct Place<'tcx> {
+    pub base: PlaceBase<'tcx>,
 
     /// projection out of a place (access a field, deref a pointer, etc)
-    Projection(Box<Projection<'tcx>>),
+    pub projection: Option<Box<Projection<'tcx>>>,
 }
 
 #[derive(
@@ -1761,7 +1761,7 @@ impl_stable_hash_for!(struct Static<'tcx> {
     Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
 )]
 pub struct Projection<'tcx> {
-    pub base: Place<'tcx>,
+    pub base: Option<Box<Projection<'tcx>>>,
     pub elem: PlaceElem<'tcx>,
 }
 
@@ -1826,8 +1826,17 @@ newtype_index! {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PlaceRef<'a, 'tcx> {
+    pub base: &'a PlaceBase<'tcx>,
+    pub projection: &'a Option<Box<Projection<'tcx>>>,
+}
+
 impl<'tcx> Place<'tcx> {
-    pub const RETURN_PLACE: Place<'tcx> = Place::Base(PlaceBase::Local(RETURN_PLACE));
+    pub const RETURN_PLACE: Place<'tcx> = Place {
+        base: PlaceBase::Local(RETURN_PLACE),
+        projection: None,
+    };
 
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
         self.elem(ProjectionElem::Field(f, ty))
@@ -1853,7 +1862,10 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn elem(self, elem: PlaceElem<'tcx>) -> Place<'tcx> {
-        Place::Projection(Box::new(Projection { base: self, elem }))
+        Place {
+            base: self.base,
+            projection: Some(Box::new(Projection { base: self.projection, elem })),
+        }
     }
 
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
@@ -1862,24 +1874,18 @@ impl<'tcx> Place<'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self {
-            Place::Base(PlaceBase::Local(local))
-            | Place::Projection(box Projection {
-                base: Place::Base(PlaceBase::Local(local)),
-                elem: ProjectionElem::Deref,
-            }) => Some(*local),
+            Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } |
+            Place {
+                base: PlaceBase::Local(local),
+                projection: Some(box Projection {
+                    base: None,
+                    elem: ProjectionElem::Deref,
+                }),
+            } => Some(*local),
             _ => None,
-        }
-    }
-
-    /// Finds the innermost `Local` from this `Place`.
-    pub fn base_local(&self) -> Option<Local> {
-        let mut place = self;
-        loop {
-            match place {
-                Place::Projection(proj) => place = &proj.base,
-                Place::Base(PlaceBase::Static(_)) => return None,
-                Place::Base(PlaceBase::Local(local)) => return Some(*local),
-            }
         }
     }
 
@@ -1889,33 +1895,92 @@ impl<'tcx> Place<'tcx> {
         &self,
         op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
-        self.iterate2(&Projections::Empty, op)
+        Place::iterate_over(&self.base, &self.projection, op)
     }
 
-    fn iterate2<R>(
-        &self,
-        next: &Projections<'_, 'tcx>,
+    pub fn iterate_over<R>(
+        place_base: &PlaceBase<'tcx>,
+        place_projection: &Option<Box<Projection<'tcx>>>,
         op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
-        match self {
-            Place::Projection(interior) => {
-                interior.base.iterate2(&Projections::List { projection: interior, next }, op)
-            }
+        fn iterate_over2<'tcx, R>(
+            place_base: &PlaceBase<'tcx>,
+            place_projection: &Option<Box<Projection<'tcx>>>,
+            next: &Projections<'_, 'tcx>,
+            op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
+        ) -> R {
+            match place_projection {
+                None => {
+                    op(place_base, next.iter())
+                }
 
-            Place::Base(base) => op(base, next.iter()),
+                Some(interior) => {
+                    iterate_over2(
+                        place_base,
+                        &interior.base,
+                        &Projections::List {
+                            projection: interior,
+                            next,
+                        },
+                        op,
+                    )
+                }
+            }
+        }
+
+        iterate_over2(place_base, place_projection, &Projections::Empty, op)
+    }
+
+    pub fn as_place_ref(&self) -> PlaceRef<'_, 'tcx> {
+        PlaceRef {
+            base: &self.base,
+            projection: &self.projection,
         }
     }
 }
 
 impl From<Local> for Place<'_> {
     fn from(local: Local) -> Self {
-        Place::Base(local.into())
+        Place {
+            base: local.into(),
+            projection: None,
+        }
     }
 }
 
 impl From<Local> for PlaceBase<'_> {
     fn from(local: Local) -> Self {
         PlaceBase::Local(local)
+    }
+}
+
+impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
+    pub fn iterate<R>(
+        &self,
+        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
+    ) -> R {
+        Place::iterate_over(self.base, self.projection, op)
+    }
+
+    /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
+    /// a single deref of a local.
+    //
+    // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
+    pub fn local_or_deref_local(&self) -> Option<Local> {
+        match self {
+            PlaceRef {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } |
+            PlaceRef {
+                base: PlaceBase::Local(local),
+                projection: Some(box Projection {
+                    base: None,
+                    elem: ProjectionElem::Deref,
+                }),
+            } => Some(*local),
+            _ => None,
+        }
     }
 }
 
@@ -3155,18 +3220,14 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        match self {
-            &Place::Projection(ref p) => Place::Projection(p.fold_with(folder)),
-            _ => self.clone(),
+        Place {
+            base: self.base.clone(),
+            projection: self.projection.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        if let &Place::Projection(ref p) = self {
-            p.visit_with(visitor)
-        } else {
-            false
-        }
+        self.projection.visit_with(visitor)
     }
 }
 

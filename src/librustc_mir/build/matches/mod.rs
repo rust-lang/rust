@@ -536,7 +536,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let var_ty = self.local_decls[local_id].ty;
         let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
         self.schedule_drop(span, region_scope, local_id, var_ty, DropKind::Storage);
-        Place::Base(PlaceBase::Local(local_id))
+        Place::from(local_id)
     }
 
     pub fn schedule_drop_for_binding(&mut self, var: HirId, span: Span, for_guard: ForGuard) {
@@ -937,11 +937,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for Binding { source, .. }
                 in matched_candidates.iter().flat_map(|candidate| &candidate.bindings)
             {
-                let mut cursor = source;
-                while let Place::Projection(box Projection { base, elem }) = cursor {
+                let mut cursor = &source.projection;
+                while let Some(box Projection { base, elem }) = cursor {
                     cursor = base;
                     if let ProjectionElem::Deref = elem {
-                        fake_borrows.insert(cursor.clone());
+                        fake_borrows.insert(Place {
+                            base: source.base.clone(),
+                            projection: cursor.clone(),
+                        });
                         break;
                     }
                 }
@@ -1277,7 +1280,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         fake_borrows: &'b FxHashSet<Place<'tcx>>,
         temp_span: Span,
-    ) -> Vec<(&'b Place<'tcx>, Local)> {
+    ) -> Vec<(PlaceRef<'b, 'tcx>, Local)> {
         let tcx = self.hir.tcx();
 
         debug!("add_fake_borrows fake_borrows = {:?}", fake_borrows);
@@ -1287,18 +1290,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Insert a Shallow borrow of the prefixes of any fake borrows.
         for place in fake_borrows
         {
-            let mut prefix_cursor = place;
-            while let Place::Projection(box Projection { base, elem }) = prefix_cursor {
+            let mut prefix_cursor = &place.projection;
+            while let Some(box Projection { base, elem }) = prefix_cursor {
                 if let ProjectionElem::Deref = elem {
                     // Insert a shallow borrow after a deref. For other
                     // projections the borrow of prefix_cursor will
                     // conflict with any mutation of base.
-                    all_fake_borrows.push(base);
+                    all_fake_borrows.push(PlaceRef {
+                        base: &place.base,
+                        projection: base,
+                    });
                 }
                 prefix_cursor = base;
             }
 
-            all_fake_borrows.push(place);
+            all_fake_borrows.push(place.as_place_ref());
         }
 
         // Deduplicate and ensure a deterministic order.
@@ -1308,7 +1314,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("add_fake_borrows all_fake_borrows = {:?}", all_fake_borrows);
 
         all_fake_borrows.into_iter().map(|matched_place| {
-            let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
+            let fake_borrow_deref_ty = Place::ty_from(
+                matched_place.base,
+                matched_place.projection,
+                &self.local_decls,
+                tcx,
+            )
+            .ty;
             let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
             let fake_borrow_temp = self.local_decls.push(
                 LocalDecl::new_temp(fake_borrow_ty, temp_span)
@@ -1339,7 +1351,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         guard: Option<Guard<'tcx>>,
-        fake_borrows: &Vec<(&Place<'tcx>, Local)>,
+        fake_borrows: &Vec<(PlaceRef<'_, 'tcx>, Local)>,
         scrutinee_span: Span,
         region_scope: region::Scope,
     ) -> BasicBlock {
@@ -1470,16 +1482,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let re_erased = tcx.lifetimes.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
-            for &(place, temp) in fake_borrows {
+            for (place, temp) in fake_borrows {
                 let borrow = Rvalue::Ref(
                     re_erased,
                     BorrowKind::Shallow,
-                    place.clone(),
+                    Place {
+                        base: place.base.clone(),
+                        projection: place.projection.clone(),
+                    },
                 );
                 self.cfg.push_assign(
                     block,
                     scrutinee_source_info,
-                    &Place::from(temp),
+                    &Place::from(*temp),
                     borrow,
                 );
             }
@@ -1549,7 +1564,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {
                 let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
-                    let place = Place::from(local_id);
+                let place = Place::from(local_id);
                 self.cfg.push(
                     post_guard_block,
                     Statement {

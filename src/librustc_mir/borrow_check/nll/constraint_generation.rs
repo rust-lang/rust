@@ -128,7 +128,10 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
         // When we see `X = ...`, then kill borrows of
         // `(*X).foo` and so forth.
         if let Some(all_facts) = self.all_facts {
-            if let Place::Base(PlaceBase::Local(temp)) = place {
+            if let Place {
+                base: PlaceBase::Local(temp),
+                projection: None,
+            } = place {
                 if let Some(borrow_indices) = self.borrow_set.local_map.get(temp) {
                     all_facts.killed.reserve(borrow_indices.len());
                     for &borrow_index in borrow_indices {

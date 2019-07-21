@@ -499,13 +499,16 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             };
 
             // FIXME use place_projection.is_empty() when is available
-            if let Place::Base(_) = place {
+            if place.projection.is_none() {
                 if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
                     let is_promoted = match place {
-                        Place::Base(PlaceBase::Static(box Static {
-                            kind: StaticKind::Promoted(_),
-                            ..
-                        })) => true,
+                        Place {
+                            base: PlaceBase::Static(box Static {
+                                kind: StaticKind::Promoted(_),
+                                ..
+                            }),
+                            projection: None,
+                        } => true,
                         _ => false,
                     };
 
@@ -1345,15 +1348,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
                 let category = match *place {
-                    Place::Base(PlaceBase::Local(RETURN_PLACE)) => if let BorrowCheckContext {
+                    Place {
+                        base: PlaceBase::Local(RETURN_PLACE),
+                        projection: None,
+                    } => if let BorrowCheckContext {
                         universal_regions:
                             UniversalRegions {
                                 defining_ty: DefiningTy::Const(def_id, _),
                                 ..
                             },
                         ..
-                    } = self.borrowck_context
-                    {
+                    } = self.borrowck_context {
                         if tcx.is_static(*def_id) {
                             ConstraintCategory::UseAsStatic
                         } else {
@@ -1362,8 +1367,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     } else {
                         ConstraintCategory::Return
                     },
-                    Place::Base(PlaceBase::Local(l))
-                        if !body.local_decls[l].is_user_variable.is_some() => {
+                    Place {
+                        base: PlaceBase::Local(l),
+                        projection: None,
+                    } if !body.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -1647,7 +1654,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(body, tcx).ty;
                 let category = match *dest {
-                    Place::Base(PlaceBase::Local(RETURN_PLACE)) => {
+                    Place {
+                        base: PlaceBase::Local(RETURN_PLACE),
+                        projection: None,
+                    } => {
                         if let BorrowCheckContext {
                             universal_regions:
                                 UniversalRegions {
@@ -1666,8 +1676,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ConstraintCategory::Return
                         }
                     }
-                    Place::Base(PlaceBase::Local(l))
-                        if !body.local_decls[l].is_user_variable.is_some() => {
+                    Place {
+                        base: PlaceBase::Local(l),
+                        projection: None,
+                    } if !body.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -2400,19 +2412,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // *p`, where the `p` has type `&'b mut Foo`, for example, we
         // need to ensure that `'b: 'a`.
 
-        let mut borrowed_place = borrowed_place;
+        let mut borrowed_projection = &borrowed_place.projection;
 
         debug!(
             "add_reborrow_constraint({:?}, {:?}, {:?})",
             location, borrow_region, borrowed_place
         );
-        while let Place::Projection(box Projection { base, elem }) = borrowed_place {
-            debug!("add_reborrow_constraint - iteration {:?}", borrowed_place);
+        while let Some(box proj) = borrowed_projection {
+            debug!("add_reborrow_constraint - iteration {:?}", borrowed_projection);
 
-            match *elem {
+            match proj.elem {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = base.ty(body, tcx).ty;
+                    let base_ty = Place::ty_from(&borrowed_place.base, &proj.base, body, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
@@ -2477,7 +2489,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             // The "propagate" case. We need to check that our base is valid
             // for the borrow's lifetime.
-            borrowed_place = base;
+            borrowed_projection = &proj.base;
         }
     }
 

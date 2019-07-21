@@ -209,7 +209,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
 
             self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
 
-            if let Some(local) = borrowed_place.base_local() {
+            if let mir::PlaceBase::Local(local) = borrowed_place.base {
                 self.local_map.entry(local).or_default().insert(idx);
             }
         }
@@ -315,7 +315,10 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         //    TEMP = &foo
         //
         // so extract `temp`.
-        let temp = if let &mir::Place::Base(mir::PlaceBase::Local(temp)) = assigned_place {
+        let temp = if let &mir::Place {
+            base: mir::PlaceBase::Local(temp),
+            projection: None,
+        } = assigned_place {
             temp
         } else {
             span_bug!(

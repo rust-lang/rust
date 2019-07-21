@@ -59,7 +59,7 @@ impl GatherUsedMutsVisitor<'_, '_, '_> {
         // be those that were never initialized - we will consider those as being used as
         // they will either have been removed by unreachable code optimizations; or linted
         // as unused variables.
-        if let Some(local) = into.base_local() {
+        if let PlaceBase::Local(local) = into.base {
             let _ = self.never_initialized_mut_locals.remove(&local);
         }
     }
@@ -90,7 +90,7 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
     ) {
         match &statement.kind {
             StatementKind::Assign(into, _) => {
-                if let Some(local) = into.base_local() {
+                if let PlaceBase::Local(local) = into.base {
                     debug!(
                         "visit_statement: statement={:?} local={:?} \
                          never_initialized_mut_locals={:?}",
@@ -118,7 +118,10 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
                     "assignment of {:?} to {:?}, adding {:?} to used mutable set",
                     path.place, local, path.place
                 );
-                if let Place::Base(PlaceBase::Local(user_local)) = path.place {
+                if let Place {
+                    base: PlaceBase::Local(user_local),
+                    projection: None,
+                } = path.place {
                     self.mbcx.used_mut.insert(user_local);
                 }
             }

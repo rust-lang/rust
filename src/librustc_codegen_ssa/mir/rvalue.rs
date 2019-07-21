@@ -355,7 +355,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Ref(_, bk, ref place) => {
-                let cg_place = self.codegen_place(&mut bx, place);
+                let cg_place = self.codegen_place(&mut bx, &place.as_place_ref());
 
                 let ty = cg_place.layout.ty;
 
@@ -446,7 +446,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::Discriminant(ref place) => {
                 let discr_ty = rvalue.ty(&*self.mir, bx.tcx());
-                let discr =  self.codegen_place(&mut bx, place)
+                let discr =  self.codegen_place(&mut bx, &place.as_place_ref())
                     .codegen_get_discr(&mut bx, discr_ty);
                 (bx, OperandRef {
                     val: OperandValue::Immediate(discr),
@@ -515,7 +515,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
-        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
+        if let mir::Place {
+            base: mir::PlaceBase::Local(index),
+            projection: None,
+        } = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.sty {
                     let n = n.unwrap_usize(bx.cx().tcx());
@@ -524,8 +527,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
         // use common size calculation for non zero-sized types
-        let cg_value = self.codegen_place(bx, place);
-        return cg_value.len(bx.cx());
+        let cg_value = self.codegen_place(bx, &place.as_place_ref());
+        cg_value.len(bx.cx())
     }
 
     pub fn codegen_scalar_binop(

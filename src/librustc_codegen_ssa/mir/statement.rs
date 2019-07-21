@@ -17,7 +17,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(ref place, ref rvalue) => {
-                if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
+                if let mir::Place {
+                    base: mir::PlaceBase::Local(index),
+                    projection: None,
+                } = *place {
                     match self.locals[index] {
                         LocalRef::Place(cg_dest) => {
                             self.codegen_rvalue(bx, cg_dest, rvalue)
@@ -43,12 +46,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                 } else {
-                    let cg_dest = self.codegen_place(&mut bx, place);
+                    let cg_dest = self.codegen_place(&mut bx, &place.as_place_ref());
                     self.codegen_rvalue(bx, cg_dest, rvalue)
                 }
             }
             mir::StatementKind::SetDiscriminant{ref place, variant_index} => {
-                self.codegen_place(&mut bx, place)
+                self.codegen_place(&mut bx, &place.as_place_ref())
                     .codegen_set_discr(&mut bx, variant_index);
                 bx
             }
@@ -70,7 +73,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::StatementKind::InlineAsm(ref asm) => {
                 let outputs = asm.outputs.iter().map(|output| {
-                    self.codegen_place(&mut bx, output)
+                    self.codegen_place(&mut bx, &output.as_place_ref())
                 }).collect();
 
                 let input_vals = asm.inputs.iter()

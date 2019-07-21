@@ -14,8 +14,8 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {
-        match move_data.move_paths[child_index].place {
-            mir::Place::Projection(ref proj) => {
+        match move_data.move_paths[child_index].place.projection {
+            Some(ref proj) => {
                 if cond(proj) {
                     return Some(child_index)
                 }
@@ -171,7 +171,7 @@ pub(crate) fn drop_flag_effects_for_function_entry<'tcx, F>(
     let move_data = &ctxt.move_data;
     for arg in body.args_iter() {
         let place = mir::Place::from(arg);
-        let lookup_result = move_data.rev_lookup.find(&place);
+        let lookup_result = move_data.rev_lookup.find(place.as_place_ref());
         on_lookup_result_bits(tcx, body, move_data,
                               lookup_result,
                               |mpi| callback(mpi, DropFlagState::Present));

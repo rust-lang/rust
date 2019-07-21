@@ -15,34 +15,30 @@ pub struct AddRetag;
 /// (Concurrent accesses by other threads are no problem as these are anyway non-atomic
 /// copies.  Data races are UB.)
 fn is_stable(
-    place: &Place<'_>,
+    place: PlaceRef<'_, '_>,
 ) -> bool {
-    use rustc::mir::Place::*;
-
-    match *place {
-        // Locals and statics have stable addresses, for sure
-        Base(PlaceBase::Local { .. }) |
-        Base(PlaceBase::Static { .. }) =>
-            true,
-        // Recurse for projections
-        Projection(ref proj) => {
-            match proj.elem {
-                // Which place this evaluates to can change with any memory write,
-                // so cannot assume this to be stable.
-                ProjectionElem::Deref =>
-                    false,
-                // Array indices are intersting, but MIR building generates a *fresh*
-                // temporary for every array access, so the index cannot be changed as
-                // a side-effect.
-                ProjectionElem::Index { .. } |
-                // The rest is completely boring, they just offset by a constant.
-                ProjectionElem::Field { .. } |
-                ProjectionElem::ConstantIndex { .. } |
-                ProjectionElem::Subslice { .. } |
-                ProjectionElem::Downcast { .. } =>
-                    is_stable(&proj.base),
-            }
+    if let Some(proj) = &place.projection {
+        match proj.elem {
+            // Which place this evaluates to can change with any memory write,
+            // so cannot assume this to be stable.
+            ProjectionElem::Deref =>
+                false,
+            // Array indices are intersting, but MIR building generates a *fresh*
+            // temporary for every array access, so the index cannot be changed as
+            // a side-effect.
+            ProjectionElem::Index { .. } |
+            // The rest is completely boring, they just offset by a constant.
+            ProjectionElem::Field { .. } |
+            ProjectionElem::ConstantIndex { .. } |
+            ProjectionElem::Subslice { .. } |
+            ProjectionElem::Downcast { .. } =>
+                is_stable(PlaceRef {
+                    base: place.base,
+                    projection: &proj.base,
+                }),
         }
+    } else {
+        true
     }
 }
 
@@ -83,7 +79,8 @@ impl MirPass for AddRetag {
         let needs_retag = |place: &Place<'tcx>| {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
-            is_stable(place) && may_have_reference(place.ty(&*local_decls, tcx).ty, tcx)
+            is_stable(place.as_place_ref())
+                && may_have_reference(place.ty(&*local_decls, tcx).ty, tcx)
         };
 
         // PART 1
