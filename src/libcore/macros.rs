@@ -653,7 +653,7 @@ macro_rules! uninit_array {
 #[cfg(not(bootstrap))]
 macro_rules! uninit_array {
     ($t:ty; $size:expr) => (
-        [MaybeUninit::<$t>::uninit(); $size]
+        [MaybeUninit::<$t>::UNINIT; $size]
     );
 }
 

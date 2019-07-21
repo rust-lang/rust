@@ -85,6 +85,7 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(fundamental)]
+#![feature(internal_uninit_const)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(nll)]

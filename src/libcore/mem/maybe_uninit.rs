@@ -248,10 +248,17 @@ impl<T> MaybeUninit<T> {
     /// [type]: union.MaybeUninit.html
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline(always)]
-    #[rustc_promotable]
     pub const fn uninit() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
+
+    /// A promotable constant, equivalent to `uninit()`.
+    #[unstable(
+        feature = "internal_uninit_const",
+        issue = "0",
+        reason = "hack to work around promotability",
+    )]
+    pub const UNINIT: Self = Self::uninit();
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
     /// filled with `0` bytes. It depends on `T` whether that already makes for
