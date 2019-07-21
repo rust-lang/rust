@@ -18,7 +18,7 @@ pub struct InlayHint {
     pub range: TextRange,
     pub text: SmolStr,
     pub inlay_kind: InlayKind,
-    pub inlay_type_string: String,
+    pub inlay_type_string: SmolStr,
 }
 
 pub(crate) fn inlay_hints(db: &RootDatabase, file_id: FileId, file: &SourceFile) -> Vec<InlayHint> {
@@ -45,7 +45,8 @@ fn get_inlay_hints(
             let let_pat = let_statement.pat()?;
             let inlay_type_string = get_node_displayable_type(db, file_id, let_syntax, &let_pat)?
                 .display(db)
-                .to_string();;
+                .to_string()
+                .into();
 
             let pat_range = match let_pat.kind() {
                 PatKind::BindPat(bind_pat) => bind_pat.syntax().text_range(),
@@ -74,7 +75,9 @@ fn get_inlay_hints(
                             &closure_param.pat()?,
                         )?
                         .display(db)
-                        .to_string();
+                        .to_string()
+                        .into();
+
                         Some(InlayHint {
                             range: closure_param_syntax.text_range(),
                             text: closure_param_syntax.text().to_string().into(),
