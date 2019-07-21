@@ -238,7 +238,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                    context: PlaceContext,
                    location: Location) {
         debug!("visit_place(place={:?}, context={:?})", place, context);
-        self.process_place(&place.as_place_ref(), context, location);
+        self.process_place(&place.as_ref(), context, location);
     }
 
     fn visit_local(&mut self,

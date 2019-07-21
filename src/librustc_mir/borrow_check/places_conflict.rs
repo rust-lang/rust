@@ -36,7 +36,7 @@ crate fn places_conflict<'tcx>(
         body,
         borrow_place,
         BorrowKind::Mut { allow_two_phase_borrow: true },
-        access_place.as_place_ref(),
+        access_place.as_ref(),
         AccessDepth::Deep,
         bias,
     )

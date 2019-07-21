@@ -252,7 +252,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Some(Cause::LiveVar(local, location)) => {
                 let span = body.source_info(location).span;
                 let spans = self
-                    .move_spans(Place::from(local).as_place_ref(), location)
+                    .move_spans(Place::from(local).as_ref(), location)
                     .or_else(|| self.borrow_spans(span, location));
 
                 let borrow_location = location;
@@ -305,7 +305,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                     if let Some(region_name) = region_name {
                         let opt_place_desc =
-                            self.describe_place(borrow.borrowed_place.as_place_ref());
+                            self.describe_place(borrow.borrowed_place.as_ref());
                         BorrowExplanation::MustBeValidFor {
                             category,
                             from_closure,

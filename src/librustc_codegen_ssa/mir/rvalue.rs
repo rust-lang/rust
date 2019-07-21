@@ -355,7 +355,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Ref(_, bk, ref place) => {
-                let cg_place = self.codegen_place(&mut bx, &place.as_place_ref());
+                let cg_place = self.codegen_place(&mut bx, &place.as_ref());
 
                 let ty = cg_place.layout.ty;
 
@@ -446,7 +446,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::Discriminant(ref place) => {
                 let discr_ty = rvalue.ty(&*self.mir, bx.tcx());
-                let discr =  self.codegen_place(&mut bx, &place.as_place_ref())
+                let discr =  self.codegen_place(&mut bx, &place.as_ref())
                     .codegen_get_discr(&mut bx, discr_ty);
                 (bx, OperandRef {
                     val: OperandValue::Immediate(discr),
@@ -527,7 +527,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
         // use common size calculation for non zero-sized types
-        let cg_value = self.codegen_place(bx, &place.as_place_ref());
+        let cg_value = self.codegen_place(bx, &place.as_ref());
         cg_value.len(bx.cx())
     }
 
