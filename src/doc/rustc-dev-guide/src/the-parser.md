@@ -32,6 +32,19 @@ To minimise the amount of copying that is done, both the `StringReader` and
 `Parser` have lifetimes which bind them to the parent `ParseSess`. This contains
 all the information needed while parsing, as well as the `SourceMap` itself.
 
+## More on Lexical Analysis
+
+Code for lexical analysis is split between two crates:
+
+- `rustc_lexer` crate is responsible for breaking a `&str` into chunks
+  constituting tokens. Although it is popular to implement lexers as generated
+  finite state machines, the lexer in `rustc_lexer` is hand-written.
+
+- [`StringReader`] from [libsyntax] integrates `rustc_lexer` with `rustc`
+  specific data structures. Specifically, it adds `Span` information to tokens
+  returned by `rustc_lexer` and interns identifiers.
+
+
 [libsyntax]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/index.html
 [rustc_errors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
 [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
