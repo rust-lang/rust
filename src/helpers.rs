@@ -2,6 +2,7 @@ use std::mem;
 
 use rustc::ty::{self, layout::{self, Size, Align}};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc::mir;
 
 use rand::RngCore;
 
@@ -65,6 +66,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             Some(val)
         })
+    }
+
+    /// Get the `Place` for a local
+    fn local_place(&mut self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Tag>> {
+        let this = self.eval_context_mut();
+        let place = mir::Place { base: mir::PlaceBase::Local(local), projection: None };
+        this.eval_place(&place)
     }
 
     /// Generate some random bytes, and write them to `dest`.

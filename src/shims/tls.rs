@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use rustc_target::abi::LayoutOf;
-use rustc::{ty, ty::layout::HasDataLayout, mir};
+use rustc::{ty, ty::layout::HasDataLayout};
 
 use crate::{
     InterpResult, InterpError, StackPopCleanup,
@@ -160,7 +160,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let arg_local = this.frame().body.args_iter().next().ok_or_else(
                 || InterpError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
             )?;
-            let dest = this.eval_place(&mir::Place::Base(mir::PlaceBase::Local(arg_local)))?;
+            let dest = this.local_place(arg_local)?;
             this.write_scalar(ptr, dest)?;
 
             // step until out of stackframes
