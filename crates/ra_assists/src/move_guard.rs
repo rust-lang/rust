@@ -2,7 +2,7 @@ use hir::db::HirDatabase;
 use ra_syntax::{
     ast,
     ast::{AstNode, AstToken, IfExpr, MatchArm},
-    SyntaxElement, TextUnit,
+    TextUnit,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -18,10 +18,10 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
 
     ctx.add_action(AssistId("move_guard_to_arm_body"), "move guard to arm body", |edit| {
         edit.target(guard.syntax().text_range());
-        let offseting_amount = match &space_before_guard {
-            Some(SyntaxElement::Token(tok)) => {
+        let offseting_amount = match space_before_guard.and_then(|it| it.into_token()) {
+            Some(tok) => {
                 if let Some(_) = ast::Whitespace::cast(tok.clone()) {
-                    let ele = space_before_guard.unwrap().text_range();
+                    let ele = tok.text_range();
                     edit.delete(ele);
                     ele.len()
                 } else {

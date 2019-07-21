@@ -1,11 +1,11 @@
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
 use ra_syntax::{
-    algo::{find_node_at_offset, find_token_at_offset, TokenAtOffset},
+    algo::find_node_at_offset,
     ast::{self, AstToken},
     AstNode, SmolStr, SourceFile,
     SyntaxKind::*,
-    SyntaxToken, TextRange, TextUnit,
+    SyntaxToken, TextRange, TextUnit, TokenAtOffset,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
@@ -14,7 +14,9 @@ use crate::{db::RootDatabase, SourceChange, SourceFileEdit};
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
     let parse = db.parse(position.file_id);
     let file = parse.tree();
-    let comment = find_token_at_offset(file.syntax(), position.offset)
+    let comment = file
+        .syntax()
+        .token_at_offset(position.offset)
         .left_biased()
         .and_then(ast::Comment::cast)?;
 
@@ -45,7 +47,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
 }
 
 fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
-    let ws = match find_token_at_offset(file.syntax(), token.text_range().start()) {
+    let ws = match file.syntax().token_at_offset(token.text_range().start()) {
         TokenAtOffset::Between(l, r) => {
             assert!(r == *token);
             l
@@ -91,7 +93,10 @@ pub(crate) fn on_dot_typed(db: &RootDatabase, position: FilePosition) -> Option<
     let parse = db.parse(position.file_id);
     assert_eq!(parse.tree().syntax().text().char_at(position.offset), Some('.'));
 
-    let whitespace = find_token_at_offset(parse.tree().syntax(), position.offset)
+    let whitespace = parse
+        .tree()
+        .syntax()
+        .token_at_offset(position.offset)
         .left_biased()
         .and_then(ast::Whitespace::cast)?;
 

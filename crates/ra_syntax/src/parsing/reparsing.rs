@@ -16,7 +16,7 @@ use crate::{
         text_token_source::TextTokenSource,
         text_tree_sink::TextTreeSink,
     },
-    syntax_node::{GreenNode, GreenToken, SyntaxElement, SyntaxNode},
+    syntax_node::{GreenNode, GreenToken, NodeOrToken, SyntaxElement, SyntaxNode},
     SyntaxError,
     SyntaxKind::*,
     TextRange, TextUnit, T,
@@ -70,7 +70,8 @@ fn reparse_token<'node>(
                 }
             }
 
-            let new_token = GreenToken::new(rowan::SyntaxKind(token.kind().into()), text.into());
+            let new_token =
+                GreenToken::new(rowan::cursor::SyntaxKind(token.kind().into()), text.into());
             Some((token.replace_with(new_token), token.text_range()))
         }
         _ => None,
@@ -98,8 +99,8 @@ fn get_text_after_edit(element: SyntaxElement, edit: &AtomTextEdit) -> String {
     let edit =
         AtomTextEdit::replace(edit.delete - element.text_range().start(), edit.insert.clone());
     let text = match element {
-        SyntaxElement::Token(token) => token.text().to_string(),
-        SyntaxElement::Node(node) => node.text().to_string(),
+        NodeOrToken::Token(token) => token.text().to_string(),
+        NodeOrToken::Node(node) => node.text().to_string(),
     };
     edit.apply(text)
 }
@@ -114,8 +115,8 @@ fn is_contextual_kw(text: &str) -> bool {
 fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(SyntaxNode, Reparser)> {
     let node = algo::find_covering_element(node, range);
     let mut ancestors = match node {
-        SyntaxElement::Token(it) => it.parent().ancestors(),
-        SyntaxElement::Node(it) => it.ancestors(),
+        NodeOrToken::Token(it) => it.parent().ancestors(),
+        NodeOrToken::Node(it) => it.ancestors(),
     };
     ancestors.find_map(|node| {
         let first_child = node.first_child_or_token().map(|it| it.kind());

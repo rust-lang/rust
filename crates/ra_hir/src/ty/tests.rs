@@ -3211,8 +3211,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     );
     {
         let file = db.parse(pos.file_id).ok().unwrap();
-        let node =
-            algo::find_token_at_offset(file.syntax(), pos.offset).right_biased().unwrap().parent();
+        let node = file.syntax().token_at_offset(pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
             SourceAnalyzer::new(&db, pos.file_id, &node, None);
         });
@@ -3232,8 +3231,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
 
     {
         let file = db.parse(pos.file_id).ok().unwrap();
-        let node =
-            algo::find_token_at_offset(file.syntax(), pos.offset).right_biased().unwrap().parent();
+        let node = file.syntax().token_at_offset(pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
             SourceAnalyzer::new(&db, pos.file_id, &node, None);
         });

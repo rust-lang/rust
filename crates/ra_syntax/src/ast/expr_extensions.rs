@@ -2,7 +2,7 @@
 
 use crate::{
     ast::{self, child_opt, children, AstChildren, AstNode},
-    SmolStr, SyntaxElement,
+    SmolStr,
     SyntaxKind::*,
     SyntaxToken, T,
 };
@@ -229,14 +229,11 @@ pub enum LiteralKind {
 
 impl ast::Literal {
     pub fn token(&self) -> SyntaxToken {
-        let elem = self
-            .syntax()
+        self.syntax()
             .children_with_tokens()
-            .find(|e| e.kind() != ATTR && !e.kind().is_trivia());
-        match elem {
-            Some(SyntaxElement::Token(token)) => token,
-            _ => unreachable!(),
-        }
+            .find(|e| e.kind() != ATTR && !e.kind().is_trivia())
+            .and_then(|e| e.into_token())
+            .unwrap()
     }
 
     pub fn kind(&self) -> LiteralKind {

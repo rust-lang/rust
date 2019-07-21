@@ -4,7 +4,10 @@ use arrayvec::ArrayVec;
 use hir::Name;
 use ra_fmt::leading_indent;
 use ra_syntax::{
-    ast, AstNode, Direction, InsertPosition, SourceFile, SyntaxElement, SyntaxKind::*, T,
+    algo::{insert_children, replace_children},
+    ast, AstNode, Direction, InsertPosition, SourceFile, SyntaxElement,
+    SyntaxKind::*,
+    T,
 };
 use ra_text_edit::TextEditBuilder;
 
@@ -38,7 +41,7 @@ impl<N: AstNode> AstEditor<N> {
         position: InsertPosition<SyntaxElement>,
         to_insert: impl Iterator<Item = SyntaxElement>,
     ) -> N {
-        let new_syntax = self.ast().syntax().insert_children(position, to_insert);
+        let new_syntax = insert_children(self.ast().syntax(), position, to_insert);
         N::cast(new_syntax).unwrap()
     }
 
@@ -48,7 +51,7 @@ impl<N: AstNode> AstEditor<N> {
         to_delete: RangeInclusive<SyntaxElement>,
         to_insert: impl Iterator<Item = SyntaxElement>,
     ) -> N {
-        let new_syntax = self.ast().syntax().replace_children(to_delete, to_insert);
+        let new_syntax = replace_children(self.ast().syntax(), to_delete, to_insert);
         N::cast(new_syntax).unwrap()
     }
 

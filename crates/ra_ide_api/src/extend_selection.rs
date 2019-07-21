@@ -1,10 +1,10 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    algo::{find_covering_element, find_token_at_offset, TokenAtOffset},
+    algo::find_covering_element,
     ast::{self, AstNode, AstToken},
-    Direction, SyntaxElement,
+    Direction, NodeOrToken,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextUnit, T,
+    SyntaxNode, SyntaxToken, TextRange, TextUnit, TokenAtOffset, T,
 };
 
 use crate::{db::RootDatabase, FileRange};
@@ -34,7 +34,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
 
     if range.is_empty() {
         let offset = range.start();
-        let mut leaves = find_token_at_offset(root, offset);
+        let mut leaves = root.token_at_offset(offset);
         if leaves.clone().all(|it| it.kind() == WHITESPACE) {
             return Some(extend_ws(root, leaves.next()?, offset));
         }
@@ -53,7 +53,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
         return Some(leaf_range);
     };
     let node = match find_covering_element(root, range) {
-        SyntaxElement::Token(token) => {
+        NodeOrToken::Token(token) => {
             if token.text_range() != range {
                 return Some(token.text_range());
             }
@@ -64,7 +64,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
             }
             token.parent()
         }
-        SyntaxElement::Node(node) => node,
+        NodeOrToken::Node(node) => node,
     };
     if node.text_range() != range {
         return Some(node.text_range());
@@ -153,8 +153,8 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
         node.siblings_with_tokens(dir)
             .skip(1)
             .skip_while(|node| match node {
-                SyntaxElement::Node(_) => false,
-                SyntaxElement::Token(it) => is_single_line_ws(it),
+                NodeOrToken::Node(_) => false,
+                NodeOrToken::Token(it) => is_single_line_ws(it),
             })
             .next()
             .and_then(|it| it.into_token())
