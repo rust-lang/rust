@@ -11,8 +11,8 @@ use crate::coverage::transform_missing_snippet;
 use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
     rewrite_associated_impl_type, rewrite_associated_type, rewrite_existential_impl_type,
-    rewrite_existential_type, rewrite_extern_crate, rewrite_type_alias, FnSig, StaticParts,
-    StructParts,
+    rewrite_existential_type, rewrite_extern_crate, rewrite_type_alias, FnBraceStyle, FnSig,
+    StaticParts, StructParts,
 };
 use crate::macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
 use crate::rewrite::{Rewrite, RewriteContext};
@@ -311,32 +311,38 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let rewrite = match fk {
             visit::FnKind::ItemFn(ident, _, _, b) | visit::FnKind::Method(ident, _, _, b) => {
                 block = b;
-                self.rewrite_fn(
+                self.rewrite_fn_before_block(
                     indent,
                     ident,
                     &FnSig::from_fn_kind(&fk, generics, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
-                    b,
-                    inner_attrs,
                 )
             }
             visit::FnKind::Closure(_) => unreachable!(),
         };
 
-        if let Some(fn_str) = rewrite {
+        if let Some((fn_str, fn_brace_style)) = rewrite {
             self.format_missing_with_indent(source!(self, s).lo());
-            self.push_str(&fn_str);
-            if let Some(c) = fn_str.chars().last() {
-                if c == '}' {
-                    self.last_pos = source!(self, block.span).hi();
-                    return;
-                }
+
+            if let Some(rw) = self.single_line_fn(&fn_str, block, inner_attrs) {
+                self.push_str(&rw);
+                self.last_pos = s.hi();
+                return;
             }
+
+            self.push_str(&fn_str);
+            match fn_brace_style {
+                FnBraceStyle::SameLine => self.push_str(" "),
+                FnBraceStyle::NextLine => {
+                    self.push_str(&self.block_indent.to_string_with_newline(self.config))
+                }
+                _ => unreachable!(),
+            }
+            self.last_pos = source!(self, block.span).lo();
         } else {
             self.format_missing(source!(self, block.span).lo());
         }
 
-        self.last_pos = source!(self, block.span).lo();
         self.visit_block(block, inner_attrs, true)
     }
 

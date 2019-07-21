@@ -299,47 +299,28 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = item.span.hi();
     }
 
-    pub(crate) fn rewrite_fn(
+    pub(crate) fn rewrite_fn_before_block(
         &mut self,
         indent: Indent,
         ident: ast::Ident,
         fn_sig: &FnSig<'_>,
         span: Span,
-        block: &ast::Block,
-        inner_attrs: Option<&[ast::Attribute]>,
-    ) -> Option<String> {
+    ) -> Option<(String, FnBraceStyle)> {
         let context = self.get_context();
 
-        let mut newline_brace = newline_for_brace(self.config, &fn_sig.generics.where_clause);
-
-        let (mut result, force_newline_brace) =
-            rewrite_fn_base(&context, indent, ident, fn_sig, span, newline_brace, true)?;
+        let mut fn_brace_style = newline_for_brace(self.config, &fn_sig.generics.where_clause);
+        let (result, force_newline_brace) =
+            rewrite_fn_base(&context, indent, ident, fn_sig, span, fn_brace_style)?;
 
         // 2 = ` {`
         if self.config.brace_style() == BraceStyle::AlwaysNextLine
             || force_newline_brace
             || last_line_width(&result) + 2 > self.shape().width
         {
-            newline_brace = true;
-        } else if !result.contains('\n') {
-            newline_brace = false;
+            fn_brace_style = FnBraceStyle::NextLine
         }
 
-        if let rw @ Some(..) = self.single_line_fn(&result, block, inner_attrs) {
-            rw
-        } else {
-            // Prepare for the function body by possibly adding a newline and
-            // indent.
-            // FIXME we'll miss anything between the end of the signature and the
-            // start of the body, but we need more spans from the compiler to solve
-            // this.
-            if newline_brace {
-                result.push_str(&indent.to_string_with_newline(self.config));
-            } else {
-                result.push(' ');
-            }
-            Some(result)
-        }
+        Some((result, fn_brace_style))
     }
 
     pub(crate) fn rewrite_required_fn(
@@ -360,8 +341,7 @@ impl<'a> FmtVisitor<'a> {
             ident,
             &FnSig::from_method_sig(sig, generics),
             span,
-            false,
-            false,
+            FnBraceStyle::None,
         )?;
 
         // Re-attach semicolon
@@ -370,7 +350,7 @@ impl<'a> FmtVisitor<'a> {
         Some(result)
     }
 
-    fn single_line_fn(
+    pub(crate) fn single_line_fn(
         &self,
         fn_str: &str,
         block: &ast::Block,
@@ -1980,6 +1960,13 @@ pub(crate) fn is_named_arg(arg: &ast::Arg) -> bool {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum FnBraceStyle {
+    SameLine,
+    NextLine,
+    None,
+}
+
 // Return type is (result, force_new_line_for_brace)
 fn rewrite_fn_base(
     context: &RewriteContext<'_>,
@@ -1987,8 +1974,7 @@ fn rewrite_fn_base(
     ident: ast::Ident,
     fn_sig: &FnSig<'_>,
     span: Span,
-    newline_brace: bool,
-    has_body: bool,
+    fn_brace_style: FnBraceStyle,
 ) -> Option<(String, bool)> {
     let mut force_new_line_for_brace = false;
 
@@ -2001,7 +1987,7 @@ fn rewrite_fn_base(
     result.push_str("fn ");
 
     // Generics.
-    let overhead = if has_body && !newline_brace {
+    let overhead = if let FnBraceStyle::SameLine = fn_brace_style {
         // 4 = `() {`
         4
     } else {
@@ -2044,8 +2030,7 @@ fn rewrite_fn_base(
         &result,
         indent,
         ret_str_len,
-        newline_brace,
-        has_body,
+        fn_brace_style,
         multi_line_ret_str,
     )?;
 
@@ -2237,7 +2222,7 @@ fn rewrite_fn_base(
     } else {
         WhereClauseSpace::Newline
     };
-    let mut option = WhereClauseOption::new(!has_body, space);
+    let mut option = WhereClauseOption::new(fn_brace_style == FnBraceStyle::None, space);
     if is_args_multi_lined {
         option.veto_single_line();
     }
@@ -2412,30 +2397,25 @@ fn compute_budgets_for_args(
     result: &str,
     indent: Indent,
     ret_str_len: usize,
-    newline_brace: bool,
-    has_braces: bool,
+    fn_brace_style: FnBraceStyle,
     force_vertical_layout: bool,
 ) -> Option<((usize, usize, Indent))> {
     debug!(
-        "compute_budgets_for_args {} {:?}, {}, {}",
+        "compute_budgets_for_args {} {:?}, {}, {:?}",
         result.len(),
         indent,
         ret_str_len,
-        newline_brace
+        fn_brace_style,
     );
     // Try keeping everything on the same line.
     if !result.contains('\n') && !force_vertical_layout {
         // 2 = `()`, 3 = `() `, space is before ret_string.
         let overhead = if ret_str_len == 0 { 2 } else { 3 };
         let mut used_space = indent.width() + result.len() + ret_str_len + overhead;
-        if has_braces {
-            if !newline_brace {
-                // 2 = `{}`
-                used_space += 2;
-            }
-        } else {
-            // 1 = `;`
-            used_space += 1;
+        match fn_brace_style {
+            FnBraceStyle::None => used_space += 1,     // 1 = `;`
+            FnBraceStyle::SameLine => used_space += 2, // 2 = `{}`
+            FnBraceStyle::NextLine => (),
         }
         let one_line_budget = context.budget(used_space);
 
@@ -2448,7 +2428,10 @@ fn compute_budgets_for_args(
                 }
                 IndentStyle::Visual => {
                     let indent = indent + result.len() + 1;
-                    let multi_line_overhead = indent.width() + if newline_brace { 2 } else { 4 };
+                    let multi_line_overhead = match fn_brace_style {
+                        FnBraceStyle::SameLine => 4,
+                        _ => 2,
+                    } + indent.width();
                     (indent, context.budget(multi_line_overhead))
                 }
             };
@@ -2468,16 +2451,21 @@ fn compute_budgets_for_args(
     Some((0, context.budget(used_space), new_indent))
 }
 
-fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause) -> bool {
+fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause) -> FnBraceStyle {
     let predicate_count = where_clause.predicates.len();
 
     if config.where_single_line() && predicate_count == 1 {
-        return false;
+        return FnBraceStyle::SameLine;
     }
     let brace_style = config.brace_style();
 
-    brace_style == BraceStyle::AlwaysNextLine
-        || (brace_style == BraceStyle::SameLineWhere && predicate_count > 0)
+    let use_next_line = brace_style == BraceStyle::AlwaysNextLine
+        || (brace_style == BraceStyle::SameLineWhere && predicate_count > 0);
+    if use_next_line {
+        FnBraceStyle::NextLine
+    } else {
+        FnBraceStyle::SameLine
+    }
 }
 
 fn rewrite_generics(
@@ -2919,8 +2907,7 @@ impl Rewrite for ast::ForeignItem {
                 self.ident,
                 &FnSig::new(fn_decl, generics, self.vis.clone()),
                 span,
-                false,
-                false,
+                FnBraceStyle::None,
             )
             .map(|(s, _)| format!("{};", s)),
             ast::ForeignItemKind::Static(ref ty, mutability) => {
