@@ -1,5 +1,4 @@
-use std::fmt::Write;
-
+use format_buf::format;
 use ra_syntax::ast::{self, AstNode, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 pub(crate) trait ShortLabel {
@@ -73,7 +72,7 @@ where
     let mut buf = short_label_from_node(node, prefix)?;
 
     if let Some(type_ref) = node.ascribed_type() {
-        write!(buf, ": {}", type_ref.syntax()).unwrap();
+        format!(buf, ": {}", type_ref.syntax());
     }
 
     Some(buf)

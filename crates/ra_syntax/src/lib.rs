@@ -20,7 +20,6 @@
 //! [Swift]: <https://github.com/apple/swift/blob/13d593df6f359d0cb2fc81cfaac273297c539455/lib/Syntax/README.md>
 
 mod syntax_node;
-mod syntax_text;
 mod syntax_error;
 mod parsing;
 mod validation;
@@ -38,19 +37,17 @@ use ra_text_edit::AtomTextEdit;
 use crate::syntax_node::GreenNode;
 
 pub use crate::{
+    algo::InsertPosition,
     ast::{AstNode, AstToken},
     parsing::{classify_literal, tokenize, Token},
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::{Location, SyntaxError, SyntaxErrorKind},
     syntax_node::{
-        Direction, InsertPosition, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
-        WalkEvent,
+        Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
     },
-    syntax_text::SyntaxText,
 };
-pub use ra_parser::SyntaxKind;
-pub use ra_parser::T;
-pub use rowan::{SmolStr, TextRange, TextUnit};
+pub use ra_parser::{SyntaxKind, T};
+pub use rowan::{SmolStr, SyntaxText, TextRange, TextUnit, TokenAtOffset, WalkEvent};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.
@@ -76,7 +73,7 @@ impl<T> Parse<T> {
     }
 
     pub fn syntax_node(&self) -> SyntaxNode {
-        SyntaxNode::new(self.green.clone())
+        SyntaxNode::new_root(self.green.clone())
     }
 }
 
@@ -146,18 +143,17 @@ impl Parse<SourceFile> {
 pub use crate::ast::SourceFile;
 
 impl SourceFile {
-    fn new(green: GreenNode) -> SourceFile {
-        let root = SyntaxNode::new(green);
+    pub fn parse(text: &str) -> Parse<SourceFile> {
+        let (green, mut errors) = parsing::parse_text(text);
+        let root = SyntaxNode::new_root(green.clone());
+
         if cfg!(debug_assertions) {
             validation::validate_block_structure(&root);
         }
-        assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        SourceFile::cast(root).unwrap()
-    }
 
-    pub fn parse(text: &str) -> Parse<SourceFile> {
-        let (green, mut errors) = parsing::parse_text(text);
-        errors.extend(validation::validate(&SourceFile::new(green.clone())));
+        errors.extend(validation::validate(&root));
+
+        assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         Parse { green, errors: Arc::new(errors), _ty: PhantomData }
     }
 }
@@ -267,8 +263,8 @@ fn api_walkthrough() {
         match event {
             WalkEvent::Enter(node) => {
                 let text = match &node {
-                    SyntaxElement::Node(it) => it.text().to_string(),
-                    SyntaxElement::Token(it) => it.text().to_string(),
+                    NodeOrToken::Node(it) => it.text().to_string(),
+                    NodeOrToken::Token(it) => it.text().to_string(),
                 };
                 buf += &format!("{:indent$}{:?} {:?}\n", " ", text, node.kind(), indent = indent);
                 indent += 2;

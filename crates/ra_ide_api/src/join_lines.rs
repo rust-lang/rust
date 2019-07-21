@@ -3,7 +3,7 @@ use ra_fmt::{compute_ws, extract_trivial_expression};
 use ra_syntax::{
     algo::{find_covering_element, non_trivia_sibling},
     ast::{self, AstNode, AstToken},
-    Direction, SourceFile, SyntaxElement,
+    Direction, NodeOrToken, SourceFile,
     SyntaxKind::{self, WHITESPACE},
     SyntaxNode, SyntaxToken, TextRange, TextUnit, T,
 };
@@ -23,8 +23,8 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     };
 
     let node = match find_covering_element(file.syntax(), range) {
-        SyntaxElement::Node(node) => node,
-        SyntaxElement::Token(token) => token.parent(),
+        NodeOrToken::Node(node) => node,
+        NodeOrToken::Token(token) => token.parent(),
     };
     let mut edit = TextEditBuilder::default();
     for token in node.descendants_with_tokens().filter_map(|it| it.into_token()) {

@@ -5,16 +5,16 @@ mod field_expr;
 
 use crate::{
     algo::visit::{visitor_ctx, VisitorCtx},
-    ast, AstNode, SourceFile, SyntaxError,
+    ast, SyntaxError,
     SyntaxKind::{BYTE, BYTE_STRING, CHAR, STRING},
     SyntaxNode, TextUnit, T,
 };
 
 pub(crate) use unescape::EscapeError;
 
-pub(crate) fn validate(file: &SourceFile) -> Vec<SyntaxError> {
+pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
     let mut errors = Vec::new();
-    for node in file.syntax().descendants() {
+    for node in root.descendants() {
         let _ = visitor_ctx(&mut errors)
             .visit::<ast::Literal, _>(validate_literal)
             .visit::<ast::Block, _>(block::validate_block_node)

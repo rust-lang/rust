@@ -1,11 +1,12 @@
-use crate::subtree_source::SubtreeTokenSource;
-use crate::ExpandError;
 use ra_parser::{ParseError, TreeSink};
 use ra_syntax::{
-    ast, AstNode, AstToken, Parse, SmolStr, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxNode,
+    ast, AstNode, AstToken, NodeOrToken, Parse, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxNode,
     SyntaxTreeBuilder, TextRange, TextUnit, T,
 };
 use tt::buffer::{Cursor, TokenBuffer};
+
+use crate::subtree_source::SubtreeTokenSource;
+use crate::ExpandError;
 
 /// Maps `tt::TokenId` to the relative range of the original token.
 #[derive(Default)]
@@ -200,7 +201,7 @@ fn convert_tt(
         }
 
         match child {
-            SyntaxElement::Token(token) => {
+            NodeOrToken::Token(token) => {
                 if let Some(doc_tokens) = convert_doc_comment(&token) {
                     token_trees.extend(doc_tokens);
                 } else if token.kind().is_trivia() {
@@ -210,7 +211,7 @@ fn convert_tt(
                     let char = token.text().chars().next().unwrap();
 
                     let spacing = match child_iter.peek() {
-                        Some(SyntaxElement::Token(token)) => {
+                        Some(NodeOrToken::Token(token)) => {
                             if token.kind().is_punct() {
                                 tt::Spacing::Joint
                             } else {
@@ -241,7 +242,7 @@ fn convert_tt(
                     token_trees.push(child);
                 }
             }
-            SyntaxElement::Node(node) => {
+            NodeOrToken::Node(node) => {
                 let child = convert_tt(token_map, global_offset, &node)?.into();
                 token_trees.push(child);
             }

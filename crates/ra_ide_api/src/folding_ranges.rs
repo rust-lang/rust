@@ -2,7 +2,7 @@ use rustc_hash::FxHashSet;
 
 use ra_syntax::{
     ast::{self, AstNode, AstToken, VisibilityOwner},
-    Direction, SourceFile, SyntaxElement,
+    Direction, NodeOrToken, SourceFile,
     SyntaxKind::{self, *},
     SyntaxNode, TextRange,
 };
@@ -31,8 +31,8 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
         // Fold items that span multiple lines
         if let Some(kind) = fold_kind(element.kind()) {
             let is_multiline = match &element {
-                SyntaxElement::Node(node) => node.text().contains_char('\n'),
-                SyntaxElement::Token(token) => token.text().contains('\n'),
+                NodeOrToken::Node(node) => node.text().contains_char('\n'),
+                NodeOrToken::Token(token) => token.text().contains('\n'),
             };
             if is_multiline {
                 res.push(Fold { range: element.text_range(), kind });
@@ -41,7 +41,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
         }
 
         match element {
-            SyntaxElement::Token(token) => {
+            NodeOrToken::Token(token) => {
                 // Fold groups of comments
                 if let Some(comment) = ast::Comment::cast(token) {
                     if !visited_comments.contains(&comment) {
@@ -53,7 +53,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                     }
                 }
             }
-            SyntaxElement::Node(node) => {
+            NodeOrToken::Node(node) => {
                 // Fold groups of imports
                 if node.kind() == USE_ITEM && !visited_imports.contains(&node) {
                     if let Some(range) = contiguous_range_for_group(&node, &mut visited_imports) {
@@ -108,7 +108,7 @@ fn contiguous_range_for_group_unless(
     let mut last = first.clone();
     for element in first.siblings_with_tokens(Direction::Next) {
         let node = match element {
-            SyntaxElement::Token(token) => {
+            NodeOrToken::Token(token) => {
                 if let Some(ws) = ast::Whitespace::cast(token) {
                     if !ws.spans_multiple_lines() {
                         // Ignore whitespace without blank lines
@@ -119,7 +119,7 @@ fn contiguous_range_for_group_unless(
                 // group ends here
                 break;
             }
-            SyntaxElement::Node(node) => node,
+            NodeOrToken::Node(node) => node,
         };
 
         // Stop if we find a node that doesn't belong to the group
@@ -154,7 +154,7 @@ fn contiguous_range_for_comment(
     let mut last = first.clone();
     for element in first.syntax().siblings_with_tokens(Direction::Next) {
         match element {
-            SyntaxElement::Token(token) => {
+            NodeOrToken::Token(token) => {
                 if let Some(ws) = ast::Whitespace::cast(token.clone()) {
                     if !ws.spans_multiple_lines() {
                         // Ignore whitespace without blank lines
@@ -173,7 +173,7 @@ fn contiguous_range_for_comment(
                 // * A comment of a different flavor was reached
                 break;
             }
-            SyntaxElement::Node(_) => break,
+            NodeOrToken::Node(_) => break,
         };
     }
 

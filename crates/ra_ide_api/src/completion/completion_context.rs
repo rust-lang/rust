@@ -1,6 +1,6 @@
 use hir::source_binder;
 use ra_syntax::{
-    algo::{find_covering_element, find_node_at_offset, find_token_at_offset},
+    algo::{find_covering_element, find_node_at_offset},
     ast, AstNode, Parse, SourceFile,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextUnit,
@@ -49,7 +49,7 @@ impl<'a> CompletionContext<'a> {
     ) -> Option<CompletionContext<'a>> {
         let module = source_binder::module_from_position(db, position);
         let token =
-            find_token_at_offset(original_parse.tree().syntax(), position.offset).left_biased()?;
+            original_parse.tree().syntax().token_at_offset(position.offset).left_biased()?;
         let analyzer =
             hir::SourceAnalyzer::new(db, position.file_id, &token.parent(), Some(position.offset));
         let mut ctx = CompletionContext {

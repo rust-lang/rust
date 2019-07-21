@@ -2,8 +2,9 @@ use hir::db::HirDatabase;
 use ra_db::FileRange;
 use ra_fmt::{leading_indent, reindent};
 use ra_syntax::{
-    algo::{find_covering_element, find_node_at_offset, find_token_at_offset, TokenAtOffset},
+    algo::{find_covering_element, find_node_at_offset},
     AstNode, SourceFile, SyntaxElement, SyntaxNode, SyntaxToken, TextRange, TextUnit,
+    TokenAtOffset,
 };
 use ra_text_edit::TextEditBuilder;
 
@@ -105,7 +106,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
     }
 
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
-        find_token_at_offset(self.source_file.syntax(), self.frange.range.start())
+        self.source_file.syntax().token_at_offset(self.frange.range.start())
     }
 
     pub(crate) fn node_at_offset<N: AstNode>(&self) -> Option<N> {
