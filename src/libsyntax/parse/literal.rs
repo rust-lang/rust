@@ -4,9 +4,6 @@ use crate::ast::{self, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
 use crate::parse::token::{self, Token, TokenKind};
-use crate::parse::unescape::{unescape_char, unescape_byte};
-use crate::parse::unescape::{unescape_str, unescape_byte_str};
-use crate::parse::unescape::{unescape_raw_str, unescape_raw_byte_str};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
@@ -15,6 +12,9 @@ use errors::{Applicability, Handler};
 use log::debug;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
+use rustc_lexer::unescape::{unescape_char, unescape_byte};
+use rustc_lexer::unescape::{unescape_str, unescape_byte_str};
+use rustc_lexer::unescape::{unescape_raw_str, unescape_raw_byte_str};
 
 use std::ascii;
 
