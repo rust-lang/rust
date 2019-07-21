@@ -11,7 +11,7 @@ extern crate syntax;
 
 use log::debug;
 use rustc::middle::cstore::ExternCrate;
-use rustc_driver::Callbacks;
+use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
 use semverver::run_analysis;
 use std::{
@@ -39,7 +39,7 @@ fn main() {
             struct SemverCallbacks;
 
             impl Callbacks for SemverCallbacks {
-                fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
+                fn after_analysis(&mut self, compiler: &interface::Compiler) -> Compilation {
                     debug!("running rust-semverver after_analysis callback");
 
                     let verbose =
@@ -89,7 +89,7 @@ fn main() {
 
                     debug!("rust-semverver after_analysis callback finished!");
 
-                    false
+                    Compilation::Stop
                 }
             }
 

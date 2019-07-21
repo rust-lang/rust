@@ -8,7 +8,7 @@ extern crate syntax;
 
 use log::debug;
 use rustc::middle::cstore::ExternCrate;
-use rustc_driver::Callbacks;
+use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
 use semverver::run_traversal;
 use std::{
@@ -37,7 +37,7 @@ fn main() {
             struct PubCallbacks;
 
             impl Callbacks for PubCallbacks {
-                fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
+                fn after_analysis(&mut self, compiler: &interface::Compiler) -> Compilation {
                     debug!("running rust-semver-public after_analysis callback");
 
                     compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
@@ -66,7 +66,7 @@ fn main() {
 
                     debug!("rust-semver-public after_analysis callback finished!");
 
-                    false
+                    Compilation::Stop
                 }
             }
 
