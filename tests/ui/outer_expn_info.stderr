@@ -1,15 +1,15 @@
-error: usage of `outer().expn_info()`
+error: usage of `outer_expn().expn_info()`
   --> $DIR/outer_expn_info.rs:19:33
    |
-LL |         let _ = expr.span.ctxt().outer().expn_info();
-   |                                 ^^^^^^^^^^^^^^^^^^^^ help: try: `.outer_expn_info()`
+LL |         let _ = expr.span.ctxt().outer_expn().expn_info();
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.outer_expn_info()`
    |
 note: lint level defined here
   --> $DIR/outer_expn_info.rs:1:9
    |
 LL | #![deny(clippy::internal)]
    |         ^^^^^^^^^^^^^^^^
-   = note: `#[deny(clippy::outer_expn_info)]` implied by `#[deny(clippy::internal)]`
+   = note: `#[deny(clippy::outer_expn_expn_info)]` implied by `#[deny(clippy::internal)]`
 
 error: aborting due to previous error
 
