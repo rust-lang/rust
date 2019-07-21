@@ -214,12 +214,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
         // First argument: `size`.
         // (`0` is allowed here -- this is expected to be handled by the lang item).
-        let arg = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
+        let arg = ecx.local_place(args.next().unwrap())?;
         let size = layout.size.bytes();
         ecx.write_scalar(Scalar::from_uint(size, arg.layout.size), arg)?;
 
         // Second argument: `align`.
-        let arg = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
+        let arg = ecx.local_place(args.next().unwrap())?;
         let align = layout.align.abi.bytes();
         ecx.write_scalar(Scalar::from_uint(align, arg.layout.size), arg)?;
 

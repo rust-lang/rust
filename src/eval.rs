@@ -7,12 +7,11 @@ use syntax::source_map::DUMMY_SP;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::{LayoutOf, Size, Align};
 use rustc::hir::def_id::DefId;
-use rustc::mir;
 
 use crate::{
     InterpResult, InterpError, InterpCx, StackPopCleanup, struct_error,
     Scalar, Tag, Pointer, FnVal,
-    MemoryExtra, MiriMemoryKind, Evaluator, TlsEvalContextExt,
+    MemoryExtra, MiriMemoryKind, Evaluator, TlsEvalContextExt, HelpersEvalContextExt,
 };
 
 /// Configuration needed to spawn a Miri instance.
@@ -85,11 +84,11 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
     // First argument: pointer to `main()`.
     let main_ptr = ecx.memory_mut().create_fn_alloc(FnVal::Instance(main_instance));
-    let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
+    let dest = ecx.local_place(args.next().unwrap())?;
     ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 
     // Second argument (argc): `1`.
-    let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
+    let dest = ecx.local_place(args.next().unwrap())?;
     let argc = Scalar::from_uint(config.args.len() as u128, dest.layout.size);
     ecx.write_scalar(argc, dest)?;
     // Store argc for macOS's `_NSGetArgc`.
@@ -100,7 +99,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     }
 
     // Third argument (`argv`): created from `config.args`.
-    let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
+    let dest = ecx.local_place(args.next().unwrap())?;
     // For Windows, construct a command string with all the aguments.
     let mut cmd = String::new();
     for arg in config.args.iter() {
