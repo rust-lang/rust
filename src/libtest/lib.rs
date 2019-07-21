@@ -16,8 +16,6 @@
 #![feature(test)]
 #![feature(rustc_private)]
 
-extern crate libtest;
-
 // FIXME: we should be more explicit about the exact APIs that we
 // export to users.
 pub use libtest::{
