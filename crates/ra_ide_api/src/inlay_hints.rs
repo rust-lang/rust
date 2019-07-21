@@ -55,7 +55,7 @@ fn get_inlay_hints(
 
             Some(vec![InlayHint {
                 range: pat_range,
-                text: let_syntax.text().to_smol_string(),
+                text: let_syntax.text().to_string().into(),
                 inlay_kind: InlayKind::LetBinding,
                 inlay_type_string,
             }])
@@ -77,7 +77,7 @@ fn get_inlay_hints(
                         .to_string();
                         Some(InlayHint {
                             range: closure_param_syntax.text_range(),
-                            text: closure_param_syntax.text().to_smol_string(),
+                            text: closure_param_syntax.text().to_string().into(),
                             inlay_kind: InlayKind::ClosureParameter,
                             inlay_type_string,
                         })
