@@ -69,14 +69,14 @@ impl CrateNum {
     pub fn as_usize(self) -> usize {
         match self {
             CrateNum::Index(id) => id.as_usize(),
-            _ => bug!("tried to get index of nonstandard crate {:?}", self),
+            _ => bug!("tried to get index of non-standard crate {:?}", self),
         }
     }
 
     pub fn as_u32(self) -> u32 {
         match self {
             CrateNum::Index(id) => id.as_u32(),
-            _ => bug!("tried to get index of nonstandard crate {:?}", self),
+            _ => bug!("tried to get index of non-standard crate {:?}", self),
         }
     }
 
