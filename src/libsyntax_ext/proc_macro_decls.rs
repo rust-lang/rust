@@ -17,6 +17,7 @@ use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::hygiene::ExpnDef;
 
 const PROC_MACRO_KINDS: [Symbol; 3] = [
     sym::proc_macro_derive,
@@ -346,9 +347,11 @@ fn mk_decls(
     custom_attrs: &[ProcMacroDef],
     custom_macros: &[ProcMacroDef],
 ) -> P<ast::Item> {
-    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
-        ExpnKind::Macro(MacroKind::Attr, sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
-        [sym::rustc_attrs, sym::proc_macro_internals][..].into(),
+    let expn_def = ExpnDef::allow_unstable(
+        cx.parse_sess.edition, &[sym::rustc_attrs, sym::proc_macro_internals]
+    );
+    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::new(
+        ExpnKind::Macro(MacroKind::Attr, sym::proc_macro), DUMMY_SP, expn_def
     ));
 
     let hidden = cx.meta_list_item_word(span, sym::hidden);

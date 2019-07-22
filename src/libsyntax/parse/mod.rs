@@ -15,6 +15,8 @@ use errors::{Applicability, FatalError, Level, Handler, ColorConfig, Diagnostic,
 use rustc_data_structures::sync::{Lrc, Lock};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use syntax_pos::edition::Edition;
+use syntax_pos::hygiene::ExpnDef;
+use syntax_pos::sym;
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use std::borrow::Cow;
@@ -59,6 +61,12 @@ pub struct ParseSess {
     pub let_chains_spans: Lock<Vec<Span>>,
     // Places where `async || ..` exprs were used and should be feature gated.
     pub async_closure_spans: Lock<Vec<Span>>,
+
+    // Pre-create expansion definitions used more than `O(1)` times.
+    pub default_expn_def: Lrc<ExpnDef>,
+    pub allow_try_trait: Lrc<ExpnDef>,
+    pub allow_gen_future: Lrc<ExpnDef>,
+    pub allow_derive_markers: Lrc<ExpnDef>,
 }
 
 impl ParseSess {
@@ -72,6 +80,7 @@ impl ParseSess {
     }
 
     pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> ParseSess {
+        let edition = Edition::from_session();
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
@@ -82,11 +91,17 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
-            edition: Edition::from_session(),
+            edition,
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             param_attr_spans: Lock::new(Vec::new()),
             let_chains_spans: Lock::new(Vec::new()),
             async_closure_spans: Lock::new(Vec::new()),
+            default_expn_def: Lrc::new(ExpnDef::default(edition)),
+            allow_try_trait: ExpnDef::allow_unstable(edition, &[sym::try_trait]),
+            allow_gen_future: ExpnDef::allow_unstable(edition, &[sym::gen_future]),
+            allow_derive_markers: ExpnDef::allow_unstable(
+                edition, &[sym::rustc_attrs, sym::structural_match]
+            ),
         }
     }
 

@@ -431,10 +431,9 @@ impl cstore::CStore {
         } else if data.name == sym::proc_macro && data.item_name(id.index) == sym::quote {
             let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
             let kind = SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client }));
-            let ext = SyntaxExtension {
-                allow_internal_unstable: Some([sym::proc_macro_def_site][..].into()),
-                ..SyntaxExtension::default(kind, data.root.edition)
-            };
+            let ext = SyntaxExtension::allow_unstable(
+                kind, data.root.edition, &[sym::proc_macro_def_site]
+            );
             return LoadedMacro::ProcMacro(Lrc::new(ext));
         }
 

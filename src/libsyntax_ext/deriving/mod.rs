@@ -70,13 +70,13 @@ macro_rules! derive_traits {
         }
 
         pub fn register_builtin_derives(resolver: &mut dyn Resolver, edition: Edition) {
-            let allow_internal_unstable = Some([
+            let allow_derive_internals = &[
                 sym::core_intrinsics,
                 sym::rustc_attrs,
                 Symbol::intern("derive_clone_copy"),
                 Symbol::intern("derive_eq"),
                 Symbol::intern("libstd_sys_internals"), // RustcDeserialize and RustcSerialize
-            ][..].into());
+            ];
 
             $(
                 resolver.add_builtin(
@@ -86,10 +86,10 @@ macro_rules! derive_traits {
                             since: Some(Symbol::intern("1.0.0")),
                             note: Some(Symbol::intern(msg)),
                         }),
-                        allow_internal_unstable: allow_internal_unstable.clone(),
-                        ..SyntaxExtension::default(
+                        ..SyntaxExtension::allow_unstable(
                             SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($func))),
                             edition,
+                            allow_derive_internals,
                         )
                     }),
                 );

@@ -126,47 +126,42 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         trace_macros: trace_macros::expand_trace_macros,
     }
 
-    let allow_internal_unstable = Some([sym::test, sym::rustc_attrs][..].into());
+    let allow_test_internals = &[sym::test, sym::rustc_attrs];
     register(sym::test_case, SyntaxExtension {
         stability: Some(Stability::unstable(
             sym::custom_test_frameworks,
             Some(Symbol::intern(EXPLAIN_CUSTOM_TEST_FRAMEWORKS)),
             50297,
         )),
-        allow_internal_unstable: allow_internal_unstable.clone(),
-        ..SyntaxExtension::default(
-            SyntaxExtensionKind::LegacyAttr(Box::new(test_case::expand)), edition
+        ..SyntaxExtension::allow_unstable(
+            SyntaxExtensionKind::LegacyAttr(Box::new(test_case::expand)),
+            edition,
+            allow_test_internals
         )
     });
-    register(sym::test, SyntaxExtension {
-        allow_internal_unstable: allow_internal_unstable.clone(),
-        ..SyntaxExtension::default(
-            SyntaxExtensionKind::LegacyAttr(Box::new(test::expand_test)), edition
-        )
-    });
-    register(sym::bench, SyntaxExtension {
-        allow_internal_unstable,
-        ..SyntaxExtension::default(
-            SyntaxExtensionKind::LegacyAttr(Box::new(test::expand_bench)), edition
-        )
-    });
+    register(sym::test, SyntaxExtension::allow_unstable(
+        SyntaxExtensionKind::LegacyAttr(Box::new(test::expand_test)), edition, allow_test_internals
+    ));
+    register(sym::bench, SyntaxExtension::allow_unstable(
+        SyntaxExtensionKind::LegacyAttr(Box::new(test::expand_bench)), edition, allow_test_internals
+    ));
 
-    let allow_internal_unstable = Some([sym::fmt_internals][..].into());
-    register(sym::format_args, SyntaxExtension {
-        allow_internal_unstable: allow_internal_unstable.clone(),
-        ..SyntaxExtension::default(
-            SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args)), edition
-        )
-    });
+    let allow_fmt_internals = &[sym::fmt_internals];
+    register(sym::format_args, SyntaxExtension::allow_unstable(
+        SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args)),
+        edition,
+        allow_fmt_internals,
+    ));
     register(sym::format_args_nl, SyntaxExtension {
         stability: Some(Stability::unstable(
             sym::format_args_nl,
             Some(Symbol::intern(EXPLAIN_FORMAT_ARGS_NL)),
             0,
         )),
-        allow_internal_unstable,
-        ..SyntaxExtension::default(
-            SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args_nl)), edition
+        ..SyntaxExtension::allow_unstable(
+            SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args_nl)),
+            edition,
+            allow_fmt_internals,
         )
     });
 

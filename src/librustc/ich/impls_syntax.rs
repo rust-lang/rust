@@ -396,15 +396,19 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::Transparency {
     Opaque,
 });
 
-impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
-    call_site,
-    kind,
+impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnDef {
     def_site,
     default_transparency,
     allow_internal_unstable,
     allow_internal_unsafe,
     local_inner_macros,
-    edition
+    edition,
+});
+
+impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
+    call_site,
+    kind,
+    def,
 });
 
 impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnKind {

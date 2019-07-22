@@ -136,10 +136,10 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> ExpnId {
-        let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::default(
-            ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
-        ));
-        let expn_id = span.ctxt().outer_expn();
+        let expn_def = self.session.parse_sess.default_expn_def.clone();
+        let expn_id = ExpnId::fresh(ExpnId::root(), Some(ExpnInfo::new(
+            ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, expn_def
+        )));
         let module = self.module_map[&self.definitions.local_def_id(id)];
         self.definitions.set_invocation_parent(expn_id, module.def_id().unwrap().index);
         self.invocations.insert(expn_id, self.arenas.alloc_invocation_data(InvocationData {

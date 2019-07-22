@@ -14,7 +14,7 @@ use syntax::{
         base::{ExtCtxt, MacroKind, Resolver},
         build::AstBuilder,
         expand::ExpansionConfig,
-        hygiene::ExpnId,
+        hygiene::{ExpnId, ExpnDef},
     },
     mut_visit::{self, MutVisitor},
     parse::ParseSess,
@@ -85,9 +85,9 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
         self.found = true;
 
         // Create a new expansion for the generated allocator code.
-        let span = item.span.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
-            ExpnKind::Macro(MacroKind::Attr, sym::global_allocator), item.span, self.sess.edition,
-            [sym::rustc_attrs][..].into(),
+        let expn_def = ExpnDef::allow_unstable(self.sess.edition, &[sym::rustc_attrs]);
+        let span = item.span.fresh_expansion(ExpnId::root(), ExpnInfo::new(
+            ExpnKind::Macro(MacroKind::Attr, sym::global_allocator), item.span, expn_def
         ));
 
         // Create an expansion config

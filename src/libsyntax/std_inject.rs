@@ -10,6 +10,7 @@ use crate::tokenstream::TokenStream;
 use std::cell::Cell;
 use std::iter;
 use syntax_pos::DUMMY_SP;
+use syntax_pos::hygiene::ExpnDef;
 
 pub fn injected_crate_name() -> Option<&'static str> {
     INJECTED_CRATE_NAME.with(|name| name.get())
@@ -75,9 +76,9 @@ pub fn maybe_inject_crates_ref(
 
     INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
 
-    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
-        ExpnKind::Macro(MacroKind::Attr, sym::std_inject), DUMMY_SP, edition,
-        [sym::prelude_import][..].into(),
+    let expn_def = ExpnDef::allow_unstable(edition, &[sym::prelude_import]);
+    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::new(
+        ExpnKind::Macro(MacroKind::Attr, sym::std_inject), DUMMY_SP, expn_def
     ));
 
     krate.module.items.insert(0, P(ast::Item {

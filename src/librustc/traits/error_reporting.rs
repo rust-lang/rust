@@ -61,9 +61,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // We want to ignore desugarings here: spans are equivalent even
             // if one is the result of a desugaring and the other is not.
             let mut span = error.obligation.cause.span;
-            if let Some(ExpnInfo { kind: ExpnKind::Desugaring(_), def_site, .. })
+            if let Some(ExpnInfo { kind: ExpnKind::Desugaring(_), call_site, .. })
                     = span.ctxt().outer_expn_info() {
-                span = def_site;
+                span = call_site;
             }
 
             error_map.entry(span).or_default().push(

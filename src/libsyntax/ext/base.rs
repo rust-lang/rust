@@ -15,11 +15,12 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
-use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
+use syntax_pos::hygiene::{ExpnInfo, ExpnKind, ExpnDef};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use std::iter;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::default::Default;
@@ -574,24 +575,14 @@ pub enum SyntaxExtensionKind {
 pub struct SyntaxExtension {
     /// A syntax extension kind.
     pub kind: SyntaxExtensionKind,
-    /// Span of the macro definition.
-    pub span: Span,
-    /// Hygienic properties of spans produced by this macro by default.
-    pub default_transparency: Transparency,
-    /// Whitelist of unstable features that are treated as stable inside this macro.
-    pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
-    /// Suppresses the `unsafe_code` lint for code produced by this macro.
-    pub allow_internal_unsafe: bool,
-    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
-    pub local_inner_macros: bool,
     /// The macro's stability info.
     pub stability: Option<Stability>,
     /// The macro's deprecation info.
     pub deprecation: Option<Deprecation>,
     /// Names of helper attributes registered by this macro.
     pub helper_attrs: Vec<Symbol>,
-    /// Edition of the crate in which this macro is defined.
-    pub edition: Edition,
+    /// A subset of the macro definition properties available from global data.
+    pub expn_def: Lrc<ExpnDef>,
 }
 
 impl SyntaxExtensionKind {
@@ -627,15 +618,29 @@ impl SyntaxExtension {
     /// Constructs a syntax extension with default properties.
     pub fn default(kind: SyntaxExtensionKind, edition: Edition) -> SyntaxExtension {
         SyntaxExtension {
-            span: DUMMY_SP,
-            default_transparency: kind.default_transparency(),
-            allow_internal_unstable: None,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
             stability: None,
             deprecation: None,
             helper_attrs: Vec::new(),
-            edition,
+            expn_def: Lrc::new(ExpnDef {
+                default_transparency: kind.default_transparency(),
+                ..ExpnDef::default(edition)
+            }),
+            kind,
+        }
+    }
+
+    pub fn allow_unstable(
+        kind: SyntaxExtensionKind, edition: Edition, allow_internal_unstable: &[Symbol]
+    ) -> SyntaxExtension {
+        SyntaxExtension {
+            stability: None,
+            deprecation: None,
+            helper_attrs: Vec::new(),
+            expn_def: Lrc::new(ExpnDef {
+                default_transparency: kind.default_transparency(),
+                allow_internal_unstable: allow_internal_unstable.into(),
+                ..ExpnDef::default(edition)
+            }),
             kind,
         }
     }
@@ -661,16 +666,16 @@ impl SyntaxExtension {
     }
 
     pub fn expn_info(&self, call_site: Span, descr: Symbol) -> ExpnInfo {
-        ExpnInfo {
-            call_site,
-            kind: ExpnKind::Macro(self.macro_kind(), descr),
-            def_site: self.span,
-            default_transparency: self.default_transparency,
-            allow_internal_unstable: self.allow_internal_unstable.clone(),
-            allow_internal_unsafe: self.allow_internal_unsafe,
-            local_inner_macros: self.local_inner_macros,
-            edition: self.edition,
-        }
+        ExpnInfo::new(ExpnKind::Macro(self.macro_kind(), descr), call_site, self.expn_def.clone())
+    }
+}
+
+/// `ExpnDef` fields are logically a part of `SyntaxExtension`,
+/// they are separated only for performance reasons.
+impl Deref for SyntaxExtension {
+    type Target = ExpnDef;
+    fn deref(&self) -> &Self::Target {
+        &self.expn_def
     }
 }
 
@@ -721,7 +726,6 @@ pub struct ExtCtxt<'a> {
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
-    pub allow_derive_markers: Lrc<[Symbol]>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -741,7 +745,6 @@ impl<'a> ExtCtxt<'a> {
                 directory_ownership: DirectoryOwnership::Owned { relative: None },
             },
             expansions: FxHashMap::default(),
-            allow_derive_markers: [sym::rustc_attrs, sym::structural_match][..].into(),
         }
     }
 

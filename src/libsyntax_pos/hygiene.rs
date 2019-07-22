@@ -33,7 +33,9 @@ use crate::symbol::{kw, Symbol};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+
 use std::fmt;
+use std::ops::Deref;
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -163,7 +165,9 @@ impl HygieneData {
         HygieneData {
             expn_data: vec![InternalExpnData {
                 parent: ExpnId::root(),
-                expn_info: Some(ExpnInfo::default(ExpnKind::Root, DUMMY_SP, edition)),
+                expn_info: Some(ExpnInfo::new(
+                    ExpnKind::Root, DUMMY_SP, Lrc::new(ExpnDef::default(edition))
+                )),
             }],
             syntax_context_data: vec![SyntaxContextData {
                 outer_expn: ExpnId::root(),
@@ -620,11 +624,52 @@ impl Span {
     }
 }
 
+/// A subset of properties from macro definition available through global data.
+/// Avoid using this if you have access to the original definition structures.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct ExpnDef {
+    /// Span of the macro definition (possibly dummy).
+    /// This span serves only informational purpose and is not used for resolution.
+    pub def_site: Span,
+    /// Transparency used by `apply_mark` for the expansion with this expansion info by default.
+    pub default_transparency: Transparency,
+    /// Whitelist of unstable features that are treated as stable inside this macro.
+    /// `Box` doesn't allocate for empty slices, so it doesn't need to be optional.
+    pub allow_internal_unstable: Box<[Symbol]>,
+    /// Suppresses the `unsafe_code` lint for code produced by this macro.
+    pub allow_internal_unsafe: bool,
+    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
+    pub local_inner_macros: bool,
+    /// Edition of the crate in which this macro is defined.
+    pub edition: Edition,
+}
+
+impl ExpnDef {
+    pub fn default(edition: Edition) -> ExpnDef {
+        ExpnDef {
+            def_site: DUMMY_SP,
+            default_transparency: Transparency::SemiTransparent,
+            allow_internal_unstable: Default::default(),
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            edition,
+        }
+    }
+
+    pub fn allow_unstable(edition: Edition, allow_internal_unstable: &[Symbol]) -> Lrc<ExpnDef> {
+        Lrc::new(ExpnDef {
+            allow_internal_unstable: allow_internal_unstable.into(),
+            ..ExpnDef::default(edition)
+        })
+    }
+}
+
 /// A subset of properties from both macro definition and macro call available through global data.
 /// Avoid using this if you have access to the original definition or call structures.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
-    // --- The part unique to each expansion.
+    /// The kind of this expansion - macro or compiler desugaring.
+    pub kind: ExpnKind,
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
     ///
@@ -635,51 +680,22 @@ pub struct ExpnInfo {
     /// call_site span would have its own ExpnInfo, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
-    /// The kind of this expansion - macro or compiler desugaring.
-    pub kind: ExpnKind,
-
-    // --- The part specific to the macro/desugaring definition.
-    // --- FIXME: Share it between expansions with the same definition.
-    /// The span of the macro definition (possibly dummy).
-    /// This span serves only informational purpose and is not used for resolution.
-    pub def_site: Span,
-    /// Transparency used by `apply_mark` for the expansion with this expansion info by default.
-    pub default_transparency: Transparency,
-    /// List of #[unstable]/feature-gated features that the macro is allowed to use
-    /// internally without forcing the whole crate to opt-in
-    /// to them.
-    pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
-    /// Whether the macro is allowed to use `unsafe` internally
-    /// even if the user crate has `#![forbid(unsafe_code)]`.
-    pub allow_internal_unsafe: bool,
-    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`)
-    /// for a given macro.
-    pub local_inner_macros: bool,
-    /// Edition of the crate in which the macro is defined.
-    pub edition: Edition,
+    /// Expansion definition properties.
+    pub def: Lrc<ExpnDef>,
 }
 
 impl ExpnInfo {
-    /// Constructs an expansion info with default properties.
-    pub fn default(kind: ExpnKind, call_site: Span, edition: Edition) -> ExpnInfo {
-        ExpnInfo {
-            call_site,
-            kind,
-            def_site: DUMMY_SP,
-            default_transparency: Transparency::SemiTransparent,
-            allow_internal_unstable: None,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            edition,
-        }
+    pub fn new(kind: ExpnKind, call_site: Span, def: Lrc<ExpnDef>) -> ExpnInfo {
+        ExpnInfo { kind, call_site, def }
     }
+}
 
-    pub fn allow_unstable(kind: ExpnKind, call_site: Span, edition: Edition,
-                          allow_internal_unstable: Lrc<[Symbol]>) -> ExpnInfo {
-        ExpnInfo {
-            allow_internal_unstable: Some(allow_internal_unstable),
-            ..ExpnInfo::default(kind, call_site, edition)
-        }
+/// Keeping the pre-existing interface where `ExpnDef` fields are fields of `ExpnInfo` as well,
+/// until it's clear what interface we want to end up with.
+impl Deref for ExpnInfo {
+    type Target = ExpnDef;
+    fn deref(&self) -> &Self::Target {
+        &self.def
     }
 }
 

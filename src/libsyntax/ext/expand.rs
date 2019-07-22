@@ -815,10 +815,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         // Expansion info for all the collected invocations is set upon their resolution,
         // with exception of the derive container case which is not resolved and can get
         // its expansion info immediately.
+        let expn_def = self.cx.parse_sess.default_expn_def.clone();
         let expn_info = match &kind {
-            InvocationKind::DeriveContainer { item, .. } => Some(ExpnInfo::default(
-                ExpnKind::Macro(MacroKind::Attr, sym::derive),
-                item.span(), self.cx.parse_sess.edition,
+            InvocationKind::DeriveContainer { item, .. } => Some(ExpnInfo::new(
+                ExpnKind::Macro(MacroKind::Attr, sym::derive), item.span(), expn_def
             )),
             _ => None,
         };
