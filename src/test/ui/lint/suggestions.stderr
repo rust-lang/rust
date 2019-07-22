@@ -52,7 +52,7 @@ LL | ||             b = 1;
    |  |____________|
    |               help: remove this `mut`
 
-error: const items should never be #[no_mangle]
+error: const items should never be `#[no_mangle]`
   --> $DIR/suggestions.rs:6:14
    |
 LL | #[no_mangle] const DISCOVERY: usize = 1;
@@ -83,7 +83,7 @@ LL |             Equinox { warp_factor: warp_factor } => {}
    |
    = note: `#[warn(non_shorthand_field_patterns)]` on by default
 
-error: const items should never be #[no_mangle]
+error: const items should never be `#[no_mangle]`
   --> $DIR/suggestions.rs:22:18
    |
 LL |     #[no_mangle] pub const DAUNTLESS: bool = true;
@@ -99,7 +99,7 @@ LL |     #[no_mangle] pub fn val_jean<T>() {}
    |     |
    |     help: remove this attribute
 
-error: const items should never be #[no_mangle]
+error: const items should never be `#[no_mangle]`
   --> $DIR/suggestions.rs:30:18
    |
 LL |     #[no_mangle] pub(crate) const VETAR: bool = true;
