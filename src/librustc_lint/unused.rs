@@ -242,8 +242,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     has_emitted
                 }
                 ty::Array(ty, len) => match len.try_eval_usize(cx.tcx, cx.param_env) {
-                    // If the array is definitely non-empty, we can do `#[must_use]` checking.
-                    Some(n) if n != 0 => {
+                    // Empty arrays won't contain any `#[must_use]` types.
+                    Some(0) => false,
+                    // If the array may be non-empty, we do `#[must_use]` checking.
+                    _ => {
                         let descr_pre = &format!(
                             "{}array{} of ",
                             descr_pre,
@@ -251,8 +253,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                         );
                         check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, n as usize + 1)
                     }
-                    // Otherwise, we don't lint, to avoid false positives.
-                    _ => false,
                 }
                 _ => false,
             }

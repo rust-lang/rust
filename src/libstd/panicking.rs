@@ -104,9 +104,7 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
         HOOK_LOCK.write_unlock();
 
         if let Hook::Custom(ptr) = old_hook {
-            #[allow(unused_must_use)] {
-                Box::from_raw(ptr);
-            }
+            mem::drop(Box::from_raw(ptr));
         }
     }
 }
