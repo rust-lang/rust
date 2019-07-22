@@ -26,8 +26,8 @@ use crate::ptr::NonNull;
 /// Unlike `*mut T`, `Unique<T>` is covariant over `T`. This should always be correct
 /// for any type which upholds Unique's aliasing requirements.
 #[unstable(feature = "ptr_internals", issue = "0",
-           reason = "use NonNull instead and consider PhantomData<T> \
-                     (if you also use #[may_dangle]), Send, and/or Sync")]
+           reason = "use `NonNull` instead and consider `PhantomData<T>` \
+                     (if you also use `#[may_dangle]`), `Send`, and/or `Sync`")]
 #[doc(hidden)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
