@@ -365,9 +365,10 @@ mod prim_unit { }
 /// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
 /// Raw pointers can be unaligned or [`null`] when unused. However, when a raw pointer is
 /// dereferenced (using the `*` operator), it must be non-null and aligned.
+///
 /// Storing through a raw pointer using `*ptr = data` calls `drop` on the old value, so
-/// [`write`] must be used if memory is not already initialized---otherwise `drop`
-/// would be called on the uninitialized memory.
+/// [`write`] must be used if the type has drop glue and memory is not already
+/// initialized---otherwise `drop` would be called on the uninitialized memory.
 ///
 /// Use the [`null`] and [`null_mut`] functions to create null pointers, and the
 /// [`is_null`] method of the `*const T` and `*mut T` types to check for null.
