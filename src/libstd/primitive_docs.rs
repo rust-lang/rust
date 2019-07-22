@@ -1043,9 +1043,9 @@ mod prim_ref { }
 /// [`FnOnce`]: ops/trait.FnOnce.html
 ///
 /// Function pointers are pointers that point to *code*, not data. They can be called
-/// just like functions. Like references, function pointers are assumed to not be null,
-/// so if you want to pass a function pointer over FFI and be able to accommodate null pointers,
-/// make your type `Option<fn()>` with your required signature.
+/// just like functions. Like references, function pointers are, among other things, assumed to
+/// not be null, so if you want to pass a function pointer over FFI and be able to accommodate null
+/// pointers, make your type `Option<fn()>` with your required signature.
 ///
 /// Plain function pointers are obtained by casting either plain functions, or closures that don't
 /// capture an environment:
