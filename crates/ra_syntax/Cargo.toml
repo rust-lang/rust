@@ -11,6 +11,7 @@ repository = "https://github.com/rust-analyzer/rust-analyzer"
 unicode-xid = "0.1.0"
 itertools = "0.8.0"
 rowan = "0.6.0-pre.1"
+ra_rustc_lexer = { version = "0.1.0-pre.1", features = [ "unicode-xid" ] }
 
 # ideally, `serde` should be enabled by `ra_lsp_server`, but we enable it here
 # to reduce number of compilations
