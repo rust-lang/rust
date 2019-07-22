@@ -110,7 +110,7 @@ impl Serialize for Name {
     {
         match *self {
             Name::Symbol(ref name) => serializer.serialize_str(&format!("{}", name.0)),
-            Name::ImplDesc(ref desc) => serializer.serialize_str(&format!("{}", desc)),
+            Name::ImplDesc(ref desc) => serializer.serialize_str(desc),
         }
     }
 }
