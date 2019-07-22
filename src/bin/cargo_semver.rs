@@ -107,6 +107,7 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
 
     let explain = matches.opt_present("e");
     let compact = matches.opt_present("compact");
+    let json = matches.opt_present("json");
 
     // Obtain WorkInfo for the "current"
     let current = if let Some(name_and_version) = matches.opt_str("C") {
@@ -122,6 +123,7 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
     };
     let name = current.package.name().to_owned();
 
+    // TODO: JSON output here
     if matches.opt_present("show-public") {
         let (current_rlib, current_deps_output) =
             current.rlib_and_dep_output(config, &name, true, matches)?;
@@ -224,6 +226,7 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
         .env("RUST_SEMVER_CRATE_VERSION", stable_version)
         .env("RUST_SEMVER_VERBOSE", format!("{}", explain))
         .env("RUST_SEMVER_COMPACT", format!("{}", compact))
+        .env("RUST_SEMVER_JSON", format!("{}", json))
         .env(
             "RUST_SEMVER_API_GUIDELINES",
             if matches.opt_present("a") {
@@ -307,6 +310,11 @@ mod cli {
             "",
             "compact",
             "Only output the suggested version on stdout for further processing",
+        );
+        opts.optflag(
+            "j",
+            "json",
+            "Output a JSON-formatted description of all collected data on stdout.",
         );
         opts.optopt(
             "s",
