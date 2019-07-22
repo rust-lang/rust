@@ -253,7 +253,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op =
-                    self.codegen_consume(&mut bx, &mir::Place::RETURN_PLACE.as_place_ref());
+                    self.codegen_consume(&mut bx, &mir::Place::RETURN_PLACE.as_ref());
                 if let Ref(llval, _, align) = op.val {
                     bx.load(llval, align)
                 } else {
@@ -314,7 +314,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return
         }
 
-        let place = self.codegen_place(&mut bx, &location.as_place_ref());
+        let place = self.codegen_place(&mut bx, &location.as_ref());
         let (args1, args2);
         let mut args = if let Some(llextra) = place.llextra {
             args2 = [place.llval, llextra];
@@ -1171,7 +1171,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
                 LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),
                 LocalRef::Operand(None) => {
-                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(&dst.as_place_ref()));
+                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(&dst.as_ref()));
                     assert!(!dst_layout.ty.has_erasable_regions());
                     let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
                     place.storage_live(bx);
@@ -1186,7 +1186,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         } else {
-            let dst = self.codegen_place(bx, &dst.as_place_ref());
+            let dst = self.codegen_place(bx, &dst.as_ref());
             self.codegen_transmute_into(bx, src, dst);
         }
     }

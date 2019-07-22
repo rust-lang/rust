@@ -855,7 +855,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     def_id, is_generator, places
                 );
                 if let Some((args_span, var_span)) = self.closure_span(
-                    *def_id, Place::from(target).as_place_ref(), places
+                    *def_id, Place::from(target).as_ref(), places
                 ) {
                     return ClosureUse {
                         is_generator,
@@ -895,7 +895,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             for (upvar, place) in self.infcx.tcx.upvars(def_id)?.values().zip(places) {
                 match place {
                     Operand::Copy(place) |
-                    Operand::Move(place) if target_place == place.as_place_ref() => {
+                    Operand::Move(place) if target_place == place.as_ref() => {
                         debug!("closure_span: found captured local {:?}", place);
                         return Some((*args_span, upvar.span));
                     },

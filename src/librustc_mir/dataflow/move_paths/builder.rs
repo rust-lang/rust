@@ -274,9 +274,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     // move-path for the interior so it will be separate from
                     // the exterior.
                     self.create_move_path(&place.clone().deref());
-                    self.gather_init(place.as_place_ref(), InitKind::Shallow);
+                    self.gather_init(place.as_ref(), InitKind::Shallow);
                 } else {
-                    self.gather_init(place.as_place_ref(), InitKind::Deep);
+                    self.gather_init(place.as_ref(), InitKind::Deep);
                 }
                 self.gather_rvalue(rval);
             }
@@ -286,7 +286,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::InlineAsm(ref asm) => {
                 for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
                     if !kind.is_indirect {
-                        self.gather_init(output.as_place_ref(), InitKind::Deep);
+                        self.gather_init(output.as_ref(), InitKind::Deep);
                     }
                 }
                 for (_, input) in asm.inputs.iter() {
@@ -376,7 +376,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 self.create_move_path(location);
                 self.gather_operand(value);
-                self.gather_init(location.as_place_ref(), InitKind::Deep);
+                self.gather_init(location.as_ref(), InitKind::Deep);
             }
             TerminatorKind::Call {
                 ref func,
@@ -391,7 +391,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 }
                 if let Some((ref destination, _bb)) = *destination {
                     self.create_move_path(destination);
-                    self.gather_init(destination.as_place_ref(), InitKind::NonPanicPathOnly);
+                    self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
             }
         }

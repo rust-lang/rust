@@ -309,7 +309,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.body, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_place.as_place_ref()),
+                              self.move_data().rev_lookup.find(dest_place.as_ref()),
                               |mpi| { in_out.insert(mpi); });
     }
 }
@@ -367,7 +367,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 0 (initialized).
         on_lookup_result_bits(self.tcx, self.body, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_place.as_place_ref()),
+                              self.move_data().rev_lookup.find(dest_place.as_ref()),
                               |mpi| { in_out.remove(mpi); });
     }
 }
@@ -423,7 +423,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.body, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_place.as_place_ref()),
+                              self.move_data().rev_lookup.find(dest_place.as_ref()),
                               |mpi| { in_out.insert(mpi); });
     }
 }

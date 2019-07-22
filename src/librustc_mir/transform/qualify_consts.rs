@@ -243,7 +243,7 @@ trait Qualif {
     fn in_operand(cx: &ConstCx<'_, 'tcx>, operand: &Operand<'tcx>) -> bool {
         match *operand {
             Operand::Copy(ref place) |
-            Operand::Move(ref place) => Self::in_place(cx, place.as_place_ref()),
+            Operand::Move(ref place) => Self::in_place(cx, place.as_ref()),
 
             Operand::Constant(ref constant) => {
                 if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
@@ -272,7 +272,7 @@ trait Qualif {
             Rvalue::NullaryOp(..) => false,
 
             Rvalue::Discriminant(ref place) |
-            Rvalue::Len(ref place) => Self::in_place(cx, place.as_place_ref()),
+            Rvalue::Len(ref place) => Self::in_place(cx, place.as_ref()),
 
             Rvalue::Use(ref operand) |
             Rvalue::Repeat(ref operand, _) |
@@ -298,7 +298,7 @@ trait Qualif {
                     }
                 }
 
-                Self::in_place(cx, place.as_place_ref())
+                Self::in_place(cx, place.as_ref())
             }
 
             Rvalue::Aggregate(_, ref operands) => {
