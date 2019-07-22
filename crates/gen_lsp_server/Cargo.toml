@@ -15,4 +15,4 @@ serde = { version = "1.0.83", features = ["derive"] }
 crossbeam-channel = "0.3.5"
 
 [dev-dependencies]
-flexi_logger = "0.13.0"
+flexi_logger = "0.14.0"
