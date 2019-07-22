@@ -362,6 +362,7 @@ fn on_request(
         .on::<req::References>(handlers::handle_references)?
         .on::<req::Formatting>(handlers::handle_formatting)?
         .on::<req::DocumentHighlightRequest>(handlers::handle_document_highlight)?
+        .on::<req::InlayHints>(handlers::handle_inlay_hints)?
         .finish();
     Ok(())
 }

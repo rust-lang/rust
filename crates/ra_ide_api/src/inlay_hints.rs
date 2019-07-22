@@ -9,16 +9,15 @@ use ra_syntax::{
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum InlayKind {
-    LetBinding,
-    ClosureParameter,
+    LetBindingType,
+    ClosureParameterType,
 }
 
 #[derive(Debug)]
 pub struct InlayHint {
     pub range: TextRange,
-    pub text: SmolStr,
-    pub inlay_kind: InlayKind,
-    pub inlay_type_string: SmolStr,
+    pub kind: InlayKind,
+    pub label: SmolStr,
 }
 
 pub(crate) fn inlay_hints(db: &RootDatabase, file_id: FileId, file: &SourceFile) -> Vec<InlayHint> {
@@ -56,9 +55,8 @@ fn get_inlay_hints(
 
             Some(vec![InlayHint {
                 range: pat_range,
-                text: let_syntax.text().to_string().into(),
-                inlay_kind: InlayKind::LetBinding,
-                inlay_type_string,
+                kind: InlayKind::LetBindingType,
+                label: inlay_type_string,
             }])
         })
         .visit(|closure_parameter: ast::LambdaExpr| match closure_parameter.param_list() {
@@ -80,9 +78,8 @@ fn get_inlay_hints(
 
                         Some(InlayHint {
                             range: closure_param_syntax.text_range(),
-                            text: closure_param_syntax.text().to_string().into(),
-                            inlay_kind: InlayKind::ClosureParameter,
-                            inlay_type_string,
+                            kind: InlayKind::ClosureParameterType,
+                            label: inlay_type_string,
                         })
                     })
                     .collect(),
@@ -149,39 +146,33 @@ fn main() {
         assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [71; 75),
-        text: "let test = 54;",
-        inlay_kind: LetBinding,
-        inlay_type_string: "i32",
+        kind: LetBindingType,
+        label: "i32",
     },
     InlayHint {
         range: [121; 125),
-        text: "let test = OuterStruct {};",
-        inlay_kind: LetBinding,
-        inlay_type_string: "OuterStruct",
+        kind: LetBindingType,
+        label: "OuterStruct",
     },
     InlayHint {
         range: [297; 305),
-        text: "let mut test = 33;",
-        inlay_kind: LetBinding,
-        inlay_type_string: "i32",
+        kind: LetBindingType,
+        label: "i32",
     },
     InlayHint {
         range: [417; 426),
-        text: "let i_squared = i * i;",
-        inlay_kind: LetBinding,
-        inlay_type_string: "u32",
+        kind: LetBindingType,
+        label: "u32",
     },
     InlayHint {
         range: [496; 502),
-        text: "let (x, c) = (42, \'a\');",
-        inlay_kind: LetBinding,
-        inlay_type_string: "(i32, char)",
+        kind: LetBindingType,
+        label: "(i32, char)",
     },
     InlayHint {
         range: [524; 528),
-        text: "let test = (42, \'a\');",
-        inlay_kind: LetBinding,
-        inlay_type_string: "(i32, char)",
+        kind: LetBindingType,
+        label: "(i32, char)",
     },
 ]"#
         );
