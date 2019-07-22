@@ -43,6 +43,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         L_BRACK,
         PIPE,
         MOVE_KW,
+        BOX_KW,
         IF_KW,
         WHILE_KW,
         MATCH_KW,
@@ -529,6 +530,8 @@ fn try_block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 // test box_expr
 // fn foo() {
 //     let x = box 1i32;
+//     let y = (box 1i32, box 2i32);
+//     let z = Foo(box 1i32, box 2i32);
 // }
 fn box_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![box]));
