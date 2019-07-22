@@ -1,1 +1,1 @@
-CHAR 2 "\'1"
+LIFETIME 2 "\'1"

@@ -1,7 +1,39 @@
 SOURCE_FILE@[0; 42)
   SHEBANG@[0; 20) "#!/use/bin/env rusti"
   WHITESPACE@[20; 21) "\n"
-  ERROR@[21; 41)
-    SHEBANG@[21; 41) "#!/use/bin/env rusti"
+  ATTR@[21; 23)
+    POUND@[21; 22) "#"
+    EXCL@[22; 23) "!"
+  ERROR@[23; 24)
+    SLASH@[23; 24) "/"
+  USE_ITEM@[24; 28)
+    USE_KW@[24; 27) "use"
+    ERROR@[27; 28)
+      SLASH@[27; 28) "/"
+  MACRO_CALL@[28; 31)
+    PATH@[28; 31)
+      PATH_SEGMENT@[28; 31)
+        NAME_REF@[28; 31)
+          IDENT@[28; 31) "bin"
+  ERROR@[31; 32)
+    SLASH@[31; 32) "/"
+  MACRO_CALL@[32; 41)
+    PATH@[32; 35)
+      PATH_SEGMENT@[32; 35)
+        NAME_REF@[32; 35)
+          IDENT@[32; 35) "env"
+    WHITESPACE@[35; 36) " "
+    NAME@[36; 41)
+      IDENT@[36; 41) "rusti"
   WHITESPACE@[41; 42) "\n"
-error 21: expected an item
+error 23: expected `[`
+error 23: expected an item
+error 27: expected one of `*`, `::`, `{`, `self`, `super` or an indentifier
+error 28: expected SEMI
+error 31: expected EXCL
+error 31: expected `{`, `[`, `(`
+error 31: expected SEMI
+error 31: expected an item
+error 35: expected EXCL
+error 41: expected `{`, `[`, `(`
+error 41: expected SEMI

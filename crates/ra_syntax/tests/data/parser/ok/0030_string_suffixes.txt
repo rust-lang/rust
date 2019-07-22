@@ -11,7 +11,7 @@ SOURCE_FILE@[0; 112)
     BLOCK@[10; 111)
       L_CURLY@[10; 11) "{"
       WHITESPACE@[11; 16) "\n    "
-      LET_STMT@[16; 27)
+      LET_STMT@[16; 31)
         LET_KW@[16; 19) "let"
         WHITESPACE@[19; 20) " "
         PLACEHOLDER_PAT@[20; 21)
@@ -19,14 +19,8 @@ SOURCE_FILE@[0; 112)
         WHITESPACE@[21; 22) " "
         EQ@[22; 23) "="
         WHITESPACE@[23; 24) " "
-        LITERAL@[24; 27)
-          CHAR@[24; 27) "\'c\'"
-      EXPR_STMT@[27; 31)
-        PATH_EXPR@[27; 30)
-          PATH@[27; 30)
-            PATH_SEGMENT@[27; 30)
-              NAME_REF@[27; 30)
-                IDENT@[27; 30) "u32"
+        LITERAL@[24; 30)
+          CHAR@[24; 30) "\'c\'u32"
         SEMI@[30; 31) ";"
       WHITESPACE@[31; 36) "\n    "
       LET_STMT@[36; 60)
@@ -67,4 +61,3 @@ SOURCE_FILE@[0; 112)
       WHITESPACE@[109; 110) "\n"
       R_CURLY@[110; 111) "}"
   WHITESPACE@[111; 112) "\n"
-error 27: expected SEMI
