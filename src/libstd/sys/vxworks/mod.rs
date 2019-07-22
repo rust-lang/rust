@@ -7,14 +7,8 @@ pub use crate::os::vxworks as platform;
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;
 
-#[macro_use]
-pub mod weak;
-
 pub mod alloc;
 pub mod args;
-pub mod android;
-//#[cfg(feature = "backtrace")]
-//pub mod backtrace;
 pub mod cmath;
 pub mod condvar;
 pub mod env;
@@ -25,12 +19,7 @@ pub mod fs;
 pub mod memchr;
 pub mod io;
 pub mod mutex;
-#[cfg(not(target_os = "l4re"))]
 pub mod net;
-#[cfg(target_os = "l4re")]
-mod l4re;
-#[cfg(target_os = "l4re")]
-pub use self::l4re::net;
 pub mod os;
 pub mod path;
 pub mod pipe;
@@ -61,9 +50,6 @@ pub fn init() {
     unsafe fn reset_sigpipe() { }
 }
 
-#[cfg(target_os = "android")]
-pub use crate::sys::android::signal;
-#[cfg(not(target_os = "android"))]
 pub use libc::signal;
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
