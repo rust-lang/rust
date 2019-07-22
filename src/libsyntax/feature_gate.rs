@@ -126,6 +126,9 @@ declare_features! (
 
     // no-tracking-issue-start
 
+    // Allows using compiler's own crates.
+    (active, rustc_private, "1.0.0", Some(27812), None),
+
     // Allows using the `rust-intrinsic`'s "ABI".
     (active, intrinsics, "1.0.0", None, None),
 

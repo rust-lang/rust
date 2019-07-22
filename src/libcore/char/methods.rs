@@ -553,10 +553,12 @@ impl char {
     /// 'XID_Start' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to `ID_Start` but modified for closure under `NFKx`.
-    #[unstable(feature = "rustc_private",
-               reason = "mainly needed for compiler internals",
-               issue = "27812")]
-    #[inline]
+    #[cfg_attr(bootstrap,
+               unstable(feature = "rustc_private",
+                        reason = "mainly needed for compiler internals",
+                        issue = "27812"))]
+    #[cfg_attr(not(bootstrap),
+               unstable(feature = "unicode_internals", issue = "0"))]
     pub fn is_xid_start(self) -> bool {
         derived_property::XID_Start(self)
     }
@@ -567,9 +569,12 @@ impl char {
     /// 'XID_Continue' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-    #[unstable(feature = "rustc_private",
-               reason = "mainly needed for compiler internals",
-               issue = "27812")]
+    #[cfg_attr(bootstrap,
+               unstable(feature = "rustc_private",
+                        reason = "mainly needed for compiler internals",
+                        issue = "27812"))]
+    #[cfg_attr(not(bootstrap),
+               unstable(feature = "unicode_internals", issue = "0"))]
     #[inline]
     pub fn is_xid_continue(self) -> bool {
         derived_property::XID_Continue(self)

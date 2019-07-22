@@ -12,6 +12,7 @@
 #![feature(decl_macro)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(unicode_internals)]
 
 #![recursion_limit="256"]
 
