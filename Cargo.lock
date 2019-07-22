@@ -469,7 +469,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "flexi_logger"
-version = "0.13.4"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "chrono 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -538,7 +538,7 @@ name = "gen_lsp_server"
 version = "0.2.0"
 dependencies = [
  "crossbeam-channel 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "flexi_logger 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flexi_logger 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types 0.59.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1154,7 +1154,7 @@ name = "ra_cli"
 version = "0.1.0"
 dependencies = [
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "flexi_logger 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flexi_logger 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "indicatif 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_batch 0.1.0",
  "ra_db 0.1.0",
@@ -1240,7 +1240,7 @@ name = "ra_lsp_server"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "flexi_logger 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flexi_logger 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gen_lsp_server 0.2.0",
  "log 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types 0.59.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2184,7 +2184,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum fake-simd 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 "checksum filetime 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "2f8c63033fcba1f51ef744505b3cad42510432b904c062afa67ad7ece008429d"
 "checksum fixedbitset 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "86d4de0081402f5e88cdac65c8dcdcc73118c1a7a465e2a05f0da05843a8ea33"
-"checksum flexi_logger 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)" = "85f80d16fde95e0f424de0b523d40278fd66925a81247246963fcdf1f390f9fb"
+"checksum flexi_logger 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2c33205472cdf9f0626ff7c058d4b9cbef51673ceaf1169e54d4be49133cbab2"
 "checksum format-buf 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f7aea5a5909a74969507051a3b17adc84737e31a5f910559892aedce026f4d53"
 "checksum fs_extra 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
 "checksum fsevent 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5ab7d1bd1bd33cc98b0889831b72da23c0aa4df9cec7e0702f46ecea04b35db6"
