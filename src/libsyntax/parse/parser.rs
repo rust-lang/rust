@@ -1498,7 +1498,7 @@ impl<'a> Parser<'a> {
         F: Fn(&token::Token) -> bool
     {
         let attrs = self.parse_arg_attributes()?;
-        if let Ok(Some(mut arg)) = self.parse_self_arg() {
+        if let Some(mut arg) = self.parse_self_arg()? {
             arg.attrs = attrs.into();
             return self.recover_bad_self_arg(arg, is_trait_item);
         }
@@ -4675,6 +4675,9 @@ impl<'a> Parser<'a> {
     fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
+            if self.token == token::Eof {
+                break;
+            }
             let stmt = match self.parse_full_stmt(false) {
                 Err(mut err) => {
                     err.emit();
@@ -4689,8 +4692,6 @@ impl<'a> Parser<'a> {
             };
             if let Some(stmt) = stmt {
                 stmts.push(stmt);
-            } else if self.token == token::Eof {
-                break;
             } else {
                 // Found only `;` or `}`.
                 continue;
@@ -7454,7 +7455,9 @@ impl<'a> Parser<'a> {
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
-                let kw_name = if let Ok(Some(_)) = self.parse_self_arg_with_attrs() {
+                let kw_name = if let Ok(Some(_)) = self.parse_self_arg_with_attrs()
+                    .map_err(|mut e| e.cancel())
+                {
                     "method"
                 } else {
                     "function"
@@ -7505,7 +7508,9 @@ impl<'a> Parser<'a> {
                 self.eat_to_tokens(&[&token::Gt]);
                 self.bump();  // `>`
                 let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
-                    if let Ok(Some(_)) = self.parse_self_arg_with_attrs() {
+                    if let Ok(Some(_)) = self.parse_self_arg_with_attrs()
+                        .map_err(|mut e| e.cancel())
+                    {
                         ("fn", "method", false)
                     } else {
                         ("fn", "function", false)
