@@ -1498,7 +1498,7 @@ impl<'a> Parser<'a> {
         F: Fn(&token::Token) -> bool
     {
         let attrs = self.parse_arg_attributes()?;
-        if let Ok(Some(mut arg)) = self.parse_self_arg() {
+        if let Some(mut arg) = self.parse_self_arg()? {
             arg.attrs = attrs.into();
             return self.recover_bad_self_arg(arg, is_trait_item);
         }
