@@ -626,18 +626,35 @@ macro_rules! todo {
 /// Creates an array of [`MaybeUninit`].
 ///
 /// This macro constructs an uninitialized array of the type `[MaybeUninit<K>; N]`.
+/// It exists solely because bootstrap does not yet support const array-init expressions.
 ///
 /// [`MaybeUninit`]: mem/union.MaybeUninit.html
+// FIXME: Remove both versions of this macro once bootstrap is 1.38.
 #[macro_export]
 #[unstable(feature = "maybe_uninit_array", issue = "53491")]
-macro_rules! uninitialized_array {
+#[cfg(bootstrap)]
+macro_rules! uninit_array {
     // This `assume_init` is safe because an array of `MaybeUninit` does not
     // require initialization.
-    // FIXME(#49147): Could be replaced by an array initializer, once those can
-    // be any const expression.
     ($t:ty; $size:expr) => (unsafe {
         MaybeUninit::<[MaybeUninit<$t>; $size]>::uninit().assume_init()
     });
+}
+
+/// Creates an array of [`MaybeUninit`].
+///
+/// This macro constructs an uninitialized array of the type `[MaybeUninit<K>; N]`.
+/// It exists solely because bootstrap does not yet support const array-init expressions.
+///
+/// [`MaybeUninit`]: mem/union.MaybeUninit.html
+// FIXME: Just inline this version of the macro once bootstrap is 1.38.
+#[macro_export]
+#[unstable(feature = "maybe_uninit_array", issue = "53491")]
+#[cfg(not(bootstrap))]
+macro_rules! uninit_array {
+    ($t:ty; $size:expr) => (
+        [MaybeUninit::<$t>::UNINIT; $size]
+    );
 }
 
 /// Built-in macros to the compiler itself.
