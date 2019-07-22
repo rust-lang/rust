@@ -191,16 +191,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 exit_block.unit()
             }
             ExprKind::Call { ty, fun, args, from_hir_call } => {
-                let intrinsic = match ty.sty {
+                let (fn_def_id, intrinsic) = match ty.sty {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
                         if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
-                            Some(this.hir.tcx().item_name(def_id).as_str())
+                            (Some(def_id), Some(this.hir.tcx().item_name(def_id).as_str()))
                         } else {
-                            None
+                            (Some(def_id), None)
                         }
                     }
-                    _ => None,
+                    _ => (None, None),
                 };
                 let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
                 let fun = unpack!(block = this.as_local_operand(block, fun));
@@ -237,26 +237,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
                         .collect();
 
+                    let drop_location = if fn_def_id.is_some()
+                        && this.hir.tcx().lang_items().drop_fn() == fn_def_id
+                    {
+                        assert_eq!(args.len(), 1, "drop() must have exactly one argument");
+                        match &args[0] {
+                            Operand::Move(place) => Some(place.clone()),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    };
+
                     let success = this.cfg.start_new_block();
                     let cleanup = this.diverge_cleanup();
-                    this.cfg.terminate(
-                        block,
-                        source_info,
-                        TerminatorKind::Call {
-                            func: fun,
-                            args,
-                            cleanup: Some(cleanup),
-                            // FIXME(varkor): replace this with an uninhabitedness-based check.
-                            // This requires getting access to the current module to call
-                            // `tcx.is_ty_uninhabited_from`, which is currently tricky to do.
-                            destination: if expr.ty.is_never() {
-                                None
-                            } else {
-                                Some((destination.clone(), success))
+
+                    if let Some(location) = drop_location {
+                        this.cfg.terminate(
+                            block,
+                            source_info,
+                            TerminatorKind::Drop {
+                                location,
+                                target: success,
+                                unwind: Some(cleanup)
                             },
-                            from_hir_call,
-                        },
-                    );
+                        );
+                    } else {
+                        this.cfg.terminate(
+                            block,
+                            source_info,
+                            TerminatorKind::Call {
+                                func: fun,
+                                args,
+                                cleanup: Some(cleanup),
+                                // FIXME(varkor): replace this with an uninhabitedness-based check.
+                                // This requires getting access to the current module to call
+                                // `tcx.is_ty_uninhabited_from`, which is currently tricky to do.
+                                destination: if expr.ty.is_never() {
+                                    None
+                                } else {
+                                    Some((destination.clone(), success))
+                                },
+                                from_hir_call,
+                            },
+                        );
+                    }
                     success.unit()
                 }
             }

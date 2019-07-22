@@ -693,6 +693,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// [`Copy`]: ../../std/marker/trait.Copy.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), lang = "drop")]
 pub fn drop<T>(_x: T) { }
 
 /// Interprets `src` as having type `&U`, and then reads `src` without moving

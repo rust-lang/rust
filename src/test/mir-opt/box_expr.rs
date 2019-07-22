@@ -53,7 +53,7 @@ impl Drop for S {
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = move _1;
-//         _3 = const std::mem::drop::<std::boxed::Box<S>>(move _4) -> [return: bb5, unwind: bb7];
+//         drop(_4) -> [return: bb5, unwind: bb7];
 //     }
 //
 //     bb5: {

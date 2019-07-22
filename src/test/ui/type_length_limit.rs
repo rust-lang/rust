@@ -22,6 +22,8 @@ link! { F, G }
 
 pub struct G;
 
+fn take<T>(x: T) {}
+
 fn main() {
-    drop::<Option<A>>(None);
+    take::<Option<A>>(None);
 }

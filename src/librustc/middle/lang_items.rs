@@ -279,7 +279,7 @@ language_item_table! {
     SyncTraitLangItem,           "sync",               sync_trait,              Target::Trait;
     FreezeTraitLangItem,         "freeze",             freeze_trait,            Target::Trait;
 
-    DropTraitLangItem,           "drop",               drop_trait,              Target::Trait;
+    DropTraitLangItem,           "drop_trait",         drop_trait,              Target::Trait;
 
     CoerceUnsizedTraitLangItem,  "coerce_unsized",     coerce_unsized_trait,    Target::Trait;
     DispatchFromDynTraitLangItem,"dispatch_from_dyn",  dispatch_from_dyn_trait, Target::Trait;
@@ -349,6 +349,7 @@ language_item_table! {
 
     ExchangeMallocFnLangItem,    "exchange_malloc",    exchange_malloc_fn,      Target::Fn;
     BoxFreeFnLangItem,           "box_free",           box_free_fn,             Target::Fn;
+    DropFnLangItem,              "drop",               drop_fn,                 Target::Fn;
     DropInPlaceFnLangItem,       "drop_in_place",      drop_in_place_fn,        Target::Fn;
     OomLangItem,                 "oom",                oom,                     Target::Fn;
     AllocLayoutLangItem,         "alloc_layout",       alloc_layout,            Target::Struct;
