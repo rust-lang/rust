@@ -6,10 +6,40 @@ use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::attr;
 use syntax::ast;
-use syntax::print::pprust;
+use syntax::source_map::respan;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 use std::iter;
+
+// #[test_case] is used by custom test authors to mark tests
+// When building for test, it needs to make the item public and gensym the name
+// Otherwise, we'll omit the item. This behavior means that any item annotated
+// with #[test_case] is never addressable.
+//
+// We mark item with an inert attribute "rustc_test_marker" which the test generation
+// logic will pick up on.
+pub fn expand_test_case(
+    ecx: &mut ExtCtxt<'_>,
+    attr_sp: Span,
+    _meta_item: &ast::MetaItem,
+    anno_item: Annotatable
+) -> Vec<Annotatable> {
+    if !ecx.ecfg.should_test { return vec![]; }
+
+    let sp = attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(ecx.current_expansion.id));
+    let mut item = anno_item.expect_item();
+    item = item.map(|mut item| {
+        item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
+        item.ident = item.ident.gensym();
+        item.attrs.push(
+            ecx.attribute(sp,
+                ecx.meta_word(sp, sym::rustc_test_marker))
+        );
+        item
+    });
+
+    return vec![Annotatable::Item(item)]
+}
 
 pub fn expand_test(
     cx: &mut ExtCtxt<'_>,
@@ -166,8 +196,6 @@ pub fn expand_test_or_bench(
         vec![],
         ast::ItemKind::ExternCrate(Some(sym::test))
     );
-
-    log::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
         // Access to libtest under a gensymed name
