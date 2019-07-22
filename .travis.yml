@@ -16,7 +16,7 @@ matrix:
           script:
               - rustup component add rustfmt
               - rustup component add rust-src
-              - printf "\n\n[profile.dev]\ndebug = false\nopt-level = 1\n" >> Cargo.toml
+              - printf "\n\n[profile.dev]\ndebug = false\n" >> Cargo.toml
               - cargo test --no-run  # let's measure compile time separately
               - cargo test
           env:
