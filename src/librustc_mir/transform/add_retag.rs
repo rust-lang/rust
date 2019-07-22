@@ -86,7 +86,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                     .filter(needs_retag)
                     .collect::<Vec<_>>();
             // Emit their retags.
-            basic_blocks[START_BLOCK].statements.splice(0..0,
+            let _ = basic_blocks[START_BLOCK].statements.splice(0..0,
                 places.into_iter().map(|place| Statement {
                     source_info,
                     kind: StatementKind::Retag(RetagKind::FnEntry, box(place)),
