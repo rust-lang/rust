@@ -75,10 +75,10 @@ use Entry::*;
 ///
 /// // look up the values associated with some keys.
 /// let to_find = ["Up!", "Office Space"];
-/// for book in &to_find {
-///     match movie_reviews.get(book) {
-///        Some(review) => println!("{}: {}", book, review),
-///        None => println!("{} is unreviewed.", book)
+/// for movie in &to_find {
+///     match movie_reviews.get(movie) {
+///        Some(review) => println!("{}: {}", movie, review),
+///        None => println!("{} is unreviewed.", movie)
 ///     }
 /// }
 ///
