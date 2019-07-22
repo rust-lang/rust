@@ -273,6 +273,7 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(maybe_uninit_ref)]
+#![feature(maybe_uninit_slice)]
 #![feature(mem_take)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
