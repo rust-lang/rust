@@ -18,6 +18,8 @@
 
 // FIXME: we should be more explicit about the exact APIs that we
 // export to users.
+#[unstable(feature = "test", issue = "27812")]
+#[doc(inline)]
 pub use libtest::{
     assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
     Bencher, TestFn::DynTestFn, TestName::DynTestName, Metric, MetricMap, Options,
@@ -27,6 +29,8 @@ pub use libtest::{
     TestResult::TrIgnored, TestResult::TrOk, stats::Summary
 };
 
+#[unstable(feature = "test", issue = "27812")]
+#[doc(inline)]
 pub use std::hint::black_box;
 
 #[cfg(test)]
