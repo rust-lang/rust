@@ -79,7 +79,7 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
 
         if self.found {
             self.handler
-                .span_err(item.span, "cannot define more than one #[global_allocator]");
+                .span_err(item.span, "cannot define more than one `#[global_allocator]`");
             return smallvec![item];
         }
         self.found = true;
@@ -280,7 +280,7 @@ impl AllocFnFactory<'_> {
             AllocatorTy::Unit => (self.cx.ty(self.span, TyKind::Tup(Vec::new())), expr),
 
             AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
-                panic!("can't convert AllocatorTy to an output")
+                panic!("can't convert `AllocatorTy` to an output")
             }
         }
     }
