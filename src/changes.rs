@@ -23,8 +23,8 @@ use std::{
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
+use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
-use serde::ser::{Serializer, SerializeStruct};
 
 /// The categories we use when analyzing changes between crate versions.
 ///
@@ -71,7 +71,8 @@ pub struct RSymbol(pub Symbol);
 
 impl Serialize for RSymbol {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&format!("{}", self.0))
     }
@@ -104,7 +105,8 @@ impl fmt::Display for Name {
 
 impl Serialize for Name {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer,
+    where
+        S: Serializer,
     {
         match *self {
             Name::Symbol(ref name) => serializer.serialize_str(&format!("{}", name.0)),
@@ -221,7 +223,8 @@ impl Ord for PathChange {
 
 impl Serialize for PathChange {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer,
+    where
+        S: Serializer,
     {
         let mut state = serializer.serialize_struct("PathChange", 3)?;
         state.serialize_field("name", &self.name)?;
@@ -649,7 +652,8 @@ impl<'a> fmt::Display for ChangeType<'a> {
 
 impl<'tcx> Serialize for ChangeType<'tcx> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&format!("{}", self))
     }
@@ -810,7 +814,8 @@ impl<'tcx> Ord for Change<'tcx> {
 
 impl<'tcx> Serialize for Change<'tcx> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer,
+    where
+        S: Serializer,
     {
         let mut state = serializer.serialize_struct("Change", 3)?;
         state.serialize_field("name", &self.name)?;
@@ -965,7 +970,9 @@ impl<'tcx> ChangeSet<'tcx> {
             changes: &'a ChangeSet<'tcx>,
         }
 
-        let new_version = self.get_new_version(version).unwrap_or_else(|| "parse error".to_owned());
+        let new_version = self
+            .get_new_version(version)
+            .unwrap_or_else(|| "parse error".to_owned());
 
         let output = Output {
             old_version: version.to_owned(),
@@ -1026,14 +1033,19 @@ impl<'tcx> ChangeSet<'tcx> {
 
 impl<'tcx> Serialize for ChangeSet<'tcx> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer,
+    where
+        S: Serializer,
     {
         let mut state = serializer.serialize_struct("ChangeSet", 3)?;
 
         let path_changes: Vec<_> = self.path_changes.values().collect();
         state.serialize_field("path_changes", &path_changes)?;
 
-        let changes: Vec<_> = self.changes.values().filter(|c| c.output && !c.changes.is_empty()).collect();
+        let changes: Vec<_> = self
+            .changes
+            .values()
+            .filter(|c| c.output && !c.changes.is_empty())
+            .collect();
         state.serialize_field("changes", &changes)?;
 
         state.serialize_field("max_category", &self.max)?;
