@@ -34,9 +34,6 @@ fn const_fn_ctor() {
     const HELLO: SmolStr = SmolStr::new_inline_from_ascii(5, b"HELLO");
     const LONG: SmolStr = SmolStr::new_inline_from_ascii(22, b"ABCDEFGHIZKLMNOPQRSTUV");
 
-    // const TOO_LONG: SmolStr = SmolStr::new_inline_from_ascii(23, b"ABCDEFGHIZKLMNOPQRSTUVW");
-    // const NON_ASCII: SmolStr = SmolStr::new_inline_from_ascii(2, &[209, 139]);
-
     assert_eq!(EMPTY, SmolStr::from(""));
     assert_eq!(A, SmolStr::from("A"));
     assert_eq!(HELLO, SmolStr::from("HELLO"));
