@@ -1913,7 +1913,7 @@ pub unsafe fn _mm256_moveldup_ps(a: __m256) -> __m256 {
 }
 
 /// Duplicate even-indexed double-precision (64-bit) floating-point elements
-/// from "a", and returns the results.
+/// from `a`, and returns the results.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_movedup_pd)
 #[inline]

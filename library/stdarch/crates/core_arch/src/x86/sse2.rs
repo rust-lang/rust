@@ -2315,7 +2315,7 @@ pub unsafe fn _mm_ucomineq_sd(a: __m128d, b: __m128d) -> i32 {
     ucomineqsd(a, b)
 }
 
-/// Converts packed double-precision (64-bit) floating-point elements in "a" to
+/// Converts packed double-precision (64-bit) floating-point elements in `a` to
 /// packed single-precision (32-bit) floating-point elements
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpd_ps)
@@ -2378,7 +2378,7 @@ pub unsafe fn _mm_cvtsd_ss(a: __m128, b: __m128d) -> __m128 {
     cvtsd2ss(a, b)
 }
 
-/// Returns the lower double-precision (64-bit) floating-point element of "a".
+/// Returns the lower double-precision (64-bit) floating-point element of `a`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsd_f64)
 #[inline]
