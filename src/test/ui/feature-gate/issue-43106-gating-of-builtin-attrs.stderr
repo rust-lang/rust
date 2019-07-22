@@ -632,7 +632,7 @@ warning: unused attribute
 LL |     #[no_std] fn f() { }
    |     ^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:483:5
    |
 LL |     #[no_std] fn f() { }
@@ -644,7 +644,7 @@ warning: unused attribute
 LL |     #[no_std] struct S;
    |     ^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:487:5
    |
 LL |     #[no_std] struct S;
@@ -656,7 +656,7 @@ warning: unused attribute
 LL |     #[no_std] type T = S;
    |     ^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:491:5
    |
 LL |     #[no_std] type T = S;
@@ -668,7 +668,7 @@ warning: unused attribute
 LL |     #[no_std] impl S { }
    |     ^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:495:5
    |
 LL |     #[no_std] impl S { }
@@ -680,7 +680,7 @@ warning: unused attribute
 LL | #[no_std]
    | ^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:475:1
    |
 LL | #[no_std]
@@ -704,7 +704,7 @@ warning: unused attribute
 LL |     #[crate_name = "0900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:638:5
    |
 LL |     #[crate_name = "0900"] fn f() { }
@@ -716,7 +716,7 @@ warning: unused attribute
 LL |     #[crate_name = "0900"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:642:5
    |
 LL |     #[crate_name = "0900"] struct S;
@@ -728,7 +728,7 @@ warning: unused attribute
 LL |     #[crate_name = "0900"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:646:5
    |
 LL |     #[crate_name = "0900"] type T = S;
@@ -740,7 +740,7 @@ warning: unused attribute
 LL |     #[crate_name = "0900"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:650:5
    |
 LL |     #[crate_name = "0900"] impl S { }
@@ -752,7 +752,7 @@ warning: unused attribute
 LL | #[crate_name = "0900"]
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:630:1
    |
 LL | #[crate_name = "0900"]
@@ -776,7 +776,7 @@ warning: unused attribute
 LL |     #[crate_type = "0800"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:663:5
    |
 LL |     #[crate_type = "0800"] fn f() { }
@@ -788,7 +788,7 @@ warning: unused attribute
 LL |     #[crate_type = "0800"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:667:5
    |
 LL |     #[crate_type = "0800"] struct S;
@@ -800,7 +800,7 @@ warning: unused attribute
 LL |     #[crate_type = "0800"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:671:5
    |
 LL |     #[crate_type = "0800"] type T = S;
@@ -812,7 +812,7 @@ warning: unused attribute
 LL |     #[crate_type = "0800"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:675:5
    |
 LL |     #[crate_type = "0800"] impl S { }
@@ -824,7 +824,7 @@ warning: unused attribute
 LL | #[crate_type = "0800"]
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:655:1
    |
 LL | #[crate_type = "0800"]
@@ -848,7 +848,7 @@ warning: unused attribute
 LL |     #[feature(x0600)] fn f() { }
    |     ^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:688:5
    |
 LL |     #[feature(x0600)] fn f() { }
@@ -860,7 +860,7 @@ warning: unused attribute
 LL |     #[feature(x0600)] struct S;
    |     ^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:692:5
    |
 LL |     #[feature(x0600)] struct S;
@@ -872,7 +872,7 @@ warning: unused attribute
 LL |     #[feature(x0600)] type T = S;
    |     ^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:696:5
    |
 LL |     #[feature(x0600)] type T = S;
@@ -884,7 +884,7 @@ warning: unused attribute
 LL |     #[feature(x0600)] impl S { }
    |     ^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:700:5
    |
 LL |     #[feature(x0600)] impl S { }
@@ -896,7 +896,7 @@ warning: unused attribute
 LL | #[feature(x0600)]
    | ^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:680:1
    |
 LL | #[feature(x0600)]
@@ -920,7 +920,7 @@ warning: unused attribute
 LL |     #[no_main] fn f() { }
    |     ^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:714:5
    |
 LL |     #[no_main] fn f() { }
@@ -932,7 +932,7 @@ warning: unused attribute
 LL |     #[no_main] struct S;
    |     ^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:718:5
    |
 LL |     #[no_main] struct S;
@@ -944,7 +944,7 @@ warning: unused attribute
 LL |     #[no_main] type T = S;
    |     ^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:722:5
    |
 LL |     #[no_main] type T = S;
@@ -956,7 +956,7 @@ warning: unused attribute
 LL |     #[no_main] impl S { }
    |     ^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:726:5
    |
 LL |     #[no_main] impl S { }
@@ -968,7 +968,7 @@ warning: unused attribute
 LL | #[no_main]
    | ^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:706:1
    |
 LL | #[no_main]
@@ -992,7 +992,7 @@ warning: unused attribute
 LL |     #[recursion_limit="0200"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:752:5
    |
 LL |     #[recursion_limit="0200"] fn f() { }
@@ -1004,7 +1004,7 @@ warning: unused attribute
 LL |     #[recursion_limit="0200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:756:5
    |
 LL |     #[recursion_limit="0200"] struct S;
@@ -1016,7 +1016,7 @@ warning: unused attribute
 LL |     #[recursion_limit="0200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:760:5
    |
 LL |     #[recursion_limit="0200"] type T = S;
@@ -1028,7 +1028,7 @@ warning: unused attribute
 LL |     #[recursion_limit="0200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:764:5
    |
 LL |     #[recursion_limit="0200"] impl S { }
@@ -1040,7 +1040,7 @@ warning: unused attribute
 LL | #[recursion_limit="0200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:744:1
    |
 LL | #[recursion_limit="0200"]
@@ -1064,7 +1064,7 @@ warning: unused attribute
 LL |     #[type_length_limit="0100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:777:5
    |
 LL |     #[type_length_limit="0100"] fn f() { }
@@ -1076,7 +1076,7 @@ warning: unused attribute
 LL |     #[type_length_limit="0100"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:781:5
    |
 LL |     #[type_length_limit="0100"] struct S;
@@ -1088,7 +1088,7 @@ warning: unused attribute
 LL |     #[type_length_limit="0100"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:785:5
    |
 LL |     #[type_length_limit="0100"] type T = S;
@@ -1100,7 +1100,7 @@ warning: unused attribute
 LL |     #[type_length_limit="0100"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:789:5
    |
 LL |     #[type_length_limit="0100"] impl S { }
@@ -1112,7 +1112,7 @@ warning: unused attribute
 LL | #[type_length_limit="0100"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:769:1
    |
 LL | #[type_length_limit="0100"]

@@ -226,7 +226,7 @@ impl<'a> StringReader<'a> {
                     loop {
                         idx = match string[idx..].find('\r') {
                             None => break,
-                            Some(it) => it + 1
+                            Some(it) => idx + it + 1
                         };
                         if string[idx..].chars().next() != Some('\n') {
                             self.err_span_(start + BytePos(idx as u32 - 1),

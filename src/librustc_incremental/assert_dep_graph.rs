@@ -190,7 +190,7 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
         for &(target_span, _, _, _) in then_this_would_need {
             tcx.sess.span_err(
                 target_span,
-                "no #[rustc_if_this_changed] annotation detected");
+                "no `#[rustc_if_this_changed]` annotation detected");
 
         }
         return;

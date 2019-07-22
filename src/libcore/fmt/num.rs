@@ -51,7 +51,7 @@ trait GenericRadix {
         // characters for a base 2 number.
         let zero = T::zero();
         let is_nonnegative = x >= zero;
-        let mut buf = uninitialized_array![u8; 128];
+        let mut buf = [MaybeUninit::<u8>::uninit(); 128];
         let mut curr = buf.len();
         let base = T::from_u8(Self::BASE);
         if is_nonnegative {
@@ -189,7 +189,7 @@ static DEC_DIGITS_LUT: &[u8; 200] =
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
         fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let mut buf = uninitialized_array![u8; 39];
+            let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len() as isize;
             let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();

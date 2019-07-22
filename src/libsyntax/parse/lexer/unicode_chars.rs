@@ -50,7 +50,7 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('─', "Box Drawings Light Horizontal", '-'),
     ('━', "Box Drawings Heavy Horizontal", '-'),
     ('㇐', "CJK Stroke H", '-'),
-    ('ꟷ', "Latin Epigraphic Letter Dideways", '-'),
+    ('ꟷ', "Latin Epigraphic Letter Sideways I", '-'),
     ('ᅳ', "Hangul Jungseong Eu", '-'),
     ('ㅡ', "Hangul Letter Eu", '-'),
     ('一', "CJK Unified Ideograph-4E00", '-'),

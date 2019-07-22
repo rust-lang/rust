@@ -205,7 +205,7 @@
 // Don't link to std. We are std.
 #![no_std]
 
-//#![warn(deprecated_in_future)] // FIXME: std still has quite a few uses of `mem::uninitialized`
+#![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
@@ -272,6 +272,7 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
+#![feature(maybe_uninit_ref)]
 #![feature(mem_take)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
