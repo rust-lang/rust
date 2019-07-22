@@ -9,6 +9,7 @@
 // See issue #59123 for a full explanation.
 
 // edition:2018
+// ignore-wasm32 issue #62807
 
 #![feature(generators, generator_trait)]
 

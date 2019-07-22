@@ -318,8 +318,10 @@ impl<'test> TestCx<'test> {
     }
 
     fn should_run_successfully(&self) -> bool {
+        let pass_mode = self.pass_mode();
         match self.config.mode {
-            RunPass | Ui => self.pass_mode() == Some(PassMode::Run),
+            Ui => pass_mode == Some(PassMode::Run),
+            RunPass => pass_mode == Some(PassMode::Run) || pass_mode.is_none(),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
