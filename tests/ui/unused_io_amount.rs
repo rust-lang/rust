@@ -4,9 +4,9 @@
 use std::io;
 
 fn try_macro<T: io::Read + io::Write>(s: &mut T) -> io::Result<()> {
-    try!(s.write(b"test"));
+    r#try!(s.write(b"test"));
     let mut buf = [0u8; 4];
-    try!(s.read(&mut buf));
+    r#try!(s.read(&mut buf));
     Ok(())
 }
 

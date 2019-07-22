@@ -215,10 +215,10 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     };
 
     if true {
-        try!(Ok("foo"));
+        r#try!(Ok("foo"));
     } else {
         //~ ERROR same body as `if` block
-        try!(Ok("foo"));
+        r#try!(Ok("foo"));
     }
 
     if true {

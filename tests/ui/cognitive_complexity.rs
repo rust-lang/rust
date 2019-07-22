@@ -313,7 +313,7 @@ fn mcarton_sees_all() {
 }
 
 #[clippy::cognitive_complexity = "0"]
-fn try() -> Result<i32, &'static str> {
+fn try_() -> Result<i32, &'static str> {
     match 5 {
         5 => Ok(5),
         _ => return Err("bla"),
@@ -322,14 +322,14 @@ fn try() -> Result<i32, &'static str> {
 
 #[clippy::cognitive_complexity = "0"]
 fn try_again() -> Result<i32, &'static str> {
-    let _ = try!(Ok(42));
-    let _ = try!(Ok(43));
-    let _ = try!(Ok(44));
-    let _ = try!(Ok(45));
-    let _ = try!(Ok(46));
-    let _ = try!(Ok(47));
-    let _ = try!(Ok(48));
-    let _ = try!(Ok(49));
+    let _ = r#try!(Ok(42));
+    let _ = r#try!(Ok(43));
+    let _ = r#try!(Ok(44));
+    let _ = r#try!(Ok(45));
+    let _ = r#try!(Ok(46));
+    let _ = r#try!(Ok(47));
+    let _ = r#try!(Ok(48));
+    let _ = r#try!(Ok(49));
     match 5 {
         5 => Ok(5),
         _ => return Err("bla"),
