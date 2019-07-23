@@ -7670,6 +7670,9 @@ impl<'a> Parser<'a> {
         let ret = f(self);
         let last_token = if self.token_cursor.stack.len() == prev {
             &mut self.token_cursor.frame.last_token
+        } else if self.token_cursor.stack.is_empty() {//&& !self.unclosed_delims.is_empty() {
+            // This can happen with mismatched delimiters (#62881)
+            return Ok((ret?, TokenStream::new(vec![])));
         } else {
             &mut self.token_cursor.stack[prev].last_token
         };
