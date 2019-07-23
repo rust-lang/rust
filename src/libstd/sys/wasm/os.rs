@@ -4,7 +4,7 @@ use crate::fmt;
 use crate::io;
 use crate::path::{self, PathBuf};
 use crate::str;
-use crate::sys::{unsupported, Void, ExitSysCall, GetEnvSysCall, SetEnvSysCall};
+use crate::sys::{unsupported, Void};
 
 pub fn errno() -> i32 {
     0
@@ -73,16 +73,16 @@ pub fn env() -> Env {
     panic!("not supported on web assembly")
 }
 
-pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
-    Ok(GetEnvSysCall::perform(k))
+pub fn getenv(_: &OsStr) -> io::Result<Option<OsString>> {
+    Ok(None)
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    Ok(SetEnvSysCall::perform(k, Some(v)))
+pub fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
+    Err(io::Error::new(io::ErrorKind::Other, "cannot set env vars on wasm32-unknown-unknown"))
 }
 
-pub fn unsetenv(k: &OsStr) -> io::Result<()> {
-    Ok(SetEnvSysCall::perform(k, None))
+pub fn unsetenv(_: &OsStr) -> io::Result<()> {
+    Err(io::Error::new(io::ErrorKind::Other, "cannot unset env vars on wasm32-unknown-unknown"))
 }
 
 pub fn temp_dir() -> PathBuf {
@@ -94,7 +94,9 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(_code: i32) -> ! {
-    ExitSysCall::perform(_code as isize as usize)
+    unsafe {
+        crate::arch::wasm32::unreachable();
+    }
 }
 
 pub fn getpid() -> u32 {
