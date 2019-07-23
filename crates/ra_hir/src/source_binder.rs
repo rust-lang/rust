@@ -256,6 +256,14 @@ impl SourceAnalyzer {
         Some(self.infer.as_ref()?[pat_id].clone())
     }
 
+    pub fn type_of_pat_by_id(
+        &self,
+        _db: &impl HirDatabase,
+        pat_id: expr::PatId,
+    ) -> Option<crate::Ty> {
+        Some(self.infer.as_ref()?[pat_id].clone())
+    }
+
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
         let expr_id = self.body_source_map.as_ref()?.node_expr(&call.clone().into())?;
         self.infer.as_ref()?.method_resolution(expr_id)
