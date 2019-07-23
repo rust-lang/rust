@@ -166,6 +166,7 @@ pub fn target_machine_factory(sess: &Session, optlvl: config::OptLevel, find_fea
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();
+    let no_integrated_as = sess.target.target.options.no_integrated_as;
 
     Arc::new(move || {
         let tm = unsafe {
@@ -182,6 +183,7 @@ pub fn target_machine_factory(sess: &Session, optlvl: config::OptLevel, find_fea
                 singlethread,
                 asm_comments,
                 emit_stack_size_section,
+                no_integrated_as,
             )
         };
 
