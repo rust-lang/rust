@@ -4,21 +4,21 @@ error: expected type, found `0`
 LL |     println!("test"):
    |                     - help: try using a semicolon: `;`
 LL |     0;
-   |     ^ expecting a type here because of type ascription
+   |     ^ expected type
+   |
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
 
 error: expected type, found `0`
   --> $DIR/type-ascription-instead-of-statement-end.rs:9:23
    |
 LL |     println!("test"): 0;
-   |                       ^ expecting a type here because of type ascription
+   |                     - ^ expected type
+   |                     |
+   |                     tried to parse a type due to this type ascription
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-note: this expression expects an ascribed type after the colon
-  --> $DIR/type-ascription-instead-of-statement-end.rs:9:5
-   |
-LL |     println!("test"): 0;
-   |     ^^^^^^^^^^^^^^^^
-   = help: this might be indicative of a syntax error elsewhere
+   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
 
 error: aborting due to 2 previous errors
 

@@ -2,7 +2,7 @@ error: expected type, found `'static`
   --> $DIR/trait-object-macro-matcher.rs:9:8
    |
 LL |     m!('static);
-   |        ^^^^^^^
+   |        ^^^^^^^ expected type
 
 error: aborting due to previous error
 

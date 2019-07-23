@@ -1,0 +1,30 @@
+error[E0425]: cannot find value `input_cells` in this scope
+  --> $DIR/issue-34255-1.rs:7:9
+   |
+LL |         input_cells: Vec::new()
+   |         ^^^^^^^^^^^ a field by this name exists in `Self`
+
+error: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-34255-1.rs:7:30
+   |
+LL |         input_cells: Vec::new()
+   |                              ^^
+   |
+   = note: `#[deny(parenthesized_params_in_types_and_modules)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
+
+error[E0601]: `main` function not found in crate `issue_34255_1`
+   |
+   = note: consider adding a `main` function to `$DIR/issue-34255-1.rs`
+
+error[E0107]: wrong number of type arguments: expected 1, found 0
+  --> $DIR/issue-34255-1.rs:7:22
+   |
+LL |         input_cells: Vec::new()
+   |                      ^^^^^^^^^^ expected 1 type argument
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0425, E0601.
+For more information about an error, try `rustc --explain E0107`.

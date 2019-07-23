@@ -239,6 +239,7 @@ pub struct Parser<'a> {
     /// error.
     crate unclosed_delims: Vec<UnmatchedBrace>,
     crate last_unexpected_token_span: Option<Span>,
+    crate last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     crate subparser_name: Option<&'static str>,
 }
@@ -502,6 +503,7 @@ impl<'a> Parser<'a> {
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
             last_unexpected_token_span: None,
+            last_type_ascription: None,
             subparser_name,
         };
 
@@ -1422,7 +1424,10 @@ impl<'a> Parser<'a> {
             }
         } else {
             let msg = format!("expected type, found {}", self.this_token_descr());
-            return Err(self.fatal(&msg));
+            let mut err = self.fatal(&msg);
+            err.span_label(self.token.span, "expected type");
+            self.maybe_annotate_with_ascription(&mut err, true);
+            return Err(err);
         };
 
         let span = lo.to(self.prev_span);
@@ -2823,10 +2828,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an associative expression with operators of at least `min_prec` precedence.
-    fn parse_assoc_expr_with(&mut self,
-                                 min_prec: usize,
-                                 lhs: LhsExpr)
-                                 -> PResult<'a, P<Expr>> {
+    fn parse_assoc_expr_with(
+        &mut self,
+        min_prec: usize,
+        lhs: LhsExpr,
+    ) -> PResult<'a, P<Expr>> {
         let mut lhs = if let LhsExpr::AlreadyParsed(expr) = lhs {
             expr
         } else {
@@ -2840,9 +2846,11 @@ impl<'a> Parser<'a> {
                 self.parse_prefix_expr(attrs)?
             }
         };
+        let last_type_ascription_set = self.last_type_ascription.is_some();
 
         match (self.expr_is_complete(&lhs), AssocOp::from_token(&self.token)) {
             (true, None) => {
+                self.last_type_ascription = None;
                 // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
                 return Ok(lhs);
             }
@@ -2857,12 +2865,14 @@ impl<'a> Parser<'a> {
             // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
             // `if x { a } else { b } && if y { c } else { d }`
             if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
+                self.last_type_ascription = None;
                 // These cases are ambiguous and can't be identified in the parser alone
                 let sp = self.sess.source_map().start_point(self.token.span);
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
                 return Ok(lhs);
             }
             (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => {
+                self.last_type_ascription = None;
                 return Ok(lhs);
             }
             (true, Some(_)) => {
@@ -2921,21 +2931,9 @@ impl<'a> Parser<'a> {
                 continue
             } else if op == AssocOp::Colon {
                 let maybe_path = self.could_ascription_be_path(&lhs.node);
-                let next_sp = self.token.span;
+                self.last_type_ascription = Some((self.prev_span, maybe_path));
 
-                lhs = match self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type) {
-                    Ok(lhs) => lhs,
-                    Err(mut err) => {
-                        self.bad_type_ascription(
-                            &mut err,
-                            lhs_span,
-                            cur_op_span,
-                            next_sp,
-                            maybe_path,
-                        );
-                        return Err(err);
-                    }
-                };
+                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
                 continue
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
                 // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
@@ -3019,6 +3017,9 @@ impl<'a> Parser<'a> {
             };
 
             if let Fixity::None = fixity { break }
+        }
+        if last_type_ascription_set {
+            self.last_type_ascription = None;
         }
         Ok(lhs)
     }
