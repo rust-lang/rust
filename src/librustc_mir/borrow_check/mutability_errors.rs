@@ -42,7 +42,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let item_msg;
         let reason;
         let mut opt_source = None;
-        let access_place_desc = self.describe_place(access_place.as_place_ref());
+        let access_place_desc = self.describe_place(access_place.as_ref());
         debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
         match the_place_err {
@@ -77,7 +77,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 ));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
-                if self.is_upvar_field_projection(access_place.as_place_ref()).is_some() {
+                if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.upvars[upvar_index.index()].name;
@@ -109,7 +109,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ));
 
                     reason =
-                        if self.is_upvar_field_projection(access_place.as_place_ref()).is_some() {
+                        if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
                             ", as it is a captured variable in a `Fn` closure".to_string()
                         } else {
                             ", as `Fn` closures cannot mutate their captured variables".to_string()
@@ -244,7 +244,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     format!(
                         "mutable borrow occurs due to use of `{}` in closure",
                         // always Some() if the message is printed.
-                        self.describe_place(access_place.as_place_ref()).unwrap_or_default(),
+                        self.describe_place(access_place.as_ref()).unwrap_or_default(),
                     )
                 );
                 borrow_span

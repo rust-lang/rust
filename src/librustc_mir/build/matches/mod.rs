@@ -1304,7 +1304,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 prefix_cursor = base;
             }
 
-            all_fake_borrows.push(place.as_place_ref());
+            all_fake_borrows.push(place.as_ref());
         }
 
         // Deduplicate and ensure a deterministic order.

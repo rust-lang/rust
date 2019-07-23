@@ -168,7 +168,7 @@ fn each_block<'tcx, O>(
         if place == peek_arg_place {
             if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = **rvalue {
                 // Okay, our search is over.
-                match move_data.rev_lookup.find(peeking_at_place.as_place_ref()) {
+                match move_data.rev_lookup.find(peeking_at_place.as_ref()) {
                     LookupResult::Exact(peek_mpi) => {
                         let bit_state = on_entry.contains(peek_mpi);
                         debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
@@ -192,7 +192,7 @@ fn each_block<'tcx, O>(
             }
         }
 
-        let lhs_mpi = move_data.rev_lookup.find(place.as_place_ref());
+        let lhs_mpi = move_data.rev_lookup.find(place.as_ref());
 
         debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
                place, lhs_mpi, stmt);
