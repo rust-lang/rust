@@ -1,5 +1,5 @@
 ---
-created: "2019-05-23T22:23:35.122168608Z"
+created: "2019-07-23T16:11:48.828805910Z"
 creator: insta@0.8.1
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -18,6 +18,7 @@ expression: kind_completions
         delete: [214; 214),
         insert: "b",
         kind: Binding,
+        detail: "i32",
     },
     CompletionItem {
         label: "quux",

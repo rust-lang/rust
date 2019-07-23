@@ -1,5 +1,5 @@
 //! This modules takes care of rendering various defenitions as completion items.
-use hir::{Docs, HasSource, HirDisplay, PerNs, Resolution};
+use hir::{Docs, HasSource, HirDisplay, PerNs, Resolution, Ty};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;
@@ -80,10 +80,18 @@ impl Completions {
                 None,
             ),
         };
-        CompletionItem::new(completion_kind, ctx.source_range(), local_name)
-            .kind(kind)
-            .set_documentation(docs)
-            .add_to(self)
+
+        let mut completion_item =
+            CompletionItem::new(completion_kind, ctx.source_range(), local_name);
+        if let Resolution::LocalBinding(pat_id) = def {
+            let ty = ctx
+                .analyzer
+                .type_of_pat_by_id(ctx.db, pat_id.clone())
+                .filter(|t| t != &Ty::Unknown)
+                .map(|t| t.display(ctx.db).to_string());
+            completion_item = completion_item.set_detail(ty);
+        };
+        completion_item.kind(kind).set_documentation(docs).add_to(self)
     }
 
     pub(crate) fn add_function(&mut self, ctx: &CompletionContext, func: hir::Function) {
