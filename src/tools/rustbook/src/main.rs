@@ -1,5 +1,3 @@
-#![deny(rust_2018_idioms)]
-
 use clap::{crate_version};
 
 use std::env;

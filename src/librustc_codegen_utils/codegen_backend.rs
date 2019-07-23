@@ -5,8 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
-#![feature(box_syntax)]
 
 use std::any::Any;
 use std::sync::mpsc;

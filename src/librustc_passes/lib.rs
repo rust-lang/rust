@@ -13,7 +13,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
 #![deny(unused_lifetimes)]
 
 #[macro_use]

@@ -15,7 +15,8 @@
 //! switching compilers for the bootstrap and for build scripts will probably
 //! never get replaced.
 
-#![deny(warnings)]
+// NO-RUSTC-WRAPPER
+#![deny(warnings, rust_2018_idioms)]
 
 use std::env;
 use std::ffi::OsString;

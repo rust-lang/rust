@@ -32,7 +32,6 @@
 #![feature(const_fn)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_is_partitioned)]
-#![warn(rust_2018_idioms)]
 
 extern crate test;
 

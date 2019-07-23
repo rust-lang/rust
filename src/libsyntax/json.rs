@@ -122,7 +122,6 @@ struct Diagnostic {
 }
 
 #[derive(RustcEncodable)]
-#[allow(unused_attributes)]
 struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,

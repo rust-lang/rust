@@ -1,7 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(non_snake_case)]
-
 register_long_diagnostics! {
 
 E0023: r##"

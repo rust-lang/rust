@@ -6,10 +6,7 @@
 #![feature(generators)]
 #![cfg_attr(unix, feature(libc))]
 
-#![deny(rust_2018_idioms)]
 #![deny(unused_lifetimes)]
-
-#![allow(unused_imports)]
 
 #![recursion_limit="256"]
 

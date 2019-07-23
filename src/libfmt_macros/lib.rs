@@ -8,7 +8,6 @@
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 
-#![deny(rust_2018_idioms)]
 #![deny(unused_lifetimes)]
 
 #![feature(nll)]

@@ -781,12 +781,6 @@ impl CrateInfo {
     }
 }
 
-fn is_codegened_item(tcx: TyCtxt<'_>, id: DefId) -> bool {
-    let (all_mono_items, _) =
-        tcx.collect_and_partition_mono_items(LOCAL_CRATE);
-    all_mono_items.contains(&id)
-}
-
 pub fn provide_both(providers: &mut Providers<'_>) {
     providers.backend_optimization_level = |tcx, cratenum| {
         let for_speed = match tcx.sess.opts.optimize {

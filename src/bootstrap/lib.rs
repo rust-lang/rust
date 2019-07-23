@@ -103,8 +103,9 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![deny(rust_2018_idioms)]
-#![deny(warnings)]
+// NO-RUSTC-WRAPPER
+#![deny(warnings, rust_2018_idioms)]
+
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 

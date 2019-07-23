@@ -32,7 +32,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![forbid(unsafe_code)]
-#![deny(rust_2018_idioms)]
 
 #![feature(nll)]
 

@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use syntax::{register_diagnostics, register_long_diagnostics};
 
 // Error messages for EXXXX errors.  Each message should start and end with a

@@ -1628,7 +1628,7 @@ impl RustcOptGroup {
 // *unstable* options, i.e., options that are only enabled when the
 // user also passes the `-Z unstable-options` debugging flag.
 mod opt {
-    // The `fn opt_u` etc below are written so that we can use them
+    // The `fn flag*` etc below are written so that we can use them
     // in the future; do not warn about them not being used right now.
     #![allow(dead_code)]
 

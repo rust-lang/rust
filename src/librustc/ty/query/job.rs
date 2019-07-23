@@ -1,4 +1,4 @@
-#![allow(warnings)]
+#![allow(unused_imports)] // `cfg(parallel_compiler)`
 
 use std::mem;
 use std::process;
@@ -138,6 +138,7 @@ impl<'tcx> QueryJob<'tcx> {
         self.latch.set();
     }
 
+    #[cfg(parallel_compiler)]
     fn as_ptr(&self) -> *const QueryJob<'tcx> {
         self as *const _
     }

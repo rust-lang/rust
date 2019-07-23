@@ -1,5 +1,3 @@
-#![deny(rust_2018_idioms)]
-
 use toml;
 use serde::Serialize;
 

@@ -1,3 +1,6 @@
+#![allow(non_camel_case_types)]
+#![allow(non_upper_case_globals)]
+
 use super::debuginfo::{
     DIBuilder, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
     DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,

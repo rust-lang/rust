@@ -13,7 +13,6 @@
 #![feature(nll)]
 #![feature(slice_patterns)]
 
-#![deny(rust_2018_idioms)]
 #![deny(unused_lifetimes)]
 
 #[macro_use] extern crate log;

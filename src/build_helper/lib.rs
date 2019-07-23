@@ -1,4 +1,5 @@
-#![deny(rust_2018_idioms)]
+// NO-RUSTC-WRAPPER
+#![deny(warnings, rust_2018_idioms)]
 
 use std::fs::File;
 use std::path::{Path, PathBuf};

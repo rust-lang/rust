@@ -59,8 +59,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
-
 pub use registry::Registry;
 
 mod error_codes;
