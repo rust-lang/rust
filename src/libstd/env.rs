@@ -975,6 +975,11 @@ mod arch {
     pub const ARCH: &str = "wasm32";
 }
 
+#[cfg(target_arch = "hexagon")]
+mod arch {
+    pub const ARCH: &'static str = "hexagon";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
