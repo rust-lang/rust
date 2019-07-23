@@ -112,6 +112,7 @@ change_toolstate() {
         echo 'Toolstate is not changed. Not updating.'
     else
         if [ $SIX_WEEK_CYCLE -ge 35 ]; then
+            # Reject any regressions during the week before beta cutoff.
             python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" regressed
         fi
         sed -i "1 a\\
