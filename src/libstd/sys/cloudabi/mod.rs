@@ -64,7 +64,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
         let mut v: mem::MaybeUninit<(u64, u64)> = mem::MaybeUninit::uninit();
         libc::arc4random_buf(
             v.as_mut_ptr() as *mut libc::c_void,
-            mem::size_of_val(v.get_ref())
+            mem::size_of_val(&v)
         );
         v.assume_init()
     }

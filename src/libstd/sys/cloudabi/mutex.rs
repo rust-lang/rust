@@ -54,7 +54,7 @@ pub struct ReentrantMutex {
 
 impl ReentrantMutex {
     pub unsafe fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex { 
+        ReentrantMutex {
             lock: UnsafeCell::new(MaybeUninit::uninit()),
             recursion: UnsafeCell::new(MaybeUninit::uninit())
         }
@@ -67,9 +67,9 @@ impl ReentrantMutex {
 
     pub unsafe fn try_lock(&self) -> bool {
         // Attempt to acquire the lock.
-        let lock = self.lock.get();
-        let recursion = self.recursion.get();
-        if let Err(old) = (*(*lock).as_mut_ptr()).compare_exchange(
+        let lock = (*self.lock.get()).as_mut_ptr();
+        let recursion = (*self.recursion.get()).as_mut_ptr();
+        if let Err(old) = (*lock).compare_exchange(
             abi::LOCK_UNLOCKED.0,
             __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
             Ordering::Acquire,
@@ -78,14 +78,14 @@ impl ReentrantMutex {
             // If we fail to acquire the lock, it may be the case
             // that we've already acquired it and may need to recurse.
             if old & !abi::LOCK_KERNEL_MANAGED.0 == __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0 {
-                *(*recursion).as_mut_ptr() += 1;
+                *recursion += 1;
                 true
             } else {
                 false
             }
         } else {
             // Success.
-            assert_eq!(*(*recursion).as_mut_ptr(), 0, "Mutex has invalid recursion count");
+            assert_eq!(*recursion, 0, "Mutex has invalid recursion count");
             true
         }
     }
@@ -113,17 +113,17 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn unlock(&self) {
-        let lock = self.lock.get();
-        let recursion = self.recursion.get();
+        let lock = (*self.lock.get()).as_mut_ptr();
+        let recursion = (*self.recursion.get()).as_mut_ptr();
         assert_eq!(
-            (*(*lock).as_mut_ptr()).load(Ordering::Relaxed) & !abi::LOCK_KERNEL_MANAGED.0,
+            (*lock).load(Ordering::Relaxed) & !abi::LOCK_KERNEL_MANAGED.0,
             __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
             "This mutex is locked by a different thread"
         );
 
-        if *(*recursion).as_mut_ptr() > 0 {
-            *(*recursion).as_mut_ptr() -= 1;
-        } else if !(*(*lock).as_mut_ptr())
+        if *recursion > 0 {
+            *recursion -= 1;
+        } else if !(*lock)
             .compare_exchange(
                 __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
                 abi::LOCK_UNLOCKED.0,
@@ -140,13 +140,13 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn destroy(&self) {
-        let lock = self.lock.get();
-        let recursion = self.recursion.get();
+        let lock = (*self.lock.get()).as_mut_ptr();
+        let recursion = (*self.recursion.get()).as_mut_ptr();
         assert_eq!(
-            (*(*lock).as_mut_ptr()).load(Ordering::Relaxed),
+            (*lock).load(Ordering::Relaxed),
             abi::LOCK_UNLOCKED.0,
             "Attempted to destroy locked mutex"
         );
-        assert_eq!(*(*recursion).as_mut_ptr(), 0, "Recursion counter invalid");
+        assert_eq!(*recursion, 0, "Recursion counter invalid");
     }
 }

@@ -21,7 +21,7 @@ impl Instant {
             let mut t: mem::MaybeUninit<abi::timestamp> = mem::MaybeUninit::uninit();
             let ret = abi::clock_time_get(abi::clockid::MONOTONIC, 0, t.get_mut());
             assert_eq!(ret, abi::errno::SUCCESS);
-            Instant { t }
+            Instant { t: t.assume_init() }
         }
     }
 
@@ -62,7 +62,7 @@ impl SystemTime {
             let mut t: mem::MaybeUninit<abi::timestamp> = mem::MaybeUninit::uninit();
             let ret = abi::clock_time_get(abi::clockid::REALTIME, 0, t.get_mut());
             assert_eq!(ret, abi::errno::SUCCESS);
-            SystemTime { t }
+            SystemTime { t: t.assume_init() }
         }
     }
 
