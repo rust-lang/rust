@@ -19,8 +19,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(unused_lifetimes)]
-
 #[macro_use]
 extern crate rustc;
 

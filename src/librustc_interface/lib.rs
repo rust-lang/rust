@@ -6,8 +6,6 @@
 #![feature(generators)]
 #![cfg_attr(unix, feature(libc))]
 
-#![deny(unused_lifetimes)]
-
 #![recursion_limit="256"]
 
 #[cfg(unix)]

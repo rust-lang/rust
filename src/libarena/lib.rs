@@ -11,8 +11,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(no_crate_inject, attr(deny(warnings))))]
 
-#![deny(unused_lifetimes)]
-
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(raw_vec_internals)]

@@ -1,8 +1,6 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
-#![deny(unused_lifetimes)]
-
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]

@@ -8,7 +8,6 @@
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![deny(unused_lifetimes)]
 
 pub use emitter::ColorConfig;
 

@@ -1,7 +1,5 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![deny(unused_lifetimes)]
-
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]

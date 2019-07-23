@@ -1,9 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(nll)]
-#![deny(unused_lifetimes)]
 
 #![recursion_limit="256"]
-
 
 mod dumper;
 mod dump_visitor;

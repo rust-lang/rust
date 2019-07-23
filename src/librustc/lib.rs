@@ -28,8 +28,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![deny(unused_lifetimes)]
-
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]

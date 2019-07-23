@@ -73,8 +73,6 @@ This API is completely unstable and subject to change.
 
 #![recursion_limit="256"]
 
-#![deny(unused_lifetimes)]
-
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 

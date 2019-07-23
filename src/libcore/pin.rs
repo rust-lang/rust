@@ -775,7 +775,7 @@ where
 {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<'a, P, U> DispatchFromDyn<Pin<U>> for Pin<P>
+impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P>
 where
     P: DispatchFromDyn<U>,
 {}

@@ -13,8 +13,6 @@
 #![feature(nll)]
 #![feature(slice_patterns)]
 
-#![deny(unused_lifetimes)]
-
 #[macro_use] extern crate log;
 
 pub mod abi;

@@ -104,7 +104,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 // NO-RUSTC-WRAPPER
-#![deny(warnings, rust_2018_idioms)]
+#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
 
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
@@ -1313,7 +1313,7 @@ fn chmod(path: &Path, perms: u32) {
 fn chmod(_path: &Path, _perms: u32) {}
 
 
-impl<'a> Compiler {
+impl Compiler {
     pub fn with_stage(mut self, stage: u32) -> Compiler {
         self.stage = stage;
         self

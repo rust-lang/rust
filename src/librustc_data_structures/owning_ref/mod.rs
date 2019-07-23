@@ -283,6 +283,7 @@ impl<T> Erased for T {}
 /// Helper trait for erasing the concrete type of what an owner dereferences to,
 /// for example `Box<T> -> Box<Erased>`. This would be unneeded with
 /// higher kinded types support in the language.
+#[allow(unused_lifetimes)]
 pub unsafe trait IntoErased<'a> {
     /// Owner with the dereference type substituted to `Erased`.
     type Erased;
@@ -293,6 +294,7 @@ pub unsafe trait IntoErased<'a> {
 /// Helper trait for erasing the concrete type of what an owner dereferences to,
 /// for example `Box<T> -> Box<Erased + Send>`. This would be unneeded with
 /// higher kinded types support in the language.
+#[allow(unused_lifetimes)]
 pub unsafe trait IntoErasedSend<'a> {
     /// Owner with the dereference type substituted to `Erased + Send`.
     type Erased: Send;
@@ -303,6 +305,7 @@ pub unsafe trait IntoErasedSend<'a> {
 /// Helper trait for erasing the concrete type of what an owner dereferences to,
 /// for example `Box<T> -> Box<Erased + Send + Sync>`. This would be unneeded with
 /// higher kinded types support in the language.
+#[allow(unused_lifetimes)]
 pub unsafe trait IntoErasedSendSync<'a> {
     /// Owner with the dereference type substituted to `Erased + Send + Sync`.
     type Erased: Send + Sync;

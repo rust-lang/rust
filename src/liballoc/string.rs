@@ -1838,6 +1838,7 @@ impl PartialEq for String {
 macro_rules! impl_eq {
     ($lhs:ty, $rhs: ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(unused_lifetimes)]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&self[..], &other[..]) }
@@ -1846,6 +1847,7 @@ macro_rules! impl_eq {
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(unused_lifetimes)]
         impl<'a, 'b> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&self[..], &other[..]) }

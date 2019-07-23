@@ -16,7 +16,7 @@
 //! never get replaced.
 
 // NO-RUSTC-WRAPPER
-#![deny(warnings, rust_2018_idioms)]
+#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
 
 use std::env;
 use std::ffi::OsString;
@@ -129,6 +129,7 @@ fn main() {
        env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
         cmd.arg("-Dwarnings");
         cmd.arg("-Drust_2018_idioms");
+        cmd.arg("-Dunused_lifetimes");
         // cfg(not(bootstrap)): Remove this during the next stage 0 compiler update.
         // `-Drustc::internal` is a new feature and `rustc_version` mis-reports the `stage`.
         let cfg_not_bootstrap = stage != "0" && crate_name != Some("rustc_version");

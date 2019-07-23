@@ -15,8 +15,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(unused_lifetimes)]
-
 extern crate libc;
 extern crate proc_macro;
 

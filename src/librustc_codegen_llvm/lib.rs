@@ -21,7 +21,6 @@
 #![feature(static_nobundle)]
 #![feature(trusted_len)]
 #![feature(mem_take)]
-#![deny(unused_lifetimes)]
 
 use back::write::{create_target_machine, create_informational_target_machine};
 use syntax_pos::symbol::Symbol;

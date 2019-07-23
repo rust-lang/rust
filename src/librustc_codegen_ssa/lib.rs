@@ -11,7 +11,6 @@
 #![feature(nll)]
 #![feature(trusted_len)]
 #![feature(mem_take)]
-#![deny(unused_lifetimes)]
 
 #![recursion_limit="256"]
 

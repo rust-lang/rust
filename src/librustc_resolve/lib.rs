@@ -10,8 +10,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(unused_lifetimes)]
-
 pub use rustc::hir::def::{Namespace, PerNS};
 
 use Determinacy::*;

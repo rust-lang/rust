@@ -16,8 +16,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(unused_lifetimes)]
-
 pub extern crate getopts;
 #[cfg(unix)]
 extern crate libc;
