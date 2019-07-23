@@ -229,7 +229,7 @@ impl<'tcx> From<InterpError<'tcx, u64>> for InterpErrorInfo<'tcx> {
 pub type AssertMessage<'tcx> = InterpError<'tcx, mir::Operand<'tcx>>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum EvalErrorPanic<O> {
+pub enum PanicMessage<O> {
     Panic {
         msg: Symbol,
         line: u32,
@@ -311,7 +311,7 @@ pub enum InterpError<'tcx, O> {
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
-    Panic(EvalErrorPanic<O>),
+    Panic(PanicMessage<O>),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
     UnimplementedTraitSelection,
@@ -428,31 +428,31 @@ impl<'tcx, O> InterpError<'tcx, O> {
                 two",
             Unreachable =>
                 "entered unreachable code",
-            Panic(EvalErrorPanic::Panic{..}) =>
+            Panic(PanicMessage::Panic{..}) =>
                 "the evaluated program panicked",
-            Panic(EvalErrorPanic::BoundsCheck{..}) =>
+            Panic(PanicMessage::BoundsCheck{..}) =>
                 "array index out of bounds",
-            Panic(EvalErrorPanic::Overflow(mir::BinOp::Add)) =>
+            Panic(PanicMessage::Overflow(mir::BinOp::Add)) =>
                 "attempt to add with overflow",
-            Panic(EvalErrorPanic::Overflow(mir::BinOp::Sub)) =>
+            Panic(PanicMessage::Overflow(mir::BinOp::Sub)) =>
                 "attempt to subtract with overflow",
-            Panic(EvalErrorPanic::Overflow(mir::BinOp::Mul)) =>
+            Panic(PanicMessage::Overflow(mir::BinOp::Mul)) =>
                 "attempt to multiply with overflow",
-            Panic(EvalErrorPanic::Overflow(mir::BinOp::Div)) =>
+            Panic(PanicMessage::Overflow(mir::BinOp::Div)) =>
                 "attempt to divide with overflow",
-            Panic(EvalErrorPanic::Overflow(mir::BinOp::Rem)) =>
+            Panic(PanicMessage::Overflow(mir::BinOp::Rem)) =>
                 "attempt to calculate the remainder with overflow",
-            Panic(EvalErrorPanic::OverflowNeg) =>
+            Panic(PanicMessage::OverflowNeg) =>
                 "attempt to negate with overflow",
-            Panic(EvalErrorPanic::Overflow(mir::BinOp::Shr)) =>
+            Panic(PanicMessage::Overflow(mir::BinOp::Shr)) =>
                 "attempt to shift right with overflow",
-            Panic(EvalErrorPanic::Overflow(mir::BinOp::Shl)) =>
+            Panic(PanicMessage::Overflow(mir::BinOp::Shl)) =>
                 "attempt to shift left with overflow",
-            Panic(EvalErrorPanic::Overflow(op)) =>
+            Panic(PanicMessage::Overflow(op)) =>
                 bug!("{:?} cannot overflow", op),
-            Panic(EvalErrorPanic::DivisionByZero) =>
+            Panic(PanicMessage::DivisionByZero) =>
                 "attempt to divide by zero",
-            Panic(EvalErrorPanic::RemainderByZero) =>
+            Panic(PanicMessage::RemainderByZero) =>
                 "attempt to calculate the remainder with a divisor of zero",
             ReadFromReturnPointer =>
                 "tried to read from the return pointer",
@@ -535,9 +535,9 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
                 write!(f, "incorrect alloc info: expected size {} and align {}, \
                            got size {} and align {}",
                     size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
-            Panic(EvalErrorPanic::Panic { ref msg, line, col, ref file }) =>
+            Panic(PanicMessage::Panic { ref msg, line, col, ref file }) =>
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
-            Panic(EvalErrorPanic::BoundsCheck { ref len, ref index }) =>
+            Panic(PanicMessage::BoundsCheck { ref len, ref index }) =>
                 write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
             InvalidDiscriminant(val) =>
                 write!(f, "encountered invalid enum discriminant {}", val),

@@ -514,7 +514,7 @@ macro_rules! make_mir_visitor {
                                     msg: & $($mutability)? AssertMessage<'tcx>,
                                     location: Location) {
                 use crate::mir::interpret::InterpError::*;
-                use crate::mir::interpret::EvalErrorPanic::BoundsCheck;
+                use crate::mir::interpret::PanicMessage::BoundsCheck;
                 if let Panic(BoundsCheck { len, index }) = msg {
                     self.visit_operand(len, location);
                     self.visit_operand(index, location);
