@@ -7,7 +7,7 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::mir::BinOp;
 use rustc::mir::interpret::{
-    InterpResult, InterpError, Scalar,
+    InterpResult, InterpError, Scalar, PanicMessage,
 };
 
 use super::{
@@ -261,7 +261,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(InterpError::Panic { msg, file, line, col }.into());
+            return Err(InterpError::Panic(PanicMessage::Panic { msg, file, line, col }).into());
         } else if Some(def_id) == self.tcx.lang_items().begin_panic_fn() {
             assert!(args.len() == 2);
             // &'static str, &(&'static str, u32, u32)
@@ -279,7 +279,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(InterpError::Panic { msg, file, line, col }.into());
+            return Err(InterpError::Panic(PanicMessage::Panic { msg, file, line, col }).into());
         } else {
             return Ok(false);
         }

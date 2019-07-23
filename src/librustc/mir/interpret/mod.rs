@@ -12,7 +12,7 @@ mod pointer;
 
 pub use self::error::{
     InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
-    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
+    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicMessage
 };
 
 pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};
