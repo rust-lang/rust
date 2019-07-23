@@ -21,6 +21,7 @@ export class Config {
     public raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
     public showWorkspaceLoadedNotification = true;
     public lruCapacity: null | number = null;
+    public displayInlayHints = true;
     public cargoWatchOptions: CargoWatchOptions = {
         enableOnStartup: 'ask',
         trace: 'off',
@@ -122,6 +123,10 @@ export class Config {
 
         if (config.has('lruCapacity')) {
             this.lruCapacity = config.get('lruCapacity') as number;
+        }
+
+        if (config.has('displayInlayHints')) {
+            this.displayInlayHints = config.get('displayInlayHints') as boolean;
         }
     }
 }
