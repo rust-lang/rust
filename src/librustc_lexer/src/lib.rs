@@ -4,6 +4,7 @@
 #![cfg_attr(not(feature = "unicode-xid"), feature(unicode_internals))]
 
 mod cursor;
+pub mod unescape;
 
 use crate::cursor::{Cursor, EOF_CHAR};
 

@@ -5,7 +5,7 @@ use std::str::Chars;
 use std::ops::Range;
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum EscapeError {
+pub enum EscapeError {
     ZeroChars,
     MoreThanOneChar,
 
@@ -35,7 +35,7 @@ pub(crate) enum EscapeError {
 
 /// Takes a contents of a char literal (without quotes), and returns an
 /// unescaped char or an error
-pub(crate) fn unescape_char(literal_text: &str) -> Result<char, (usize, EscapeError)> {
+pub fn unescape_char(literal_text: &str) -> Result<char, (usize, EscapeError)> {
     let mut chars = literal_text.chars();
     unescape_char_or_byte(&mut chars, Mode::Char)
         .map_err(|err| (literal_text.len() - chars.as_str().len(), err))
@@ -43,14 +43,14 @@ pub(crate) fn unescape_char(literal_text: &str) -> Result<char, (usize, EscapeEr
 
 /// Takes a contents of a string literal (without quotes) and produces a
 /// sequence of escaped characters or errors.
-pub(crate) fn unescape_str<F>(literal_text: &str, callback: &mut F)
+pub fn unescape_str<F>(literal_text: &str, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     unescape_str_or_byte_str(literal_text, Mode::Str, callback)
 }
 
-pub(crate) fn unescape_byte(literal_text: &str) -> Result<u8, (usize, EscapeError)> {
+pub fn unescape_byte(literal_text: &str) -> Result<u8, (usize, EscapeError)> {
     let mut chars = literal_text.chars();
     unescape_char_or_byte(&mut chars, Mode::Byte)
         .map(byte_from_char)
@@ -59,7 +59,7 @@ pub(crate) fn unescape_byte(literal_text: &str) -> Result<u8, (usize, EscapeErro
 
 /// Takes a contents of a string literal (without quotes) and produces a
 /// sequence of escaped characters or errors.
-pub(crate) fn unescape_byte_str<F>(literal_text: &str, callback: &mut F)
+pub fn unescape_byte_str<F>(literal_text: &str, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<u8, EscapeError>),
 {
@@ -72,7 +72,7 @@ where
 /// sequence of characters or errors.
 /// NOTE: Raw strings do not perform any explicit character escaping, here we
 /// only translate CRLF to LF and produce errors on bare CR.
-pub(crate) fn unescape_raw_str<F>(literal_text: &str, callback: &mut F)
+pub fn unescape_raw_str<F>(literal_text: &str, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
@@ -83,7 +83,7 @@ where
 /// sequence of characters or errors.
 /// NOTE: Raw strings do not perform any explicit character escaping, here we
 /// only translate CRLF to LF and produce errors on bare CR.
-pub(crate) fn unescape_raw_byte_str<F>(literal_text: &str, callback: &mut F)
+pub fn unescape_raw_byte_str<F>(literal_text: &str, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<u8, EscapeError>),
 {
@@ -93,7 +93,7 @@ where
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum Mode {
+pub enum Mode {
     Char,
     Str,
     Byte,
@@ -101,18 +101,18 @@ pub(crate) enum Mode {
 }
 
 impl Mode {
-    fn in_single_quotes(self) -> bool {
+    pub fn in_single_quotes(self) -> bool {
         match self {
             Mode::Char | Mode::Byte => true,
             Mode::Str | Mode::ByteStr => false,
         }
     }
 
-    pub(crate) fn in_double_quotes(self) -> bool {
+    pub fn in_double_quotes(self) -> bool {
         !self.in_single_quotes()
     }
 
-    pub(crate) fn is_bytes(self) -> bool {
+    pub fn is_bytes(self) -> bool {
         match self {
             Mode::Byte | Mode::ByteStr => true,
             Mode::Char | Mode::Str => false,

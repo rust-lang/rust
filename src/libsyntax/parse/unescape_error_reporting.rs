@@ -3,11 +3,10 @@
 use std::ops::Range;
 use std::iter::once;
 
+use rustc_lexer::unescape::{EscapeError, Mode};
 use syntax_pos::{Span, BytePos};
 
 use crate::errors::{Handler, Applicability};
-
-use super::unescape::{EscapeError, Mode};
 
 pub(crate) fn emit_unescape_error(
     handler: &Handler,
