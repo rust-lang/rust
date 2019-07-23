@@ -1333,6 +1333,7 @@ pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size_of::<T>()` overlap.
+#[cfg(not(miri))] // Cannot compare with `>` across allocations in Miri
 fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src as usize;
     let dst_usize = dst as usize;
@@ -1437,6 +1438,7 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 
     debug_assert!(is_aligned_and_not_null(src), "attempt to copy from unaligned or null pointer");
     debug_assert!(is_aligned_and_not_null(dst), "attempt to copy to unaligned or null pointer");
+    #[cfg(not(miri))]
     debug_assert!(!overlaps(src, dst, count), "attempt to copy to overlapping memory");
     copy_nonoverlapping(src, dst, count)
 }
