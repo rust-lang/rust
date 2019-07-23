@@ -1,6 +1,5 @@
 // We want to be able to build this crate with a stable compiler, so feature
-// flags should optional.
-#![cfg_attr(not(feature = "unicode-xid"), feature(rustc_private))]
+// flags should be optional.
 #![cfg_attr(not(feature = "unicode-xid"), feature(unicode_internals))]
 
 mod cursor;

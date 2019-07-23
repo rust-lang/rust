@@ -13,6 +13,7 @@
 
 #![feature(nll)]
 #![feature(rustc_private)]
+#![feature(unicode_internals)]
 
 pub use Piece::*;
 pub use Position::*;
