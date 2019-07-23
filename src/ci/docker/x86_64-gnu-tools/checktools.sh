@@ -79,6 +79,9 @@ check_dispatch() {
 # List all tools here.
 # This function gets called with "submodule_changed" for each PR that changed a submodule,
 # and with "beta_required" for each PR that lands on beta/stable.
+# The purpose of this function is to *reject* PRs if a tool is not "test-pass" and
+# (a) the tool's submodule has been updated, or (b) we landed on beta/stable and the
+# tool has to "test-pass" on that branch.
 status_check() {
     check_dispatch $1 beta book src/doc/book
     check_dispatch $1 beta nomicon src/doc/nomicon
@@ -88,8 +91,10 @@ status_check() {
     check_dispatch $1 beta rls src/tools/rls
     check_dispatch $1 beta rustfmt src/tools/rustfmt
     check_dispatch $1 beta clippy-driver src/tools/clippy
-    # These tools are not required on the beta/stable branches.
-    # They will still cause failure during the beta cutoff week, see `checkregression.py` for that.
+    # These tools are not required on the beta/stable branches, but they *do* cause
+    # PRs to fail if a submodule update does not fix them.
+    # They will still cause failure during the beta cutoff week, unless `checkregression.py`
+    # exempts them from that.
     check_dispatch $1 nightly miri src/tools/miri
     check_dispatch $1 nightly embedded-book src/doc/embedded-book
 }

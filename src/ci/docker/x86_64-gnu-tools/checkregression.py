@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+## This script has two purposes: detect any tool that *regressed*, which is used
+## during the week before the beta branches to reject PRs; and detect any tool
+## that *changed* to see if we need to update the toolstate repo.
+
 import sys
 import json
 
-# Regressions for these tools do not cause failure.
+# Regressions for these tools during the beta cutoff week do not cause failure.
+# See `status_check` in `checktools.sh` for tools that have to pass on the
+# beta/stable branches.
 REGRESSION_OK = ["rustc-guide", "miri", "embedded-book"]
 
 if __name__ == '__main__':
