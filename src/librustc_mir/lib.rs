@@ -30,13 +30,9 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![deny(unused_lifetimes)]
 
 #[macro_use] extern crate log;
-#[macro_use]
-extern crate rustc;
+#[macro_use] extern crate rustc;
 #[macro_use] extern crate rustc_data_structures;
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
-#[macro_use]
-extern crate syntax;
+#[macro_use] extern crate syntax;
 
 mod error_codes;
 

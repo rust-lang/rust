@@ -13,7 +13,6 @@ use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_data_structures::svh::Svh;
 
-use rustc_serialize as serialize;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
@@ -85,8 +84,8 @@ impl<T> Clone for Lazy<T> {
     }
 }
 
-impl<T> serialize::UseSpecializedEncodable for Lazy<T> {}
-impl<T> serialize::UseSpecializedDecodable for Lazy<T> {}
+impl<T> rustc_serialize::UseSpecializedEncodable for Lazy<T> {}
+impl<T> rustc_serialize::UseSpecializedDecodable for Lazy<T> {}
 
 /// A sequence of type T referred to by its absolute position
 /// in the metadata and length, and which can be decoded lazily.
@@ -133,8 +132,8 @@ impl<T> Clone for LazySeq<T> {
     }
 }
 
-impl<T> serialize::UseSpecializedEncodable for LazySeq<T> {}
-impl<T> serialize::UseSpecializedDecodable for LazySeq<T> {}
+impl<T> rustc_serialize::UseSpecializedEncodable for LazySeq<T> {}
+impl<T> rustc_serialize::UseSpecializedDecodable for LazySeq<T> {}
 
 /// Encoding / decoding state for `Lazy` and `LazySeq`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

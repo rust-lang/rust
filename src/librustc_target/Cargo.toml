@@ -12,5 +12,5 @@ path = "lib.rs"
 bitflags = "1.0"
 log = "0.4"
 rustc_data_structures = { path = "../librustc_data_structures" }
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax_pos = { path = "../libsyntax_pos" }
