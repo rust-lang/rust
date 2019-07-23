@@ -34,7 +34,7 @@ rustc_traits = { path = "../librustc_traits" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_typeck = { path = "../librustc_typeck" }
 rustc_interface = { path = "../librustc_interface" }
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 syntax_ext = { path = "../libsyntax_ext" }

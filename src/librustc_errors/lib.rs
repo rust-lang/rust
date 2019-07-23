@@ -12,9 +12,6 @@
 #![deny(rust_2018_idioms)]
 #![deny(unused_lifetimes)]
 
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
-
 pub use emitter::ColorConfig;
 
 use Level::*;

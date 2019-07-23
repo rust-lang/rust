@@ -46,7 +46,7 @@ use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
 use rustc_data_structures::sync::SeqCst;
 
-use serialize::json::ToJson;
+use rustc_serialize::json::ToJson;
 
 use std::borrow::Cow;
 use std::cmp::max;

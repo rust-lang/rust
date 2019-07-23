@@ -15,7 +15,7 @@ use rustc::ty::steal::Steal;
 use rustc::dep_graph::DepGraph;
 use rustc_passes::hir_stats;
 use rustc_plugin::registry::Registry;
-use serialize::json;
+use rustc_serialize::json;
 use std::cell::{Ref, RefMut, RefCell};
 use std::ops::Deref;
 use std::rc::Rc;

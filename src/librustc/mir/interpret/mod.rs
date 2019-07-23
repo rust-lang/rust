@@ -27,7 +27,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::{self, TyCtxt, Instance, subst::UnpackedKind};
 use crate::ty::layout::{self, Size};
 use std::io;
-use crate::rustc_serialize::{Encoder, Decodable, Encodable};
+use rustc_serialize::{Encoder, Decodable, Encodable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
 use rustc_data_structures::tiny_list::TinyList;
@@ -51,8 +51,8 @@ pub struct GlobalId<'tcx> {
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);
 
-impl crate::rustc_serialize::UseSpecializedEncodable for AllocId {}
-impl crate::rustc_serialize::UseSpecializedDecodable for AllocId {}
+impl rustc_serialize::UseSpecializedEncodable for AllocId {}
+impl rustc_serialize::UseSpecializedDecodable for AllocId {}
 
 #[derive(RustcDecodable, RustcEncodable)]
 enum AllocDiscriminant {
