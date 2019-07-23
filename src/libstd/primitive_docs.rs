@@ -363,12 +363,12 @@ mod prim_unit { }
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
 /// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
-/// Raw pointers can be unaligned or [`null`] when unused. However, when a raw pointer is
+/// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
 /// dereferenced (using the `*` operator), it must be non-null and aligned.
 ///
 /// Storing through a raw pointer using `*ptr = data` calls `drop` on the old value, so
 /// [`write`] must be used if the type has drop glue and memory is not already
-/// initialized---otherwise `drop` would be called on the uninitialized memory.
+/// initialized - otherwise `drop` would be called on the uninitialized memory.
 ///
 /// Use the [`null`] and [`null_mut`] functions to create null pointers, and the
 /// [`is_null`] method of the `*const T` and `*mut T` types to check for null.
@@ -898,7 +898,10 @@ mod prim_usize { }
 /// operators on a value, or by using a `ref` or `ref mut` pattern.
 ///
 /// For those familiar with pointers, a reference is just a pointer that is assumed to be
-/// aligned, not null, and pointing to valid (initialized) memory.
+/// aligned, not null, and pointing to memory containing a valid value of `T` - for example,
+/// `&bool` can only point to an allocation containing the integer values `1` (`true`) or `0`
+/// (`false`), but the behavior of creating a `&bool` that points to an allocation containing
+/// the value `3` is undefined.
 /// In fact, `Option<&T>` has the same memory representation as a
 /// nullable but aligned pointer, and can be passed across FFI boundaries as such.
 ///
