@@ -10,7 +10,6 @@ use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::map as hir_map;
-use rustc::hir::print;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Obligation;
 use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
@@ -78,6 +77,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        let print_disambiguation_help = |
+            err: &mut DiagnosticBuilder<'_>,
+            trait_name: String,
+        | {
+            err.help(&format!(
+                "to disambiguate the method call, write `{}::{}({}{})` instead",
+                trait_name,
+                item_name,
+                if rcvr_ty.is_region_ptr() && args.is_some() {
+                    if rcvr_ty.is_mutable_pointer() {
+                        "&mut "
+                    } else {
+                        "&"
+                    }
+                } else {
+                    ""
+                },
+                args.map(|arg| arg
+                    .iter()
+                    .map(|arg| self.tcx.sess.source_map().span_to_snippet(arg.span)
+                        .unwrap_or_else(|_| "...".to_owned()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+                ).unwrap_or_else(|| "...".to_owned())
+            ));
+        };
+
         let report_candidates = |
             span: Span,
             err: &mut DiagnosticBuilder<'_>,
@@ -139,6 +165,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             err.note(&note_str);
                         }
+                        if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
+                            print_disambiguation_help(err, self.tcx.def_path_str(trait_ref.def_id));
+                        }
                     }
                     CandidateSource::TraitSource(trait_did) => {
                         let item = match self.associated_item(
@@ -163,24 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        "the candidate is defined in the trait `{}`",
                                        self.tcx.def_path_str(trait_did));
                         }
-                        err.help(&format!("to disambiguate the method call, write `{}::{}({}{})` \
-                                          instead",
-                                          self.tcx.def_path_str(trait_did),
-                                          item_name,
-                                          if rcvr_ty.is_region_ptr() && args.is_some() {
-                                              if rcvr_ty.is_mutable_pointer() {
-                                                  "&mut "
-                                              } else {
-                                                  "&"
-                                              }
-                                          } else {
-                                              ""
-                                          },
-                                          args.map(|arg| arg.iter()
-                                              .map(|arg| print::to_string(print::NO_ANN,
-                                                                          |s| s.print_expr(arg)))
-                                              .collect::<Vec<_>>()
-                                              .join(", ")).unwrap_or_else(|| "...".to_owned())));
+                        print_disambiguation_help(err, self.tcx.def_path_str(trait_did));
                     }
                 }
             }
