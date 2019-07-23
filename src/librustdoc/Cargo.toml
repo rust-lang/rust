@@ -10,7 +10,7 @@ path = "lib.rs"
 
 [dependencies]
 pulldown-cmark = { version = "0.5.3", default-features = false }
-minifier = "0.0.30"
+minifier = "0.0.33"
 rayon = { version = "0.2.0", package = "rustc-rayon" }
 tempfile = "3"
 parking_lot = "0.7"
