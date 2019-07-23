@@ -462,7 +462,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match *operand {
             mir::Operand::Copy(ref place) |
             mir::Operand::Move(ref place) => {
-                self.codegen_consume(bx, &place.as_place_ref())
+                self.codegen_consume(bx, &place.as_ref())
             }
 
             mir::Operand::Constant(ref constant) => {

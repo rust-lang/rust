@@ -560,7 +560,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 self.check_if_path_or_subpath_is_moved(
                     location,
                     InitializationRequiringAction::Use,
-                    (place.as_place_ref(), span),
+                    (place.as_ref(), span),
                     flow_state,
                 );
             }
@@ -591,7 +591,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                         self.check_if_path_or_subpath_is_moved(
                             location,
                             InitializationRequiringAction::Use,
-                            (output.as_place_ref(), o.span),
+                            (output.as_ref(), o.span),
                             flow_state,
                         );
                     } else {
@@ -733,8 +733,8 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 cleanup: _,
             } => {
                 self.consume_operand(loc, (cond, span), flow_state);
-                use rustc::mir::interpret::InterpError::BoundsCheck;
-                if let BoundsCheck { ref len, ref index } = *msg {
+                use rustc::mir::interpret::{InterpError::Panic, PanicMessage};
+                if let Panic(PanicMessage::BoundsCheck { ref len, ref index }) = *msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);
                 }
@@ -1154,7 +1154,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.check_if_path_or_subpath_is_moved(
                     location,
                     InitializationRequiringAction::Update,
-                    (place_span.0.as_place_ref(), place_span.1),
+                    (place_span.0.as_ref(), place_span.1),
                     flow_state,
                 );
             }
@@ -1232,7 +1232,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.check_if_path_or_subpath_is_moved(
                     location,
                     action,
-                    (place.as_place_ref(), span),
+                    (place.as_ref(), span),
                     flow_state,
                 );
             }
@@ -1260,7 +1260,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.check_if_path_or_subpath_is_moved(
                     location,
                     InitializationRequiringAction::Use,
-                    (place.as_place_ref(), span),
+                    (place.as_ref(), span),
                     flow_state,
                 );
             }
@@ -1309,7 +1309,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn propagate_closure_used_mut_upvar(&mut self, operand: &Operand<'tcx>) {
         let propagate_closure_used_mut_place = |this: &mut Self, place: &Place<'tcx>| {
             if place.projection.is_some() {
-                if let Some(field) = this.is_upvar_field_projection(place.as_place_ref()) {
+                if let Some(field) = this.is_upvar_field_projection(place.as_ref()) {
                     this.used_mut_upvars.push(field);
                 }
             } else if let PlaceBase::Local(local) = place.base {
@@ -1401,7 +1401,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.check_if_path_or_subpath_is_moved(
                     location,
                     InitializationRequiringAction::Use,
-                    (place.as_place_ref(), span),
+                    (place.as_ref(), span),
                     flow_state,
                 );
             }
@@ -1419,7 +1419,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.check_if_path_or_subpath_is_moved(
                     location,
                     InitializationRequiringAction::Use,
-                    (place.as_place_ref(), span),
+                    (place.as_ref(), span),
                     flow_state,
                 );
             }
@@ -1437,7 +1437,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) {
         debug!("check_for_invalidation_at_exit({:?})", borrow);
         let place = &borrow.borrowed_place;
-        let root_place = self.prefixes(place.as_place_ref(), PrefixSet::All).last().unwrap();
+        let root_place = self.prefixes(place.as_ref(), PrefixSet::All).last().unwrap();
 
         // FIXME(nll-rfc#40): do more precise destructor tracking here. For now
         // we just know that all locals are dropped at function exit (otherwise

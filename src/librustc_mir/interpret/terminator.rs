@@ -7,7 +7,7 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    InterpResult, PointerArithmetic, InterpError, Scalar,
+    InterpResult, PointerArithmetic, InterpError, Scalar, PanicMessage,
     InterpCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
@@ -137,19 +137,23 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Compute error message
                     use rustc::mir::interpret::InterpError::*;
                     return match *msg {
-                        BoundsCheck { ref len, ref index } => {
+                        Panic(PanicMessage::BoundsCheck { ref len, ref index }) => {
                             let len = self.read_immediate(self.eval_operand(len, None)?)
                                 .expect("can't eval len").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
                             let index = self.read_immediate(self.eval_operand(index, None)?)
                                 .expect("can't eval index").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            err!(BoundsCheck { len, index })
+                            err!(Panic(PanicMessage::BoundsCheck { len, index }))
                         }
-                        Overflow(op) => Err(Overflow(op).into()),
-                        OverflowNeg => Err(OverflowNeg.into()),
-                        DivisionByZero => Err(DivisionByZero.into()),
-                        RemainderByZero => Err(RemainderByZero.into()),
+                        Panic(PanicMessage::Overflow(op)) =>
+                            Err(Panic(PanicMessage::Overflow(op)).into()),
+                        Panic(PanicMessage::OverflowNeg) =>
+                            Err(Panic(PanicMessage::OverflowNeg).into()),
+                        Panic(PanicMessage::DivisionByZero) =>
+                            Err(Panic(PanicMessage::DivisionByZero).into()),
+                        Panic(PanicMessage::RemainderByZero) =>
+                            Err(Panic(PanicMessage::RemainderByZero).into()),
                         GeneratorResumedAfterReturn |
                         GeneratorResumedAfterPanic => unimplemented!(),
                         _ => bug!(),

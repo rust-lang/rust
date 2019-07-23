@@ -13,7 +13,7 @@ use rustc::mir::{
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
 };
-use rustc::mir::interpret::{InterpError, Scalar, GlobalId, InterpResult};
+use rustc::mir::interpret::{InterpError::Panic, Scalar, GlobalId, InterpResult, PanicMessage};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
@@ -339,12 +339,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // FIXME: implement
                     => {},
 
-                    | Panic { .. }
-                    | BoundsCheck{..}
-                    | Overflow(_)
-                    | OverflowNeg
-                    | DivisionByZero
-                    | RemainderByZero
+                    | Panic(_)
                     => {
                         diagnostic.report_as_lint(
                             self.ecx.tcx,
@@ -522,7 +517,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             // Need to do overflow check here: For actual CTFE, MIR
                             // generation emits code that does this before calling the op.
                             if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
-                                return err!(OverflowNeg);
+                                return err!(Panic(PanicMessage::OverflowNeg));
                             }
                         }
                         UnOp::Not => {
@@ -600,7 +595,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     )
                 } else {
                     if overflow {
-                        let err = InterpError::Overflow(op).into();
+                        let err = Panic(PanicMessage::Overflow(op)).into();
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
                     }
@@ -838,11 +833,11 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             .expect("some part of a failing const eval must be local");
                         use rustc::mir::interpret::InterpError::*;
                         let msg = match msg {
-                            Overflow(_) |
-                            OverflowNeg |
-                            DivisionByZero |
-                            RemainderByZero => msg.description().to_owned(),
-                            BoundsCheck { ref len, ref index } => {
+                            Panic(PanicMessage::Overflow(_)) |
+                            Panic(PanicMessage::OverflowNeg) |
+                            Panic(PanicMessage::DivisionByZero) |
+                            Panic(PanicMessage::RemainderByZero) => msg.description().to_owned(),
+                            Panic(PanicMessage::BoundsCheck { ref len, ref index }) => {
                                 let len = self
                                     .eval_operand(len, source_info)
                                     .expect("len must be const");

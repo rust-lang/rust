@@ -2,15 +2,12 @@ error: expected type, found `3`
   --> $DIR/recover-from-bad-variant.rs:7:26
    |
 LL |     let x = Enum::Foo(a: 3, b: 4);
-   |                          ^ expecting a type here because of type ascription
+   |                        - ^ expected type
+   |                        |
+   |                        tried to parse a type due to this type ascription
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-note: this expression expects an ascribed type after the colon
-  --> $DIR/recover-from-bad-variant.rs:7:23
-   |
-LL |     let x = Enum::Foo(a: 3, b: 4);
-   |                       ^
-   = help: this might be indicative of a syntax error elsewhere
+   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
 
 error[E0532]: expected tuple struct/variant, found struct variant `Enum::Foo`
   --> $DIR/recover-from-bad-variant.rs:10:9

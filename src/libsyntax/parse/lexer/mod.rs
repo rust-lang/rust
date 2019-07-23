@@ -1,12 +1,12 @@
 use crate::parse::ParseSess;
 use crate::parse::token::{self, Token, TokenKind};
 use crate::symbol::{sym, Symbol};
-use crate::parse::unescape;
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 use errors::{FatalError, Diagnostic, DiagnosticBuilder};
 use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
 use rustc_lexer::Base;
+use rustc_lexer::unescape;
 
 use std::borrow::Cow;
 use std::char;

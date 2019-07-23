@@ -131,7 +131,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 }
 
-                let move_spans = self.move_spans(original_path.as_place_ref(), location);
+                let move_spans = self.move_spans(original_path.as_ref(), location);
                 grouped_errors.push(GroupedMoveError::OtherIllegalMove {
                     use_spans: move_spans,
                     original_path,
@@ -160,7 +160,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let from_simple_let = match_place.is_none();
         let match_place = match_place.as_ref().unwrap_or(move_from);
 
-        match self.move_data.rev_lookup.find(match_place.as_place_ref()) {
+        match self.move_data.rev_lookup.find(match_place.as_ref()) {
             // Error with the match place
             LookupResult::Parent(_) => {
                 for ge in &mut *grouped_errors {
@@ -192,7 +192,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             // Error with the pattern
             LookupResult::Exact(_) => {
-                let mpi = match self.move_data.rev_lookup.find(move_from.as_place_ref()) {
+                let mpi = match self.move_data.rev_lookup.find(move_from.as_ref()) {
                     LookupResult::Parent(Some(mpi)) => mpi,
                     // move_from should be a projection from match_place.
                     _ => unreachable!("Probably not unreachable..."),
@@ -242,7 +242,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
             debug!("report: original_path={:?} span={:?}, kind={:?} \
                    original_path.is_upvar_field_projection={:?}", original_path, span, kind,
-                   self.is_upvar_field_projection(original_path.as_place_ref()));
+                   self.is_upvar_field_projection(original_path.as_ref()));
             (
                 match kind {
                     IllegalMoveOriginKind::Static => {
@@ -277,7 +277,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         span: Span
     ) -> DiagnosticBuilder<'a> {
         let description = if place.projection.is_none() {
-            format!("static item `{}`", self.describe_place(place.as_place_ref()).unwrap())
+            format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
         } else {
             let mut base_static = &place.projection;
             while let Some(box Projection { base: Some(ref proj), .. }) = base_static {
@@ -290,7 +290,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             format!(
                 "`{:?}` as `{:?}` is a static item",
-                self.describe_place(place.as_place_ref()).unwrap(),
+                self.describe_place(place.as_ref()).unwrap(),
                 self.describe_place(base_static).unwrap(),
             )
         };
@@ -308,7 +308,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // borrow to provide feedback about why this
         // was a move rather than a copy.
         let ty = deref_target_place.ty(self.body, self.infcx.tcx).ty;
-        let upvar_field = self.prefixes(move_place.as_place_ref(), PrefixSet::All)
+        let upvar_field = self.prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
 
         let deref_base = match deref_target_place.projection {
@@ -363,10 +363,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvar_name = upvar.name;
                 let upvar_span = self.infcx.tcx.hir().span(upvar_hir_id);
 
-                let place_name = self.describe_place(move_place.as_place_ref()).unwrap();
+                let place_name = self.describe_place(move_place.as_ref()).unwrap();
 
                 let place_description = if self
-                    .is_upvar_field_projection(move_place.as_place_ref())
+                    .is_upvar_field_projection(move_place.as_ref())
                     .is_some()
                 {
                     format!("`{}`, a {}", place_name, capture_description)
@@ -393,7 +393,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             _ => {
                 let source = self.borrowed_content_source(deref_base);
                 match (
-                    self.describe_place(move_place.as_place_ref()),
+                    self.describe_place(move_place.as_ref()),
                     source.describe_for_named_place(),
                 ) {
                     (Some(place_desc), Some(source_desc)) => {
@@ -455,7 +455,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
-                    let place_desc = match self.describe_place(move_from.as_place_ref()) {
+                    let place_desc = match self.describe_place(move_from.as_ref()) {
                         Some(desc) => format!("`{}`", desc),
                         None => format!("value"),
                     };
@@ -483,7 +483,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
                 let span = use_spans.var_or_use();
                 let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
-                let place_desc = match self.describe_place(original_path.as_place_ref()) {
+                let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{}`", desc),
                     None => format!("value"),
                 };

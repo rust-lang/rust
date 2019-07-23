@@ -1135,6 +1135,26 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     checked_type_of(tcx, def_id, true).unwrap()
 }
 
+fn infer_placeholder_type(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    body_id: hir::BodyId,
+    span: Span,
+) -> Ty<'_> {
+    let ty = tcx.typeck_tables_of(def_id).node_type(body_id.hir_id);
+    let mut diag = bad_placeholder_type(tcx, span);
+    if ty != tcx.types.err {
+        diag.span_suggestion(
+            span,
+            "replace `_` with the correct type",
+            ty.to_string(),
+            Applicability::MaybeIncorrect,
+        );
+    }
+    diag.emit();
+    ty
+}
+
 /// Same as [`type_of`] but returns [`Option`] instead of failing.
 ///
 /// If you want to fail anyway, you can set the `fail` parameter to true, but in this case,
@@ -1160,7 +1180,16 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }
-            TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => icx.to_ty(ty),
+            TraitItemKind::Const(ref ty, body_id)  => {
+                body_id.and_then(|body_id| {
+                    if let hir::TyKind::Infer = ty.node {
+                        Some(infer_placeholder_type(tcx, def_id, body_id, ty.span))
+                    } else {
+                        None
+                    }
+                }).unwrap_or_else(|| icx.to_ty(ty))
+            },
+            TraitItemKind::Type(_, Some(ref ty)) => icx.to_ty(ty),
             TraitItemKind::Type(_, None) => {
                 if !fail {
                     return None;
@@ -1174,7 +1203,13 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }
-            ImplItemKind::Const(ref ty, _) => icx.to_ty(ty),
+            ImplItemKind::Const(ref ty, body_id) => {
+                if let hir::TyKind::Infer = ty.node {
+                    infer_placeholder_type(tcx, def_id, body_id, ty.span)
+                } else {
+                    icx.to_ty(ty)
+                }
+            },
             ImplItemKind::Existential(_) => {
                 if tcx
                     .impl_trait_ref(tcx.hir().get_parent_did(hir_id))
@@ -1199,10 +1234,16 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
 
         Node::Item(item) => {
             match item.node {
-                ItemKind::Static(ref t, ..)
-                | ItemKind::Const(ref t, _)
-                | ItemKind::Ty(ref t, _)
-                | ItemKind::Impl(.., ref t, _) => icx.to_ty(t),
+                ItemKind::Static(ref ty, .., body_id)
+                | ItemKind::Const(ref ty, body_id) => {
+                    if let hir::TyKind::Infer = ty.node {
+                        infer_placeholder_type(tcx, def_id, body_id, ty.span)
+                    } else {
+                        icx.to_ty(ty)
+                    }
+                },
+                ItemKind::Ty(ref ty, _)
+                | ItemKind::Impl(.., ref ty, _) => icx.to_ty(ty),
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs)

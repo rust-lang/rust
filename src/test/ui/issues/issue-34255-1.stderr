@@ -2,15 +2,12 @@ error: expected type, found `42`
   --> $DIR/issue-34255-1.rs:8:24
    |
 LL |     Test::Drill(field: 42);
-   |                        ^^ expecting a type here because of type ascription
+   |                      - ^^ expected type
+   |                      |
+   |                      tried to parse a type due to this type ascription
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-note: this expression expects an ascribed type after the colon
-  --> $DIR/issue-34255-1.rs:8:17
-   |
-LL |     Test::Drill(field: 42);
-   |                 ^^^^^
-   = help: this might be indicative of a syntax error elsewhere
+   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
 
 error: aborting due to previous error
 
