@@ -19,7 +19,7 @@ impl Instant {
     pub fn now() -> Instant {
         unsafe {
             let mut t: mem::MaybeUninit<abi::timestamp> = mem::MaybeUninit::uninit();
-            let ret = abi::clock_time_get(abi::clockid::MONOTONIC, 0, t.get_mut());
+            let ret = abi::clock_time_get(abi::clockid::MONOTONIC, 0, t.as_mut_ptr());
             assert_eq!(ret, abi::errno::SUCCESS);
             Instant { t: t.assume_init() }
         }
@@ -60,7 +60,7 @@ impl SystemTime {
     pub fn now() -> SystemTime {
         unsafe {
             let mut t: mem::MaybeUninit<abi::timestamp> = mem::MaybeUninit::uninit();
-            let ret = abi::clock_time_get(abi::clockid::REALTIME, 0, t.get_mut());
+            let ret = abi::clock_time_get(abi::clockid::REALTIME, 0, t.as_mut_ptr());
             assert_eq!(ret, abi::errno::SUCCESS);
             SystemTime { t: t.assume_init() }
         }

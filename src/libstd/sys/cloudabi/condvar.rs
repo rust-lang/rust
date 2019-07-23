@@ -85,7 +85,7 @@ impl Condvar {
             &subscription,
             event.as_mut_ptr(),
             1,
-            nevents.get_mut()
+            nevents.as_mut_ptr()
         );
         assert_eq!(
             ret,
@@ -142,7 +142,7 @@ impl Condvar {
             subscriptions.as_ptr(),
             mem::MaybeUninit::first_ptr_mut(&mut events),
             2,
-            nevents.get_mut()
+            nevents.as_mut_ptr()
         );
         assert_eq!(
             ret,
