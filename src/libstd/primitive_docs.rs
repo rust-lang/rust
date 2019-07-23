@@ -900,8 +900,8 @@ mod prim_usize { }
 /// For those familiar with pointers, a reference is just a pointer that is assumed to be
 /// aligned, not null, and pointing to memory containing a valid value of `T` - for example,
 /// `&bool` can only point to an allocation containing the integer values `1` (`true`) or `0`
-/// (`false`), but the behavior of creating a `&bool` that points to an allocation containing
-/// the value `3` is undefined.
+/// (`false`), but creating a `&bool` that points to an allocation containing
+/// the value `3` causes undefined behaviour.
 /// In fact, `Option<&T>` has the same memory representation as a
 /// nullable but aligned pointer, and can be passed across FFI boundaries as such.
 ///
