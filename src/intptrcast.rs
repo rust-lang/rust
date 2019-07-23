@@ -42,6 +42,10 @@ impl<'mir, 'tcx> GlobalState {
         int: u64,
         memory: &Memory<'mir, 'tcx, Evaluator<'tcx>>,
     ) -> InterpResult<'tcx, Pointer<Tag>> {
+        if int == 0 {
+            return err!(InvalidNullPointerUsage);
+        }
+
         let global_state = memory.extra.intptrcast.borrow();
         
         match global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr) {
@@ -86,7 +90,7 @@ impl<'mir, 'tcx> GlobalState {
                 // This allocation does not have a base address yet, pick one.
                 // Leave some space to the previous allocation, to give it some chance to be less aligned.
                 let slack = {
-                    let mut rng = memory.extra.rng.as_ref().unwrap().borrow_mut();
+                    let mut rng = memory.extra.rng.borrow_mut();
                     // This means that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
                     rng.gen_range(0, 16)
                 };

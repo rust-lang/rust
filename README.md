@@ -262,10 +262,10 @@ With this, you should now have a working development setup!  See
 
 Several `-Z` flags are relevant for Miri:
 
-* `-Zmiri-seed=<hex>` is a custom `-Z` flag added by Miri.  It enables the
-  interpreted program to seed an RNG with system entropy.  Miri will keep an RNG
-  on its own that is seeded with the given seed, and use that to generate the
-  "system entropy" that seeds the RNG(s) in the interpreted program.
+* `-Zmiri-seed=<hex>` is a custom `-Z` flag added by Miri.  It configures the
+  seed of the RNG that Miri uses to resolve non-determinism.  This RNG is used
+  to pick base addresses for allocations, and when the interpreted program
+  requests system entropy.  The default seed is 0.
   **NOTE**: This entropy is not good enough for cryptographic use!  Do not
   generate secret keys in Miri or perform other kinds of cryptographic
   operations that rely on proper random numbers.
