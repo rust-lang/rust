@@ -892,7 +892,7 @@ fn print_with_analysis(
                                 suffix (b::c::d)");
             let hir_id = tcx.hir().node_to_hir_id(nodeid);
             let node = tcx.hir().find(hir_id).unwrap_or_else(|| {
-                tcx.sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
+                tcx.sess.fatal(&format!("`--pretty=flowgraph` couldn't find ID: {}", nodeid))
             });
 
             match blocks::Code::from_node(&tcx.hir(), hir_id) {
@@ -904,7 +904,7 @@ fn print_with_analysis(
                     print_flowgraph(variants, tcx, code, mode, out)
                 }
                 None => {
-                    let message = format!("--pretty=flowgraph needs block, fn, or method; \
+                    let message = format!("`--pretty=flowgraph` needs block, fn, or method; \
                                             got {:?}",
                                             node);
 

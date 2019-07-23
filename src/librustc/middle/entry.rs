@@ -120,9 +120,9 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
                 ctxt.attr_main_fn = Some((item.hir_id, item.span));
             } else {
                 struct_span_err!(ctxt.session, item.span, E0137,
-                                 "multiple functions with a #[main] attribute")
-                .span_label(item.span, "additional #[main] function")
-                .span_label(ctxt.attr_main_fn.unwrap().1, "first #[main] function")
+                                 "multiple functions with a `#[main]` attribute")
+                .span_label(item.span, "additional `#[main]` function")
+                .span_label(ctxt.attr_main_fn.unwrap().1, "first `#[main]` function")
                 .emit();
             }
         },
