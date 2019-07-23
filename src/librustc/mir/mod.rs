@@ -1150,7 +1150,7 @@ pub enum TerminatorKind<'tcx> {
     Assert {
         cond: Operand<'tcx>,
         expected: bool,
-        msg: AssertMessage<'tcx>,
+        msg: PanicMessage<_>,
         target: BasicBlock,
         cleanup: Option<BasicBlock>,
     },
