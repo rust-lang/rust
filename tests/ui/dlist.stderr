@@ -8,10 +8,10 @@ LL |     type Baz = LinkedList<u8>;
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> $DIR/dlist.rs:10:12
+  --> $DIR/dlist.rs:10:15
    |
-LL |     fn foo(LinkedList<u8>);
-   |            ^^^^^^^^^^^^^^
+LL |     fn foo(_: LinkedList<u8>);
+   |               ^^^^^^^^^^^^^^
    |
    = help: a VecDeque might work
 

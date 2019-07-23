@@ -197,7 +197,7 @@ error: this `if` has identical blocks
 LL |       } else {
    |  ____________^
 LL | |         //~ ERROR same body as `if` block
-LL | |         try!(Ok("foo"));
+LL | |         r#try!(Ok("foo"));
 LL | |     }
    | |_____^
    |
@@ -206,7 +206,7 @@ note: same as this
    |
 LL |       if true {
    |  _____________^
-LL | |         try!(Ok("foo"));
+LL | |         r#try!(Ok("foo"));
 LL | |     } else {
    | |_____^
 

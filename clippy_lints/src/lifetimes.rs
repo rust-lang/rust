@@ -283,6 +283,8 @@ impl<'v, 't> RefVisitor<'v, 't> {
         if let Some(ref lt) = *lifetime {
             if lt.name == LifetimeName::Static {
                 self.lts.push(RefLt::Static);
+            } else if let LifetimeName::Param(ParamName::Fresh(_)) = lt.name {
+                // Fresh lifetimes generated should be ignored.
             } else if lt.is_elided() {
                 self.lts.push(RefLt::Unnamed);
             } else {

@@ -1,8 +1,8 @@
 error: handle written amount returned or use `Write::write_all` instead
   --> $DIR/unused_io_amount.rs:7:5
    |
-LL |     try!(s.write(b"test"));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     r#try!(s.write(b"test"));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unused-io-amount` implied by `-D warnings`
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -10,8 +10,8 @@ LL |     try!(s.write(b"test"));
 error: handle read amount returned or use `Read::read_exact` instead
   --> $DIR/unused_io_amount.rs:9:5
    |
-LL |     try!(s.read(&mut buf));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     r#try!(s.read(&mut buf));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
