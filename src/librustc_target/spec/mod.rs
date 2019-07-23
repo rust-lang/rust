@@ -287,7 +287,7 @@ macro_rules! supported_targets {
                         // run-time that the parser works correctly
                         t = Target::from_json(t.to_json())
                             .map_err(LoadTargetError::Other)?;
-                        debug!("Got builtin target: {:?}", t);
+                        debug!("got builtin target: {:?}", t);
                         Ok(t)
                     },
                 )+

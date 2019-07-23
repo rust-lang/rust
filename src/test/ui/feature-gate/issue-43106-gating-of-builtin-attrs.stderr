@@ -184,7 +184,7 @@ warning: macro_escape is a deprecated synonym for macro_use
 LL |     mod inner { #![macro_escape] }
    |                 ^^^^^^^^^^^^^^^^
    |
-   = help: consider an outer attribute, #[macro_use] mod ...
+   = help: consider an outer attribute, `#[macro_use]` mod ...
 
 warning: the feature `rust1` has been stable since 1.0.0 and no longer requires an attribute to enable
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:89:12

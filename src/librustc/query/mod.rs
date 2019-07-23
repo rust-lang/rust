@@ -643,11 +643,11 @@ rustc_queries! {
         }
         query is_sanitizer_runtime(_: CrateNum) -> bool {
             fatal_cycle
-            desc { "query a crate is #![sanitizer_runtime]" }
+            desc { "query a crate is `#![sanitizer_runtime]`" }
         }
         query is_profiler_runtime(_: CrateNum) -> bool {
             fatal_cycle
-            desc { "query a crate is #![profiler_runtime]" }
+            desc { "query a crate is `#![profiler_runtime]`" }
         }
         query panic_strategy(_: CrateNum) -> PanicStrategy {
             fatal_cycle
@@ -655,7 +655,7 @@ rustc_queries! {
         }
         query is_no_builtins(_: CrateNum) -> bool {
             fatal_cycle
-            desc { "test whether a crate has #![no_builtins]" }
+            desc { "test whether a crate has `#![no_builtins]`" }
         }
         query symbol_mangling_version(_: CrateNum) -> SymbolManglingVersion {
             fatal_cycle

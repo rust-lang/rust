@@ -994,7 +994,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let deref_ty = match base_cmt_ty.builtin_deref(true) {
             Some(mt) => mt.ty,
             None => {
-                debug!("Explicit deref of non-derefable type: {:?}", base_cmt_ty);
+                debug!("explicit deref of non-derefable type: {:?}", base_cmt_ty);
                 return Err(());
             }
         };
@@ -1317,7 +1317,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 let element_ty = match cmt.ty.builtin_index() {
                     Some(ty) => ty,
                     None => {
-                        debug!("Explicit index of non-indexable type {:?}", cmt);
+                        debug!("explicit index of non-indexable type {:?}", cmt);
                         return Err(());
                     }
                 };

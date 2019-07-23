@@ -17,7 +17,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 if !contents.starts_with("//") && contents.contains("#[test]") {
                     tidy_error!(
                         bad,
-                        "{} contains #[test]; libcore tests must be placed inside \
+                        "`{}` contains `#[test]`; libcore tests must be placed inside \
                         `src/libcore/tests/`",
                         subpath.display()
                     );

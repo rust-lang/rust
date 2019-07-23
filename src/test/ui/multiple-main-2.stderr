@@ -1,13 +1,13 @@
-error[E0137]: multiple functions with a #[main] attribute
+error[E0137]: multiple functions with a `#[main]` attribute
   --> $DIR/multiple-main-2.rs:8:1
    |
 LL | / fn bar() {
 LL | | }
-   | |_- first #[main] function
+   | |_- first `#[main]` function
 ...
 LL | / fn foo() {
 LL | | }
-   | |_^ additional #[main] function
+   | |_^ additional `#[main]` function
 
 error: aborting due to previous error
 
