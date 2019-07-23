@@ -21,7 +21,7 @@ use url_serde::Ser;
 use crate::{
     cargo_target_spec::{runnable_args, CargoTargetSpec},
     conv::{to_location, Conv, ConvWith, MapConvWith, TryConvWith, TryConvWithToVec},
-    req::{self, Decoration},
+    req::{self, Decoration, InlayHint, InlayHintsParams, InlayKind},
     world::WorldSnapshot,
     LspError, Result,
 };
@@ -873,4 +873,25 @@ fn to_diagnostic_severity(severity: Severity) -> DiagnosticSeverity {
         Error => DiagnosticSeverity::Error,
         WeakWarning => DiagnosticSeverity::Hint,
     }
+}
+
+pub fn handle_inlay_hints(
+    world: WorldSnapshot,
+    params: InlayHintsParams,
+) -> Result<Vec<InlayHint>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let analysis = world.analysis();
+    let line_index = analysis.file_line_index(file_id);
+    Ok(analysis
+        .inlay_hints(file_id)?
+        .into_iter()
+        .map(|api_type| InlayHint {
+            label: api_type.label.to_string(),
+            range: api_type.range.conv_with(&line_index),
+            kind: match api_type.kind {
+                ra_ide_api::InlayKind::LetBindingType => InlayKind::LetBindingType,
+                ra_ide_api::InlayKind::ClosureParameterType => InlayKind::ClosureParameterType,
+            },
+        })
+        .collect())
 }

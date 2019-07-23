@@ -38,6 +38,7 @@ mod join_lines;
 mod typing;
 mod matching_brace;
 mod display;
+mod inlay_hints;
 
 #[cfg(test)]
 mod marks;
@@ -64,6 +65,7 @@ pub use crate::{
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
+    inlay_hints::{InlayHint, InlayKind},
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
     references::ReferenceSearchResult,
@@ -394,6 +396,11 @@ impl Analysis {
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
         let parse = self.db.parse(file_id);
         file_structure(&parse.tree())
+    }
+
+    /// Returns a list of the places in the file where type hints can be displayed.
+    pub fn inlay_hints(&self, file_id: FileId) -> Cancelable<Vec<InlayHint>> {
+        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, &db.parse(file_id).tree()))
     }
 
     /// Returns the set of folding ranges.
