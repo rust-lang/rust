@@ -24,7 +24,7 @@ from formatting an attribute #3665
 
 ### Fixed
 
-- Fix rustfmt from crashing when `async!` macro call is used in a method chain.
+- Fix rustfmt crashing when `await!` macro call is used in a method chain.
 - Fix rustfmt not recognizing a package whose name differs from its directory's name.
 
 ## [1.3.1] 2019-06-30
