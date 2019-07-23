@@ -1,5 +1,3 @@
-// compile-flags: -Zmiri-seed=0000000000000000
-
 use std::collections::{self, HashMap};
 use std::hash::{BuildHasherDefault, BuildHasher};
 

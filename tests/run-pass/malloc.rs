@@ -1,5 +1,4 @@
 //ignore-windows: Uses POSIX APIs
-//compile-flags: -Zmiri-seed=
 
 #![feature(rustc_private)]
 

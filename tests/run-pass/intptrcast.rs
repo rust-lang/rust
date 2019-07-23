@@ -1,5 +1,3 @@
-// compile-flags: -Zmiri-seed=0000000000000000
-
 // This returns a miri pointer at type usize, if the argument is a proper pointer
 fn transmute_ptr_to_int<T>(x: *const T) -> usize {
     unsafe { std::mem::transmute(x) }
