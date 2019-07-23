@@ -1,5 +1,6 @@
 use std::env;
 use std::io;
+use std::path::Path;
 use std::process::Command;
 use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
 
@@ -29,7 +30,7 @@ impl Arch {
 
 pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
     if let Some(sdkroot) = env::var("SDKROOT").ok() {
-        let sdkroot_path = Path::new(sdkroot);
+        let sdkroot_path = Path::new(&sdkroot);
         if sdkroot_path.is_absolute() && sdkroot_path != Path::new("/") && sdkroot_path.exists() {
             return Ok(sdkroot);
         }
