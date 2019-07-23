@@ -33,5 +33,5 @@ fn is_u64_aligned(u: &Tag<u64>) -> bool {
 
 pub fn main() {
     let x = mk_rec();
-    assert!(is_u64_aligned(&x.t));
+    is_u64_aligned(&x.t); // the result of this is non-deterministic
 }
