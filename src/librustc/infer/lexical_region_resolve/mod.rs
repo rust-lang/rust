@@ -874,7 +874,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             constraints.retain(|constraint| {
                 let (edge_changed, retain) = body(constraint);
                 if edge_changed {
-                    debug!("Updated due to constraint {:?}", constraint);
+                    debug!("updated due to constraint {:?}", constraint);
                     changed = true;
                 }
                 retain

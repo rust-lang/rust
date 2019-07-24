@@ -143,7 +143,7 @@ pub fn check(path: &Path, bad: &mut bool, verbose: bool) -> CollectedFeatures {
         println!("Expected a gate test for the feature '{}'.", name);
         println!("Hint: create a failing test file named 'feature-gate-{}.rs'\
                 \n      in the 'ui' test suite, with its failures due to\
-                \n      missing usage of #![feature({})].", name, name);
+                \n      missing usage of `#![feature({})]`.", name, name);
         println!("Hint: If you already have such a test and don't want to rename it,\
                 \n      you can also add a // gate-test-{} line to the test file.",
                  name);
