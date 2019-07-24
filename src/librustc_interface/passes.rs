@@ -52,7 +52,7 @@ use syntax::feature_gate::AttributeType;
 use syntax_pos::{FileName, edition::Edition, hygiene};
 use syntax_ext;
 
-use serialize::json;
+use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
 
 use std::any::Any;

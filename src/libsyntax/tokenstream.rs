@@ -23,7 +23,7 @@ use syntax_pos::{BytePos, ExpnId, Span, DUMMY_SP};
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
-use serialize::{Decoder, Decodable, Encoder, Encodable};
+use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use smallvec::{SmallVec, smallvec};
 
 use std::borrow::Cow;

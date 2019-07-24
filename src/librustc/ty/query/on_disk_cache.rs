@@ -5,7 +5,7 @@ use crate::hir::map::definitions::DefPathHash;
 use crate::ich::{CachingSourceMapView, Fingerprint};
 use crate::mir::{self, interpret};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use crate::rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
                       UseSpecializedDecodable, UseSpecializedEncodable};
 use crate::session::{CrateDisambiguator, Session};
