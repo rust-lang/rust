@@ -4,7 +4,6 @@
 
 #[doc(include = "not-a-file.md")]
 pub struct SomeStruct; //~^ ERROR couldn't read
-                       //~| HELP external doc paths are relative to the crate root
 
 #[doc(include = "auxiliary/invalid-utf8.txt")]
 pub struct InvalidUtf8; //~^ ERROR wasn't a utf-8 file
