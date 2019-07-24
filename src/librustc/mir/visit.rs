@@ -514,11 +514,16 @@ macro_rules! make_mir_visitor {
             fn super_assert_message(&mut self,
                                     msg: & $($mutability)? AssertMessage<'tcx>,
                                     location: Location) {
-                use crate::mir::interpret::InterpError::*;
-                use crate::mir::interpret::PanicMessage::BoundsCheck;
-                if let Panic(BoundsCheck { len, index }) = msg {
-                    self.visit_operand(len, location);
-                    self.visit_operand(index, location);
+                use crate::mir::interpret::PanicMessage::*;
+                match msg {
+                    BoundsCheck { len, index } => {
+                        self.visit_operand(len, location);
+                        self.visit_operand(index, location);
+                    }
+                    Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
+                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic => {
+                        // Nothing to visit
+                    }
                 }
             }
 

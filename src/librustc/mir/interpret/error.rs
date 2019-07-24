@@ -47,7 +47,7 @@ pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
-    pub error: crate::mir::interpret::InterpError<'tcx, u64>,
+    pub error: crate::mir::interpret::InterpError<'tcx>,
     pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
 
@@ -185,8 +185,15 @@ pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'
 /// macro for this.
 #[derive(Debug, Clone)]
 pub struct InterpErrorInfo<'tcx> {
-    pub kind: InterpError<'tcx, u64>,
+    pub kind: InterpError<'tcx>,
     backtrace: Option<Box<Backtrace>>,
+}
+
+
+impl<'tcx> fmt::Display for InterpErrorInfo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)
+    }
 }
 
 impl<'tcx> InterpErrorInfo<'tcx> {
@@ -202,8 +209,8 @@ fn print_backtrace(backtrace: &mut Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
 }
 
-impl<'tcx> From<InterpError<'tcx, u64>> for InterpErrorInfo<'tcx> {
-    fn from(kind: InterpError<'tcx, u64>) -> Self {
+impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
+    fn from(kind: InterpError<'tcx>) -> Self {
         let backtrace = match env::var("RUST_CTFE_BACKTRACE") {
             // Matching `RUST_BACKTRACE` -- we treat "0" the same as "not present".
             Ok(ref val) if val != "0" => {
@@ -226,8 +233,6 @@ impl<'tcx> From<InterpError<'tcx, u64>> for InterpErrorInfo<'tcx> {
     }
 }
 
-pub type AssertMessage<'tcx> = InterpError<'tcx, mir::Operand<'tcx>>;
-
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum PanicMessage<O> {
     Panic {
@@ -244,10 +249,68 @@ pub enum PanicMessage<O> {
     OverflowNeg,
     DivisionByZero,
     RemainderByZero,
+    GeneratorResumedAfterReturn,
+    GeneratorResumedAfterPanic,
+}
+
+/// Type for MIR `Assert` terminator error messages.
+pub type AssertMessage<'tcx> = PanicMessage<mir::Operand<'tcx>>;
+
+impl<O> PanicMessage<O> {
+    /// Getting a description does not require `O` to be printable, and does not
+    /// require allocation.
+    /// The caller is expected to handle `Panic` and `BoundsCheck` separately.
+    pub fn description(&self) -> &'static str {
+        use PanicMessage::*;
+        match self {
+            Overflow(mir::BinOp::Add) =>
+                "attempt to add with overflow",
+            Overflow(mir::BinOp::Sub) =>
+                "attempt to subtract with overflow",
+            Overflow(mir::BinOp::Mul) =>
+                "attempt to multiply with overflow",
+            Overflow(mir::BinOp::Div) =>
+                "attempt to divide with overflow",
+            Overflow(mir::BinOp::Rem) =>
+                "attempt to calculate the remainder with overflow",
+            OverflowNeg =>
+                "attempt to negate with overflow",
+            Overflow(mir::BinOp::Shr) =>
+                "attempt to shift right with overflow",
+            Overflow(mir::BinOp::Shl) =>
+                "attempt to shift left with overflow",
+            Overflow(op) =>
+                bug!("{:?} cannot overflow", op),
+            DivisionByZero =>
+                "attempt to divide by zero",
+            RemainderByZero =>
+                "attempt to calculate the remainder with a divisor of zero",
+            GeneratorResumedAfterReturn =>
+                "generator resumed after completion",
+            GeneratorResumedAfterPanic =>
+                "generator resumed after panicking",
+            Panic { .. } | BoundsCheck { .. } =>
+                bug!("Unexpected PanicMessage"),
+        }
+    }
+}
+
+impl<O: fmt::Debug> fmt::Debug for PanicMessage<O> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use PanicMessage::*;
+        match self {
+            Panic { ref msg, line, col, ref file } =>
+                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
+            BoundsCheck { ref len, ref index } =>
+                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
+            _ =>
+                write!(f, "{}", self.description()),
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum InterpError<'tcx, O> {
+pub enum InterpError<'tcx> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant.
     MachineError(String),
@@ -311,7 +374,7 @@ pub enum InterpError<'tcx, O> {
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
-    Panic(PanicMessage<O>),
+    Panic(PanicMessage<u64>),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
     UnimplementedTraitSelection,
@@ -322,28 +385,21 @@ pub enum InterpError<'tcx, O> {
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error
     ReferencedConstant,
-    GeneratorResumedAfterReturn,
-    GeneratorResumedAfterPanic,
     InfiniteLoop,
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
-impl<'tcx> fmt::Display for InterpErrorInfo<'tcx> {
+impl<'tcx> fmt::Display for InterpError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.kind)
-    }
-}
-
-impl<'tcx> fmt::Display for InterpError<'tcx, u64> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Forward `Display` to `Debug`
         write!(f, "{:?}", self)
     }
 }
 
-impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
+impl<'tcx> fmt::Debug for InterpError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::InterpError::*;
+        use InterpError::*;
         match *self {
             PointerOutOfBounds { ptr, msg, allocation_size } => {
                 write!(f, "{} failed: pointer must be in-bounds at offset {}, \
@@ -457,10 +513,6 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
                 write!(f, "encountered overly generic constant"),
             ReferencedConstant =>
                 write!(f, "referenced constant has errors"),
-            GeneratorResumedAfterReturn =>
-                write!(f, "generator resumed after completion"),
-            GeneratorResumedAfterPanic =>
-                write!(f, "generator resumed after panicking"),
             InfiniteLoop =>
                 write!(f, "duplicate interpreter state observed here, const evaluation will never \
                     terminate"),
@@ -479,33 +531,8 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
             AbiViolation(ref msg) |
             Intrinsic(ref msg) =>
                 write!(f, "{}", msg),
-
-            Panic(PanicMessage::Panic { ref msg, line, col, ref file }) =>
-                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
-            Panic(PanicMessage::BoundsCheck { ref len, ref index }) =>
-                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
-            Panic(PanicMessage::Overflow(mir::BinOp::Add)) =>
-                write!(f, "attempt to add with overflow"),
-            Panic(PanicMessage::Overflow(mir::BinOp::Sub)) =>
-                write!(f, "attempt to subtract with overflow"),
-            Panic(PanicMessage::Overflow(mir::BinOp::Mul)) =>
-                write!(f, "attempt to multiply with overflow"),
-            Panic(PanicMessage::Overflow(mir::BinOp::Div)) =>
-                write!(f, "attempt to divide with overflow"),
-            Panic(PanicMessage::Overflow(mir::BinOp::Rem)) =>
-                write!(f, "attempt to calculate the remainder with overflow"),
-            Panic(PanicMessage::OverflowNeg) =>
-                write!(f, "attempt to negate with overflow"),
-            Panic(PanicMessage::Overflow(mir::BinOp::Shr)) =>
-                write!(f, "attempt to shift right with overflow"),
-            Panic(PanicMessage::Overflow(mir::BinOp::Shl)) =>
-                write!(f, "attempt to shift left with overflow"),
-            Panic(PanicMessage::Overflow(op)) =>
-                bug!("{:?} cannot overflow", op),
-            Panic(PanicMessage::DivisionByZero) =>
-                write!(f, "attempt to divide by zero"),
-            Panic(PanicMessage::RemainderByZero) =>
-                write!(f, "attempt to calculate the remainder with a divisor of zero"),
+            Panic(ref msg) =>
+                write!(f, "{:?}", msg),
         }
     }
 }

@@ -7,7 +7,7 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    InterpResult, PointerArithmetic, InterpError, Scalar, PanicMessage,
+    InterpResult, PointerArithmetic, InterpError, Scalar,
     InterpCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
@@ -135,28 +135,31 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.goto_block(Some(target))?;
                 } else {
                     // Compute error message
-                    use rustc::mir::interpret::InterpError::*;
-                    return match *msg {
-                        Panic(PanicMessage::BoundsCheck { ref len, ref index }) => {
+                    use rustc::mir::interpret::PanicMessage::*;
+                    return match msg {
+                        BoundsCheck { ref len, ref index } => {
                             let len = self.read_immediate(self.eval_operand(len, None)?)
                                 .expect("can't eval len").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
                             let index = self.read_immediate(self.eval_operand(index, None)?)
                                 .expect("can't eval index").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            err!(Panic(PanicMessage::BoundsCheck { len, index }))
+                            err!(Panic(BoundsCheck { len, index }))
                         }
-                        Panic(PanicMessage::Overflow(op)) =>
-                            Err(Panic(PanicMessage::Overflow(op)).into()),
-                        Panic(PanicMessage::OverflowNeg) =>
-                            Err(Panic(PanicMessage::OverflowNeg).into()),
-                        Panic(PanicMessage::DivisionByZero) =>
-                            Err(Panic(PanicMessage::DivisionByZero).into()),
-                        Panic(PanicMessage::RemainderByZero) =>
-                            Err(Panic(PanicMessage::RemainderByZero).into()),
-                        GeneratorResumedAfterReturn |
-                        GeneratorResumedAfterPanic => unimplemented!(),
-                        _ => bug!(),
+                        Overflow(op) =>
+                            err!(Panic(Overflow(*op))),
+                        OverflowNeg =>
+                            err!(Panic(OverflowNeg)),
+                        DivisionByZero =>
+                            err!(Panic(DivisionByZero)),
+                        RemainderByZero =>
+                            err!(Panic(RemainderByZero)),
+                        GeneratorResumedAfterReturn =>
+                            err!(Panic(GeneratorResumedAfterReturn)),
+                        GeneratorResumedAfterPanic =>
+                            err!(Panic(GeneratorResumedAfterPanic)),
+                        Panic { .. } =>
+                            bug!("`Panic` variant cannot occur in MIR"),
                     };
                 }
             }
