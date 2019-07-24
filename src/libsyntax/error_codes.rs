@@ -182,7 +182,7 @@ beta compilers will not comply.
 Example of erroneous code (on a stable compiler):
 
 ```ignore (depends on release channel)
-#![feature(non_ascii_idents)] // error: #![feature] may not be used on the
+#![feature(non_ascii_idents)] // error: `#![feature]` may not be used on the
                               //        stable release channel
 ```
 

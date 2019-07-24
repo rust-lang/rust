@@ -7,7 +7,7 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::middle::region;
-use rustc::mir::interpret::{InterpError::Panic, PanicMessage};
+use rustc::mir::interpret::PanicMessage;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
 use syntax_pos::Span;
@@ -101,7 +101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         Operand::Move(is_min),
                         false,
-                        Panic(PanicMessage::OverflowNeg),
+                        PanicMessage::OverflowNeg,
                         expr_span,
                     );
                 }
@@ -401,7 +401,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val = result_value.clone().field(val_fld, ty);
             let of = result_value.field(of_fld, bool_ty);
 
-            let err = Panic(PanicMessage::Overflow(op));
+            let err = PanicMessage::Overflow(op);
 
             block = self.assert(block, Operand::Move(of), false, err, span);
 
@@ -411,11 +411,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Checking division and remainder is more complex, since we 1. always check
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
-                let (zero_err, overflow_err) = if op == BinOp::Div {
-                    (Panic(PanicMessage::DivisionByZero), Panic(PanicMessage::Overflow(op)))
+                let zero_err = if op == BinOp::Div {
+                    PanicMessage::DivisionByZero
                 } else {
-                    (Panic(PanicMessage::RemainderByZero), Panic(PanicMessage::Overflow(op)))
+                    PanicMessage::RemainderByZero
                 };
+                let overflow_err = PanicMessage::Overflow(op);
 
                 // Check for / 0
                 let is_zero = self.temp(bool_ty, span);

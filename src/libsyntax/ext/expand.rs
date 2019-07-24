@@ -602,7 +602,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             None => return TokenStream::empty(),
         }
         self.cx.span_err(span, "custom attribute invocations must be \
-            of the form #[foo] or #[foo(..)], the macro name must only be \
+            of the form `#[foo]` or `#[foo(..)]`, the macro name must only be \
             followed by a delimiter token");
         TokenStream::empty()
     }

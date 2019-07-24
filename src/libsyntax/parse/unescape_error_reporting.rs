@@ -190,7 +190,7 @@ pub(crate) fn emit_unescape_error(
             handler.span_err(span, "empty character literal")
         }
         EscapeError::LoneSlash => {
-            panic!("lexer accepted unterminated literal with trailing slash")
+            handler.span_err(span, "invalid trailing slash in literal")
         }
     }
 }

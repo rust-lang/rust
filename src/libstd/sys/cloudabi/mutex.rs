@@ -1,5 +1,6 @@
 use crate::cell::UnsafeCell;
 use crate::mem;
+use crate::mem::MaybeUninit;
 use crate::sync::atomic::{AtomicU32, Ordering};
 use crate::sys::cloudabi::abi;
 use crate::sys::rwlock::{self, RWLock};
@@ -47,24 +48,27 @@ impl Mutex {
 }
 
 pub struct ReentrantMutex {
-    lock: UnsafeCell<AtomicU32>,
-    recursion: UnsafeCell<u32>,
+    lock: UnsafeCell<MaybeUninit<AtomicU32>>,
+    recursion: UnsafeCell<MaybeUninit<u32>>,
 }
 
 impl ReentrantMutex {
     pub unsafe fn uninitialized() -> ReentrantMutex {
-        mem::uninitialized()
+        ReentrantMutex {
+            lock: UnsafeCell::new(MaybeUninit::uninit()),
+            recursion: UnsafeCell::new(MaybeUninit::uninit())
+        }
     }
 
     pub unsafe fn init(&mut self) {
-        self.lock = UnsafeCell::new(AtomicU32::new(abi::LOCK_UNLOCKED.0));
-        self.recursion = UnsafeCell::new(0);
+        self.lock = UnsafeCell::new(MaybeUninit::new(AtomicU32::new(abi::LOCK_UNLOCKED.0)));
+        self.recursion = UnsafeCell::new(MaybeUninit::new(0));
     }
 
     pub unsafe fn try_lock(&self) -> bool {
         // Attempt to acquire the lock.
-        let lock = self.lock.get();
-        let recursion = self.recursion.get();
+        let lock = (*self.lock.get()).as_mut_ptr();
+        let recursion = (*self.recursion.get()).as_mut_ptr();
         if let Err(old) = (*lock).compare_exchange(
             abi::LOCK_UNLOCKED.0,
             __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
@@ -109,8 +113,8 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn unlock(&self) {
-        let lock = self.lock.get();
-        let recursion = self.recursion.get();
+        let lock = (*self.lock.get()).as_mut_ptr();
+        let recursion = (*self.recursion.get()).as_mut_ptr();
         assert_eq!(
             (*lock).load(Ordering::Relaxed) & !abi::LOCK_KERNEL_MANAGED.0,
             __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
@@ -136,8 +140,8 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn destroy(&self) {
-        let lock = self.lock.get();
-        let recursion = self.recursion.get();
+        let lock = (*self.lock.get()).as_mut_ptr();
+        let recursion = (*self.recursion.get()).as_mut_ptr();
         assert_eq!(
             (*lock).load(Ordering::Relaxed),
             abi::LOCK_UNLOCKED.0,

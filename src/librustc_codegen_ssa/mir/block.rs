@@ -2,7 +2,7 @@ use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};
 use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
-use rustc::mir::interpret::{InterpError, PanicMessage};
+use rustc::mir::interpret::PanicMessage;
 use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
 use rustc_target::spec::abi::Abi;
 use crate::base;
@@ -368,7 +368,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.check_overflow() {
-            if let InterpError::Panic(PanicMessage::OverflowNeg) = *msg {
+            if let PanicMessage::OverflowNeg = *msg {
                 const_cond = Some(expected);
             }
         }
@@ -402,8 +402,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
 
         // Put together the arguments to the panic entry point.
-        let (lang_item, args) = match *msg {
-            InterpError::Panic(PanicMessage::BoundsCheck { ref len, ref index }) => {
+        let (lang_item, args) = match msg {
+            PanicMessage::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
 
