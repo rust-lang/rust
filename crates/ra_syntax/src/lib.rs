@@ -24,6 +24,8 @@ mod syntax_error;
 mod parsing;
 mod validation;
 mod ptr;
+#[cfg(test)]
+mod tests;
 
 pub mod algo;
 pub mod ast;

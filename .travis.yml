@@ -1,9 +1,7 @@
 cache: cargo
 before_cache:
-    # ask Cargo to clean up artifacts for workspace crates
-    - cargo clean $(printf -- '--package %s ' $(cd crates; ls))
-    # Cargo doesn't clean up depinfo itself, do it manually
-    - find ./target/debug -maxdepth 2 -iname '*.d' -delete
+    - find ./target/debug -maxdepth 1 -type f -delete
+    - rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*heavy_test*,*gen_lsp*,*thread_worker*}
     - rm -f  ./target/.rustc_info.json
 
 matrix:

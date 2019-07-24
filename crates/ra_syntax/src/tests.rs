@@ -1,19 +1,16 @@
-extern crate ra_syntax;
-extern crate test_utils;
-extern crate walkdir;
-
 use std::{
     fmt::Write,
     path::{Component, PathBuf},
 };
 
-use ra_syntax::{fuzz, SourceFile};
 use test_utils::{collect_tests, dir_tests, project_dir, read_text};
+
+use crate::{fuzz, SourceFile};
 
 #[test]
 fn lexer_tests() {
     dir_tests(&test_data_dir(), &["lexer"], |text, _| {
-        let tokens = ra_syntax::tokenize(text);
+        let tokens = crate::tokenize(text);
         dump_tokens(&tokens, text)
     })
 }
@@ -25,7 +22,7 @@ fn parser_tests() {
         let errors = parse.errors();
         assert_eq!(
             errors,
-            &[] as &[ra_syntax::SyntaxError],
+            &[] as &[crate::SyntaxError],
             "There should be no errors in the file {:?}",
             path.display(),
         );
@@ -67,7 +64,7 @@ fn self_hosting_parsing() {
         .filter_entry(|entry| {
             !entry.path().components().any(|component| {
                 // Get all files which are not in the crates/ra_syntax/tests/data folder
-                component == Component::Normal(OsStr::new("data"))
+                component == Component::Normal(OsStr::new("test_data"))
             })
         })
         .map(|e| e.unwrap())
@@ -87,10 +84,10 @@ fn self_hosting_parsing() {
 }
 
 fn test_data_dir() -> PathBuf {
-    project_dir().join("crates/ra_syntax/tests/data")
+    project_dir().join("crates/ra_syntax/test_data")
 }
 
-fn dump_tokens(tokens: &[ra_syntax::Token], text: &str) -> String {
+fn dump_tokens(tokens: &[crate::Token], text: &str) -> String {
     let mut acc = String::new();
     let mut offset = 0;
     for token in tokens {
