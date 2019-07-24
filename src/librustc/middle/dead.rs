@@ -320,11 +320,6 @@ fn has_allow_dead_code_or_lang_attr(
         return true;
     }
 
-    // Don't lint about global allocators
-    if attr::contains_name(attrs, sym::global_allocator) {
-        return true;
-    }
-
     let def_id = tcx.hir().local_def_id(id);
     let cg_attrs = tcx.codegen_fn_attrs(def_id);
 
