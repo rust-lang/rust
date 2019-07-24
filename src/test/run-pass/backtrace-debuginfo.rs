@@ -10,7 +10,6 @@
 // ignore-pretty issue #37195
 // ignore-cloudabi spawning processes is not supported
 // ignore-emscripten spawning processes is not supported
-// ignore-msvc issue #62844
 // ignore-sgx no processes
 // normalize-stderr-test ".*\n" -> ""
 
