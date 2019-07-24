@@ -88,25 +88,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             None => return Ok(()), // zero-sized access
         };
 
-        let data = match &mut this.memory_mut().extra.rng {
-            Some(rng) => {
-                let mut rng = rng.borrow_mut();
-                let mut data = vec![0; len];
-                rng.fill_bytes(&mut data);
-                data
-            }
-            None => {
-                return err!(Unimplemented(
-                    "miri does not support gathering system entropy in deterministic mode!
-                    Use '-Zmiri-seed=<seed>' to enable random number generation.
-                    WARNING: Miri does *not* generate cryptographically secure entropy -
-                    do not use Miri to run any program that needs secure random number generation".to_owned(),
-                ));
-            }
-        };
+        let rng = this.memory_mut().extra.rng.get_mut();
+        let mut data = vec![0; len];
+        rng.fill_bytes(&mut data);
+
         let tcx = &{this.tcx.tcx};
-        this.memory_mut().get_mut(ptr.alloc_id)?
-            .write_bytes(tcx, ptr, &data)
+        this.memory_mut().get_mut(ptr.alloc_id)?.write_bytes(tcx, ptr, &data)
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter

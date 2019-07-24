@@ -28,10 +28,10 @@ fn mk_rec() -> Rec {
 fn is_u64_aligned(u: &Tag<u64>) -> bool {
     let p: usize = unsafe { mem::transmute(u) };
     let u64_align = std::mem::align_of::<u64>();
-    return (p & (u64_align + 1)) == 0; //~ ERROR a raw memory access tried to access part of a pointer value as raw bytes
+    return (p & (u64_align + 1)) == 0;
 }
 
 pub fn main() {
     let x = mk_rec();
-    assert!(is_u64_aligned(&x.t));
+    is_u64_aligned(&x.t); // the result of this is non-deterministic (even with a fixed seed, results vary between platforms)
 }

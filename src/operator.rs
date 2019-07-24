@@ -56,8 +56,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 
-        // If intptrcast is enabled, treat everything of integer *type* at integer *value*.
-        if self.memory().extra.rng.is_some() && left.layout.ty.is_integral() {
+        // Treat everything of integer *type* at integer *value*.
+        if left.layout.ty.is_integral() {
             // This is actually an integer operation, so dispatch back to the core engine.
             // TODO: Once intptrcast is the default, librustc_mir should never even call us
             // for integer types.
@@ -188,104 +188,11 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         right: Scalar<Tag>,
     ) -> InterpResult<'tcx, bool> {
         let size = self.pointer_size();
-        if self.memory().extra.rng.is_some() {
-            // Just compare the integers.
-            // TODO: Do we really want to *always* do that, even when comparing two live in-bounds pointers?
-            let left = self.force_bits(left, size)?;
-            let right = self.force_bits(right, size)?;
-            return Ok(left == right);
-        }
-        Ok(match (left, right) {
-            (Scalar::Raw { .. }, Scalar::Raw { .. }) =>
-                left.to_bits(size)? == right.to_bits(size)?,
-            (Scalar::Ptr(left), Scalar::Ptr(right)) => {
-                // Comparison illegal if one of them is out-of-bounds, *unless* they
-                // are in the same allocation.
-                if left.alloc_id == right.alloc_id {
-                    left.offset == right.offset
-                } else {
-                    // Make sure both pointers are in-bounds.
-                    // This accepts one-past-the end. Thus, there is still technically
-                    // some non-determinism that we do not fully rule out when two
-                    // allocations sit right next to each other. The C/C++ standards are
-                    // somewhat fuzzy about this case, so pragmatically speaking I think
-                    // for now this check is "good enough".
-                    // FIXME: Once we support intptrcast, we could try to fix these holes.
-                    // Dead allocations in miri cannot overlap with live allocations, but
-                    // on read hardware this can easily happen. Thus for comparisons we require
-                    // both pointers to be live.
-                    if self.pointer_inbounds(left).is_ok() && self.pointer_inbounds(right).is_ok() {
-                        // Two in-bounds (and hence live) pointers in different allocations are different.
-                        false
-                    } else {
-                        return err!(InvalidPointerMath);
-                    }
-                }
-            }
-            // Comparing ptr and integer.
-            (Scalar::Ptr(ptr), Scalar::Raw { data, size }) |
-            (Scalar::Raw { data, size }, Scalar::Ptr(ptr)) => {
-                assert_eq!(size as u64, self.pointer_size().bytes());
-                let bits = data as u64;
-
-                // Case I: Comparing real pointers with "small" integers.
-                // Really we should only do this for NULL, but pragmatically speaking on non-bare-metal systems,
-                // an allocation will never be at the very bottom of the address space.
-                // Such comparisons can arise when comparing empty slices, which sometimes are "fake"
-                // integer pointers (okay because the slice is empty) and sometimes point into a
-                // real allocation.
-                // The most common source of such integer pointers is `NonNull::dangling()`, which
-                // equals the type's alignment. i128 might have an alignment of 16 bytes, but few types have
-                // alignment 32 or higher, hence the limit of 32.
-                // FIXME: Once we support intptrcast, we could try to fix these holes.
-                if bits < 32 {
-                    // Test if the pointer can be different from NULL or not.
-                    // We assume that pointers that are not NULL are also not "small".
-                    if !self.memory().ptr_may_be_null(ptr) {
-                        return Ok(false);
-                    }
-                }
-
-                let (alloc_size, alloc_align) = self.memory()
-                    .get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
-                    .expect("alloc info with MaybeDead cannot fail");
-
-                // Case II: Alignment gives it away
-                if ptr.offset.bytes() % alloc_align.bytes() == 0 {
-                    // The offset maintains the allocation alignment, so we know `base+offset`
-                    // is aligned by `alloc_align`.
-                    // FIXME: We could be even more general, e.g., offset 2 into a 4-aligned
-                    // allocation cannot equal 3.
-                    if bits % alloc_align.bytes() != 0 {
-                        // The integer is *not* aligned. So they cannot be equal.
-                        return Ok(false);
-                    }
-                }
-                // Case III: The integer is too big, and the allocation goes on a bit
-                // without wrapping around the address space.
-                {
-                    // Compute the highest address at which this allocation could live.
-                    // Substract one more, because it must be possible to add the size
-                    // to the base address without overflowing; that is, the very last address
-                    // of the address space is never dereferencable (but it can be in-bounds, i.e.,
-                    // one-past-the-end).
-                    let max_base_addr =
-                        ((1u128 << self.pointer_size().bits())
-                         - u128::from(alloc_size.bytes())
-                         - 1
-                        ) as u64;
-                    if let Some(max_addr) = max_base_addr.checked_add(ptr.offset.bytes()) {
-                        if bits > max_addr {
-                            // The integer is too big, this cannot possibly be equal.
-                            return Ok(false)
-                        }
-                    }
-                }
-
-                // None of the supported cases.
-                return err!(InvalidPointerMath);
-            }
-        })
+        // Just compare the integers.
+        // TODO: Do we really want to *always* do that, even when comparing two live in-bounds pointers?
+        let left = self.force_bits(left, size)?;
+        let right = self.force_bits(right, size)?;
+        Ok(left == right)
     }
 
     fn ptr_int_arithmetic(

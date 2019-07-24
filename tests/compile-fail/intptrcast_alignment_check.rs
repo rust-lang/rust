@@ -1,5 +1,5 @@
 // Validation makes this fail in the wrong place
-// compile-flags: -Zmiri-disable-validation -Zmiri-seed=0000000000000000
+// compile-flags: -Zmiri-disable-validation
 
 // Even with intptrcast and without validation, we want to be *sure* to catch bugs
 // that arise from pointers being insufficiently aligned. The only way to achieve

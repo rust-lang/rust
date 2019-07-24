@@ -57,20 +57,19 @@ pub struct MemoryExtra {
     pub stacked_borrows: stacked_borrows::MemoryExtra,
     pub intptrcast: intptrcast::MemoryExtra,
 
-    /// The random number generator to use if Miri is running in non-deterministic mode and to
-    /// enable intptrcast
-    pub(crate) rng: Option<RefCell<StdRng>>,
+    /// The random number generator used for resolving non-determinism.
+    pub(crate) rng: RefCell<StdRng>,
 
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 }
 
 impl MemoryExtra {
-    pub fn new(rng: Option<StdRng>, validate: bool) -> Self {
+    pub fn new(rng: StdRng, validate: bool) -> Self {
         MemoryExtra {
             stacked_borrows: Default::default(),
             intptrcast: Default::default(),
-            rng: rng.map(RefCell::new),
+            rng: RefCell::new(rng),
             validate,
         }
     }
@@ -353,28 +352,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         Ok(ecx.memory().extra.stacked_borrows.borrow_mut().end_call(extra))
     }
 
+    #[inline(always)]
     fn int_to_ptr(
         memory: &Memory<'mir, 'tcx, Self>,
         int: u64,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
-        if int == 0 {
-            err!(InvalidNullPointerUsage)
-        } else if memory.extra.rng.is_none() {
-            err!(ReadBytesAsPointer)
-        } else {
-           intptrcast::GlobalState::int_to_ptr(int, memory)
-        }
+        intptrcast::GlobalState::int_to_ptr(int, memory)
     }
 
+    #[inline(always)]
     fn ptr_to_int(
         memory: &Memory<'mir, 'tcx, Self>,
         ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64> {
-        if memory.extra.rng.is_none() {
-            err!(ReadPointerAsBytes)
-        } else {
-            intptrcast::GlobalState::ptr_to_int(ptr, memory)
-        }
+        intptrcast::GlobalState::ptr_to_int(ptr, memory)
     }
 }
 

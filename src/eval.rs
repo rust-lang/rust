@@ -34,7 +34,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(),
-        MemoryExtra::new(config.seed.map(StdRng::seed_from_u64), config.validate),
+        MemoryExtra::new(StdRng::seed_from_u64(config.seed.unwrap_or(0)), config.validate),
     );
 
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);

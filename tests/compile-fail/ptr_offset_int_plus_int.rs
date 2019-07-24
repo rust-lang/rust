@@ -1,4 +1,4 @@
-// error-pattern: tried to interpret some bytes as a pointer
+// error-pattern: dangling pointer was dereferenced
 
 fn main() {
     // Can't offset an integer pointer by non-zero offset.

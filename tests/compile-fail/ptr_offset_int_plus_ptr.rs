@@ -1,4 +1,4 @@
-// error-pattern: pointer value as raw bytes
+// error-pattern: dangling pointer was dereferenced
 
 fn main() {
     let ptr = Box::into_raw(Box::new(0u32));

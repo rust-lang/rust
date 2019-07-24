@@ -42,6 +42,10 @@ impl<'mir, 'tcx> GlobalState {
         int: u64,
         memory: &Memory<'mir, 'tcx, Evaluator<'tcx>>,
     ) -> InterpResult<'tcx, Pointer<Tag>> {
+        if int == 0 {
+            return err!(InvalidNullPointerUsage);
+        }
+
         let global_state = memory.extra.intptrcast.borrow();
         
         match global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr) {
@@ -86,12 +90,13 @@ impl<'mir, 'tcx> GlobalState {
                 // This allocation does not have a base address yet, pick one.
                 // Leave some space to the previous allocation, to give it some chance to be less aligned.
                 let slack = {
-                    let mut rng = memory.extra.rng.as_ref().unwrap().borrow_mut();
+                    let mut rng = memory.extra.rng.borrow_mut();
                     // This means that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
                     rng.gen_range(0, 16)
                 };
                 // From next_base_addr + slack, round up to adjust for alignment.
-                let base_addr = Self::align_addr(global_state.next_base_addr + slack, align.bytes());
+                let base_addr = global_state.next_base_addr.checked_add(slack).unwrap();
+                let base_addr = Self::align_addr(base_addr, align.bytes());
                 entry.insert(base_addr);
                 trace!(
                     "Assigning base address {:#x} to allocation {:?} (slack: {}, align: {})",
@@ -100,7 +105,7 @@ impl<'mir, 'tcx> GlobalState {
 
                 // Remember next base address.  If this allocation is zero-sized, leave a gap
                 // of at least 1 to avoid two allocations having the same base address.
-                global_state.next_base_addr = base_addr + max(size.bytes(), 1);
+                global_state.next_base_addr = base_addr.checked_add(max(size.bytes(), 1)).unwrap();
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
                 global_state.int_to_ptr_map.push((base_addr, ptr.alloc_id)); 
@@ -120,7 +125,7 @@ impl<'mir, 'tcx> GlobalState {
     fn align_addr(addr: u64, align: u64) -> u64 {
         match addr % align {
             0 => addr,
-            rem => addr + align - rem
+            rem => addr.checked_add(align).unwrap() - rem
         }
     }
 }
