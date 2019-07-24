@@ -206,8 +206,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let mut om = Module::new(name, attrs, vis);
         om.where_outer = span;
         om.where_inner = m.inner;
-        om.hid = id;
-        om.id = self.cx.tcx.hir().hir_to_node_id(id);
+        om.id = id;
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();

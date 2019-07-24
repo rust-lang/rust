@@ -3,7 +3,7 @@
 pub use self::StructType::*;
 
 use syntax::ast;
-use syntax::ast::{Name, NodeId};
+use syntax::ast::Name;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{self, Span};
 
@@ -23,8 +23,7 @@ pub struct Module<'hir> {
     pub enums: Vec<Enum<'hir>>,
     pub fns: Vec<Function<'hir>>,
     pub mods: Vec<Module<'hir>>,
-    pub id: NodeId,
-    pub hid: hir::HirId,
+    pub id: hir::HirId,
     pub typedefs: Vec<Typedef<'hir>>,
     pub opaque_tys: Vec<OpaqueTy<'hir>>,
     pub statics: Vec<Static<'hir>>,
@@ -47,8 +46,7 @@ impl Module<'hir> {
     ) -> Module<'hir> {
         Module {
             name       : name,
-            id: ast::CRATE_NODE_ID,
-            hid: hir::CRATE_HIR_ID,
+            id: hir::CRATE_HIR_ID,
             vis,
             where_outer: syntax_pos::DUMMY_SP,
             where_inner: syntax_pos::DUMMY_SP,

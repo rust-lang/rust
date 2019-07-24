@@ -654,9 +654,9 @@ impl Clean<Item> for doctree::Module<'_> {
             attrs,
             source: whence.clean(cx),
             visibility: self.vis.clean(cx),
-            stability: cx.stability(self.hid).clean(cx),
-            deprecation: cx.deprecation(self.hid).clean(cx),
-            def_id: cx.tcx.hir().local_def_id_from_node_id(self.id),
+            stability: cx.stability(self.id).clean(cx),
+            deprecation: cx.deprecation(self.id).clean(cx),
+            def_id: cx.tcx.hir().local_def_id(self.id),
             inner: ModuleItem(Module {
                is_crate: self.is_crate,
                items,
