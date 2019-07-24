@@ -113,17 +113,13 @@ pub fn trans_const_value<'a, 'tcx: 'a>(
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
     match ty.sty {
-        ty::Bool => {
+        ty::Bool | ty::Uint(_) => {
             let bits = const_.val.try_to_bits(layout.size).unwrap();
-            CValue::const_val(fx, ty, bits as u64 as i64)
-        }
-        ty::Uint(_) => {
-            let bits = const_.val.try_to_bits(layout.size).unwrap();
-            CValue::const_val(fx, ty, bits as u64 as i64)
+            CValue::const_val(fx, ty, bits)
         }
         ty::Int(_) => {
             let bits = const_.val.try_to_bits(layout.size).unwrap();
-            CValue::const_val(fx, ty, rustc::mir::interpret::sign_extend(bits, layout.size) as i128 as i64)
+            CValue::const_val(fx, ty, rustc::mir::interpret::sign_extend(bits, layout.size))
         }
         ty::FnDef(_def_id, _substs) => CValue::by_ref(
             fx.bcx

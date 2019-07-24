@@ -266,7 +266,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         .discriminant_for_variant(fx.tcx, *variant_index)
                         .unwrap()
                         .val;
-                    let discr = CValue::const_val(fx, ptr.layout().ty, to as u64 as i64);
+                    let discr = CValue::const_val(fx, ptr.layout().ty, to);
                     ptr.write_cvalue(fx, discr);
                 }
                 layout::Variants::Multiple {
@@ -289,7 +289,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         let niche_llval = if niche_value == 0 {
                             CValue::const_val(fx, niche.layout().ty, 0)
                         } else {
-                            CValue::const_val(fx, niche.layout().ty, niche_value as u64 as i64)
+                            CValue::const_val(fx, niche.layout().ty, niche_value)
                         };
                         niche.write_cvalue(fx, niche_llval);
                     }
@@ -562,7 +562,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         .ty
                         .is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()));
                     let ty_size = fx.layout_of(ty).size.bytes();
-                    let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size as i64);
+                    let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size.into());
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Aggregate(kind, operands) => match **kind {
@@ -679,7 +679,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                 .map_or(index.as_u32() as u128, |def| {
                     def.discriminant_for_variant(fx.tcx, *index).val
                 });
-            return CValue::const_val(fx, dest_layout.ty, discr_val as u64 as i64);
+            return CValue::const_val(fx, dest_layout.ty, discr_val);
         }
         layout::Variants::Multiple { discr, discr_index, discr_kind, variants: _ } => {
             (discr, *discr_index, discr_kind)

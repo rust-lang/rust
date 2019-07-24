@@ -162,24 +162,37 @@ impl<'tcx> CValue<'tcx> {
         crate::unsize::coerce_unsized_into(fx, self, dest);
     }
 
+    /// If `ty` is signed, `const_val` must already be sign extended.
     pub fn const_val<'a>(
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         ty: Ty<'tcx>,
-        const_val: i64,
+        const_val: u128,
     ) -> CValue<'tcx>
     where
         'tcx: 'a,
     {
         let clif_ty = fx.clif_type(ty).unwrap();
         let layout = fx.layout_of(ty);
-        let val = if clif_ty == types::I128 {
-            // FIXME don't assume little-endian arch
-            let lsb = fx.bcx.ins().iconst(types::I64, const_val);
-            let msb = fx.bcx.ins().iconst(types::I64, 0);
-            fx.bcx.ins().iconcat(lsb, msb)
-        } else {
-            fx.bcx.ins().iconst(clif_ty, const_val)
+
+        let val = match ty.sty {
+            ty::TyKind::Uint(UintTy::U128) | ty::TyKind::Int(IntTy::I128) => {
+                let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
+                let msb = fx.bcx.ins().iconst(types::I64, (const_val >> 64) as u64 as i64);
+                fx.bcx.ins().iconcat(lsb, msb)
+            }
+            ty::TyKind::Bool => {
+                assert!(const_val == 0 || const_val == 1, "Invalid bool 0x{:032X}", const_val);
+                fx.bcx.ins().iconst(types::I8, const_val as i64)
+            }
+            ty::TyKind::Uint(_) | ty::TyKind::Ref(..) | ty::TyKind::RawPtr(.. )=> {
+                fx.bcx.ins().iconst(clif_ty, u64::try_from(const_val).expect("uint") as i64)
+            }
+            ty::TyKind::Int(_) => {
+                fx.bcx.ins().iconst(clif_ty, const_val as i128 as i64)
+            }
+            _ => panic!("CValue::const_val for non bool/integer/pointer type {:?} is not allowed", ty),
         };
+
         CValue::by_val(val, layout)
     }
 

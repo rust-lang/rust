@@ -54,7 +54,7 @@ mod vtable;
 mod prelude {
     pub use std::any::Any;
     pub use std::collections::{HashMap, HashSet};
-    pub use std::convert::TryInto;
+    pub use std::convert::{TryFrom, TryInto};
 
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
     pub use syntax::source_map::{Pos, Span, DUMMY_SP};

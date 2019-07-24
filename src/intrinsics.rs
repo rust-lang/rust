@@ -150,7 +150,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         size_of, <T> () {
             let size_of = fx.layout_of(T).size.bytes();
-            let size_of = CValue::const_val(fx, usize_layout.ty, size_of as i64);
+            let size_of = CValue::const_val(fx, usize_layout.ty, size_of.into());
             ret.write_cvalue(fx, size_of);
         };
         size_of_val, <T> (c ptr) {
@@ -169,7 +169,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         min_align_of, <T> () {
             let min_align = fx.layout_of(T).align.abi.bytes();
-            let min_align = CValue::const_val(fx, usize_layout.ty, min_align as i64);
+            let min_align = CValue::const_val(fx, usize_layout.ty, min_align.into());
             ret.write_cvalue(fx, min_align);
         };
         min_align_of_val, <T> (c ptr) {
@@ -188,14 +188,14 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         pref_align_of, <T> () {
             let pref_align = fx.layout_of(T).align.pref.bytes();
-            let pref_align = CValue::const_val(fx, usize_layout.ty, pref_align as i64);
+            let pref_align = CValue::const_val(fx, usize_layout.ty, pref_align.into());
             ret.write_cvalue(fx, pref_align);
         };
 
 
         type_id, <T> () {
             let type_id = fx.tcx.type_id_hash(T);
-            let type_id = CValue::const_val(fx, u64_layout.ty, type_id as i64);
+            let type_id = CValue::const_val(fx, u64_layout.ty, type_id.into());
             ret.write_cvalue(fx, type_id);
         };
         type_name, <T> () {
@@ -395,9 +395,9 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 let (lsb, msb) = fx.bcx.ins().isplit(arg);
                 let lsb_lz = fx.bcx.ins().clz(lsb);
                 let msb_lz = fx.bcx.ins().clz(msb);
-                let msb_lz_is_64 = fx.bcx.ins().icmp_imm(IntCC::Equal, msb_lz, 64);
+                let msb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, msb, 0);
                 let lsb_lz_plus_64 = fx.bcx.ins().iadd_imm(lsb_lz, 64);
-                fx.bcx.ins().select(msb_lz_is_64, lsb_lz_plus_64, msb_lz)
+                fx.bcx.ins().select(msb_is_zero, lsb_lz_plus_64, msb_lz)
             } else {
                 fx.bcx.ins().clz(arg)
             };
@@ -410,9 +410,9 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 let (lsb, msb) = fx.bcx.ins().isplit(arg);
                 let lsb_tz = fx.bcx.ins().ctz(lsb);
                 let msb_tz = fx.bcx.ins().ctz(msb);
-                let lsb_tz_is_64 = fx.bcx.ins().icmp_imm(IntCC::Equal, lsb_tz, 64);
-                let msb_lz_plus_64 = fx.bcx.ins().iadd_imm(msb_tz, 64);
-                fx.bcx.ins().select(lsb_tz_is_64, msb_lz_plus_64, lsb_tz)
+                let lsb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, lsb, 0);
+                let msb_tz_plus_64 = fx.bcx.ins().iadd_imm(msb_tz, 64);
+                fx.bcx.ins().select(lsb_is_zero, msb_tz_plus_64, lsb_tz)
             } else {
                 fx.bcx.ins().ctz(arg)
             };
