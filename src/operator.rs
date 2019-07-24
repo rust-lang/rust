@@ -9,7 +9,7 @@ pub trait EvalContextExt<'tcx> {
         ptr: Pointer<Tag>
     ) -> InterpResult<'tcx>;
 
-    fn ptr_op(
+    fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
@@ -46,7 +46,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         ptr.check_in_alloc(size, CheckInAllocMsg::InboundsTest)
     }
 
-    fn ptr_op(
+    fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
@@ -55,21 +55,6 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         use rustc::mir::BinOp::*;
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
-
-        // Treat everything of integer *type* at integer *value*.
-        if left.layout.ty.is_integral() {
-            // This is actually an integer operation, so dispatch back to the core engine.
-            // TODO: Once intptrcast is the default, librustc_mir should never even call us
-            // for integer types.
-            assert!(right.layout.ty.is_integral());
-            let l_bits = self.force_bits(left.imm.to_scalar()?, left.layout.size)?;
-            let r_bits = self.force_bits(right.imm.to_scalar()?, right.layout.size)?;
-
-            let left = ImmTy::from_scalar(Scalar::from_uint(l_bits, left.layout.size), left.layout);
-            let right = ImmTy::from_scalar(Scalar::from_uint(r_bits, left.layout.size), right.layout);
-
-            return self.binary_op(bin_op, left, right);
-        }
 
         // Operations that support fat pointers
         match bin_op {
@@ -92,7 +77,6 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         let left = left.to_scalar()?;
         let right_layout = right.layout;
         let right = right.to_scalar()?;
-        debug_assert!(left.is_ptr() || right.is_ptr() || bin_op == Offset);
 
         Ok(match bin_op {
             Offset => {
@@ -109,8 +93,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             }
             // These need both to be pointer, and fail if they are not in the same location
             Lt | Le | Gt | Ge | Sub if left.is_ptr() && right.is_ptr() => {
-                let left = left.to_ptr().expect("we checked is_ptr");
-                let right = right.to_ptr().expect("we checked is_ptr");
+                let left = left.assert_ptr();
+                let right = right.assert_ptr();
                 if left.alloc_id == right.alloc_id {
                     let res = match bin_op {
                         Lt => left.offset < right.offset,
@@ -136,10 +120,22 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     throw_unsup!(InvalidPointerMath)
                 }
             }
+            Lt | Le | Gt | Ge if left.is_bits() && right.is_bits() => {
+                let left = left.assert_bits(self.memory().pointer_size());
+                let right = right.assert_bits(self.memory().pointer_size());
+                let res = match bin_op {
+                    Lt => left < right,
+                    Le => left <= right,
+                    Gt => left > right,
+                    Ge => left >= right,
+                    _ => bug!("We already established it has to be one of these operators."),
+                };
+                Ok((Scalar::from_bool(res), false))
+            }
             Gt | Ge if left.is_ptr() && right.is_bits() => {
                 // "ptr >[=] integer" can be tested if the integer is small enough.
-                let left = left.to_ptr().expect("we checked is_ptr");
-                let right = right.to_bits(self.memory().pointer_size()).expect("we checked is_bits");
+                let left = left.assert_ptr();
+                let right = right.assert_bits(self.memory().pointer_size());
                 let (_alloc_size, alloc_align) = self.memory()
                     .get_size_and_align(left.alloc_id, AllocCheck::MaybeDead)
                     .expect("alloc info with MaybeDead cannot fail");
@@ -162,8 +158,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 // Cast to i128 is fine as we checked the kind to be ptr-sized
                 self.ptr_int_arithmetic(
                     bin_op,
-                    left.to_ptr().expect("we checked is_ptr"),
-                    right.to_bits(self.memory().pointer_size()).expect("we checked is_bits"),
+                    left.assert_ptr(),
+                    right.assert_bits(self.memory().pointer_size()),
                     right_layout.abi.is_signed(),
                 )?
             }
@@ -172,8 +168,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 // This is a commutative operation, just swap the operands
                 self.ptr_int_arithmetic(
                     bin_op,
-                    right.to_ptr().expect("we checked is_ptr"),
-                    left.to_bits(self.memory().pointer_size()).expect("we checked is_bits"),
+                    right.assert_ptr(),
+                    left.assert_bits(self.memory().pointer_size()),
                     left_layout.abi.is_signed(),
                 )?
             }
