@@ -302,7 +302,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let r = self.force_bits(right.to_scalar()?, right.layout.size)?;
                 self.binary_int_op(bin_op, l, left.layout, r, right.layout)
             }
-            _ if left.layout.ty.is_unsafe_ptr() || left.layout.ty.is_fn_ptr() => {
+            _ if left.layout.ty.is_any_ptr() => {
                 // The RHS type must be the same *or an integer type* (for `Offset`)
                 assert!(
                     right.layout.ty == left.layout.ty || right.layout.ty.is_integral(),
