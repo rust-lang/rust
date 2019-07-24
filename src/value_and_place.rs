@@ -34,31 +34,6 @@ enum CValueInner {
     ByValPair(Value, Value),
 }
 
-fn store_scalar<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>, value: Value, addr: Value, offset: i32) {
-    if fx.bcx.func.dfg.value_type(value) == types::I128 {
-        let (a, b) = fx.bcx.ins().isplit(value);
-        fx.bcx.ins().store(MemFlags::new(), a, addr, offset);
-        fx.bcx.ins().store(MemFlags::new(), b, addr, offset + 8);
-    } else {
-        fx.bcx.ins().store(MemFlags::new(), value, addr, offset);
-    }
-}
-
-fn load_scalar<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    clif_ty: Type,
-    addr: Value,
-    offset: i32,
-) -> Value {
-    if clif_ty == types::I128 {
-        let a = fx.bcx.ins().load(types::I64, MemFlags::new(), addr, offset);
-        let b = fx.bcx.ins().load(types::I64, MemFlags::new(), addr, offset + 8);
-        fx.bcx.ins().iconcat(a, b)
-    } else {
-        fx.bcx.ins().load(clif_ty, MemFlags::new(), addr, offset)
-    }
-}
-
 impl<'tcx> CValue<'tcx> {
     pub fn by_ref(value: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
         CValue(CValueInner::ByRef(value), layout)
@@ -104,7 +79,7 @@ impl<'tcx> CValue<'tcx> {
                     _ => unreachable!(),
                 };
                 let clif_ty = scalar_to_clif_type(fx.tcx, scalar);
-                load_scalar(fx, clif_ty, addr, 0)
+                fx.bcx.ins().load(clif_ty, MemFlags::new(), addr, 0)
             }
             CValueInner::ByVal(value) => value,
             CValueInner::ByValPair(_, _) => bug!("Please use load_scalar_pair for ByValPair"),
@@ -126,10 +101,10 @@ impl<'tcx> CValue<'tcx> {
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                 let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar.clone());
                 let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar.clone());
-                let val1 = load_scalar(fx, clif_ty1, addr, 0);
-                let val2 = load_scalar(
-                    fx,
+                let val1 = fx.bcx.ins().load(clif_ty1, MemFlags::new(), addr, 0);
+                let val2 = fx.bcx.ins().load(
                     clif_ty2,
+                    MemFlags::new(),
                     addr,
                     b_offset,
                 );
@@ -389,15 +364,15 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
         match from.0 {
             CValueInner::ByVal(val) => {
-                store_scalar(fx, val, addr, 0);
+                fx.bcx.ins().store(MemFlags::new(), val, addr, 0);
             }
             CValueInner::ByValPair(value, extra) => {
                 match dst_layout.abi {
                     Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
                         let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                        store_scalar(fx, value, addr, 0);
-                        store_scalar(
-                            fx,
+                        fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
+                        fx.bcx.ins().store(
+                            MemFlags::new(),
                             extra,
                             addr,
                             b_offset,

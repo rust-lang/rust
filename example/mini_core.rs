@@ -446,7 +446,6 @@ pub mod intrinsics {
         pub fn needs_drop<T>() -> bool;
         pub fn bitreverse<T>(x: T) -> T;
         pub fn bswap<T>(x: T) -> T;
-        pub fn unchecked_div<T>(lhs: T, rhs: T) -> T;
     }
 }
 
