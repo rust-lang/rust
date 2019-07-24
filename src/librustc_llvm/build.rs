@@ -71,7 +71,8 @@ fn main() {
 
     let mut optional_components =
         vec!["x86", "arm", "aarch64", "amdgpu", "mips", "powerpc",
-             "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx"];
+             "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx",
+             "hexagon"];
 
     let mut version_cmd = Command::new(&llvm_config);
     version_cmd.arg("--version");
@@ -82,27 +83,19 @@ fn main() {
         if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
             (major, minor)
         } else {
-            (3, 9)
+            (6, 0)
         };
-
-    if major > 3 {
-        optional_components.push("hexagon");
-    }
 
     if major > 6 {
         optional_components.push("riscv");
     }
 
-    // FIXME: surely we don't need all these components, right? Stuff like mcjit
-    //        or interpreter the compiler itself never uses.
     let required_components = &["ipo",
                                 "bitreader",
                                 "bitwriter",
                                 "linker",
                                 "asmparser",
-                                "mcjit",
                                 "lto",
-                                "interpreter",
                                 "instrumentation"];
 
     let components = output(Command::new(&llvm_config).arg("--components"));
