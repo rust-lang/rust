@@ -306,7 +306,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     match dest.layout.abi {
                         layout::Abi::Scalar(ref s) => {
                             let x = Scalar::from_int(0, s.value.size(this));
-                            this.write_immediate(Immediate::Scalar(x.into()), dest)?;
+                            this.write_scalar(x, dest)?;
                         }
                         layout::Abi::ScalarPair(ref s1, ref s2) => {
                             let x = Scalar::from_int(0, s1.value.size(this));
