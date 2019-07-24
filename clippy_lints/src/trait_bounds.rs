@@ -1,8 +1,11 @@
 use crate::utils::{in_macro, span_help_and_lint, SpanlessHash};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array, impl_lint_pass};
 use rustc_data_structures::fx::FxHashMap;
 use rustc::hir::*;
+
+#[derive(Copy, Clone)]
+pub struct TraitBounds;
 
 declare_clippy_lint! {
     pub TYPE_REPETITION_IN_BOUNDS,
@@ -10,20 +13,7 @@ declare_clippy_lint! {
     "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
 }
 
-#[derive(Copy, Clone)]
-pub struct TraitBounds;
-
-impl LintPass for TraitBounds {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(TYPE_REPETITION_IN_BOUNDS)
-    }
-
-    fn name(&self) -> &'static str {
-        "TypeRepetitionInBounds"
-    }
-}
-
-
+impl_lint_pass!(TraitBounds => [TYPE_REPETITION_IN_BOUNDS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
     fn check_generics(&mut self, cx: &LateContext<'a, 'tcx>, gen: &'tcx Generics) {
@@ -38,7 +28,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
         let mut map = FxHashMap::default();
         for bound in &gen.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref p) = bound {
-                let h = hash(&p.bounded_ty);
+                let h = hash(&p.bounded_ty.node);
                 if let Some(ref v) = map.insert(h, p.bounds) {
                     let mut hint_string = format!("consider combining the bounds: `{:?}: ", p.bounded_ty);
                     for &b in v.iter() {

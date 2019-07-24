@@ -258,7 +258,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     pub fn eq_ty(&mut self, left: &Ty<'tcx>, right: &Ty<'tcx>) -> bool {
-        self.eq_ty_kind(&left.node, &right.node)
+        self.eq_ty_kind(&left.sty, &right.sty)
     }
 
     #[allow(clippy::similar_names)]
@@ -604,26 +604,26 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_ty(&mut self, ty: &Ty<'tcx>) {
+    pub fn hash_ty(&mut self, ty: &TyKind) {
         std::mem::discriminant(&ty.node).hash(&mut self.s);
-        match ty.sty {
-            ty::Slice(ty) => {
+        match ty {
+            TyKind::Slice(ty) => {
                 self.hash_ty(ty);
             },
-            ty::Array(ty, anon_const) => {
+            TyKind::Array(ty, anon_const) => {
                 self.hash_ty(ty);
                 self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
             },
-            ty::Ptr(mut_ty) => {
+            TyKind::Ptr(mut_ty) => {
                 self.hash_ty(&mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            ty::Rptr(lifetime, mut_ty) => {
+            TyKind::Rptr(lifetime, mut_ty) => {
                 self.hash_lifetime(lifetime);
                 self.hash_ty(&mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            ty::BareFn(bfn) => {
+            TyKind::BareFn(bfn) => {
                 bfn.unsafety.hash(&mut self.s);
                 bfn.abi.hash(&mut self.s);
                 for arg in &bfn.decl.inputs {
@@ -639,13 +639,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 bfn.decl.c_variadic.hash(&mut self.s);
             },
-            ty::Tup(ty_list) => {
+            TyKind::Tup(ty_list) => {
                 for ty in ty_list {
                     self.hash_ty(ty);
                 }
 
             },
-            ty::Path(qpath) => {
+            TyKind::Path(qpath) => {
                 match qpath {
                     QPath::Resolved(ref maybe_ty, ref path) => {
                         if let Some(ref ty) = maybe_ty {
@@ -661,7 +661,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     },
                 }
             },
-            ty::Def(_, arg_list) => {
+            TyKind::Def(_, arg_list) => {
                 for arg in arg_list {
                     match arg {
                         GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
@@ -672,17 +672,17 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                 }
             },
-            ty::TraitObject(_, lifetime) => {
+            TyKind::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
 
             },
-            ty::Typeof(anon_const) => {
+            TyKind::Typeof(anon_const) => {
                 self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
             },
-            ty::CVarArgs(lifetime) => {
-                self.hash_lifetime(lifetime);
+            TyKind::CVarArgs(lifetime) => {
+                self.hash_lifetime(lifetime) 
             },
-            ty::Err | ty::Infer | ty::Never => {},
+            TyKind::Err | TyKind::Infer | TyKind::Never => {},
         }
     }
 }
