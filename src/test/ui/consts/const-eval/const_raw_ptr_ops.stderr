@@ -9,12 +9,20 @@ LL | const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 };
    = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
+  --> $DIR/const_raw_ptr_ops.rs:8:27
+   |
+LL | const X2: bool = unsafe { 42 as *const i32 == 43 as *const i32 };
+   | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                           |
+   |                           "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
+
+error: any use of this value will cause an error
   --> $DIR/const_raw_ptr_ops.rs:12:28
    |
 LL | const Y2: usize = unsafe { &1 as *const i32 as usize + 1 };
-   | ---------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   | ---------------------------^^^^^^^^^^^^^^^^^^^^^^^^^-------
    |                            |
-   |                            "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
+   |                            "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
 error: any use of this value will cause an error
   --> $DIR/const_raw_ptr_ops.rs:16:26
@@ -32,5 +40,5 @@ LL | const Z3: i32 = unsafe { *(44 as *const i32) };
    |                          |
    |                          a memory access tried to interpret some bytes as a pointer
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

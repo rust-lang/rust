@@ -7,13 +7,11 @@ LL |     [();  { &loop { break } as *const _ as usize } ];
    = note: for more information, see https://github.com/rust-lang/rust/issues/51910
    = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/issue-52442.rs:2:11
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-52442.rs:2:13
    |
 LL |     [();  { &loop { break } as *const _ as usize } ];
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain (non-pointer) bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
 error: aborting due to 2 previous errors
 
