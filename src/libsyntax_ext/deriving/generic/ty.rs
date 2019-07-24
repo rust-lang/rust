@@ -18,6 +18,7 @@ pub enum PtrTy<'a> {
     /// &'lifetime mut
     Borrowed(Option<&'a str>, ast::Mutability),
     /// *mut
+    #[allow(dead_code)]
     Raw(ast::Mutability),
 }
 
@@ -105,13 +106,6 @@ pub enum Ty<'a> {
     Literal(Path<'a>),
     /// includes unit
     Tuple(Vec<Ty<'a>>),
-}
-
-/// A const expression. Supports literals and blocks.
-#[derive(Clone, Eq, PartialEq)]
-pub enum Const {
-    Literal,
-    Block,
 }
 
 pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {

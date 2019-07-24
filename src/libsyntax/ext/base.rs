@@ -14,7 +14,7 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
 use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -888,6 +888,27 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn check_unused_macros(&self) {
         self.resolver.check_unused_macros();
+    }
+
+    // resolve a file-system path to an absolute file-system path (if it
+    // isn't already)
+    pub fn res_rel_file(&self, sp: syntax_pos::Span, arg: String) -> PathBuf {
+        let arg = PathBuf::from(arg);
+        // Relative paths are resolved relative to the file in which they are found
+        // after macro expansion (that is, they are unhygienic).
+        if !arg.is_absolute() {
+            let callsite = sp.source_callsite();
+            let mut path = match self.source_map().span_to_unmapped_path(callsite) {
+                FileName::Real(path) => path,
+                FileName::DocTest(path, _) => path,
+                other => panic!("cannot resolve relative path in non-file source `{}`", other),
+            };
+            path.pop();
+            path.push(arg);
+            path
+        } else {
+            arg
+        }
     }
 }
 

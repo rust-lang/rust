@@ -1770,50 +1770,6 @@ pub fn cs_fold1<F, B>(use_foldl: bool,
     }
 }
 
-/// Call the method that is being derived on all the fields, and then
-/// process the collected results. i.e.
-///
-/// ```ignore (only-for-syntax-highlight)
-/// f(cx, span, vec![self_1.method(__arg_1_1, __arg_2_1),
-///                  self_2.method(__arg_1_2, __arg_2_2)])
-/// ```
-#[inline]
-pub fn cs_same_method<F>(f: F,
-                         mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
-                         cx: &mut ExtCtxt<'_>,
-                         trait_span: Span,
-                         substructure: &Substructure<'_>)
-                         -> P<Expr>
-    where F: FnOnce(&mut ExtCtxt<'_>, Span, Vec<P<Expr>>) -> P<Expr>
-{
-    match *substructure.fields {
-        EnumMatching(.., ref all_fields) |
-        Struct(_, ref all_fields) => {
-            // call self_n.method(other_1_n, other_2_n, ...)
-            let called = all_fields.iter()
-                .map(|field| {
-                    cx.expr_method_call(field.span,
-                                        field.self_.clone(),
-                                        substructure.method_ident,
-                                        field.other
-                                            .iter()
-                                            .map(|e| cx.expr_addr_of(field.span, e.clone()))
-                                            .collect())
-                })
-                .collect();
-
-            f(cx, trait_span, called)
-        }
-        EnumNonMatchingCollapsed(ref all_self_args, _, tuple) => {
-            enum_nonmatch_f(cx,
-                            trait_span,
-                            (&all_self_args[..], tuple),
-                            substructure.nonself_args)
-        }
-        StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span, "static function in `derive`"),
-    }
-}
-
 /// Returns `true` if the type has no value fields
 /// (for an enum, no variant has any fields)
 pub fn is_type_without_fields(item: &Annotatable) -> bool {

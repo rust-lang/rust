@@ -8,7 +8,6 @@ use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
-use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::DepKind;
 use rustc::mir::interpret::AllocDecodingState;
 use rustc::session::{Session, CrateDisambiguator};
@@ -26,6 +25,7 @@ use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::attr;
+use syntax::ext::allocator::AllocatorKind;
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use syntax::symbol::{Symbol, sym};
 use syntax::visit;
@@ -587,8 +587,7 @@ impl<'a> CrateLoader<'a> {
         use std::{env, mem};
         use crate::dynamic_lib::DynamicLibrary;
         use proc_macro::bridge::client::ProcMacro;
-        use syntax_ext::deriving::custom::ProcMacroDerive;
-        use syntax_ext::proc_macro_impl::{AttrProcMacro, BangProcMacro};
+        use syntax::ext::proc_macro::{BangProcMacro, AttrProcMacro, ProcMacroDerive};
 
         let path = match dylib {
             Some(dylib) => dylib,
