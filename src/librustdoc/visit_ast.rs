@@ -29,7 +29,7 @@ pub struct RustdocVisitor<'a, 'tcx> {
     inlining: bool,
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
-    exact_paths: Option<FxHashMap<DefId, Vec<String>>>,
+    exact_paths: FxHashMap<DefId, Vec<String>>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -44,17 +44,16 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             view_item_stack: stack,
             inlining: false,
             inside_public_path: true,
-            exact_paths: Some(FxHashMap::default()),
+            exact_paths: FxHashMap::default(),
         }
     }
 
     fn store_path(&mut self, did: DefId) {
         // We can't use the entry API, as that keeps the mutable borrow of `self` active
         // when we try to use `cx`.
-        let exact_paths = self.exact_paths.as_mut().unwrap();
-        if exact_paths.get(&did).is_none() {
+        if self.exact_paths.get(&did).is_none() {
             let path = def_id_to_path(self.cx, did, self.cx.crate_name.clone());
-            exact_paths.insert(did, path);
+            self.exact_paths.insert(did, path);
         }
     }
 
@@ -82,12 +81,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         );
         module.is_crate = true;
 
-        self.cx.renderinfo.borrow_mut().exact_paths = self.exact_paths.take().unwrap();
+        self.cx.renderinfo.borrow_mut().exact_paths = self.exact_paths;
 
         module
     }
 
-    pub fn visit_variant_data(&mut self, item: &'tcx hir::Item,
+    fn visit_variant_data(&mut self, item: &'tcx hir::Item,
                               name: ast::Name, sd: &'tcx hir::VariantData,
                               generics: &'tcx hir::Generics) -> Struct<'tcx> {
         debug!("visiting struct");
@@ -106,7 +105,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn visit_union_data(&mut self, item: &'tcx hir::Item,
+    fn visit_union_data(&mut self, item: &'tcx hir::Item,
                             name: ast::Name, sd: &'tcx hir::VariantData,
                             generics: &'tcx hir::Generics) -> Union<'tcx> {
         debug!("visiting union");
@@ -125,7 +124,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn visit_enum_def(&mut self, it: &'tcx hir::Item,
+    fn visit_enum_def(&mut self, it: &'tcx hir::Item,
                           name: ast::Name, def: &'tcx hir::EnumDef,
                           generics: &'tcx hir::Generics) -> Enum<'tcx> {
         debug!("visiting enum");
@@ -150,7 +149,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn visit_fn(&mut self, om: &mut Module<'tcx>, item: &'tcx hir::Item,
+    fn visit_fn(&mut self, om: &mut Module<'tcx>, item: &'tcx hir::Item,
                     name: ast::Name, decl: &'tcx hir::FnDecl,
                     header: hir::FnHeader,
                     generics: &'tcx hir::Generics,
@@ -223,7 +222,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn visit_mod_contents(&mut self, span: Span, attrs: &'tcx hir::HirVec<ast::Attribute>,
+    fn visit_mod_contents(&mut self, span: Span, attrs: &'tcx hir::HirVec<ast::Attribute>,
                               vis: &'tcx hir::Visibility, id: hir::HirId,
                               m: &'tcx hir::Mod,
                               name: Option<ast::Name>) -> Module<'tcx> {
@@ -363,7 +362,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         ret
     }
 
-    pub fn visit_item(&mut self, item: &'tcx hir::Item,
+    fn visit_item(&mut self, item: &'tcx hir::Item,
                       renamed: Option<ast::Ident>, om: &mut Module<'tcx>) {
         debug!("visiting item {:?}", item);
         let ident = renamed.unwrap_or(item.ident);
