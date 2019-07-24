@@ -809,7 +809,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         self.super_terminator(terminator, location);
         let source_info = terminator.source_info;
         match &mut terminator.kind {
-            TerminatorKind::Assert { expected, msg, ref mut cond, .. } => {
+            TerminatorKind::Assert { expected, ref msg, ref mut cond, .. } => {
                 if let Some(value) = self.eval_operand(&cond, source_info) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
                     let expected = ScalarMaybeUndef::from(Scalar::from_bool(*expected));
@@ -836,7 +836,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             Panic(PanicMessage::Overflow(_)) |
                             Panic(PanicMessage::OverflowNeg) |
                             Panic(PanicMessage::DivisionByZero) |
-                            Panic(PanicMessage::RemainderByZero) => msg.description().to_owned(),
+                            Panic(PanicMessage::RemainderByZero) =>
+                                format!("{:?}", msg),
                             Panic(PanicMessage::BoundsCheck { ref len, ref index }) => {
                                 let len = self
                                     .eval_operand(len, source_info)

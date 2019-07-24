@@ -418,8 +418,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     vec![file_line_col, index, len])
             }
             _ => {
-                let str = msg.description();
-                let msg_str = LocalInternedString::intern(str);
+                let str = format!("{:?}", msg);
+                let msg_str = LocalInternedString::intern(&str);
                 let msg_file_line_col = bx.static_panic_msg(
                     Some(msg_str),
                     filename,

@@ -330,7 +330,7 @@ pub enum InterpError<'tcx, O> {
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
 impl<'tcx, O> InterpError<'tcx, O> {
-    pub fn description(&self) -> &str {
+    pub(crate) fn description(&self) -> &str {
         use self::InterpError::*;
         match *self {
             MachineError(ref inner) => inner,
