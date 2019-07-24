@@ -188,12 +188,6 @@ version = "0.7.0"
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
-[[NNlib]]
-deps = ["Libdl", "LinearAlgebra", "Requires", "Statistics", "TimerOutputs"]
-git-tree-sha1 = "0c667371391fc6bb31f7f12f96a56a17098b3de8"
-uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
-version = "0.6.0"
-
 [[NaNMath]]
 deps = ["Compat"]
 git-tree-sha1 = "ce3b85e484a5d4c71dd5316215069311135fa9f2"
@@ -221,12 +215,6 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 [[Random]]
 deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-
-[[Requires]]
-deps = ["Test"]
-git-tree-sha1 = "f6fbf4ba64d295e146e49e021207993b6b48c7d1"
-uuid = "ae029012-a4dd-5104-9daa-d747884805df"
-version = "0.5.2"
 
 [[ReverseDiff]]
 deps = ["DiffResults", "DiffRules", "ForwardDiff", "FunctionWrappers", "LinearAlgebra", "NaNMath", "Random", "SpecialFunctions", "StaticArrays", "Statistics", "Test"]
@@ -318,9 +306,3 @@ deps = ["BinaryProvider", "FileWatching", "Libdl", "Sockets", "Test"]
 git-tree-sha1 = "34e7ac2d1d59d19d0e86bde99f1f02262bfa1613"
 uuid = "c2297ded-f4af-51ae-bb23-16f91089e4e1"
 version = "1.0.0"
-
-[[Zygote]]
-deps = ["DiffRules", "ForwardDiff", "IRTools", "InteractiveUtils", "LinearAlgebra", "MacroTools", "NNlib", "NaNMath", "Random", "Requires", "SpecialFunctions", "Statistics"]
-git-tree-sha1 = "40aa7d4724b3ab508f6200a885b6e92cc6647f14"
-uuid = "e88e6eb3-aa80-5325-afca-941959d7151f"
-version = "0.3.1"
