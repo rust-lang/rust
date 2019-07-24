@@ -45,7 +45,7 @@ pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 pub struct DocContext<'tcx> {
 
     pub tcx: TyCtxt<'tcx>,
-    pub resolver: Rc<Option<RefCell<interface::BoxedResolver>>>,
+    pub resolver: Rc<RefCell<interface::BoxedResolver>>,
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Lrc<CStore>,
@@ -83,9 +83,7 @@ impl<'tcx> DocContext<'tcx> {
 
     pub fn enter_resolver<F, R>(&self, f: F) -> R
     where F: FnOnce(&mut resolve::Resolver<'_>) -> R {
-        let resolver = &*self.resolver;
-        let resolver = resolver.as_ref().unwrap();
-        resolver.borrow_mut().access(f)
+        self.resolver.borrow_mut().access(f)
     }
 
     /// Call the closure with the given parameters set as
@@ -344,7 +342,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         // We need to hold on to the complete resolver, so we cause everything to be
         // cloned for the analysis passes to use. Suboptimal, but necessary in the
         // current architecture.
-        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.clone();
+        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.borrow().clone();
 
         if sess.has_errors() {
             sess.fatal("Compilation failed, aborting rustdoc");
