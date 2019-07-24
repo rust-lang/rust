@@ -730,7 +730,7 @@ impl Tester for Collector {
         let edition = config.edition.unwrap_or(self.edition);
         let persist_doctests = self.persist_doctests.clone();
 
-        debug!("Creating test {}: {}", name, test);
+        debug!("creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name),
