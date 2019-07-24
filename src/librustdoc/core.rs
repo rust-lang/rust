@@ -178,16 +178,6 @@ impl<'tcx> DocContext<'tcx> {
     }
 }
 
-pub trait DocAccessLevels {
-    fn is_doc_reachable(&self, did: DefId) -> bool;
-}
-
-impl DocAccessLevels for AccessLevels<DefId> {
-    fn is_doc_reachable(&self, did: DefId) -> bool {
-        self.is_public(did)
-    }
-}
-
 /// Creates a new diagnostic `Handler` that can be used to emit warnings and errors.
 ///
 /// If the given `error_format` is `ErrorOutputType::Json` and no `SourceMap` is given, a new one

@@ -10,7 +10,7 @@ use syntax_pos::{DUMMY_SP, InnerSpan, Span};
 use std::ops::Range;
 
 use crate::clean::{self, GetDefId, Item};
-use crate::core::{DocContext, DocAccessLevels};
+use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
 use crate::html::markdown::{find_testable_code, ErrorCodes, LangString};
 
@@ -347,7 +347,7 @@ pub fn look_for_tests<'tcx>(
         diag.emit();
     } else if check_missing_code == false &&
               tests.found_tests > 0 &&
-              !cx.renderinfo.borrow().access_levels.is_doc_reachable(item.def_id) {
+              !cx.renderinfo.borrow().access_levels.is_public(item.def_id) {
         let mut diag = cx.tcx.struct_span_lint_hir(
             lint::builtin::PRIVATE_DOC_TESTS,
             hir_id,
