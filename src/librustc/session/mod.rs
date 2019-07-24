@@ -545,6 +545,9 @@ impl Session {
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
     }
+    pub fn binary_dep_depinfo(&self) -> bool {
+        self.opts.debugging_opts.binary_dep_depinfo
+    }
 
     /// Gets the features enabled for the current compilation session.
     /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
