@@ -34,7 +34,7 @@ LL |     #![empty_attr]
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
-error: custom attribute invocations must be of the form #[foo] or #[foo(..)], the macro name must only be followed by a delimiter token
+error: custom attribute invocations must be of the form `#[foo]` or `#[foo(..)]`, the macro name must only be followed by a delimiter token
   --> $DIR/proc-macro-gates.rs:21:1
    |
 LL | #[empty_attr = "y"]
