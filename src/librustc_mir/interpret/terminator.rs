@@ -8,7 +8,7 @@ use rustc_target::spec::abi::Abi;
 
 use super::{
     InterpResult, PointerArithmetic, Scalar,
-    InterpCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
+    InterpCx, Machine, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -460,7 +460,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Adjust receiver argument.
                 args[0] = OpTy::from(ImmTy {
                     layout: this_receiver_ptr,
-                    imm: Immediate::Scalar(receiver_place.ptr.into())
+                    imm: receiver_place.ptr.into()
                 });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
