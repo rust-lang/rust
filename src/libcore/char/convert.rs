@@ -247,7 +247,7 @@ impl fmt::Display for CharTryFromError {
 
 /// Converts a digit in the given radix to a `char`.
 ///
-/// A 'radix' here is sometimes also called a 'base'. A radix of two
+/// A `radix` here is sometimes also called a `base`. A radix of two
 /// indicates a binary number, a radix of ten, decimal, and a radix of
 /// sixteen, hexadecimal, to give some common values. Arbitrary
 /// radices are supported.

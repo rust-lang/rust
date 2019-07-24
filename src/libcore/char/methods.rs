@@ -11,7 +11,7 @@ use super::*;
 impl char {
     /// Checks if a `char` is a digit in the given radix.
     ///
-    /// A 'radix' here is sometimes also called a 'base'. A radix of two
+    /// A `radix` here is sometimes also called a `base`. A radix of two
     /// indicates a binary number, a radix of ten, decimal, and a radix of
     /// sixteen, hexadecimal, to give some common values. Arbitrary
     /// radices are supported.
@@ -19,13 +19,13 @@ impl char {
     /// Compared to `is_numeric()`, this function only recognizes the characters
     /// `0-9`, `a-z` and `A-Z`.
     ///
-    /// 'Digit' is defined to be only the following characters:
+    /// `Digit` is defined to be only the following characters:
     ///
     /// * `0-9`
     /// * `a-z`
     /// * `A-Z`
     ///
-    /// For a more comprehensive understanding of 'digit', see [`is_numeric`][is_numeric].
+    /// For a more comprehensive understanding of `digit`, see [`is_numeric`][is_numeric].
     ///
     /// [is_numeric]: #method.is_numeric
     ///
@@ -63,12 +63,12 @@ impl char {
 
     /// Converts a `char` to a digit in the given radix.
     ///
-    /// A 'radix' here is sometimes also called a 'base'. A radix of two
+    /// A `radix` here is sometimes also called a `base`. A radix of two
     /// indicates a binary number, a radix of ten, decimal, and a radix of
     /// sixteen, hexadecimal, to give some common values. Arbitrary
     /// radices are supported.
     ///
-    /// 'Digit' is defined to be only the following characters:
+    /// `Digit` is defined to be only the following characters:
     ///
     /// * `0-9`
     /// * `a-z`
@@ -405,7 +405,7 @@ impl char {
     ///
     /// # Examples
     ///
-    /// In both of these examples, 'ß' takes two bytes to encode.
+    /// In both of these examples, `ß` takes two bytes to encode.
     ///
     /// ```
     /// let mut b = [0; 2];
@@ -475,7 +475,7 @@ impl char {
     ///
     /// # Examples
     ///
-    /// In both of these examples, '𝕊' takes two `u16`s to encode.
+    /// In both of these examples, `𝕊` takes two `u16`s to encode.
     ///
     /// ```
     /// let mut b = [0; 2];
@@ -547,10 +547,10 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` satisfies the 'XID_Start' Unicode property, and false
+    /// Returns `true` if this `char` satisfies the `XID_Start` Unicode property, and false
     /// otherwise.
     ///
-    /// 'XID_Start' is a Unicode Derived Property specified in
+    /// `XID_Start` is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to `ID_Start` but modified for closure under `NFKx`.
     #[cfg_attr(bootstrap,
@@ -563,12 +563,12 @@ impl char {
         derived_property::XID_Start(self)
     }
 
-    /// Returns `true` if this `char` satisfies the 'XID_Continue' Unicode property, and false
+    /// Returns `true` if this `char` satisfies the `XID_Continue` Unicode property, and false
     /// otherwise.
     ///
-    /// 'XID_Continue' is a Unicode Derived Property specified in
+    /// `XID_Continue` is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
-    /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
+    /// mostly similar to `ID_Continue` but modified for closure under NFKx.
     #[cfg_attr(bootstrap,
                unstable(feature = "rustc_private",
                         reason = "mainly needed for compiler internals",
@@ -582,7 +582,7 @@ impl char {
 
     /// Returns `true` if this `char` is lowercase.
     ///
-    /// 'Lowercase' is defined according to the terms of the Unicode Derived Core
+    /// `Lowercase` is defined according to the terms of the Unicode Derived Core
     /// Property `Lowercase`.
     ///
     /// # Examples
@@ -610,7 +610,7 @@ impl char {
 
     /// Returns `true` if this `char` is uppercase.
     ///
-    /// 'Uppercase' is defined according to the terms of the Unicode Derived Core
+    /// `Uppercase` is defined according to the terms of the Unicode Derived Core
     /// Property `Uppercase`.
     ///
     /// # Examples
@@ -638,7 +638,7 @@ impl char {
 
     /// Returns `true` if this `char` is whitespace.
     ///
-    /// 'Whitespace' is defined according to the terms of the Unicode Derived Core
+    /// `Whitespace` is defined according to the terms of the Unicode Derived Core
     /// Property `White_Space`.
     ///
     /// # Examples
@@ -665,8 +665,8 @@ impl char {
 
     /// Returns `true` if this `char` is alphanumeric.
     ///
-    /// 'Alphanumeric'-ness is defined in terms of the Unicode General Categories
-    /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
+    /// `Alphanumeric`-ness is defined in terms of the Unicode General Categories
+    /// `Nd`, `Nl`, `No` and the Derived Core Property `Alphabetic`.
     ///
     /// # Examples
     ///
@@ -719,8 +719,8 @@ impl char {
 
     /// Returns `true` if this `char` is numeric.
     ///
-    /// 'Numeric'-ness is defined in terms of the Unicode General Categories
-    /// 'Nd', 'Nl', 'No'.
+    /// `Numeric`-ness is defined in terms of the Unicode General Categories
+    /// `Nd`, `Nl`, `No`.
     ///
     /// # Examples
     ///
@@ -865,12 +865,12 @@ impl char {
     ///
     /// # Note on locale
     ///
-    /// In Turkish, the equivalent of 'i' in Latin has five forms instead of two:
+    /// In Turkish, the equivalent of `i` in Latin has five forms instead of two:
     ///
-    /// * 'Dotless': I / ı, sometimes written ï
-    /// * 'Dotted': İ / i
+    /// * `Dotless`: I / ı, sometimes written ï
+    /// * `Dotted`: İ / i
     ///
-    /// Note that the lowercase dotted 'i' is the same as the Latin. Therefore:
+    /// Note that the lowercase dotted `i` is the same as the Latin. Therefore:
     ///
     /// ```
     /// let upper_i = 'i'.to_uppercase().to_string();
@@ -912,7 +912,7 @@ impl char {
 
     /// Makes a copy of the value in its ASCII upper case equivalent.
     ///
-    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// ASCII letters `a` to `z` are mapped to `A` to `Z`,
     /// but non-ASCII letters are unchanged.
     ///
     /// To uppercase the value in-place, use [`make_ascii_uppercase`].
@@ -944,7 +944,7 @@ impl char {
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
     ///
-    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// ASCII letters `A` to `Z` are mapped to `a` to `z`,
     /// but non-ASCII letters are unchanged.
     ///
     /// To lowercase the value in-place, use [`make_ascii_lowercase`].
@@ -997,7 +997,7 @@ impl char {
 
     /// Converts this type to its ASCII upper case equivalent in-place.
     ///
-    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// ASCII letters `a` to `z` are mapped to `A` to `Z`,
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new uppercased value without modifying the existing one, use
@@ -1022,7 +1022,7 @@ impl char {
 
     /// Converts this type to its ASCII lower case equivalent in-place.
     ///
-    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// ASCII letters `A` to `Z` are mapped to `a` to `z`,
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new lowercased value without modifying the existing one, use
@@ -1047,8 +1047,8 @@ impl char {
 
     /// Checks if the value is an ASCII alphabetic character:
     ///
-    /// - U+0041 'A' ..= U+005A 'Z', or
-    /// - U+0061 'a' ..= U+007A 'z'.
+    /// - U+0041 `A` ..= U+005A `Z`, or
+    /// - U+0061 `a` ..= U+007A `z`.
     ///
     /// # Examples
     ///
@@ -1080,7 +1080,7 @@ impl char {
     }
 
     /// Checks if the value is an ASCII uppercase character:
-    /// U+0041 'A' ..= U+005A 'Z'.
+    /// U+0041 `A` ..= U+005A `Z`.
     ///
     /// # Examples
     ///
@@ -1112,7 +1112,7 @@ impl char {
     }
 
     /// Checks if the value is an ASCII lowercase character:
-    /// U+0061 'a' ..= U+007A 'z'.
+    /// U+0061 `a` ..= U+007A `z`.
     ///
     /// # Examples
     ///
@@ -1145,9 +1145,9 @@ impl char {
 
     /// Checks if the value is an ASCII alphanumeric character:
     ///
-    /// - U+0041 'A' ..= U+005A 'Z', or
-    /// - U+0061 'a' ..= U+007A 'z', or
-    /// - U+0030 '0' ..= U+0039 '9'.
+    /// - U+0041 `A` ..= U+005A `Z`, or
+    /// - U+0061 `a` ..= U+007A `z`, or
+    /// - U+0030 `0` ..= U+0039 `9`.
     ///
     /// # Examples
     ///
@@ -1179,7 +1179,7 @@ impl char {
     }
 
     /// Checks if the value is an ASCII decimal digit:
-    /// U+0030 '0' ..= U+0039 '9'.
+    /// U+0030 `0` ..= U+0039 `9`.
     ///
     /// # Examples
     ///
@@ -1212,9 +1212,9 @@ impl char {
 
     /// Checks if the value is an ASCII hexadecimal digit:
     ///
-    /// - U+0030 '0' ..= U+0039 '9', or
-    /// - U+0041 'A' ..= U+0046 'F', or
-    /// - U+0061 'a' ..= U+0066 'f'.
+    /// - U+0030 `0` ..= U+0039 `9`, or
+    /// - U+0041 `A` ..= U+0046 `F`, or
+    /// - U+0061 `a` ..= U+0066 `f`.
     ///
     /// # Examples
     ///
@@ -1282,7 +1282,7 @@ impl char {
     }
 
     /// Checks if the value is an ASCII graphic character:
-    /// U+0021 '!' ..= U+007E '~'.
+    /// U+0021 `!` ..= U+007E `~`.
     ///
     /// # Examples
     ///
