@@ -341,7 +341,7 @@ fn add_arg_comment<'a, 'tcx: 'a>(
     };
     let pass_mode = format!("{:?}", pass_mode);
     fx.add_global_comment(format!(
-        "{msg:5} {local:>3}{local_field:<5} {params:10} {pass_mode:20} {ssa:10} {ty:?}",
+        "{msg:5} {local:>3}{local_field:<5} {params:10} {pass_mode:36} {ssa:10} {ty:?}",
         msg = msg,
         local = format!("{:?}", local),
         local_field = local_field,
@@ -355,7 +355,7 @@ fn add_arg_comment<'a, 'tcx: 'a>(
 #[cfg(debug_assertions)]
 fn add_local_header_comment(fx: &mut FunctionCx<impl Backend>) {
     fx.add_global_comment(format!(
-        "msg   loc.idx    param    pass mode            ssa flags  ty"
+        "msg   loc.idx    param    pass mode                            ssa flags  ty"
     ));
 }
 
