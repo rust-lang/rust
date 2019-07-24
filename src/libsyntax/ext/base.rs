@@ -1,6 +1,6 @@
 use crate::ast::{self, Attribute, Name, PatKind};
 use crate::attr::{HasAttrs, Stability, Deprecation};
-use crate::source_map::{SourceMap, Spanned, respan};
+use crate::source_map::{SourceMap, Spanned, FileName, respan};
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
 use crate::ext::hygiene::{ExpnId, SyntaxContext, Transparency};
@@ -888,6 +888,31 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn check_unused_macros(&self) {
         self.resolver.check_unused_macros();
+    }
+
+    /// Resolve a path mentioned inside Rust code.
+    ///
+    /// This unifies the logic used for resolving `include_X!`, and `#[doc(include)]` file paths.
+    ///
+    /// Returns an absolute path to the file that `path` refers to.
+    pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PathBuf {
+        let path = path.into();
+
+        // Relative paths are resolved relative to the file in which they are found
+        // after macro expansion (that is, they are unhygienic).
+        if !path.is_absolute() {
+            let callsite = span.source_callsite();
+            let mut result = match self.source_map().span_to_unmapped_path(callsite) {
+                FileName::Real(path) => path,
+                FileName::DocTest(path, _) => path,
+                other => panic!("cannot resolve relative path in non-file source `{}`", other),
+            };
+            result.pop();
+            result.push(path);
+            result
+        } else {
+            path
+        }
     }
 }
 

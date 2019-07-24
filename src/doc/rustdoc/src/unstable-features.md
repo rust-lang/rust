@@ -183,9 +183,8 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 
 As designed in [RFC 1990], Rustdoc can read an external file to use as a type's documentation. This
 is useful if certain documentation is so long that it would break the flow of reading the source.
-Instead of writing it all inline, writing `#[doc(include = "sometype.md")]` (where `sometype.md` is
-a file adjacent to the `lib.rs` for the crate) will ask Rustdoc to instead read that file and use it
-as if it were written inline.
+Instead of writing it all inline, writing `#[doc(include = "sometype.md")]` will ask Rustdoc to
+instead read that file and use it as if it were written inline.
 
 [RFC 1990]: https://github.com/rust-lang/rfcs/pull/1990
 

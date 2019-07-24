@@ -1253,7 +1253,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         return noop_visit_attribute(at, self);
                     }
 
-                    let filename = self.cx.root_path.join(file.to_string());
+                    let filename = self.cx.resolve_path(&*file.as_str(), it.span());
                     match fs::read_to_string(&filename) {
                         Ok(src) => {
                             let src_interned = Symbol::intern(&src);
@@ -1301,10 +1301,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                     &format!("couldn't read {}: {}", filename.display(), e),
                                 );
                                 err.span_label(lit.span, "couldn't read file");
-
-                                if e.kind() == ErrorKind::NotFound {
-                                    err.help("external doc paths are relative to the crate root");
-                                }
 
                                 err.emit();
                             }
