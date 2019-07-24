@@ -8,7 +8,6 @@ use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
-use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::DepKind;
 use rustc::mir::interpret::AllocDecodingState;
 use rustc::session::{Session, CrateDisambiguator};
@@ -26,9 +25,9 @@ use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::attr;
+use syntax::ext::allocator::{global_allocator_spans, AllocatorKind};
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use syntax::symbol::{Symbol, sym};
-use syntax::visit;
 use syntax::{span_err, span_fatal};
 use syntax_pos::{Span, DUMMY_SP};
 use log::{debug, info, log_enabled};
@@ -888,7 +887,14 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
-        let has_global_allocator = has_global_allocator(krate);
+        let has_global_allocator = match &*global_allocator_spans(krate) {
+            [span1, span2, ..] => {
+                self.sess.struct_span_err(*span2, "cannot define multiple global allocators")
+                         .span_note(*span1, "the previous global allocator is defined here").emit();
+                true
+            }
+            spans => !spans.is_empty()
+        };
         self.sess.has_global_allocator.set(has_global_allocator);
 
         // Check to see if we actually need an allocator. This desire comes
@@ -975,24 +981,7 @@ impl<'a> CrateLoader<'a> {
                            that implements the GlobalAlloc trait.");
         }
         self.sess.allocator_kind.set(Some(AllocatorKind::DefaultLib));
-
-        fn has_global_allocator(krate: &ast::Crate) -> bool {
-            struct Finder(bool);
-            let mut f = Finder(false);
-            visit::walk_crate(&mut f, krate);
-            return f.0;
-
-            impl<'ast> visit::Visitor<'ast> for Finder {
-                fn visit_item(&mut self, i: &'ast ast::Item) {
-                    if attr::contains_name(&i.attrs, sym::global_allocator) {
-                        self.0 = true;
-                    }
-                    visit::walk_item(self, i)
-                }
-            }
-        }
     }
-
 
     fn inject_dependency_if(&self,
                             krate: CrateNum,
