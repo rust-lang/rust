@@ -49,7 +49,6 @@ use parking_lot::ReentrantMutex;
 
 use crate::core::{self, DocContext};
 use crate::doctree;
-use crate::visit_ast;
 use crate::html::render::{cache, ExternalLocation};
 use crate::html::item_type::ItemType;
 
@@ -138,7 +137,10 @@ pub struct Crate {
     pub masked_crates: FxHashSet<CrateNum>,
 }
 
-impl<'a, 'tcx> Clean<Crate> for (visit_ast::RustdocVisitor<'a, 'tcx>, doctree::Module<'tcx>) {
+// The `()` here is rather ugly and would be great to remove. Unfortunately, we
+// already have a different Clean impl for `doctree::Module` which makes this
+// the only way to easily disambiguate.
+impl<'tcx> Clean<Crate> for ((), doctree::Module<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> Crate {
         use crate::visit_lib::LibEmbargoVisitor;
 
