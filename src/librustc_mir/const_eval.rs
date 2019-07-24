@@ -397,7 +397,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         )
     }
 
-    fn ptr_op(
+    fn binary_ptr_op(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
