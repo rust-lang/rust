@@ -623,7 +623,7 @@ declare_features! (
     (removed, quote, "1.33.0", Some(29601), None, None),
     // Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None, None),
-    (removed, await_macro, "1.37.0", Some(50547), None,
+    (removed, await_macro, "1.38.0", Some(50547), None,
      Some("subsumed by `.await` syntax")),
 
     // -------------------------------------------------------------------------
