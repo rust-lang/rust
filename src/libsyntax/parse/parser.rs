@@ -3071,10 +3071,7 @@ impl<'a> Parser<'a> {
                             id: ast::DUMMY_NODE_ID
                         }));
 
-                        let expr_str = self
-                            .sess
-                            .source_map()
-                            .span_to_snippet(expr.span)
+                        let expr_str = self.span_to_snippet(expr.span)
                             .unwrap_or_else(|_| pprust::expr_to_string(&expr));
 
                         self.struct_span_err(self.token.span, &msg)
@@ -3796,7 +3793,7 @@ impl<'a> Parser<'a> {
             let seq_span = pat.span.to(self.prev_span);
             let mut err = self.struct_span_err(comma_span,
                                                "unexpected `,` in pattern");
-            if let Ok(seq_snippet) = self.sess.source_map().span_to_snippet(seq_span) {
+            if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
                 err.span_suggestion(
                     seq_span,
                     "try adding parentheses to match on a tuple..",
@@ -4145,7 +4142,7 @@ impl<'a> Parser<'a> {
                     let parser_snapshot_after_type = self.clone();
                     mem::replace(self, parser_snapshot_before_type);
 
-                    let snippet = self.sess.source_map().span_to_snippet(pat.span).unwrap();
+                    let snippet = self.span_to_snippet(pat.span).unwrap();
                     err.span_label(pat.span, format!("while parsing the type for `{}`", snippet));
                     (Some((parser_snapshot_after_type, colon_sp, err)), None)
                 }
@@ -4565,7 +4562,7 @@ impl<'a> Parser<'a> {
                     if self.eat(&token::Semi) {
                         stmt_span = stmt_span.with_hi(self.prev_span.hi());
                     }
-                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(stmt_span) {
+                    if let Ok(snippet) = self.span_to_snippet(stmt_span) {
                         e.span_suggestion(
                             stmt_span,
                             "try placing this code inside a block",
@@ -4738,7 +4735,7 @@ impl<'a> Parser<'a> {
                             lo.to(self.prev_span),
                             "parenthesized lifetime bounds are not supported"
                         );
-                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(inner_span) {
+                        if let Ok(snippet) = self.span_to_snippet(inner_span) {
                             err.span_suggestion_short(
                                 lo.to(self.prev_span),
                                 "remove the parentheses",
@@ -4796,7 +4793,7 @@ impl<'a> Parser<'a> {
                 let mut new_bound_list = String::new();
                 if !bounds.is_empty() {
                     let mut snippets = bounds.iter().map(|bound| bound.span())
-                        .map(|span| self.sess.source_map().span_to_snippet(span));
+                        .map(|span| self.span_to_snippet(span));
                     while let Some(Ok(snippet)) = snippets.next() {
                         new_bound_list.push_str(" + ");
                         new_bound_list.push_str(&snippet);
@@ -7415,7 +7412,7 @@ impl<'a> Parser<'a> {
                         sp, &suggestion, format!(" {} ", kw), Applicability::MachineApplicable
                     );
                 } else {
-                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(ident_sp) {
+                    if let Ok(snippet) = self.span_to_snippet(ident_sp) {
                         err.span_suggestion(
                             full_sp,
                             "if you meant to call a macro, try",

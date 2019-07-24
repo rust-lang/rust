@@ -14,7 +14,7 @@ use crate::ThinVec;
 use crate::util::parser::AssocOp;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_data_structures::fx::FxHashSet;
-use syntax_pos::{Span, DUMMY_SP, MultiSpan};
+use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
 use std::mem;
 
@@ -197,6 +197,10 @@ impl<'a> Parser<'a> {
 
     crate fn diagnostic(&self) -> &'a errors::Handler {
         &self.sess.span_diagnostic
+    }
+
+    crate fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
+        self.sess.source_map().span_to_snippet(span)
     }
 
     crate fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
@@ -719,8 +723,6 @@ impl<'a> Parser<'a> {
         path.span = ty_span.to(self.prev_span);
 
         let ty_str = self
-            .sess
-            .source_map()
             .span_to_snippet(ty_span)
             .unwrap_or_else(|_| pprust::ty_to_string(&ty));
         self.diagnostic()
@@ -891,7 +893,7 @@ impl<'a> Parser<'a> {
             err.span_label(await_sp, "while parsing this incorrect await expression");
             err
         })?;
-        let expr_str = self.sess.source_map().span_to_snippet(expr.span)
+        let expr_str = self.span_to_snippet(expr.span)
             .unwrap_or_else(|_| pprust::expr_to_string(&expr));
         let suggestion = format!("{}.await{}", expr_str, if is_question { "?" } else { "" });
         let sp = lo.to(expr.span);
@@ -940,8 +942,6 @@ impl<'a> Parser<'a> {
                 self.bump();
 
                 let pat_str = self
-                    .sess
-                    .source_map()
                     // Remove the `(` from the span of the pattern:
                     .span_to_snippet(pat.span.trim_start(begin_par_sp).unwrap())
                     .unwrap_or_else(|_| pprust::pat_to_string(&pat));
