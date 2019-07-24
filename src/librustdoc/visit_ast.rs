@@ -96,7 +96,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn visit_variant_data(&mut self, item: &'tcx hir::Item,
                               name: ast::Name, sd: &'tcx hir::VariantData,
                               generics: &'tcx hir::Generics) -> Struct<'tcx> {
-        debug!("Visiting struct");
+        debug!("visiting struct");
         let struct_type = struct_type_from_def(&*sd);
         Struct {
             id: item.hir_id,
@@ -115,7 +115,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn visit_union_data(&mut self, item: &'tcx hir::Item,
                             name: ast::Name, sd: &'tcx hir::VariantData,
                             generics: &'tcx hir::Generics) -> Union<'tcx> {
-        debug!("Visiting union");
+        debug!("visiting union");
         let struct_type = struct_type_from_def(&*sd);
         Union {
             id: item.hir_id,
@@ -134,7 +134,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn visit_enum_def(&mut self, it: &'tcx hir::Item,
                           name: ast::Name, def: &'tcx hir::EnumDef,
                           generics: &'tcx hir::Generics) -> Enum<'tcx> {
-        debug!("Visiting enum");
+        debug!("visiting enum");
         Enum {
             name,
             variants: def.variants.iter().map(|v| Variant {
@@ -161,7 +161,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     header: hir::FnHeader,
                     generics: &'tcx hir::Generics,
                     body: hir::BodyId) {
-        debug!("Visiting fn");
+        debug!("visiting fn");
         let macro_kind = item.attrs.iter().filter_map(|a| {
             if a.check_name(sym::proc_macro) {
                 Some(MacroKind::Bang)
@@ -371,7 +371,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     pub fn visit_item(&mut self, item: &'tcx hir::Item,
                       renamed: Option<ast::Ident>, om: &mut Module<'tcx>) {
-        debug!("Visiting item {:?}", item);
+        debug!("visiting item {:?}", item);
         let ident = renamed.unwrap_or(item.ident);
 
         if item.vis.node.is_pub() {
