@@ -230,21 +230,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
-        dest: Option<PlaceTy<'tcx, M::PointerTag>>,
+        _dest: Option<PlaceTy<'tcx, M::PointerTag>>,
     ) -> InterpResult<'tcx, bool> {
         let def_id = instance.def_id();
-        // Some fn calls are actually BinOp intrinsics
-        if let Some((op, oflo)) = self.tcx.is_binop_lang_item(def_id) {
-            let dest = dest.expect("128 lowerings can't diverge");
-            let l = self.read_immediate(args[0])?;
-            let r = self.read_immediate(args[1])?;
-            if oflo {
-                self.binop_with_overflow(op, l, r, dest)?;
-            } else {
-                self.binop_ignore_overflow(op, l, r, dest)?;
-            }
-            return Ok(true);
-        } else if Some(def_id) == self.tcx.lang_items().panic_fn() {
+        if Some(def_id) == self.tcx.lang_items().panic_fn() {
             assert!(args.len() == 1);
             // &(&'static str, &'static str, u32, u32)
             let place = self.deref_operand(args[0])?;
