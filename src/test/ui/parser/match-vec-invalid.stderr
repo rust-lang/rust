@@ -30,13 +30,16 @@ LL |         [1, tail @ .., tail @ ..] => {},
    |                    |
    |                    previously used here
 
-error[E0529]: expected an array or slice, found `std::vec::Vec<_>`
-  --> $DIR/match-vec-invalid.rs:4:9
+error[E0308]: mismatched types
+  --> $DIR/match-vec-invalid.rs:13:30
    |
-LL |         [1, tail @ .., tail @ ..] => {},
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `std::vec::Vec<_>`
+LL | const RECOVERY_WITNESS: () = 0;
+   |                              ^ expected (), found integer
+   |
+   = note: expected type `()`
+              found type `{integer}`
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0416, E0529, E0658.
-For more information about an error, try `rustc --explain E0416`.
+Some errors have detailed explanations: E0308, E0416, E0658.
+For more information about an error, try `rustc --explain E0308`.
