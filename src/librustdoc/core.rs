@@ -16,6 +16,7 @@ use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
 use syntax::source_map;
+use syntax::attr;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
 use syntax::symbol::sym;
@@ -164,6 +165,11 @@ impl<'tcx> DocContext<'tcx> {
         } else {
             self.tcx.hir().as_local_hir_id(def_id)
         }
+    }
+
+    pub fn stability(&self, id: HirId) -> Option<attr::Stability> {
+        self.tcx.hir().opt_local_def_id(id)
+            .and_then(|def_id| self.tcx.lookup_stability(def_id)).cloned()
     }
 }
 

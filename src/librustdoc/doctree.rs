@@ -25,13 +25,13 @@ pub struct Module<'hir> {
     pub fns: Vec<Function<'hir>>,
     pub mods: Vec<Module<'hir>>,
     pub id: NodeId,
+    pub hid: hir::HirId,
     pub typedefs: Vec<Typedef<'hir>>,
     pub opaque_tys: Vec<OpaqueTy<'hir>>,
     pub statics: Vec<Static<'hir>>,
     pub constants: Vec<Constant<'hir>>,
     pub traits: Vec<Trait<'hir>>,
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub impls: Vec<Impl<'hir>>,
     pub foreigns: Vec<ForeignItem<'hir>>,
@@ -50,8 +50,8 @@ impl Module<'hir> {
         Module {
             name       : name,
             id: ast::CRATE_NODE_ID,
+            hid: hir::CRATE_HIR_ID,
             vis,
-            stab: None,
             depr: None,
             where_outer: syntax_pos::DUMMY_SP,
             where_inner: syntax_pos::DUMMY_SP,
@@ -90,7 +90,6 @@ pub enum StructType {
 
 pub struct Struct<'hir> {
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub id: hir::HirId,
     pub struct_type: StructType,
@@ -103,7 +102,6 @@ pub struct Struct<'hir> {
 
 pub struct Union<'hir> {
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub id: hir::HirId,
     pub struct_type: StructType,
@@ -116,7 +114,6 @@ pub struct Union<'hir> {
 
 pub struct Enum<'hir> {
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub variants: Vec<Variant<'hir>>,
     pub generics: &'hir hir::Generics,
@@ -131,7 +128,6 @@ pub struct Variant<'hir> {
     pub id: hir::HirId,
     pub attrs: &'hir hir::HirVec<ast::Attribute>,
     pub def: &'hir hir::VariantData,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub whence: Span,
 }
@@ -142,7 +138,6 @@ pub struct Function<'hir> {
     pub id: hir::HirId,
     pub name: Name,
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub header: hir::FnHeader,
     pub whence: Span,
@@ -158,7 +153,6 @@ pub struct Typedef<'hir> {
     pub attrs: &'hir hir::HirVec<ast::Attribute>,
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
 }
 
@@ -169,7 +163,6 @@ pub struct OpaqueTy<'hir> {
     pub attrs: &'hir hir::HirVec<ast::Attribute>,
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
 }
 
@@ -181,7 +174,6 @@ pub struct Static<'hir> {
     pub name: Name,
     pub attrs: &'hir hir::HirVec<ast::Attribute>,
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub id: hir::HirId,
     pub whence: Span,
@@ -193,7 +185,6 @@ pub struct Constant<'hir> {
     pub name: Name,
     pub attrs: &'hir hir::HirVec<ast::Attribute>,
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub id: hir::HirId,
     pub whence: Span,
@@ -210,7 +201,6 @@ pub struct Trait<'hir> {
     pub id: hir::HirId,
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
 }
 
@@ -222,7 +212,6 @@ pub struct TraitAlias<'hir> {
     pub id: hir::HirId,
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
 }
 
@@ -238,14 +227,12 @@ pub struct Impl<'hir> {
     pub attrs: &'hir hir::HirVec<ast::Attribute>,
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub id: hir::HirId,
 }
 
 pub struct ForeignItem<'hir> {
     pub vis: &'hir hir::Visibility,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub id: hir::HirId,
     pub name: Name,
@@ -258,11 +245,11 @@ pub struct ForeignItem<'hir> {
 // these imported macro_rules (which only have a DUMMY_NODE_ID).
 pub struct Macro<'hir> {
     pub name: Name,
+    pub hid: hir::HirId,
     pub def_id: hir::def_id::DefId,
     pub attrs: &'hir hir::HirVec<ast::Attribute>,
     pub whence: Span,
     pub matchers: hir::HirVec<Span>,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub imported_from: Option<Name>,
 }
@@ -293,7 +280,6 @@ pub struct ProcMacro<'hir> {
     pub helpers: Vec<Name>,
     pub attrs: &'hir hir::HirVec<ast::Attribute>,
     pub whence: Span,
-    pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
 }
 
