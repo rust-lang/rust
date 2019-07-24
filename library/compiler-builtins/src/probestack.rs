@@ -53,6 +53,9 @@ pub unsafe extern "C" fn __rust_probestack() {
     // The ABI here is that the stack frame size is located in `%eax`. Upon
     // return we're not supposed to modify `%esp` or `%eax`.
     asm!("
+        pushq  %rbp
+        movq   %rsp, %rbp
+
         mov    %rax,%r11        // duplicate %rax as we're clobbering %r11
 
         // Main loop, taken in one page increments. We're decrementing rsp by
@@ -89,6 +92,7 @@ pub unsafe extern "C" fn __rust_probestack() {
         // return.
         add    %rax,%rsp
 
+        leave
         ret
     " ::: "memory" : "volatile");
     ::core::intrinsics::unreachable();
@@ -104,6 +108,8 @@ pub unsafe extern "C" fn __rust_probestack() {
     //
     // The ABI here is the same as x86_64, except everything is 32-bits large.
     asm!("
+        push   %ebp
+        mov    %esp, %ebp
         push   %ecx
         mov    %eax,%ecx
 
@@ -122,6 +128,7 @@ pub unsafe extern "C" fn __rust_probestack() {
 
         add    %eax,%esp
         pop    %ecx
+        leave
         ret
     " ::: "memory" : "volatile");
     ::core::intrinsics::unreachable();
