@@ -60,22 +60,43 @@ pub fn maybe_codegen<'a, 'tcx>(
             assert!(!checked);
             let (lhs_lsb, lhs_msb) = fx.bcx.ins().isplit(lhs_val);
             let (rhs_lsb, rhs_msb) = fx.bcx.ins().isplit(rhs_val);
-            let res = match (bin_op, is_signed) {
-                (BinOp::Eq, _) => {
+
+            let res = match bin_op {
+                BinOp::Eq => {
                     let lsb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_lsb, rhs_lsb);
                     let msb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_msb, rhs_msb);
                     fx.bcx.ins().band(lsb_eq, msb_eq)
                 }
-                (BinOp::Ne, _) => {
+                BinOp::Ne => {
                     let lsb_ne = fx.bcx.ins().icmp(IntCC::NotEqual, lhs_lsb, rhs_lsb);
                     let msb_ne = fx.bcx.ins().icmp(IntCC::NotEqual, lhs_msb, rhs_msb);
                     fx.bcx.ins().bor(lsb_ne, msb_ne)
                 }
                 _ => {
-                    // FIXME implement it
-                    let out_layout = fx.layout_of(out_ty);
-                    return Some(crate::trap::trap_unreachable_ret_value(fx, out_layout, format!("unimplemented 128bit binop {:?}", bin_op)));
-                },
+                    // if msb_eq {
+                    //     lhs_cc
+                    // } else {
+                    //     msb_cc
+                    // }
+                    let cc = match (bin_op, is_signed) {
+                        (BinOp::Ge, false) => IntCC::UnsignedGreaterThanOrEqual,
+                        (BinOp::Gt, false) => IntCC::UnsignedGreaterThan,
+                        (BinOp::Lt, false) => IntCC::UnsignedLessThan,
+                        (BinOp::Le, false) => IntCC::UnsignedLessThanOrEqual,
+
+                        (BinOp::Ge, true) => IntCC::SignedGreaterThanOrEqual,
+                        (BinOp::Gt, true) => IntCC::SignedGreaterThan,
+                        (BinOp::Lt, true) => IntCC::SignedLessThan,
+                        (BinOp::Le, true) => IntCC::SignedLessThanOrEqual,
+                        _ => unreachable!(),
+                    };
+
+                    let msb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_msb, rhs_msb);
+                    let lsb_cc = fx.bcx.ins().icmp(cc, lhs_lsb, rhs_lsb);
+                    let msb_cc = fx.bcx.ins().icmp(cc, lhs_msb, rhs_msb);
+
+                    fx.bcx.ins().select(msb_eq, lsb_cc, msb_cc)
+                }
             };
 
             let res = fx.bcx.ins().bint(types::I8, res);
