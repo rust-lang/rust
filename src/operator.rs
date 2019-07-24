@@ -64,12 +64,12 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             assert!(right.layout.ty.is_integral());
             let l_bits = self.force_bits(left.imm.to_scalar()?, left.layout.size)?;
             let r_bits = self.force_bits(right.imm.to_scalar()?, right.layout.size)?;
-            
+
             let left = ImmTy::from_scalar(Scalar::from_uint(l_bits, left.layout.size), left.layout);
             let right = ImmTy::from_scalar(Scalar::from_uint(r_bits, left.layout.size), right.layout);
 
             return self.binary_op(bin_op, left, right);
-        } 
+        }
 
         // Operations that support fat pointers
         match bin_op {
@@ -298,11 +298,12 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         pointee_ty: Ty<'tcx>,
         offset: i64,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
+        use rustc::mir::interpret::InterpError::Panic;
         // FIXME: assuming here that type size is less than `i64::max_value()`.
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         let offset = offset
             .checked_mul(pointee_size)
-            .ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
+            .ok_or_else(|| Panic(PanicMessage::Overflow(mir::BinOp::Mul)))?;
         // Now let's see what kind of pointer this is.
         let ptr = if offset == 0 {
             match ptr {
