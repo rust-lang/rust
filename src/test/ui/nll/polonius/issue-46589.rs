@@ -1,8 +1,10 @@
-// This tests passes in Polonius mode, so is skipped in the automated compare-mode.
-// We will manually check it passes in Polonius tests, as we can't have a test here
-// which conditionally passes depending on a test revision/compile-flags.
+// This test is a copy of `ui/nll/issue-46589.rs` which fails in NLL but succeeds in Polonius.
+// As we can't have a test here which conditionally passes depending on a test
+// revision/compile-flags. We ensure here that it passes in Polonius mode.
 
-// ignore-compare-mode-polonius
+// check-pass
+// compile-flags: -Z borrowck=mir -Z polonius
+// ignore-compare-mode-nll
 
 struct Foo;
 
@@ -21,7 +23,6 @@ impl Foo {
         *other = match (*other).get_self() {
             Some(s) => s,
             None => (*other).new_self()
-            //~^ ERROR cannot borrow `**other` as mutable more than once at a time [E0499]
         };
 
         let c = other;

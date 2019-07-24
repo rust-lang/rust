@@ -1,11 +1,11 @@
 error: implementation of `Stream` is not general enough
-  --> $DIR/issue-30786.rs:107:22
+  --> $DIR/issue-30786.rs:108:22
    |
 LL |     let map = source.map(|x: &_| x);
    |                      ^^^
    |
-   = note: `Stream` would have to be implemented for the type `&'0 mut Map<Repeat, [closure@$DIR/issue-30786.rs:107:26: 107:35]>`, for any lifetime `'0`
-   = note: but `Stream` is actually implemented for the type `&'1 mut Map<Repeat, [closure@$DIR/issue-30786.rs:107:26: 107:35]>`, for some specific lifetime `'1`
+   = note: `Stream` would have to be implemented for the type `&'0 mut Map<Repeat, [closure@$DIR/issue-30786.rs:108:26: 108:35]>`, for any lifetime `'0`
+   = note: but `Stream` is actually implemented for the type `&'1 mut Map<Repeat, [closure@$DIR/issue-30786.rs:108:26: 108:35]>`, for some specific lifetime `'1`
 
 error: aborting due to previous error
 

@@ -10,6 +10,7 @@
 // just ignore it instead:
 
 // ignore-compare-mode-nll
+// ignore-compare-mode-polonius
 
 // revisions: zflag edition
 //[zflag]compile-flags: -Z borrowck=migrate
