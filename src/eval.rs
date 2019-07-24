@@ -179,7 +179,7 @@ pub fn eval_main<'tcx>(
     };
 
     // Perform the main execution.
-    let res: InterpResult = (|| {
+    let res: InterpResult<'_> = (|| {
         ecx.run()?;
         ecx.run_tls_dtors()
     })();
