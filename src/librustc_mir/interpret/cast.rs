@@ -111,9 +111,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )
         }
 
-        // Handle cast the metadata away from a fat pointer.
-        if dest_layout.size != src.layout.size {
+        // Handle casting the metadata away from a fat pointer.
+        if src.layout.ty.is_unsafe_ptr() && dest_layout.ty.is_unsafe_ptr() &&
+            dest_layout.size != src.layout.size
+        {
+            assert_eq!(src.layout.size, 2*self.memory.pointer_size());
             assert_eq!(dest_layout.size, self.memory.pointer_size());
+            assert!(dest_layout.ty.is_unsafe_ptr());
             return match *src {
                 Immediate::ScalarPair(data, _) => Ok(data.into()),
                 Immediate::Scalar(..) =>
@@ -122,6 +126,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         *src, src.layout.ty, dest_layout.ty
                     ),
             };
+        }
+
+        // Handle casting reference to raw ptr or raw to other raw (might be a fat ptr).
+        if (src.layout.ty.is_region_ptr() || src.layout.ty.is_unsafe_ptr()) &&
+            dest_layout.ty.is_unsafe_ptr()
+        {
+            // The only possible size-unequal case was handled above.
+            assert_eq!(src.layout.size, dest_layout.size);
+            return Ok(*src);
         }
 
         // Handle cast from a univariant (ZST) enum
