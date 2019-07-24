@@ -20,10 +20,10 @@ use rustc_data_structures::fx::FxHashMap;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar,
+    PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar, Pointer,
     RawConst, ConstValue,
     InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup,
-    Allocation, AllocId, MemoryKind,
+    Allocation, AllocId, MemoryKind, Memory,
     snapshot, RefTracking, intern_const_alloc_recursive,
 };
 
@@ -394,6 +394,15 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         let intrinsic_name = &ecx.tcx.item_name(instance.def_id()).as_str()[..];
         Err(
             ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into()
+        )
+    }
+
+    fn ptr_to_int(
+        _mem: &Memory<'mir, 'tcx, Self>,
+        _ptr: Pointer,
+    ) -> InterpResult<'tcx, u64> {
+        Err(
+            ConstEvalError::NeedsRfc("pointer-to-integer cast".to_string()).into(),
         )
     }
 

@@ -233,7 +233,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
         extra: Self::FrameExtra,
     ) -> InterpResult<'tcx>;
 
-    #[inline(always)]
     fn int_to_ptr(
         _mem: &Memory<'mir, 'tcx, Self>,
         int: u64,
@@ -245,11 +244,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         }).into())
     }
 
-    #[inline(always)]
     fn ptr_to_int(
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
-    ) -> InterpResult<'tcx, u64> {
-        throw_unsup!(ReadPointerAsBytes)
-    }
+    ) -> InterpResult<'tcx, u64>;
 }
