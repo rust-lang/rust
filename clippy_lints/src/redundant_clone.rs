@@ -293,7 +293,7 @@ fn base_local_and_movability<'tcx>(
     let PlaceRef {
         base: place_base,
         mut projection,
-    } = place.as_place_ref();
+    } = place.as_ref();
     if let PlaceBase::Local(local) = place_base {
         while let Some(box Projection { base, elem }) = projection {
             projection = base;
