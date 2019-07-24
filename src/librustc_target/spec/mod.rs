@@ -368,6 +368,7 @@ supported_targets! {
     ("i586-unknown-linux-musl", i586_unknown_linux_musl),
     ("mips-unknown-linux-musl", mips_unknown_linux_musl),
     ("mipsel-unknown-linux-musl", mipsel_unknown_linux_musl),
+    ("hexagon-unknown-linux-musl", hexagon_unknown_linux_musl),
 
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
