@@ -250,12 +250,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             RawPtr(_) => Ok(ptr.into()),
             Int(_) | Uint(_) => {
                 let size = self.memory.pointer_size();
-
-                match self.force_bits(Scalar::Ptr(ptr), size) {
-                    Ok(bits) => self.cast_from_int(bits, src_layout, dest_layout),
-                    Err(_) if dest_layout.size == size => Ok(ptr.into()),
-                    Err(e) => Err(e),
-                }
+                let bits = self.force_bits(Scalar::Ptr(ptr), size)?;
+                self.cast_from_int(bits, src_layout, dest_layout)
             }
             _ => bug!("invalid MIR: ptr to {:?} cast", dest_layout.ty)
         }
