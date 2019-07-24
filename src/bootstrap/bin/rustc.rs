@@ -127,6 +127,8 @@ fn main() {
 
     if env::var_os("RUSTC_DENY_WARNINGS").is_some() &&
        env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
+        // When extending this list, search for `NO-RUSTC-WRAPPER` and add the new lints
+        // there as well, some code doesn't go through this `rustc` wrapper.
         cmd.arg("-Dwarnings");
         cmd.arg("-Drust_2018_idioms");
         cmd.arg("-Dunused_lifetimes");
