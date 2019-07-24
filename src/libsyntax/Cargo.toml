@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 bitflags = "1.0"
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../libserialize", package = "serialize" }
 log = "0.4"
 scoped-tls = "1.0"
 lazy_static = "1.0.0"

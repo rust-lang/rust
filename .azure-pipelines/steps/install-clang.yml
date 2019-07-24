@@ -26,12 +26,18 @@ steps:
 #
 # Original downloaded here came from
 # http://releases.llvm.org/7.0.0/LLVM-7.0.0-win64.exe
-- script: |
-    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf %TEMP%\LLVM-7.0.0-win64.exe https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/LLVM-7.0.0-win64.exe"
-    set CLANG_DIR=%CD%\citools\clang-rust
-    %TEMP%\LLVM-7.0.0-win64.exe /S /NCRC /D=%CLANG_DIR%
-    set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=%CLANG_DIR%\bin\clang-cl.exe
-    echo ##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]%RUST_CONFIGURE_ARGS%
+# That installer was run through `wine` on Linux and then the resulting
+# installation directory (found in `$HOME/.wine/drive_c/Program Files/LLVM`) was
+# packaged up into a tarball. We've had issues otherwise that the installer will
+# randomly hang, provide not a lot of useful information, pollute global state,
+# etc. In general the tarball is just more confined and easier to deal with when
+# working with various CI environments.
+- bash: |
+    set -e
+    mkdir -p citools
+    cd citools
+    curl -f https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/LLVM-7.0.0-win64.tar.gz | tar xzf -
+    echo "##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]$RUST_CONFIGURE_ARGS --set llvm.clang-cl=`pwd`/clang-rust/bin/clang-cl.exe"
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['MINGW_URL'],''))
   displayName: Install clang (Windows)
 

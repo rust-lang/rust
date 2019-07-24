@@ -34,7 +34,7 @@ use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable;
 
-use serialize::{self, Encoder, Encodable, Decoder, Decodable};
+use rustc_serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::{BTreeSet, BTreeMap};
 use std::fmt;
 use smallvec::SmallVec;
@@ -92,7 +92,7 @@ impl HirId {
     }
 }
 
-impl serialize::UseSpecializedEncodable for HirId {
+impl rustc_serialize::UseSpecializedEncodable for HirId {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let HirId {
             owner,
@@ -104,7 +104,7 @@ impl serialize::UseSpecializedEncodable for HirId {
     }
 }
 
-impl serialize::UseSpecializedDecodable for HirId {
+impl rustc_serialize::UseSpecializedDecodable for HirId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<HirId, D::Error> {
         let owner = DefIndex::decode(d)?;
         let local_id = ItemLocalId::decode(d)?;

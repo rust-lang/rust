@@ -12,9 +12,6 @@
 #![deny(unused_lifetimes)]
 
 #[macro_use] extern crate rustc;
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
-
 #[macro_use] extern crate log;
 
 mod assert_dep_graph;

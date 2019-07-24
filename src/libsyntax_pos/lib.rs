@@ -19,10 +19,7 @@
 #![feature(specialization)]
 #![feature(step_trait)]
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
-
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
+use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub mod edition;
 use edition::Edition;
@@ -594,7 +591,7 @@ impl Default for Span {
     }
 }
 
-impl serialize::UseSpecializedEncodable for Span {
+impl rustc_serialize::UseSpecializedEncodable for Span {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let span = self.data();
         s.emit_struct("Span", 2, |s| {
@@ -609,7 +606,7 @@ impl serialize::UseSpecializedEncodable for Span {
     }
 }
 
-impl serialize::UseSpecializedDecodable for Span {
+impl rustc_serialize::UseSpecializedDecodable for Span {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
         d.read_struct("Span", 2, |d| {
             let lo = d.read_struct_field("lo", 0, Decodable::decode)?;

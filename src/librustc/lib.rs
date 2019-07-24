@@ -75,16 +75,8 @@ extern crate getopts;
 extern crate libc;
 #[macro_use] extern crate rustc_macros;
 #[macro_use] extern crate rustc_data_structures;
-
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-
-// FIXME: This import is used by deriving `RustcDecodable` and `RustcEncodable`. Removing this
-// results in a bunch of "failed to resolve" errors. Hopefully, the compiler moves to serde or
-// something, and we can get rid of this.
-#[allow(rust_2018_idioms)]
-extern crate serialize as rustc_serialize;
-
 #[macro_use] extern crate smallvec;
 
 // Use the test crate here so we depend on getopts through it. This allow tools to link to both

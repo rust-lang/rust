@@ -20,7 +20,7 @@ jobserver = "0.1.11"
 parking_lot = "0.7"
 tempfile = "3.0.5"
 
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc = { path = "../librustc" }

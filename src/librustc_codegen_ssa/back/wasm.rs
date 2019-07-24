@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::str;
 
-use serialize::leb128;
+use rustc_serialize::leb128;
 
 // https://webassembly.github.io/spec/core/binary/modules.html#binary-importsec
 const WASM_CUSTOM_SECTION_ID: u8 = 0;

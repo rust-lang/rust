@@ -12,6 +12,7 @@
 #[cfg_attr(not(bootstrap), doc(include = "char.md"))]
 #[cfg(any(all(target_os = "linux", any(target_arch = "aarch64",
                                        target_arch = "arm",
+                                       target_arch = "hexagon",
                                        target_arch = "powerpc",
                                        target_arch = "powerpc64",
                                        target_arch = "s390x")),
@@ -36,6 +37,7 @@
 #[cfg_attr(not(bootstrap), doc(include = "char.md"))]
 #[cfg(not(any(all(target_os = "linux", any(target_arch = "aarch64",
                                            target_arch = "arm",
+                                           target_arch = "hexagon",
                                            target_arch = "powerpc",
                                            target_arch = "powerpc64",
                                            target_arch = "s390x")),

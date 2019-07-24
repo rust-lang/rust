@@ -1,5 +1,5 @@
 warning[E0502]: cannot borrow `*x.1` as immutable because it is also borrowed as mutable
-  --> $DIR/feature-gate-nll.rs:14:13
+  --> $DIR/feature-gate-nll.rs:15:13
    |
 LL |     let m = &mut x;
    |             ------ mutable borrow occurs here
@@ -14,7 +14,7 @@ LL |     m;
    = note: for more information, try `rustc --explain E0729`
 
 error: compilation successful
-  --> $DIR/feature-gate-nll.rs:10:1
+  --> $DIR/feature-gate-nll.rs:11:1
    |
 LL | / fn main() {
 LL | |     let mut x = (33, &0);
