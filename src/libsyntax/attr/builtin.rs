@@ -1,6 +1,9 @@
 //! Parsing and validation of builtin attributes
 
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
+use crate::early_buffered_lints::BufferedEarlyLintId;
+use crate::ext::base::ExtCtxt;
+use crate::ext::build::AstBuilder;
 use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
 
@@ -17,6 +20,27 @@ enum AttrError {
     MissingFeature,
     MultipleStabilityLevels,
     UnsupportedLiteral(&'static str, /* is_bytestr */ bool),
+}
+
+/// A template that the attribute input must match.
+/// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
+#[derive(Clone, Copy)]
+pub struct AttributeTemplate {
+    crate word: bool,
+    crate list: Option<&'static str>,
+    crate name_value_str: Option<&'static str>,
+}
+
+impl AttributeTemplate {
+    /// Checks that the given meta-item is compatible with this template.
+    fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
+        match meta_item_kind {
+            ast::MetaItemKind::Word => self.word,
+            ast::MetaItemKind::List(..) => self.list.is_some(),
+            ast::MetaItemKind::NameValue(lit) if lit.node.is_str() => self.name_value_str.is_some(),
+            ast::MetaItemKind::NameValue(..) => false,
+        }
+    }
 }
 
 fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
@@ -900,4 +924,77 @@ pub fn find_transparency(
     }
     let fallback = if is_legacy { Transparency::SemiTransparent } else { Transparency::Opaque };
     (transparency.map_or(fallback, |t| t.0), error)
+}
+
+pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
+    // All the built-in macro attributes are "words" at the moment.
+    let template = AttributeTemplate { word: true, list: None, name_value_str: None };
+    let attr = ecx.attribute(meta_item.span, meta_item.clone());
+    check_builtin_attribute(ecx.parse_sess, &attr, name, template);
+}
+
+crate fn check_builtin_attribute(
+    sess: &ParseSess, attr: &ast::Attribute, name: Symbol, template: AttributeTemplate
+) {
+    // Some special attributes like `cfg` must be checked
+    // before the generic check, so we skip them here.
+    let should_skip = |name| name == sym::cfg;
+    // Some of previously accepted forms were used in practice,
+    // report them as warnings for now.
+    let should_warn = |name| name == sym::doc || name == sym::ignore ||
+                             name == sym::inline || name == sym::link ||
+                             name == sym::test || name == sym::bench;
+
+    match attr.parse_meta(sess) {
+        Ok(meta) => if !should_skip(name) && !template.compatible(&meta.node) {
+            let error_msg = format!("malformed `{}` attribute input", name);
+            let mut msg = "attribute must be of the form ".to_owned();
+            let mut suggestions = vec![];
+            let mut first = true;
+            if template.word {
+                first = false;
+                let code = format!("#[{}]", name);
+                msg.push_str(&format!("`{}`", &code));
+                suggestions.push(code);
+            }
+            if let Some(descr) = template.list {
+                if !first {
+                    msg.push_str(" or ");
+                }
+                first = false;
+                let code = format!("#[{}({})]", name, descr);
+                msg.push_str(&format!("`{}`", &code));
+                suggestions.push(code);
+            }
+            if let Some(descr) = template.name_value_str {
+                if !first {
+                    msg.push_str(" or ");
+                }
+                let code = format!("#[{} = \"{}\"]", name, descr);
+                msg.push_str(&format!("`{}`", &code));
+                suggestions.push(code);
+            }
+            if should_warn(name) {
+                sess.buffer_lint(
+                    BufferedEarlyLintId::IllFormedAttributeInput,
+                    meta.span,
+                    ast::CRATE_NODE_ID,
+                    &msg,
+                );
+            } else {
+                sess.span_diagnostic.struct_span_err(meta.span, &error_msg)
+                    .span_suggestions(
+                        meta.span,
+                        if suggestions.len() == 1 {
+                            "must be of the form"
+                        } else {
+                            "the following are the possible correct uses"
+                        },
+                        suggestions.into_iter(),
+                        Applicability::HasPlaceholders,
+                    ).emit();
+            }
+        }
+        Err(mut err) => err.emit(),
+    }
 }
