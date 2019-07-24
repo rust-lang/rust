@@ -898,7 +898,7 @@ impl<'a> Resolver<'a> {
                 let msg = "macro_escape is a deprecated synonym for macro_use";
                 let mut err = self.session.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
-                    err.help("consider an outer attribute, #[macro_use] mod ...").emit();
+                    err.help("consider an outer attribute, `#[macro_use]` mod ...").emit();
                 } else {
                     err.emit();
                 }

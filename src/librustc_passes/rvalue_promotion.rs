@@ -311,7 +311,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
         hir::ExprKind::Cast(ref from, _) => {
             let expr_promotability = v.check_expr(from);
-            debug!("Checking const cast(id={})", from.hir_id);
+            debug!("checking const cast(id={})", from.hir_id);
             let cast_in = CastTy::from_ty(v.tables.expr_ty(from));
             let cast_out = CastTy::from_ty(v.tables.expr_ty(e));
             match (cast_in, cast_out) {
@@ -338,15 +338,15 @@ fn check_expr_kind<'a, 'tcx>(
                     if v.in_static {
                         for attr in &v.tcx.get_attrs(did)[..] {
                             if attr.check_name(sym::thread_local) {
-                                debug!("Reference to Static(id={:?}) is unpromotable \
-                                       due to a #[thread_local] attribute", did);
+                                debug!("reference to `Static(id={:?})` is unpromotable \
+                                        due to a `#[thread_local]` attribute", did);
                                 return NotPromotable;
                             }
                         }
                         Promotable
                     } else {
-                        debug!("Reference to Static(id={:?}) is unpromotable as it is not \
-                               referenced from a static", did);
+                        debug!("reference to `Static(id={:?})` is unpromotable as it is not \
+                                referenced from a static", did);
                         NotPromotable
                     }
                 }
