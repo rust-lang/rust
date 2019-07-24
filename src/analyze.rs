@@ -47,8 +47,8 @@ pub fn analyze<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>) -> HashMap
 }
 
 fn analyze_non_ssa_place(flag_map: &mut HashMap<Local, Flags>, place: &Place) {
-    match place {
-        Place::Base(PlaceBase::Local(local)) => not_ssa(flag_map, local),
+    match place.base {
+        PlaceBase::Local(local) => not_ssa(flag_map, local),
         _ => {}
     }
 }
