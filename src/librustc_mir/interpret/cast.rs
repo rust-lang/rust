@@ -105,8 +105,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(
                     src.layout.ty.is_bool()       || src.layout.ty.is_char()     ||
                     src.layout.ty.is_enum()       || src.layout.ty.is_integral() ||
-                    src.layout.ty.is_unsafe_ptr() || src.layout.ty.is_fn_ptr()   ||
-                    src.layout.ty.is_region_ptr(),
+                    src.layout.ty.is_any_ptr(),
                     "Unexpected cast from type {:?}", src.layout.ty
                 )
         }
@@ -143,8 +142,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         // Handle casting any ptr to raw ptr (might be a fat ptr).
-        if (src.layout.ty.is_region_ptr() || src.layout.ty.is_unsafe_ptr() || src.layout.ty.is_fn_ptr()) &&
-            dest_layout.ty.is_unsafe_ptr()
+        if src.layout.ty.is_any_ptr() && dest_layout.ty.is_unsafe_ptr()
         {
             // The only possible size-unequal case was handled above.
             assert_eq!(src.layout.size, dest_layout.size);

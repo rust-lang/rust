@@ -1,4 +1,3 @@
-
 fn main() {
     // Make sure match uses the usual pointer comparison code path -- i.e., it should complain
     // that pointer comparison is disallowed, not that parts of a pointer are accessed as raw
