@@ -7,7 +7,7 @@
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir::{self, InlineAsm as HirInlineAsm};
-use crate::mir::interpret::{ConstValue, PanicMessage, InterpError::Panic, Scalar};
+use crate::mir::interpret::{ConstValue, PanicMessage, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::rustc_serialize as serialize;
 use crate::ty::adjustment::PointerCast;
@@ -3152,13 +3152,16 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 }
             }
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let msg = if let Panic(PanicMessage::BoundsCheck { ref len, ref index }) = *msg {
-                    Panic(PanicMessage::BoundsCheck {
-                        len: len.fold_with(folder),
-                        index: index.fold_with(folder),
-                    })
-                } else {
-                    msg.clone()
+                use PanicMessage::*;
+                let msg = match msg {
+                    BoundsCheck { ref len, ref index } =>
+                        BoundsCheck {
+                            len: len.fold_with(folder),
+                            index: index.fold_with(folder),
+                        },
+                    Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
+                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic =>
+                        msg.clone(),
                 };
                 Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
             }
@@ -3197,10 +3200,14 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             }
             Assert { ref cond, ref msg, .. } => {
                 if cond.visit_with(visitor) {
-                    if let Panic(PanicMessage::BoundsCheck { ref len, ref index }) = *msg {
-                        len.visit_with(visitor) || index.visit_with(visitor)
-                    } else {
-                        false
+                    use PanicMessage::*;
+                    match msg {
+                        BoundsCheck { ref len, ref index } =>
+                            len.visit_with(visitor) || index.visit_with(visitor),
+                        Panic { .. } | Overflow(_) | OverflowNeg |
+                        DivisionByZero | RemainderByZero |
+                        GeneratorResumedAfterReturn | GeneratorResumedAfterPanic =>
+                            false
                     }
                 } else {
                     false

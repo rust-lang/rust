@@ -733,8 +733,8 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 cleanup: _,
             } => {
                 self.consume_operand(loc, (cond, span), flow_state);
-                use rustc::mir::interpret::{InterpError::Panic, PanicMessage};
-                if let Panic(PanicMessage::BoundsCheck { ref len, ref index }) = *msg {
+                use rustc::mir::interpret::PanicMessage;
+                if let PanicMessage::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);
                 }
