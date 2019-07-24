@@ -55,105 +55,69 @@ fn inclusive2_from_to() {
 }
 
 fn exclusive_from() {
-    if let 0.. = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X..` range patterns are not supported
-    if let X.. = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X..` range patterns are not supported
-    if let true.. = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X..` range patterns are not supported
-    if let .0.. = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X..` range patterns are not supported
-    //~| ERROR float literals must have an integer part
+    if let 0.. = 0 {} //~ ERROR `X..` range patterns are not supported
+    if let X.. = 0 {} //~ ERROR `X..` range patterns are not supported
+    if let true.. = 0 {} //~ ERROR `X..` range patterns are not supported
+    //~^ ERROR only char and numeric types
+    if let .0.. = 0 {} //~ ERROR `X..` range patterns are not supported
+    //~^ ERROR float literals must have an integer part
+    //~| ERROR mismatched types
 }
 
 fn inclusive_from() {
-    if let 0..= = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X..=` range patterns are not supported
-    if let X..= = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X..=` range patterns are not supported
-    if let true..= = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X..=` range patterns are not supported
-    if let .0..= = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X..=` range patterns are not supported
-    //~| ERROR float literals must have an integer part
+    if let 0..= = 0 {} //~ ERROR `X..=` range patterns are not supported
+    if let X..= = 0 {} //~ ERROR `X..=` range patterns are not supported
+    if let true..= = 0 {} //~ ERROR `X..=` range patterns are not supported
+    //~| ERROR only char and numeric types
+    if let .0..= = 0 {} //~ ERROR `X..=` range patterns are not supported
+    //~^ ERROR float literals must have an integer part
+    //~| ERROR mismatched types
 }
 
 fn inclusive2_from() {
-    if let 0... = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X...` range patterns are not supported
+    if let 0... = 0 {} //~ ERROR `X...` range patterns are not supported
+    //~^ ERROR `...` range patterns are deprecated
+    if let X... = 0 {} //~ ERROR `X...` range patterns are not supported
+    //~^ ERROR `...` range patterns are deprecated
+    if let true... = 0 {} //~ ERROR `X...` range patterns are not supported
+    //~^ ERROR `...` range patterns are deprecated
+    //~| ERROR only char and numeric types
+    if let .0... = 0 {} //~ ERROR `X...` range patterns are not supported
+    //~^ ERROR float literals must have an integer part
     //~| ERROR `...` range patterns are deprecated
-    if let X... = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X...` range patterns are not supported
-    //~| ERROR `...` range patterns are deprecated
-    if let true... = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X...` range patterns are not supported
-    //~| ERROR `...` range patterns are deprecated
-    if let .0... = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `X...` range patterns are not supported
-    //~| ERROR float literals must have an integer part
-    //~| ERROR `...` range patterns are deprecated
+    //~| ERROR mismatched types
 }
 
 fn exclusive_to() {
-    if let ..0 = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `..X` range patterns are not supported
-    if let ..Y = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `..X` range patterns are not supported
-    if let ..true = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `..X` range patterns are not supported
-    if let .. .0 = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `..X` range patterns are not supported
-    //~| ERROR float literals must have an integer part
+    if let ..0 = 0 {} //~ ERROR `..X` range patterns are not supported
+    if let ..Y = 0 {} //~ ERROR `..X` range patterns are not supported
+    if let ..true = 0 {} //~ ERROR `..X` range patterns are not supported
+    //~| ERROR only char and numeric types
+    if let .. .0 = 0 {} //~ ERROR `..X` range patterns are not supported
+    //~^ ERROR float literals must have an integer part
+    //~| ERROR mismatched types
 }
 
 fn inclusive_to() {
-    if let ..=3 = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `..=X` range patterns are not supported
-    if let ..=Y = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `..=X` range patterns are not supported
-    if let ..=true = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `..=X` range patterns are not supported
-    if let ..=.0 = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `..=X` range patterns are not supported
-    //~| ERROR float literals must have an integer part
+    if let ..=3 = 0 {} //~ ERROR `..=X` range patterns are not supported
+    if let ..=Y = 0 {} //~ ERROR `..=X` range patterns are not supported
+    if let ..=true = 0 {} //~ ERROR `..=X` range patterns are not supported
+    //~| ERROR only char and numeric types
+    if let ..=.0 = 0 {} //~ ERROR `..=X` range patterns are not supported
+    //~^ ERROR float literals must have an integer part
+    //~| ERROR mismatched types
 }
 
 fn inclusive2_to() {
-    if let ...3 = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `...X` range patterns are not supported
+    if let ...3 = 0 {} //~ ERROR `...X` range patterns are not supported
+    //~^ ERROR `...` range patterns are deprecated
+    if let ...Y = 0 {} //~ ERROR `...X` range patterns are not supported
+    //~^ ERROR `...` range patterns are deprecated
+    if let ...true = 0 {} //~ ERROR `...X` range patterns are not supported
+    //~^ ERROR `...` range patterns are deprecated
+    //~| ERROR only char and numeric types
+    if let ....3 = 0 {} //~ ERROR `...X` range patterns are not supported
+    //~^ ERROR float literals must have an integer part
     //~| ERROR `...` range patterns are deprecated
-    if let ...Y = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `...X` range patterns are not supported
-    //~| ERROR `...` range patterns are deprecated
-    if let ...true = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `...X` range patterns are not supported
-    //~| ERROR `...` range patterns are deprecated
-    if let ....3 = 0 {} //~ ERROR only char and numeric types
-    //~^ ERROR arbitrary expressions aren't allowed in patterns
-    //~| ERROR `...X` range patterns are not supported
-    //~| ERROR float literals must have an integer part
-    //~| ERROR `...` range patterns are deprecated
+    //~| ERROR mismatched types
 }
