@@ -154,7 +154,6 @@ export function activate(context: vscode.ExtensionContext) {
         hintsUpdater.loadHints(vscode.window.activeTextEditor).then(() => {
             vscode.window.onDidChangeActiveTextEditor(editor => hintsUpdater.loadHints(editor));
             vscode.workspace.onDidChangeTextDocument(e => hintsUpdater.updateHints(e));
-            vscode.workspace.onDidCloseTextDocument(document => hintsUpdater.dropHints(document));
             vscode.workspace.onDidChangeConfiguration(_ => hintsUpdater.toggleHintsDisplay(Server.config.displayInlayHints));
         });
     }

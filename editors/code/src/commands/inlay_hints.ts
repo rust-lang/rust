@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DecorationOptions, Range, TextDocumentChangeEvent, TextDocumentContentChangeEvent, TextEditor } from 'vscode';
+import { Range, TextDocumentChangeEvent, TextDocumentContentChangeEvent, TextEditor } from 'vscode';
 import { TextDocumentIdentifier } from 'vscode-languageclient';
 import { Server } from '../server';
 
@@ -20,7 +20,6 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
 });
 
 export class HintsUpdater {
-    private currentDecorations = new Map<string, DecorationOptions[]>();
     private displayHints = true;
 
     public async loadHints(editor: vscode.TextEditor | undefined): Promise<void> {
@@ -29,16 +28,9 @@ export class HintsUpdater {
         }
     }
 
-    public dropHints(document: vscode.TextDocument) {
-        if (this.displayHints) {
-            this.currentDecorations.delete(document.uri.toString());
-        }
-    }
-
     public async toggleHintsDisplay(displayHints: boolean): Promise<void> {
         if (this.displayHints !== displayHints) {
             this.displayHints = displayHints;
-            this.currentDecorations.clear();
 
             if (displayHints) {
                 return this.updateHints();
@@ -64,26 +56,12 @@ export class HintsUpdater {
             return;
         }
 
-        const documentUri = document.uri.toString();
-        const documentDecorators = this.currentDecorations.get(documentUri) || [];
-
-        if (documentDecorators.length > 0) {
-            // FIXME a dbg! in the handlers.rs of the server causes
-            // an endless storm of events with `cause.contentChanges` with the dbg messages, why?
-            const changesFromFile = cause !== undefined ? cause.contentChanges.filter(changeEvent => this.isEventInFile(document.lineCount, changeEvent)) : [];
-            if (changesFromFile.length === 0) {
-                return;
-            }
-
-            const firstShiftedLine = this.getFirstShiftedLine(changesFromFile);
-            if (firstShiftedLine !== null) {
-                const unchangedDecorations = documentDecorators.filter(decoration => decoration.range.start.line < firstShiftedLine);
-                if (unchangedDecorations.length !== documentDecorators.length) {
-                    await editor.setDecorations(typeHintDecorationType, unchangedDecorations);
-                }
-            }
+        // If the dbg! macro is used in the lsp-server, an endless stream of events with `cause.contentChanges` with the dbg messages.
+        // Should not be a real situation, but better to filter such things out.
+        if (cause !== undefined && cause.contentChanges.filter(changeEvent => this.isEventInFile(document.lineCount, changeEvent)).length === 0) {
+            return;
         }
-        return await this.updateDecorationsFromServer(documentUri, editor);
+        return await this.updateDecorationsFromServer(document.uri.toString(), editor);
     }
 
     private isEventInFile(documentLineCount: number, event: TextDocumentContentChangeEvent): boolean {
@@ -95,30 +73,6 @@ export class HintsUpdater {
         }
     }
 
-    private getFirstShiftedLine(changeEvents: TextDocumentContentChangeEvent[]): number | null {
-        let topmostUnshiftedLine: number | null = null;
-
-        changeEvents
-            .filter(event => this.isShiftingChange(event))
-            .forEach(event => {
-                const shiftedLineNumber = event.range.start.line;
-                if (topmostUnshiftedLine === null || topmostUnshiftedLine > shiftedLineNumber) {
-                    topmostUnshiftedLine = shiftedLineNumber;
-                }
-            });
-
-        return topmostUnshiftedLine;
-    }
-
-    private isShiftingChange(event: TextDocumentContentChangeEvent) {
-        const eventText = event.text;
-        if (eventText.length === 0) {
-            return !event.range.isSingleLine;
-        } else {
-            return eventText.indexOf('\n') >= 0 || eventText.indexOf('\r') >= 0;
-        }
-    }
-
     private async updateDecorationsFromServer(documentUri: string, editor: TextEditor): Promise<void> {
         const newHints = await this.queryHints(documentUri) || [];
         const newDecorations = newHints.map(hint => (
@@ -127,7 +81,6 @@ export class HintsUpdater {
                 renderOptions: { after: { contentText: `: ${hint.label}` } },
             }
         ));
-        this.currentDecorations.set(documentUri, newDecorations);
         return editor.setDecorations(typeHintDecorationType, newDecorations);
     }
 
