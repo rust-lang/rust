@@ -165,11 +165,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
         def_id: DefId,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>>;
 
-    /// Called for all binary operations on integer(-like) types when one operand is a pointer
-    /// value, and for the `Offset` operation that is inherently about pointers.
+    /// Called for all binary operations where the LHS has pointer type.
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
-    fn ptr_op(
+    fn binary_ptr_op(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Self::PointerTag>,
