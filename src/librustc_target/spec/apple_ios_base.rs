@@ -1,4 +1,6 @@
+use std::env;
 use std::io;
+use std::path::Path;
 use std::process::Command;
 use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
 
@@ -27,6 +29,18 @@ impl Arch {
 }
 
 pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
+    // Following what clang does
+    // (https://github.com/llvm/llvm-project/blob/
+    // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
+    // to allow the SDK path to be set. (For clang, xcrun sets
+    // SDKROOT; for rustc, the user or build system can set it, or we
+    // can fall back to checking for xcrun on PATH.)
+    if let Some(sdkroot) = env::var("SDKROOT").ok() {
+        let sdkroot_path = Path::new(&sdkroot);
+        if sdkroot_path.is_absolute() && sdkroot_path != Path::new("/") && sdkroot_path.exists() {
+            return Ok(sdkroot);
+        }
+    }
     let res = Command::new("xcrun")
                       .arg("--show-sdk-path")
                       .arg("-sdk")
