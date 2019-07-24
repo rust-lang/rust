@@ -136,6 +136,43 @@ should never happen when you use `cargo miri` because that takes care of setting
 up the sysroot.  If you are using `miri` (the Miri driver) directly, see
 [below][testing-miri] for how to set up the sysroot.
 
+
+## Miri `-Z` flags and environment variables
+[miri-flags]: #miri--z-flags-and-environment-variables
+
+Several `-Z` flags are relevant for Miri:
+
+* `-Zmiri-seed=<hex>` is a custom `-Z` flag added by Miri.  It configures the
+  seed of the RNG that Miri uses to resolve non-determinism.  This RNG is used
+  to pick base addresses for allocations, and when the interpreted program
+  requests system entropy.  The default seed is 0.
+  **NOTE**: This entropy is not good enough for cryptographic use!  Do not
+  generate secret keys in Miri or perform other kinds of cryptographic
+  operations that rely on proper random numbers.
+* `-Zmiri-disable-validation` disables enforcing the validity invariant, which
+  is enforced by default.  This is mostly useful for debugging; it means Miri
+  will miss bugs in your program.  However, this can also help to make Miri run
+  faster.
+* `-Zmir-opt-level` controls how many MIR optimizations are performed.  Miri
+  overrides the default to be `0`; be advised that using any higher level can
+  make Miri miss bugs in your program because they got optimized away.
+* `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
+  functions.  This is needed so that Miri can execute such functions, so Miri
+  sets this flag per default.
+* `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
+  enables this per default because it is needed for validation.
+
+Moreover, Miri recognizes some environment variables:
+
+* `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
+  Miri executions, also [see above][testing-miri].
+* `MIRI_SYSROOT` (recognized by `cargo miri` and the test suite)
+  indicates the sysroot to use.  To do the same thing with `miri`
+  directly, use the `--sysroot` flag.
+* `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
+  architecture to test against.  `miri` and `cargo miri` accept the `--target`
+  flag for the same purpose.
+
 ## Development and Debugging
 
 If you want to hack on miri yourself, great!  Here are some resources you might
@@ -256,42 +293,6 @@ rustup override set custom
 
 With this, you should now have a working development setup!  See
 [above][testing-miri] for how to proceed working with the Miri driver.
-
-### Miri `-Z` flags and environment variables
-[miri-flags]: #miri--z-flags-and-environment-variables
-
-Several `-Z` flags are relevant for Miri:
-
-* `-Zmiri-seed=<hex>` is a custom `-Z` flag added by Miri.  It configures the
-  seed of the RNG that Miri uses to resolve non-determinism.  This RNG is used
-  to pick base addresses for allocations, and when the interpreted program
-  requests system entropy.  The default seed is 0.
-  **NOTE**: This entropy is not good enough for cryptographic use!  Do not
-  generate secret keys in Miri or perform other kinds of cryptographic
-  operations that rely on proper random numbers.
-* `-Zmiri-disable-validation` disables enforcing the validity invariant, which
-  is enforced by default.  This is mostly useful for debugging; it means Miri
-  will miss bugs in your program.  However, this can also help to make Miri run
-  faster.
-* `-Zmir-opt-level` controls how many MIR optimizations are performed.  Miri
-  overrides the default to be `0`; be advised that using any higher level can
-  make Miri miss bugs in your program because they got optimized away.
-* `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
-  functions.  This is needed so that Miri can execute such functions, so Miri
-  sets this flag per default.
-* `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
-  enables this per default because it is needed for validation.
-
-Moreover, Miri recognizes some environment variables:
-
-* `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
-  Miri executions, also [see above][testing-miri].
-* `MIRI_SYSROOT` (recognized by `cargo miri` and the test suite)
-  indicates the sysroot to use.  To do the same thing with `miri`
-  directly, use the `--sysroot` flag.
-* `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
-  architecture to test against.  `miri` and `cargo miri` accept the `--target`
-  flag for the same purpose.
 
 ## Contributing and getting help
 
