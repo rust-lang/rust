@@ -1,0 +1,16 @@
+error: incorrect unicode escape sequence
+  --> $DIR/issue-62913.rs:1:2
+   |
+LL | "\u\"
+   |  ^^^ incorrect unicode escape sequence
+   |
+   = help: format of unicode escape sequences is `\u{...}`
+
+error: invalid trailing slash in literal
+  --> $DIR/issue-62913.rs:1:5
+   |
+LL | "\u\"
+   |     ^
+
+error: aborting due to 2 previous errors
+
