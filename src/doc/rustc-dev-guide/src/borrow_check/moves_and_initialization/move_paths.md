@@ -28,7 +28,7 @@ they are indexed in ways that enable us to do move analysis more
 efficiently.
 
 [`MovePath`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePath.html
-[`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/enum.Place.html
+[`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/struct.Place.html
 
 ## Move path indices
 
@@ -122,5 +122,5 @@ which checks whether the dataflow results contain a value for the
 given move-path (e.g., `a.b`) or any child of that move-path (e.g.,
 `a.b.c`).
 
-[`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/enum.Place.html
+[`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/struct.Place.html
 [`has_any_child_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/at_location/struct.FlowAtLocation.html#method.has_any_child_of
