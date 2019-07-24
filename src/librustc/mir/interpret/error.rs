@@ -190,13 +190,13 @@ pub struct InterpErrorInfo<'tcx> {
 }
 
 
-impl<'tcx> fmt::Display for InterpErrorInfo<'tcx> {
+impl fmt::Display for InterpErrorInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.kind)
     }
 }
 
-impl<'tcx> InterpErrorInfo<'tcx> {
+impl InterpErrorInfo<'_> {
     pub fn print_backtrace(&mut self) {
         if let Some(ref mut backtrace) = self.backtrace {
             print_backtrace(&mut *backtrace);
@@ -390,14 +390,14 @@ pub enum InterpError<'tcx> {
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
-impl<'tcx> fmt::Display for InterpError<'tcx> {
+impl fmt::Display for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Forward `Display` to `Debug`
         write!(f, "{:?}", self)
     }
 }
 
-impl<'tcx> fmt::Debug for InterpError<'tcx> {
+impl fmt::Debug for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InterpError::*;
         match *self {
