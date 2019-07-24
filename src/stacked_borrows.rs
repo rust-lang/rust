@@ -28,7 +28,7 @@ pub enum Tag {
 }
 
 impl fmt::Debug for Tag {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Tag::Tagged(id) => write!(f, "<{}>", id),
             Tag::Untagged => write!(f, "<untagged>"),
@@ -62,7 +62,7 @@ pub struct Item {
 }
 
 impl fmt::Debug for Item {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{:?} for {:?}", self.perm, self.tag)?;
         if let Some(call) = self.protector {
             write!(f, " (call {})", call)?;
@@ -117,7 +117,7 @@ pub enum AccessKind {
 }
 
 impl fmt::Display for AccessKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AccessKind::Read => write!(f, "read access"),
             AccessKind::Write => write!(f, "write access"),
@@ -139,7 +139,7 @@ pub enum RefKind {
 }
 
 impl fmt::Display for RefKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             RefKind::Unique { two_phase: false } => write!(f, "unique"),
             RefKind::Unique { two_phase: true } => write!(f, "unique (two-phase)"),

@@ -1,5 +1,6 @@
 #![feature(rustc_private)]
 
+#![warn(rust_2018_idioms)]
 #![allow(clippy::cast_lossless)]
 
 #[macro_use]
