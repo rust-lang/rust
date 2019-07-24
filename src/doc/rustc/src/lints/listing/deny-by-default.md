@@ -40,7 +40,7 @@ error: defaults for type parameters are only allowed in `struct`, `enum`, `type`
 4 | fn foo<T=i32>(t: T) {}
   |        ^
   |
-  = note: #[deny(invalid_type_param_default)] on by default
+  = note: `#[deny(invalid_type_param_default)]` on by default
   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 ```
@@ -74,7 +74,7 @@ error: private struct constructors are not usable through re-exports in outer mo
 5 |         ::S;
   |         ^^^
   |
-  = note: #[deny(legacy_constructor_visibility)] on by default
+  = note: `#[deny(legacy_constructor_visibility)]` on by default
   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
   = note: for more information, see issue #39207 <https://github.com/rust-lang/rust/issues/39207>
 ```
@@ -84,9 +84,9 @@ error: private struct constructors are not usable through re-exports in outer mo
 
 The legacy_directory_ownership warning is issued when
 
-* There is a non-inline module with a #[path] attribute (e.g. #[path = "foo.rs"] mod bar;),
+* There is a non-inline module with a `#[path]` attribute (e.g. `#[path = "foo.rs"] mod bar;`),
 * The module's file ("foo.rs" in the above example) is not named "mod.rs", and
-* The module's file contains a non-inline child module without a #[path] attribute.
+* The module's file contains a non-inline child module without a `#[path]` attribute.
 
 The warning can be fixed by renaming the parent module to "mod.rs" and moving
 it into its own directory if appropriate.
@@ -139,7 +139,7 @@ const FOO: i32 = 5;
 This will produce:
 
 ```text
-error: const items should never be #[no_mangle]
+error: const items should never be `#[no_mangle]`
  --> src/main.rs:3:1
   |
 3 | const FOO: i32 = 5;
@@ -187,7 +187,7 @@ error: parenthesized parameters may only be used with a trait
 2 |   let x = 5 as usize();
   |                     ^^
   |
-  = note: #[deny(parenthesized_params_in_types_and_modules)] on by default
+  = note: `#[deny(parenthesized_params_in_types_and_modules)]` on by default
   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
   = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 ```

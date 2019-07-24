@@ -1412,8 +1412,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// If you have a reference `&SomeStruct`, then normally in Rust all fields of `SomeStruct` are
 /// immutable. The compiler makes optimizations based on the knowledge that `&T` is not mutably
 /// aliased or mutated, and that `&mut T` is unique. `UnsafeCell<T>` is the only core language
-/// feature to work around this restriction. All other types that allow internal mutability, such as
-/// `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their internal data.
+/// feature to work around the restriction that `&T` may not be mutated. All other types that
+/// allow internal mutability, such as `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their
+/// internal data. There is *no* legal way to obtain aliasing `&mut`, not even with `UnsafeCell<T>`.
 ///
 /// The `UnsafeCell` API itself is technically very simple: it gives you a raw pointer `*mut T` to
 /// its contents. It is up to _you_ as the abstraction designer to use that raw pointer correctly.
