@@ -389,7 +389,10 @@ impl<'a> StringReader<'a> {
                                                           self.pos,
                                                           "unknown start of token",
                                                           c);
-                unicode_chars::check_for_substitution(self, start, c, &mut err);
+                if let Some(t) = unicode_chars::check_for_substitution(self, start, c, &mut err) {
+                    err.emit();
+                    return Ok(t);
+                }
                 return Err(err)
             }
         };
