@@ -23,8 +23,20 @@ pub fn maybe_codegen<'a, 'tcx>(
             assert!(!checked);
             return None;
         }
-        BinOp::Add | BinOp::Sub => {
-            return None; // FIXME implement checked versions
+        BinOp::Add | BinOp::Sub if !checked => return None,
+        BinOp::Add => {
+            return Some(if is_signed {
+                fx.easy_call("__rust_i128_addo", &[lhs, rhs], out_ty)
+            } else {
+                fx.easy_call("__rust_u128_addo", &[lhs, rhs], out_ty)
+            })
+        }
+        BinOp::Sub => {
+            return Some(if is_signed {
+                fx.easy_call("__rust_i128_subo", &[lhs, rhs], out_ty)
+            } else {
+                fx.easy_call("__rust_u128_subo", &[lhs, rhs], out_ty)
+            })
         }
         BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
         BinOp::Mul => {

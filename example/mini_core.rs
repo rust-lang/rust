@@ -44,12 +44,10 @@ unsafe impl Copy for u8 {}
 unsafe impl Copy for u16 {}
 unsafe impl Copy for u32 {}
 unsafe impl Copy for u64 {}
-unsafe impl Copy for u128 {}
 unsafe impl Copy for usize {}
 unsafe impl Copy for i8 {}
 unsafe impl Copy for i16 {}
 unsafe impl Copy for i32 {}
-unsafe impl Copy for i128 {}
 unsafe impl Copy for isize {}
 unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
@@ -139,22 +137,6 @@ impl Add for i8 {
 }
 
 impl Add for usize {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self {
-        self + rhs
-    }
-}
-
-impl Add for u128 {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self {
-        self + rhs
-    }
-}
-
-impl Add for i128 {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -282,15 +264,6 @@ impl PartialEq for i32 {
         (*self) == (*other)
     }
     fn ne(&self, other: &i32) -> bool {
-        (*self) != (*other)
-    }
-}
-
-impl PartialEq for i128 {
-    fn eq(&self, other: &i128) -> bool {
-        (*self) == (*other)
-    }
-    fn ne(&self, other: &i128) -> bool {
         (*self) != (*other)
     }
 }
