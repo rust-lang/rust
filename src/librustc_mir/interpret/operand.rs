@@ -32,6 +32,20 @@ pub enum Immediate<Tag=(), Id=AllocId> {
     ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
 }
 
+impl<Tag> From<ScalarMaybeUndef<Tag>> for Immediate<Tag> {
+    #[inline(always)]
+    fn from(val: ScalarMaybeUndef<Tag>) -> Self {
+        Immediate::Scalar(val)
+    }
+}
+
+impl<Tag> From<Scalar<Tag>> for Immediate<Tag> {
+    #[inline(always)]
+    fn from(val: Scalar<Tag>) -> Self {
+        Immediate::Scalar(val.into())
+    }
+}
+
 impl<'tcx, Tag> Immediate<Tag> {
     #[inline]
     pub fn from_scalar(val: Scalar<Tag>) -> Self {
