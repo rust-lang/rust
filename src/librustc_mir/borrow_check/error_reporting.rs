@@ -536,7 +536,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let base_ty = Place::ty_from(deref_base.base, deref_base.projection, self.body, tcx).ty;
         if base_ty.is_unsafe_ptr() {
             BorrowedContentSource::DerefRawPointer
-        } else if base_ty.is_mutable_pointer() {
+        } else if base_ty.is_mutable_ptr() {
             BorrowedContentSource::DerefMutableRef
         } else {
             BorrowedContentSource::DerefSharedRef

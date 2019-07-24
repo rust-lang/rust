@@ -1847,7 +1847,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_mutable_pointer(&self) -> bool {
+    pub fn is_mutable_ptr(&self) -> bool {
         match self.sty {
             RawPtr(TypeAndMut { mutbl: hir::Mutability::MutMutable, .. }) |
             Ref(_, _, hir::Mutability::MutMutable) => true,
@@ -2002,7 +2002,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_pointer_sized(&self) -> bool {
+    pub fn is_ptr_sized_integral(&self) -> bool {
         match self.sty {
             Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => true,
             _ => false,
