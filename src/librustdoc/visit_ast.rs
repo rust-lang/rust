@@ -20,17 +20,11 @@ use crate::clean::{self, AttributesExt, NestedAttributesExt, def_id_to_path};
 use crate::doctree::*;
 
 
-// Looks to me like the first two of these are actually
-// output parameters, maybe only mutated once; perhaps
-// better simply to have the visit method return a tuple
-// containing them?
-
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.
 
 pub struct RustdocVisitor<'a, 'tcx> {
-    pub module: Option<Module<'tcx>>,
-    pub cx: &'a core::DocContext<'tcx>,
+    cx: &'a core::DocContext<'tcx>,
     view_item_stack: FxHashSet<hir::HirId>,
     inlining: bool,
     /// Are the current module and all of its parents public?
@@ -46,7 +40,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let mut stack = FxHashSet::default();
         stack.insert(hir::CRATE_HIR_ID);
         RustdocVisitor {
-            module: None,
             cx,
             view_item_stack: stack,
             inlining: false,
@@ -75,7 +68,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             .and_then(|def_id| self.cx.tcx.lookup_deprecation(def_id))
     }
 
-    pub fn visit(&mut self, krate: &'tcx hir::Crate) {
+    pub fn visit(&mut self, krate: &'tcx hir::Crate) -> Module<'tcx> {
         let mut module = self.visit_mod_contents(krate.span,
                                               &krate.attrs,
                                               &Spanned { span: syntax_pos::DUMMY_SP,
@@ -88,9 +81,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             krate.exported_macros.iter().map(|def| self.visit_local_macro(def, None)),
         );
         module.is_crate = true;
-        self.module = Some(module);
 
         self.cx.renderinfo.borrow_mut().exact_paths = self.exact_paths.take().unwrap();
+
+        module
     }
 
     pub fn visit_variant_data(&mut self, item: &'tcx hir::Item,

@@ -395,8 +395,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             let mut krate = {
                 let mut v = RustdocVisitor::new(&ctxt);
-                v.visit(tcx.hir().krate());
-                v.clean(&ctxt)
+                let module = v.visit(tcx.hir().krate());
+                (v, module).clean(&ctxt)
             };
 
             fn report_deprecated_attr(name: &str, diag: &errors::Handler) {

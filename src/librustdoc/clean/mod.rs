@@ -138,7 +138,7 @@ pub struct Crate {
     pub masked_crates: FxHashSet<CrateNum>,
 }
 
-impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Clean<Crate> for (visit_ast::RustdocVisitor<'a, 'tcx>, doctree::Module<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> Crate {
         use crate::visit_lib::LibEmbargoVisitor;
 
@@ -159,7 +159,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
-        let mut module = self.module.as_ref().unwrap().clean(cx);
+        let mut module = self.1.clean(cx);
         let mut masked_crates = FxHashSet::default();
 
         match module.inner {
@@ -169,7 +169,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
                     if it.is_extern_crate()
                         && (it.attrs.has_doc_flag(sym::masked)
-                            || self.cx.tcx.is_compiler_builtins(it.def_id.krate))
+                            || cx.tcx.is_compiler_builtins(it.def_id.krate))
                     {
                         masked_crates.insert(it.def_id.krate);
                     }
