@@ -3748,8 +3748,9 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse a parentesized comma separated sequence of patterns until `delim` is reached.
-    fn parse_recover_pat_list(&mut self) -> PResult<'a, ()> {
+    /// Parse and throw away a parentesized comma separated
+    /// sequence of patterns until `)` is reached.
+    fn skip_pat_list(&mut self) -> PResult<'a, ()> {
         while !self.check(&token::CloseDelim(token::Paren)) {
             self.parse_pat(None)?;
             if !self.eat(&token::Comma) {
@@ -3772,7 +3773,7 @@ impl<'a> Parser<'a> {
             // later.
             let comma_span = self.token.span;
             self.bump();
-            if let Err(mut err) = self.parse_recover_pat_list() {
+            if let Err(mut err) = self.skip_pat_list() {
                 // We didn't expect this to work anyway; we just wanted
                 // to advance to the end of the comma-sequence so we know
                 // the span to suggest parenthesizing
@@ -3877,9 +3878,11 @@ impl<'a> Parser<'a> {
                 pat = PatKind::Ref(subpat, mutbl);
             }
             token::OpenDelim(token::Paren) => {
-                // Parse `(pat, pat, pat, ...)` as tuple pattern.
+                // Parse a tuple or parenthesis pattern.
                 let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
 
+                // Here, `(pat,)` is a tuple pattern.
+                // For backward compatibility, `(..)` is a tuple pattern as well.
                 pat = if fields.len() == 1 && !(trailing_comma || fields[0].is_rest()) {
                     PatKind::Paren(fields.into_iter().nth(0).unwrap())
                 } else {

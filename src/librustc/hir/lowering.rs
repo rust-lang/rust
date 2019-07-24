@@ -4185,7 +4185,7 @@ impl<'a> LoweringContext<'a> {
                     ParamMode::Optional,
                     ImplTraitContext::disallowed(),
                 );
-                let (pats, ddpos) = self.lower_pat_tuple(&*pats, "tuple struct");
+                let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
                 hir::PatKind::TupleStruct(qpath, pats, ddpos)
             }
             PatKind::Path(ref qself, ref path) => {
@@ -4224,7 +4224,7 @@ impl<'a> LoweringContext<'a> {
                 hir::PatKind::Struct(qpath, fs, etc)
             }
             PatKind::Tuple(ref pats) => {
-                let (pats, ddpos) = self.lower_pat_tuple(&*pats, "tuple");
+                let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
                 hir::PatKind::Tuple(pats, ddpos)
             }
             PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
@@ -4245,7 +4245,7 @@ impl<'a> LoweringContext<'a> {
             PatKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
-        self.pat_bound(p, node)
+        self.pat_with_node_id_of(p, node)
     }
 
     fn lower_pat_tuple(
@@ -4291,14 +4291,14 @@ impl<'a> LoweringContext<'a> {
             match pat.node {
                 PatKind::Rest => {
                     prev_rest_span = Some(pat.span);
-                    slice = Some(self.pat_bound_wild(pat));
+                    slice = Some(self.pat_wild_with_node_id_of(pat));
                     break;
                 },
                 PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
                     prev_rest_span = Some(sub.span);
-                    let lower_sub = |this: &mut Self| Some(this.pat_bound_wild(sub));
+                    let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
                     let node = self.lower_pat_ident(pat, bm, ident, lower_sub);
-                    slice = Some(self.pat_bound(pat, node));
+                    slice = Some(self.pat_with_node_id_of(pat, node));
                     break;
                 },
                 _ => {}
@@ -4314,7 +4314,7 @@ impl<'a> LoweringContext<'a> {
                 PatKind::Rest => Some(pat.span),
                 PatKind::Ident(.., Some(ref sub)) if sub.is_rest() => {
                     // The `HirValidator` is merciless; add a `_` pattern to avoid ICEs.
-                    after.push(self.pat_bound_wild(pat));
+                    after.push(self.pat_wild_with_node_id_of(pat));
                     Some(sub.span)
                 },
                 _ => None,
@@ -4362,12 +4362,12 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn pat_bound_wild(&mut self, p: &Pat) -> P<hir::Pat> {
-        self.pat_bound(p, hir::PatKind::Wild)
+    fn pat_wild_with_node_id_of(&mut self, p: &Pat) -> P<hir::Pat> {
+        self.pat_with_node_id_of(p, hir::PatKind::Wild)
     }
 
     /// Construct a `Pat` with the `HirId` of `p.id` lowered.
-    fn pat_bound(&mut self, p: &Pat, node: hir::PatKind) -> P<hir::Pat> {
+    fn pat_with_node_id_of(&mut self, p: &Pat, node: hir::PatKind) -> P<hir::Pat> {
         P(hir::Pat {
             hir_id: self.lower_node_id(p.id),
             node,
