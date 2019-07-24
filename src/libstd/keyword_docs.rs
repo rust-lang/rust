@@ -681,14 +681,15 @@ mod while_keyword { }
 ///     # break;
 /// }
 ///
-/// let mut i = 0;
+/// let mut i = 1;
 /// loop {
 ///     println!("i is {}", i);
-///     if i > 10 {
+///     if i > 100 {
 ///         break;
 ///     }
-///     i += 1;
+///     i *= 2;
 /// }
+/// assert_eq!(i, 128);
 /// ```
 ///
 /// Unlike the other kinds of loops in Rust (`while`, `while let`, and `for`), loops can be used as
