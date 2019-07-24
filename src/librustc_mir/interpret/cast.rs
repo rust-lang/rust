@@ -11,7 +11,7 @@ use rustc::mir::interpret::{
 };
 use rustc::mir::CastKind;
 
-use super::{InterpCx, Machine, PlaceTy, OpTy, Immediate, FnVal};
+use super::{InterpCx, Machine, PlaceTy, OpTy, ImmTy, Immediate, FnVal};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
@@ -37,40 +37,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Misc | Pointer(PointerCast::MutToConstPointer) => {
                 let src = self.read_immediate(src)?;
-
-                if self.type_is_fat_ptr(src.layout.ty) {
-                    match (*src, self.type_is_fat_ptr(dest.layout.ty)) {
-                        // pointers to extern types
-                        (Immediate::Scalar(_),_) |
-                        // slices and trait objects to other slices/trait objects
-                        (Immediate::ScalarPair(..), true) => {
-                            // No change to immediate
-                            self.write_immediate(*src, dest)?;
-                        }
-                        // slices and trait objects to thin pointers (dropping the metadata)
-                        (Immediate::ScalarPair(data, _), false) => {
-                            self.write_scalar(data, dest)?;
-                        }
-                    }
-                } else {
-                    match src.layout.variants {
-                        layout::Variants::Single { index } => {
-                            if let Some(discr) =
-                                src.layout.ty.discriminant_for_variant(*self.tcx, index)
-                            {
-                                // Cast from a univariant enum
-                                assert!(src.layout.is_zst());
-                                return self.write_scalar(
-                                    Scalar::from_uint(discr.val, dest.layout.size),
-                                    dest);
-                            }
-                        }
-                        layout::Variants::Multiple { .. } => {},
-                    }
-
-                    let dest_val = self.cast_scalar(src.to_scalar()?, src.layout, dest.layout)?;
-                    self.write_scalar(dest_val, dest)?;
-                }
+                let res = self.cast_immediate(src, dest.layout)?;
+                self.write_immediate(res, dest)?;
             }
 
             Pointer(PointerCast::ReifyFnPointer) => {
@@ -124,6 +92,43 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
         Ok(())
+    }
+
+    fn cast_immediate(
+        &self,
+        src: ImmTy<'tcx, M::PointerTag>,
+        dest_layout: TyLayout<'tcx>,
+    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+        if self.type_is_fat_ptr(src.layout.ty) {
+            return match (*src, self.type_is_fat_ptr(dest_layout.ty)) {
+                // pointers to extern types
+                (Immediate::Scalar(_),_) |
+                // slices and trait objects to other slices/trait objects
+                (Immediate::ScalarPair(..), true) => {
+                    // No change to immediate
+                    Ok(*src)
+                }
+                // slices and trait objects to thin pointers (dropping the metadata)
+                (Immediate::ScalarPair(data, _), false) => {
+                    Ok(data.into())
+                }
+            };
+        } else {
+            match src.layout.variants {
+                layout::Variants::Single { index } => {
+                    if let Some(discr) =
+                        src.layout.ty.discriminant_for_variant(*self.tcx, index)
+                    {
+                        // Cast from a univariant enum
+                        assert!(src.layout.is_zst());
+                        return Ok(Scalar::from_uint(discr.val, dest_layout.size).into());
+                    }
+                }
+                layout::Variants::Multiple { .. } => {},
+            }
+
+            return Ok(self.cast_scalar(src.to_scalar()?, src.layout, dest_layout)?.into());
+        }
     }
 
     fn cast_scalar(
