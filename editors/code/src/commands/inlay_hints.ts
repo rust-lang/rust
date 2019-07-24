@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
-import { Range, TextDocumentChangeEvent, TextDocumentContentChangeEvent, TextEditor } from 'vscode';
+import {
+    Range,
+    TextDocumentChangeEvent,
+    TextDocumentContentChangeEvent,
+    TextEditor
+} from 'vscode';
 import { TextDocumentIdentifier } from 'vscode-languageclient';
 import { Server } from '../server';
 
@@ -8,23 +13,28 @@ interface InlayHintsParams {
 }
 
 interface InlayHint {
-    range: Range,
-    kind: string,
-    label: string,
+    range: Range;
+    kind: string;
+    label: string;
 }
 
 const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
     after: {
-        color: new vscode.ThemeColor('ralsp.inlayHint'),
-    },
+        color: new vscode.ThemeColor('ralsp.inlayHint')
+    }
 });
 
 export class HintsUpdater {
     private displayHints = true;
 
-    public async loadHints(editor: vscode.TextEditor | undefined): Promise<void> {
+    public async loadHints(
+        editor: vscode.TextEditor | undefined
+    ): Promise<void> {
         if (this.displayHints && editor !== undefined) {
-            await this.updateDecorationsFromServer(editor.document.uri.toString(), editor);
+            await this.updateDecorationsFromServer(
+                editor.document.uri.toString(),
+                editor
+            );
         }
     }
 
@@ -37,7 +47,7 @@ export class HintsUpdater {
             } else {
                 const editor = vscode.window.activeTextEditor;
                 if (editor != null) {
-                    return editor.setDecorations(typeHintDecorationType, [])
+                    return editor.setDecorations(typeHintDecorationType, []);
                 }
             }
         }
@@ -58,38 +68,62 @@ export class HintsUpdater {
 
         // If the dbg! macro is used in the lsp-server, an endless stream of events with `cause.contentChanges` with the dbg messages.
         // Should not be a real situation, but better to filter such things out.
-        if (cause !== undefined && cause.contentChanges.filter(changeEvent => this.isEventInFile(document.lineCount, changeEvent)).length === 0) {
+        if (
+            cause !== undefined &&
+            cause.contentChanges.filter(changeEvent =>
+                this.isEventInFile(document.lineCount, changeEvent)
+            ).length === 0
+        ) {
             return;
         }
-        return await this.updateDecorationsFromServer(document.uri.toString(), editor);
+        return await this.updateDecorationsFromServer(
+            document.uri.toString(),
+            editor
+        );
     }
 
-    private isEventInFile(documentLineCount: number, event: TextDocumentContentChangeEvent): boolean {
+    private isEventInFile(
+        documentLineCount: number,
+        event: TextDocumentContentChangeEvent
+    ): boolean {
         const eventText = event.text;
         if (eventText.length === 0) {
-            return event.range.start.line <= documentLineCount || event.range.end.line <= documentLineCount;
+            return (
+                event.range.start.line <= documentLineCount ||
+                event.range.end.line <= documentLineCount
+            );
         } else {
-            return event.range.start.line <= documentLineCount && event.range.end.line <= documentLineCount;
+            return (
+                event.range.start.line <= documentLineCount &&
+                event.range.end.line <= documentLineCount
+            );
         }
     }
 
-    private async updateDecorationsFromServer(documentUri: string, editor: TextEditor): Promise<void> {
-        const newHints = await this.queryHints(documentUri) || [];
-        const newDecorations = newHints.map(hint => (
-            {
-                range: hint.range,
-                renderOptions: { after: { contentText: `: ${hint.label}` } },
-            }
-        ));
+    private async updateDecorationsFromServer(
+        documentUri: string,
+        editor: TextEditor
+    ): Promise<void> {
+        const newHints = (await this.queryHints(documentUri)) || [];
+        const newDecorations = newHints.map(hint => ({
+            range: hint.range,
+            renderOptions: { after: { contentText: `: ${hint.label}` } }
+        }));
         return editor.setDecorations(typeHintDecorationType, newDecorations);
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
-        const request: InlayHintsParams = { textDocument: { uri: documentUri } };
+        const request: InlayHintsParams = {
+            textDocument: { uri: documentUri }
+        };
         const client = Server.client;
-        return client.onReady().then(() => client.sendRequest<InlayHint[] | null>(
-            'rust-analyzer/inlayHints',
-            request
-        ));
+        return client
+            .onReady()
+            .then(() =>
+                client.sendRequest<InlayHint[] | null>(
+                    'rust-analyzer/inlayHints',
+                    request
+                )
+            );
     }
 }
