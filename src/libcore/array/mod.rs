@@ -14,6 +14,13 @@ use crate::hash::{Hash, self};
 use crate::marker::Unsize;
 use crate::slice::{Iter, IterMut};
 
+#[cfg(not(bootstrap))]
+mod iter;
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "array_value_iter", issue = "0")]
+pub use iter::IntoIter;
+
 /// Utility trait implemented only on arrays of fixed size
 ///
 /// This trait can be used to implement other traits on fixed-size arrays
