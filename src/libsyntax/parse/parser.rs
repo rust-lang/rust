@@ -3275,6 +3275,14 @@ impl<'a> Parser<'a> {
                           mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
+        // Record whether we are about to parse `for (`.
+        // This is used below for recovery in case of `for ( $stuff ) $block`
+        // in which case we will suggest `for $stuff $block`.
+        let begin_paren = match self.token.kind {
+            token::OpenDelim(token::Paren) => Some(self.token.span),
+            _ => None,
+        };
+
         let pat = self.parse_top_level_pat()?;
         if !self.eat_keyword(kw::In) {
             let in_span = self.prev_span.between(self.token.span);
@@ -3290,6 +3298,9 @@ impl<'a> Parser<'a> {
         let in_span = self.prev_span;
         self.check_for_for_in_in_typo(in_span);
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+
+        let pat = self.recover_parens_around_for_head(pat, &expr, begin_paren);
+
         let (iattrs, loop_block) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
 
