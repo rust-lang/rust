@@ -4,21 +4,17 @@ error: `X..` range patterns are not supported
 LL |         [_, 99.., _] => {},
    |             ^^^^ help: try using the maximum value for the type: `99..MAX`
 
-error: arbitrary expressions aren't allowed in patterns
+error[E0308]: mismatched types
   --> $DIR/exclusive_range_pattern_syntax_collision.rs:5:13
    |
+LL |     match [5..4, 99..105, 43..44] {
+   |           ----------------------- this match expression has type `std::ops::Range<{integer}>`
 LL |         [_, 99.., _] => {},
-   |             ^^^^
-
-error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/exclusive_range_pattern_syntax_collision.rs:5:13
+   |             ^^^^ expected struct `std::ops::Range`, found integer
    |
-LL |         [_, 99.., _] => {},
-   |             ^^^^ ranges require char or numeric types
-   |
-   = note: start type: {integer}
-   = note: end type: [type error]
+   = note: expected type `std::ops::Range<{integer}>`
+              found type `{integer}`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0029`.
+For more information about this error, try `rustc --explain E0308`.
