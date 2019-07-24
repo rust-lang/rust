@@ -27,7 +27,7 @@ impl Delimited {
         let open_span = if span.is_dummy() {
             span
         } else {
-            span.with_lo(span.lo() + BytePos(self.delim.len() as u32))
+            span.with_hi(span.lo() + BytePos(self.delim.len() as u32))
         };
         TokenTree::token(token::OpenDelim(self.delim), open_span)
     }
