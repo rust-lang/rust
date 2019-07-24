@@ -28,13 +28,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
         let mut map = FxHashMap::default();
         for bound in &gen.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref p) = bound {
-                let h = hash(&p.bounded_ty.node);
+                let h = hash(&p.bounded_ty);
                 if let Some(ref v) = map.insert(h, p.bounds) {
                     let mut hint_string = format!("consider combining the bounds: `{:?}: ", p.bounded_ty);
-                    for &b in v.iter() {
+                    for b in v.iter() {
                         hint_string.push_str(&format!("{:?}, ", b));
                     }
-                    for &b in p.bounds.iter() {
+                    for b in p.bounds.iter() {
                         hint_string.push_str(&format!("{:?}, ", b));
                     }
                     hint_string.truncate(hint_string.len() - 2);

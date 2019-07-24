@@ -3,7 +3,7 @@ use crate::utils::differing_macro_contexts;
 use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::LateContext;
-use rustc::ty::{self, Ty, TypeckTables};
+use rustc::ty::{self, TypeckTables};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use syntax::ast::Name;
@@ -45,7 +45,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         match (&left.node, &right.node) {
             (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
                 self.eq_pat(&l.pat, &r.pat)
-                    && both(&l.ty, &r.ty, |l, r| self.eq_ty(*l, *r))
+                    && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
                     && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
             },
             (&StmtKind::Expr(ref l), &StmtKind::Expr(ref r)) | (&StmtKind::Semi(ref l), &StmtKind::Semi(ref r)) => {
@@ -257,8 +257,8 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    pub fn eq_ty(&mut self, left: &Ty<'tcx>, right: &Ty<'tcx>) -> bool {
-        self.eq_ty_kind(&left.sty, &right.sty)
+    pub fn eq_ty(&mut self, left: &Ty, right: &Ty) -> bool {
+        self.eq_ty_kind(&left.node, &right.node)
     }
 
     #[allow(clippy::similar_names)]
@@ -604,8 +604,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_ty(&mut self, ty: &TyKind) {
-        std::mem::discriminant(&ty.node).hash(&mut self.s);
+    pub fn hash_ty(&mut self, ty: &Ty) {
+        self.hash_tykind(&ty.node);
+    }
+
+    pub fn hash_tykind(&mut self, ty: &TyKind) {
+        std::mem::discriminant(&ty).hash(&mut self.s);
         match ty {
             TyKind::Slice(ty) => {
                 self.hash_ty(ty);
@@ -665,7 +669,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 for arg in arg_list {
                     match arg {
                         GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
-                        GenericArg::Type(ref ty) => self.hash_ty(ty),
+                        GenericArg::Type(ref ty) => self.hash_ty(&ty),
                         GenericArg::Const(ref ca) => {
                             self.hash_expr(&self.cx.tcx.hir().body(ca.value.body).value);
                         },
