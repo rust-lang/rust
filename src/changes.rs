@@ -21,9 +21,9 @@ use std::{
     fmt,
 };
 use syntax::symbol::Symbol;
-use syntax_pos::Span;
+use syntax_pos::{FileName, Span};
 
-use serde::ser::{SerializeStruct, Serializer};
+use serde::ser::{SerializeSeq, SerializeStruct, Serializer};
 use serde::Serialize;
 
 /// The categories we use when analyzing changes between crate versions.
@@ -75,6 +75,33 @@ impl Serialize for RSymbol {
         S: Serializer,
     {
         serializer.serialize_str(&format!("{}", self.0))
+    }
+}
+
+struct RSpan<'a>(&'a Session, &'a Span);
+
+impl<'a> Serialize for RSpan<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let lo = self.0.source_map().lookup_char_pos(self.1.lo());
+        let hi = self.0.source_map().lookup_char_pos(self.1.hi());
+
+        assert!(lo.file.name == hi.file.name);
+        let file_name = if let &FileName::Real(ref p) = &lo.file.name {
+            format!("{}", p.display())
+        } else {
+            "no file name".to_owned()
+        };
+
+        let mut state = serializer.serialize_struct("Span", 5)?;
+        state.serialize_field("file", &file_name)?;
+        state.serialize_field("line_lo", &lo.line)?;
+        state.serialize_field("line_hi", &hi.line)?;
+        state.serialize_field("col_lo", &lo.col.0)?;
+        state.serialize_field("col_hi", &hi.col.0)?;
+        state.end()
     }
 }
 
@@ -221,15 +248,25 @@ impl Ord for PathChange {
     }
 }
 
-impl Serialize for PathChange {
+struct RPathChange<'a>(&'a Session, &'a PathChange);
+
+impl<'a> Serialize for RPathChange<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("PathChange", 3)?;
-        state.serialize_field("name", &self.name)?;
-        state.serialize_field("additions", &!self.additions.is_empty())?;
-        state.serialize_field("removals", &!self.removals.is_empty())?;
+        let mut state = serializer.serialize_struct("PathChange", 4)?;
+        state.serialize_field("name", &self.1.name)?;
+        state.serialize_field("def_span", &RSpan(self.0, &self.1.def_span))?;
+
+        let additions: Vec<_> = self.1.additions.iter().map(|s| RSpan(self.0, s)).collect();
+
+        state.serialize_field("additions", &additions)?;
+
+        let removals: Vec<_> = self.1.removals.iter().map(|s| RSpan(self.0, s)).collect();
+
+        state.serialize_field("removals", &removals)?;
+
         state.end()
     }
 }
@@ -812,16 +849,24 @@ impl<'tcx> Ord for Change<'tcx> {
     }
 }
 
-impl<'tcx> Serialize for Change<'tcx> {
+struct RChange<'a, 'tcx>(&'a Session, &'a Change<'tcx>);
+
+impl<'a, 'tcx> Serialize for RChange<'a, 'tcx> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Change", 3)?;
-        state.serialize_field("name", &self.name)?;
-        state.serialize_field("max_category", &self.max)?;
+        let mut state = serializer.serialize_struct("Change", 4)?;
+        state.serialize_field("name", &self.1.name)?;
+        state.serialize_field("max_category", &self.1.max)?;
+        state.serialize_field("new_span", &RSpan(self.0, &self.1.new_span))?;
 
-        let changes: Vec<_> = self.changes.iter().map(|(t, _)| t.clone()).collect();
+        let changes: Vec<_> = self
+            .1
+            .changes
+            .iter()
+            .map(|(t, s)| (t, s.as_ref().map(|s| RSpan(self.0, s))))
+            .collect();
 
         state.serialize_field("changes", &changes)?;
         state.end()
@@ -962,12 +1007,12 @@ impl<'tcx> ChangeSet<'tcx> {
         }
     }
 
-    pub fn output_json(&self, version: &str) {
+    pub fn output_json(&self, session: &Session, version: &str) {
         #[derive(Serialize)]
         struct Output<'a, 'tcx> {
             old_version: String,
             new_version: String,
-            changes: &'a ChangeSet<'tcx>,
+            changes: RChangeSet<'a, 'tcx>,
         }
 
         let new_version = self
@@ -977,7 +1022,7 @@ impl<'tcx> ChangeSet<'tcx> {
         let output = Output {
             old_version: version.to_owned(),
             new_version,
-            changes: self,
+            changes: RChangeSet(session, self),
         };
 
         println!("{}", serde_json::to_string(&output).unwrap());
@@ -1031,24 +1076,50 @@ impl<'tcx> ChangeSet<'tcx> {
     }
 }
 
-impl<'tcx> Serialize for ChangeSet<'tcx> {
+struct RPathChanges<'a>(&'a Session, Vec<&'a PathChange>);
+
+impl<'a> Serialize for RPathChanges<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.1.len()))?;
+
+        for e in &self.1 {
+            seq.serialize_element(&RPathChange(self.0, &e))?;
+        }
+
+        seq.end()
+    }
+}
+
+struct RChangeSet<'a, 'tcx>(&'a Session, &'a ChangeSet<'tcx>);
+
+impl<'a, 'tcx> Serialize for RChangeSet<'a, 'tcx> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut state = serializer.serialize_struct("ChangeSet", 3)?;
 
-        let path_changes: Vec<_> = self.path_changes.values().collect();
-        state.serialize_field("path_changes", &path_changes)?;
+        let path_changes: Vec<_> = self.1.path_changes.values().collect();
+        state.serialize_field("path_changes", &RPathChanges(self.0, path_changes))?;
 
         let changes: Vec<_> = self
+            .1
             .changes
             .values()
-            .filter(|c| c.output && !c.changes.is_empty())
+            .filter_map(|c| {
+                if c.output && !c.changes.is_empty() {
+                    Some(RChange(self.0, c))
+                } else {
+                    None
+                }
+            })
             .collect();
         state.serialize_field("changes", &changes)?;
 
-        state.serialize_field("max_category", &self.max)?;
+        state.serialize_field("max_category", &self.1.max)?;
         state.end()
     }
 }

@@ -84,7 +84,7 @@ fn main() {
                             debug!("running semver analysis");
                             let changes = run_analysis(tcx, old_def_id, new_def_id);
                             if json {
-                                changes.output_json(&version);
+                                changes.output_json(tcx.sess, &version);
                             } else {
                                 changes.output(tcx.sess, &version, verbose, compact, api_guidelines);
                             }
