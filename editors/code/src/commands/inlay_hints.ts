@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import {
     Range,
     TextDocumentChangeEvent,
-    TextDocumentContentChangeEvent,
     TextEditor
 } from 'vscode';
 import { TextDocumentIdentifier } from 'vscode-languageclient';
@@ -66,38 +65,10 @@ export class HintsUpdater {
             return;
         }
 
-        // If the dbg! macro is used in the lsp-server, an endless stream of events with `cause.contentChanges` with the dbg messages.
-        // Should not be a real situation, but better to filter such things out.
-        if (
-            cause !== undefined &&
-            cause.contentChanges.filter(changeEvent =>
-                this.isEventInFile(document.lineCount, changeEvent)
-            ).length === 0
-        ) {
-            return;
-        }
         return await this.updateDecorationsFromServer(
             document.uri.toString(),
             editor
         );
-    }
-
-    private isEventInFile(
-        documentLineCount: number,
-        event: TextDocumentContentChangeEvent
-    ): boolean {
-        const eventText = event.text;
-        if (eventText.length === 0) {
-            return (
-                event.range.start.line <= documentLineCount ||
-                event.range.end.line <= documentLineCount
-            );
-        } else {
-            return (
-                event.range.start.line <= documentLineCount &&
-                event.range.end.line <= documentLineCount
-            );
-        }
     }
 
     private async updateDecorationsFromServer(
