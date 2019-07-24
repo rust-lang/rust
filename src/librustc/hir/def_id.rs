@@ -1,7 +1,6 @@
 use crate::ty::{self, TyCtxt};
 use crate::hir::map::definitions::FIRST_FREE_DEF_INDEX;
 use rustc_data_structures::indexed_vec::Idx;
-use serialize;
 use std::fmt;
 use std::u32;
 
@@ -93,8 +92,8 @@ impl fmt::Display for CrateNum {
     }
 }
 
-impl serialize::UseSpecializedEncodable for CrateNum {}
-impl serialize::UseSpecializedDecodable for CrateNum {}
+impl rustc_serialize::UseSpecializedEncodable for CrateNum {}
+impl rustc_serialize::UseSpecializedDecodable for CrateNum {}
 
 newtype_index! {
     /// A DefIndex is an index into the hir-map for a crate, identifying a
@@ -134,8 +133,8 @@ impl DefIndex {
     }
 }
 
-impl serialize::UseSpecializedEncodable for DefIndex {}
-impl serialize::UseSpecializedDecodable for DefIndex {}
+impl rustc_serialize::UseSpecializedEncodable for DefIndex {}
+impl rustc_serialize::UseSpecializedDecodable for DefIndex {}
 
 /// A `DefId` identifies a particular *definition*, by combining a crate
 /// index and a def index.
@@ -186,8 +185,8 @@ impl DefId {
     }
 }
 
-impl serialize::UseSpecializedEncodable for DefId {}
-impl serialize::UseSpecializedDecodable for DefId {}
+impl rustc_serialize::UseSpecializedEncodable for DefId {}
+impl rustc_serialize::UseSpecializedDecodable for DefId {}
 
 /// A LocalDefId is equivalent to a DefId with `krate == LOCAL_CRATE`. Since
 /// we encode this information in the type, we can ensure at compile time that
@@ -220,5 +219,5 @@ impl fmt::Debug for LocalDefId {
     }
 }
 
-impl serialize::UseSpecializedEncodable for LocalDefId {}
-impl serialize::UseSpecializedDecodable for LocalDefId {}
+impl rustc_serialize::UseSpecializedEncodable for LocalDefId {}
+impl rustc_serialize::UseSpecializedDecodable for LocalDefId {}

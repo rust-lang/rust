@@ -113,7 +113,7 @@ impl<Tag> Allocation<Tag> {
     }
 }
 
-impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
 /// Byte accessors
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {

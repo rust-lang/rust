@@ -15,7 +15,7 @@ log = "0.4"
 rand = "0.6"
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_fs_util = { path = "../librustc_fs_util" }

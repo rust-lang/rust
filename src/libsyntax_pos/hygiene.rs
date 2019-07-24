@@ -30,7 +30,7 @@ use crate::{Span, DUMMY_SP};
 use crate::edition::Edition;
 use crate::symbol::{kw, Symbol};
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::fmt;

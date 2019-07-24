@@ -27,7 +27,7 @@ use crate::infer::region_constraints::MemberConstraint;
 use crate::mir::interpret::ConstValue;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_macros::HashStable;
-use serialize::UseSpecializedDecodable;
+use rustc_serialize::UseSpecializedDecodable;
 use smallvec::SmallVec;
 use std::ops::Index;
 use syntax::source_map::Span;

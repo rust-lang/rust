@@ -18,7 +18,7 @@ rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_target = { path = "../librustc_target" }
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../libserialize", package = "serialize" }
 stable_deref_trait = "1.0.0"
 syntax = { path = "../libsyntax" }
 syntax_ext = { path = "../libsyntax_ext" }
