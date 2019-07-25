@@ -164,7 +164,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 } else {
                     fx.bcx.ins().brz(cond, target, &[]);
                 };
-                trap_panic(fx, format!("[panic] Assert {:?} failed at {:?}.", msg, bb_data.terminator().source_info.span));
+                trap_panic(fx, format!("[panic] Assert {:?} at {:?} failed.", msg, bb_data.terminator().source_info.span));
             }
 
             TerminatorKind::SwitchInt {
