@@ -362,8 +362,13 @@ mod prim_unit { }
 ///
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
-/// Working with raw pointers in Rust is uncommon,
-/// typically limited to a few patterns.
+/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
+/// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
+/// dereferenced (using the `*` operator), it must be non-null and aligned.
+///
+/// Storing through a raw pointer using `*ptr = data` calls `drop` on the old value, so
+/// [`write`] must be used if the type has drop glue and memory is not already
+/// initialized - otherwise `drop` would be called on the uninitialized memory.
 ///
 /// Use the [`null`] and [`null_mut`] functions to create null pointers, and the
 /// [`is_null`] method of the `*const T` and `*mut T` types to check for null.
@@ -442,6 +447,7 @@ mod prim_unit { }
 /// [`offset`]: ../std/primitive.pointer.html#method.offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
 /// [`drop`]: ../std/mem/fn.drop.html
+/// [`write`]: ../std/ptr/fn.write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer { }
 
@@ -891,9 +897,13 @@ mod prim_usize { }
 /// A reference represents a borrow of some owned value. You can get one by using the `&` or `&mut`
 /// operators on a value, or by using a `ref` or `ref mut` pattern.
 ///
-/// For those familiar with pointers, a reference is just a pointer that is assumed to not be null.
-/// In fact, `Option<&T>` has the same memory representation as a nullable pointer, and can be
-/// passed across FFI boundaries as such.
+/// For those familiar with pointers, a reference is just a pointer that is assumed to be
+/// aligned, not null, and pointing to memory containing a valid value of `T` - for example,
+/// `&bool` can only point to an allocation containing the integer values `1` (`true`) or `0`
+/// (`false`), but creating a `&bool` that points to an allocation containing
+/// the value `3` causes undefined behaviour.
+/// In fact, `Option<&T>` has the same memory representation as a
+/// nullable but aligned pointer, and can be passed across FFI boundaries as such.
 ///
 /// In most cases, references can be used much like the original value. Field access, method
 /// calling, and indexing work the same (save for mutability rules, of course). In addition, the
@@ -1036,6 +1046,11 @@ mod prim_ref { }
 /// [`FnMut`]: ops/trait.FnMut.html
 /// [`FnOnce`]: ops/trait.FnOnce.html
 ///
+/// Function pointers are pointers that point to *code*, not data. They can be called
+/// just like functions. Like references, function pointers are, among other things, assumed to
+/// not be null, so if you want to pass a function pointer over FFI and be able to accommodate null
+/// pointers, make your type `Option<fn()>` with your required signature.
+///
 /// Plain function pointers are obtained by casting either plain functions, or closures that don't
 /// capture an environment:
 ///
@@ -1090,10 +1105,6 @@ mod prim_ref { }
 /// [nomicon-variadic]: ../nomicon/ffi.html#variadic-functions
 ///
 /// These markers can be combined, so `unsafe extern "stdcall" fn()` is a valid type.
-///
-/// Like references in rust, function pointers are assumed to not be null, so if you want to pass a
-/// function pointer over FFI and be able to accommodate null pointers, make your type
-/// `Option<fn()>` with your required signature.
 ///
 /// Function pointers implement the following traits:
 ///
