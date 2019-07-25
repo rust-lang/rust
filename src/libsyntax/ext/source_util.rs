@@ -8,11 +8,10 @@ use crate::symbol::Symbol;
 use crate::tokenstream;
 
 use smallvec::SmallVec;
-use syntax_pos::{self, Pos, Span, FileName};
+use syntax_pos::{self, Pos, Span};
 
 use std::fs;
 use std::io::ErrorKind;
-use std::path::PathBuf;
 use rustc_data_structures::sync::Lrc;
 
 // These macros all relate to the file system; they either return
@@ -78,9 +77,9 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: &[tokenstrea
         None => return DummyResult::any(sp),
     };
     // The file will be added to the code map by the parser
-    let path = res_rel_file(cx, sp, file);
+    let file = cx.resolve_path(file, sp);
     let directory_ownership = DirectoryOwnership::Owned { relative: None };
-    let p = parse::new_sub_parser_from_file(cx.parse_sess(), &path, directory_ownership, None, sp);
+    let p = parse::new_sub_parser_from_file(cx.parse_sess(), &file, directory_ownership, None, sp);
 
     struct ExpandResult<'a> {
         p: parse::parser::Parser<'a>,
@@ -115,7 +114,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::To
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
-    let file = res_rel_file(cx, sp, file);
+    let file = cx.resolve_path(file, sp);
     match fs::read_to_string(&file) {
         Ok(src) => {
             let interned_src = Symbol::intern(&src);
@@ -143,7 +142,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
-    let file = res_rel_file(cx, sp, file);
+    let file = cx.resolve_path(file, sp);
     match fs::read(&file) {
         Ok(bytes) => {
             // Add the contents to the source map if it contains UTF-8.
@@ -162,26 +161,5 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::
             cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
             DummyResult::expr(sp)
         }
-    }
-}
-
-// resolve a file-system path to an absolute file-system path (if it
-// isn't already)
-fn res_rel_file(cx: &mut ExtCtxt<'_>, sp: syntax_pos::Span, arg: String) -> PathBuf {
-    let arg = PathBuf::from(arg);
-    // Relative paths are resolved relative to the file in which they are found
-    // after macro expansion (that is, they are unhygienic).
-    if !arg.is_absolute() {
-        let callsite = sp.source_callsite();
-        let mut path = match cx.source_map().span_to_unmapped_path(callsite) {
-            FileName::Real(path) => path,
-            FileName::DocTest(path, _) => path,
-            other => panic!("cannot resolve relative path in non-file source `{}`", other),
-        };
-        path.pop();
-        path.push(arg);
-        path
-    } else {
-        arg
     }
 }
