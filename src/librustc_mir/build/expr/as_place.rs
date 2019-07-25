@@ -4,7 +4,7 @@ use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
-use rustc::mir::interpret::{InterpError::Panic, PanicMessage::BoundsCheck};
+use rustc::mir::interpret::{PanicMessage::BoundsCheck};
 use rustc::mir::*;
 use rustc::ty::{CanonicalUserTypeAnnotation, Variance};
 
@@ -105,10 +105,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ),
                 );
 
-                let msg = Panic(BoundsCheck {
+                let msg = BoundsCheck {
                     len: Operand::Move(len),
                     index: Operand::Copy(Place::from(idx)),
-                });
+                };
                 let success = this.assert(block, Operand::Move(lt), true, msg, expr_span);
                 success.and(slice.index(idx))
             }

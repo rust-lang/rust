@@ -81,8 +81,8 @@ PREAMBLE = """\
 
 #![allow(missing_docs, non_upper_case_globals, non_snake_case)]
 
-use unicode::version::UnicodeVersion;
-use unicode::bool_trie::{{BoolTrie, SmallBoolTrie}};
+use crate::unicode::version::UnicodeVersion;
+use crate::unicode::bool_trie::{{BoolTrie, SmallBoolTrie}};
 """.format(year=datetime.datetime.now().year)
 
 # Mapping taken from Table 12 from:

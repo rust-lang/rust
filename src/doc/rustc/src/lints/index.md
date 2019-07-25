@@ -19,7 +19,7 @@ warning: unused variable: `x`
 2 |     let x = 5;
   |         ^
   |
-  = note: #[warn(unused_variables)] on by default
+  = note: `#[warn(unused_variables)]` on by default
   = note: to avoid this warning, consider using `_x` instead
 ```
 

@@ -414,7 +414,7 @@ fn get_test_runner(sd: &errors::Handler, krate: &ast::Crate) -> Option<ast::Path
     test_attr.meta_item_list().map(|meta_list| {
         if meta_list.len() != 1 {
             sd.span_fatal(test_attr.span,
-                "#![test_runner(..)] accepts exactly 1 argument").raise()
+                "`#![test_runner(..)]` accepts exactly 1 argument").raise()
         }
         match meta_list[0].meta_item() {
             Some(meta_item) if meta_item.is_word() => meta_item.path.clone(),

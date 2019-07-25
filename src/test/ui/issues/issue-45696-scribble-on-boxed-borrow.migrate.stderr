@@ -1,5 +1,5 @@
 warning[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:51:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:52:5
    |
 LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
    |              -- lifetime `'a` defined here
@@ -14,7 +14,7 @@ LL | }
    = note: for more information, try `rustc --explain E0729`
 
 warning[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:62:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:63:5
    |
 LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
    |                    -- lifetime `'a` defined here
@@ -29,7 +29,7 @@ LL | }
    = note: for more information, try `rustc --explain E0729`
 
 warning[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:73:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:74:5
    |
 LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
    |                          -- lifetime `'a` defined here
@@ -44,7 +44,7 @@ LL | }
    = note: for more information, try `rustc --explain E0729`
 
 error: compilation successful
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:80:1
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:81:1
    |
 LL | / fn main() {
 LL | |     let mut x = 1;

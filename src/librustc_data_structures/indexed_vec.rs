@@ -1,3 +1,5 @@
+use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
+
 use std::fmt::Debug;
 use std::iter::{self, FromIterator};
 use std::slice;
@@ -7,8 +9,6 @@ use std::fmt;
 use std::hash::Hash;
 use std::vec;
 use std::u32;
-
-use rustc_serialize as serialize;
 
 /// Represents some newtyped `usize` wrapper.
 ///
@@ -398,17 +398,9 @@ macro_rules! newtype_index {
     );
 
     (@decodable $type:ident) => (
-        impl $type {
-            fn __decodable__impl__hack() {
-                mod __more_hacks_because__self_doesnt_work_in_functions {
-                    extern crate serialize;
-                    use self::serialize::{Decodable, Decoder};
-                    impl Decodable for super::$type {
-                        fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-                            d.read_u32().map(Self::from)
-                        }
-                    }
-                }
+        impl ::rustc_serialize::Decodable for $type {
+            fn decode<D: ::rustc_serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
+                d.read_u32().map(Self::from)
             }
         }
     );
@@ -521,15 +513,15 @@ pub struct IndexVec<I: Idx, T> {
 // not the phantom data.
 unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
-impl<I: Idx, T: serialize::Encodable> serialize::Encodable for IndexVec<I, T> {
-    fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        serialize::Encodable::encode(&self.raw, s)
+impl<I: Idx, T: Encodable> Encodable for IndexVec<I, T> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        Encodable::encode(&self.raw, s)
     }
 }
 
-impl<I: Idx, T: serialize::Decodable> serialize::Decodable for IndexVec<I, T> {
-    fn decode<D: serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        serialize::Decodable::decode(d).map(|v| {
+impl<I: Idx, T: Decodable> Decodable for IndexVec<I, T> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        Decodable::decode(d).map(|v| {
             IndexVec { raw: v, _marker: PhantomData }
         })
     }
