@@ -98,7 +98,7 @@ impl<T> VecDeque<T> {
             // For zero sized types, we are always at maximum capacity
             MAXIMUM_ZST_CAPACITY
         } else {
-            self.buf.cap()
+            self.buf.capacity()
         }
     }
 
@@ -314,10 +314,10 @@ impl<T> VecDeque<T> {
     }
 
     /// Frobs the head and tail sections around to handle the fact that we
-    /// just reallocated. Unsafe because it trusts old_cap.
+    /// just reallocated. Unsafe because it trusts old_capacity.
     #[inline]
-    unsafe fn handle_cap_increase(&mut self, old_cap: usize) {
-        let new_cap = self.cap();
+    unsafe fn handle_capacity_increase(&mut self, old_capacity: usize) {
+        let new_capacity = self.cap();
 
         // Move the shortest contiguous section of the ring buffer
         //    T             H
@@ -336,15 +336,15 @@ impl<T> VecDeque<T> {
         if self.tail <= self.head {
             // A
             // Nop
-        } else if self.head < old_cap - self.tail {
+        } else if self.head < old_capacity - self.tail {
             // B
-            self.copy_nonoverlapping(old_cap, 0, self.head);
-            self.head += old_cap;
+            self.copy_nonoverlapping(old_capacity, 0, self.head);
+            self.head += old_capacity;
             debug_assert!(self.head > self.tail);
         } else {
             // C
-            let new_tail = new_cap - (old_cap - self.tail);
-            self.copy_nonoverlapping(new_tail, self.tail, old_cap - self.tail);
+            let new_tail = new_capacity - (old_capacity - self.tail);
+            self.copy_nonoverlapping(new_tail, self.tail, old_capacity - self.tail);
             self.tail = new_tail;
             debug_assert!(self.head < self.tail);
         }
@@ -551,7 +551,7 @@ impl<T> VecDeque<T> {
         if new_cap > old_cap {
             self.buf.reserve_exact(used_cap, new_cap - used_cap);
             unsafe {
-                self.handle_cap_increase(old_cap);
+                self.handle_capacity_increase(old_cap);
             }
         }
     }
@@ -641,7 +641,7 @@ impl<T> VecDeque<T> {
         if new_cap > old_cap {
             self.buf.try_reserve_exact(used_cap, new_cap - used_cap)?;
             unsafe {
-                self.handle_cap_increase(old_cap);
+                self.handle_capacity_increase(old_cap);
             }
         }
         Ok(())
@@ -1887,7 +1887,7 @@ impl<T> VecDeque<T> {
             let old_cap = self.cap();
             self.buf.double();
             unsafe {
-                self.handle_cap_increase(old_cap);
+                self.handle_capacity_increase(old_cap);
             }
             debug_assert!(!self.is_full());
         }
@@ -2736,9 +2736,9 @@ impl<T> From<Vec<T>> for VecDeque<T> {
 
             // We need to extend the buf if it's not a power of two, too small
             // or doesn't have at least one free space
-            if !buf.cap().is_power_of_two() || (buf.cap() < (MINIMUM_CAPACITY + 1)) ||
-               (buf.cap() == len) {
-                let cap = cmp::max(buf.cap() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
+            if !buf.capacity().is_power_of_two() || (buf.capacity() < (MINIMUM_CAPACITY + 1)) ||
+               (buf.capacity() == len) {
+                let cap = cmp::max(buf.capacity() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
                 buf.reserve_exact(len, cap - len);
             }
 
@@ -3153,8 +3153,8 @@ mod tests {
     fn test_vec_from_vecdeque() {
         use crate::vec::Vec;
 
-        fn create_vec_and_test_convert(cap: usize, offset: usize, len: usize) {
-            let mut vd = VecDeque::with_capacity(cap);
+        fn create_vec_and_test_convert(capacity: usize, offset: usize, len: usize) {
+            let mut vd = VecDeque::with_capacity(capacity);
             for _ in 0..offset {
                 vd.push_back(0);
                 vd.pop_front();

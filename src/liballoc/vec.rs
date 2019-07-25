@@ -432,7 +432,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
-        self.buf.cap()
+        self.buf.capacity()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
@@ -947,7 +947,7 @@ impl<T> Vec<T> {
         assert!(index <= len);
 
         // space for the new element
-        if len == self.buf.cap() {
+        if len == self.buf.capacity() {
             self.reserve(1);
         }
 
@@ -1098,7 +1098,7 @@ impl<T> Vec<T> {
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.cap() {
+        if self.len == self.buf.capacity() {
             self.reserve(1);
         }
         unsafe {
@@ -1858,7 +1858,7 @@ impl<T> IntoIterator for Vec<T> {
             } else {
                 begin.add(self.len()) as *const T
             };
-            let cap = self.buf.cap();
+            let cap = self.buf.capacity();
             mem::forget(self);
             IntoIter {
                 buf: NonNull::new_unchecked(begin),
