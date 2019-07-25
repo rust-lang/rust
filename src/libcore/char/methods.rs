@@ -547,10 +547,10 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` satisfies the 'XID_Start' Unicode property, and false
+    /// Returns `true` if this `char` satisfies the `XID_Start` Unicode property, and false
     /// otherwise.
     ///
-    /// 'XID_Start' is a Unicode Derived Property specified in
+    /// `XID_Start` is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to `ID_Start` but modified for closure under `NFKx`.
     #[cfg_attr(bootstrap,
@@ -563,12 +563,12 @@ impl char {
         derived_property::XID_Start(self)
     }
 
-    /// Returns `true` if this `char` satisfies the 'XID_Continue' Unicode property, and false
+    /// Returns `true` if this `char` satisfies the `XID_Continue` Unicode property, and false
     /// otherwise.
     ///
-    /// 'XID_Continue' is a Unicode Derived Property specified in
+    /// `XID_Continue` is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
-    /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
+    /// mostly similar to `ID_Continue` but modified for closure under NFKx.
     #[cfg_attr(bootstrap,
                unstable(feature = "rustc_private",
                         reason = "mainly needed for compiler internals",
@@ -666,7 +666,7 @@ impl char {
     /// Returns `true` if this `char` is alphanumeric.
     ///
     /// 'Alphanumeric'-ness is defined in terms of the Unicode General Categories
-    /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
+    /// `Nd`, `Nl`, `No` and the Derived Core Property `Alphabetic`.
     ///
     /// # Examples
     ///
@@ -720,7 +720,7 @@ impl char {
     /// Returns `true` if this `char` is numeric.
     ///
     /// 'Numeric'-ness is defined in terms of the Unicode General Categories
-    /// 'Nd', 'Nl', 'No'.
+    /// `Nd`, `Nl`, `No`.
     ///
     /// # Examples
     ///
