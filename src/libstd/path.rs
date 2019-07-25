@@ -77,7 +77,7 @@ use crate::fs;
 use crate::hash::{Hash, Hasher};
 use crate::io;
 use crate::iter::{self, FusedIterator};
-use crate::ops::{self, Deref};
+use crate::ops::{self, Deref, Div, DivAssign};
 use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
@@ -1705,6 +1705,54 @@ impl cmp::Ord for PathBuf {
 impl AsRef<OsStr> for PathBuf {
     fn as_ref(&self) -> &OsStr {
         &self.inner[..]
+    }
+}
+
+#[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
+impl Div<&Path> for PathBuf {
+    type Output = PathBuf;
+    fn div(mut self, rhs: &Path) -> Self::Output {
+        self.push(rhs);
+        self
+    }
+}
+
+#[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
+impl Div<&str> for PathBuf {
+    type Output = PathBuf;
+    fn div(mut self, rhs: &str) -> Self::Output {
+        self.push(rhs);
+        self
+    }
+}
+
+#[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
+impl Div<&OsStr> for PathBuf {
+    type Output = PathBuf;
+    fn div(mut self, rhs: &OsStr) -> Self::Output {
+        self.push(rhs);
+        self
+    }
+}
+
+#[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
+impl DivAssign<&Path> for PathBuf {
+    fn div_assign(&mut self, rhs: &Path) {
+        self.push(rhs);
+    }
+}
+
+#[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
+impl DivAssign<&str> for PathBuf {
+    fn div_assign(&mut self, rhs: &str) {
+        self.push(rhs);
+    }
+}
+
+#[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
+impl DivAssign<&OsStr> for PathBuf {
+    fn div_assign(&mut self, rhs: &OsStr) {
+        self.push(rhs);
     }
 }
 
