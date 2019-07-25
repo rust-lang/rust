@@ -81,7 +81,7 @@
             - [Member constraints](./borrow_check/region_inference/member_constraints.md)
             - [Placeholders and universes][pau]
             - [Closure constraints](./borrow_check/region_inference/closure_constraints.md)
-            - [Errror reporting](./borrow_check/region_inference/error_reporting.md)
+            - [Error reporting](./borrow_check/region_inference/error_reporting.md)
         - [Two-phase-borrows](./borrow_check/two_phase_borrows.md)
     - [Constant evaluation](./const-eval.md)
         - [miri const evaluator](./miri.md)

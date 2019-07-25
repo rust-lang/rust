@@ -8,7 +8,7 @@ Term                    | Meaning
 ------------------------|--------
 AST                     |  the abstract syntax tree produced by the syntax crate; reflects user syntax very closely.
 binder                  |  a "binder" is a place where a variable or type is declared; for example, the `<T>` is a binder for the generic type parameter `T` in `fn foo<T>(..)`, and \|`a`\|` ...` is a binder for the parameter `a`. See [the background chapter for more](./background.html#free-vs-bound)
-bound variable          |  a "bound variable" is one that is declared within an expression/term. For example, the variable `a` is bound within the closure expession \|`a`\|` a * 2`. See [the background chapter for more](./background.html#free-vs-bound)
+bound variable          |  a "bound variable" is one that is declared within an expression/term. For example, the variable `a` is bound within the closure expression \|`a`\|` a * 2`. See [the background chapter for more](./background.html#free-vs-bound)
 codegen                 |  the code to translate MIR into LLVM IR.
 codegen unit            |  when we produce LLVM IR, we group the Rust code into a number of codegen units. Each of these units is processed by LLVM independently from one another, enabling parallelism. They are also the unit of incremental re-use.
 completeness            |  completeness is a technical term in type theory. Completeness means that every type-safe program also type-checks. Having both soundness and completeness is very hard, and usually soundness is more important. (see "soundness").

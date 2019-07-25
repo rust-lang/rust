@@ -53,7 +53,7 @@ In terms of code, these types are defined in
 definitions given above, general goals basically consist in a combination of
 domain goals.
 
-Moreover, flattenning a bit the definition of clauses given previously, one can
+Moreover, flattening a bit the definition of clauses given previously, one can
 see that clauses are always of the form:
 ```text
 forall<K1, ..., Kn> { DomainGoal :- Goal }

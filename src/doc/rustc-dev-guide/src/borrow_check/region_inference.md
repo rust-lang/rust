@@ -217,7 +217,7 @@ Here are some of the fields of the struct:
 - [`type_tests`]: contains some constraints on types that we must check after
   inference (e.g. `T: 'a`).
 - [`closure_bounds_mapping`]: used for propagating region constraints from
-  closures back out to the creater of the closure.
+  closures back out to the creator of the closure.
 
 [`constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.constraints
 [`liveness_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.liveness_constraints

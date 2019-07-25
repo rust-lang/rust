@@ -24,7 +24,7 @@ another:
   them upstream in LLVM. We'll want to pull fixes back to the compiler itself as
   they're merged upstream.
 
-* Second, a new feature may be avaiable in LLVM that we want to use in rustc,
+* Second, a new feature may be available in LLVM that we want to use in rustc,
   but we don't want to wait for a full LLVM release to test it out.
 
 Each of these reasons has a different strategy for updating LLVM, and we'll go

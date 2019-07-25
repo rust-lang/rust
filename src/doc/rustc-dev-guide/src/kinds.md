@@ -30,7 +30,7 @@ make use of the safe [`UnpackedKind`](#unpackedkind) abstraction.
 As `Kind` itself is not type-safe, the `UnpackedKind` enum provides a more
 convenient and safe interface for dealing with kinds. An `UnpackedKind` can
 be converted to a raw `Kind` using `Kind::from()` (or simply `.into()` when
-the context is clear). As mentioned earlier, substition lists store raw
+the context is clear). As mentioned earlier, substitution lists store raw
 `Kind`s, so before dealing with them, it is preferable to convert them to
 `UnpackedKind`s first. This is done by calling the `.unpack()` method.
 

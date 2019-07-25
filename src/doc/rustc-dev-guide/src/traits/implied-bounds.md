@@ -81,7 +81,7 @@ The rationale for implied bounds for traits is that if a type implements
 `Copy`, that is, if there exists an `impl Copy` for that type, there *ought*
 to exist an `impl Clone` for that type, otherwise the compiler would have
 reported an error in the first place. So again, if we were forced to repeat the
-additionnal `where SomeType: Clone` everywhere whereas we already know that
+additional `where SomeType: Clone` everywhere whereas we already know that
 `SomeType: Copy` hold, we would kind of duplicate the verification work.
 
 Implied bounds are not yet completely enforced in rustc, at the moment it only
