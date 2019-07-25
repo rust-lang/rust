@@ -437,6 +437,33 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_size(&self) -> u64;
+
+    /// Returns the value of the `dwVolumeSerialNumber` field of this
+    /// metadata.
+    ///
+    /// This will return `None` if the `Metadata` instance was created from a
+    /// call to `DirEntry::metadata`. If this `Metadata` was created by using
+    /// `fs::metadata` or `File::metadata`, then this will return `Some`.
+    #[unstable(feature = "windows_by_handle", issue = "63010")]
+    fn volume_serial_number(&self) -> Option<u32>;
+
+    /// Returns the value of the `nNumberOfLinks` field of this
+    /// metadata.
+    ///
+    /// This will return `None` if the `Metadata` instance was created from a
+    /// call to `DirEntry::metadata`. If this `Metadata` was created by using
+    /// `fs::metadata` or `File::metadata`, then this will return `Some`.
+    #[unstable(feature = "windows_by_handle", issue = "63010")]
+    fn number_of_links(&self) -> Option<u32>;
+
+    /// Returns the value of the `nFileIndex{Low,High}` fields of this
+    /// metadata.
+    ///
+    /// This will return `None` if the `Metadata` instance was created from a
+    /// call to `DirEntry::metadata`. If this `Metadata` was created by using
+    /// `fs::metadata` or `File::metadata`, then this will return `Some`.
+    #[unstable(feature = "windows_by_handle", issue = "63010")]
+    fn file_index(&self) -> Option<u64>;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -446,6 +473,9 @@ impl MetadataExt for Metadata {
     fn last_access_time(&self) -> u64 { self.as_inner().accessed_u64() }
     fn last_write_time(&self) -> u64 { self.as_inner().modified_u64() }
     fn file_size(&self) -> u64 { self.as_inner().size() }
+    fn volume_serial_number(&self) -> Option<u32> { self.as_inner().volume_serial_number() }
+    fn number_of_links(&self) -> Option<u32> { self.as_inner().number_of_links() }
+    fn file_index(&self) -> Option<u64> { self.as_inner().file_index() }
 }
 
 /// Windows-specific extensions to [`FileType`].
