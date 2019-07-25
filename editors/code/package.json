@@ -238,6 +238,11 @@
                     "type": "number",
                     "default": null,
                     "description": "Number of syntax trees rust-analyzer keeps in memory"
+                },
+                "rust-analyzer.displayInlayHints": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Display additional type information in the editor"
                 }
             }
         },
@@ -443,6 +448,15 @@
                     "dark": "#D4D4D4",
                     "light": "#000000",
                     "highContrast": "#FFFFFF"
+                }
+            },
+            {
+                "id": "ralsp.inlayHint",
+                "description": "Color for inlay hints",
+                "defaults": {
+                    "dark": "#A0A0A0F0",
+                    "light": "#747474",
+                    "highContrast": "#BEBEBE"
                 }
             }
         ]

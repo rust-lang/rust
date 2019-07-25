@@ -3,6 +3,7 @@ import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
 import { CargoWatchProvider } from './commands/cargo_watch';
+import { HintsUpdater } from './commands/inlay_hints';
 import {
     interactivelyStartCargoWatch,
     startCargoWatch
@@ -147,6 +148,29 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Start the language server, finally!
     startServer();
+
+    if (Server.config.displayInlayHints) {
+        const hintsUpdater = new HintsUpdater();
+        hintsUpdater.loadHints(vscode.window.activeTextEditor).then(() => {
+            disposeOnDeactivation(
+                vscode.window.onDidChangeActiveTextEditor(editor =>
+                    hintsUpdater.loadHints(editor)
+                )
+            );
+            disposeOnDeactivation(
+                vscode.workspace.onDidChangeTextDocument(e =>
+                    hintsUpdater.updateHints(e)
+                )
+            );
+            disposeOnDeactivation(
+                vscode.workspace.onDidChangeConfiguration(_ =>
+                    hintsUpdater.toggleHintsDisplay(
+                        Server.config.displayInlayHints
+                    )
+                )
+            );
+        });
+    }
 }
 
 export function deactivate(): Thenable<void> {
