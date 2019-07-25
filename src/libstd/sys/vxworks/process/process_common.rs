@@ -422,46 +422,12 @@ mod tests {
         }
     }
 
-    // Android with api less than 21 define sig* functions inline, so it is not
-    // available for dynamic link. Implementing sigemptyset and sigaddset allow us
-    // to support older Android version (independent of libc version).
-    // The following implementations are based on https://git.io/vSkNf
-
-    #[cfg(not(target_os = "android"))]
     extern {
-        #[cfg_attr(target_os = "netbsd", link_name = "__sigemptyset14")]
         fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int;
-
-        #[cfg_attr(target_os = "netbsd", link_name = "__sigaddset14")]
         fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int;
     }
 
-    #[cfg(target_os = "android")]
-    unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
-        libc::memset(set as *mut _, 0, mem::size_of::<libc::sigset_t>());
-        return 0;
-    }
-
-    #[cfg(target_os = "android")]
-    unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-        use crate::slice;
-
-        let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
-        let bit = (signum - 1) as usize;
-        raw[bit / 8] |= 1 << (bit % 8);
-        return 0;
-    }
-
-    // See #14232 for more information, but it appears that signal delivery to a
-    // newly spawned process may just be raced in the macOS, so to prevent this
-    // test from being flaky we ignore it on macOS.
     #[test]
-    #[cfg_attr(target_os = "macos", ignore)]
-    // When run under our current QEMU emulation test suite this test fails,
-    // although the reason isn't very clear as to why. For now this test is
-    // ignored there.
-    #[cfg_attr(target_arch = "arm", ignore)]
-    #[cfg_attr(target_arch = "aarch64", ignore)]
     fn test_process_mask() {
         unsafe {
             // Test to make sure that a signal mask does not get inherited.
