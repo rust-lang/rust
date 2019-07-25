@@ -7,7 +7,6 @@ use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::middle::allocator::AllocatorKind;
 use crate::middle::dependency_format;
 use crate::session::config::{OutputType, PrintRequest, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
@@ -27,6 +26,7 @@ use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
+use syntax::ext::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;

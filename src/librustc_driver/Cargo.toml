@@ -16,7 +16,6 @@ log = "0.4"
 env_logger = { version = "0.5", default-features = false }
 rayon = { version = "0.2.0", package = "rustc-rayon" }
 rustc = { path = "../librustc" }
-rustc_allocator = { path = "../librustc_allocator" }
 rustc_target = { path = "../librustc_target" }
 rustc_ast_borrowck = { path = "../librustc_ast_borrowck" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -37,5 +36,4 @@ rustc_interface = { path = "../librustc_interface" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
-syntax_ext = { path = "../libsyntax_ext" }
 syntax_pos = { path = "../libsyntax_pos" }

@@ -162,6 +162,7 @@ pub mod print {
 
 pub mod ext {
     pub use syntax_pos::hygiene;
+    pub mod allocator;
     pub mod base;
     pub mod build;
     pub mod derive;
