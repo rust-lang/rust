@@ -1,9 +1,5 @@
 import * as vscode from 'vscode';
-import {
-    Range,
-    TextDocumentChangeEvent,
-    TextEditor
-} from 'vscode';
+import { Range, TextDocumentChangeEvent, TextEditor } from 'vscode';
 import { TextDocumentIdentifier } from 'vscode-languageclient';
 import { Server } from '../server';
 
@@ -29,7 +25,7 @@ export class HintsUpdater {
     public async loadHints(
         editor: vscode.TextEditor | undefined
     ): Promise<void> {
-        if (this.displayHints && editor !== undefined) {
+        if (this.displayHints && editor !== undefined && this.isRustDocument(editor.document)) {
             await this.updateDecorationsFromServer(
                 editor.document.uri.toString(),
                 editor
@@ -61,7 +57,7 @@ export class HintsUpdater {
             return;
         }
         const document = cause == null ? editor.document : cause.document;
-        if (document.languageId !== 'rust') {
+        if (!this.isRustDocument(document)) {
             return;
         }
 
@@ -69,6 +65,10 @@ export class HintsUpdater {
             document.uri.toString(),
             editor
         );
+    }
+
+    private isRustDocument(document: vscode.TextDocument): boolean {
+        return document && document.languageId === 'rust';
     }
 
     private async updateDecorationsFromServer(
