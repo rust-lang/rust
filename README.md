@@ -3,7 +3,8 @@
 
 An experimental interpreter for [Rust][rust]'s
 [mid-level intermediate representation][mir] (MIR).  It can run binaries and
-test suites of cargo projects and detect certain classes of undefined behavior,
+test suites of cargo projects and detect certain classes of
+[undefined behavior](https://doc.rust-lang.org/reference/behavior-considered-undefined.html),
 for example:
 
 * Out-of-bounds memory accesses and use-after-free
