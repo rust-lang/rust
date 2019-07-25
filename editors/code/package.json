@@ -25,7 +25,7 @@
         "lint": "tslint --project .",
         "test": "node node_modules/vscode/bin/test",
         "prettier": "prettier **/*.{json,ts}",
-        "travis": "npm run compile && npm run test && npm run lint && npm run prettier -- --list-different"
+        "travis": "npm run compile && npm run test && npm run lint && npm run prettier -- --check"
     },
     "prettier": {
         "tabWidth": 4,
