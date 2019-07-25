@@ -110,7 +110,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )
         }
 
-        // Handle cast from a univariant (ZST) enum
+        // Handle cast from a univariant (ZST) enum.
         match src.layout.variants {
             layout::Variants::Single { index } => {
                 if let Some(discr) =
