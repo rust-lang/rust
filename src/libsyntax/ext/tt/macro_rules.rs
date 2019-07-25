@@ -308,7 +308,7 @@ pub fn compile(
     let mut valid = true;
 
     // Extract the arguments:
-    let lhses = match *argument_map[&lhs_nm] {
+    let lhses = match argument_map[&lhs_nm] {
         MatchedSeq(ref s, _) => s
             .iter()
             .map(|m| {
@@ -335,7 +335,7 @@ pub fn compile(
         _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
     };
 
-    let rhses = match *argument_map[&rhs_nm] {
+    let rhses = match argument_map[&rhs_nm] {
         MatchedSeq(ref s, _) => s
             .iter()
             .map(|m| {
