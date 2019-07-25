@@ -310,7 +310,29 @@ impl<O: fmt::Debug> fmt::Debug for PanicMessage<O> {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum InvalidProgramMessage<'tcx> {
+    /// Resolution can fail if we are in a too generic context
+    TooGeneric,
+    /// Cannot compute this constant because it depends on another one
+    /// which already produced an error
+    ReferencedConstant,
+    /// Abort in case type errors are reached
+    TypeckError,
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InterpError<'tcx> {
+    /// The program caused undefined behavior.
+    UndefinedBehaviour(UndefinedBehaviourMessage<'tcx>),
+    /// The program did something the interpreter does not support (some of these *might* be UB
+    /// but the interpreter is not sure).
+    Unsupported(UnsupportedMessage<'tcx>),
+    /// The program was invalid (ill-typed, not sufficiently monomorphized, ...).
+    InvalidProgram(InvalidProgramMessage<'tcx>),
+    /// The program exhausted the interpreter's resources (stack/heap too big,
+    /// execution takes too long, ..).
+    ResourceExhaustion(ResourceExhaustionMessage<'tcx>),
+    
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant.
     MachineError(String),
@@ -374,18 +396,11 @@ pub enum InterpError<'tcx> {
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
+    /// The program panicked.
     Panic(PanicMessage<u64>),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
     UnimplementedTraitSelection,
-    /// Abort in case type errors are reached
-    TypeckError,
-    /// Resolution can fail if we are in a too generic context
-    TooGeneric,
-    /// Cannot compute this constant because it depends on another one
-    /// which already produced an error
-    ReferencedConstant,
-    InfiniteLoop,
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
