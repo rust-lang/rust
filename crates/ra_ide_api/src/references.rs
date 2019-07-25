@@ -372,7 +372,8 @@ mod tests {
                 }
             }
         }
-        let result = text_edit_builder.finish().apply(&*analysis.file_text(file_id.unwrap()));
+        let result =
+            text_edit_builder.finish().apply(&*analysis.file_text(file_id.unwrap()).unwrap());
         assert_eq_text!(expected, &*result);
     }
 }

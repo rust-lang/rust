@@ -317,24 +317,24 @@ impl Analysis {
     }
 
     /// Debug info about the current state of the analysis
-    pub fn status(&self) -> String {
-        status::status(&*self.db)
+    pub fn status(&self) -> Cancelable<String> {
+        self.with_db(|db| status::status(&*db))
     }
 
     /// Gets the text of the source file.
-    pub fn file_text(&self, file_id: FileId) -> Arc<String> {
-        self.db.file_text(file_id)
+    pub fn file_text(&self, file_id: FileId) -> Cancelable<Arc<String>> {
+        self.with_db(|db| db.file_text(file_id))
     }
 
     /// Gets the syntax tree of the file.
-    pub fn parse(&self, file_id: FileId) -> SourceFile {
-        self.db.parse(file_id).tree()
+    pub fn parse(&self, file_id: FileId) -> Cancelable<SourceFile> {
+        self.with_db(|db| db.parse(file_id).tree())
     }
 
     /// Gets the file's `LineIndex`: data structure to convert between absolute
     /// offsets and line/column representation.
-    pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.line_index(file_id)
+    pub fn file_line_index(&self, file_id: FileId) -> Cancelable<Arc<LineIndex>> {
+        self.with_db(|db| db.line_index(file_id))
     }
 
     /// Selects the next syntactic nodes encompassing the range.
@@ -344,58 +344,67 @@ impl Analysis {
 
     /// Returns position of the matching brace (all types of braces are
     /// supported).
-    pub fn matching_brace(&self, position: FilePosition) -> Option<TextUnit> {
-        let parse = self.db.parse(position.file_id);
-        let file = parse.tree();
-        matching_brace::matching_brace(&file, position.offset)
+    pub fn matching_brace(&self, position: FilePosition) -> Cancelable<Option<TextUnit>> {
+        self.with_db(|db| {
+            let parse = db.parse(position.file_id);
+            let file = parse.tree();
+            matching_brace::matching_brace(&file, position.offset)
+        })
     }
 
     /// Returns a syntax tree represented as `String`, for debug purposes.
     // FIXME: use a better name here.
-    pub fn syntax_tree(&self, file_id: FileId, text_range: Option<TextRange>) -> String {
-        syntax_tree::syntax_tree(&self.db, file_id, text_range)
+    pub fn syntax_tree(
+        &self,
+        file_id: FileId,
+        text_range: Option<TextRange>,
+    ) -> Cancelable<String> {
+        self.with_db(|db| syntax_tree::syntax_tree(&db, file_id, text_range))
     }
 
     /// Returns an edit to remove all newlines in the range, cleaning up minor
     /// stuff like trailing commas.
-    pub fn join_lines(&self, frange: FileRange) -> SourceChange {
-        let parse = self.db.parse(frange.file_id);
-        let file_edit = SourceFileEdit {
-            file_id: frange.file_id,
-            edit: join_lines::join_lines(&parse.tree(), frange.range),
-        };
-        SourceChange::source_file_edit("join lines", file_edit)
+    pub fn join_lines(&self, frange: FileRange) -> Cancelable<SourceChange> {
+        self.with_db(|db| {
+            let parse = db.parse(frange.file_id);
+            let file_edit = SourceFileEdit {
+                file_id: frange.file_id,
+                edit: join_lines::join_lines(&parse.tree(), frange.range),
+            };
+            SourceChange::source_file_edit("join lines", file_edit)
+        })
     }
 
     /// Returns an edit which should be applied when opening a new line, fixing
     /// up minor stuff like continuing the comment.
-    pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
-        typing::on_enter(&self.db, position)
+    pub fn on_enter(&self, position: FilePosition) -> Cancelable<Option<SourceChange>> {
+        self.with_db(|db| typing::on_enter(&db, position))
     }
 
     /// Returns an edit which should be applied after `=` was typed. Primarily,
     /// this works when adding `let =`.
     // FIXME: use a snippet completion instead of this hack here.
-    pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
-        let parse = self.db.parse(position.file_id);
-        let file = parse.tree();
-        let edit = typing::on_eq_typed(&file, position.offset)?;
-        Some(SourceChange::source_file_edit(
-            "add semicolon",
-            SourceFileEdit { edit, file_id: position.file_id },
-        ))
+    pub fn on_eq_typed(&self, position: FilePosition) -> Cancelable<Option<SourceChange>> {
+        self.with_db(|db| {
+            let parse = db.parse(position.file_id);
+            let file = parse.tree();
+            let edit = typing::on_eq_typed(&file, position.offset)?;
+            Some(SourceChange::source_file_edit(
+                "add semicolon",
+                SourceFileEdit { edit, file_id: position.file_id },
+            ))
+        })
     }
 
     /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
-    pub fn on_dot_typed(&self, position: FilePosition) -> Option<SourceChange> {
-        typing::on_dot_typed(&self.db, position)
+    pub fn on_dot_typed(&self, position: FilePosition) -> Cancelable<Option<SourceChange>> {
+        self.with_db(|db| typing::on_dot_typed(&db, position))
     }
 
     /// Returns a tree representation of symbols in the file. Useful to draw a
     /// file outline.
-    pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
-        let parse = self.db.parse(file_id);
-        file_structure(&parse.tree())
+    pub fn file_structure(&self, file_id: FileId) -> Cancelable<Vec<StructureNode>> {
+        self.with_db(|db| file_structure(&db.parse(file_id).tree()))
     }
 
     /// Returns a list of the places in the file where type hints can be displayed.
@@ -404,9 +413,8 @@ impl Analysis {
     }
 
     /// Returns the set of folding ranges.
-    pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
-        let parse = self.db.parse(file_id);
-        folding_ranges::folding_ranges(&parse.tree())
+    pub fn folding_ranges(&self, file_id: FileId) -> Cancelable<Vec<Fold>> {
+        self.with_db(|db| folding_ranges::folding_ranges(&db.parse(file_id).tree()))
     }
 
     /// Fuzzy searches for a symbol.

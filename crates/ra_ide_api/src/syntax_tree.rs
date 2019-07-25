@@ -101,7 +101,7 @@ mod tests {
     fn test_syntax_tree_without_range() {
         // Basic syntax
         let (analysis, file_id) = single_file(r#"fn foo() {}"#);
-        let syn = analysis.syntax_tree(file_id, None);
+        let syn = analysis.syntax_tree(file_id, None).unwrap();
 
         assert_eq_text!(
             syn.trim(),
@@ -133,7 +133,7 @@ fn test() {
 }"#
             .trim(),
         );
-        let syn = analysis.syntax_tree(file_id, None);
+        let syn = analysis.syntax_tree(file_id, None).unwrap();
 
         assert_eq_text!(
             syn.trim(),
@@ -176,7 +176,7 @@ SOURCE_FILE@[0; 60)
     #[test]
     fn test_syntax_tree_with_range() {
         let (analysis, range) = single_file_with_range(r#"<|>fn foo() {}<|>"#.trim());
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range));
+        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
 
         assert_eq_text!(
             syn.trim(),
@@ -206,7 +206,7 @@ FN_DEF@[0; 11)
 }"#
             .trim(),
         );
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range));
+        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
 
         assert_eq_text!(
             syn.trim(),
@@ -244,7 +244,7 @@ fn bar() {
 }"#
             .trim(),
         );
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range));
+        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
         assert_eq_text!(
             syn.trim(),
             r#"
@@ -278,7 +278,7 @@ fn bar() {
 }"###
                 .trim(),
         );
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range));
+        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
         assert_eq_text!(
             syn.trim(),
             r#"
@@ -311,7 +311,7 @@ fn bar() {
 }"###
                 .trim(),
         );
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range));
+        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
         assert_eq_text!(
             syn.trim(),
             r#"
