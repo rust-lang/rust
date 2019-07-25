@@ -38,8 +38,8 @@ pub mod pal;
 pub mod deps;
 pub mod extdeps;
 pub mod ui_tests;
+pub mod unit_tests;
 pub mod unstable_book;
-pub mod libcoretest;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
