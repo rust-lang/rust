@@ -152,15 +152,23 @@ export function activate(context: vscode.ExtensionContext) {
     if (Server.config.displayInlayHints) {
         const hintsUpdater = new HintsUpdater();
         hintsUpdater.loadHints(vscode.window.activeTextEditor).then(() => {
-            disposeOnDeactivation(vscode.window.onDidChangeActiveTextEditor(editor =>
-                hintsUpdater.loadHints(editor)
-            ));
-            disposeOnDeactivation(vscode.workspace.onDidChangeTextDocument(e =>
-                hintsUpdater.updateHints(e)
-            ));
-            disposeOnDeactivation(vscode.workspace.onDidChangeConfiguration(_ =>
-                hintsUpdater.toggleHintsDisplay(Server.config.displayInlayHints)
-            ));
+            disposeOnDeactivation(
+                vscode.window.onDidChangeActiveTextEditor(editor =>
+                    hintsUpdater.loadHints(editor)
+                )
+            );
+            disposeOnDeactivation(
+                vscode.workspace.onDidChangeTextDocument(e =>
+                    hintsUpdater.updateHints(e)
+                )
+            );
+            disposeOnDeactivation(
+                vscode.workspace.onDidChangeConfiguration(_ =>
+                    hintsUpdater.toggleHintsDisplay(
+                        Server.config.displayInlayHints
+                    )
+                )
+            );
         });
     }
 }

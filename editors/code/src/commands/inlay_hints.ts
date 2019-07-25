@@ -25,7 +25,11 @@ export class HintsUpdater {
     public async loadHints(
         editor: vscode.TextEditor | undefined
     ): Promise<void> {
-        if (this.displayHints && editor !== undefined && this.isRustDocument(editor.document)) {
+        if (
+            this.displayHints &&
+            editor !== undefined &&
+            this.isRustDocument(editor.document)
+        ) {
             await this.updateDecorationsFromServer(
                 editor.document.uri.toString(),
                 editor
