@@ -1,9 +1,9 @@
 //! A character type.
 //!
 //! The `char` type represents a single character. More specifically, since
-//! `character` isn't a well-defined concept in Unicode, `char` is a [Unicode
-//! scalar value], which is similar to, but not the same as, a [Unicode code
-//! point].
+//! 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode
+//! scalar value]', which is similar to, but not the same as, a '[Unicode code
+//! point]'.
 //!
 //! [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
 //! [Unicode code point]: http://www.unicode.org/glossary/#code_point
