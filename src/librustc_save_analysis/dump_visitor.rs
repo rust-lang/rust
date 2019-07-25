@@ -10,7 +10,7 @@
 //!
 //! SpanUtils is used to manipulate spans. In particular, to extract sub-spans
 //! from spans (e.g., the span for `bar` from the above example path).
-//! DumpVisitor walks the AST and processes it, and JsonDumper is used for
+//! DumpVisitor walks the AST and processes it, and Dumper is used for
 //! recording the output.
 
 use rustc::hir::def::{Res, DefKind as HirDefKind};
@@ -38,7 +38,7 @@ use syntax_pos::*;
 
 use crate::{escape, generated_code, id_from_def_id, id_from_node_id, lower_attributes,
             PathCollector, SaveContext};
-use crate::json_dumper::{Access, JsonDumper};
+use crate::dumper::{Access, Dumper};
 use crate::span_utils::SpanUtils;
 use crate::sig;
 
@@ -78,7 +78,7 @@ macro_rules! access_from_vis {
 pub struct DumpVisitor<'l, 'tcx, 'll> {
     save_ctxt: SaveContext<'l, 'tcx>,
     tcx: TyCtxt<'tcx>,
-    dumper: &'ll mut JsonDumper,
+    dumper: &'ll mut Dumper,
 
     span: SpanUtils<'l>,
 
@@ -95,7 +95,7 @@ pub struct DumpVisitor<'l, 'tcx, 'll> {
 impl<'l, 'tcx, 'll> DumpVisitor<'l, 'tcx, 'll> {
     pub fn new(
         save_ctxt: SaveContext<'l, 'tcx>,
-        dumper: &'ll mut JsonDumper,
+        dumper: &'ll mut Dumper,
     ) -> DumpVisitor<'l, 'tcx, 'll> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         DumpVisitor {

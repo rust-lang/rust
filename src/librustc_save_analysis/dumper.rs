@@ -9,14 +9,14 @@ pub struct Access {
     pub public: bool,
 }
 
-pub struct JsonDumper {
+pub struct Dumper {
     result: Analysis,
     config: Config,
 }
 
-impl JsonDumper {
-    pub fn new(config: Config) -> JsonDumper {
-        JsonDumper {
+impl Dumper {
+    pub fn new(config: Config) -> Dumper {
+        Dumper {
             config: config.clone(),
             result: Analysis::new(config),
         }
@@ -27,7 +27,7 @@ impl JsonDumper {
     }
 }
 
-impl JsonDumper {
+impl Dumper {
     pub fn crate_prelude(&mut self, data: CratePreludeData) {
         self.result.prelude = Some(data)
     }
