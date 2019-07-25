@@ -20,18 +20,22 @@ fn classify_arg_ty<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64, remaining_gpr: &mut 
     // according to the ABI. 2*XLen-aligned varargs are passed in "aligned"
     // register pairs, so may consume 3 registers.
     
-    let mut stack_required = false;
     let arg_size = arg.layout.size;
+    if arg_size.bits() > MAX_ARG_IN_REGS_SIZE {
+        arg.make_indirect();
+        return;
+    }
+
     let alignment = arg.layout.details.align.abi;
-
-
     let mut required_gpr = 1u64; // at least one per arg
+
     if alignment.bits() == 2 * xlen {
         required_gpr = 2 + (*remaining_gpr % 2);
     } else if  arg_size.bits() > xlen && arg_size.bits() <= MAX_ARG_IN_REGS_SIZE {
-        required_gpr = arg_size.bits() + (xlen - 1) / xlen; 
+        required_gpr = (arg_size.bits() + (xlen - 1)) / xlen;
     }
 
+    let mut stack_required = false;
     if required_gpr > *remaining_gpr {
         stack_required = true;
         required_gpr = *remaining_gpr;
