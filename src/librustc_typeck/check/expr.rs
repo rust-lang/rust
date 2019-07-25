@@ -225,7 +225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.mk_unit()
             }
             ExprKind::Break(destination, ref expr_opt) => {
-                self.check_expr_break(destination, expr_opt.deref(), expr)
+                self.check_expr_break(destination, expr_opt.as_deref(), expr)
             }
             ExprKind::Continue(destination) => {
                 if destination.target_id.is_ok() {
@@ -236,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => {
-                self.check_expr_return(expr_opt.deref(), expr)
+                self.check_expr_return(expr_opt.as_deref(), expr)
             }
             ExprKind::Assign(ref lhs, ref rhs) => {
                 self.check_expr_assign(expr, expected, lhs, rhs)
