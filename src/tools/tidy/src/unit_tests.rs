@@ -13,14 +13,16 @@ pub fn check(path: &Path, bad: &mut bool) {
         &mut |entry, contents| {
             let subpath = entry.path();
             if let Some("rs") = subpath.extension().and_then(|e| e.to_str()) {
-                let contents = contents.trim();
-                if !contents.starts_with("//") && contents.contains("#[test]") {
-                    tidy_error!(
-                        bad,
-                        "`{}` contains `#[test]`; libcore tests must be placed inside \
-                        `src/libcore/tests/`",
-                        subpath.display()
-                    );
+                for line in contents.lines() {
+                    let line = line.trim();
+                    if !line.starts_with("//") && line.contains("#[test]") {
+                        tidy_error!(
+                            bad,
+                            "`{}` contains `#[test]`; libcore tests must be placed inside \
+                            `src/libcore/tests/`",
+                            subpath.display()
+                        );
+                    }
                 }
             }
         },
