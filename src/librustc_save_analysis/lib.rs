@@ -1075,17 +1075,19 @@ impl<'a> SaveHandler for DumpHandler<'a> {
         input: &'l Input,
     ) {
         let sess = &save_ctxt.tcx.sess;
-        let file_name = {
-            let (mut output, file_name) = self.output_file(&save_ctxt);
-            let mut dumper = JsonDumper::new(&mut output, save_ctxt.config.clone());
-            let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+        let (output, file_name) = self.output_file(&save_ctxt);
+        let mut dumper = JsonDumper::new(save_ctxt.config.clone());
+        let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
-            visitor.dump_crate_info(cratename, krate);
-            visitor.dump_compilation_options(input, cratename);
-            visit::walk_crate(&mut visitor, krate);
+        visitor.dump_crate_info(cratename, krate);
+        visitor.dump_compilation_options(input, cratename);
+        visit::walk_crate(&mut visitor, krate);
 
-            file_name
-        };
+        dumper.to_output(|analysis| {
+            if let Err(e) = serde_json::to_writer(output, analysis) {
+                error!("Can't serialize save-analysis: {:?}", e);
+            }
+        });
 
         if sess.opts.debugging_opts.emit_artifact_notifications {
             sess.parse_sess.span_diagnostic
@@ -1112,12 +1114,14 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
         // using the JsonDumper to collect the save-analysis results, but not
         // actually to dump them to a file. This is all a bit convoluted and
         // there is certainly a simpler design here trying to get out (FIXME).
-        let mut dumper = JsonDumper::with_callback(self.callback, save_ctxt.config.clone());
+        let mut dumper = JsonDumper::new(save_ctxt.config.clone());
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
         visitor.dump_compilation_options(input, cratename);
         visit::walk_crate(&mut visitor, krate);
+
+        dumper.to_output(|a| (self.callback)(a))
     }
 }
 
