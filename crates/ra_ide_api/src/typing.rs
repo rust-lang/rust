@@ -195,7 +195,7 @@ fn foo() {
         edit.insert(offset, ".".to_string());
         let before = edit.finish().apply(&before);
         let (analysis, file_id) = single_file(&before);
-        if let Some(result) = analysis.on_dot_typed(FilePosition { offset, file_id }) {
+        if let Some(result) = analysis.on_dot_typed(FilePosition { offset, file_id }).unwrap() {
             assert_eq!(result.source_file_edits.len(), 1);
             let actual = result.source_file_edits[0].edit.apply(&before);
             assert_eq_text!(after, &actual);
@@ -377,7 +377,7 @@ fn foo() {
         fn apply_on_enter(before: &str) -> Option<String> {
             let (offset, before) = extract_offset(before);
             let (analysis, file_id) = single_file(&before);
-            let result = analysis.on_enter(FilePosition { offset, file_id })?;
+            let result = analysis.on_enter(FilePosition { offset, file_id }).unwrap()?;
 
             assert_eq!(result.source_file_edits.len(), 1);
             let actual = result.source_file_edits[0].edit.apply(&before);

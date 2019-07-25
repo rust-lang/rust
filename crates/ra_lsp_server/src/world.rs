@@ -215,7 +215,12 @@ impl WorldSnapshot {
             }
         }
         res.push_str("\nanalysis:\n");
-        res.push_str(&self.analysis.status());
+        res.push_str(
+            &self
+                .analysis
+                .status()
+                .unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
+        );
         res
     }
 

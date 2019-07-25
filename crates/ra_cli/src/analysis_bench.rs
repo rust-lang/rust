@@ -55,7 +55,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
         Op::Complete { line, column, .. } => {
             let offset = host
                 .analysis()
-                .file_line_index(file_id)
+                .file_line_index(file_id)?
                 .offset(LineCol { line, col_utf16: column });
             let file_postion = FilePosition { file_id, offset };
 

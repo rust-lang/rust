@@ -39,9 +39,9 @@ pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
 
 pub fn handle_syntax_tree(world: WorldSnapshot, params: req::SyntaxTreeParams) -> Result<String> {
     let id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(id);
+    let line_index = world.analysis().file_line_index(id)?;
     let text_range = params.range.map(|p| p.conv_with(&line_index));
-    let res = world.analysis().syntax_tree(id, text_range);
+    let res = world.analysis().syntax_tree(id, text_range)?;
     Ok(res)
 }
 
@@ -55,7 +55,7 @@ pub fn handle_extend_selection(
          use the new selection range API in LSP",
     );
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
     let selections = params
         .selections
         .into_iter()
@@ -72,7 +72,7 @@ pub fn handle_selection_range(
 ) -> Result<Vec<req::SelectionRange>> {
     let _p = profile("handle_selection_range");
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
     params
         .positions
         .into_iter()
@@ -113,13 +113,19 @@ pub fn handle_find_matching_brace(
 ) -> Result<Vec<Position>> {
     let _p = profile("handle_find_matching_brace");
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
     let res = params
         .offsets
         .into_iter()
         .map_conv_with(&line_index)
         .map(|offset| {
-            world.analysis().matching_brace(FilePosition { file_id, offset }).unwrap_or(offset)
+            if let Ok(Some(matching_brace_offset)) =
+                world.analysis().matching_brace(FilePosition { file_id, offset })
+            {
+                matching_brace_offset
+            } else {
+                offset
+            }
         })
         .map_conv_with(&line_index)
         .collect();
@@ -132,7 +138,7 @@ pub fn handle_join_lines(
 ) -> Result<req::SourceChange> {
     let _p = profile("handle_join_lines");
     let frange = (&params.text_document, params.range).try_conv_with(&world)?;
-    world.analysis().join_lines(frange).try_conv_with(&world)
+    world.analysis().join_lines(frange)?.try_conv_with(&world)
 }
 
 pub fn handle_on_enter(
@@ -141,7 +147,7 @@ pub fn handle_on_enter(
 ) -> Result<Option<req::SourceChange>> {
     let _p = profile("handle_on_enter");
     let position = params.try_conv_with(&world)?;
-    match world.analysis().on_enter(position) {
+    match world.analysis().on_enter(position)? {
         None => Ok(None),
         Some(edit) => Ok(Some(edit.try_conv_with(&world)?)),
     }
@@ -153,7 +159,7 @@ pub fn handle_on_type_formatting(
 ) -> Result<Option<Vec<TextEdit>>> {
     let _p = profile("handle_on_type_formatting");
     let mut position = params.text_document_position.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(position.file_id);
+    let line_index = world.analysis().file_line_index(position.file_id)?;
 
     // in `ra_ide_api`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
@@ -163,7 +169,7 @@ pub fn handle_on_type_formatting(
         "=" => world.analysis().on_eq_typed(position),
         "." => world.analysis().on_dot_typed(position),
         _ => return Ok(None),
-    };
+    }?;
     let mut edit = match edit {
         Some(it) => it,
         None => return Ok(None),
@@ -181,11 +187,11 @@ pub fn handle_document_symbol(
     params: req::DocumentSymbolParams,
 ) -> Result<Option<req::DocumentSymbolResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
 
     let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
 
-    for symbol in world.analysis().file_structure(file_id) {
+    for symbol in world.analysis().file_structure(file_id)? {
         let doc_symbol = DocumentSymbol {
             name: symbol.label,
             detail: symbol.detail,
@@ -309,7 +315,7 @@ pub fn handle_runnables(
     params: req::RunnablesParams,
 ) -> Result<Vec<req::Runnable>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
     let offset = params.position.map(|it| it.conv_with(&line_index));
     let mut res = Vec::new();
     let workspace_root = world.workspace_root_for(file_id);
@@ -383,7 +389,7 @@ pub fn handle_completion(
         let mut res = false;
         if let Some(ctx) = params.context {
             if ctx.trigger_character.unwrap_or_default() == ":" {
-                let source_file = world.analysis().parse(position.file_id);
+                let source_file = world.analysis().parse(position.file_id)?;
                 let syntax = source_file.syntax();
                 let text = syntax.text();
                 if let Some(next_char) = text.char_at(position.offset) {
@@ -405,7 +411,7 @@ pub fn handle_completion(
         None => return Ok(None),
         Some(items) => items,
     };
-    let line_index = world.analysis().file_line_index(position.file_id);
+    let line_index = world.analysis().file_line_index(position.file_id)?;
     let items: Vec<CompletionItem> =
         items.into_iter().map(|item| item.conv_with(&line_index)).collect();
 
@@ -417,12 +423,12 @@ pub fn handle_folding_range(
     params: FoldingRangeParams,
 ) -> Result<Option<Vec<FoldingRange>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
 
     let res = Some(
         world
             .analysis()
-            .folding_ranges(file_id)
+            .folding_ranges(file_id)?
             .into_iter()
             .map(|fold| {
                 let kind = match fold.kind {
@@ -474,7 +480,7 @@ pub fn handle_hover(
         None => return Ok(None),
         Some(info) => info,
     };
-    let line_index = world.analysis.file_line_index(position.file_id);
+    let line_index = world.analysis.file_line_index(position.file_id)?;
     let range = info.range.conv_with(&line_index);
     let res = Hover {
         contents: HoverContents::Markup(MarkupContent {
@@ -503,7 +509,7 @@ pub fn handle_prepare_rename(
     // Refs should always have a declaration
     let r = refs.declaration();
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
     let loc = to_location(r.file_id(), r.range(), &world, &line_index)?;
 
     Ok(Some(PrepareRenameResponse::Range(loc.range)))
@@ -536,7 +542,7 @@ pub fn handle_references(
     params: req::ReferenceParams,
 ) -> Result<Option<Vec<Location>>> {
     let position = params.text_document_position.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(position.file_id);
+    let line_index = world.analysis().file_line_index(position.file_id)?;
 
     let refs = match world.analysis().find_all_refs(position)? {
         None => return Ok(None),
@@ -563,9 +569,9 @@ pub fn handle_formatting(
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let file = world.analysis().file_text(file_id);
+    let file = world.analysis().file_text(file_id)?;
 
-    let file_line_index = world.analysis().file_line_index(file_id);
+    let file_line_index = world.analysis().file_line_index(file_id)?;
     let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
 
     use std::process;
@@ -623,7 +629,7 @@ pub fn handle_code_action(
 ) -> Result<Option<CodeActionResponse>> {
     let _p = profile("handle_code_action");
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
     let range = params.range.conv_with(&line_index);
 
     let assists = world.analysis().assists(FileRange { file_id, range })?.into_iter();
@@ -685,7 +691,7 @@ pub fn handle_code_lens(
     params: req::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
 
     let mut lenses: Vec<CodeLens> = Default::default();
     let workspace_root = world.workspace_root_for(file_id);
@@ -730,7 +736,7 @@ pub fn handle_code_lens(
     lenses.extend(
         world
             .analysis()
-            .file_structure(file_id)
+            .file_structure(file_id)?
             .into_iter()
             .filter(|it| match it.kind {
                 SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
@@ -807,7 +813,7 @@ pub fn handle_document_highlight(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<Vec<DocumentHighlight>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
 
     let refs = match world.analysis().find_all_refs(params.try_conv_with(&world)?)? {
         None => return Ok(None),
@@ -826,7 +832,7 @@ pub fn publish_diagnostics(
     file_id: FileId,
 ) -> Result<req::PublishDiagnosticsParams> {
     let uri = world.file_id_to_uri(file_id)?;
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
     let diagnostics = world
         .analysis()
         .diagnostics(file_id)?
@@ -852,7 +858,7 @@ pub fn publish_decorations(
 }
 
 fn highlight(world: &WorldSnapshot, file_id: FileId) -> Result<Vec<Decoration>> {
-    let line_index = world.analysis().file_line_index(file_id);
+    let line_index = world.analysis().file_line_index(file_id)?;
     let res = world
         .analysis()
         .highlight(file_id)?
@@ -881,7 +887,7 @@ pub fn handle_inlay_hints(
 ) -> Result<Vec<InlayHint>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let analysis = world.analysis();
-    let line_index = analysis.file_line_index(file_id);
+    let line_index = analysis.file_line_index(file_id)?;
     Ok(analysis
         .inlay_hints(file_id)?
         .into_iter()

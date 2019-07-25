@@ -272,7 +272,7 @@ impl<'a> TryConvWith for &'a TextDocumentPositionParams {
     type Output = FilePosition;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FilePosition> {
         let file_id = self.text_document.try_conv_with(world)?;
-        let line_index = world.analysis().file_line_index(file_id);
+        let line_index = world.analysis().file_line_index(file_id)?;
         let offset = self.position.conv_with(&line_index);
         Ok(FilePosition { file_id, offset })
     }
@@ -283,7 +283,7 @@ impl<'a> TryConvWith for (&'a TextDocumentIdentifier, Range) {
     type Output = FileRange;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileRange> {
         let file_id = self.0.try_conv_with(world)?;
-        let line_index = world.analysis().file_line_index(file_id);
+        let line_index = world.analysis().file_line_index(file_id)?;
         let range = self.1.conv_with(&line_index);
         Ok(FileRange { file_id, range })
     }
@@ -308,7 +308,7 @@ impl TryConvWith for SourceChange {
         let cursor_position = match self.cursor_position {
             None => None,
             Some(pos) => {
-                let line_index = world.analysis().file_line_index(pos.file_id);
+                let line_index = world.analysis().file_line_index(pos.file_id)?;
                 let edit = self
                     .source_file_edits
                     .iter()
@@ -349,7 +349,7 @@ impl TryConvWith for SourceFileEdit {
             uri: self.file_id.try_conv_with(world)?,
             version: None,
         };
-        let line_index = world.analysis().file_line_index(self.file_id);
+        let line_index = world.analysis().file_line_index(self.file_id)?;
         let edits = self.edit.as_atoms().iter().map_conv_with(&line_index).collect();
         Ok(TextDocumentEdit { text_document, edits })
     }
@@ -378,7 +378,7 @@ impl TryConvWith for &NavigationTarget {
     type Ctx = WorldSnapshot;
     type Output = Location;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<Location> {
-        let line_index = world.analysis().file_line_index(self.file_id());
+        let line_index = world.analysis().file_line_index(self.file_id())?;
         let range = self.range();
         to_location(self.file_id(), range, &world, &line_index)
     }
@@ -391,8 +391,8 @@ impl TryConvWith for (FileId, RangeInfo<NavigationTarget>) {
         let (src_file_id, target) = self;
 
         let target_uri = target.info.file_id().try_conv_with(world)?;
-        let src_line_index = world.analysis().file_line_index(src_file_id);
-        let tgt_line_index = world.analysis().file_line_index(target.info.file_id());
+        let src_line_index = world.analysis().file_line_index(src_file_id)?;
+        let tgt_line_index = world.analysis().file_line_index(target.info.file_id())?;
 
         let target_range = target.info.full_range().conv_with(&tgt_line_index);
 
