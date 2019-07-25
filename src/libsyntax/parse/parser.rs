@@ -7671,6 +7671,11 @@ impl<'a> Parser<'a> {
         let ret = f(self);
         let last_token = if self.token_cursor.stack.len() == prev {
             &mut self.token_cursor.frame.last_token
+        } else if self.token_cursor.stack.get(prev).is_none() {
+            // This can happen due to a bad interaction of two unrelated recovery mechanisms with
+            // mismatched delimiters *and* recovery lookahead on the likely typo `pub ident(`
+            // (#62881).
+            return Ok((ret?, TokenStream::new(vec![])));
         } else {
             &mut self.token_cursor.stack[prev].last_token
         };
@@ -7678,7 +7683,15 @@ impl<'a> Parser<'a> {
         // Pull out the tokens that we've collected from the call to `f` above.
         let mut collected_tokens = match *last_token {
             LastToken::Collecting(ref mut v) => mem::take(v),
-            LastToken::Was(_) => panic!("our vector went away?"),
+            LastToken::Was(ref was) => {
+                let msg = format!("our vector went away? - found Was({:?})", was);
+                debug!("collect_tokens: {}", msg);
+                self.sess.span_diagnostic.delay_span_bug(self.token.span, &msg);
+                // This can happen due to a bad interaction of two unrelated recovery mechanisms
+                // with mismatched delimiters *and* recovery lookahead on the likely typo
+                // `pub ident(` (#62895, different but similar to the case above).
+                return Ok((ret?, TokenStream::new(vec![])));
+            }
         };
 
         // If we're not at EOF our current token wasn't actually consumed by
