@@ -22,6 +22,18 @@ impl<'a> IoSlice<'a> {
     }
 
     #[inline]
+    pub fn advance(&mut self, n: usize) {
+        if self.vec.iov_len < n {
+            panic!("advancing IoSlice beyond its length");
+        }
+
+        unsafe {
+            self.vec.iov_len -= n;
+            self.vec.iov_base = self.vec.iov_base.add(n);
+        }
+    }
+
+    #[inline]
     pub fn as_slice(&self) -> &[u8] {
         unsafe {
             slice::from_raw_parts(self.vec.iov_base as *mut u8, self.vec.iov_len)
@@ -44,6 +56,18 @@ impl<'a> IoSliceMut<'a> {
                 iov_len: buf.len()
             },
             _p: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        if self.vec.iov_len < n {
+            panic!("advancing IoSliceMut beyond its length");
+        }
+
+        unsafe {
+            self.vec.iov_len -= n;
+            self.vec.iov_base = self.vec.iov_base.add(n);
         }
     }
 
