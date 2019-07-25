@@ -535,40 +535,41 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
-        // Allocations of `static` items
-        // Can't do this in the match argument, we may get cycle errors since the lock would
-        // be held throughout the match.
-        let alloc = self.tcx.alloc_map.lock().get(id);
-        match alloc {
-            Some(GlobalAlloc::Static(did)) => {
-                // Use size and align of the type
-                let ty = self.tcx.type_of(did);
-                let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                return Ok((layout.size, layout.align.abi));
-            }
-            _ => {}
-        }
-        // Regular allocations.
-        if let Ok(alloc) = self.get(id) {
-            return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
-        }
-        // Function pointers.
-        if let Ok(_) = self.get_fn_alloc(id) {
-            return if let AllocCheck::Dereferencable = liveness {
-                // The caller requested no function pointers.
-                err!(DerefFunctionPointer)
-            } else {
-                Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
-            };
-        }
-        // The rest must be dead.
-        if let AllocCheck::MaybeDead = liveness {
-            // Deallocated pointers are allowed, we should be able to find
-            // them in the map.
-            Ok(*self.dead_alloc_map.get(&id)
-                .expect("deallocated pointers should all be recorded in `dead_alloc_map`"))
-        } else {
-            err!(DanglingPointerDeref)
+        let alloc_or_size_align = self.alloc_map.get_or(id, || -> Result<_, InterpResult<'static, (Size, Align)>> {
+            // Can't do this in the match argument, we may get cycle errors since the lock would
+            // be held throughout the match.
+            let alloc = self.tcx.alloc_map.lock().get(id);
+            Err(match alloc {
+                Some(GlobalAlloc::Static(did)) => {
+                    // Use size and align of the type
+                    let ty = self.tcx.type_of(did);
+                    let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                    Ok((layout.size, layout.align.abi))
+                },
+                Some(GlobalAlloc::Memory(alloc)) =>
+                    // this duplicates the logic on the `match alloc_or_size_align`, but due to the
+                    // API of `get_or` there's no way around that.
+                    Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align)),
+                Some(GlobalAlloc::Function(_)) => if let AllocCheck::Dereferencable = liveness {
+                    // The caller requested no function pointers.
+                    err!(DerefFunctionPointer)
+                } else {
+                    Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
+                },
+                // The rest must be dead.
+                None => if let AllocCheck::MaybeDead = liveness {
+                    // Deallocated pointers are allowed, we should be able to find
+                    // them in the map.
+                    Ok(*self.dead_alloc_map.get(&id)
+                        .expect("deallocated pointers should all be recorded in `dead_alloc_map`"))
+                } else {
+                    err!(DanglingPointerDeref)
+                },
+            })
+        });
+        match alloc_or_size_align {
+            Ok((_, alloc)) => Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align)),
+            Err(done) => done,
         }
     }
 
