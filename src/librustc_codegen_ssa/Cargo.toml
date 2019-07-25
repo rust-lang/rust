@@ -24,7 +24,6 @@ rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc = { path = "../librustc" }
-rustc_allocator = { path = "../librustc_allocator" }
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_data_structures = { path = "../librustc_data_structures"}

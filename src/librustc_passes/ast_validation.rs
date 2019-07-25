@@ -51,7 +51,6 @@ impl OuterImplTrait {
 struct AstValidator<'a> {
     session: &'a Session,
     has_proc_macro_decls: bool,
-    has_global_allocator: bool,
 
     /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
     /// Nested `impl Trait` _is_ allowed in associated type position,
@@ -539,10 +538,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.has_proc_macro_decls = true;
         }
 
-        if attr::contains_name(&item.attrs, sym::global_allocator) {
-            self.has_global_allocator = true;
-        }
-
         match item.node {
             ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
                 self.invalid_visibility(&item.vis, None);
@@ -848,11 +843,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
-pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
+pub fn check_crate(session: &Session, krate: &Crate) -> bool {
     let mut validator = AstValidator {
         session,
         has_proc_macro_decls: false,
-        has_global_allocator: false,
         outer_impl_trait: None,
         is_impl_trait_banned: false,
         is_assoc_ty_bound_banned: false,
@@ -861,5 +855,5 @@ pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
     };
     visit::walk_crate(&mut validator, krate);
 
-    (validator.has_proc_macro_decls, validator.has_global_allocator)
+    validator.has_proc_macro_decls
 }

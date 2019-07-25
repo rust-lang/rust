@@ -2,9 +2,8 @@ use std::ffi::CString;
 
 use crate::attributes;
 use libc::c_uint;
-use rustc::middle::allocator::AllocatorKind;
 use rustc::ty::TyCtxt;
-use rustc_allocator::{ALLOCATOR_METHODS, AllocatorTy};
+use syntax::ext::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 
 use crate::ModuleLlvm;
 use crate::llvm::{self, False, True};

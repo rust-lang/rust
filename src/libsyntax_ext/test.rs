@@ -1,31 +1,34 @@
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
+use syntax::ast;
+use syntax::attr::{self, check_builtin_macro_attribute};
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
-use syntax::attr;
-use syntax::ast;
 use syntax::print::pprust;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
+
 use std::iter;
 
 pub fn expand_test(
     cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
-    _meta_item: &ast::MetaItem,
+    meta_item: &ast::MetaItem,
     item: Annotatable,
 ) -> Vec<Annotatable> {
+    check_builtin_macro_attribute(cx, meta_item, sym::test);
     expand_test_or_bench(cx, attr_sp, item, false)
 }
 
 pub fn expand_bench(
     cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
-    _meta_item: &ast::MetaItem,
+    meta_item: &ast::MetaItem,
     item: Annotatable,
 ) -> Vec<Annotatable> {
+    check_builtin_macro_attribute(cx, meta_item, sym::bench);
     expand_test_or_bench(cx, attr_sp, item, true)
 }
 
