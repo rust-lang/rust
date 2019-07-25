@@ -74,7 +74,7 @@
 #![feature(concat_idents)]
 #![feature(const_fn)]
 #![feature(const_fn_union)]
-#![cfg_attr(not(bootstrap), feature(const_generics))]
+#![feature(const_generics)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
