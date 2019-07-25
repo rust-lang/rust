@@ -535,6 +535,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
+        // Allocations of `static` items
+        // Can't do this in the match argument, we may get cycle errors since the lock would
+        // be held throughout the match.
+        let alloc = self.tcx.alloc_map.lock().get(id);
+        match alloc {
+            Some(GlobalAlloc::Static(did)) => {
+                // Use size and align of the type
+                let ty = self.tcx.type_of(did);
+                let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                return Ok((layout.size, layout.align.abi));
+            }
+            _ => {}
+        }
         // Regular allocations.
         if let Ok(alloc) = self.get(id) {
             return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
@@ -547,20 +560,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             } else {
                 Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
             };
-        }
-        // Foreign statics.
-        // Can't do this in the match argument, we may get cycle errors since the lock would
-        // be held throughout the match.
-        let alloc = self.tcx.alloc_map.lock().get(id);
-        match alloc {
-            Some(GlobalAlloc::Static(did)) => {
-                assert!(self.tcx.is_foreign_item(did));
-                // Use size and align of the type
-                let ty = self.tcx.type_of(did);
-                let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                return Ok((layout.size, layout.align.abi));
-            }
-            _ => {}
         }
         // The rest must be dead.
         if let AllocCheck::MaybeDead = liveness {
