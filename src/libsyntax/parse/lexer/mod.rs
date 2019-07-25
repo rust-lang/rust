@@ -389,11 +389,18 @@ impl<'a> StringReader<'a> {
                                                           self.pos,
                                                           "unknown start of token",
                                                           c);
-                if let Some(t) = unicode_chars::check_for_substitution(self, start, c, &mut err) {
-                    err.emit();
-                    return Ok(t);
+                // FIXME: the lexer could be used to turn the ASCII version of unicode homoglyphs,
+                // instead of keeping a table in `check_for_substitution`into the token. Ideally,
+                // this should be inside `rustc_lexer`. However, we should first remove compound
+                // tokens like `<<` from `rustc_lexer`, and then add fancier error recovery to it,
+                // as there will be less overall work to do this way.
+                return match unicode_chars::check_for_substitution(self, start, c, &mut err) {
+                    Some(token) => {
+                        err.emit();
+                        Ok(token)
+                    }
+                    None => Err(err),
                 }
-                return Err(err)
             }
         };
         Ok(kind)

@@ -3,7 +3,7 @@
 
 use super::StringReader;
 use errors::{Applicability, DiagnosticBuilder};
-use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
+use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION, symbol::kw};
 use crate::parse::token;
 
 #[rustfmt::skip] // for line breaks
@@ -298,9 +298,13 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('＞', "Fullwidth Greater-Than Sign", '>'),
 ];
 
+// FIXME: the lexer could be used to turn the ASCII version of unicode homoglyphs, instead of
+// keeping the substitution token in this table. Ideally, this should be inside `rustc_lexer`.
+// However, we should first remove compound tokens like `<<` from `rustc_lexer`, and then add
+// fancier error recovery to it, as there will be less overall work to do this way.
 const ASCII_ARRAY: &[(char, &str, Option<token::TokenKind>)] = &[
     (' ', "Space", Some(token::Whitespace)),
-    ('_', "Underscore", None),
+    ('_', "Underscore", Some(token::Ident(kw::Underscore, false))),
     ('-', "Minus/Hyphen", Some(token::BinOp(token::Minus))),
     (',', "Comma", Some(token::Comma)),
     (';', "Semicolon", Some(token::Semi)),
@@ -308,8 +312,6 @@ const ASCII_ARRAY: &[(char, &str, Option<token::TokenKind>)] = &[
     ('!', "Exclamation Mark", Some(token::Not)),
     ('?', "Question Mark", Some(token::Question)),
     ('.', "Period", Some(token::Dot)),
-    ('\'', "Single Quote", None),  // Literals are already lexed by this point, so we can't recover
-    ('"', "Quotation Mark", None), // gracefully just by spitting the correct token out.
     ('(', "Left Parenthesis", Some(token::OpenDelim(token::Paren))),
     (')', "Right Parenthesis", Some(token::CloseDelim(token::Paren))),
     ('[', "Left Square Bracket", Some(token::OpenDelim(token::Bracket))),
@@ -324,6 +326,10 @@ const ASCII_ARRAY: &[(char, &str, Option<token::TokenKind>)] = &[
     ('<', "Less-Than Sign", Some(token::Lt)),
     ('=', "Equals Sign", Some(token::Eq)),
     ('>', "Greater-Than Sign", Some(token::Gt)),
+    // FIXME: Literals are already lexed by this point, so we can't recover gracefully just by
+    // spitting the correct token out.
+    ('\'', "Single Quote", None),
+    ('"', "Quotation Mark", None),
 ];
 
 crate fn check_for_substitution<'a>(
