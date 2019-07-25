@@ -34,7 +34,7 @@ use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable;
 
-use serialize::{self, Encoder, Encodable, Decoder, Decodable};
+use rustc_serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::{BTreeSet, BTreeMap};
 use std::fmt;
 use smallvec::SmallVec;
@@ -92,7 +92,7 @@ impl HirId {
     }
 }
 
-impl serialize::UseSpecializedEncodable for HirId {
+impl rustc_serialize::UseSpecializedEncodable for HirId {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let HirId {
             owner,
@@ -104,7 +104,7 @@ impl serialize::UseSpecializedEncodable for HirId {
     }
 }
 
-impl serialize::UseSpecializedDecodable for HirId {
+impl rustc_serialize::UseSpecializedDecodable for HirId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<HirId, D::Error> {
         let owner = DefIndex::decode(d)?;
         let local_id = ItemLocalId::decode(d)?;
@@ -727,6 +727,8 @@ pub struct Crate {
     pub attrs: HirVec<Attribute>,
     pub span: Span,
     pub exported_macros: HirVec<MacroDef>,
+    // Attributes from non-exported macros, kept only for collecting the library feature list.
+    pub non_exported_macro_attrs: HirVec<Attribute>,
 
     // N.B., we use a BTreeMap here so that `visit_all_items` iterates
     // over the ids in increasing order. In principle it should not
@@ -1405,7 +1407,6 @@ impl Expr {
             ExprKind::Lit(_) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
-            ExprKind::While(..) => ExprPrecedence::While,
             ExprKind::Loop(..) => ExprPrecedence::Loop,
             ExprKind::Match(..) => ExprPrecedence::Match,
             ExprKind::Closure(..) => ExprPrecedence::Closure,
@@ -1464,7 +1465,6 @@ impl Expr {
             ExprKind::Break(..) |
             ExprKind::Continue(..) |
             ExprKind::Ret(..) |
-            ExprKind::While(..) |
             ExprKind::Loop(..) |
             ExprKind::Assign(..) |
             ExprKind::InlineAsm(..) |
@@ -1532,10 +1532,6 @@ pub enum ExprKind {
     /// This construct only exists to tweak the drop order in HIR lowering.
     /// An example of that is the desugaring of `for` loops.
     DropTemps(P<Expr>),
-    /// A while loop, with an optional label
-    ///
-    /// I.e., `'label: while expr { <block> }`.
-    While(P<Expr>, P<Block>, Option<Label>),
     /// A conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// I.e., `'label: loop { <block> }`.
@@ -1653,6 +1649,8 @@ pub enum MatchSource {
     IfLetDesugar {
         contains_else_clause: bool,
     },
+    /// A `while _ { .. }` (which was desugared to a `loop { match _ { .. } }`).
+    WhileDesugar,
     /// A `while let _ = _ { .. }` (which was desugared to a
     /// `loop { match _ { .. } }`).
     WhileLetDesugar,
@@ -1669,10 +1667,23 @@ pub enum MatchSource {
 pub enum LoopSource {
     /// A `loop { .. }` loop.
     Loop,
+    /// A `while _ { .. }` loop.
+    While,
     /// A `while let _ = _ { .. }` loop.
     WhileLet,
     /// A `for _ in _ { .. }` loop.
     ForLoop,
+}
+
+impl LoopSource {
+    pub fn name(self) -> &'static str {
+        match self {
+            LoopSource::Loop => "loop",
+            LoopSource::While => "while",
+            LoopSource::WhileLet => "while let",
+            LoopSource::ForLoop => "for",
+        }
+    }
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]

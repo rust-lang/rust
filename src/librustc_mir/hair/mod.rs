@@ -173,7 +173,6 @@ pub enum ExprKind<'tcx> {
         source: ExprRef<'tcx>,
     },
     Loop {
-        condition: Option<ExprRef<'tcx>>,
         body: ExprRef<'tcx>,
     },
     Match {

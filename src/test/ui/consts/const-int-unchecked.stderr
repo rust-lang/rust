@@ -6,7 +6,7 @@ LL | const SHL_U8: u8 = unsafe { intrinsics::unchecked_shl(5_u8, 8) };
    |                             |
    |                             Overflowing shift by 8 in unchecked_shl
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:16:31

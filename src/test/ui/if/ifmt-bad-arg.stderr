@@ -146,11 +146,13 @@ note: previously here
 LL |     format!("{foo}", foo=1, foo=2);
    |                          ^
 
-error: expected ident, positional arguments cannot follow named arguments
-  --> $DIR/ifmt-bad-arg.rs:41:24
+error: positional arguments cannot follow named arguments
+  --> $DIR/ifmt-bad-arg.rs:41:35
    |
-LL |     format!("", foo=1, 2);
-   |                        ^
+LL |     format!("{foo} {} {}", foo=1, 2);
+   |                                -  ^ positional arguments must be before named arguments
+   |                                |
+   |                                named argument
 
 error: there is no argument named `valueb`
   --> $DIR/ifmt-bad-arg.rs:45:23

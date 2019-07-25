@@ -3,11 +3,12 @@
 
 fn f<T: Copy, const N: usize>(x: T) -> [T; N] {
     [x; {N}]
+    //~^ ERROR array lengths can't depend on generic parameters
 }
 
 fn g<T, const N: usize>(x: T) -> [T; N] {
     [x; {N}]
-    //~^ ERROR the trait bound `T: std::marker::Copy` is not satisfied [E0277]
+    //~^ ERROR array lengths can't depend on generic parameters
 }
 
 fn main() {

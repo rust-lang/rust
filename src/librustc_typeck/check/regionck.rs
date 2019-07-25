@@ -685,16 +685,6 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
                 self.set_repeating_scope(repeating_scope);
             }
 
-            hir::ExprKind::While(ref cond, ref body, _) => {
-                let repeating_scope = self.set_repeating_scope(cond.hir_id);
-                self.visit_expr(&cond);
-
-                self.set_repeating_scope(body.hir_id);
-                self.visit_block(&body);
-
-                self.set_repeating_scope(repeating_scope);
-            }
-
             hir::ExprKind::Ret(Some(ref ret_expr)) => {
                 let call_site_scope = self.call_site_scope;
                 debug!(
@@ -809,7 +799,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         debug!("callee_region={:?}", callee_region);
 
         for arg_expr in arg_exprs {
-            debug!("Argument: {:?}", arg_expr);
+            debug!("argument: {:?}", arg_expr);
 
             // ensure that any regions appearing in the argument type are
             // valid for at least the lifetime of the function:

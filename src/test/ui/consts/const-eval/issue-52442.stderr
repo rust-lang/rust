@@ -1,8 +1,11 @@
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/issue-52442.rs:2:14
+error[E0658]: casting pointers to integers in constants is unstable
+  --> $DIR/issue-52442.rs:2:13
    |
 LL |     [();  { &loop { break } as *const _ as usize } ];
-   |              ^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51910
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/issue-52442.rs:2:11
@@ -14,5 +17,5 @@ LL |     [();  { &loop { break } as *const _ as usize } ];
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0019, E0080.
-For more information about an error, try `rustc --explain E0019`.
+Some errors have detailed explanations: E0080, E0658.
+For more information about an error, try `rustc --explain E0080`.

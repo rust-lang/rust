@@ -4,7 +4,7 @@ warning: use of deprecated item 'MustUseDeprecated'
 LL | impl MustUseDeprecated {
    |      ^^^^^^^^^^^^^^^^^
    |
-   = note: #[warn(deprecated)] on by default
+   = note: `#[warn(deprecated)]` on by default
 
 warning: use of deprecated item 'MustUseDeprecated'
   --> $DIR/cfg-attr-multi-true.rs:19:5

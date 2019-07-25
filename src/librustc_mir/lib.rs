@@ -15,12 +15,10 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(decl_macro)]
 #![feature(exhaustive_patterns)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(rustc_attrs)]
 #![feature(never_type)]
 #![feature(specialization)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
-#![feature(step_trait)]
 #![feature(slice_concat_ext)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]
@@ -32,13 +30,9 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![deny(unused_lifetimes)]
 
 #[macro_use] extern crate log;
-#[macro_use]
-extern crate rustc;
+#[macro_use] extern crate rustc;
 #[macro_use] extern crate rustc_data_structures;
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
-#[macro_use]
-extern crate syntax;
+#[macro_use] extern crate syntax;
 
 mod error_codes;
 

@@ -1650,7 +1650,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             Applicability::MaybeIncorrect,
                         );
                     } else {
-                        err.span_label(span, format!("variant not found in `{}`", qself_ty));
+                        err.span_label(
+                            assoc_ident.span,
+                            format!("variant not found in `{}`", qself_ty),
+                        );
                     }
 
                     if let Some(sp) = tcx.hir().span_if_local(adt_def.did) {
@@ -1709,8 +1712,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             err.span_suggestion(
                 span,
                 "use fully-qualified syntax",
-                format!("<{} as {}>::{}", qself_ty, "Trait", assoc_ident),
-                Applicability::HasPlaceholders,
+                format!("<{} as {}>::{}", qself_ty, tcx.item_name(trait_did), assoc_ident),
+                Applicability::MachineApplicable,
             ).emit();
         }
 

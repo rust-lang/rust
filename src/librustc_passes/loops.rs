@@ -13,26 +13,9 @@ use syntax_pos::Span;
 use errors::Applicability;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum LoopKind {
-    Loop(hir::LoopSource),
-    WhileLoop,
-}
-
-impl LoopKind {
-    fn name(self) -> &'static str {
-        match self {
-            LoopKind::Loop(hir::LoopSource::Loop) => "loop",
-            LoopKind::Loop(hir::LoopSource::WhileLet) => "while let",
-            LoopKind::Loop(hir::LoopSource::ForLoop) => "for",
-            LoopKind::WhileLoop => "while",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {
     Normal,
-    Loop(LoopKind),
+    Loop(hir::LoopSource),
     Closure,
     LabeledBlock,
     AnonConst,
@@ -71,14 +54,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
     fn visit_expr(&mut self, e: &'hir hir::Expr) {
         match e.node {
-            hir::ExprKind::While(ref e, ref b, _) => {
-                self.with_context(Loop(LoopKind::WhileLoop), |v| {
-                    v.visit_expr(&e);
-                    v.visit_block(&b);
-                });
-            }
             hir::ExprKind::Loop(ref b, _, source) => {
-                self.with_context(Loop(LoopKind::Loop(source)), |v| v.visit_block(&b));
+                self.with_context(Loop(source), |v| v.visit_block(&b));
             }
             hir::ExprKind::Closure(_, ref function_decl, b, _, _) => {
                 self.visit_fn_decl(&function_decl);
@@ -117,15 +94,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                         None
                     } else {
                         Some(match self.hir_map.expect_expr(loop_id).node {
-                            hir::ExprKind::While(..) => LoopKind::WhileLoop,
-                            hir::ExprKind::Loop(_, _, source) => LoopKind::Loop(source),
+                            hir::ExprKind::Loop(_, _, source) => source,
                             ref r => span_bug!(e.span,
                                                "break label resolved to a non-loop: {:?}", r),
                         })
                     };
                     match loop_kind {
                         None |
-                        Some(LoopKind::Loop(hir::LoopSource::Loop)) => (),
+                        Some(hir::LoopSource::Loop) => (),
                         Some(kind) => {
                             struct_span_err!(self.sess, e.span, E0571,
                                              "`break` with value from a `{}` loop",

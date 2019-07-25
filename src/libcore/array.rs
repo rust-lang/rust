@@ -81,6 +81,7 @@ impl From<Infallible> for TryFromSliceError {
     }
 }
 
+#[cfg(bootstrap)]
 macro_rules! __impl_slice_eq1 {
     ($Lhs: ty, $Rhs: ty) => {
         __impl_slice_eq1! { $Lhs, $Rhs, Sized }
@@ -96,6 +97,7 @@ macro_rules! __impl_slice_eq1 {
     }
 }
 
+#[cfg(bootstrap)]
 macro_rules! __impl_slice_eq2 {
     ($Lhs: ty, $Rhs: ty) => {
         __impl_slice_eq2! { $Lhs, $Rhs, Sized }
@@ -114,6 +116,7 @@ macro_rules! __impl_slice_eq2 {
 }
 
 // macro for implementing n-element array functions and operations
+#[cfg(bootstrap)]
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
@@ -260,6 +263,323 @@ macro_rules! array_impls {
                     Ord::cmp(&&self[..], &&other[..])
                 }
             }
+        )+
+    }
+}
+
+#[cfg(not(bootstrap))]
+mod impls_using_const_generics {
+    use super::*;
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T, const N: usize> AsRef<[T]> for [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn as_ref(&self) -> &[T] {
+            &self[..]
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T, const N: usize> AsMut<[T]> for [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn as_mut(&mut self) -> &mut [T] {
+            &mut self[..]
+        }
+    }
+
+    #[stable(feature = "array_borrow", since = "1.4.0")]
+    impl<T, const N: usize> Borrow<[T]> for [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        fn borrow(&self) -> &[T] {
+            self
+        }
+    }
+
+    #[stable(feature = "array_borrow", since = "1.4.0")]
+    impl<T, const N: usize> BorrowMut<[T]> for [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        fn borrow_mut(&mut self) -> &mut [T] {
+            self
+        }
+    }
+
+    #[stable(feature = "try_from", since = "1.34.0")]
+    impl<T, const N: usize> TryFrom<&[T]> for [T; N]
+    where
+        T: Copy,
+        [T; N]: LengthAtMost32,
+    {
+        type Error = TryFromSliceError;
+
+        fn try_from(slice: &[T]) -> Result<[T; N], TryFromSliceError> {
+            <&Self>::try_from(slice).map(|r| *r)
+        }
+    }
+
+    #[stable(feature = "try_from", since = "1.34.0")]
+    impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        type Error = TryFromSliceError;
+
+        fn try_from(slice: &[T]) -> Result<&[T; N], TryFromSliceError> {
+            if slice.len() == N {
+                let ptr = slice.as_ptr() as *const [T; N];
+                unsafe { Ok(&*ptr) }
+            } else {
+                Err(TryFromSliceError(()))
+            }
+        }
+    }
+
+    #[stable(feature = "try_from", since = "1.34.0")]
+    impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        type Error = TryFromSliceError;
+
+        fn try_from(slice: &mut [T]) -> Result<&mut [T; N], TryFromSliceError> {
+            if slice.len() == N {
+                let ptr = slice.as_mut_ptr() as *mut [T; N];
+                unsafe { Ok(&mut *ptr) }
+            } else {
+                Err(TryFromSliceError(()))
+            }
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: Hash, const N: usize> Hash for [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        fn hash<H: hash::Hasher>(&self, state: &mut H) {
+            Hash::hash(&self[..], state)
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Debug::fmt(&&self[..], f)
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, T, const N: usize> IntoIterator for &'a [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        type Item = &'a T;
+        type IntoIter = Iter<'a, T>;
+
+        fn into_iter(self) -> Iter<'a, T> {
+            self.iter()
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        type Item = &'a mut T;
+        type IntoIter = IterMut<'a, T>;
+
+        fn into_iter(self) -> IterMut<'a, T> {
+            self.iter_mut()
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A, B, const N: usize> PartialEq<[B; N]> for [A; N]
+    where
+        A: PartialEq<B>,
+        [A; N]: LengthAtMost32,
+        [B; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn eq(&self, other: &[B; N]) -> bool {
+            self[..] == other[..]
+        }
+        #[inline]
+        fn ne(&self, other: &[B; N]) -> bool {
+            self[..] != other[..]
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A, B, const N: usize> PartialEq<[B]> for [A; N]
+    where
+        A: PartialEq<B>,
+        [A; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn eq(&self, other: &[B]) -> bool {
+            self[..] == other[..]
+        }
+        #[inline]
+        fn ne(&self, other: &[B]) -> bool {
+            self[..] != other[..]
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A, B, const N: usize> PartialEq<[A; N]> for [B]
+    where
+        B: PartialEq<A>,
+        [A; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn eq(&self, other: &[A; N]) -> bool {
+            self[..] == other[..]
+        }
+        #[inline]
+        fn ne(&self, other: &[A; N]) -> bool {
+            self[..] != other[..]
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A, B, const N: usize> PartialEq<&'b [B]> for [A; N]
+    where
+        A: PartialEq<B>,
+        [A; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn eq(&self, other: &&'b [B]) -> bool {
+            self[..] == other[..]
+        }
+        #[inline]
+        fn ne(&self, other: &&'b [B]) -> bool {
+            self[..] != other[..]
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A, B, const N: usize> PartialEq<[A; N]> for &'b [B]
+    where
+        B: PartialEq<A>,
+        [A; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn eq(&self, other: &[A; N]) -> bool {
+            self[..] == other[..]
+        }
+        #[inline]
+        fn ne(&self, other: &[A; N]) -> bool {
+            self[..] != other[..]
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A, B, const N: usize> PartialEq<&'b mut [B]> for [A; N]
+    where
+        A: PartialEq<B>,
+        [A; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn eq(&self, other: &&'b mut [B]) -> bool {
+            self[..] == other[..]
+        }
+        #[inline]
+        fn ne(&self, other: &&'b mut [B]) -> bool {
+            self[..] != other[..]
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A, B, const N: usize> PartialEq<[A; N]> for &'b mut [B]
+    where
+        B: PartialEq<A>,
+        [A; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn eq(&self, other: &[A; N]) -> bool {
+            self[..] == other[..]
+        }
+        #[inline]
+        fn ne(&self, other: &[A; N]) -> bool {
+            self[..] != other[..]
+        }
+    }
+
+    // NOTE: some less important impls are omitted to reduce code bloat
+    // __impl_slice_eq2! { [A; $N], &'b [B; $N] }
+    // __impl_slice_eq2! { [A; $N], &'b mut [B; $N] }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: Eq, const N: usize> Eq for [T; N] where [T; N]: LengthAtMost32 {}
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: PartialOrd, const N: usize> PartialOrd for [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn partial_cmp(&self, other: &[T; N]) -> Option<Ordering> {
+            PartialOrd::partial_cmp(&&self[..], &&other[..])
+        }
+        #[inline]
+        fn lt(&self, other: &[T; N]) -> bool {
+            PartialOrd::lt(&&self[..], &&other[..])
+        }
+        #[inline]
+        fn le(&self, other: &[T; N]) -> bool {
+            PartialOrd::le(&&self[..], &&other[..])
+        }
+        #[inline]
+        fn ge(&self, other: &[T; N]) -> bool {
+            PartialOrd::ge(&&self[..], &&other[..])
+        }
+        #[inline]
+        fn gt(&self, other: &[T; N]) -> bool {
+            PartialOrd::gt(&&self[..], &&other[..])
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: Ord, const N: usize> Ord for [T; N]
+    where
+        [T; N]: LengthAtMost32,
+    {
+        #[inline]
+        fn cmp(&self, other: &[T; N]) -> Ordering {
+            Ord::cmp(&&self[..], &&other[..])
+        }
+    }
+}
+
+/// Implemented for lengths where trait impls are allowed on arrays in core/std
+#[rustc_on_unimplemented(
+    message="arrays only have std trait implementations for lengths 0..=32",
+)]
+#[unstable(feature = "const_generic_impls_guard", issue = "0",
+    reason = "will never be stable, just a temporary step until const generics are stable")]
+#[cfg(not(bootstrap))]
+pub trait LengthAtMost32 {}
+
+#[cfg(not(bootstrap))]
+macro_rules! array_impls {
+    ($($N:literal)+) => {
+        $(
+            #[unstable(feature = "const_generic_impls_guard", issue = "0")]
+            impl<T> LengthAtMost32 for [T; $N] {}
         )+
     }
 }

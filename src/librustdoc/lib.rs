@@ -21,6 +21,7 @@
 #![feature(inner_deref)]
 #![feature(never_type)]
 #![feature(mem_take)]
+#![feature(unicode_internals)]
 
 #![recursion_limit="256"]
 

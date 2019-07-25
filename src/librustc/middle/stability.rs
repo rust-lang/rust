@@ -4,6 +4,7 @@
 pub use self::StabilityLevel::*;
 
 use crate::lint::{self, Lint, in_derive_expansion};
+use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::hir::{self, Item, Generics, StructField, Variant, HirId};
 use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
@@ -11,12 +12,13 @@ use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::ty::query::Providers;
 use crate::middle::privacy::AccessLevels;
 use crate::session::{DiagnosticMessageId, Session};
+use errors::DiagnosticBuilder;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::{Span, MultiSpan};
-use syntax::ast::Attribute;
+use syntax::ast::{Attribute, CRATE_NODE_ID};
 use syntax::errors::Applicability;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::attr::{self, Stability, Deprecation};
+use syntax::attr::{self, Stability, Deprecation, RustcDeprecation};
 use crate::ty::{self, TyCtxt};
 use crate::util::nodemap::{FxHashSet, FxHashMap};
 
@@ -477,6 +479,36 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
+pub fn report_unstable(
+    sess: &Session, feature: Symbol, reason: Option<Symbol>, issue: u32, span: Span
+) {
+    let msg = match reason {
+        Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
+        None => format!("use of unstable library feature '{}'", &feature)
+    };
+
+    let msp: MultiSpan = span.into();
+    let cm = &sess.parse_sess.source_map();
+    let span_key = msp.primary_span().and_then(|sp: Span|
+        if !sp.is_dummy() {
+            let file = cm.lookup_char_pos(sp.lo()).file;
+            if file.name.is_macros() {
+                None
+            } else {
+                Some(span)
+            }
+        } else {
+            None
+        }
+    );
+
+    let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
+    let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
+    if fresh {
+        emit_feature_err(&sess.parse_sess, feature, span, GateIssue::Library(Some(issue)), &msg);
+    }
+}
+
 /// Checks whether an item marked with `deprecated(since="X")` is currently
 /// deprecated (i.e., whether X is not greater than the current rustc version).
 pub fn deprecation_in_effect(since: &str) -> bool {
@@ -498,6 +530,79 @@ pub fn deprecation_in_effect(since: &str) -> bool {
         // By default, a deprecation warning applies to
         // the current version of the compiler.
         true
+    }
+}
+
+pub fn deprecation_suggestion(
+    diag: &mut DiagnosticBuilder<'_>, suggestion: Option<Symbol>, span: Span
+) {
+    if let Some(suggestion) = suggestion {
+        diag.span_suggestion(
+            span,
+            "replace the use of the deprecated item",
+            suggestion.to_string(),
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
+fn deprecation_message_common(message: String, reason: Option<Symbol>) -> String {
+    match reason {
+        Some(reason) => format!("{}: {}", message, reason),
+        None => message,
+    }
+}
+
+pub fn deprecation_message(depr: &Deprecation, path: &str) -> (String, &'static Lint) {
+    let message = format!("use of deprecated item '{}'", path);
+    (deprecation_message_common(message, depr.note), lint::builtin::DEPRECATED)
+}
+
+pub fn rustc_deprecation_message(depr: &RustcDeprecation, path: &str) -> (String, &'static Lint) {
+    let (message, lint) = if deprecation_in_effect(&depr.since.as_str()) {
+        (format!("use of deprecated item '{}'", path), lint::builtin::DEPRECATED)
+    } else {
+        (format!("use of item '{}' that will be deprecated in future version {}", path, depr.since),
+         lint::builtin::DEPRECATED_IN_FUTURE)
+    };
+    (deprecation_message_common(message, Some(depr.reason)), lint)
+}
+
+pub fn early_report_deprecation(
+    sess: &Session,
+    message: &str,
+    suggestion: Option<Symbol>,
+    lint: &'static Lint,
+    span: Span,
+) {
+    if in_derive_expansion(span) {
+        return;
+    }
+
+    let diag = BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span);
+    sess.buffer_lint_with_diagnostic(lint, CRATE_NODE_ID, span, message, diag);
+}
+
+fn late_report_deprecation(
+    tcx: TyCtxt<'_>,
+    message: &str,
+    suggestion: Option<Symbol>,
+    lint: &'static Lint,
+    span: Span,
+    def_id: DefId,
+    hir_id: HirId,
+) {
+    if in_derive_expansion(span) {
+        return;
+    }
+
+    let mut diag = tcx.struct_span_lint_hir(lint, hir_id, span, message);
+    if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
+        deprecation_suggestion(&mut diag, suggestion, span);
+    }
+    diag.emit();
+    if hir_id == hir::DUMMY_HIR_ID {
+        span_bug!(span, "emitted a {} lint with dummy HIR id: {:?}", lint.name, def_id);
     }
 }
 
@@ -563,38 +668,6 @@ impl<'tcx> TyCtxt<'tcx> {
     /// deprecated. If the item is indeed deprecated, we will emit a deprecation lint attached to
     /// `id`.
     pub fn eval_stability(self, def_id: DefId, id: Option<HirId>, span: Span) -> EvalResult {
-        let lint_deprecated = |def_id: DefId,
-                               id: HirId,
-                               note: Option<Symbol>,
-                               suggestion: Option<Symbol>,
-                               message: &str,
-                               lint: &'static Lint| {
-            if in_derive_expansion(span) {
-                return;
-            }
-            let msg = if let Some(note) = note {
-                format!("{}: {}", message, note)
-            } else {
-                format!("{}", message)
-            };
-
-            let mut diag = self.struct_span_lint_hir(lint, id, span, &msg);
-            if let Some(suggestion) = suggestion {
-                if let hir::Node::Expr(_) = self.hir().get(id) {
-                    diag.span_suggestion(
-                        span,
-                        "replace the use of the deprecated item",
-                        suggestion.to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-            diag.emit();
-            if id == hir::DUMMY_HIR_ID {
-                span_bug!(span, "emitted a {} lint with dummy HIR id: {:?}", lint.name, def_id);
-            }
-        };
-
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(id) = id {
             if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
@@ -604,14 +677,9 @@ impl<'tcx> TyCtxt<'tcx> {
                                .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
 
                 if !skip {
-                    let path = self.def_path_str(def_id);
-                    let message = format!("use of deprecated item '{}'", path);
-                    lint_deprecated(def_id,
-                                    id,
-                                    depr_entry.attr.note,
-                                    None,
-                                    &message,
-                                    lint::builtin::DEPRECATED);
+                    let (message, lint) =
+                        deprecation_message(&depr_entry.attr, &self.def_path_str(def_id));
+                    late_report_deprecation(self, &message, None, lint, span, def_id, id);
                 }
             };
         }
@@ -631,27 +699,11 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(id) = id {
             if let Some(stability) = stability {
                 if let Some(depr) = &stability.rustc_depr {
-                    let path = self.def_path_str(def_id);
-                    if deprecation_in_effect(&depr.since.as_str()) {
-                        let message = format!("use of deprecated item '{}'", path);
-                        lint_deprecated(def_id,
-                                        id,
-                                        Some(depr.reason),
-                                        depr.suggestion,
-                                        &message,
-                                        lint::builtin::DEPRECATED);
-                    } else {
-                        let message = format!("use of item '{}' \
-                                                that will be deprecated in future version {}",
-                                                path,
-                                                depr.since);
-                        lint_deprecated(def_id,
-                                        id,
-                                        Some(depr.reason),
-                                        depr.suggestion,
-                                        &message,
-                                        lint::builtin::DEPRECATED_IN_FUTURE);
-                    }
+                    let (message, lint) =
+                        rustc_deprecation_message(depr, &self.def_path_str(def_id));
+                    late_report_deprecation(
+                        self, &message, depr.suggestion, lint, span, def_id, id
+                    );
                 }
             }
         }
@@ -715,34 +767,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue } => {
-                let msg = match reason {
-                    Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
-                    None => format!("use of unstable library feature '{}'", &feature)
-                };
-
-                let msp: MultiSpan = span.into();
-                let cm = &self.sess.parse_sess.source_map();
-                let span_key = msp.primary_span().and_then(|sp: Span|
-                    if !sp.is_dummy() {
-                        let file = cm.lookup_char_pos(sp.lo()).file;
-                        if file.name.is_macros() {
-                            None
-                        } else {
-                            Some(span)
-                        }
-                    } else {
-                        None
-                    }
-                );
-
-                let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
-                let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(error_id);
-                if fresh {
-                    emit_feature_err(&self.sess.parse_sess, feature, span,
-                                     GateIssue::Library(Some(issue)), &msg);
-                }
-            }
+            EvalResult::Deny { feature, reason, issue } =>
+                report_unstable(self.sess, feature, reason, issue, span),
             EvalResult::Unmarked => {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.

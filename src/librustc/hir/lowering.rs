@@ -60,10 +60,9 @@ use syntax::attr;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::errors;
-use syntax::ext::hygiene::{Mark, SyntaxContext};
+use syntax::ext::hygiene::ExpnId;
 use syntax::print::pprust;
-use syntax::source_map::{self, respan, ExpnInfo, CompilerDesugaringKind, Spanned};
-use syntax::source_map::CompilerDesugaringKind::IfTemporary;
+use syntax::source_map::{respan, ExpnInfo, ExpnKind, DesugaringKind, Spanned};
 use syntax::std_inject;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
@@ -90,6 +89,7 @@ pub struct LoweringContext<'a> {
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
     bodies: BTreeMap<hir::BodyId, hir::Body>,
     exported_macros: Vec<hir::MacroDef>,
+    non_exported_macro_attrs: Vec<ast::Attribute>,
 
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
 
@@ -252,6 +252,7 @@ pub fn lower_crate(
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
         exported_macros: Vec::new(),
+        non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
@@ -436,7 +437,7 @@ impl<'a> LoweringContext<'a> {
                                 owner,
                                 id,
                                 DefPathData::Misc,
-                                Mark::root(),
+                                ExpnId::root(),
                                 tree.prefix.span,
                             );
                             self.lctx.allocate_hir_id_counter(id);
@@ -662,6 +663,7 @@ impl<'a> LoweringContext<'a> {
             attrs,
             span: c.span,
             exported_macros: hir::HirVec::from(self.exported_macros),
+            non_exported_macro_attrs: hir::HirVec::from(self.non_exported_macro_attrs),
             items: self.items,
             trait_items: self.trait_items,
             impl_items: self.impl_items,
@@ -869,17 +871,15 @@ impl<'a> LoweringContext<'a> {
     /// allowed inside this span.
     fn mark_span_with_reason(
         &self,
-        reason: CompilerDesugaringKind,
+        reason: DesugaringKind,
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo {
-            def_site: Some(span),
+        span.fresh_expansion(ExpnId::root(), ExpnInfo {
+            def_site: span,
             allow_internal_unstable,
-            ..ExpnInfo::default(source_map::CompilerDesugaring(reason), span, self.sess.edition())
-        });
-        span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
+            ..ExpnInfo::default(ExpnKind::Desugaring(reason), span, self.sess.edition())
+        })
     }
 
     fn with_anonymous_lifetime_mode<R>(
@@ -968,7 +968,7 @@ impl<'a> LoweringContext<'a> {
             parent_index,
             node_id,
             DefPathData::LifetimeNs(str_name),
-            Mark::root(),
+            ExpnId::root(),
             span,
         );
 
@@ -1185,7 +1185,7 @@ impl<'a> LoweringContext<'a> {
         };
 
         let unstable_span = self.mark_span_with_reason(
-            CompilerDesugaringKind::Async,
+            DesugaringKind::Async,
             span,
             self.allow_gen_future.clone(),
         );
@@ -1462,7 +1462,7 @@ impl<'a> LoweringContext<'a> {
                         parent_def_index,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
-                        Mark::root(),
+                        ExpnId::root(),
                         DUMMY_SP
                     );
 
@@ -1693,8 +1693,8 @@ impl<'a> LoweringContext<'a> {
                         if pos == ImplTraitPosition::Binding &&
                             nightly_options::is_nightly_build() {
                             help!(err,
-                                  "add #![feature(impl_trait_in_bindings)] to the crate attributes \
-                                   to enable");
+                                  "add `#![feature(impl_trait_in_bindings)]` to the crate \
+                                   attributes to enable");
                         }
                         err.emit();
                         hir::TyKind::Err
@@ -1730,7 +1730,7 @@ impl<'a> LoweringContext<'a> {
         // Not tracking it makes lints in rustc and clippy very fragile, as
         // frequently opened issues show.
         let exist_ty_span = self.mark_span_with_reason(
-            CompilerDesugaringKind::ExistentialType,
+            DesugaringKind::ExistentialType,
             span,
             None,
         );
@@ -1921,7 +1921,7 @@ impl<'a> LoweringContext<'a> {
                         self.parent,
                         def_node_id,
                         DefPathData::LifetimeNs(name.ident().as_interned_str()),
-                        Mark::root(),
+                        ExpnId::root(),
                         lifetime.span);
 
                     let (name, kind) = match name {
@@ -2600,7 +2600,7 @@ impl<'a> LoweringContext<'a> {
         let span = output.span();
 
         let exist_ty_span = self.mark_span_with_reason(
-            CompilerDesugaringKind::Async,
+            DesugaringKind::Async,
             span,
             None,
         );
@@ -3272,7 +3272,7 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 let desugared_span =
-                    this.mark_span_with_reason(CompilerDesugaringKind::Async, span, None);
+                    this.mark_span_with_reason(DesugaringKind::Async, span, None);
 
                 // Construct an argument representing `__argN: <ty>` to replace the argument of the
                 // async function.
@@ -4010,7 +4010,7 @@ impl<'a> LoweringContext<'a> {
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
             if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) ||
-                              attr::contains_name(&i.attrs, sym::rustc_doc_only_macro) {
+                              attr::contains_name(&i.attrs, sym::rustc_builtin_macro) {
                 let body = self.lower_token_stream(def.stream());
                 let hir_id = self.lower_node_id(i.id);
                 self.exported_macros.push(hir::MacroDef {
@@ -4022,6 +4022,8 @@ impl<'a> LoweringContext<'a> {
                     body,
                     legacy: def.legacy,
                 });
+            } else {
+                self.non_exported_macro_attrs.extend(attrs.into_iter());
             }
             return None;
         }
@@ -4394,21 +4396,20 @@ impl<'a> LoweringContext<'a> {
                 let then_blk = self.lower_block(then, false);
                 let then_expr = self.expr_block(then_blk, ThinVec::new());
                 let (then_pats, scrutinee, desugar) = match cond.node {
-                    // `<pat> => <then>`
+                    // `<pat> => <then>`:
                     ExprKind::Let(ref pats, ref scrutinee) => {
                         let scrutinee = self.lower_expr(scrutinee);
                         let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
                         let desugar = hir::MatchSource::IfLetDesugar { contains_else_clause };
                         (pats, scrutinee, desugar)
                     }
-                    // `true => then`:
+                    // `true => <then>`:
                     _ => {
                         // Lower condition:
                         let cond = self.lower_expr(cond);
-                        // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
-                        // to preserve drop semantics since `if cond { ... }`
-                        // don't let temporaries live outside of `cond`.
-                        let span_block = self.mark_span_with_reason(IfTemporary, cond.span, None);
+                        let span_block = self.mark_span_with_reason(
+                            DesugaringKind::CondTemporary, cond.span, None
+                        );
                         // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
                         // to preserve drop semantics since `if cond { ... }` does not
                         // let temporaries live outside of `cond`.
@@ -4424,69 +4425,80 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprKind::Match(P(scrutinee), vec![then_arm, else_arm].into(), desugar)
             }
             // FIXME(#53667): handle lowering of && and parens.
-            ExprKind::While(ref cond, ref body, opt_label) => {
-                // Desugar `ExprWhileLet`
-                // from: `[opt_ident]: while let <pat> = <sub_expr> <body>`
-                if let ExprKind::Let(ref pats, ref sub_expr) = cond.node {
-                    // to:
-                    //
-                    //   [opt_ident]: loop {
-                    //     match <sub_expr> {
-                    //       <pat> => <body>,
-                    //       _ => break
-                    //     }
-                    //   }
+            ExprKind::While(ref cond, ref body, opt_label) => self.with_loop_scope(e.id, |this| {
+                // Note that the block AND the condition are evaluated in the loop scope.
+                // This is done to allow `break` from inside the condition of the loop.
 
-                    // Note that the block AND the condition are evaluated in the loop scope.
-                    // This is done to allow `break` from inside the condition of the loop.
-                    let (body, break_expr, sub_expr) = self.with_loop_scope(e.id, |this| {
-                        (
-                            this.lower_block(body, false),
-                            this.expr_break(e.span, ThinVec::new()),
-                            this.with_loop_condition_scope(|this| P(this.lower_expr(sub_expr))),
-                        )
-                    });
+                // `_ => break`:
+                let else_arm = {
+                    let else_pat = this.pat_wild(e.span);
+                    let else_expr = this.expr_break(e.span, ThinVec::new());
+                    this.arm(hir_vec![else_pat], else_expr)
+                };
 
-                    // `<pat> => <body>`
-                    let pat_arm = {
-                        let body_expr = P(self.expr_block(body, ThinVec::new()));
-                        let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
-                        self.arm(pats, body_expr)
-                    };
+                // Handle then + scrutinee:
+                let then_blk = this.lower_block(body, false);
+                let then_expr = this.expr_block(then_blk, ThinVec::new());
+                let (then_pats, scrutinee, desugar, source) = match cond.node {
+                    ExprKind::Let(ref pats, ref scrutinee) => {
+                        // to:
+                        //
+                        //   [opt_ident]: loop {
+                        //     match <sub_expr> {
+                        //       <pat> => <body>,
+                        //       _ => break
+                        //     }
+                        //   }
+                        let scrutinee = this.with_loop_condition_scope(|t| t.lower_expr(scrutinee));
+                        let pats = pats.iter().map(|pat| this.lower_pat(pat)).collect();
+                        let desugar = hir::MatchSource::WhileLetDesugar;
+                        (pats, scrutinee, desugar, hir::LoopSource::WhileLet)
+                    }
+                    _ => {
+                        // We desugar: `'label: while $cond $body` into:
+                        //
+                        // ```
+                        // 'label: loop {
+                        //     match DropTemps($cond) {
+                        //         true => $body,
+                        //         _ => break,
+                        //     }
+                        // }
+                        // ```
 
-                    // `_ => break`
-                    let break_arm = {
-                        let pat_under = self.pat_wild(e.span);
-                        self.arm(hir_vec![pat_under], break_expr)
-                    };
+                        // Lower condition:
+                        let cond = this.with_loop_condition_scope(|this| this.lower_expr(cond));
+                        let span_block = this.mark_span_with_reason(
+                            DesugaringKind::CondTemporary, cond.span, None
+                        );
+                        // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
+                        // to preserve drop semantics since `while cond { ... }` does not
+                        // let temporaries live outside of `cond`.
+                        let cond = this.expr_drop_temps(span_block, P(cond), ThinVec::new());
 
-                    // `match <sub_expr> { ... }`
-                    let arms = hir_vec![pat_arm, break_arm];
-                    let match_expr = self.expr(
-                        sub_expr.span,
-                        hir::ExprKind::Match(sub_expr, arms, hir::MatchSource::WhileLetDesugar),
-                        ThinVec::new(),
-                    );
+                        let desugar = hir::MatchSource::WhileDesugar;
+                        // `true => <then>`:
+                        let pats = hir_vec![this.pat_bool(e.span, true)];
+                        (pats, cond, desugar, hir::LoopSource::While)
+                    }
+                };
+                let then_arm = this.arm(then_pats, P(then_expr));
 
-                    // `[opt_ident]: loop { ... }`
-                    let loop_block = P(self.block_expr(P(match_expr)));
-                    let loop_expr = hir::ExprKind::Loop(
-                        loop_block,
-                        self.lower_label(opt_label),
-                        hir::LoopSource::WhileLet,
-                    );
-                    // Add attributes to the outer returned expr node.
-                    loop_expr
-                } else {
-                    self.with_loop_scope(e.id, |this| {
-                        hir::ExprKind::While(
-                            this.with_loop_condition_scope(|this| P(this.lower_expr(cond))),
-                            this.lower_block(body, false),
-                            this.lower_label(opt_label),
-                        )
-                    })
-                }
-            }
+                // `match <scrutinee> { ... }`
+                let match_expr = this.expr_match(
+                    scrutinee.span,
+                    P(scrutinee),
+                    hir_vec![then_arm, else_arm],
+                    desugar,
+                );
+
+                // `[opt_ident]: loop { ... }`
+                hir::ExprKind::Loop(
+                    P(this.block_expr(P(match_expr))),
+                    this.lower_label(opt_label),
+                    source
+                )
+            }),
             ExprKind::Loop(ref body, opt_label) => self.with_loop_scope(e.id, |this| {
                 hir::ExprKind::Loop(
                     this.lower_block(body, false),
@@ -4497,7 +4509,7 @@ impl<'a> LoweringContext<'a> {
             ExprKind::TryBlock(ref body) => {
                 self.with_catch_scope(body.id, |this| {
                     let unstable_span = this.mark_span_with_reason(
-                        CompilerDesugaringKind::TryBlock,
+                        DesugaringKind::TryBlock,
                         body.span,
                         this.allow_try_trait.clone(),
                     );
@@ -4825,7 +4837,7 @@ impl<'a> LoweringContext<'a> {
                 let mut head = self.lower_expr(head);
                 let head_sp = head.span;
                 let desugared_span = self.mark_span_with_reason(
-                    CompilerDesugaringKind::ForLoop,
+                    DesugaringKind::ForLoop,
                     head_sp,
                     None,
                 );
@@ -4979,13 +4991,13 @@ impl<'a> LoweringContext<'a> {
                 // }
 
                 let unstable_span = self.mark_span_with_reason(
-                    CompilerDesugaringKind::QuestionMark,
+                    DesugaringKind::QuestionMark,
                     e.span,
                     self.allow_try_trait.clone(),
                 );
                 let try_span = self.sess.source_map().end_point(e.span);
                 let try_span = self.mark_span_with_reason(
-                    CompilerDesugaringKind::QuestionMark,
+                    DesugaringKind::QuestionMark,
                     try_span,
                     self.allow_try_trait.clone(),
                 );
@@ -5800,12 +5812,12 @@ impl<'a> LoweringContext<'a> {
             }
         }
         let span = self.mark_span_with_reason(
-            CompilerDesugaringKind::Await,
+            DesugaringKind::Await,
             await_span,
             None,
         );
         let gen_future_span = self.mark_span_with_reason(
-            CompilerDesugaringKind::Await,
+            DesugaringKind::Await,
             await_span,
             self.allow_gen_future.clone(),
         );

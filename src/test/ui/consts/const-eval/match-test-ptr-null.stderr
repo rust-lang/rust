@@ -5,7 +5,7 @@ LL |         match &1 as *const i32 as usize {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51910
-   = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
 error[E0019]: constant contains unimplemented expression type
   --> $DIR/match-test-ptr-null.rs:6:15

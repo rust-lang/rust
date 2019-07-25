@@ -24,7 +24,7 @@ cfg_if::cfg_if! {
         // If we're not documenting libstd then we just expose the main modules
         // as we otherwise would.
 
-        #[cfg(any(target_os = "redox", unix))]
+        #[cfg(any(target_os = "redox", unix, target_os = "vxworks"))]
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use crate::sys::ext as unix;
 
@@ -51,6 +51,7 @@ cfg_if::cfg_if! {
 #[cfg(target_os = "fuchsia")]    pub mod fuchsia;
 #[cfg(target_os = "hermit")]     pub mod hermit;
 #[cfg(target_os = "wasi")]       pub mod wasi;
+#[cfg(target_os = "vxworks")]    pub mod vxworks;
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] pub mod fortanix_sgx;
 
 pub mod raw;

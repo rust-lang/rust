@@ -4,15 +4,17 @@ warning: the feature `const_generics` is incomplete and may cause the compiler t
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
-  --> $DIR/issue-61336-2.rs:9:5
+error: array lengths can't depend on generic parameters
+  --> $DIR/issue-61336-2.rs:5:9
    |
 LL |     [x; {N}]
-   |     ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |         ^^^
+
+error: array lengths can't depend on generic parameters
+  --> $DIR/issue-61336-2.rs:10:9
    |
-   = help: consider adding a `where T: std::marker::Copy` bound
-   = note: the `Copy` trait is required because the repeated element will be copied
+LL |     [x; {N}]
+   |         ^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0277`.

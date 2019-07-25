@@ -205,7 +205,7 @@
 // Don't link to std. We are std.
 #![no_std]
 
-//#![warn(deprecated_in_future)] // FIXME: std still has quite a few uses of `mem::uninitialized`
+#![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
@@ -272,6 +272,8 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
+#![feature(maybe_uninit_ref)]
+#![feature(maybe_uninit_slice)]
 #![feature(mem_take)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
@@ -492,12 +494,12 @@ mod memchr;
 pub mod rt;
 
 // Pull in the `std_detect` crate directly into libstd. The contents of
-// `std_detect` are in a different repository: rust-lang-nursery/stdsimd.
+// `std_detect` are in a different repository: rust-lang/stdarch.
 //
 // `std_detect` depends on libstd, but the contents of this module are
 // set up in such a way that directly pulling it here works such that the
 // crate uses the this crate as its libstd.
-#[path = "../stdsimd/crates/std_detect/src/mod.rs"]
+#[path = "../stdarch/crates/std_detect/src/mod.rs"]
 #[allow(missing_debug_implementations, missing_docs, dead_code)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]

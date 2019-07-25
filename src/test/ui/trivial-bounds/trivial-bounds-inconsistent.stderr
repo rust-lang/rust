@@ -4,7 +4,7 @@ warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
 LL | enum E where i32: Foo { V }
    |                   ^^^
    |
-   = note: #[warn(trivial_bounds)] on by default
+   = note: `#[warn(trivial_bounds)]` on by default
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:16:21
@@ -30,7 +30,7 @@ warning: where clauses are not enforced in type aliases
 LL | type Y where i32: Foo = ();
    |              ^^^^^^^^
    |
-   = note: #[warn(type_alias_bounds)] on by default
+   = note: `#[warn(type_alias_bounds)]` on by default
    = help: the clause will not be checked when the type alias is used, and should be removed
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters

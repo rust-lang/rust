@@ -119,7 +119,7 @@ use rustc::ty::subst::{UnpackedKind, Subst, InternalSubsts, SubstsRef, UserSelfT
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use rustc::ty::layout::VariantIdx;
 use syntax_pos::{self, BytePos, Span, MultiSpan};
-use syntax_pos::hygiene::CompilerDesugaringKind;
+use syntax_pos::hygiene::DesugaringKind;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -315,7 +315,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// See the test case `test/run-pass/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
     fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
-        match fcx.tcx.struct_tail(ty).sty {
+        match fcx.tcx.struct_tail_without_normalization(ty).sty {
             ty::Slice(_) | ty::Str | ty::Dynamic(..) => {
                 ExpectRvalueLikeUnsized(ty)
             }
@@ -746,11 +746,12 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
     tcx.calculate_dtor(def_id, &mut dropck::check_drop_impl)
 }
 
-/// If this `DefId` is a "primary tables entry", returns `Some((body_id, decl))`
-/// with information about it's body-id and fn-decl (if any). Otherwise,
+/// If this `DefId` is a "primary tables entry", returns
+/// `Some((body_id, header, decl))` with information about
+/// it's body-id, fn-header and fn-decl (if any). Otherwise,
 /// returns `None`.
 ///
-/// If this function returns "some", then `typeck_tables(def_id)` will
+/// If this function returns `Some`, then `typeck_tables(def_id)` will
 /// succeed; if it returns `None`, then `typeck_tables(def_id)` may or
 /// may not succeed. In some cases where this function returns `None`
 /// (notably closures), `typeck_tables(def_id)` would wind up
@@ -758,40 +759,40 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 fn primary_body_of(
     tcx: TyCtxt<'_>,
     id: hir::HirId,
-) -> Option<(hir::BodyId, Option<&hir::FnDecl>)> {
+) -> Option<(hir::BodyId, Option<&hir::Ty>, Option<&hir::FnHeader>, Option<&hir::FnDecl>)> {
     match tcx.hir().get(id) {
         Node::Item(item) => {
             match item.node {
-                hir::ItemKind::Const(_, body) |
-                hir::ItemKind::Static(_, _, body) =>
-                    Some((body, None)),
-                hir::ItemKind::Fn(ref decl, .., body) =>
-                    Some((body, Some(decl))),
+                hir::ItemKind::Const(ref ty, body) |
+                hir::ItemKind::Static(ref ty, _, body) =>
+                    Some((body, Some(ty), None, None)),
+                hir::ItemKind::Fn(ref decl, ref header, .., body) =>
+                    Some((body, None, Some(header), Some(decl))),
                 _ =>
                     None,
             }
         }
         Node::TraitItem(item) => {
             match item.node {
-                hir::TraitItemKind::Const(_, Some(body)) =>
-                    Some((body, None)),
+                hir::TraitItemKind::Const(ref ty, Some(body)) =>
+                    Some((body, Some(ty), None, None)),
                 hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) =>
-                    Some((body, Some(&sig.decl))),
+                    Some((body, None, Some(&sig.header), Some(&sig.decl))),
                 _ =>
                     None,
             }
         }
         Node::ImplItem(item) => {
             match item.node {
-                hir::ImplItemKind::Const(_, body) =>
-                    Some((body, None)),
+                hir::ImplItemKind::Const(ref ty, body) =>
+                    Some((body, Some(ty), None, None)),
                 hir::ImplItemKind::Method(ref sig, body) =>
-                    Some((body, Some(&sig.decl))),
+                    Some((body, None, Some(&sig.header), Some(&sig.decl))),
                 _ =>
                     None,
             }
         }
-        Node::AnonConst(constant) => Some((constant.body, None)),
+        Node::AnonConst(constant) => Some((constant.body, None, None, None)),
         _ => None,
     }
 }
@@ -824,15 +825,21 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
-    let (body_id, fn_decl) = primary_body_of(tcx, id).unwrap_or_else(|| {
-        span_bug!(span, "can't type-check body of {:?}", def_id);
-    });
+    let (body_id, body_ty, fn_header, fn_decl) = primary_body_of(tcx, id)
+        .unwrap_or_else(|| {
+            span_bug!(span, "can't type-check body of {:?}", def_id);
+        });
     let body = tcx.hir().body(body_id);
 
     let tables = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
-        let fcx = if let Some(decl) = fn_decl {
-            let fn_sig = tcx.fn_sig(def_id);
+        let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
+            let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
+                let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
+                AstConv::ty_of_fn(&fcx, header.unsafety, header.abi, decl)
+            } else {
+                tcx.fn_sig(def_id)
+            };
 
             check_abi(tcx, span, fn_sig.abi());
 
@@ -849,7 +856,10 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
             fcx
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-            let expected_type = tcx.type_of(def_id);
+            let expected_type = body_ty.and_then(|ty| match ty.node {
+                hir::TyKind::Infer => Some(AstConv::ast_ty_to_ty(&fcx, ty)),
+                _ => None
+            }).unwrap_or_else(|| tcx.type_of(def_id));
             let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
@@ -983,7 +993,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         };
         self.assign(local.span, local.hir_id, local_ty);
 
-        debug!("Local variable {:?} is assigned type {}",
+        debug!("local variable {:?} is assigned type {}",
                local.pat,
                self.fcx.ty_to_string(
                    self.fcx.locals.borrow().get(&local.hir_id).unwrap().clone().decl_ty));
@@ -1000,7 +1010,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                                                traits::VariableType(p.hir_id));
             }
 
-            debug!("Pattern binding {} is assigned to {} with type {:?}",
+            debug!("pattern binding {} is assigned to {} with type {:?}",
                    ident,
                    self.fcx.ty_to_string(
                        self.fcx.locals.borrow().get(&p.hir_id).unwrap().clone().decl_ty),
@@ -1065,6 +1075,7 @@ fn check_fn<'a, 'tcx>(
         &declared_ret_ty,
         decl.output.span(),
     );
+    debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
@@ -1320,7 +1331,7 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, substs: SubstsRef<'tcx>,
             tcx.sess, span, E0720,
             "opaque type expands to a recursive type",
         );
-        err.span_label(span, "expands to self-referential type");
+        err.span_label(span, "expands to a recursive type");
         if let ty::Opaque(..) = partially_expanded_type.sty {
             err.note("type resolves to itself");
         } else {
@@ -1441,11 +1452,14 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
         return
     }
 
-    // For the wasm32 target statics with #[link_section] are placed into custom
+    // For the wasm32 target statics with `#[link_section]` are placed into custom
     // sections of the final output file, but this isn't link custom sections of
     // other executable formats. Namely we can only embed a list of bytes,
     // nothing with pointers to anything else or relocations. If any relocation
     // show up, reject them here.
+    // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
+    // the consumer's responsibility to ensure all bytes that have been read
+    // have defined values.
     let instance = ty::Instance::mono(tcx, id);
     let cid = GlobalId {
         instance,
@@ -2161,10 +2175,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// function is unreachable, and there hasn't been another warning.
     fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
         if self.diverges.get() == Diverges::Always &&
-            // If span arose from a desugaring of `if` then it is the condition itself,
-            // which diverges, that we are about to lint on. This gives suboptimal diagnostics
-            // and so we stop here and allow the block of the `if`-expression to be linted instead.
-            !span.is_compiler_desugaring(CompilerDesugaringKind::IfTemporary) {
+            // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
+            // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
+            // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
+            !span.is_desugaring(DesugaringKind::CondTemporary) {
             self.diverges.set(Diverges::WarnedAlways);
 
             debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
@@ -3865,7 +3879,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match expression.node {
                 ExprKind::Call(..) |
                 ExprKind::MethodCall(..) |
-                ExprKind::While(..) |
                 ExprKind::Loop(..) |
                 ExprKind::Match(..) |
                 ExprKind::Block(..) => {
@@ -4458,16 +4471,16 @@ pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, t
         return;
     }
 
-    // Make a vector of booleans initially false, set to true when used.
+    // Make a vector of booleans initially `false`; set to `true` when used.
     let mut types_used = vec![false; own_counts.types];
 
     for leaf_ty in ty.walk() {
         if let ty::Param(ty::ParamTy { index, .. }) = leaf_ty.sty {
-            debug!("Found use of ty param num {}", index);
+            debug!("found use of ty param num {}", index);
             types_used[index as usize - own_counts.lifetimes] = true;
         } else if let ty::Error = leaf_ty.sty {
             // If there is already another error, do not emit
-            // an error for not using a type Parameter.
+            // an error for not using a type parameter.
             assert!(tcx.sess.has_errors());
             return;
         }

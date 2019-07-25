@@ -7,6 +7,7 @@
 
 // revisions: nll migrate
 // ignore-compare-mode-nll
+// ignore-compare-mode-polonius
 
 // This test is going to pass in the migrate revision, because the AST-borrowck
 // accepted this code in the past (see notes below). So we use `#[rustc_error]`

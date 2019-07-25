@@ -37,7 +37,6 @@ use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{arg_to_string, ty_to_string};
-use syntax::source_map::MacroAttribute;
 use syntax_pos::*;
 
 use json_dumper::JsonDumper;
@@ -112,7 +111,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             let span = match self.tcx.extern_crate(n.as_def_id()) {
                 Some(&ExternCrate { span, .. }) => span,
                 None => {
-                    debug!("Skipping crate {}, no data", n);
+                    debug!("skipping crate {}, no data", n);
                     continue;
                 }
             };
@@ -470,7 +469,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                         )
                     }
                     None => {
-                        debug!("Could not find container for method {} at {:?}", id, span);
+                        debug!("could not find container for method {} at {:?}", id, span);
                         // This is not necessarily a bug, if there was a compilation error,
                         // the tables we need might not exist.
                         return None;
@@ -551,7 +550,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     }
                     ty::Tuple(..) => None,
                     _ => {
-                        debug!("Expected struct or union type, found {:?}", ty);
+                        debug!("expected struct or union type, found {:?}", ty);
                         None
                     }
                 }
@@ -581,7 +580,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 let method_id = match self.tables.type_dependent_def_id(expr_hir_id) {
                     Some(id) => id,
                     None => {
-                        debug!("Could not resolve method id for {:?}", expr);
+                        debug!("could not resolve method id for {:?}", expr);
                         return None;
                     }
                 };
@@ -842,10 +841,10 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let callsite = span.source_callsite();
         let callsite_span = self.span_from_span(callsite);
         let callee = span.source_callee()?;
-        let callee_span = callee.def_site?;
 
         // Ignore attribute macros, their spans are usually mangled
-        if let MacroAttribute(_) = callee.format {
+        if let ExpnKind::Macro(MacroKind::Attr, _) |
+               ExpnKind::Macro(MacroKind::Derive, _) = callee.kind {
             return None;
         }
 
@@ -856,7 +855,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             .sess
             .imported_macro_spans
             .borrow()
-            .get(&callee_span)
+            .get(&callee.def_site)
         {
             let &(ref mac_name, mac_span) = mac;
             let mac_span = self.span_from_span(mac_span);
@@ -867,10 +866,10 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             });
         }
 
-        let callee_span = self.span_from_span(callee_span);
+        let callee_span = self.span_from_span(callee.def_site);
         Some(MacroRef {
             span: callsite_span,
-            qualname: callee.format.name().to_string(), // FIXME: generate the real qualname
+            qualname: callee.kind.descr().to_string(), // FIXME: generate the real qualname
             callee_span,
         })
     }

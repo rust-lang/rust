@@ -5,7 +5,7 @@ LL |     #[empty_attr]
    |     ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/49476
-   = help: add #![feature(macros_in_extern)] to the crate attributes to enable
+   = help: add `#![feature(macros_in_extern)]` to the crate attributes to enable
 
 error[E0658]: macro invocations in `extern {}` blocks are experimental
   --> $DIR/macros-in-extern.rs:18:5
@@ -14,7 +14,7 @@ LL |     #[identity_attr]
    |     ^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/49476
-   = help: add #![feature(macros_in_extern)] to the crate attributes to enable
+   = help: add `#![feature(macros_in_extern)]` to the crate attributes to enable
 
 error[E0658]: macro invocations in `extern {}` blocks are experimental
   --> $DIR/macros-in-extern.rs:22:5
@@ -23,7 +23,7 @@ LL |     identity!(fn rust_dbg_extern_identity_u32(arg: u32) -> u32;);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/49476
-   = help: add #![feature(macros_in_extern)] to the crate attributes to enable
+   = help: add `#![feature(macros_in_extern)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

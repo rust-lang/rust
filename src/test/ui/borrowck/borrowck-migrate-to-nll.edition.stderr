@@ -1,5 +1,5 @@
 warning[E0507]: cannot move out of `foo` in pattern guard
-  --> $DIR/borrowck-migrate-to-nll.rs:25:18
+  --> $DIR/borrowck-migrate-to-nll.rs:26:18
    |
 LL |                 (|| { let bar = foo; bar.take() })();
    |                  ^^             ---

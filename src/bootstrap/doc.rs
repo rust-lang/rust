@@ -23,7 +23,7 @@ use crate::cache::{INTERNER, Interned};
 use crate::config::Config;
 
 macro_rules! book {
-    ($($name:ident, $path:expr, $book_name:expr, $book_ver:expr;)+) => {
+    ($($name:ident, $path:expr, $book_name:expr;)+) => {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
@@ -49,7 +49,6 @@ macro_rules! book {
                 builder.ensure(RustbookSrc {
                     target: self.target,
                     name: INTERNER.intern_str($book_name),
-                    version: $book_ver,
                     src: doc_src(builder),
                 })
             }
@@ -61,20 +60,14 @@ macro_rules! book {
 // NOTE: When adding a book here, make sure to ALSO build the book by
 // adding a build step in `src/bootstrap/builder.rs`!
 book!(
-    EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::Latest;
-    EmbeddedBook, "src/doc/embedded-book", "embedded-book", RustbookVersion::Latest;
-    Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::Latest;
-    Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
-    RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::Latest;
-    RustcBook, "src/doc/rustc", "rustc", RustbookVersion::MdBook1;
-    RustdocBook, "src/doc/rustdoc", "rustdoc", RustbookVersion::Latest;
+    EditionGuide, "src/doc/edition-guide", "edition-guide";
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book";
+    Nomicon, "src/doc/nomicon", "nomicon";
+    Reference, "src/doc/reference", "reference";
+    RustByExample, "src/doc/rust-by-example", "rust-by-example";
+    RustcBook, "src/doc/rustc", "rustc";
+    RustdocBook, "src/doc/rustdoc", "rustdoc";
 );
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-enum RustbookVersion {
-    MdBook1,
-    Latest,
-}
 
 fn doc_src(builder: &Builder<'_>) -> Interned<PathBuf> {
     INTERNER.intern_path(builder.src.join("src/doc"))
@@ -108,7 +101,6 @@ impl Step for UnstableBook {
             target: self.target,
             name: INTERNER.intern_str("unstable-book"),
             src: builder.md_doc_out(self.target),
-            version: RustbookVersion::Latest,
         })
     }
 }
@@ -162,7 +154,6 @@ struct RustbookSrc {
     target: Interned<String>,
     name: Interned<String>,
     src: Interned<PathBuf>,
-    version: RustbookVersion,
 }
 
 impl Step for RustbookSrc {
@@ -194,18 +185,11 @@ impl Step for RustbookSrc {
         builder.info(&format!("Rustbook ({}) - {}", target, name));
         let _ = fs::remove_dir_all(&out);
 
-        let vers = match self.version {
-            RustbookVersion::MdBook1 => "1",
-            RustbookVersion::Latest => "3",
-        };
-
         builder.run(rustbook_cmd
                        .arg("build")
                        .arg(&src)
                        .arg("-d")
-                       .arg(out)
-                       .arg("-m")
-                       .arg(vers));
+                       .arg(out));
     }
 }
 
@@ -251,7 +235,6 @@ impl Step for TheBook {
         builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(name.to_string()),
-            version: RustbookVersion::Latest,
             src: doc_src(builder),
         });
 
@@ -261,7 +244,6 @@ impl Step for TheBook {
         builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::Latest,
             src: doc_src(builder),
         });
 
@@ -269,7 +251,6 @@ impl Step for TheBook {
         builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::Latest,
             src: doc_src(builder),
         });
 
@@ -277,7 +258,6 @@ impl Step for TheBook {
         builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::Latest,
             src: doc_src(builder),
         });
 

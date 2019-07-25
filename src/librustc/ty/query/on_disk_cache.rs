@@ -5,7 +5,7 @@ use crate::hir::map::definitions::DefPathHash;
 use crate::ich::{CachingSourceMapView, Fingerprint};
 use crate::mir::{self, interpret};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use crate::rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
                       UseSpecializedDecodable, UseSpecializedEncodable};
 use crate::session::{CrateDisambiguator, Session};
@@ -23,7 +23,7 @@ use std::mem;
 use syntax::ast::NodeId;
 use syntax::source_map::{SourceMap, StableSourceFileId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
-use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
+use syntax_pos::hygiene::{ExpnId, SyntaxContext, ExpnInfo};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -588,41 +588,41 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
 
         let expn_info_tag = u8::decode(self)?;
 
-        let ctxt = match expn_info_tag {
+        // FIXME(mw): This method does not restore `InternalExpnData::parent` or
+        // `SyntaxContextData::prev_ctxt` or `SyntaxContextData::opaque`. These things
+        // don't seem to be used after HIR lowering, so everything should be fine
+        // as long as incremental compilation does not kick in before that.
+        let location = || Span::new(lo, hi, SyntaxContext::empty());
+        let recover_from_expn_info = |this: &Self, expn_info, pos| {
+            let span = location().fresh_expansion(ExpnId::root(), expn_info);
+            this.synthetic_expansion_infos.borrow_mut().insert(pos, span.ctxt());
+            span
+        };
+        Ok(match expn_info_tag {
             TAG_NO_EXPANSION_INFO => {
-                SyntaxContext::empty()
+                location()
             }
             TAG_EXPANSION_INFO_INLINE => {
-                let pos = AbsoluteBytePos::new(self.opaque.position());
-                let expn_info: ExpnInfo = Decodable::decode(self)?;
-                let ctxt = SyntaxContext::allocate_directly(expn_info);
-                self.synthetic_expansion_infos.borrow_mut().insert(pos, ctxt);
-                ctxt
+                let expn_info = Decodable::decode(self)?;
+                recover_from_expn_info(
+                    self, expn_info, AbsoluteBytePos::new(self.opaque.position())
+                )
             }
             TAG_EXPANSION_INFO_SHORTHAND => {
                 let pos = AbsoluteBytePos::decode(self)?;
-                let cached_ctxt = self.synthetic_expansion_infos
-                                      .borrow()
-                                      .get(&pos)
-                                      .cloned();
-
+                let cached_ctxt = self.synthetic_expansion_infos.borrow().get(&pos).cloned();
                 if let Some(ctxt) = cached_ctxt {
-                    ctxt
+                    Span::new(lo, hi, ctxt)
                 } else {
-                    let expn_info = self.with_position(pos.to_usize(), |this| {
-                         ExpnInfo::decode(this)
-                    })?;
-                    let ctxt = SyntaxContext::allocate_directly(expn_info);
-                    self.synthetic_expansion_infos.borrow_mut().insert(pos, ctxt);
-                    ctxt
+                    let expn_info =
+                        self.with_position(pos.to_usize(), |this| ExpnInfo::decode(this))?;
+                    recover_from_expn_info(self, expn_info, pos)
                 }
             }
             _ => {
                 unreachable!()
             }
-        };
-
-        Ok(Span::new(lo, hi, ctxt))
+        })
     }
 }
 
@@ -725,7 +725,7 @@ struct CacheEncoder<'a, 'tcx, E: ty_codec::TyEncoder> {
     encoder: &'a mut E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
-    expn_info_shorthands: FxHashMap<Mark, AbsoluteBytePos>,
+    expn_info_shorthands: FxHashMap<ExpnId, AbsoluteBytePos>,
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
     interpret_allocs_inverse: Vec<interpret::AllocId>,
     source_map: CachingSourceMapView<'tcx>,
@@ -819,15 +819,15 @@ where
         if span_data.ctxt == SyntaxContext::empty() {
             TAG_NO_EXPANSION_INFO.encode(self)
         } else {
-            let (mark, expn_info) = span_data.ctxt.outer_and_expn_info();
+            let (expn_id, expn_info) = span_data.ctxt.outer_expn_with_info();
             if let Some(expn_info) = expn_info {
-                if let Some(pos) = self.expn_info_shorthands.get(&mark).cloned() {
+                if let Some(pos) = self.expn_info_shorthands.get(&expn_id).cloned() {
                     TAG_EXPANSION_INFO_SHORTHAND.encode(self)?;
                     pos.encode(self)
                 } else {
                     TAG_EXPANSION_INFO_INLINE.encode(self)?;
                     let pos = AbsoluteBytePos::new(self.position());
-                    self.expn_info_shorthands.insert(mark, pos);
+                    self.expn_info_shorthands.insert(expn_id, pos);
                     expn_info.encode(self)
                 }
             } else {

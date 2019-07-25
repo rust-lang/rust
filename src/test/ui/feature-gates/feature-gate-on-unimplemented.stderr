@@ -5,7 +5,7 @@ LL | #[rustc_on_unimplemented = "test error `{Self}` with `{Bar}`"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29628
-   = help: add #![feature(on_unimplemented)] to the crate attributes to enable
+   = help: add `#![feature(on_unimplemented)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

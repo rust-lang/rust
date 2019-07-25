@@ -2,8 +2,11 @@
 
 #![feature(custom_inner_attributes)]
 
-#![mutable_doc] //~ ERROR attribute `mutable_doc` is currently unknown
+#![mutable_doc]
+//~^ ERROR cannot find attribute macro `mutable_doc` in this scope
 
-#[dance] mod a {} //~ ERROR attribute `dance` is currently unknown
+#[dance] mod a {}
+//~^ ERROR cannot find attribute macro `dance` in this scope
 
-#[dance] fn main() {} //~ ERROR attribute `dance` is currently unknown
+#[dance] fn main() {}
+//~^ ERROR cannot find attribute macro `dance` in this scope

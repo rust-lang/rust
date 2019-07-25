@@ -1663,9 +1663,10 @@ fn generic_simd_intrinsic(
                             acc
                         } else {
                             // unordered arithmetic reductions do not:
+                            let identity_acc = if $name.contains("mul") { 1.0 } else { 0.0 };
                             match f.bit_width() {
-                                32 => bx.const_undef(bx.type_f32()),
-                                64 => bx.const_undef(bx.type_f64()),
+                                32 => bx.const_real(bx.type_f32(), identity_acc),
+                                64 => bx.const_real(bx.type_f64(), identity_acc),
                                 v => {
                                     return_error!(r#"
 unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,

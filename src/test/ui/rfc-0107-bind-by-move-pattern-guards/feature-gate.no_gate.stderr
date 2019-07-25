@@ -4,7 +4,7 @@ error[E0008]: cannot bind by-move into a pattern guard
 LL |         A { a: v } if *v == 42 => v,
    |                ^ moves value into pattern guard
    |
-   = help: add #![feature(bind_by_move_pattern_guards)] to the crate attributes to enable
+   = help: add `#![feature(bind_by_move_pattern_guards)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

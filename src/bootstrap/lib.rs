@@ -128,7 +128,7 @@ use build_helper::{
 };
 use filetime::FileTime;
 
-use crate::util::{exe, libdir, OutputFolder, CiEnv};
+use crate::util::{exe, libdir, CiEnv};
 
 mod cc_detect;
 mod channel;
@@ -197,11 +197,11 @@ pub struct Compiler {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum DocTests {
-    // Default, run normal tests and doc tests.
+    /// Run normal tests and doc tests (default).
     Yes,
-    // Do not run any doc tests.
+    /// Do not run any doc tests.
     No,
-    // Only run doc tests.
+    /// Only run doc tests.
     Only,
 }
 
@@ -221,10 +221,10 @@ pub enum GitRepo {
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
 pub struct Build {
-    // User-specified configuration via config.toml
+    /// User-specified configuration from `config.toml`.
     config: Config,
 
-    // Derived properties from the above two configurations
+    // Properties derived from the above configuration
     src: PathBuf,
     out: PathBuf,
     rust_info: channel::GitInfo,
@@ -240,12 +240,12 @@ pub struct Build {
     doc_tests: DocTests,
     verbosity: usize,
 
-    // Targets for which to build.
+    // Targets for which to build
     build: Interned<String>,
     hosts: Vec<Interned<String>>,
     targets: Vec<Interned<String>>,
 
-    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
+    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
 
@@ -255,7 +255,7 @@ pub struct Build {
     cxx: HashMap<Interned<String>, cc::Tool>,
     ar: HashMap<Interned<String>, PathBuf>,
     ranlib: HashMap<Interned<String>, PathBuf>,
-    // Misc
+    // Miscellaneous
     crates: HashMap<Interned<String>, Crate>,
     is_sudo: bool,
     ci_env: CiEnv,
@@ -1089,19 +1089,6 @@ impl Build {
         match &self.config.channel[..] {
             "stable" | "beta" => false,
             "nightly" | _ => true,
-        }
-    }
-
-    /// Fold the output of the commands after this method into a group. The fold
-    /// ends when the returned object is dropped. Folding can only be used in
-    /// the Travis CI environment.
-    pub fn fold_output<D, F>(&self, name: F) -> Option<OutputFolder>
-        where D: Into<String>, F: FnOnce() -> D
-    {
-        if !self.config.dry_run && self.ci_env == CiEnv::Travis {
-            Some(OutputFolder::new(name().into()))
-        } else {
-            None
         }
     }
 

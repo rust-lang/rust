@@ -98,7 +98,8 @@ application of these fields based on a variety of attributes when using
    `crate_local`) or matching against a particular method. Currently used
    for `try`.
  - `from_desugaring`: usable both as boolean (whether the flag is present)
-   or matching against a particular desugaring.
+   or matching against a particular desugaring. The desugaring is identified
+   with its variant name in the `DesugaringKind` enum.
 
 For example, the `Iterator` trait can be annotated in the following way:
 

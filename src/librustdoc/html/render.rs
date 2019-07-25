@@ -2471,7 +2471,6 @@ impl<'a> fmt::Display for Item<'a> {
                 MacroKind::Bang => write!(fmt, "Macro ")?,
                 MacroKind::Attr => write!(fmt, "Attribute Macro ")?,
                 MacroKind::Derive => write!(fmt, "Derive Macro ")?,
-                MacroKind::ProcMacroStub => unreachable!(),
             }
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
             clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
@@ -3810,7 +3809,6 @@ const ATTRIBUTE_WHITELIST: &'static [Symbol] = &[
     sym::must_use,
     sym::no_mangle,
     sym::repr,
-    sym::unsafe_destructor_blind_to_params,
     sym::non_exhaustive
 ];
 
@@ -5092,7 +5090,6 @@ fn item_proc_macro(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item, m
             }
             write!(w, "</pre>")?;
         }
-        _ => {}
     }
     document(w, cx, it)
 }

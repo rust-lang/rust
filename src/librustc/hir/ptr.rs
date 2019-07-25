@@ -7,7 +7,7 @@ use std::iter::FromIterator;
 use std::ops::Deref;
 use std::{slice, vec};
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};

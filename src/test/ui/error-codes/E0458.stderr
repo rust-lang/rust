@@ -6,7 +6,7 @@ LL | #[link(kind = "wonderful_unicorn")] extern {}
    |        |
    |        unknown kind
 
-error[E0459]: #[link(...)] specified without `name = "foo"`
+error[E0459]: `#[link(...)]` specified without `name = "foo"`
   --> $DIR/E0458.rs:1:1
    |
 LL | #[link(kind = "wonderful_unicorn")] extern {}

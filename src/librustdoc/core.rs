@@ -432,7 +432,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         },
                         sym::plugins => {
                             report_deprecated_attr("plugins = \"...\"", diag);
-                            eprintln!("WARNING: #![doc(plugins = \"...\")] no longer functions; \
+                            eprintln!("WARNING: `#![doc(plugins = \"...\")]` no longer functions; \
                                       see CVE-2018-1000622");
                             continue
                         },

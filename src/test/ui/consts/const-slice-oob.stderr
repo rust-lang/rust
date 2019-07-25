@@ -6,7 +6,7 @@ LL | const BAR: u32 = FOO[5];
    |                  |
    |                  index out of bounds: the len is 3 but the index is 5
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to previous error
 

@@ -3,6 +3,7 @@
 
 // Don't use compare-mode=nll, since that turns on NLL.
 // ignore-compare-mode-nll
+// ignore-compare-mode-polonius
 
 #![feature(rustc_attrs)]
 

@@ -239,6 +239,7 @@ pub struct Parser<'a> {
     /// error.
     crate unclosed_delims: Vec<UnmatchedBrace>,
     crate last_unexpected_token_span: Option<Span>,
+    crate last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     crate subparser_name: Option<&'static str>,
 }
@@ -502,6 +503,7 @@ impl<'a> Parser<'a> {
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
             last_unexpected_token_span: None,
+            last_type_ascription: None,
             subparser_name,
         };
 
@@ -1422,7 +1424,10 @@ impl<'a> Parser<'a> {
             }
         } else {
             let msg = format!("expected type, found {}", self.this_token_descr());
-            return Err(self.fatal(&msg));
+            let mut err = self.fatal(&msg);
+            err.span_label(self.token.span, "expected type");
+            self.maybe_annotate_with_ascription(&mut err, true);
+            return Err(err);
         };
 
         let span = lo.to(self.prev_span);
@@ -1498,7 +1503,7 @@ impl<'a> Parser<'a> {
         F: Fn(&token::Token) -> bool
     {
         let attrs = self.parse_arg_attributes()?;
-        if let Ok(Some(mut arg)) = self.parse_self_arg() {
+        if let Some(mut arg) = self.parse_self_arg()? {
             arg.attrs = attrs.into();
             return self.recover_bad_self_arg(arg, is_trait_item);
         }
@@ -2571,7 +2576,6 @@ impl<'a> Parser<'a> {
                               None => continue,
                           };
                           let sugg = pprust::to_string(|s| {
-                              use crate::print::pprust::PrintState;
                               s.popen();
                               s.print_expr(&e);
                               s.s.word( ".");
@@ -2824,10 +2828,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an associative expression with operators of at least `min_prec` precedence.
-    fn parse_assoc_expr_with(&mut self,
-                                 min_prec: usize,
-                                 lhs: LhsExpr)
-                                 -> PResult<'a, P<Expr>> {
+    fn parse_assoc_expr_with(
+        &mut self,
+        min_prec: usize,
+        lhs: LhsExpr,
+    ) -> PResult<'a, P<Expr>> {
         let mut lhs = if let LhsExpr::AlreadyParsed(expr) = lhs {
             expr
         } else {
@@ -2841,9 +2846,11 @@ impl<'a> Parser<'a> {
                 self.parse_prefix_expr(attrs)?
             }
         };
+        let last_type_ascription_set = self.last_type_ascription.is_some();
 
         match (self.expr_is_complete(&lhs), AssocOp::from_token(&self.token)) {
             (true, None) => {
+                self.last_type_ascription = None;
                 // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
                 return Ok(lhs);
             }
@@ -2858,12 +2865,14 @@ impl<'a> Parser<'a> {
             // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
             // `if x { a } else { b } && if y { c } else { d }`
             if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
+                self.last_type_ascription = None;
                 // These cases are ambiguous and can't be identified in the parser alone
                 let sp = self.sess.source_map().start_point(self.token.span);
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
                 return Ok(lhs);
             }
             (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => {
+                self.last_type_ascription = None;
                 return Ok(lhs);
             }
             (true, Some(_)) => {
@@ -2922,21 +2931,9 @@ impl<'a> Parser<'a> {
                 continue
             } else if op == AssocOp::Colon {
                 let maybe_path = self.could_ascription_be_path(&lhs.node);
-                let next_sp = self.token.span;
+                self.last_type_ascription = Some((self.prev_span, maybe_path));
 
-                lhs = match self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type) {
-                    Ok(lhs) => lhs,
-                    Err(mut err) => {
-                        self.bad_type_ascription(
-                            &mut err,
-                            lhs_span,
-                            cur_op_span,
-                            next_sp,
-                            maybe_path,
-                        );
-                        return Err(err);
-                    }
-                };
+                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
                 continue
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
                 // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
@@ -3020,6 +3017,9 @@ impl<'a> Parser<'a> {
             };
 
             if let Fixity::None = fixity { break }
+        }
+        if last_type_ascription_set {
+            self.last_type_ascription = None;
         }
         Ok(lhs)
     }
@@ -4379,9 +4379,10 @@ impl<'a> Parser<'a> {
         Ok(Some(self.mk_item(span, ident, ItemKind::MacroDef(def), vis.clone(), attrs.to_vec())))
     }
 
-    fn parse_stmt_without_recovery(&mut self,
-                                   macro_legacy_warnings: bool)
-                                   -> PResult<'a, Option<Stmt>> {
+    fn parse_stmt_without_recovery(
+        &mut self,
+        macro_legacy_warnings: bool,
+    ) -> PResult<'a, Option<Stmt>> {
         maybe_whole!(self, NtStmt, |x| Some(x));
 
         let attrs = self.parse_outer_attributes()?;
@@ -4587,20 +4588,15 @@ impl<'a> Parser<'a> {
                     if self.eat(&token::Semi) {
                         stmt_span = stmt_span.with_hi(self.prev_span.hi());
                     }
-                    let sugg = pprust::to_string(|s| {
-                        use crate::print::pprust::{PrintState, INDENT_UNIT};
-                        s.ibox(INDENT_UNIT);
-                        s.bopen();
-                        s.print_stmt(&stmt);
-                        s.bclose_maybe_open(stmt.span, INDENT_UNIT, false)
-                    });
-                    e.span_suggestion(
-                        stmt_span,
-                        "try placing this code inside a block",
-                        sugg,
-                        // speculative, has been misleading in the past (closed Issue #46836)
-                        Applicability::MaybeIncorrect
-                    );
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(stmt_span) {
+                        e.span_suggestion(
+                            stmt_span,
+                            "try placing this code inside a block",
+                            format!("{{ {} }}", snippet),
+                            // speculative, has been misleading in the past (#46836)
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
                 Err(mut e) => {
                     self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
@@ -4616,7 +4612,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block. Inner attributes are allowed.
-    fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
+    crate fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         let lo = self.token.span;
@@ -4630,6 +4626,9 @@ impl<'a> Parser<'a> {
     fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
+            if self.token == token::Eof {
+                break;
+            }
             let stmt = match self.parse_full_stmt(false) {
                 Err(mut err) => {
                     err.emit();
@@ -4644,8 +4643,6 @@ impl<'a> Parser<'a> {
             };
             if let Some(stmt) = stmt {
                 stmts.push(stmt);
-            } else if self.token == token::Eof {
-                break;
             } else {
                 // Found only `;` or `}`.
                 continue;
@@ -4679,6 +4676,9 @@ impl<'a> Parser<'a> {
                     {
                         e.emit();
                         self.recover_stmt();
+                        // Don't complain about type errors in body tail after parse error (#57383).
+                        let sp = expr.span.to(self.prev_span);
+                        stmt.node = StmtKind::Expr(DummyResult::raw_expr(sp, true));
                     }
                 }
             }
@@ -4696,8 +4696,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::Semi) {
             stmt = stmt.add_trailing_semicolon();
         }
-
-        stmt.span = stmt.span.with_hi(self.prev_span.hi());
+        stmt.span = stmt.span.to(self.prev_span);
         Ok(Some(stmt))
     }
 
@@ -6667,12 +6666,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Reads a module from a source file.
-    fn eval_src_mod(&mut self,
-                    path: PathBuf,
-                    directory_ownership: DirectoryOwnership,
-                    name: String,
-                    id_sp: Span)
-                    -> PResult<'a, (ast::Mod, Vec<Attribute> )> {
+    fn eval_src_mod(
+        &mut self,
+        path: PathBuf,
+        directory_ownership: DirectoryOwnership,
+        name: String,
+        id_sp: Span,
+    ) -> PResult<'a, (ast::Mod, Vec<Attribute>)> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
             let mut err = String::from("circular modules: ");
@@ -6699,15 +6699,20 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a function declaration from a foreign module.
-    fn parse_item_foreign_fn(&mut self, vis: ast::Visibility, lo: Span, attrs: Vec<Attribute>)
-                             -> PResult<'a, ForeignItem> {
+    fn parse_item_foreign_fn(
+        &mut self,
+        vis: ast::Visibility,
+        lo: Span,
+        attrs: Vec<Attribute>,
+        extern_sp: Span,
+    ) -> PResult<'a, ForeignItem> {
         self.expect_keyword(kw::Fn)?;
 
         let (ident, mut generics) = self.parse_fn_header()?;
         let decl = self.parse_fn_decl(true)?;
         generics.where_clause = self.parse_where_clause()?;
         let hi = self.token.span;
-        self.expect(&token::Semi)?;
+        self.parse_semi_or_incorrect_foreign_fn_body(&ident, extern_sp)?;
         Ok(ast::ForeignItem {
             ident,
             attrs,
@@ -6834,12 +6839,14 @@ impl<'a> Parser<'a> {
     /// extern "C" {}
     /// extern {}
     /// ```
-    fn parse_item_foreign_mod(&mut self,
-                              lo: Span,
-                              opt_abi: Option<Abi>,
-                              visibility: Visibility,
-                              mut attrs: Vec<Attribute>)
-                              -> PResult<'a, P<Item>> {
+    fn parse_item_foreign_mod(
+        &mut self,
+        lo: Span,
+        opt_abi: Option<Abi>,
+        visibility: Visibility,
+        mut attrs: Vec<Attribute>,
+        extern_sp: Span,
+    ) -> PResult<'a, P<Item>> {
         self.expect(&token::OpenDelim(token::Brace))?;
 
         let abi = opt_abi.unwrap_or(Abi::C);
@@ -6848,7 +6855,7 @@ impl<'a> Parser<'a> {
 
         let mut foreign_items = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
-            foreign_items.push(self.parse_foreign_item()?);
+            foreign_items.push(self.parse_foreign_item(extern_sp)?);
         }
 
         let prev_span = self.prev_span;
@@ -7095,6 +7102,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.eat_keyword(kw::Extern) {
+            let extern_sp = self.prev_span;
             if self.eat_keyword(kw::Crate) {
                 return Ok(Some(self.parse_item_extern_crate(lo, visibility, attrs)?));
             }
@@ -7118,7 +7126,9 @@ impl<'a> Parser<'a> {
                                         maybe_append(attrs, extra_attrs));
                 return Ok(Some(item));
             } else if self.check(&token::OpenDelim(token::Brace)) {
-                return Ok(Some(self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs)?));
+                return Ok(Some(
+                    self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs, extern_sp)?,
+                ));
             }
 
             self.unexpected()?;
@@ -7409,7 +7419,9 @@ impl<'a> Parser<'a> {
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
-                let kw_name = if let Ok(Some(_)) = self.parse_self_arg_with_attrs() {
+                let kw_name = if let Ok(Some(_)) = self.parse_self_arg_with_attrs()
+                    .map_err(|mut e| e.cancel())
+                {
                     "method"
                 } else {
                     "function"
@@ -7460,7 +7472,9 @@ impl<'a> Parser<'a> {
                 self.eat_to_tokens(&[&token::Gt]);
                 self.bump();  // `>`
                 let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
-                    if let Ok(Some(_)) = self.parse_self_arg_with_attrs() {
+                    if let Ok(Some(_)) = self.parse_self_arg_with_attrs()
+                        .map_err(|mut e| e.cancel())
+                    {
                         ("fn", "method", false)
                     } else {
                         ("fn", "function", false)
@@ -7500,7 +7514,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a foreign item.
-    crate fn parse_foreign_item(&mut self) -> PResult<'a, ForeignItem> {
+    crate fn parse_foreign_item(&mut self, extern_sp: Span) -> PResult<'a, ForeignItem> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
         let attrs = self.parse_outer_attributes()?;
@@ -7525,7 +7539,7 @@ impl<'a> Parser<'a> {
         }
         // FOREIGN FUNCTION ITEM
         if self.check_keyword(kw::Fn) {
-            return Ok(self.parse_item_foreign_fn(visibility, lo, attrs)?);
+            return Ok(self.parse_item_foreign_fn(visibility, lo, attrs, extern_sp)?);
         }
         // FOREIGN TYPE ITEM
         if self.check_keyword(kw::Type) {

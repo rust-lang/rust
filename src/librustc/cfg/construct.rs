@@ -165,48 +165,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(expr.hir_id.local_id, &[blk_exit])
             }
 
-            hir::ExprKind::While(ref cond, ref body, _) => {
-                //
-                //         [pred]
-                //           |
-                //           v 1
-                //       [loopback] <--+ 5
-                //           |         |
-                //           v 2       |
-                //   +-----[cond]      |
-                //   |       |         |
-                //   |       v 4       |
-                //   |     [body] -----+
-                //   v 3
-                // [expr]
-                //
-                // Note that `break` and `continue` statements
-                // may cause additional edges.
-
-                let loopback = self.add_dummy_node(&[pred]);              // 1
-
-                // Create expr_exit without pred (cond_exit)
-                let expr_exit = self.add_ast_node(expr.hir_id.local_id, &[]);         // 3
-
-                // The LoopScope needs to be on the loop_scopes stack while evaluating the
-                // condition and the body of the loop (both can break out of the loop)
-                self.loop_scopes.push(LoopScope {
-                    loop_id: expr.hir_id.local_id,
-                    continue_index: loopback,
-                    break_index: expr_exit
-                });
-
-                let cond_exit = self.expr(&cond, loopback);             // 2
-
-                // Add pred (cond_exit) to expr_exit
-                self.add_contained_edge(cond_exit, expr_exit);
-
-                let body_exit = self.block(&body, cond_exit);          // 4
-                self.add_contained_edge(body_exit, loopback);            // 5
-                self.loop_scopes.pop();
-                expr_exit
-            }
-
             hir::ExprKind::Loop(ref body, _, _) => {
                 //
                 //     [pred]
@@ -413,7 +371,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         let expr_exit = self.add_ast_node(id, &[]);
 
         // Keep track of the previous guard expressions
-        let mut prev_guards = Vec::new();
+        let mut prev_guard = None;
+        let match_scope = region::Scope { id, data: region::ScopeData::Node };
 
         for arm in arms {
             // Add an exit node for when we've visited all the
@@ -431,7 +390,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     let guard_start = self.add_dummy_node(&[pat_exit]);
                     // Visit the guard expression
                     let guard_exit = match guard {
-                        hir::Guard::If(ref e) => self.expr(e, guard_start),
+                        hir::Guard::If(ref e) => (&**e, self.expr(e, guard_start)),
                     };
                     // #47295: We used to have very special case code
                     // here for when a pair of arms are both formed
@@ -439,15 +398,15 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     // edges.  But this was not actually sound without
                     // other constraints that we stopped enforcing at
                     // some point.
-                    while let Some(prev) = prev_guards.pop() {
-                        self.add_contained_edge(prev, guard_start);
+                    if let Some((prev_guard, prev_index)) = prev_guard.take() {
+                        self.add_exiting_edge(prev_guard, prev_index, match_scope, guard_start);
                     }
 
                     // Push the guard onto the list of previous guards
-                    prev_guards.push(guard_exit);
+                    prev_guard = Some(guard_exit);
 
                     // Update the exit node for the pattern
-                    pat_exit = guard_exit;
+                    pat_exit = guard_exit.1;
                 }
 
                 // Add an edge from the exit of this pattern to the

@@ -1,5 +1,5 @@
 use self::collector::NodeCollector;
-pub use self::def_collector::{DefCollector, MacroInvocationData};
+pub use self::def_collector::DefCollector;
 pub use self::definitions::{
     Definitions, DefKey, DefPath, DefPathData, DisambiguatedDefPathData, DefPathHash
 };
@@ -731,7 +731,7 @@ impl<'hir> Map<'hir> {
             match *node {
                 Node::Expr(ref expr) => {
                     match expr.node {
-                        ExprKind::While(..) | ExprKind::Loop(..) | ExprKind::Ret(..) => true,
+                        ExprKind::Loop(..) | ExprKind::Ret(..) => true,
                         _ => false,
                     }
                 }
@@ -1212,10 +1212,8 @@ impl<'a> print::State<'a> {
             Node::Pat(a)          => self.print_pat(&a),
             Node::Arm(a)          => self.print_arm(&a),
             Node::Block(a)        => {
-                use syntax::print::pprust::PrintState;
-
                 // containing cbox, will be closed by print-block at }
-                self.cbox(print::indent_unit);
+                self.cbox(print::INDENT_UNIT);
                 // head-ibox, will be closed by print-block after {
                 self.ibox(0);
                 self.print_block(&a)

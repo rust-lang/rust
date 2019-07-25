@@ -27,7 +27,7 @@ use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
 use crate::hir;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::lint::builtin::parser::ILL_FORMED_ATTRIBUTE_INPUT;
+use crate::lint::builtin::parser::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
 use crate::session::{Session, DiagnosticMessageId};
 use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
@@ -35,9 +35,10 @@ use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use std::{hash, ptr};
 use syntax::ast;
-use syntax::source_map::{MultiSpan, ExpnFormat, CompilerDesugaringKind};
+use syntax::source_map::{MultiSpan, ExpnKind, DesugaringKind};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
+use syntax::ext::base::MacroKind;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 
@@ -81,6 +82,7 @@ impl Lint {
     pub fn from_parser_lint_id(lint_id: BufferedEarlyLintId) -> &'static Self {
         match lint_id {
             BufferedEarlyLintId::IllFormedAttributeInput => ILL_FORMED_ATTRIBUTE_INPUT,
+            BufferedEarlyLintId::MetaVariableMisuse => META_VARIABLE_MISUSE,
         }
     }
 
@@ -670,7 +672,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             sess.diag_note_once(
                 &mut err,
                 DiagnosticMessageId::from(lint),
-                &format!("#[{}({})] on by default", level.as_str(), name));
+                &format!("`#[{}({})]` on by default", level.as_str(), name));
         }
         LintSource::CommandLine(lint_flag_val) => {
             let flag = match level {
@@ -705,7 +707,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
                 sess.diag_note_once(&mut err, DiagnosticMessageId::from(lint),
-                                    &format!("#[{}({})] implied by #[{}({})]",
+                                    &format!("`#[{}({})]` implied by `#[{}({})]`",
                                              level_str, name, level_str, lint_attr_name));
             }
         }
@@ -883,36 +885,30 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
         None => return false,
     };
 
-    match info.format {
-        ExpnFormat::MacroAttribute(..) => true, // definitely a plugin
-        ExpnFormat::CompilerDesugaring(CompilerDesugaringKind::ForLoop) => false,
-        ExpnFormat::CompilerDesugaring(_) => true, // well, it's "external"
-        ExpnFormat::MacroBang(..) => {
-            let def_site = match info.def_site {
-                Some(span) => span,
-                // no span for the def_site means it's an external macro
-                None => return true,
-            };
-
-            match sess.source_map().span_to_snippet(def_site) {
+    match info.kind {
+        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
+        ExpnKind::Desugaring(_) => true, // well, it's "external"
+        ExpnKind::Macro(MacroKind::Bang, _) => {
+            if info.def_site.is_dummy() {
+                // dummy span for the def_site means it's an external macro
+                return true;
+            }
+            match sess.source_map().span_to_snippet(info.def_site) {
                 Ok(code) => !code.starts_with("macro_rules"),
                 // no snippet = external macro or compiler-builtin expansion
                 Err(_) => true,
             }
         }
+        ExpnKind::Macro(..) => true, // definitely a plugin
     }
 }
 
 /// Returns whether `span` originates in a derive macro's expansion
 pub fn in_derive_expansion(span: Span) -> bool {
-    let info = match span.ctxt().outer_expn_info() {
-        Some(info) => info,
-        // no ExpnInfo means this span doesn't come from a macro
-        None => return false,
-    };
-
-    match info.format {
-        ExpnFormat::MacroAttribute(symbol) => symbol.as_str().starts_with("derive("),
-        _ => false,
+    if let Some(info) = span.ctxt().outer_expn_info() {
+        if let ExpnKind::Macro(MacroKind::Derive, _) = info.kind {
+            return true;
+        }
     }
+    false
 }

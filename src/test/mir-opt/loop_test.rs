@@ -26,6 +26,7 @@ fn main() {
 //        _1 = ();
 //        StorageDead(_2);
 //        StorageDead(_1);
+//        StorageLive(_4);
 //        goto -> bb5;
 //    }
 //    ...

@@ -170,8 +170,7 @@ impl CodegenCx<'ll, 'tcx> {
     pub fn const_get_real(&self, v: &'ll Value) -> Option<(f64, bool)> {
         unsafe {
             if self.is_const_real(v) {
-                #[allow(deprecated)]
-                let mut loses_info: llvm::Bool = ::std::mem::uninitialized();
+                let mut loses_info: llvm::Bool = 0;
                 let r = llvm::LLVMConstRealGetDouble(v, &mut loses_info);
                 let loses_info = if loses_info == 1 { true } else { false };
                 Some((r, loses_info))
@@ -248,6 +247,10 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn const_u8(&self, i: u8) -> &'ll Value {
         self.const_uint(self.type_i8(), i as u64)
+    }
+
+    fn const_real(&self, t: &'ll Type, val: f64) -> &'ll Value {
+        unsafe { llvm::LLVMConstReal(t, val) }
     }
 
     fn const_struct(

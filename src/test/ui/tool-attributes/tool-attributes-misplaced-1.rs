@@ -5,7 +5,7 @@ type B = rustfmt::skip; //~ ERROR expected type, found tool attribute `rustfmt::
 struct S;
 
 // Interpreted as a feature gated custom attribute
-#[rustfmt] //~ ERROR attribute `rustfmt` is currently unknown
+#[rustfmt] //~ ERROR cannot find attribute macro `rustfmt` in this scope
 fn check() {}
 
 #[rustfmt::skip] // OK

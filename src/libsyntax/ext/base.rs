@@ -1,21 +1,21 @@
 use crate::ast::{self, Attribute, Name, PatKind};
-use crate::attr::HasAttrs;
+use crate::attr::{HasAttrs, Stability, Deprecation};
 use crate::source_map::{SourceMap, Spanned, respan};
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
-use crate::ext::hygiene::{Mark, SyntaxContext, Transparency};
+use crate::ext::hygiene::{ExpnId, SyntaxContext, Transparency};
 use crate::mut_visit::{self, MutVisitor};
 use crate::parse::{self, parser, DirectoryOwnership};
 use crate::parse::token;
 use crate::ptr::P;
 use crate::symbol::{kw, sym, Ident, Symbol};
 use crate::{ThinVec, MACRO_ARGUMENTS};
-use crate::tokenstream::{self, TokenStream};
+use crate::tokenstream::{self, TokenStream, TokenTree};
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
-use syntax_pos::hygiene::{ExpnInfo, ExpnFormat};
+use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -24,6 +24,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::default::Default;
 
+pub use syntax_pos::hygiene::MacroKind;
 
 #[derive(Debug,Clone)]
 pub enum Annotatable {
@@ -218,7 +219,6 @@ pub trait TTMacroExpander {
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
-        def_span: Option<Span>,
     ) -> Box<dyn MacResult+'cx>;
 }
 
@@ -235,7 +235,6 @@ impl<F> TTMacroExpander for F
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
-        _def_span: Option<Span>,
     ) -> Box<dyn MacResult+'cx> {
         struct AvoidInterpolatedIdents;
 
@@ -518,37 +517,6 @@ impl MacResult for DummyResult {
     }
 }
 
-/// Represents different kinds of macro invocations that can be resolved.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum MacroKind {
-    /// A bang macro - foo!()
-    Bang,
-    /// An attribute macro - #[foo]
-    Attr,
-    /// A derive attribute macro - #[derive(Foo)]
-    Derive,
-    /// A view of a procedural macro from the same crate that defines it.
-    ProcMacroStub,
-}
-
-impl MacroKind {
-    pub fn descr(self) -> &'static str {
-        match self {
-            MacroKind::Bang => "macro",
-            MacroKind::Attr => "attribute macro",
-            MacroKind::Derive => "derive macro",
-            MacroKind::ProcMacroStub => "crate-local procedural macro",
-        }
-    }
-
-    pub fn article(self) -> &'static str {
-        match self {
-            MacroKind::Attr => "an",
-            _ => "a",
-        }
-    }
-}
-
 /// A syntax extension kind.
 pub enum SyntaxExtensionKind {
     /// A token-based function-like macro.
@@ -606,8 +574,8 @@ pub enum SyntaxExtensionKind {
 pub struct SyntaxExtension {
     /// A syntax extension kind.
     pub kind: SyntaxExtensionKind,
-    /// Some info about the macro's definition point.
-    pub def_info: Option<(ast::NodeId, Span)>,
+    /// Span of the macro definition.
+    pub span: Span,
     /// Hygienic properties of spans produced by this macro by default.
     pub default_transparency: Transparency,
     /// Whitelist of unstable features that are treated as stable inside this macro.
@@ -616,8 +584,10 @@ pub struct SyntaxExtension {
     pub allow_internal_unsafe: bool,
     /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
     pub local_inner_macros: bool,
-    /// The macro's feature name and tracking issue number if it is unstable.
-    pub unstable_feature: Option<(Symbol, u32)>,
+    /// The macro's stability info.
+    pub stability: Option<Stability>,
+    /// The macro's deprecation info.
+    pub deprecation: Option<Deprecation>,
     /// Names of helper attributes registered by this macro.
     pub helper_attrs: Vec<Symbol>,
     /// Edition of the crate in which this macro is defined.
@@ -657,31 +627,44 @@ impl SyntaxExtension {
     /// Constructs a syntax extension with default properties.
     pub fn default(kind: SyntaxExtensionKind, edition: Edition) -> SyntaxExtension {
         SyntaxExtension {
-            def_info: None,
+            span: DUMMY_SP,
             default_transparency: kind.default_transparency(),
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            unstable_feature: None,
+            stability: None,
+            deprecation: None,
             helper_attrs: Vec::new(),
             edition,
             kind,
         }
     }
 
-    fn expn_format(&self, symbol: Symbol) -> ExpnFormat {
-        match self.kind {
-            SyntaxExtensionKind::Bang(..) |
-            SyntaxExtensionKind::LegacyBang(..) => ExpnFormat::MacroBang(symbol),
-            _ => ExpnFormat::MacroAttribute(symbol),
+    pub fn dummy_bang(edition: Edition) -> SyntaxExtension {
+        fn expander<'cx>(_: &'cx mut ExtCtxt<'_>, span: Span, _: &[TokenTree])
+                         -> Box<dyn MacResult + 'cx> {
+            DummyResult::any(span)
         }
+        SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Box::new(expander)), edition)
     }
 
-    pub fn expn_info(&self, call_site: Span, format: &str) -> ExpnInfo {
+    pub fn dummy_derive(edition: Edition) -> SyntaxExtension {
+        fn expander(_: &mut ExtCtxt<'_>, _: Span, _: &ast::MetaItem, _: Annotatable)
+                    -> Vec<Annotatable> {
+            Vec::new()
+        }
+        SyntaxExtension::default(SyntaxExtensionKind::Derive(Box::new(expander)), edition)
+    }
+
+    pub fn non_macro_attr(mark_used: bool, edition: Edition) -> SyntaxExtension {
+        SyntaxExtension::default(SyntaxExtensionKind::NonMacroAttr { mark_used }, edition)
+    }
+
+    pub fn expn_info(&self, call_site: Span, descr: Symbol) -> ExpnInfo {
         ExpnInfo {
             call_site,
-            format: self.expn_format(Symbol::intern(format)),
-            def_site: self.def_info.map(|(_, span)| span),
+            kind: ExpnKind::Macro(self.macro_kind(), descr),
+            def_site: self.span,
             default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
             allow_internal_unsafe: self.allow_internal_unsafe,
@@ -693,37 +676,25 @@ impl SyntaxExtension {
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
+/// Error type that denotes indeterminacy.
+pub struct Indeterminate;
+
 pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
 
-    fn get_module_scope(&mut self, id: ast::NodeId) -> Mark;
+    fn get_module_scope(&mut self, id: ast::NodeId) -> ExpnId;
 
-    fn resolve_dollar_crates(&mut self, fragment: &AstFragment);
-    fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
-                                            derives: &[Mark]);
+    fn resolve_dollar_crates(&mut self);
+    fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment,
+                                            derives: &[ExpnId]);
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
 
     fn resolve_imports(&mut self);
 
-    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
-                                -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
-    fn resolve_macro_path(&mut self, path: &ast::Path, kind: MacroKind, invoc_id: Mark,
-                          derives_in_scope: Vec<ast::Path>, force: bool)
-                          -> Result<Lrc<SyntaxExtension>, Determinacy>;
+    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
+                                -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate>;
 
     fn check_unused_macros(&self);
-}
-
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum Determinacy {
-    Determined,
-    Undetermined,
-}
-
-impl Determinacy {
-    pub fn determined(determined: bool) -> Determinacy {
-        if determined { Determinacy::Determined } else { Determinacy::Undetermined }
-    }
 }
 
 #[derive(Clone)]
@@ -734,11 +705,10 @@ pub struct ModuleData {
 
 #[derive(Clone)]
 pub struct ExpansionData {
-    pub mark: Mark,
+    pub id: ExpnId,
     pub depth: usize,
     pub module: Rc<ModuleData>,
     pub directory_ownership: DirectoryOwnership,
-    pub crate_span: Option<Span>,
 }
 
 /// One of these is made during expansion and incrementally updated as we go;
@@ -751,6 +721,7 @@ pub struct ExtCtxt<'a> {
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
+    pub allow_derive_markers: Lrc<[Symbol]>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -764,13 +735,13 @@ impl<'a> ExtCtxt<'a> {
             root_path: PathBuf::new(),
             resolver,
             current_expansion: ExpansionData {
-                mark: Mark::root(),
+                id: ExpnId::root(),
                 depth: 0,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
                 directory_ownership: DirectoryOwnership::Owned { relative: None },
-                crate_span: None,
             },
             expansions: FxHashMap::default(),
+            allow_derive_markers: [sym::rustc_attrs, sym::structural_match][..].into(),
         }
     }
 
@@ -792,13 +763,13 @@ impl<'a> ExtCtxt<'a> {
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {
-        match self.current_expansion.mark.expn_info() {
+        match self.current_expansion.id.expn_info() {
             Some(expn_info) => expn_info.call_site,
             None => DUMMY_SP,
         }
     }
     pub fn backtrace(&self) -> SyntaxContext {
-        SyntaxContext::empty().apply_mark(self.current_expansion.mark)
+        SyntaxContext::empty().apply_mark(self.current_expansion.id)
     }
 
     /// Returns span for the macro which originally caused the current expansion to happen.
@@ -809,7 +780,7 @@ impl<'a> ExtCtxt<'a> {
         let mut last_macro = None;
         loop {
             if ctxt.outer_expn_info().map_or(None, |info| {
-                if info.format.name() == sym::include {
+                if info.kind.descr() == sym::include {
                     // Stop going up the backtrace once include! is encountered
                     return None;
                 }
@@ -906,7 +877,7 @@ impl<'a> ExtCtxt<'a> {
         ast::Ident::from_str(st)
     }
     pub fn std_path(&self, components: &[Symbol]) -> Vec<ast::Ident> {
-        let def_site = DUMMY_SP.apply_mark(self.current_expansion.mark);
+        let def_site = DUMMY_SP.apply_mark(self.current_expansion.id);
         iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|&s| Ident::with_empty_ctxt(s)))
             .collect()
@@ -929,7 +900,7 @@ pub fn expr_to_spanned_string<'a>(
     err_msg: &str,
 ) -> Result<Spanned<(Symbol, ast::StrStyle)>, Option<DiagnosticBuilder<'a>>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
-    expr.span = expr.span.apply_mark(cx.current_expansion.mark);
+    expr.span = expr.span.apply_mark(cx.current_expansion.id);
 
     // we want to be able to handle e.g., `concat!("foo", "bar")`
     cx.expander().visit_expr(&mut expr);

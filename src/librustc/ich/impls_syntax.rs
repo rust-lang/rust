@@ -89,7 +89,6 @@ impl_stable_hash_for!(enum ::syntax::ext::base::MacroKind {
     Bang,
     Attr,
     Derive,
-    ProcMacroStub,
 });
 
 
@@ -399,7 +398,7 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::Transparency {
 
 impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
     call_site,
-    format,
+    kind,
     def_site,
     default_transparency,
     allow_internal_unstable,
@@ -408,14 +407,14 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
     edition
 });
 
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnFormat {
-    MacroAttribute(sym),
-    MacroBang(sym),
-    CompilerDesugaring(kind)
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnKind {
+    Root,
+    Macro(kind, descr),
+    Desugaring(kind)
 });
 
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
-    IfTemporary,
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::DesugaringKind {
+    CondTemporary,
     Async,
     Await,
     QuestionMark,

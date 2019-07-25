@@ -30,6 +30,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("solaris", "solaris"),
     ("win32", "windows"),
     ("windows", "windows"),
+    ("vxworks", "vxworks"),
 ];
 
 const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[

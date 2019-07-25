@@ -1,7 +1,7 @@
 use crate::ast::{self, Ident};
 use crate::source_map::FilePathMapping;
 use crate::parse::{ParseSess, PResult, source_file_to_stream};
-use crate::parse::{lexer, new_parser_from_source_str};
+use crate::parse::new_parser_from_source_str;
 use crate::parse::parser::Parser;
 use crate::ptr::P;
 use crate::tokenstream::TokenStream;
@@ -34,7 +34,7 @@ fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T 
 }
 
 /// Parse a string, return a crate.
-pub fn string_to_crate (source_str : String) -> ast::Crate {
+pub fn string_to_crate(source_str : String) -> ast::Crate {
     let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_crate_mod()
@@ -42,7 +42,7 @@ pub fn string_to_crate (source_str : String) -> ast::Crate {
 }
 
 /// Parse a string, return an expr
-pub fn string_to_expr (source_str : String) -> P<ast::Expr> {
+pub fn string_to_expr(source_str : String) -> P<ast::Expr> {
     let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_expr()
@@ -50,7 +50,7 @@ pub fn string_to_expr (source_str : String) -> P<ast::Expr> {
 }
 
 /// Parse a string, return an item
-pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
+pub fn string_to_item(source_str : String) -> Option<P<ast::Item>> {
     let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_item()
@@ -113,14 +113,14 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
 }
 
 /// Advances the given peekable `Iterator` until it reaches a non-whitespace character
-fn scan_for_non_ws_or_end<I: Iterator<Item= char>>(iter: &mut Peekable<I>) {
-    while lexer::is_pattern_whitespace(iter.peek().cloned()) {
+fn scan_for_non_ws_or_end<I: Iterator<Item = char>>(iter: &mut Peekable<I>) {
+    while iter.peek().copied().map(|c| is_pattern_whitespace(c)) == Some(true) {
         iter.next();
     }
 }
 
 pub fn is_pattern_whitespace(c: char) -> bool {
-    lexer::is_pattern_whitespace(Some(c))
+    rustc_lexer::character_properties::is_whitespace(c)
 }
 
 #[cfg(test)]

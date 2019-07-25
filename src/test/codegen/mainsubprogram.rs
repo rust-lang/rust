@@ -7,7 +7,7 @@
 // compile-flags: -g -C no-prepopulate-passes
 
 // CHECK-LABEL: @main
-// CHECK: {{.*}}DISubprogram{{.*}}name: "main",{{.*}}DIFlagMainSubprogram{{.*}}
+// CHECK: {{.*}}DISubprogram{{.*}}name: "main",{{.*}}DI{{(SP)?}}FlagMainSubprogram{{.*}}
 
 pub fn main() {
 }

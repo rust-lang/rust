@@ -28,7 +28,7 @@ warning: cannot find type `FromOutside` in this scope
 LL | #[derive(generate_mod::CheckDerive)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
-   = note: #[warn(proc_macro_derive_resolution_fallback)] on by default
+   = note: `#[warn(proc_macro_derive_resolution_fallback)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 

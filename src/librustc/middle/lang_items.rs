@@ -326,6 +326,7 @@ language_item_table! {
     UnpinTraitLangItem,          "unpin",              unpin_trait,             Target::Trait;
     PinTypeLangItem,             "pin",                pin_type,                Target::Struct;
 
+    // Don't be fooled by the naming here: this lang item denotes `PartialEq`, not `Eq`.
     EqTraitLangItem,             "eq",                 eq_trait,                Target::Trait;
     PartialOrdTraitLangItem,     "partial_ord",        partial_ord_trait,       Target::Trait;
     OrdTraitLangItem,            "ord",                ord_trait,               Target::Trait;

@@ -18,16 +18,11 @@
 #![feature(label_break_value)]
 #![feature(mem_take)]
 #![feature(nll)]
-#![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(step_trait)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
-
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
 
 pub use errors;
 use rustc_data_structures::sync::Lock;
@@ -162,6 +157,7 @@ pub mod visit;
 pub mod print {
     pub mod pp;
     pub mod pprust;
+    mod helpers;
 }
 
 pub mod ext {
@@ -175,6 +171,7 @@ pub mod ext {
 
     pub mod tt {
         pub mod transcribe;
+        pub mod macro_check;
         pub mod macro_parser;
         pub mod macro_rules;
         pub mod quoted;

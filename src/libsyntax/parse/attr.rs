@@ -226,7 +226,7 @@ impl<'a> Parser<'a> {
 
     fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
         let lit = self.parse_lit()?;
-        debug!("Checking if {:?} is unusuffixed.", lit);
+        debug!("checking if {:?} is unusuffixed", lit);
 
         if !lit.node.is_unsuffixed() {
             let msg = "suffixed literals are not allowed in attributes";

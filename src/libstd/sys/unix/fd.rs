@@ -175,6 +175,7 @@ impl FileDesc {
                   target_os = "emscripten",
                   target_os = "fuchsia",
                   target_os = "l4re",
+                  target_os = "linux",
                   target_os = "haiku")))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
@@ -187,6 +188,7 @@ impl FileDesc {
               target_os = "emscripten",
               target_os = "fuchsia",
               target_os = "l4re",
+              target_os = "linux",
               target_os = "haiku"))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {

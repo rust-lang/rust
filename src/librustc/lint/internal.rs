@@ -247,10 +247,10 @@ impl EarlyLintPass for LintPassImpl {
 }
 
 fn is_lint_pass_expansion(expn_info: &ExpnInfo) -> bool {
-    if expn_info.format.name() == sym::impl_lint_pass {
+    if expn_info.kind.descr() == sym::impl_lint_pass {
         true
     } else if let Some(info) = expn_info.call_site.ctxt().outer_expn_info() {
-        info.format.name() == sym::declare_lint_pass
+        info.kind.descr() == sym::declare_lint_pass
     } else {
         false
     }

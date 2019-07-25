@@ -1,16 +1,16 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // aux-build:transparent-basic.rs
 
 #![feature(decl_macro, rustc_attrs)]
 
 extern crate transparent_basic;
 
-#[rustc_transparent_macro]
+#[rustc_macro_transparency = "transparent"]
 macro binding() {
     let x = 10;
 }
 
-#[rustc_transparent_macro]
+#[rustc_macro_transparency = "transparent"]
 macro label() {
     break 'label
 }

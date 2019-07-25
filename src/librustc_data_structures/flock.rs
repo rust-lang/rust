@@ -238,14 +238,14 @@ cfg_if! {
                                 .write(true);
                 }
 
-                debug!("Attempting to open lock file `{}`", p.display());
+                debug!("attempting to open lock file `{}`", p.display());
                 let file = match open_options.open(p) {
                     Ok(file) => {
-                        debug!("Lock file opened successfully");
+                        debug!("lock file opened successfully");
                         file
                     }
                     Err(err) => {
-                        debug!("Error opening lock file: {}", err);
+                        debug!("error opening lock file: {}", err);
                         return Err(err)
                     }
                 };
@@ -262,7 +262,7 @@ cfg_if! {
                         dwFlags |= LOCKFILE_EXCLUSIVE_LOCK;
                     }
 
-                    debug!("Attempting to acquire lock on lock file `{}`",
+                    debug!("attempting to acquire lock on lock file `{}`",
                            p.display());
                     LockFileEx(file.as_raw_handle(),
                                dwFlags,
@@ -273,10 +273,10 @@ cfg_if! {
                 };
                 if ret == 0 {
                     let err = io::Error::last_os_error();
-                    debug!("Failed acquiring file lock: {}", err);
+                    debug!("failed acquiring file lock: {}", err);
                     Err(err)
                 } else {
-                    debug!("Successfully acquired lock.");
+                    debug!("successfully acquired lock");
                     Ok(Lock { _file: file })
                 }
             }

@@ -380,10 +380,13 @@ impl<'a> Debug for DiagnosticBuilder<'a> {
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
         if !panicking() && !self.cancelled() {
-            let mut db = DiagnosticBuilder::new(self.handler,
-                                                Level::Bug,
-                                                "Error constructed but not emitted");
+            let mut db = DiagnosticBuilder::new(
+                self.handler,
+                Level::Bug,
+                "the following error was constructed but not emitted",
+            );
             db.emit();
+            self.emit();
             panic!();
         }
     }

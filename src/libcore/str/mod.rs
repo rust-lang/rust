@@ -1422,6 +1422,7 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let usize_bytes = mem::size_of::<usize>();
     let ascii_block_size = 2 * usize_bytes;
     let blocks_end = if len >= ascii_block_size { len - ascii_block_size + 1 } else { 0 };
+    let align = v.as_ptr().align_offset(usize_bytes);
 
     while index < len {
         let old_offset = index;
@@ -1501,12 +1502,8 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
-            let ptr = v.as_ptr();
-            let align = unsafe {
-                // the offset is safe, because `index` is guaranteed inbounds
-                ptr.add(index).align_offset(usize_bytes)
-            };
-            if align == 0 {
+            if align != usize::max_value() && align.wrapping_sub(index) % usize_bytes == 0 {
+                let ptr = v.as_ptr();
                 while index < blocks_end {
                     unsafe {
                         let block = ptr.add(index) as *const usize;

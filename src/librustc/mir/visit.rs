@@ -159,10 +159,11 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_projection(&mut self,
+                                place_base: & $($mutability)? PlaceBase<'tcx>,
                                 place: & $($mutability)? Projection<'tcx>,
                                 context: PlaceContext,
                                 location: Location) {
-                self.super_projection(place, context, location);
+                self.super_projection(place_base, place, context, location);
             }
 
             fn visit_constant(&mut self,
@@ -513,10 +514,16 @@ macro_rules! make_mir_visitor {
             fn super_assert_message(&mut self,
                                     msg: & $($mutability)? AssertMessage<'tcx>,
                                     location: Location) {
-                use crate::mir::interpret::InterpError::*;
-                if let BoundsCheck { len, index } = msg {
-                    self.visit_operand(len, location);
-                    self.visit_operand(index, location);
+                use crate::mir::interpret::PanicMessage::*;
+                match msg {
+                    BoundsCheck { len, index } => {
+                        self.visit_operand(len, location);
+                        self.visit_operand(index, location);
+                    }
+                    Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
+                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic => {
+                        // Nothing to visit
+                    }
                 }
             }
 
@@ -676,19 +683,20 @@ macro_rules! make_mir_visitor {
                             place: & $($mutability)? Place<'tcx>,
                             context: PlaceContext,
                             location: Location) {
-                match place {
-                    Place::Base(place_base) => {
-                        self.visit_place_base(place_base, context, location);
-                    }
-                    Place::Projection(proj) => {
-                        let context = if context.is_mutating_use() {
-                            PlaceContext::MutatingUse(MutatingUseContext::Projection)
-                        } else {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-                        };
+                let mut context = context;
 
-                        self.visit_projection(proj, context, location);
-                    }
+                if place.projection.is_some() {
+                    context = if context.is_mutating_use() {
+                        PlaceContext::MutatingUse(MutatingUseContext::Projection)
+                    } else {
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
+                    };
+                }
+
+                self.visit_place_base(& $($mutability)? place.base, context, location);
+
+                if let Some(box proj) = & $($mutability)? place.projection {
+                    self.visit_projection(& $($mutability)? place.base, proj, context, location);
                 }
             }
 
@@ -707,13 +715,14 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_projection(&mut self,
+                                place_base: & $($mutability)? PlaceBase<'tcx>,
                                 proj: & $($mutability)? Projection<'tcx>,
                                 context: PlaceContext,
                                 location: Location) {
-                // this is calling `super_place` in preparation for changing `Place` to be
-                // a struct with a base and a slice of projections. `visit_place` should only ever
-                // be called for the outermost place now.
-                self.super_place(& $($mutability)? proj.base, context, location);
+                if let Some(box proj_base) = & $($mutability)? proj.base {
+                    self.visit_projection(place_base, proj_base, context, location);
+                }
+
                 match & $($mutability)? proj.elem {
                     ProjectionElem::Deref => {
                     }

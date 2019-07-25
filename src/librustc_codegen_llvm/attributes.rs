@@ -119,6 +119,29 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         const_cstr!("probe-stack"), const_cstr!("__rust_probestack"));
 }
 
+fn translate_obsolete_target_features(feature: &str) -> &str {
+    const LLVM9_FEATURE_CHANGES: &[(&str, &str)] = &[
+        ("+fp-only-sp", "-fp64"),
+        ("-fp-only-sp", "+fp64"),
+        ("+d16", "-d32"),
+        ("-d16", "+d32"),
+    ];
+    if llvm_util::get_major_version() >= 9 {
+        for &(old, new) in LLVM9_FEATURE_CHANGES {
+            if feature == old {
+                return new;
+            }
+        }
+    } else {
+        for &(old, new) in LLVM9_FEATURE_CHANGES {
+            if feature == new {
+                return old;
+            }
+        }
+    }
+    feature
+}
+
 pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
     const RUSTC_SPECIFIC_FEATURES: &[&str] = &[
         "crt-static",
@@ -129,6 +152,7 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
     sess.target.target.options.features.split(',')
         .chain(cmdline)
         .filter(|l| !l.is_empty())
+        .map(translate_obsolete_target_features)
 }
 
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {

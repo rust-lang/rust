@@ -11,7 +11,7 @@ LL |     a + b
    |     ^^^^^
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0381]: use of possibly uninitialized variable: `a`
   --> $DIR/const_let_refutable.rs:4:5

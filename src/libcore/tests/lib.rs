@@ -3,6 +3,7 @@
 #![feature(cell_update)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
+#![feature(debug_map_key_value)]
 #![feature(dec2flt)]
 #![feature(euclidean_division)]
 #![feature(exact_size_is_empty)]
@@ -30,6 +31,8 @@
 #![feature(slice_partition_dedup)]
 #![feature(int_error_matching)]
 #![feature(const_fn)]
+#![feature(iter_partition_in_place)]
+#![feature(iter_is_partitioned)]
 #![warn(rust_2018_idioms)]
 
 extern crate test;

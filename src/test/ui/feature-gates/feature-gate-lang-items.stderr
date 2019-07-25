@@ -4,7 +4,7 @@ error[E0658]: language items are subject to change
 LL | #[lang = "foo"]
    | ^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(lang_items)] to the crate attributes to enable
+   = help: add `#![feature(lang_items)]` to the crate attributes to enable
 
 error[E0522]: definition of an unknown language item: `foo`
   --> $DIR/feature-gate-lang-items.rs:1:1

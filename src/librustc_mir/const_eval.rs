@@ -11,7 +11,7 @@ use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
-use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
@@ -23,7 +23,7 @@ use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar,
     RawConst, ConstValue,
     InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpCx, StackPopCleanup,
-    Allocation, AllocId, MemoryKind, Memory,
+    Allocation, AllocId, MemoryKind,
     snapshot, RefTracking, intern_const_alloc_recursive,
 };
 
@@ -109,7 +109,7 @@ fn op_to_const<'tcx>(
                 // `Immediate` is when we are called from `const_field`, and that `Immediate`
                 // comes from a constant so it can happen have `Undef`, because the indirect
                 // memory that was read had undefined bytes.
-                let mplace = op.to_mem_place();
+                let mplace = op.assert_mem_place();
                 let ptr = mplace.ptr.to_ptr().unwrap();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                 ConstValue::ByRef { offset: ptr.offset, align: mplace.align, alloc }
@@ -316,6 +316,7 @@ impl interpret::MayLeak for ! {
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     type MemoryKinds = !;
     type PointerTag = ();
+    type ExtraFnVal = !;
 
     type FrameExtra = ();
     type MemoryExtra = ();
@@ -370,6 +371,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }))
     }
 
+    fn call_extra_fn(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: !,
+        _args: &[OpTy<'tcx>],
+        _dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        match fn_val {}
+    }
+
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
@@ -398,18 +409,18 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn find_foreign_static(
+        _tcx: TyCtxt<'tcx>,
         _def_id: DefId,
-        _tcx: TyCtxtAt<'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
     }
 
     #[inline(always)]
     fn tag_allocation<'b>(
+        _memory_extra: &(),
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<!>>,
-        _memory: &Memory<'mir, 'tcx, Self>,
     ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
         // We do not use a tag so we can just cheaply forward the allocation
         (alloc, ())
@@ -417,8 +428,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     #[inline(always)]
     fn tag_static_base_pointer(
+        _memory_extra: &(),
         _id: AllocId,
-        _memory: &Memory<'mir, 'tcx, Self>,
     ) -> Self::PointerTag {
         ()
     }
@@ -650,7 +661,7 @@ pub fn const_eval_raw_provider<'tcx>(
         |body| eval_body_using_ecx(&mut ecx, cid, body, key.param_env)
     ).and_then(|place| {
         Ok(RawConst {
-            alloc_id: place.to_ptr().expect("we allocated this ptr!").alloc_id,
+            alloc_id: place.ptr.assert_ptr().alloc_id,
             ty: place.layout.ty
         })
     }).map_err(|error| {
@@ -686,7 +697,7 @@ pub fn const_eval_raw_provider<'tcx>(
                 // promoting runtime code is only allowed to error if it references broken constants
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
-                    let span = tcx.optimized_mir(def_id).promoted[p].span;
+                    let span = tcx.promoted_mir(def_id)[p].span;
                     if let InterpError::ReferencedConstant = err.error {
                         err.report_as_error(
                             tcx.at(span),

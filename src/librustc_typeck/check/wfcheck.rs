@@ -366,7 +366,8 @@ fn check_item_type(
 
         let mut forbid_unsized = true;
         if allow_foreign_ty {
-            if let ty::Foreign(_) = fcx.tcx.struct_tail(item_ty).sty {
+            let tail = fcx.tcx.struct_tail_erasing_lifetimes(item_ty, fcx.param_env);
+            if let ty::Foreign(_) = tail.sty {
                 forbid_unsized = false;
             }
         }
@@ -768,6 +769,10 @@ fn check_method_receiver<'fcx, 'tcx>(
     method: &ty::AssocItem,
     self_ty: Ty<'tcx>,
 ) {
+    const HELP_FOR_SELF_TYPE: &str =
+        "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \
+         `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one \
+         of the previous types except `Self`)";
     // Check that the method has a valid receiver type, given the type `Self`.
     debug!("check_method_receiver({:?}, self_ty={:?})",
            method, self_ty);
@@ -804,7 +809,7 @@ fn check_method_receiver<'fcx, 'tcx>(
             fcx.tcx.sess.diagnostic().mut_span_err(
                 span, &format!("invalid method receiver type: {:?}", receiver_ty)
             ).note("type of `self` must be `Self` or a type that dereferences to it")
-            .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+            .help(HELP_FOR_SELF_TYPE)
             .code(DiagnosticId::Error("E0307".into()))
             .emit();
         }
@@ -822,14 +827,14 @@ fn check_method_receiver<'fcx, 'tcx>(
                             the `arbitrary_self_types` feature",
                         receiver_ty,
                     ),
-                ).help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                ).help(HELP_FOR_SELF_TYPE)
                 .emit();
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.
                 fcx.tcx.sess.diagnostic().mut_span_err(
                     span, &format!("invalid method receiver type: {:?}", receiver_ty)
                 ).note("type must be `Self` or a type that dereferences to it")
-                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                .help(HELP_FOR_SELF_TYPE)
                 .code(DiagnosticId::Error("E0307".into()))
                 .emit();
             }

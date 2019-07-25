@@ -13,7 +13,7 @@ use rustc::mir::{
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
 };
-use rustc::mir::interpret::{InterpError, Scalar, GlobalId, InterpResult};
+use rustc::mir::interpret::{Scalar, GlobalId, InterpResult, InterpError, PanicMessage};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
@@ -314,8 +314,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     | HeapAllocNonPowerOfTwoAlignment(_)
                     | Unreachable
                     | ReadFromReturnPointer
-                    | GeneratorResumedAfterReturn
-                    | GeneratorResumedAfterPanic
                     | ReferencedConstant
                     | InfiniteLoop
                     => {
@@ -339,12 +337,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // FIXME: implement
                     => {},
 
-                    | Panic { .. }
-                    | BoundsCheck{..}
-                    | Overflow(_)
-                    | OverflowNeg
-                    | DivisionByZero
-                    | RemainderByZero
+                    | Panic(_)
                     => {
                         diagnostic.report_as_lint(
                             self.ecx.tcx,
@@ -522,7 +515,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             // Need to do overflow check here: For actual CTFE, MIR
                             // generation emits code that does this before calling the op.
                             if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
-                                return err!(OverflowNeg);
+                                return err!(Panic(PanicMessage::OverflowNeg));
                             }
                         }
                         UnOp::Not => {
@@ -600,7 +593,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     )
                 } else {
                     if overflow {
-                        let err = InterpError::Overflow(op).into();
+                        let err = InterpError::Panic(PanicMessage::Overflow(op)).into();
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
                     }
@@ -781,7 +774,10 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 .ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
-                    if let Place::Base(PlaceBase::Local(local)) = *place {
+                    if let Place {
+                        base: PlaceBase::Local(local),
+                        projection: None,
+                    } = *place {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
@@ -811,7 +807,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         self.super_terminator(terminator, location);
         let source_info = terminator.source_info;
         match &mut terminator.kind {
-            TerminatorKind::Assert { expected, msg, ref mut cond, .. } => {
+            TerminatorKind::Assert { expected, ref msg, ref mut cond, .. } => {
                 if let Some(value) = self.eval_operand(&cond, source_info) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
                     let expected = ScalarMaybeUndef::from(Scalar::from_bool(*expected));
@@ -821,11 +817,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         // doesn't use the invalid value
                         match cond {
                             Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                let mut place = place;
-                                while let Place::Projection(ref proj) = *place {
-                                    place = &proj.base;
-                                }
-                                if let Place::Base(PlaceBase::Local(local)) = *place {
+                                if let PlaceBase::Local(local) = place.base {
                                     self.remove_const(local);
                                 }
                             },
@@ -837,13 +829,13 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             .hir()
                             .as_local_hir_id(self.source.def_id())
                             .expect("some part of a failing const eval must be local");
-                        use rustc::mir::interpret::InterpError::*;
                         let msg = match msg {
-                            Overflow(_) |
-                            OverflowNeg |
-                            DivisionByZero |
-                            RemainderByZero => msg.description().to_owned(),
-                            BoundsCheck { ref len, ref index } => {
+                            PanicMessage::Overflow(_) |
+                            PanicMessage::OverflowNeg |
+                            PanicMessage::DivisionByZero |
+                            PanicMessage::RemainderByZero =>
+                                msg.description().to_owned(),
+                            PanicMessage::BoundsCheck { ref len, ref index } => {
                                 let len = self
                                     .eval_operand(len, source_info)
                                     .expect("len must be const");

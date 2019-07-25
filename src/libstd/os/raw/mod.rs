@@ -11,6 +11,7 @@
 #[doc(include = "os/raw/char.md")]
 #[cfg(any(all(target_os = "linux", any(target_arch = "aarch64",
                                        target_arch = "arm",
+                                       target_arch = "hexagon",
                                        target_arch = "powerpc",
                                        target_arch = "powerpc64",
                                        target_arch = "s390x")),
@@ -25,11 +26,16 @@
                                         target_arch = "arm",
                                         target_arch = "powerpc")),
           all(target_os = "openbsd", target_arch = "aarch64"),
+          all(target_os = "vxworks", any(target_arch = "aarch64",
+                                         target_arch = "arm",
+                                         target_arch = "powerpc64",
+                                         target_arch = "powerpc")),
           all(target_os = "fuchsia", target_arch = "aarch64")))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = u8;
 #[doc(include = "os/raw/char.md")]
 #[cfg(not(any(all(target_os = "linux", any(target_arch = "aarch64",
                                            target_arch = "arm",
+                                           target_arch = "hexagon",
                                            target_arch = "powerpc",
                                            target_arch = "powerpc64",
                                            target_arch = "s390x")),
@@ -44,6 +50,10 @@
                                             target_arch = "arm",
                                             target_arch = "powerpc")),
               all(target_os = "openbsd", target_arch = "aarch64"),
+              all(target_os = "vxworks", any(target_arch = "aarch64",
+                                             target_arch = "arm",
+                                             target_arch = "powerpc64",
+                                             target_arch = "powerpc")),
               all(target_os = "fuchsia", target_arch = "aarch64"))))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = i8;
 #[doc(include = "os/raw/schar.md")]

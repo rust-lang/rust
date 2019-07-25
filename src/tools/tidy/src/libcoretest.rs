@@ -13,10 +13,11 @@ pub fn check(path: &Path, bad: &mut bool) {
         &mut |entry, contents| {
             let subpath = entry.path();
             if let Some("rs") = subpath.extension().and_then(|e| e.to_str()) {
-                if contents.contains("#[test]") {
+                let contents = contents.trim();
+                if !contents.starts_with("//") && contents.contains("#[test]") {
                     tidy_error!(
                         bad,
-                        "{} contains #[test]; libcore tests must be placed inside \
+                        "`{}` contains `#[test]`; libcore tests must be placed inside \
                         `src/libcore/tests/`",
                         subpath.display()
                     );

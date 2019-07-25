@@ -1,7 +1,15 @@
 error[E0019]: constant contains unimplemented expression type
+  --> $DIR/infinite_loop.rs:7:15
+   |
+LL |         while n != 0 {
+   |               ^^^^^^
+
+error[E0019]: constant contains unimplemented expression type
   --> $DIR/infinite_loop.rs:7:9
    |
 LL | /         while n != 0 {
+LL | |
+LL | |
 LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
 LL | |
 LL | |         }
@@ -21,12 +29,12 @@ LL | |     }];
    | |_____^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/infinite_loop.rs:8:20
+  --> $DIR/infinite_loop.rs:10:20
    |
 LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
    |                    ^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0019, E0080.
 For more information about an error, try `rustc --explain E0019`.

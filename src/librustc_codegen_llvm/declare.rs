@@ -107,7 +107,7 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
         }
 
-        fty.apply_attrs_llfn(llfn);
+        fty.apply_attrs_llfn(self, llfn);
 
         llfn
     }

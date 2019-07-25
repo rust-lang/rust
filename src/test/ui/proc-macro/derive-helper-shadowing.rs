@@ -19,7 +19,7 @@ struct S {
         struct U;
 
         mod inner {
-            #[empty_helper] //~ ERROR attribute `empty_helper` is currently unknown
+            #[empty_helper] //~ ERROR cannot find attribute macro `empty_helper` in this scope
             struct V;
         }
 

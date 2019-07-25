@@ -2,7 +2,7 @@ error[E0412]: cannot find type `esize` in this scope
   --> $DIR/levenshtein.rs:5:11
    |
 LL | fn foo(c: esize) {} // Misspelled primitive type name.
-   |           ^^^^^ help: a primitive type with a similar name exists: `isize`
+   |           ^^^^^ help: a builtin type with a similar name exists: `isize`
 
 error[E0412]: cannot find type `Baz` in this scope
   --> $DIR/levenshtein.rs:10:10

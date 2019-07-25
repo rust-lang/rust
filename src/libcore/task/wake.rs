@@ -31,7 +31,7 @@ impl RawWaker {
     /// The `data` pointer can be used to store arbitrary data as required
     /// by the executor. This could be e.g. a type-erased pointer to an `Arc`
     /// that is associated with the task.
-    /// The value of this poiner will get passed to all functions that are part
+    /// The value of this pointer will get passed to all functions that are part
     /// of the `vtable` as the first parameter.
     ///
     /// The `vtable` customizes the behavior of a `Waker` which gets created

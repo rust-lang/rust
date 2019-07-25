@@ -1,5 +1,5 @@
 error: requires at least a format string argument
-  --> $DIR/format-parse-errors.rs:2:5
+  --> $DIR/format-parse-errors.rs:4:5
    |
 LL |     format!();
    |     ^^^^^^^^^^
@@ -7,37 +7,39 @@ LL |     format!();
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: expected expression, found keyword `struct`
-  --> $DIR/format-parse-errors.rs:3:13
+  --> $DIR/format-parse-errors.rs:5:13
    |
 LL |     format!(struct);
    |             ^^^^^^ expected expression
 
 error: expected expression, found end of macro arguments
-  --> $DIR/format-parse-errors.rs:4:24
+  --> $DIR/format-parse-errors.rs:6:24
    |
 LL |     format!("s", name =);
    |                        ^ expected expression
 
-error: expected `=`, found end of macro arguments
-  --> $DIR/format-parse-errors.rs:5:32
+error: positional arguments cannot follow named arguments
+  --> $DIR/format-parse-errors.rs:10:9
    |
-LL |     format!("s", foo = foo, bar);
-   |                                ^ expected `=`
+LL |         foo = foo,
+   |               --- named argument
+LL |         bar,
+   |         ^^^ positional arguments must be before named arguments
 
 error: expected expression, found keyword `struct`
-  --> $DIR/format-parse-errors.rs:6:24
+  --> $DIR/format-parse-errors.rs:12:30
    |
-LL |     format!("s", foo = struct);
-   |                        ^^^^^^ expected expression
+LL |     format!("s {foo}", foo = struct);
+   |                              ^^^^^^ expected expression
 
 error: expected expression, found keyword `struct`
-  --> $DIR/format-parse-errors.rs:7:18
+  --> $DIR/format-parse-errors.rs:13:18
    |
 LL |     format!("s", struct);
    |                  ^^^^^^ expected expression
 
 error: format argument must be a string literal
-  --> $DIR/format-parse-errors.rs:10:13
+  --> $DIR/format-parse-errors.rs:16:13
    |
 LL |     format!(123);
    |             ^^^

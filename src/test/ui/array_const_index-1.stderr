@@ -6,7 +6,7 @@ LL | const B: i32 = A[1];
    |                |
    |                index out of bounds: the len is 0 but the index is 1
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to previous error
 

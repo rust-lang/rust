@@ -11,7 +11,7 @@ LL |     fake_type()
 LL |     const CONSTANT: i32 = unsafe { fake_type() };
    |     ---------------------------------------------
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error[E0080]: erroneous constant used
   --> $DIR/uninhabited-const-issue-61744.rs:18:10

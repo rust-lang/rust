@@ -2,11 +2,7 @@
 
 mod builtin;
 
-pub use builtin::{
-    cfg_matches, contains_feature_attr, eval_condition, find_crate_name, find_deprecation,
-    find_repr_attrs, find_stability, find_unwind_attr, Deprecation, InlineAttr, OptimizeAttr,
-    IntType, ReprAttr, RustcDeprecation, Stability, StabilityLevel, UnwindAttr,
-};
+pub use builtin::*;
 pub use IntType::*;
 pub use ReprAttr::*;
 pub use StabilityLevel::*;
@@ -34,7 +30,7 @@ use std::iter;
 use std::ops::DerefMut;
 
 pub fn mark_used(attr: &Attribute) {
-    debug!("Marking {:?} as used.", attr);
+    debug!("marking {:?} as used", attr);
     GLOBALS.with(|globals| {
         globals.used_attrs.lock().insert(attr.id);
     });
@@ -47,7 +43,7 @@ pub fn is_used(attr: &Attribute) -> bool {
 }
 
 pub fn mark_known(attr: &Attribute) {
-    debug!("Marking {:?} as known.", attr);
+    debug!("marking {:?} as known", attr);
     GLOBALS.with(|globals| {
         globals.known_attrs.lock().insert(attr.id);
     });

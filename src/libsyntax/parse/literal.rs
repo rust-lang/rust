@@ -4,9 +4,6 @@ use crate::ast::{self, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
 use crate::parse::token::{self, Token, TokenKind};
-use crate::parse::unescape::{unescape_char, unescape_byte};
-use crate::parse::unescape::{unescape_str, unescape_byte_str};
-use crate::parse::unescape::{unescape_raw_str, unescape_raw_byte_str};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
@@ -15,6 +12,9 @@ use errors::{Applicability, Handler};
 use log::debug;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
+use rustc_lexer::unescape::{unescape_char, unescape_byte};
+use rustc_lexer::unescape::{unescape_str, unescape_byte_str};
+use rustc_lexer::unescape::{unescape_raw_str, unescape_raw_byte_str};
 
 use std::ascii;
 
@@ -344,7 +344,7 @@ impl<'a> Parser<'a> {
                 // Pack possible quotes and prefixes from the original literal into
                 // the error literal's symbol so they can be pretty-printed faithfully.
                 let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
-                let symbol = Symbol::intern(&pprust::literal_to_string(suffixless_lit));
+                let symbol = Symbol::intern(&suffixless_lit.to_string());
                 let lit = token::Lit::new(token::Err, symbol, lit.suffix);
                 Lit::from_lit_token(lit, span).map_err(|_| unreachable!())
             }

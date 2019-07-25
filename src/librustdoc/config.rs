@@ -250,7 +250,7 @@ impl Options {
             None => ColorConfig::Auto,
             Some(arg) => {
                 early_error(ErrorOutputType::default(),
-                            &format!("argument for --color must be `auto`, `always` or `never` \
+                            &format!("argument for `--color` must be `auto`, `always` or `never` \
                                       (instead was `{}`)", arg));
             }
         };
@@ -269,7 +269,7 @@ impl Options {
             Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
             Some(arg) => {
                 early_error(ErrorOutputType::default(),
-                            &format!("argument for --error-format must be `human`, `json` or \
+                            &format!("argument for `--error-format` must be `human`, `json` or \
                                       `short` (instead was `{}`)", arg));
             }
         };
@@ -351,6 +351,9 @@ impl Options {
                             .unwrap_or_else(|| PathBuf::from("doc"));
         let mut cfgs = matches.opt_strs("cfg");
         cfgs.push("rustdoc".to_string());
+        if should_test {
+            cfgs.push("doctest".to_string());
+        }
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 

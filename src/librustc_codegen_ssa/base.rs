@@ -128,7 +128,8 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
     target: Ty<'tcx>,
     old_info: Option<Cx::Value>,
 ) -> Cx::Value {
-    let (source, target) = cx.tcx().struct_lockstep_tails(source, target);
+    let (source, target) =
+        cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, cx.param_env());
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
             cx.const_usize(len.unwrap_usize(cx.tcx()))
@@ -433,7 +434,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         if cx.get_defined_value("main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
             cx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
-                     .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
+                     .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
                      .emit();
             cx.sess().abort_if_errors();
             bug!();

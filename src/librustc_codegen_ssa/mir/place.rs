@@ -138,7 +138,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         //   * packed struct - there is no alignment padding
         match field.ty.sty {
             _ if self.llextra.is_none() => {
-                debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
+                debug!("unsized field `{}`, of `{:?}` has no metadata for adjustment",
                     ix, self.llval);
                 return simple();
             }
@@ -228,8 +228,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             }
         };
 
-        let discr = self.project_field(bx, discr_index);
-        let lldiscr = bx.load_operand(discr).immediate();
+        // Read the tag/niche-encoded discriminant from memory.
+        let encoded_discr = self.project_field(bx, discr_index);
+        let encoded_discr = bx.load_operand(encoded_discr);
+
+        // Decode the discriminant (specifically if it's niche-encoded).
         match *discr_kind {
             layout::DiscriminantKind::Tag => {
                 let signed = match discr_scalar.value {
@@ -240,38 +243,73 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     layout::Int(_, signed) => !discr_scalar.is_bool() && signed,
                     _ => false
                 };
-                bx.intcast(lldiscr, cast_to, signed)
+                bx.intcast(encoded_discr.immediate(), cast_to, signed)
             }
             layout::DiscriminantKind::Niche {
                 dataful_variant,
                 ref niche_variants,
                 niche_start,
             } => {
-                let niche_llty = bx.cx().immediate_backend_type(discr.layout);
-                if niche_variants.start() == niche_variants.end() {
-                    // FIXME(eddyb): check the actual primitive type here.
-                    let niche_llval = if niche_start == 0 {
-                        // HACK(eddyb): using `c_null` as it works on all types.
+                // Rebase from niche values to discriminants, and check
+                // whether the result is in range for the niche variants.
+                let niche_llty = bx.cx().immediate_backend_type(encoded_discr.layout);
+                let encoded_discr = encoded_discr.immediate();
+
+                // We first compute the "relative discriminant" (wrt `niche_variants`),
+                // that is, if `n = niche_variants.end() - niche_variants.start()`,
+                // we remap `niche_start..=niche_start + n` (which may wrap around)
+                // to (non-wrap-around) `0..=n`, to be able to check whether the
+                // discriminant corresponds to a niche variant with one comparison.
+                // We also can't go directly to the (variant index) discriminant
+                // and check that it is in the range `niche_variants`, because
+                // that might not fit in the same type, on top of needing an extra
+                // comparison (see also the comment on `let niche_discr`).
+                let relative_discr = if niche_start == 0 {
+                    // Avoid subtracting `0`, which wouldn't work for pointers.
+                    // FIXME(eddyb) check the actual primitive type here.
+                    encoded_discr
+                } else {
+                    bx.sub(encoded_discr, bx.cx().const_uint_big(niche_llty, niche_start))
+                };
+                let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
+                let is_niche = {
+                    let relative_max = if relative_max == 0 {
+                        // Avoid calling `const_uint`, which wouldn't work for pointers.
+                        // FIXME(eddyb) check the actual primitive type here.
                         bx.cx().const_null(niche_llty)
                     } else {
-                        bx.cx().const_uint_big(niche_llty, niche_start)
+                        bx.cx().const_uint(niche_llty, relative_max as u64)
                     };
-                    let select_arg = bx.icmp(IntPredicate::IntEQ, lldiscr, niche_llval);
-                    bx.select(select_arg,
+                    bx.icmp(IntPredicate::IntULE, relative_discr, relative_max)
+                };
+
+                // NOTE(eddyb) this addition needs to be performed on the final
+                // type, in case the niche itself can't represent all variant
+                // indices (e.g. `u8` niche with more than `256` variants,
+                // but enough uninhabited variants so that the remaining variants
+                // fit in the niche).
+                // In other words, `niche_variants.end - niche_variants.start`
+                // is representable in the niche, but `niche_variants.end`
+                // might not be, in extreme cases.
+                let niche_discr = {
+                    let relative_discr = if relative_max == 0 {
+                        // HACK(eddyb) since we have only one niche, we know which
+                        // one it is, and we can avoid having a dynamic value here.
+                        bx.cx().const_uint(cast_to, 0)
+                    } else {
+                        bx.intcast(relative_discr, cast_to, false)
+                    };
+                    bx.add(
+                        relative_discr,
                         bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64),
-                        bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64))
-                } else {
-                    // Rebase from niche values to discriminant values.
-                    let delta = niche_start.wrapping_sub(niche_variants.start().as_u32() as u128);
-                    let lldiscr = bx.sub(lldiscr, bx.cx().const_uint_big(niche_llty, delta));
-                    let lldiscr_max =
-                        bx.cx().const_uint(niche_llty, niche_variants.end().as_u32() as u64);
-                    let select_arg = bx.icmp(IntPredicate::IntULE, lldiscr, lldiscr_max);
-                    let cast = bx.intcast(lldiscr, cast_to, false);
-                    bx.select(select_arg,
-                        cast,
-                        bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64))
-                }
+                    )
+                };
+
+                bx.select(
+                    is_niche,
+                    niche_discr,
+                    bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64),
+                )
             }
         }
     }
@@ -390,16 +428,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,
-        place: &mir::Place<'tcx>
+        place_ref: &mir::PlaceRef<'_, 'tcx>
     ) -> PlaceRef<'tcx, Bx::Value> {
-        debug!("codegen_place(place={:?})", place);
-
+        debug!("codegen_place(place_ref={:?})", place_ref);
         let cx = self.cx;
         let tcx = self.cx.tcx();
 
-        let result = match *place {
-            mir::Place::Base(mir::PlaceBase::Local(index)) => {
-                match self.locals[index] {
+        let result = match &place_ref {
+            mir::PlaceRef {
+                base: mir::PlaceBase::Local(index),
+                projection: None,
+            } => {
+                match self.locals[*index] {
                     LocalRef::Place(place) => {
                         return place;
                     }
@@ -407,19 +447,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         return bx.load_operand(place).deref(cx);
                     }
                     LocalRef::Operand(..) => {
-                        bug!("using operand local {:?} as place", place);
+                        bug!("using operand local {:?} as place", place_ref);
                     }
                 }
             }
-            mir::Place::Base(
-                mir::PlaceBase::Static(
-                    box mir::Static { ty, kind: mir::StaticKind::Promoted(promoted) }
-                )
-            ) => {
+            mir::PlaceRef {
+                base: mir::PlaceBase::Static(box mir::Static {
+                    ty,
+                    kind: mir::StaticKind::Promoted(promoted),
+                }),
+                projection: None,
+            } => {
                 let param_env = ty::ParamEnv::reveal_all();
                 let cid = mir::interpret::GlobalId {
                     instance: self.instance,
-                    promoted: Some(promoted),
+                    promoted: Some(*promoted),
                 };
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 match bx.tcx().const_eval(param_env.and(cid)) {
@@ -442,26 +484,41 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
-            mir::Place::Base(
-                mir::PlaceBase::Static(
-                    box mir::Static { ty, kind: mir::StaticKind::Static(def_id) }
-                )
-            ) => {
+            mir::PlaceRef {
+                base: mir::PlaceBase::Static(box mir::Static {
+                    ty,
+                    kind: mir::StaticKind::Static(def_id),
+                }),
+                projection: None,
+            } => {
                 // NB: The layout of a static may be unsized as is the case when working
                 // with a static that is an extern_type.
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                let static_ = bx.get_static(def_id);
+                let static_ = bx.get_static(*def_id);
                 PlaceRef::new_thin_place(bx, static_, layout, layout.align.abi)
             },
-            mir::Place::Projection(box mir::Projection {
-                ref base,
-                elem: mir::ProjectionElem::Deref
-            }) => {
+            mir::PlaceRef {
+                base,
+                projection: Some(box mir::Projection {
+                    base: proj_base,
+                    elem: mir::ProjectionElem::Deref,
+                }),
+            } => {
                 // Load the pointer from its location.
-                self.codegen_consume(bx, base).deref(bx.cx())
+                self.codegen_consume(bx, &mir::PlaceRef {
+                    base,
+                    projection: proj_base,
+                }).deref(bx.cx())
             }
-            mir::Place::Projection(ref projection) => {
-                let cg_base = self.codegen_place(bx, &projection.base);
+            mir::PlaceRef {
+                base,
+                projection: Some(projection),
+            } => {
+                // FIXME turn this recursion into iteration
+                let cg_base = self.codegen_place(bx, &mir::PlaceRef {
+                    base,
+                    projection: &projection.base,
+                });
 
                 match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
@@ -515,13 +572,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         };
-        debug!("codegen_place(place={:?}) => {:?}", place, result);
+        debug!("codegen_place(place={:?}) => {:?}", place_ref, result);
         result
     }
 
-    pub fn monomorphized_place_ty(&self, place: &mir::Place<'tcx>) -> Ty<'tcx> {
+    pub fn monomorphized_place_ty(&self, place_ref: &mir::PlaceRef<'_, 'tcx>) -> Ty<'tcx> {
         let tcx = self.cx.tcx();
-        let place_ty = place.ty(self.mir, tcx);
+        let place_ty = mir::Place::ty_from(place_ref.base, place_ref.projection, self.mir, tcx);
         self.monomorphize(&place_ty.ty)
     }
 }

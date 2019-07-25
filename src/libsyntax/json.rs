@@ -170,7 +170,7 @@ struct DiagnosticSpanMacroExpansion {
     macro_decl_name: String,
 
     /// span where macro was defined (if known)
-    def_site_span: Option<DiagnosticSpan>,
+    def_site_span: DiagnosticSpan,
 }
 
 #[derive(RustcEncodable)]
@@ -300,14 +300,13 @@ impl DiagnosticSpan {
                                      None,
                                      backtrace,
                                      je);
-            let def_site_span = bt.def_site_span.map(|sp| {
-                Self::from_span_full(sp,
+            let def_site_span =
+                Self::from_span_full(bt.def_site_span,
                                      false,
                                      None,
                                      None,
                                      vec![].into_iter(),
-                                     je)
-            });
+                                     je);
             Box::new(DiagnosticSpanMacroExpansion {
                 span: call_site,
                 macro_decl_name: bt.macro_decl_name,

@@ -12,6 +12,7 @@
 #![feature(decl_macro)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(unicode_internals)]
 
 #![recursion_limit="256"]
 
@@ -41,11 +42,28 @@ pub mod proc_macro_impl;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
-
+use syntax::attr::Stability;
 use syntax::ext::base::MacroExpanderFn;
 use syntax::ext::base::{NamedSyntaxExtension, SyntaxExtension, SyntaxExtensionKind};
 use syntax::edition::Edition;
 use syntax::symbol::{sym, Symbol};
+
+const EXPLAIN_ASM: &str =
+    "inline assembly is not stable enough for use and is subject to change";
+const EXPLAIN_GLOBAL_ASM: &str =
+    "`global_asm!` is not stable enough for use and is subject to change";
+const EXPLAIN_CUSTOM_TEST_FRAMEWORKS: &str =
+    "custom test frameworks are an unstable feature";
+const EXPLAIN_LOG_SYNTAX: &str =
+    "`log_syntax!` is not stable enough for use and is subject to change";
+const EXPLAIN_CONCAT_IDENTS: &str =
+    "`concat_idents` is not stable enough for use and is subject to change";
+const EXPLAIN_FORMAT_ARGS_NL: &str =
+    "`format_args_nl` is only for internal language use and is subject to change";
+const EXPLAIN_TRACE_MACROS: &str =
+    "`trace_macros` is not stable enough for use and is subject to change";
+const EXPLAIN_UNSTABLE_COLUMN: &str =
+    "internal implementation detail of the `column` macro";
 
 pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                          user_exts: Vec<NamedSyntaxExtension>,
@@ -55,25 +73,30 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
     let mut register = |name, ext| {
         resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
     };
+
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(
-            register(Symbol::intern(stringify!($name)), SyntaxExtension::default(
+            register(sym::$name, SyntaxExtension::default(
                 SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)), edition
             ));
         )* }
     }
-    macro_rules! register_attr {
-        ($( $name:ident: $f:expr, )*) => { $(
-            register(Symbol::intern(stringify!($name)), SyntaxExtension::default(
-                SyntaxExtensionKind::LegacyAttr(Box::new($f)), edition
-            ));
+    macro_rules! register_unstable {
+        ($( [$feature:expr, $reason:expr, $issue:expr] $name:ident: $f:expr, )*) => { $(
+            register(sym::$name, SyntaxExtension {
+                stability: Some(Stability::unstable(
+                    $feature, Some(Symbol::intern($reason)), $issue
+                )),
+                ..SyntaxExtension::default(
+                    SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)), edition
+                )
+            });
         )* }
     }
 
     use syntax::ext::source_util::*;
     register! {
         line: expand_line,
-        __rust_unstable_column: expand_column_gated,
         column: expand_column,
         file: expand_file,
         stringify: expand_stringify,
@@ -81,35 +104,67 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         include_str: expand_include_str,
         include_bytes: expand_include_bytes,
         module_path: expand_mod,
-
-        asm: asm::expand_asm,
-        global_asm: global_asm::expand_global_asm,
         cfg: cfg::expand_cfg,
         concat: concat::expand_syntax_ext,
-        concat_idents: concat_idents::expand_syntax_ext,
         env: env::expand_env,
         option_env: env::expand_option_env,
-        log_syntax: log_syntax::expand_syntax_ext,
-        trace_macros: trace_macros::expand_trace_macros,
         compile_error: compile_error::expand_compile_error,
         assert: assert::expand_assert,
     }
 
-    register_attr! {
-        test_case: test_case::expand,
-        test: test::expand_test,
-        bench: test::expand_bench,
+    register_unstable! {
+        [sym::__rust_unstable_column, EXPLAIN_UNSTABLE_COLUMN, 0]
+        __rust_unstable_column: expand_column,
+        [sym::asm, EXPLAIN_ASM, 29722]
+        asm: asm::expand_asm,
+        [sym::global_asm, EXPLAIN_GLOBAL_ASM, 35119]
+        global_asm: global_asm::expand_global_asm,
+        [sym::concat_idents, EXPLAIN_CONCAT_IDENTS, 29599]
+        concat_idents: concat_idents::expand_syntax_ext,
+        [sym::log_syntax, EXPLAIN_LOG_SYNTAX, 29598]
+        log_syntax: log_syntax::expand_syntax_ext,
+        [sym::trace_macros, EXPLAIN_TRACE_MACROS, 29598]
+        trace_macros: trace_macros::expand_trace_macros,
     }
 
-    // format_args uses `unstable` things internally.
+    let allow_internal_unstable = Some([sym::test, sym::rustc_attrs][..].into());
+    register(sym::test_case, SyntaxExtension {
+        stability: Some(Stability::unstable(
+            sym::custom_test_frameworks,
+            Some(Symbol::intern(EXPLAIN_CUSTOM_TEST_FRAMEWORKS)),
+            50297,
+        )),
+        allow_internal_unstable: allow_internal_unstable.clone(),
+        ..SyntaxExtension::default(
+            SyntaxExtensionKind::LegacyAttr(Box::new(test_case::expand)), edition
+        )
+    });
+    register(sym::test, SyntaxExtension {
+        allow_internal_unstable: allow_internal_unstable.clone(),
+        ..SyntaxExtension::default(
+            SyntaxExtensionKind::LegacyAttr(Box::new(test::expand_test)), edition
+        )
+    });
+    register(sym::bench, SyntaxExtension {
+        allow_internal_unstable,
+        ..SyntaxExtension::default(
+            SyntaxExtensionKind::LegacyAttr(Box::new(test::expand_bench)), edition
+        )
+    });
+
     let allow_internal_unstable = Some([sym::fmt_internals][..].into());
-    register(Symbol::intern("format_args"), SyntaxExtension {
+    register(sym::format_args, SyntaxExtension {
         allow_internal_unstable: allow_internal_unstable.clone(),
         ..SyntaxExtension::default(
             SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args)), edition
         )
     });
     register(sym::format_args_nl, SyntaxExtension {
+        stability: Some(Stability::unstable(
+            sym::format_args_nl,
+            Some(Symbol::intern(EXPLAIN_FORMAT_ARGS_NL)),
+            0,
+        )),
         allow_internal_unstable,
         ..SyntaxExtension::default(
             SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args_nl)), edition

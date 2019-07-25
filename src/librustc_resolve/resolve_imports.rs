@@ -1,14 +1,15 @@
 use ImportDirectiveSubclass::*;
 
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, Weak};
+use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, ParentScope, Weak};
+use crate::Determinacy::{self, *};
 use crate::Namespace::{self, TypeNS, MacroNS};
 use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use crate::{Resolver, Segment};
 use crate::{names_to_string, module_to_string};
-use crate::{resolve_error, ResolutionError, Suggestion};
+use crate::{resolve_error, ResolutionError};
 use crate::ModuleKind;
-use crate::macros::ParentScope;
+use crate::diagnostics::Suggestion;
 
 use errors::Applicability;
 
@@ -27,9 +28,8 @@ use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
 
 use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
-use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
-use syntax::ext::hygiene::Mark;
-use syntax::symbol::{kw, sym};
+use syntax::ext::hygiene::ExpnId;
+use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{struct_span_err, unwrap_or};
 use syntax_pos::{MultiSpan, Span};
@@ -221,7 +221,7 @@ impl<'a> Resolver<'a> {
                         ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
                         let binding = (module, ty::Visibility::Public,
-                                        module.span, Mark::root())
+                                        module.span, ExpnId::root())
                                         .to_name_binding(self.arenas);
                         return Ok(binding);
                     } else if ident.name == kw::Super ||
@@ -246,7 +246,7 @@ impl<'a> Resolver<'a> {
             .map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
         if let Some(binding) = resolution.binding {
-            if !restricted_shadowing && binding.expansion != Mark::root() {
+            if !restricted_shadowing && binding.expansion != ExpnId::root() {
                 if let NameBindingKind::Res(_, true) = binding.kind {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
                 }
@@ -286,7 +286,7 @@ impl<'a> Resolver<'a> {
                     if let Some(shadowed_glob) = resolution.shadowed_glob {
                         // Forbid expanded shadowing to avoid time travel.
                         if restricted_shadowing &&
-                        binding.expansion != Mark::root() &&
+                        binding.expansion != ExpnId::root() &&
                         binding.res() != shadowed_glob.res() {
                             self.ambiguity_errors.push(AmbiguityError {
                                 kind: AmbiguityKind::GlobVsExpanded,
@@ -492,17 +492,6 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    crate fn check_reserved_macro_name(&self, ident: Ident, ns: Namespace) {
-        // Reserve some names that are not quite covered by the general check
-        // performed on `Resolver::builtin_attrs`.
-        if ns == MacroNS &&
-           (ident.name == sym::cfg || ident.name == sym::cfg_attr ||
-            ident.name == sym::derive) {
-            self.session.span_err(ident.span,
-                                  &format!("name `{}` is reserved in macro namespace", ident));
-        }
-    }
-
     // Define the name or return the existing binding if there is a collision.
     pub fn try_define(&mut self,
                       module: Module<'a>,
@@ -510,17 +499,18 @@ impl<'a> Resolver<'a> {
                       ns: Namespace,
                       binding: &'a NameBinding<'a>)
                       -> Result<(), &'a NameBinding<'a>> {
-        self.check_reserved_macro_name(ident, ns);
+        let res = binding.res();
+        self.check_reserved_macro_name(ident, res);
         self.set_binding_parent_module(binding, module);
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
-                if binding.res() == Res::Err {
+                if res == Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
                     return Ok(());
                 }
                 match (old_binding.is_glob_import(), binding.is_glob_import()) {
                     (true, true) => {
-                        if binding.res() != old_binding.res() {
+                        if res != old_binding.res() {
                             resolution.binding = Some(this.ambiguity(AmbiguityKind::GlobVsGlob,
                                                                      old_binding, binding));
                         } else if !old_binding.vis.is_at_least(binding.vis, &*this) {
@@ -535,7 +525,7 @@ impl<'a> Resolver<'a> {
                             (binding, old_binding)
                         };
                         if glob_binding.res() != nonglob_binding.res() &&
-                           ns == MacroNS && nonglob_binding.expansion != Mark::root() {
+                           ns == MacroNS && nonglob_binding.expansion != ExpnId::root() {
                             resolution.binding = Some(this.ambiguity(AmbiguityKind::GlobVsExpanded,
                                                                     nonglob_binding, glob_binding));
                         } else {
@@ -1258,7 +1248,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         target: Ident,
     ) {
         // Skip if the import was produced by a macro.
-        if directive.parent_scope.expansion != Mark::root() {
+        if directive.parent_scope.expansion != ExpnId::root() {
             return;
         }
 

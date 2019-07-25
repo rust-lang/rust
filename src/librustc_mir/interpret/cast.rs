@@ -11,7 +11,7 @@ use rustc::mir::interpret::{
 };
 use rustc::mir::CastKind;
 
-use super::{InterpCx, Machine, PlaceTy, OpTy, Immediate};
+use super::{InterpCx, Machine, PlaceTy, OpTy, Immediate, FnVal};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
@@ -86,7 +86,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             def_id,
                             substs,
                         ).ok_or_else(|| InterpError::TooGeneric.into());
-                        let fn_ptr = self.memory.create_fn_alloc(instance?);
+                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance?));
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
                     _ => bug!("reify fn pointer on {:?}", src.layout.ty),
@@ -115,7 +115,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             substs,
                             ty::ClosureKind::FnOnce,
                         );
-                        let fn_ptr = self.memory.create_fn_alloc(instance);
+                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                         let val = Immediate::Scalar(Scalar::Ptr(fn_ptr.into()).into());
                         self.write_immediate(val, dest)?;
                     }
@@ -270,7 +270,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dty: Ty<'tcx>,
     ) -> InterpResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
-        let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
+        let (src_pointee_ty, dest_pointee_ty) =
+            self.tcx.struct_lockstep_tails_erasing_lifetimes(sty, dty, self.param_env);
 
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
             (&ty::Array(_, length), &ty::Slice(_)) => {

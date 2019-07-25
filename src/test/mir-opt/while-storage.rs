@@ -24,36 +24,33 @@ fn main() {
 //     StorageLive(_2);
 //     StorageLive(_3);
 //     _3 = _1;
-//     _2 = const get_bool(move _3) -> bb2;
+//     _2 = const get_bool(move _3) -> bb1;
 // }
 // bb1: {
-//     return;
+//     StorageDead(_3);
+//     switchInt(_2) -> [false: bb6, otherwise: bb2];
 // }
 // bb2: {
-//     StorageDead(_3);
-//     switchInt(move _2) -> [false: bb4, otherwise: bb3];
+//      StorageLive(_4);
+//      StorageLive(_5);
+//      _5 = _1;
+//      _4 = const get_bool(move _5) -> bb3;
 // }
 // bb3: {
-//     StorageDead(_2);
-//     StorageLive(_4);
-//     StorageLive(_5);
-//     _5 = _1;
-//     _4 = const get_bool(move _5) -> bb5;
+//      StorageDead(_5);
+//      switchInt(_4) -> [false: bb4, otherwise: bb5];
 // }
 // bb4: {
-//     StorageDead(_2);
-//     goto -> bb1;
+//      StorageDead(_4);
+//      StorageDead(_2);
+//      goto -> bb0;
 // }
-// bb5: {
-//     StorageDead(_5);
-//     switchInt(_4) -> [false: bb6, otherwise: bb7];
-// }
-// bb6: {
-//     StorageDead(_4);
-//     goto -> bb0;
-// }
-// bb7: {
-//     StorageDead(_4);
-//     goto -> bb1;
-// }
+//  bb5: {
+//      StorageDead(_4);
+//      goto -> bb6;
+//  }
+//  bb6: {
+//      StorageDead(_2);
+//      return;
+//  }
 // END rustc.while_loop.PreCodegen.after.mir

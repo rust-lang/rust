@@ -8,13 +8,13 @@ use syntax::{
     },
     attr,
     source_map::{
-        respan, ExpnInfo, MacroAttribute,
+        respan, ExpnInfo, ExpnKind,
     },
     ext::{
-        base::{ExtCtxt, Resolver},
+        base::{ExtCtxt, MacroKind, Resolver},
         build::AstBuilder,
         expand::ExpansionConfig,
-        hygiene::{Mark, SyntaxContext},
+        hygiene::ExpnId,
     },
     mut_visit::{self, MutVisitor},
     parse::ParseSess,
@@ -79,19 +79,16 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
 
         if self.found {
             self.handler
-                .span_err(item.span, "cannot define more than one #[global_allocator]");
+                .span_err(item.span, "cannot define more than one `#[global_allocator]`");
             return smallvec![item];
         }
         self.found = true;
 
-        // Create a fresh Mark for the new macro expansion we are about to do
-        let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo::with_unstable(
-            MacroAttribute(sym::global_allocator), item.span, self.sess.edition, &[sym::rustc_attrs]
+        // Create a new expansion for the generated allocator code.
+        let span = item.span.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
+            ExpnKind::Macro(MacroKind::Attr, sym::global_allocator), item.span, self.sess.edition,
+            [sym::rustc_attrs][..].into(),
         ));
-
-        // Tie the span to the macro expansion info we just created
-        let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
 
         // Create an expansion config
         let ecfg = ExpansionConfig::default(self.crate_name.take().unwrap());
@@ -283,7 +280,7 @@ impl AllocFnFactory<'_> {
             AllocatorTy::Unit => (self.cx.ty(self.span, TyKind::Tup(Vec::new())), expr),
 
             AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
-                panic!("can't convert AllocatorTy to an output")
+                panic!("can't convert `AllocatorTy` to an output")
             }
         }
     }

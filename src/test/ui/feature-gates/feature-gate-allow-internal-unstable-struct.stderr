@@ -4,7 +4,7 @@ error[E0658]: allow_internal_unstable side-steps feature gating and stability ch
 LL | #[allow_internal_unstable()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(allow_internal_unstable)] to the crate attributes to enable
+   = help: add `#![feature(allow_internal_unstable)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
