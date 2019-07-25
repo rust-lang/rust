@@ -1709,33 +1709,37 @@ impl AsRef<OsStr> for PathBuf {
 }
 
 /// Implements the `/` operator for concatenating two paths.
-/// 
-/// This consumes the `PathBuf` on the left-hand side and re-uses its buffer (growing it if necessary). This is done to avoid allocating a new `PathBuf` and copying the entire contents on every operation, which would lead to `O(n^2)` running time when building an `n`-byte path by repeated concatenation.
-/// 
-/// The path on the right-hand side is only borrowed; its contents are copied into the returned `PathBuf`.
-/// 
+///
+/// This consumes the `PathBuf` on the left-hand side and re-uses its buffer (growing it if
+/// necessary). This is done to avoid allocating a new `PathBuf` and copying the entire contents on
+/// every operation, which would lead to `O(n^2)` running time when building an `n`-byte path by
+/// repeated concatenation.
+///
+/// The path on the right-hand side is only borrowed; its contents are copied into the returned
+/// `PathBuf`.
+///
 /// # Examples
-/// 
+///
 /// Concatenating two `PathBuf`s takes the first by value and borrows the second:
-/// 
+///
 /// ```
 /// let a = PathBuf::from("hello");
 /// let b = PathBuf::from("world");
 /// let c = a + &b;
 /// // `a` is moved and can no longer be used here.
 /// ```
-/// 
+///
 /// If you want to keep using the first `PathBuf`, you can clone it and append to the clone instead:
-/// 
+///
 /// ```
 /// let a = PathBuf::from("hello");
 /// let b = PathBuf::from("world");
 /// let c = a.clone() + &b;
 /// // `a` is still valid here.
 /// ```
-/// 
+///
 /// Concatenating `&Path` slices can be done by converting the first to a `PathBuf`:
-/// 
+///
 /// ```
 /// let a = Path::new("hello");
 /// let b = Path::new("world");
@@ -1751,8 +1755,9 @@ impl Div<&Path> for PathBuf {
 }
 
 /// Implements the `/` operator for concatenating two paths.
-/// 
-/// This implementation takes a `&str` instead of a `&Path`. Refer to the `&Path` implementation for more details.
+///
+/// This implementation takes a `&str` instead of a `&Path`. Refer to the `&Path` implementation for
+/// more details.
 #[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
 impl Div<&str> for PathBuf {
     type Output = PathBuf;
@@ -1764,8 +1769,9 @@ impl Div<&str> for PathBuf {
 
 
 /// Implements the `/` operator for concatenating two paths.
-/// 
-/// This implementation takes a `&OsStr` instead of a `&Path`. Refer to the `&Path` implementation for more details.
+///
+/// This implementation takes a `&OsStr` instead of a `&Path`. Refer to the `&Path` implementation
+/// for more details.
 #[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
 impl Div<&OsStr> for PathBuf {
     type Output = PathBuf;
@@ -1776,9 +1782,9 @@ impl Div<&OsStr> for PathBuf {
 }
 
 /// Implements the `/=` operator for appending to a `PathBuf`.
-/// 
+///
 /// This has the same behavior as the [`push`] method.
-/// 
+///
 /// [`push`]: struct.PathBuf.html#method.push
 #[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
 impl DivAssign<&Path> for PathBuf {
@@ -1789,9 +1795,9 @@ impl DivAssign<&Path> for PathBuf {
 
 
 /// Implements the `/=` operator for appending to a `PathBuf`.
-/// 
+///
 /// This has the same behavior as the [`push`] method.
-/// 
+///
 /// [`push`]: struct.PathBuf.html#method.push
 #[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
 impl DivAssign<&str> for PathBuf {
@@ -1802,9 +1808,9 @@ impl DivAssign<&str> for PathBuf {
 
 
 /// Implements the `/=` operator for appending to a `PathBuf`.
-/// 
+///
 /// This has the same behavior as the [`push`] method.
-/// 
+///
 /// [`push`]: struct.PathBuf.html#method.push
 #[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
 impl DivAssign<&OsStr> for PathBuf {
