@@ -392,14 +392,18 @@ impl<'a> LoweringContext<'a> {
                 match tree.kind {
                     UseTreeKind::Simple(_, id1, id2) => {
                         for &id in &[id1, id2] {
-                            self.lctx.resolver.definitions().create_def_with_parent(
+                            let def_index = self.lctx.resolver.definitions().create_def_with_parent(
                                 owner,
                                 id,
+                                None,
                                 DefPathData::Misc,
                                 ExpnId::root(),
                                 tree.prefix.span,
                             );
-                            self.lctx.allocate_hir_id_counter(id);
+                            let hir_id = self.lctx.allocate_hir_id_counter(id);
+
+                            self.lctx.resolver.definitions()
+                                .hir_to_def_index.insert(hir_id, def_index);
                         }
                     }
                     UseTreeKind::Glob => (),
@@ -533,6 +537,10 @@ impl<'a> LoweringContext<'a> {
         self.resolver
             .definitions()
             .init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
+
+        self.resolver
+            .definitions()
+            .finalize_hir_to_def_index_mapping();
 
         hir::Crate {
             module,
@@ -793,17 +801,20 @@ impl<'a> LoweringContext<'a> {
             ),
         };
 
+        let hir_id = self.lower_node_id(node_id);
+
         // Add a definition for the in-band lifetime def.
         self.resolver.definitions().create_def_with_parent(
             parent_index,
             node_id,
+            Some(hir_id),
             DefPathData::LifetimeNs(str_name),
             ExpnId::root(),
             span,
         );
 
         hir::GenericParam {
-            hir_id: self.lower_node_id(node_id),
+            hir_id,
             name: hir_name,
             attrs: hir_vec![],
             bounds: hir_vec![],
@@ -1095,6 +1106,7 @@ impl<'a> LoweringContext<'a> {
                     self.resolver.definitions().create_def_with_parent(
                         parent_def_index,
                         impl_trait_node_id,
+                        None,
                         DefPathData::ImplTrait,
                         ExpnId::root(),
                         constraint.span,
@@ -1576,6 +1588,7 @@ impl<'a> LoweringContext<'a> {
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
                         def_node_id,
+                        Some(hir_id),
                         DefPathData::LifetimeNs(name.ident().as_interned_str()),
                         ExpnId::root(),
                         lifetime.span);

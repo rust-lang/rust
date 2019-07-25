@@ -281,8 +281,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<DefId> {
-        let node_id = self.hir_to_node_id(hir_id);
-        self.definitions.opt_local_def_id(node_id)
+        self.definitions.opt_local_def_id_from_hir_id(hir_id)
     }
 
     #[inline]

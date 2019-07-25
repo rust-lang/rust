@@ -8,7 +8,7 @@ use crate::hir;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, CRATE_DEF_INDEX};
 use crate::ich::Fingerprint;
 use crate::session::CrateDisambiguator;
-use crate::util::nodemap::NodeMap;
+use crate::util::nodemap::{HirIdMap, NodeMap};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
@@ -16,6 +16,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use std::borrow::Borrow;
 use std::fmt::Write;
 use std::hash::Hash;
+use std::mem;
 use syntax::ast;
 use syntax::ext::hygiene::ExpnId;
 use syntax::symbol::{Symbol, sym, InternedString};
@@ -92,6 +93,10 @@ impl DefPathTable {
 pub struct Definitions {
     table: DefPathTable,
     node_to_def_index: NodeMap<DefIndex>,
+    pub hir_to_def_index: HirIdMap<DefIndex>,
+    /// `DefIndex`es created by `DefCollector::create_def` before the AST lowering; used
+    /// to complete the `hir_to_def_index` mapping afterwards.
+    defs_awaiting_hir_id: NodeMap<DefIndex>,
     def_index_to_node: Vec<ast::NodeId>,
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
     /// If `ExpnId` is an ID of some macro expansion,
@@ -361,8 +366,18 @@ impl Definitions {
     }
 
     #[inline]
+    pub fn opt_def_index_from_hir_id(&self, hir: hir::HirId) -> Option<DefIndex> {
+        self.hir_to_def_index.get(&hir).cloned()
+    }
+
+    #[inline]
     pub fn opt_local_def_id(&self, node: ast::NodeId) -> Option<DefId> {
         self.opt_def_index(node).map(DefId::local)
+    }
+
+    #[inline]
+    pub fn opt_local_def_id_from_hir_id(&self, hir: hir::HirId) -> Option<DefId> {
+        self.opt_def_index_from_hir_id(hir).map(DefId::local)
     }
 
     #[inline]
@@ -440,6 +455,7 @@ impl Definitions {
         assert!(self.def_index_to_node.is_empty());
         self.def_index_to_node.push(ast::CRATE_NODE_ID);
         self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
+        self.hir_to_def_index.insert(hir::CRATE_HIR_ID, root_index);
         self.set_invocation_parent(ExpnId::root(), root_index);
 
         // Allocate some other `DefIndex`es that always must exist.
@@ -452,6 +468,7 @@ impl Definitions {
     pub fn create_def_with_parent(&mut self,
                                   parent: DefIndex,
                                   node_id: ast::NodeId,
+                                  hir_id: Option<hir::HirId>,
                                   data: DefPathData,
                                   expn_id: ExpnId,
                                   span: Span)
@@ -499,6 +516,12 @@ impl Definitions {
         if node_id != ast::DUMMY_NODE_ID {
             debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
             self.node_to_def_index.insert(node_id, index);
+
+            if let Some(hir_id) = hir_id {
+                self.hir_to_def_index.insert(hir_id, index);
+            } else {
+                self.defs_awaiting_hir_id.insert(node_id, index);
+            }
         }
 
         if expn_id != ExpnId::root() {
@@ -520,6 +543,15 @@ impl Definitions {
         assert!(self.node_to_hir_id.is_empty(),
                 "trying to initialize `NodeId` -> `HirId` mapping twice");
         self.node_to_hir_id = mapping;
+    }
+
+    /// Fill the missing bits of the `HirId` to `DefIndex` mapping after the AST lowering; see
+    /// the related comment to the `defs_awaiting_hir_id` map in the `Definitions` struct.
+    pub fn finalize_hir_to_def_index_mapping(&mut self) {
+        for (node_id, def_id) in mem::replace(&mut self.defs_awaiting_hir_id, Default::default()) {
+            let hir_id = self.node_to_hir_id[node_id];
+            self.hir_to_def_index.insert(hir_id, def_id);
+        }
     }
 
     pub fn expansion_that_defined(&self, index: DefIndex) -> ExpnId {
@@ -611,6 +643,7 @@ macro_rules! define_global_metadata_kind {
                     definitions.create_def_with_parent(
                         CRATE_DEF_INDEX,
                         ast::DUMMY_NODE_ID,
+                        Some(hir::DUMMY_HIR_ID),
                         DefPathData::GlobalMetaData(instance.name().as_interned_str()),
                         ExpnId::root(),
                         DUMMY_SP

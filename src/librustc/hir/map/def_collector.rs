@@ -28,7 +28,8 @@ impl<'a> DefCollector<'a> {
                   -> DefIndex {
         let parent_def = self.parent_def;
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
-        self.definitions.create_def_with_parent(parent_def, node_id, data, self.expansion, span)
+        self.definitions.create_def_with_parent(
+            parent_def, node_id, None, data, self.expansion, span)
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {
