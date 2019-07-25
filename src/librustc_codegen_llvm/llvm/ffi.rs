@@ -719,7 +719,6 @@ extern "C" {
     pub fn LLVMConstIntGetZExtValue(ConstantVal: &Value) -> c_ulonglong;
     pub fn LLVMRustConstInt128Get(ConstantVal: &Value, SExt: bool,
                                   high: &mut u64, low: &mut u64) -> bool;
-    pub fn LLVMConstRealGetDouble (ConstantVal: &Value, losesInfo: &mut Bool) -> f64;
 
 
     // Operations on composite constants
@@ -1663,7 +1662,6 @@ extern "C" {
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
 
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&Value>;
-    pub fn LLVMIsAConstantFP(value_ref: &Value) -> Option<&Value>;
 
     pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
