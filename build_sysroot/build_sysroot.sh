@@ -4,8 +4,6 @@ cd $(dirname "$0")
 
 # Cleanup for previous run
 #     v Clean target dir except for build scripts and incremental cache
-rm -r target/*/{debug,release}/{build,deps,examples,libsysroot*,native} || true
-rm Cargo.lock 2>/dev/null || true
 rm -r sysroot 2>/dev/null || true
 
 # FIXME find a better way to get the target triple

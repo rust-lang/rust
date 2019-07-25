@@ -5,16 +5,12 @@ version = "0.0.0"
 
 [dependencies]
 core = { path = "./sysroot_src/src/libcore" }
-compiler_builtins = "0.1"
-alloc = { path = "./sysroot_src/src/liballoc" }
-std = { path = "./sysroot_src/src/libstd" }
-
-alloc_system = { path = "./alloc_system" }
+compiler_builtins = { version = "0.1", features = ["rustc-dep-of-std"] }
 
 [patch.crates-io]
 rustc-std-workspace-core = { path = "./sysroot_src/src/tools/rustc-std-workspace-core" }
 rustc-std-workspace-alloc = { path = "./rustc-std-workspace-alloc" }
-#compiler_builtins = { path = "./compiler_builtins" }
+compiler_builtins = { path = "./compiler-builtins" }
 
 [profile.release]
 debug = true

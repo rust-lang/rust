@@ -243,6 +243,8 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
         "false"
     }).unwrap();
 
+    flags_builder.set("opt_level", "best").unwrap();
+
     // FIXME enable again when https://github.com/CraneStation/cranelift/issues/664 is fixed
     /*
     use rustc::session::config::OptLevel;
