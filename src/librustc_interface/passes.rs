@@ -469,7 +469,7 @@ fn configure_and_expand_inner<'a>(
         util::ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
     }
 
-    let (has_proc_macro_decls, has_global_allocator) = time(sess, "AST validation", || {
+    let has_proc_macro_decls = time(sess, "AST validation", || {
         ast_validation::check_crate(sess, &krate)
     });
 
@@ -490,19 +490,6 @@ fn configure_and_expand_inner<'a>(
                 has_proc_macro_decls,
                 is_test_crate,
                 num_crate_types,
-                sess.diagnostic(),
-            )
-        });
-    }
-
-    if has_global_allocator {
-        // Expand global allocators, which are treated as an in-tree proc macro
-        time(sess, "creating allocators", || {
-            allocator::expand::modify(
-                &sess.parse_sess,
-                &mut resolver,
-                &mut krate,
-                crate_name.to_string(),
                 sess.diagnostic(),
             )
         });

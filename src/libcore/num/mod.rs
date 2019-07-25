@@ -717,13 +717,12 @@ returning `None` if `rhs == 0` or the division results in overflow.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!((", stringify!($SelfT),
 "::min_value() + 1).checked_div_euclid(-1), Some(", stringify!($Max), "));
 assert_eq!(", stringify!($SelfT), "::min_value().checked_div_euclid(-1), None);
 assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -774,14 +773,13 @@ if `rhs == 0` or the division results in overflow.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1210,11 +1208,10 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1269,11 +1266,10 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1566,7 +1562,6 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
@@ -1574,7 +1569,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
 "::MIN, true));
 ```"),
             #[inline]
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
@@ -1636,13 +1631,12 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1873,7 +1867,6 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 let a: ", stringify!($SelfT), " = 7; // or any other integer type
 let b = 4;
 
@@ -1882,7 +1875,7 @@ assert_eq!(a.div_euclid(-b), -1); // 7 >= -4 * -1
 assert_eq!((-a).div_euclid(b), -2); // -7 >= 4 * -2
 assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1913,7 +1906,6 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 let a: ", stringify!($SelfT), " = 7; // or any other integer type
 let b = 4;
 
@@ -1922,7 +1914,7 @@ assert_eq!((-a).rem_euclid(b), 1);
 assert_eq!(a.rem_euclid(-b), 3);
 assert_eq!((-a).rem_euclid(-b), 1);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2753,11 +2745,10 @@ if `rhs == 0`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(128", stringify!($SelfT), ".checked_div_euclid(2), Some(64));
 assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2805,11 +2796,10 @@ if `rhs == 0`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3127,10 +3117,9 @@ is exactly equal to `self.wrapping_div(rhs)`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3179,10 +3168,9 @@ is exactly equal to `self.wrapping_rem(rhs)`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3448,11 +3436,10 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
 ```"),
             #[inline]
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
@@ -3508,11 +3495,10 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 ```"),
             #[inline]
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
@@ -3696,10 +3682,9 @@ is exactly equal to `self / rhs`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer type
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3722,10 +3707,9 @@ is exactly equal to `self % rhs`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer type
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]

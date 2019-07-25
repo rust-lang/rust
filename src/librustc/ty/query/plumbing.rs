@@ -782,9 +782,9 @@ macro_rules! define_queries_inner {
                         #[cfg(not(debug_assertions))]
                         cache_hits: 0,
                         key_size: mem::size_of::<Q::Key>(),
-                        key_type: unsafe { type_name::<Q::Key>() },
+                        key_type: type_name::<Q::Key>(),
                         value_size: mem::size_of::<Q::Value>(),
-                        value_type: unsafe { type_name::<Q::Value>() },
+                        value_type: type_name::<Q::Value>(),
                         entry_count: map.results.len(),
                     }
                 }

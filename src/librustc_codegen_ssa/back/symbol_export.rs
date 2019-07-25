@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry::*;
 use std::sync::Arc;
 
 use rustc::ty::Instance;
@@ -12,9 +13,8 @@ use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
-use rustc_allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::indexed_vec::IndexVec;
-use std::collections::hash_map::Entry::*;
+use syntax::ext::allocator::ALLOCATOR_METHODS;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,

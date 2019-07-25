@@ -1281,6 +1281,13 @@ mod builtin {
     #[rustc_macro_transparency = "semitransparent"]
     pub macro test_case($item:item) { /* compiler built-in */ }
 
+    /// Attribute macro applied to a static to register it as a global allocator.
+    #[stable(feature = "global_allocator", since = "1.28.0")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro global_allocator($item:item) { /* compiler built-in */ }
+
     /// Derive macro generating an impl of the trait `Clone`.
     #[rustc_builtin_macro]
     #[rustc_macro_transparency = "semitransparent"]

@@ -232,7 +232,6 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(euclidean_division)]
     /// let a: f64 = 7.0;
     /// let b = 4.0;
     /// assert_eq!(a.div_euclid(b), 1.0); // 7.0 > 4.0 * 1.0
@@ -241,7 +240,7 @@ impl f64 {
     /// assert_eq!((-a).div_euclid(-b), 2.0); // -7.0 >= -4.0 * 2.0
     /// ```
     #[inline]
-    #[unstable(feature = "euclidean_division", issue = "49048")]
+    #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn div_euclid(self, rhs: f64) -> f64 {
         let q = (self / rhs).trunc();
         if self % rhs < 0.0 {
@@ -264,7 +263,6 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(euclidean_division)]
     /// let a: f64 = 7.0;
     /// let b = 4.0;
     /// assert_eq!(a.rem_euclid(b), 3.0);
@@ -275,7 +273,7 @@ impl f64 {
     /// assert!((-std::f64::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
     #[inline]
-    #[unstable(feature = "euclidean_division", issue = "49048")]
+    #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn rem_euclid(self, rhs: f64) -> f64 {
         let r = self % rhs;
         if r < 0.0 {

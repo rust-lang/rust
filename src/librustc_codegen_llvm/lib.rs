@@ -32,7 +32,6 @@ extern crate flate2;
 #[macro_use] extern crate bitflags;
 extern crate libc;
 #[macro_use] extern crate rustc;
-extern crate rustc_allocator;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
 extern crate rustc_incremental;
@@ -52,13 +51,13 @@ use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModul
 use rustc_codegen_ssa::CompiledModule;
 use errors::{FatalError, Handler};
 use rustc::dep_graph::WorkProduct;
+use syntax::ext::allocator::AllocatorKind;
 use syntax_pos::symbol::InternedString;
 pub use llvm_util::target_features;
 use std::any::Any;
 use std::sync::{mpsc, Arc};
 
 use rustc::dep_graph::DepGraph;
-use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::session::Session;
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest, OptLevel};
