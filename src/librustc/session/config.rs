@@ -1468,6 +1468,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     symbol_mangling_version: SymbolManglingVersion = (SymbolManglingVersion::Legacy,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names"),
+    binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
+        "include artifacts (sysroot, crate dependencies) used during compilation in dep-info"),
 }
 
 pub fn default_lib_output() -> CrateType {

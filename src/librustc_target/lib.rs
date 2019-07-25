@@ -18,8 +18,5 @@
 
 #[macro_use] extern crate log;
 
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
-
 pub mod abi;
 pub mod spec;
