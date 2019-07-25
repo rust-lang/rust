@@ -4,8 +4,8 @@
 Core encoding and decoding interfaces.
 */
 
+use std::any;
 use std::borrow::Cow;
-use std::intrinsics;
 use std::marker::PhantomData;
 use std::path;
 use std::rc::Rc;
@@ -849,9 +849,9 @@ pub trait SpecializationError {
 impl<E> SpecializationError for E {
     default fn not_found<S, T: ?Sized>(trait_name: &'static str, method_name: &'static str) -> E {
         panic!("missing specialization: `<{} as {}<{}>>::{}` not overridden",
-               unsafe { intrinsics::type_name::<S>() },
+               any::type_name::<S>(),
                trait_name,
-               unsafe { intrinsics::type_name::<T>() },
+               any::type_name::<T>(),
                method_name);
     }
 }

@@ -71,7 +71,7 @@ pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
         "saturating_add" | "saturating_sub" |
         "rotate_left" | "rotate_right" |
         "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse" |
-        "minnumf32" | "minnumf64" | "maxnumf32" | "maxnumf64"
+        "minnumf32" | "minnumf64" | "maxnumf32" | "maxnumf64" | "type_name"
         => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }

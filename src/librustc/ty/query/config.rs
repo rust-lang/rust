@@ -69,7 +69,7 @@ impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.def_path_str(def_id)).into()
         } else {
-            let name = unsafe { ::std::intrinsics::type_name::<M>() };
+            let name = ::std::any::type_name::<M>();
             format!("processing {:?} with query `{}`", def_id, name).into()
         }
     }
