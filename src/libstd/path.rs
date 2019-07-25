@@ -1777,7 +1777,9 @@ impl Div<&OsStr> for PathBuf {
 
 /// Implements the `/=` operator for appending to a `PathBuf`.
 /// 
-/// This has the same behavior as the [`push`][PathBuf::push] method.
+/// This has the same behavior as the [`push`] method.
+/// 
+/// [`push`]: struct.PathBuf.html#method.push
 #[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
 impl DivAssign<&Path> for PathBuf {
     fn div_assign(&mut self, rhs: &Path) {
@@ -1788,7 +1790,9 @@ impl DivAssign<&Path> for PathBuf {
 
 /// Implements the `/=` operator for appending to a `PathBuf`.
 /// 
-/// This has the same behavior as the [`push`][PathBuf::push] method.
+/// This has the same behavior as the [`push`] method.
+/// 
+/// [`push`]: struct.PathBuf.html#method.push
 #[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
 impl DivAssign<&str> for PathBuf {
     fn div_assign(&mut self, rhs: &str) {
@@ -1799,7 +1803,9 @@ impl DivAssign<&str> for PathBuf {
 
 /// Implements the `/=` operator for appending to a `PathBuf`.
 /// 
-/// This has the same behavior as the [`push`][PathBuf::push] method.
+/// This has the same behavior as the [`push`] method.
+/// 
+/// [`push`]: struct.PathBuf.html#method.push
 #[stable(feature = "div_concat_pathbuf", since = "1.38.0")]
 impl DivAssign<&OsStr> for PathBuf {
     fn div_assign(&mut self, rhs: &OsStr) {
