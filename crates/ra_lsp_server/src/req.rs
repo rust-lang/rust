@@ -215,6 +215,7 @@ pub struct InlayHintsParams {
 pub enum InlayKind {
     LetBindingType,
     ClosureParameterType,
+    ForExpressionBindingType,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
