@@ -140,22 +140,22 @@ fn main() {
         let mut v = &[1, 2, 3, 4, 5];
         let x = &mut v;
         match v {
-            &[x..] => println!("{:?}", x),
+            &[x @ ..] => println!("{:?}", x),
                 //~^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
         match v {
-            &[_, x..] => println!("{:?}", x),
+            &[_, x @ ..] => println!("{:?}", x),
                 //~^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
         match v {
-            &[x.., _] => println!("{:?}", x),
+            &[x @ .., _] => println!("{:?}", x),
                 //~^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
         match v {
-            &[_, x.., _] => println!("{:?}", x),
+            &[_, x @ .., _] => println!("{:?}", x),
                 //~^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }

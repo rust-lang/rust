@@ -2151,11 +2151,23 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
-        match pattern.node {
-            PatKind::Slice(_, Some(ref subslice), _) => {
-                gate_feature_post!(&self, slice_patterns,
-                                   subslice.span,
-                                   "syntax for subslices in slice patterns is not yet stabilized");
+        match &pattern.node {
+            PatKind::Slice(pats) => {
+                for pat in &*pats {
+                    let span = pat.span;
+                    let inner_pat = match &pat.node {
+                        PatKind::Ident(.., Some(pat)) => pat,
+                        _ => pat,
+                    };
+                    if inner_pat.is_rest() {
+                        gate_feature_post!(
+                            &self,
+                            slice_patterns,
+                            span,
+                            "subslice patterns are unstable"
+                        );
+                    }
+                }
             }
             PatKind::Box(..) => {
                 gate_feature_post!(&self, box_patterns,

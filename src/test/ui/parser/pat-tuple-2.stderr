@@ -1,8 +1,0 @@
-error: trailing comma is not permitted after `..`
-  --> $DIR/pat-tuple-2.rs:3:17
-   |
-LL |         (pat, ..,) => {}
-   |                 ^ trailing comma is not permitted after `..`
-
-error: aborting due to previous error
-

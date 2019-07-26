@@ -196,7 +196,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let rhs_ty = self.check_expr(end);
 
                 // Check that both end-points are of numeric or char type.
-                let numeric_or_char = |ty: Ty<'_>| ty.is_numeric() || ty.is_char();
+                let numeric_or_char = |ty: Ty<'_>| {
+                    ty.is_numeric()
+                    || ty.is_char()
+                    || ty.references_error()
+                };
                 let lhs_compat = numeric_or_char(lhs_ty);
                 let rhs_compat = numeric_or_char(rhs_ty);
 

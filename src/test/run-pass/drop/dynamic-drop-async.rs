@@ -217,7 +217,7 @@ async fn subslice_pattern_from_end_with_drop(a: Rc<Allocator>, arg: bool, arg2: 
     if arg {
         let [.., _x, _] = arr;
     } else {
-        let [_, _y..] = arr;
+        let [_, _y @ ..] = arr;
     }
     a.alloc().await;
 }
@@ -226,7 +226,7 @@ async fn subslice_pattern_reassign(a: Rc<Allocator>) {
     let mut ar = [a.alloc().await, a.alloc().await, a.alloc().await];
     let [_, _, _x] = ar;
     ar = [a.alloc().await, a.alloc().await, a.alloc().await];
-    let [_, _y..] = ar;
+    let [_, _y @ ..] = ar;
     a.alloc().await;
 }
 
