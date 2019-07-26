@@ -27,12 +27,18 @@ gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 indexmap = "1.0.2"
 object = "0.12.0"
 
-# Uncomment to use local checkout of cranelift
 [patch."https://github.com/CraneStation/cranelift.git"]
-cranelift = { path = "../cranelift/cranelift-umbrella" }
-cranelift-module = { path = "../cranelift/cranelift-module" }
-cranelift-simplejit = { path = "../cranelift/cranelift-simplejit" }
-cranelift-faerie = { path = "../cranelift/cranelift-faerie" }
+cranelift = { git = "https://github.com/bjorn3/cretonne.git", branch = "do_not_remove_cg_clif_i128" }
+cranelift-module = { git = "https://github.com/bjorn3/cretonne.git", branch = "do_not_remove_cg_clif_i128" }
+cranelift-simplejit = { git = "https://github.com/bjorn3/cretonne.git", branch = "do_not_remove_cg_clif_i128" }
+cranelift-faerie = { git = "https://github.com/bjorn3/cretonne.git", branch = "do_not_remove_cg_clif_i128" }
+
+# Uncomment to use local checkout of cranelift
+#[patch."https://github.com/CraneStation/cranelift.git"]
+#cranelift = { path = "../cranelift/cranelift-umbrella" }
+#cranelift-module = { path = "../cranelift/cranelift-module" }
+#cranelift-simplejit = { path = "../cranelift/cranelift-simplejit" }
+#cranelift-faerie = { path = "../cranelift/cranelift-faerie" }
 
 #[patch."https://github.com/gimli-rs/gimli.git"]
 #gimli = { path = "../" }
