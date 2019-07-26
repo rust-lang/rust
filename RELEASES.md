@@ -61,7 +61,7 @@ Stabilized APIs
 
 Cargo
 -----
-- [`Cargo.lock` files are now included when publishing by default for crates
+- [`Cargo.lock` files are now included by default when publishing executable crates
   with executables.][cargo/7026]
 - [You can now specify `default-run="foo"` in `[package]` to specify the
   default executable to use for `cargo run`.][cargo/7056]
