@@ -112,6 +112,10 @@ fn main() {
         println!("cargo:rustc-cfg=llvm_component=\"{}\"", component);
     }
 
+    if major >= 9 {
+        println!("cargo:rustc-cfg=llvm_has_msp430_asm_parser");
+    }
+
     // Link in our own LLVM shims, compiled with the same flags as LLVM
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--cxxflags");
