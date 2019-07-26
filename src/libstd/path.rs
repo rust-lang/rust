@@ -1723,6 +1723,7 @@ impl AsRef<OsStr> for PathBuf {
 /// Concatenating two `PathBuf`s takes the first by value and borrows the second:
 ///
 /// ```
+/// # use std::path::PathBuf;
 /// let a = PathBuf::from("hello");
 /// let b = PathBuf::from("world");
 /// let c = a + &b;
@@ -1732,6 +1733,7 @@ impl AsRef<OsStr> for PathBuf {
 /// If you want to keep using the first `PathBuf`, you can clone it and append to the clone instead:
 ///
 /// ```
+/// # use std::path::PathBuf;
 /// let a = PathBuf::from("hello");
 /// let b = PathBuf::from("world");
 /// let c = a.clone() + &b;
@@ -1741,6 +1743,7 @@ impl AsRef<OsStr> for PathBuf {
 /// Concatenating `&Path` slices can be done by converting the first to a `PathBuf`:
 ///
 /// ```
+/// # use std::path::Path;
 /// let a = Path::new("hello");
 /// let b = Path::new("world");
 /// let c = a.to_path_buf() + b;
