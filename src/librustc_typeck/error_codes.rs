@@ -1589,17 +1589,35 @@ fn bar(foo: Foo) -> u32 {
 "##,
 
 E0183: r##"
-Fn* traits (`unboxed closures`) are experimental.
+Fn* traits (`unboxed closures`) are experimental. 
+See [tracking issue #29625][iss29625] for the status of the feature.
 
 Functions must have exactly one (non self) argument, a tuple representing
-the argument list [1]. This feature can be enabled with:
+the argument list [1]. 
 
+Here's an example of this error:
+```compile_fail,E0183
+extern "rust-call" fn echo(arg: (u32,)) -> (u32,) {
+    arg
+}
+```
+
+This feature can be enabled with:
 ```
 #![feature(unboxed_closures)]
 ```
 
+Here's the above example fixed:
+```
+#![feature(unboxed_closures)]
+
+extern "rust-call" fn echo(arg: (u32,)) -> (u32,) {
+    arg
+}
+```
+
 [1]: https://doc.rust-lang.org/unstable-book/language-features/unboxed-closures.html
-[iss29625]: https://github.com/rust-lang/rust/issues/26925
+[iss29625]: https://github.com/rust-lang/rust/issues/29625
 "##,
 
 E0184: r##"
