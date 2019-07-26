@@ -33,11 +33,20 @@ pub mod pipe;
 pub mod process;
 pub mod rand;
 pub mod rwlock;
-pub mod stack_overflow;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
-pub mod stdio;
+cfg_if::cfg_if! {
+    if #[cfg(not(target_vendor = "uwp"))] {
+        pub mod stdio;
+        pub mod stack_overflow;
+    } else {
+        pub mod stdio_uwp;
+        pub mod stack_overflow_uwp;
+        pub use self::stdio_uwp as stdio;
+        pub use self::stack_overflow_uwp as stack_overflow;
+    }
+}
 
 #[cfg(not(test))]
 pub fn init() {

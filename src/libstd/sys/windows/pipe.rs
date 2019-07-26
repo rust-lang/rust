@@ -45,7 +45,7 @@ pub struct Pipes {
 /// mode. This means that technically speaking it should only ever be used
 /// with `OVERLAPPED` instances, but also works out ok if it's only ever used
 /// once at a time (which we do indeed guarantee).
-pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
+pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Result<Pipes> {
     // Note that we specifically do *not* use `CreatePipe` here because
     // unfortunately the anonymous pipes returned do not support overlapped
     // operations. Instead, we create a "hopefully unique" name and create a
@@ -137,6 +137,13 @@ pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
         opts.write(ours_readable);
         opts.read(!ours_readable);
         opts.share_mode(0);
+        let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
+        let mut sa = c::SECURITY_ATTRIBUTES {
+            nLength: size as c::DWORD,
+            lpSecurityDescriptor: ptr::null_mut(),
+            bInheritHandle: their_handle_inheritable as i32,
+        };
+        opts.security_attributes(&mut sa);
         let theirs = File::open(Path::new(&name), &opts)?;
         let theirs = AnonPipe { inner: theirs.into_handle() };
 
