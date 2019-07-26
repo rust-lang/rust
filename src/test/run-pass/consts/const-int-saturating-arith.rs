@@ -1,3 +1,4 @@
+// run-pass
 // ignore-emscripten no i128 support
 #![feature(const_saturating_int_methods)]
 

@@ -1,3 +1,5 @@
+// run-pass
+
 use std::thread;
 
 pub fn main() {

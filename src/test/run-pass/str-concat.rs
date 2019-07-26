@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main() {
     let a: String = "hello".to_string();
     let b: String = "world".to_string();

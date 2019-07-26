@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test that the `wf` checker properly handles bound regions in object

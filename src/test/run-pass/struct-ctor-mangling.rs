@@ -1,3 +1,5 @@
+// run-pass
+
 fn size_of_val<T>(_: &T) -> usize {
     std::mem::size_of::<T>()
 }

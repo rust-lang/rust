@@ -1,3 +1,5 @@
+// run-pass
+
 use std::ops::Mul;
 
 #[derive(Copy, Clone)]

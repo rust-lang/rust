@@ -1,3 +1,4 @@
+// run-pass
 // Reported as issue #126, child leaks the string.
 
 // pretty-expanded FIXME #23616

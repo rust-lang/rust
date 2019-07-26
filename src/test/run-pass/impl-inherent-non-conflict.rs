@@ -1,3 +1,4 @@
+// run-pass
 // Ensure that a user-defined type admits multiple inherent methods
 // with the same name, which can be called on values that have a
 // precise enough type to allow distinguishing between the methods.

@@ -1,3 +1,4 @@
+// run-pass
 // Test that we don't duplicate storage for a variable that is moved to another
 // binding. This used to happen in the presence of unwind and drop edges (see
 // `complex` below.)

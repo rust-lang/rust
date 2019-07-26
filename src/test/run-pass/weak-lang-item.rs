@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:weak-lang-items.rs
 
 // ignore-emscripten no threads support

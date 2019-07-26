@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(overlapping_marker_traits)]
 #![feature(specialization)]
 

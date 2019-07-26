@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:llvm_pr32379.rs
 
 // LLVM PR #32379 (https://bugs.llvm.org/show_bug.cgi?id=32379), which

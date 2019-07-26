@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:double.rs
 // aux-build:external-crate-var.rs
 

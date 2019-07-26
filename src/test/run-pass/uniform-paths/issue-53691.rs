@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:issue-53691.rs
 
 extern crate issue_53691;

@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_upper_case_globals)]
 #![feature(rustc_private)]
 extern crate serialize;

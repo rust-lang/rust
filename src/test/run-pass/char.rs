@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main() {
     let c: char = 'x';
     let d: char = 'x';

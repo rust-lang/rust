@@ -1,3 +1,4 @@
+// run-pass
 // Test structs with always-unsized fields.
 
 

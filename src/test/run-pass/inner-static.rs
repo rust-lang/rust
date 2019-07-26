@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:inner_static.rs
 
 

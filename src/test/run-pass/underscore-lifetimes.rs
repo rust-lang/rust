@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 struct Foo<'a>(&'a u8);
 

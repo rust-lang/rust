@@ -1,3 +1,4 @@
+// run-pass
 // compile-flags:--test
 // ignore-emscripten
 // ignore-sgx no thread sleep support

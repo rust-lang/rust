@@ -1,3 +1,4 @@
+// run-pass
 // `#[derive(Trait)]` works for empty structs/variants with braces or parens.
 
 #![feature(rustc_private)]

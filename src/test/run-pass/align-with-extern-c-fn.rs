@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(stable_features)]
 #![allow(unused_variables)]
 

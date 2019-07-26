@@ -1,3 +1,4 @@
+// run-pass
 // Test invoked `&self` methods on owned objects where the values
 // closed over do not contain managed values, and thus the boxes do
 // not have headers.

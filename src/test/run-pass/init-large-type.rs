@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_must_use)]
 // Makes sure that zero-initializing large types is reasonably fast,
 // Doing it incorrectly causes massive slowdown in LLVM during

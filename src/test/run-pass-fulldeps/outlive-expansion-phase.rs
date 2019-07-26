@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:outlive-expansion-phase.rs
 // ignore-stage1
 

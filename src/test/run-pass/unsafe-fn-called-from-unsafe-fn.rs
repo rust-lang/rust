@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 //
 // See also: compile-fail/unsafe-fn-called-from-safe.rs

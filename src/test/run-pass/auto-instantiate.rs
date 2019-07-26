@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 #[derive(Debug)]
 struct Pair<T, U> { a: T, b: U }

@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(warnings)]
 
 use std::iter::Zip;

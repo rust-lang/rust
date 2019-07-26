@@ -1,3 +1,4 @@
+// run-pass
 // ignore-windows
 // ignore-macos
 // ignore-emscripten doesn't support this linkage

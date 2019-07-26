@@ -1,3 +1,5 @@
+// run-pass
+
 use std::string::String;
 
 fn test_stack_assign() {

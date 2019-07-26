@@ -1,3 +1,4 @@
+// run-pass
 // Test that type IDs correctly account for higher-rank lifetimes
 // Also acts as a regression test for an ICE (issue #19791)
 

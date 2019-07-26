@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(unsized_locals)]
 
 pub trait Foo {

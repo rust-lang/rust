@@ -1,3 +1,4 @@
+// run-pass
 // Test old and new syntax for inclusive range patterns.
 
 #![allow(ellipsis_inclusive_range_patterns)]

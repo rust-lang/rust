@@ -1,3 +1,4 @@
+// run-pass
 // compile-flags: -Z chalk
 
 // Test that `Clone` is correctly implemented for builtin types.

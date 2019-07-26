@@ -1,3 +1,5 @@
+// run-pass
+
 struct X {
     x: isize
 }

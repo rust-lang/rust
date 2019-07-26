@@ -1,3 +1,4 @@
+// run-pass
 // compile-flags: -Z no-landing-pads -C codegen-units=1
 // ignore-emscripten no threads support
 

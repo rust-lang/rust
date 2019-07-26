@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(core_intrinsics)]
 
 use std::any::type_name;

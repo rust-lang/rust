@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_must_use)]
 #![allow(unused_imports)]
 // This test can't be a unit test in std,

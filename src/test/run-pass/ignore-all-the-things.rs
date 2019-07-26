@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_shorthand_field_patterns)]
 #![allow(dead_code)]
 #![allow(unused_variables)]

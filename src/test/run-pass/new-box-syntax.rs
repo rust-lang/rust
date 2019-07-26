@@ -1,3 +1,4 @@
+// run-pass
 // pretty-expanded FIXME #23616
 
 /* Any copyright is dedicated to the Public Domain.

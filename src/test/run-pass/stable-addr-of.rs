@@ -1,3 +1,4 @@
+// run-pass
 // Issue #2040
 
 

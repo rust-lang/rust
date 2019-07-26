@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main() {
     let mut x: isize = 1;
     x *= 2;

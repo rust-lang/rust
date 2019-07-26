@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:trait_superkinds_in_metadata.rs
 
 // Tests "capabilities" granted by traits with super-builtin-kinds,

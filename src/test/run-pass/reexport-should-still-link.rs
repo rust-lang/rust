@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:reexport-should-still-link.rs
 
 // pretty-expanded FIXME #23616

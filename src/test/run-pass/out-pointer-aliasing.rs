@@ -1,3 +1,5 @@
+// run-pass
+
 #[derive(Copy, Clone)]
 pub struct Foo {
     f1: isize,

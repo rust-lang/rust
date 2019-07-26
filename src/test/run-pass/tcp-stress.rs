@@ -1,3 +1,4 @@
+// run-pass
 // ignore-android needs extra network permissions
 // ignore-cloudabi no global network namespace access
 // ignore-emscripten no threads or sockets support

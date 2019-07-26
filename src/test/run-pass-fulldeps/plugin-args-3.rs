@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:plugin-args.rs
 // ignore-stage1
 

@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:test-macros.rs
 // ignore-wasm32
 

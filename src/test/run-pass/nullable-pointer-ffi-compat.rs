@@ -1,3 +1,4 @@
+// run-pass
 // #11303, #11040:
 // This would previously crash on i686 Linux due to abi differences
 // between returning an Option<T> and T, where T is a non nullable

@@ -1,3 +1,5 @@
+// run-pass
+
 use std::mem::size_of;
 
 // The main point of this test is to ensure that we can parse and resolve

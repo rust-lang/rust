@@ -1,3 +1,4 @@
+// run-pass
 // Test that using rlibs and rmeta dep crates work together. Specifically, that
 // there can be both an rmeta and an rlib file and rustc will prefer the rlib.
 

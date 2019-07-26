@@ -1,3 +1,5 @@
+// run-pass
+
 #![deny(dead_code)]
 
 trait Foo {

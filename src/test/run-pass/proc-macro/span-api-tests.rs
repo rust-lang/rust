@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:span-api-tests.rs
 // aux-build:span-test-macros.rs
 

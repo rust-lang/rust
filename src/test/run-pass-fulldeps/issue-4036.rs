@@ -1,3 +1,4 @@
+// run-pass
 // Issue #4036: Test for an issue that arose around fixing up type inference
 // byproducts in vtable records.
 

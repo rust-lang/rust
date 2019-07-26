@@ -1,3 +1,4 @@
+// run-pass
 // Test that we correctly ignore the blanket impl
 // because (in this case) `T` does not impl `Clone`.
 //

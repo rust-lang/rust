@@ -1,3 +1,4 @@
+// run-pass
 // ignore-emscripten no threads support
 // ignore-sgx no thread sleep support
 

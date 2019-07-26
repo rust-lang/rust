@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(plugin_as_library)]
 #![allow(dead_code)]
 #![allow(unused_variables)]

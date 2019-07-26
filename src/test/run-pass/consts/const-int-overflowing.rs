@@ -1,3 +1,5 @@
+// run-pass
+
 const ADD_A: (u32, bool) = 5u32.overflowing_add(2);
 const ADD_B: (u32, bool) = u32::max_value().overflowing_add(1);
 

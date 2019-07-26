@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_macros)]
 // aux-build:hygiene_example_codegen.rs
 // aux-build:hygiene_example.rs

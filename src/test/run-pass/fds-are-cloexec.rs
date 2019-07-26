@@ -1,3 +1,4 @@
+// run-pass
 // ignore-windows
 // ignore-android
 // ignore-cloudabi no processes

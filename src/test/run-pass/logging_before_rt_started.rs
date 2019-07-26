@@ -1,3 +1,4 @@
+// run-pass
 // exec-env:RUSTC_LOG=std::ptr
 
 // In issue #9487, it was realized that std::ptr was invoking the logging

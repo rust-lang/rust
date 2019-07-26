@@ -1,3 +1,4 @@
+// run-pass
 // ignore-emscripten no threads support
 
 #![feature(box_syntax)]

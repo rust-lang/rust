@@ -1,3 +1,5 @@
+// run-pass
+
 use std::mem::swap;
 
 pub fn main() {

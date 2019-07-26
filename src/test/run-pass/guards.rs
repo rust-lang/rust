@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_shorthand_field_patterns)]
 
 #[derive(Copy, Clone)]

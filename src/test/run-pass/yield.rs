@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_must_use)]
 #![allow(unused_mut)]
 // ignore-emscripten no threads support

@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(stable_features)]
 
 #![feature(extended_compare_and_swap)]

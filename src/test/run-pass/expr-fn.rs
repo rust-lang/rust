@@ -1,3 +1,5 @@
+// run-pass
+
 fn test_int() {
     fn f() -> isize { 10 }
     assert_eq!(f(), 10);

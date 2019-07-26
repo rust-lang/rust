@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(step_trait)]
 
 use std::iter::Step;

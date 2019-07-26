@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 // Test several functions can be used for constants
 // 1. Vec::new()

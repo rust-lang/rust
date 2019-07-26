@@ -1,3 +1,4 @@
+// run-pass
 // ignore-cross-compile
 
 use std::env;

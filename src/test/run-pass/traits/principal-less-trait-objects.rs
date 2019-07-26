@@ -1,3 +1,4 @@
+// run-pass
 // Check that trait-objects without a principal codegen properly.
 
 use std::sync::atomic::{AtomicUsize, Ordering};

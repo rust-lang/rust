@@ -1,3 +1,5 @@
+// run-pass
+
 use std::cell::RefCell;
 
 pub fn main() {

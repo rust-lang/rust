@@ -1,3 +1,4 @@
+// run-pass
 // ignore-windows
 // ignore-emscripten no threads support
 // exec-env:RUSTC_LOG=debug

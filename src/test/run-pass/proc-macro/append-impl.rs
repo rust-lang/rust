@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:append-impl.rs
 
 #![allow(warnings)]

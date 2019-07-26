@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main()
 {
     let all_nuls1 = "\0\x00\u{0}\u{0}";

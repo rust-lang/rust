@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(warnings)]
 #![feature(in_band_lifetimes)]
 

@@ -1,3 +1,4 @@
+// run-pass
 //
 
 // Test that multibyte characters don't crash the compiler

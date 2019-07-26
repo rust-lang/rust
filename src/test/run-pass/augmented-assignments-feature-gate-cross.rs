@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:augmented_assignments.rs
 
 extern crate augmented_assignments;

@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 // If we use GEPi rather than GEP_tup_like when
 // storing closure data (as we used to do), the u64 would

@@ -1,3 +1,4 @@
+// run-pass
 // ignore-tidy-cr ignore-license
 // ignore-tidy-cr (repeated again because of tidy bug)
 // license is ignored because tidy can't handle the CRLF here properly.

@@ -1,3 +1,4 @@
+// run-pass
 // We disable tail merging here because it can't preserve debuginfo and thus
 // potentially breaks the backtraces. Also, subtle changes can decide whether
 // tail merging succeeds, so the test might work today but fail tomorrow due to a

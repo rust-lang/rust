@@ -1,3 +1,4 @@
+// run-pass
 // compile-flags: -Z chalk
 
 trait Eq { }

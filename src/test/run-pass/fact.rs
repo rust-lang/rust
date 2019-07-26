@@ -1,3 +1,5 @@
+// run-pass
+
 fn f(x: isize) -> isize {
     // println!("in f:");
 

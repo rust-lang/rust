@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_camel_case_types)]
 // A test of the macro system. Can we do HTML literals?
 

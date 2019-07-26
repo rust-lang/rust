@@ -1,3 +1,5 @@
+// run-pass
+
 use std::ops::Deref;
 
 pub struct Pin<P>(P);

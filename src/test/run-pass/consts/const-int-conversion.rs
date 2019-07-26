@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(const_int_conversion)]
 
 const REVERSE: u32 = 0x12345678_u32.reverse_bits();

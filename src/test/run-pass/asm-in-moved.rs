@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(asm)]
 #![allow(dead_code)]
 

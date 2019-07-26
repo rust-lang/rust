@@ -1,3 +1,4 @@
+// run-pass
 // Test that `&mut T` implements `DerefMut<T>`
 
 

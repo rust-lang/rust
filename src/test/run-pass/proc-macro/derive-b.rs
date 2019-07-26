@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:derive-b.rs
 
 extern crate derive_b;

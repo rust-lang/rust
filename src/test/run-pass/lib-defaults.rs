@@ -1,3 +1,4 @@
+// run-pass
 // dont-check-compiler-stderr (rust-lang/rust#54222)
 
 // ignore-wasm32-bare no libc to test ffi with

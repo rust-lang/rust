@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:issue-40001-plugin.rs
 // ignore-stage1
 

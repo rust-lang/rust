@@ -1,3 +1,4 @@
+// run-pass
 // Test that the Callbacks interface to the compiler works.
 
 // ignore-cross-compile

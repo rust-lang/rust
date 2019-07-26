@@ -1,3 +1,4 @@
+// run-pass
 // Catch mistakes in the overflowing literals lint.
 #![deny(overflowing_literals)]
 

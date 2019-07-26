@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(test)]
 
 // compile-flags: --test

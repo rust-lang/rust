@@ -1,3 +1,4 @@
+// run-pass
 // This test is just checking that we won't ICE if logging is turned
 // on; don't bother trying to compare that (copious) output. (Note
 // also that this test potentially silly, since we do not build+test

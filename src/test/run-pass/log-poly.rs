@@ -1,3 +1,5 @@
+// run-pass
+
 #[derive(Debug)]
 enum Numbers {
     Three

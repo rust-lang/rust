@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code, unused_imports)]
 #![feature(no_core)]
 #![no_core]

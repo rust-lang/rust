@@ -1,3 +1,4 @@
+// run-pass
 // Tests for the new |args| expr lambda syntax
 
 

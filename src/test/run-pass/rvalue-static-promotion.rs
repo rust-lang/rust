@@ -1,3 +1,5 @@
+// run-pass
+
 use std::cell::Cell;
 
 const NONE_CELL_STRING: Option<Cell<String>> = None;

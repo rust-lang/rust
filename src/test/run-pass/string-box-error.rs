@@ -1,3 +1,4 @@
+// run-pass
 // Ensure that both `Box<dyn Error + Send + Sync>` and `Box<dyn Error>` can be
 // obtained from `String`.
 

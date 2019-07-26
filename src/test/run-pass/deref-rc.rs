@@ -1,3 +1,5 @@
+// run-pass
+
 use std::rc::Rc;
 
 fn main() {

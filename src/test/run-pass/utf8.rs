@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main() {
     let yen: char = '¥'; // 0xa5
     let c_cedilla: char = 'ç'; // 0xe7

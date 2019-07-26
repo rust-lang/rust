@@ -1,3 +1,5 @@
+// run-pass
+
 trait Foo: Fn(i32) -> i32 + Send {}
 
 impl<T: ?Sized + Fn(i32) -> i32 + Send> Foo for T {}

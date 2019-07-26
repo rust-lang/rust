@@ -1,3 +1,4 @@
+// run-pass
 // Testing that a libsyntax can parse modules with canonicalized base path
 // ignore-cross-compile
 

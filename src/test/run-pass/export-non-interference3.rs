@@ -1,3 +1,5 @@
+// run-pass
+
 pub mod foo {
     pub fn x() { ::bar::x(); }
 }

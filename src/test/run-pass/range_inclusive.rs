@@ -1,3 +1,4 @@
+// run-pass
 // Test inclusive range syntax.
 
 #![feature(range_is_empty)]

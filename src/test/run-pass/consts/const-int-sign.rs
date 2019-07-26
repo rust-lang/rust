@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(const_int_sign)]
 
 const NEGATIVE_A: bool = (-10i32).is_negative();

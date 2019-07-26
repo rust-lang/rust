@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(stable_features)]
 #![feature(atomic_access)]
 use std::sync::atomic::AtomicBool;

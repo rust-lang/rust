@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(warnings)]
 
 // Here the type of `c` is `Option<?T>`, where `?T` is unconstrained.

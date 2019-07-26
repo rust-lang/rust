@@ -1,3 +1,4 @@
+// run-pass
 // This test case tests whether we can handle code bases that contain a high
 // number of closures, something that needs special handling in the MingGW
 // toolchain.

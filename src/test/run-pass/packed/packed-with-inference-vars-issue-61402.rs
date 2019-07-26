@@ -1,3 +1,4 @@
+// run-pass
 // If a struct is packed and its last field has drop glue, then that
 // field needs to be Sized (to allow it to be destroyed out-of-place).
 //

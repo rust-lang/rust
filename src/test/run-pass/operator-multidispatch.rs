@@ -1,3 +1,4 @@
+// run-pass
 // Test that we can overload the `+` operator for points so that two
 // points can be added, and a point can be added to an integer.
 

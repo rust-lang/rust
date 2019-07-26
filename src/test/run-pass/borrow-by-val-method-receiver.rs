@@ -1,3 +1,5 @@
+// run-pass
+
 trait Foo {
     fn foo(self);
 }

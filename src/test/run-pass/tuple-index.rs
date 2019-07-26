@@ -1,3 +1,5 @@
+// run-pass
+
 struct Point(isize, isize);
 
 fn main() {

@@ -1,3 +1,4 @@
+// run-pass
 // Test that we can coerce an `@Object` to an `&Object`
 
 

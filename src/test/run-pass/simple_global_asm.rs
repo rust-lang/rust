@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(global_asm)]
 #![feature(naked_functions)]
 #![allow(dead_code)]

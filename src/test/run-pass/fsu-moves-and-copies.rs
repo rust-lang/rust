@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_camel_case_types)]
 #![allow(stable_features)]
 // Issue 4691: Ensure that functional-struct-updates operates

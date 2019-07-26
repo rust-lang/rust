@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_imports)]
 // pretty-expanded FIXME #23616
 

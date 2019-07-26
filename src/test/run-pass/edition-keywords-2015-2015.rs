@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_mut)]
 #![allow(unused_assignments)]
 #![allow(unused_variables)]

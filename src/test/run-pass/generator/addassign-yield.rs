@@ -1,3 +1,4 @@
+// run-pass
 // Regression test for broken MIR error (#61442)
 // Due to the two possible evaluation orders for
 // a '+=' expression (depending on whether or not the 'AddAssign' trait

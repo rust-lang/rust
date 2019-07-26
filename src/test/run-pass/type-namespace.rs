@@ -1,3 +1,5 @@
+// run-pass
+
 struct A { a: isize }
 
 fn a(a: A) -> isize { return a.a; }

@@ -1,3 +1,5 @@
+// run-pass
+
 use std::ops::Deref;
 
 fn foo<P>(_value: <P as Deref>::Target)

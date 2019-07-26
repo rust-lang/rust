@@ -1,5 +1,5 @@
 #!/usr/bin/env rustx
-// http://rust-lang.org/COPYRIGHT.
-//
+
+// run-pass
 
 pub fn main() { println!("Hello World"); }

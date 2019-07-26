@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_must_use)]
 #![allow(deprecated)]
 // ignore-cloudabi no process support

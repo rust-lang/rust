@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:foreign_lib.rs
 // ignore-wasm32-bare no libc to test ffi with
 

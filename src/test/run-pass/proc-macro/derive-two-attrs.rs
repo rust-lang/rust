@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 // aux-build:derive-two-attrs.rs
 

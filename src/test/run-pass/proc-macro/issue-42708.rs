@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:issue-42708.rs
 
 #![feature(decl_macro)]

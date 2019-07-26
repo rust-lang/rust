@@ -1,3 +1,5 @@
+// run-pass
+
 struct Foo<'a>(&'a [isize]);
 
 fn main() {

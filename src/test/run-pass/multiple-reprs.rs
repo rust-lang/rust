@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 
 use std::mem::{size_of, align_of};

@@ -1,3 +1,5 @@
+// run-pass
+
 fn f() -> isize { return 42; }
 
 pub fn main() {

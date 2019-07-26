@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(global_asm)]
 
 #[cfg(target_arch = "x86")]

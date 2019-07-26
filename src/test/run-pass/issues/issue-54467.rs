@@ -1,3 +1,5 @@
+// run-pass
+
 pub trait Stream {
     type Item;
     type Error;

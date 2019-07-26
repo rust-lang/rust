@@ -1,3 +1,5 @@
+// run-pass
+
 use std::cmp::Ordering;
 
 // Test default methods in PartialOrd and PartialEq

@@ -1,3 +1,5 @@
+// run-pass
+
 const ADD_A: u32 = 200u32.wrapping_add(55);
 const ADD_B: u32 = 200u32.wrapping_add(u32::max_value());
 

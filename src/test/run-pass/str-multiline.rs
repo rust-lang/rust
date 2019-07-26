@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main() {
     let a: String = "this \
 is a test".to_string();

@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:nested_item.rs
 
 

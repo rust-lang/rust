@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_must_use)]
 #![allow(stable_features)]
 #![allow(deprecated)]

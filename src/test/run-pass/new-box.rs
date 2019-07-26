@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(box_syntax)]
 
 fn f(x: Box<isize>) {

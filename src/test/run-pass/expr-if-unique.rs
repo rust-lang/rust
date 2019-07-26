@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(box_syntax)]
 
 // Tests for if as expressions returning boxed types

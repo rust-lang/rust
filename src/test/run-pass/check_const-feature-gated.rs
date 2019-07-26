@@ -1,3 +1,5 @@
+// run-pass
+
 const ARR: [usize; 1] = [2];
 
 fn main() {

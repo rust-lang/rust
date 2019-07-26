@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:impl_privacy_xc_1.rs
 
 // pretty-expanded FIXME #23616

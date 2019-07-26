@@ -1,3 +1,5 @@
+// run-pass
+
 mod a {
     pub enum B {}
 

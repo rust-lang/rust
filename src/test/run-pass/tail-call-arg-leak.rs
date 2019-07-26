@@ -1,3 +1,4 @@
+// run-pass
 // use of tail calls causes arg slot leaks, issue #160.
 // pretty-expanded FIXME #23616
 

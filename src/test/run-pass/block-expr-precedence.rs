@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_must_use)]
 #![allow(unused_parens)]
 // This test has some extra semis in it that the pretty-printer won't

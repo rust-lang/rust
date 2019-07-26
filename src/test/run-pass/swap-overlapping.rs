@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 // Issue #5041 - avoid overlapping memcpy when src and dest of a swap are the same
 

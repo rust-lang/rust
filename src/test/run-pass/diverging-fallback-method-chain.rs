@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_imports)]
 // Test a regression found when building compiler. The `produce()`
 // error type `T` winds up getting unified with result of `x.parse()`;

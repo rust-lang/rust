@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(improper_ctypes)]
 #![allow(dead_code)]
 // Issue #901

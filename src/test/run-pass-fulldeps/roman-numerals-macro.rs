@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:roman-numerals.rs
 // ignore-stage1
 

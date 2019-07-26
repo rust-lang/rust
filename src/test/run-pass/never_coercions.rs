@@ -1,3 +1,4 @@
+// run-pass
 // Test that having something of type ! doesn't screw up type-checking and that it coerces to the
 // LUB type of the other match arms.
 

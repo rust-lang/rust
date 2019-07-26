@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(associated_type_defaults)]
 
 trait Foo<T: Default + ToString> {

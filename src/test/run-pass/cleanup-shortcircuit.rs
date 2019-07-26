@@ -1,3 +1,4 @@
+// run-pass
 // Test that cleanups for the RHS of shortcircuiting operators work.
 
 // pretty-expanded FIXME #23616

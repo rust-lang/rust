@@ -1,3 +1,5 @@
+// run-pass
+
 mod inner {
     pub mod inner2 {
         pub fn hello() { println!("hello, modular world"); }

@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_upper_case_globals)]
 #![allow(dead_code)]
 #![allow(unused_assignments)]

@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main() {
     let a = 1;
     let a_neg: i8 = -a;

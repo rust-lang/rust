@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(path_statements)]
 #![allow(dead_code)]
 // aux-build:derive-same-struct.rs

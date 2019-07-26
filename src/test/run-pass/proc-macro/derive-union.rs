@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_variables)]
 // aux-build:derive-union.rs
 

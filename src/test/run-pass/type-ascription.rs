@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Type ascription doesn't lead to unsoundness

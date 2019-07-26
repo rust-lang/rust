@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_variables)]
 #![allow(deprecated)]
 // ignore-cloudabi no environment variables present

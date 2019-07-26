@@ -1,3 +1,5 @@
+// run-pass
+
 use std::str;
 
 pub fn main() {

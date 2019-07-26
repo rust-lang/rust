@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:add-impl.rs
 
 #[macro_use]

@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_variables)]
 // Test coercions between pointers which don't do anything fancy like unsizing.
 

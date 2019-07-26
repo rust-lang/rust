@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(stmt_expr_attributes)]
 #![deny(unused_parens)]
 

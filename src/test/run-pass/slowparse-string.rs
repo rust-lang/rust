@@ -1,3 +1,4 @@
+// run-pass
 // ignore-tidy-linelength
 
 // Issue #16624

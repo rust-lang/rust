@@ -1,3 +1,5 @@
+// run-pass
+
 use std::ops::AddAssign;
 
 struct Int(i32);

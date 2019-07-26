@@ -1,3 +1,4 @@
+// run-pass
 // Tests for if as expressions
 
 fn test_if() { let rs: bool = if true { true } else { false }; assert!((rs)); }

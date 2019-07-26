@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(stable_features)]
 #![allow(unused_imports)]
 // Test that cleanup scope for temporaries created in a match

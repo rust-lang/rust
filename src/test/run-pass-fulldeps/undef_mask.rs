@@ -1,3 +1,4 @@
+// run-pass
 // ignore-cross-compile
 // ignore-stage1
 

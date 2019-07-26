@@ -1,3 +1,4 @@
+// run-pass
 // compile-flags: -O
 
 #![allow(dead_code)]

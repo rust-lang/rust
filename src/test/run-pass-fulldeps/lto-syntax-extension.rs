@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:lto-syntax-extension-lib.rs
 // aux-build:lto-syntax-extension-plugin.rs
 // compile-flags:-C lto

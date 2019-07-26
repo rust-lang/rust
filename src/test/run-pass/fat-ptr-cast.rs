@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(raw)]
 
 use std::mem;

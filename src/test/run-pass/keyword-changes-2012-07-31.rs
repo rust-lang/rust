@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 // return -> return
 // mod -> module

@@ -1,3 +1,5 @@
+// run-pass
+
 mod foo {
     pub struct Point {
         pub x: i32,

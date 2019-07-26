@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(box_syntax)]
 
 // Iota-reduction is a rule in the Calculus of (Co-)Inductive Constructions,

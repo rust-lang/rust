@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 // Check that functions can modify local state.
 

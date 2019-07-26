@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 // Tests that even when a type parameter doesn't implement a required
 // super-builtin-kind of a trait, if the type parameter is never used,

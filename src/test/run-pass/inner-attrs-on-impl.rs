@@ -1,3 +1,5 @@
+// run-pass
+
 struct Foo;
 
 impl Foo {

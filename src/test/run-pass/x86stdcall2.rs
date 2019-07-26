@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_camel_case_types)]
 pub type HANDLE = usize;
 pub type DWORD = u32;

@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(unsized_tuple_coercion)]
 
 use std::collections::HashSet;

@@ -1,3 +1,4 @@
+// run-pass
 // compile-flags:--test
 
 #![reexport_test_harness_main = "test_main"]

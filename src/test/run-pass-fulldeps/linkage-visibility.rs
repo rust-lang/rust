@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:linkage-visibility.rs
 // ignore-android: FIXME(#10356)
 // ignore-windows: std::dynamic_lib does not work on Windows well

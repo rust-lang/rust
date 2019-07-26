@@ -1,3 +1,5 @@
+// run-pass
+
 fn main() {
     let x = "\\\\\
     ";

@@ -1,3 +1,5 @@
+// run-pass
+
 fn incr(x: &mut isize) -> bool { *x += 1; assert!((false)); return false; }
 
 pub fn main() {

@@ -1,3 +1,5 @@
+// run-pass
+
 #![crate_name="foo"]
 
 use std::mem::size_of;

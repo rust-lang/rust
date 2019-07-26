@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(specialization)]
 
 trait Specializable { type Output; }

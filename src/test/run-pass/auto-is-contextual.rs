@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(path_statements)]
 #![allow(dead_code)]
 macro_rules! auto {

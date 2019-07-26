@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_variables)]
 use std::cmp;
 use std::ops;

@@ -1,3 +1,4 @@
+// run-pass
 // Test the uninit() construct returning various empty types.
 
 // pretty-expanded FIXME #23616

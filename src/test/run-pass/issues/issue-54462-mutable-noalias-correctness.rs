@@ -1,3 +1,4 @@
+// run-pass
 //
 // compile-flags: -Ccodegen-units=1 -O
 

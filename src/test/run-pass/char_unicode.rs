@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(unicode_version)]
 
 /// Tests access to the internal Unicode Version type and value.

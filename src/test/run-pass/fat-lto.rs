@@ -1,3 +1,4 @@
+// run-pass
 // compile-flags: -Clto=fat
 // no-prefer-dynamic
 

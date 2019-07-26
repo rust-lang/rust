@@ -1,3 +1,4 @@
+// run-pass
 // Basic boolean tests
 
 

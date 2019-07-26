@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_must_use)]
 // Regression test for issue #152.
 pub fn main() {

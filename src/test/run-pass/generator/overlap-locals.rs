@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(generators)]
 
 fn main() {

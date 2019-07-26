@@ -1,3 +1,5 @@
+// run-pass
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 struct BadNumErr;
 

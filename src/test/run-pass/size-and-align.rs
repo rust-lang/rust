@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_camel_case_types)]
 enum clam<T> { a(T, isize), b, }
 

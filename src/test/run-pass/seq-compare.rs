@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main() {
     assert!(("hello".to_string() < "hellr".to_string()));
     assert!(("hello ".to_string() > "hello".to_string()));

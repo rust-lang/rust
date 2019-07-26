@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:count_compound_ops.rs
 
 #![feature(proc_macro_hygiene)]

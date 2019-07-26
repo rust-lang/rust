@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_must_use)]
 // Make sure the type inference for the new range expression work as
 // good as the old one. Check out issue #21672, #21595 and #21649 for

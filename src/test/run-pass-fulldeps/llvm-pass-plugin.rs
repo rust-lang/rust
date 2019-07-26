@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:llvm-pass-plugin.rs
 // ignore-stage1
 

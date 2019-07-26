@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:attr-args.rs
 
 #![allow(warnings)]

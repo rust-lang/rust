@@ -1,3 +1,4 @@
+// run-pass
 // ignore-emscripten
 // ignore-wasm32
 // ignore-sgx no processes

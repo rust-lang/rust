@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:msvc-data-only-lib.rs
 
 extern crate msvc_data_only_lib;

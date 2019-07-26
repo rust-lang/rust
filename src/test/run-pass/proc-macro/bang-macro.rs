@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:bang-macro.rs
 
 #![feature(proc_macro_hygiene)]

@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn f() -> isize { return 1; }
 
 pub mod foo {

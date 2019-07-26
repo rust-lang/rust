@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main() {
     let s = "\u{2603}";
     assert_eq!(s, "☃");

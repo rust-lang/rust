@@ -1,3 +1,5 @@
+// run-pass
+
 fn my_err(s: String) -> ! { println!("{}", s); panic!(); }
 
 fn okay(i: usize) -> isize {

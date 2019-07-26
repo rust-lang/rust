@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:inline_dtor.rs
 
 // pretty-expanded FIXME #23616

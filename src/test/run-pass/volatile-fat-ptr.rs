@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(stable_features)]
 #![feature(volatile)]
 use std::ptr::{read_volatile, write_volatile};

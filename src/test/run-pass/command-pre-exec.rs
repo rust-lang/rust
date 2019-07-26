@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(stable_features)]
 // ignore-windows - this is a unix-specific test
 // ignore-cloudabi no processes

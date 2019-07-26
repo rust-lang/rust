@@ -1,3 +1,4 @@
+// run-pass
 // ignore-android
 // ignore-cloudabi no processes
 // ignore-emscripten no processes

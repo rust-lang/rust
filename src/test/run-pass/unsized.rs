@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(type_alias_bounds)]
 #![allow(dead_code)]
 // Test syntax checks for `?Sized` syntax.

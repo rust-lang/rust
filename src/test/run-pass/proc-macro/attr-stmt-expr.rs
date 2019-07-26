@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:attr-stmt-expr.rs
 
 #![feature(stmt_expr_attributes, proc_macro_hygiene)]

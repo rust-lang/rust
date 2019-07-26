@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:issue-16822.rs
 
 extern crate issue_16822 as lib;

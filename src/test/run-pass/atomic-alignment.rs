@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(cfg_target_has_atomic)]
 #![feature(integer_atomics)]
 

@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
 // Test that we can extract a ! through pattern matching then use it as several different types.

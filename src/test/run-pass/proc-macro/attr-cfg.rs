@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:attr-cfg.rs
 // revisions: foo bar
 

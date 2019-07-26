@@ -1,3 +1,4 @@
+// run-pass
 // ignore-cloudabi no env vars
 // ignore-wasm32-bare no env vars
 

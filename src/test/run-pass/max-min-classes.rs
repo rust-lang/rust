@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_snake_case)]
 trait Product {
     fn product(&self) -> isize;

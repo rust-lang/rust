@@ -1,3 +1,5 @@
+// run-pass
+
 macro_rules! test {
     (
         fn fun() -> Option<Box<$t:ty>>;

@@ -1,3 +1,4 @@
+// run-pass
 // ignore-cloudabi no std::env
 
 #![allow(stable_features)]

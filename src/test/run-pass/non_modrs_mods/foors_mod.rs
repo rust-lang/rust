@@ -1,3 +1,4 @@
+// run-pass
 //
 // ignore-test: not a test, used by non_modrs_mods.rs
 

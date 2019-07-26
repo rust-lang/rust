@@ -1,3 +1,5 @@
+// run-pass
+
 use std::fmt;
 use std::io::{self, Error, Write, sink};
 

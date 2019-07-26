@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_imports)]
 #![feature(rustc_private)]
 

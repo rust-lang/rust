@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(try_trait)]
 
 use std::ops::Try;

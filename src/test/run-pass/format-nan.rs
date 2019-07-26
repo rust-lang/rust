@@ -1,3 +1,5 @@
+// run-pass
+
 pub fn main() {
     use std::f64;
     let x = "NaN".to_string();

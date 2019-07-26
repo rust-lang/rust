@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_upper_case_globals)]
 #[cfg(not(target_os = "macos"))]
 #[link_section=".moretext"]

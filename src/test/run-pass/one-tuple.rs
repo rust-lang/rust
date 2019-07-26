@@ -1,3 +1,4 @@
+// run-pass
 // Why one-tuples? Because macros.
 
 

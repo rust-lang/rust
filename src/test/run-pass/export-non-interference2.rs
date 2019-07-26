@@ -1,3 +1,5 @@
+// run-pass
+
 mod foo {
     pub mod bar {
         pub fn y() { super::super::foo::x(); }

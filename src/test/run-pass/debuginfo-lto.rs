@@ -1,3 +1,4 @@
+// run-pass
 // This test case makes sure that we don't run into LLVM's dreaded
 // "possible ODR violation" assertion when compiling with LTO + Debuginfo.
 // It covers cases that have traditionally been prone to cause this error.

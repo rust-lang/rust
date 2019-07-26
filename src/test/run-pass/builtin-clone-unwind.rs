@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 // ignore-wasm32-bare compiled with panic=abort by default

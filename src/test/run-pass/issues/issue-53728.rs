@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 #[repr(u16)]
 enum DeviceKind {

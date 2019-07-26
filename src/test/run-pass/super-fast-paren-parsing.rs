@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(non_upper_case_globals)]
 #![allow(dead_code)]
 // exec-env:RUST_MIN_STACK=16000000

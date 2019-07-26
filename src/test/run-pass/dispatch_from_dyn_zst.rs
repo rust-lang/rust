@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(unsize, dispatch_from_dyn, never_type)]
 
 #![allow(dead_code)]

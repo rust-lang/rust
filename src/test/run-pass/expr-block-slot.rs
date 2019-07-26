@@ -1,3 +1,4 @@
+// run-pass
 // Regression test for issue #377
 
 

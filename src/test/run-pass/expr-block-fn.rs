@@ -1,3 +1,5 @@
+// run-pass
+
 fn test_fn() {
     fn ten() -> isize { return 10; }
     let rs = ten;

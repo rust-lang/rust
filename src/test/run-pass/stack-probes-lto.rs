@@ -1,3 +1,4 @@
+// run-pass
 // ignore-arm
 // ignore-aarch64
 // ignore-mips

@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:negative-token.rs
 
 #![feature(proc_macro_hygiene)]

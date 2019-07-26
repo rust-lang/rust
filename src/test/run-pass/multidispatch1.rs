@@ -1,3 +1,5 @@
+// run-pass
+
 use std::fmt::Debug;
 
 trait MyTrait<T> {

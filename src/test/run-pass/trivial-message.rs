@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_must_use)]
 /*
   This is about the simplest program that can successfully send a

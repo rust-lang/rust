@@ -1,3 +1,4 @@
+// run-pass
 // ignore-emscripten apparently blows the stack
 
 fn f(x: isize) -> isize {

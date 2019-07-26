@@ -1,3 +1,4 @@
+// run-pass
 // no-prefer-dynamic
 // compile-flags: --test
 

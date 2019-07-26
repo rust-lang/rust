@@ -1,3 +1,5 @@
+// run-pass
+
 #[derive(PartialEq, Debug)]
 struct Foo(usize);
 

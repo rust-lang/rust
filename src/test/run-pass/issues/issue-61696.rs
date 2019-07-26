@@ -1,3 +1,5 @@
+// run-pass
+
 pub enum Infallible {}
 
 // The check that the `bool` field of `V1` is encoding a "niche variant"

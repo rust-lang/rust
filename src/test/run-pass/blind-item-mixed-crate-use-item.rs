@@ -1,3 +1,4 @@
+// run-pass
 // aux-build:blind-item-mixed-crate-use-item-foo.rs
 // aux-build:blind-item-mixed-crate-use-item-foo2.rs
 

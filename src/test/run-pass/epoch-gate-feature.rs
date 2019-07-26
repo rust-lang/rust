@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Checks if the correct registers are being used to pass arguments

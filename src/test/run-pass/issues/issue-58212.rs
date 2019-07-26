@@ -1,3 +1,5 @@
+// run-pass
+
 trait FromUnchecked {
     unsafe fn from_unchecked();
 }

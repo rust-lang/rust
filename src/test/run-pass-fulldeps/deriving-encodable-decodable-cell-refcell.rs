@@ -1,3 +1,5 @@
+// run-pass
+
 #![allow(unused_imports)]
 // This briefly tests the capability of `Cell` and `RefCell` to implement the
 // `Encodable` and `Decodable` traits via `#[derive(Encodable, Decodable)]`

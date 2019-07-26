@@ -1,3 +1,4 @@
+// run-pass
 // The const-evaluator was at one point ICE'ing while trying to
 // evaluate the body of `fn id` during the `s.id()` call in main.
 

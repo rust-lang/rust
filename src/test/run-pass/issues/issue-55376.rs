@@ -1,3 +1,4 @@
+// run-pass
 // Tests that paths in `pub(...)` don't fail HIR verification.
 
 #![allow(unused_imports)]

@@ -1,3 +1,4 @@
+// run-pass
 // Test that a macro can emit delimiters with nothing inside - `()`, `{}`
 
 // aux-build:hello_macro.rs

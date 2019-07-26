@@ -1,3 +1,4 @@
+// run-pass
 // Checks if the "sysv64" calling convention behaves the same as the
 // "C" calling convention on platforms where both should be the same
 

@@ -1,3 +1,5 @@
+// run-pass
+
 use std::borrow::{Cow, ToOwned};
 use std::default::Default;
 use std::iter::FromIterator;

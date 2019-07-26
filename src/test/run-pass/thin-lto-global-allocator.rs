@@ -1,3 +1,4 @@
+// run-pass
 // compile-flags: -Z thinlto -C codegen-units=2
 
 #[global_allocator]
