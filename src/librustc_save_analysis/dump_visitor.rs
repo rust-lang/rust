@@ -23,7 +23,7 @@ use rustc_data_structures::fx::FxHashSet;
 use std::path::Path;
 use std::env;
 
-use syntax::ast::{self, Attribute, NodeId, PatKind, CRATE_NODE_ID};
+use syntax::ast::{self, Attribute, NodeId, PatKind};
 use syntax::parse::token;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{
@@ -82,8 +82,6 @@ pub struct DumpVisitor<'l, 'tcx, 'll> {
 
     span: SpanUtils<'l>,
 
-    cur_scope: NodeId,
-
     // Set of macro definition (callee) spans, and the set
     // of macro use (callsite) spans. We store these to ensure
     // we only write one macro def per unique macro definition, and
@@ -103,20 +101,9 @@ impl<'l, 'tcx, 'll> DumpVisitor<'l, 'tcx, 'll> {
             save_ctxt,
             dumper,
             span: span_utils,
-            cur_scope: CRATE_NODE_ID,
             // mac_defs: FxHashSet::default(),
             // macro_calls: FxHashSet::default(),
         }
-    }
-
-    fn nest_scope<F>(&mut self, scope_id: NodeId, f: F)
-    where
-        F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll>),
-    {
-        let parent_scope = self.cur_scope;
-        self.cur_scope = scope_id;
-        f(self);
-        self.cur_scope = parent_scope;
     }
 
     fn nest_tables<F>(&mut self, item_id: NodeId, f: F)
@@ -320,7 +307,7 @@ impl<'l, 'tcx, 'll> DumpVisitor<'l, 'tcx, 'll> {
 
         // walk the fn body
         if let Some(body) = body {
-            self.nest_tables(id, |v| v.nest_scope(id, |v| v.visit_block(body)));
+            self.nest_tables(id, |v| v.visit_block(body));
         }
     }
 
@@ -405,7 +392,7 @@ impl<'l, 'tcx, 'll> DumpVisitor<'l, 'tcx, 'll> {
             self.visit_ty(&ret_ty);
         }
 
-        self.nest_tables(item.id, |v| v.nest_scope(item.id, |v| v.visit_block(&body)));
+        self.nest_tables(item.id, |v| v.visit_block(&body));
     }
 
     fn process_static_or_const_item(
@@ -1349,7 +1336,7 @@ impl<'l, 'tcx, 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll> {
                 attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
             },
         );
-        self.nest_scope(id, |v| visit::walk_mod(v, m));
+        visit::walk_mod(self, m);
     }
 
     fn visit_item(&mut self, item: &'l ast::Item) {
@@ -1404,7 +1391,7 @@ impl<'l, 'tcx, 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll> {
             }
             Mod(ref m) => {
                 self.process_mod(item);
-                self.nest_scope(item.id, |v| visit::walk_mod(v, m));
+                visit::walk_mod(self, m);
             }
             Ty(ref ty, ref ty_params) => {
                 let qualname = format!("::{}",
@@ -1570,7 +1557,7 @@ impl<'l, 'tcx, 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll> {
                 // walk the body
                 self.nest_tables(ex.id, |v| {
                     v.process_formals(&decl.inputs, &id);
-                    v.nest_scope(ex.id, |v| v.visit_expr(body))
+                    v.visit_expr(body)
                 });
             }
             ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) => {
