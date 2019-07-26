@@ -535,7 +535,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
-        let alloc_or_size_align = self.alloc_map.get_or(id, || -> Result<_, InterpResult<'static, (Size, Align)>> {
+        let alloc_or_size_align = self.alloc_map.get_or(id, || {
             // Can't do this in the match argument, we may get cycle errors since the lock would
             // be held throughout the match.
             let alloc = self.tcx.alloc_map.lock().get(id);
