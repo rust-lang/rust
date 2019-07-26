@@ -625,38 +625,37 @@ impl FirstSets {
                     return first;
                 }
                 TokenTree::Sequence(sp, ref seq_rep) => {
-                    match self.first.get(&sp.entire()) {
-                        Some(&Some(ref subfirst)) => {
-                            // If the sequence contents can be empty, then the first
-                            // token could be the separator token itself.
-
-                            if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
-                                first.add_one_maybe(TokenTree::Token(sep.clone()));
-                            }
-
-                            assert!(first.maybe_empty);
-                            first.add_all(subfirst);
-                            if subfirst.maybe_empty
-                                || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrMore
-                                || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrOne
-                            {
-                                // continue scanning for more first
-                                // tokens, but also make sure we
-                                // restore empty-tracking state
-                                first.maybe_empty = true;
-                                continue;
-                            } else {
-                                return first;
-                            }
-                        }
-
+                    let subfirst_owned;
+                    let subfirst = match self.first.get(&sp.entire()) {
+                        Some(&Some(ref subfirst)) => subfirst,
                         Some(&None) => {
-                            panic!("assume all sequences have (unique) spans for now");
+                            subfirst_owned = self.first(&seq_rep.tts[..]);
+                            &subfirst_owned
                         }
-
                         None => {
                             panic!("We missed a sequence during FirstSets construction");
                         }
+                    };
+
+                    // If the sequence contents can be empty, then the first
+                    // token could be the separator token itself.
+                    if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
+                        first.add_one_maybe(TokenTree::Token(sep.clone()));
+                    }
+
+                    assert!(first.maybe_empty);
+                    first.add_all(subfirst);
+                    if subfirst.maybe_empty
+                        || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrMore
+                        || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrOne
+                    {
+                        // Continue scanning for more first
+                        // tokens, but also make sure we
+                        // restore empty-tracking state.
+                        first.maybe_empty = true;
+                        continue;
+                    } else {
+                        return first;
                     }
                 }
             }
