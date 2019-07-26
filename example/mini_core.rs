@@ -318,14 +318,6 @@ impl Neg for i16 {
     }
 }
 
-impl Neg for i128 {
-    type Output = i128;
-
-    fn neg(self) -> i128 {
-        -self
-    }
-}
-
 impl Neg for isize {
     type Output = isize;
 
