@@ -34,7 +34,6 @@ pub mod copy_prop;
 pub mod const_prop;
 pub mod generator;
 pub mod inline;
-pub mod lower_128bit;
 pub mod uniform_array_move_out;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
@@ -271,8 +270,6 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
 
         // From here on out, regions are gone.
         &erase_regions::EraseRegions,
-
-        &lower_128bit::Lower128Bit,
 
 
         // Optimizations begin.
