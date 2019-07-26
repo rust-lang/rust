@@ -1595,7 +1595,8 @@ See [tracking issue #29625][iss29625] for the status of the feature.
 Functions must have exactly one (non self) argument, a tuple representing
 the argument list [1]. 
 
-Here's an example of this error:
+Erroneous code example:
+
 ```compile_fail,E0183
 extern "rust-call" fn echo(arg: (u32,)) -> (u32,) {
     arg
@@ -1603,11 +1604,13 @@ extern "rust-call" fn echo(arg: (u32,)) -> (u32,) {
 ```
 
 This feature can be enabled with:
+
 ```
 #![feature(unboxed_closures)]
 ```
 
 Here's the above example fixed:
+
 ```
 #![feature(unboxed_closures)]
 
