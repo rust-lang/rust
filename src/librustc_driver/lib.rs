@@ -1161,12 +1161,18 @@ pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported>
 lazy_static! {
     static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
         let hook = panic::take_hook();
-        panic::set_hook(Box::new(report_ice));
+        panic::set_hook(Box::new(|info| report_ice(info, BUG_REPORT_URL)));
         hook
     };
 }
 
-pub fn report_ice(info: &panic::PanicInfo<'_>) {
+/// Prints the ICE message, including backtrace and query stack.
+///
+/// The message will point the user at `bug_report_url` to report the ICE.
+///
+/// When `install_ice_hook` is called, this function will be called as the panic
+/// hook.
+pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // Invoke the default handler, which prints the actual panic message and optionally a backtrace
     (*DEFAULT_HOOK)(info);
 
@@ -1192,7 +1198,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>) {
 
     let mut xs: Vec<Cow<'static, str>> = vec![
         "the compiler unexpectedly panicked. this is a bug.".into(),
-        format!("we would appreciate a bug report: {}", BUG_REPORT_URL).into(),
+        format!("we would appreciate a bug report: {}", bug_report_url).into(),
         format!("rustc {} running on {}",
                 option_env!("CFG_VERSION").unwrap_or("unknown_version"),
                 config::host_triple()).into(),
@@ -1231,6 +1237,9 @@ pub fn report_ice(info: &panic::PanicInfo<'_>) {
     }
 }
 
+/// Installs a panic hook that will print the ICE message on unexpected panics.
+///
+/// A custom rustc driver can skip calling this to set up a custom ICE hook.
 pub fn install_ice_hook() {
     lazy_static::initialize(&DEFAULT_HOOK);
 }
