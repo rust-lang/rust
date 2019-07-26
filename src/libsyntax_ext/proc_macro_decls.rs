@@ -1,7 +1,5 @@
 use std::mem;
 
-use crate::deriving;
-
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::source_map::{ExpnInfo, ExpnKind, respan};
@@ -135,10 +133,6 @@ impl<'a> CollectProcMacros<'a> {
         if !trait_ident.name.can_be_raw() {
             self.handler.span_err(trait_attr.span,
                                   &format!("`{}` cannot be a name of derive macro", trait_ident));
-        }
-        if deriving::is_builtin_trait(trait_ident.name) {
-            self.handler.span_err(trait_attr.span,
-                                  "cannot override a built-in derive macro");
         }
 
         let attributes_attr = list.get(1);

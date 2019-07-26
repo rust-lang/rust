@@ -657,13 +657,13 @@ macro_rules! uninit_array {
     );
 }
 
-/// Built-in macros to the compiler itself.
+/// Definitions of built-in macros.
 ///
-/// These macros do not have any corresponding definition with a `macro_rules!`
-/// macro, but are documented here. Their implementations can be found hardcoded
-/// into libsyntax itself.
-#[cfg(rustdoc)]
-mod builtin {
+/// Most of the macro properties (stability, visibility, etc.) are taken from the source code here,
+/// with exception of expansion functions transforming macro inputs into outputs,
+/// those functions are provided by the compiler.
+#[cfg(not(bootstrap))]
+pub(crate) mod builtin {
 
     /// Causes compilation to fail with the given error message when encountered.
     ///
@@ -950,7 +950,7 @@ mod builtin {
 
     /// Same as `column`, but less likely to be shadowed.
     #[unstable(feature = "__rust_unstable_column", issue = "0",
-               reason = "internal implementation detail of the `column` macro")]
+               reason = "internal implementation detail of the `panic` macro")]
     #[rustc_builtin_macro]
     #[rustc_macro_transparency = "semitransparent"]
     pub macro __rust_unstable_column() { /* compiler built-in */ }

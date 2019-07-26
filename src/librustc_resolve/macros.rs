@@ -1,18 +1,19 @@
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc, Determinacy};
 use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, Weak};
-use crate::{Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
+use crate::{Module, ModuleKind, NameBinding, PathResult, Segment, ToNameBinding};
 use crate::{resolve_error, KNOWN_TOOLS};
 use crate::ModuleOrUniformRoot;
 use crate::Namespace::*;
 use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use crate::resolve_imports::ImportResolver;
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::DefCollector;
 use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, Ident, ItemKind};
 use syntax::attr::{self, StabilityLevel};
+use syntax::edition::Edition;
 use syntax::ext::base::{self, Indeterminate};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
@@ -182,21 +183,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         invocation.output_legacy_scope.set(Some(visitor.current_legacy_scope));
     }
 
-    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
-        let def_id = DefId {
-            krate: CrateNum::BuiltinMacros,
-            index: DefIndex::from(self.macro_map.len()),
-        };
-        let kind = ext.macro_kind();
-        self.macro_map.insert(def_id, ext);
-        let binding = self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Res(Res::Def(DefKind::Macro(kind), def_id), false),
-            ambiguity: None,
-            span: DUMMY_SP,
-            vis: ty::Visibility::Public,
-            expansion: ExpnId::root(),
-        });
-        if self.builtin_macros.insert(ident.name, binding).is_some() {
+    fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension) {
+        if self.builtin_macros.insert(ident.name, ext).is_some() {
             self.session.span_err(ident.span,
                                   &format!("built-in macro `{}` was already defined", ident));
         }
@@ -449,8 +437,8 @@ impl<'a> Resolver<'a> {
         let mut determinacy = Determinacy::Determined;
 
         // Go through all the scopes and try to resolve the name.
-        let break_result =
-                self.visit_scopes(scope_set, parent_scope, orig_ident, |this, scope, ident| {
+        let break_result = self.visit_scopes(scope_set, parent_scope, orig_ident,
+                                             |this, scope, use_prelude, ident| {
             let result = match scope {
                 Scope::DeriveHelpers => {
                     let mut result = Err(Determinacy::Determined);
@@ -535,10 +523,6 @@ impl<'a> Resolver<'a> {
                         this.graph_root.unresolved_invocations.borrow().is_empty()
                     ))
                 }
-                Scope::BuiltinMacros => match this.builtin_macros.get(&ident.name).cloned() {
-                    Some(binding) => Ok((binding, Flags::PRELUDE)),
-                    None => Err(Determinacy::Determined),
-                }
                 Scope::BuiltinAttrs => if is_builtin_attr_name(ident.name) {
                     let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
                                    ty::Visibility::Public, DUMMY_SP, ExpnId::root())
@@ -579,7 +563,9 @@ impl<'a> Resolver<'a> {
                             false,
                             path_span,
                         ) {
-                            result = Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE));
+                            if use_prelude || this.is_builtin_macro(binding.res().opt_def_id()) {
+                                result = Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE));
+                            }
                         }
                     }
                     result
@@ -844,18 +830,42 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// Compile the macro into a `SyntaxExtension` and possibly replace it with a pre-defined
+    /// extension partially or entirely for built-in macros and legacy plugin macros.
+    crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> Lrc<SyntaxExtension> {
+        let mut result = macro_rules::compile(
+            &self.session.parse_sess, self.session.features_untracked(), item, edition
+        );
+
+        if result.is_builtin {
+            // The macro was marked with `#[rustc_builtin_macro]`.
+            if let Some(ext) = self.builtin_macros.remove(&item.ident.name) {
+                if ext.is_builtin {
+                    // The macro is a built-in, replace only the expander function.
+                    result.kind = ext.kind;
+                    // Also reset its edition to the global one for compatibility.
+                    result.edition = self.session.edition();
+                } else {
+                    // The macro is from a plugin, the in-source definition is dummy,
+                    // take all the data from the resolver.
+                    result = ext;
+                }
+            } else {
+                let msg = format!("cannot find a built-in macro with name `{}`", item.ident);
+                self.session.span_err(item.span, &msg);
+            }
+        }
+
+        Lrc::new(result)
+    }
+
     pub fn define_macro(&mut self,
                         item: &ast::Item,
                         expansion: ExpnId,
                         current_legacy_scope: &mut LegacyScope<'a>) {
         let (ext, ident, span, is_legacy) = match &item.node {
             ItemKind::MacroDef(def) => {
-                let ext = Lrc::new(macro_rules::compile(
-                    &self.session.parse_sess,
-                    &self.session.features_untracked(),
-                    item,
-                    self.session.edition(),
-                ));
+                let ext = self.compile_macro(item, self.session.edition());
                 (ext, item.ident, item.span, def.legacy)
             }
             ItemKind::Fn(..) => match proc_macro_stub(item) {

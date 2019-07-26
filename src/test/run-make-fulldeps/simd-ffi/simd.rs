@@ -5,7 +5,7 @@
 #![feature(no_core, optin_builtin_traits)]
 #![no_core]
 
-#![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items)]
+#![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items, rustc_attrs)]
 
 
 #[repr(C)]
@@ -74,3 +74,7 @@ pub mod marker {
 
 #[lang = "freeze"]
 auto trait Freeze {}
+
+#[macro_export]
+#[rustc_builtin_macro]
+macro_rules! Copy { () => () }
