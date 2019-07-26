@@ -16,7 +16,7 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
-            features: "+v6,+vfp2".to_string(),
+            features: "+v6,+vfp2,-d32".to_string(),
             abi_blacklist: super::arm_base::abi_blacklist(),
             target_mcount: "__mcount".to_string(),
             .. base
