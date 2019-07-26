@@ -1,9 +1,9 @@
 // run-pass
 
 #![allow(unused_variables)]
-// aux-build:lifetimes.rs
+// aux-build:lifetimes-rpass.rs
 
-extern crate lifetimes;
+extern crate lifetimes_rpass as lifetimes;
 use lifetimes::*;
 
 lifetimes_bang! {

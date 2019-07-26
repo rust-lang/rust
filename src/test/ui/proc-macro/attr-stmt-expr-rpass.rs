@@ -1,9 +1,9 @@
 // run-pass
-// aux-build:attr-stmt-expr.rs
+// aux-build:attr-stmt-expr-rpass.rs
 
 #![feature(stmt_expr_attributes, proc_macro_hygiene)]
 
-extern crate attr_stmt_expr;
+extern crate attr_stmt_expr_rpass as attr_stmt_expr;
 use attr_stmt_expr::{expect_let, expect_print_stmt, expect_expr, expect_print_expr,
                      no_output, noop};
 

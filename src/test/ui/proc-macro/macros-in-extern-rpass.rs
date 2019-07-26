@@ -1,10 +1,10 @@
 // run-pass
-// aux-build:test-macros.rs
+// aux-build:test-macros-rpass.rs
 // ignore-wasm32
 
 #![feature(macros_in_extern)]
 
-extern crate test_macros;
+extern crate test_macros_rpass as test_macros;
 
 use test_macros::{nop_attr, no_output, emit_input};
 

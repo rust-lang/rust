@@ -3,7 +3,7 @@
 // there can be both an rmeta and an rlib file and rustc will prefer the rlib.
 
 // aux-build:rmeta-rmeta.rs
-// aux-build:rmeta-rlib.rs
+// aux-build:rmeta-rlib-rpass.rs
 
 extern crate rmeta_aux;
 use rmeta_aux::Foo;
