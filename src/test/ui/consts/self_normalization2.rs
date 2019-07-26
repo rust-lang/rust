@@ -1,4 +1,4 @@
-// compile-pass
+// check-pass
 
 trait Gen<T> {
     fn gen(x: Self) -> T;

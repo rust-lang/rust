@@ -1,4 +1,4 @@
-// compile-pass
+// check-pass
 
 fn testfn(_arr: &mut [(); 0]) {}
 
