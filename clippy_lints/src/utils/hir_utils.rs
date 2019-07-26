@@ -3,7 +3,7 @@ use crate::utils::differing_macro_contexts;
 use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::LateContext;
-use rustc::ty::{self, TypeckTables};
+use rustc::ty::TypeckTables;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use syntax::ast::Name;
@@ -439,8 +439,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_exprs(args);
             },
             ExprKind::Cast(ref e, ref ty) => {
-                let c: fn(_, _) -> _ = ExprKind::Cast;
-                c.hash(&mut self.s);
                 self.hash_expr(e);
                 self.hash_ty(ty);
             },

@@ -1,6 +1,6 @@
 use crate::utils::{in_macro, span_help_and_lint, SpanlessHash};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array, impl_lint_pass};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashMap;
 use rustc::hir::*;
 
@@ -29,7 +29,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
         for bound in &gen.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref p) = bound {
                 let h = hash(&p.bounded_ty);
-                if let Some(ref v) = map.insert(h, p.bounds) {
+                if let Some(ref v) = map.insert(h, p.bounds.iter().collect::<Vec<_>>()) {
                     let mut hint_string = format!("consider combining the bounds: `{:?}: ", p.bounded_ty);
                     for b in v.iter() {
                         hint_string.push_str(&format!("{:?}, ", b));
