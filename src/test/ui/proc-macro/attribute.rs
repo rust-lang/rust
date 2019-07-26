@@ -40,8 +40,7 @@ pub fn foo8(input: TokenStream) -> TokenStream { input }
 //~^ ERROR: `self` cannot be a name of derive macro
 pub fn foo9(input: TokenStream) -> TokenStream { input }
 
-#[proc_macro_derive(PartialEq)]
-//~^ ERROR: cannot override a built-in derive macro
+#[proc_macro_derive(PartialEq)] // OK
 pub fn foo10(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d11, a)]

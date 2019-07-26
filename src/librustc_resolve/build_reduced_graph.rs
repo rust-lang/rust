@@ -13,7 +13,7 @@ use crate::{resolve_error, resolve_struct_error, ResolutionError, Determinacy};
 
 use rustc::bug;
 use rustc::hir::def::{self, *};
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
 use rustc::middle::cstore::CrateStore;
 use rustc_metadata::cstore::LoadedMacro;
@@ -31,7 +31,6 @@ use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, Nod
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::hygiene::ExpnId;
-use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
 use syntax::span_err;
@@ -748,7 +747,7 @@ impl<'a> Resolver<'a> {
         };
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
-        } else if def_id.krate == CrateNum::BuiltinMacros {
+        } else if self.is_builtin_macro(Some(def_id)) {
             self.injected_crate.unwrap_or(self.graph_root)
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
@@ -756,13 +755,16 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
-        let def_id = match res {
-            Res::Def(DefKind::Macro(..), def_id) => def_id,
+    crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
+        match res {
+            Res::Def(DefKind::Macro(..), def_id) => self.get_macro_by_def_id(def_id),
             Res::NonMacroAttr(attr_kind) =>
-                return Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),
-            _ => return None,
-        };
+                Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),
+            _ => None,
+        }
+    }
+
+    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
         if let Some(ext) = self.macro_map.get(&def_id) {
             return Some(ext.clone());
         }
@@ -772,10 +774,7 @@ impl<'a> Resolver<'a> {
             LoadedMacro::ProcMacro(ext) => return Some(ext),
         };
 
-        let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
-                                               &self.session.features_untracked(),
-                                               &macro_def,
-                                               self.cstore.crate_edition_untracked(def_id.krate)));
+        let ext = self.compile_macro(&macro_def, self.cstore.crate_edition_untracked(def_id.krate));
         self.macro_map.insert(def_id, ext.clone());
         Some(ext)
     }

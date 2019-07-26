@@ -437,6 +437,7 @@ pub fn compile(
         deprecation: attr::find_deprecation(&sess, &def.attrs, def.span),
         helper_attrs: Vec::new(),
         edition,
+        is_builtin: attr::contains_name(&def.attrs, sym::rustc_builtin_macro),
     }
 }
 

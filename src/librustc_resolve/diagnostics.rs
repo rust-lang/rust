@@ -35,17 +35,12 @@ enum AssocSuggestion {
 
 struct TypoSuggestion {
     candidate: Symbol,
-
-    /// The kind of the binding ("crate", "module", etc.)
-    kind: &'static str,
-
-    /// An appropriate article to refer to the binding ("a", "an", etc.)
-    article: &'static str,
+    res: Res,
 }
 
 impl TypoSuggestion {
     fn from_res(candidate: Symbol, res: Res) -> TypoSuggestion {
-        TypoSuggestion { candidate, kind: res.descr(), article: res.article() }
+        TypoSuggestion { candidate, res }
     }
 }
 
@@ -59,7 +54,9 @@ fn add_typo_suggestion(
     err: &mut DiagnosticBuilder<'_>, suggestion: Option<TypoSuggestion>, span: Span
 ) -> bool {
     if let Some(suggestion) = suggestion {
-        let msg = format!("{} {} with a similar name exists", suggestion.article, suggestion.kind);
+        let msg = format!(
+            "{} {} with a similar name exists", suggestion.res.article(), suggestion.res.descr()
+        );
         err.span_suggestion(
             span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
         );
@@ -566,7 +563,7 @@ impl<'a> Resolver<'a> {
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
         let mut suggestions = Vec::new();
-        self.visit_scopes(scope_set, parent_scope, ident, |this, scope, _| {
+        self.visit_scopes(scope_set, parent_scope, ident, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
@@ -611,16 +608,6 @@ impl<'a> Resolver<'a> {
                         }
                     }));
                 }
-                Scope::BuiltinMacros => {
-                    suggestions.extend(this.builtin_macros.iter().filter_map(|(name, binding)| {
-                        let res = binding.res();
-                        if filter_fn(res) {
-                            Some(TypoSuggestion::from_res(*name, res))
-                        } else {
-                            None
-                        }
-                    }));
-                }
                 Scope::BuiltinAttrs => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin);
                     if filter_fn(res) {
@@ -656,7 +643,11 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::StdLibPrelude => {
                     if let Some(prelude) = this.prelude {
-                        add_module_candidates(prelude, &mut suggestions, filter_fn);
+                        let mut tmp_suggestions = Vec::new();
+                        add_module_candidates(prelude, &mut tmp_suggestions, filter_fn);
+                        suggestions.extend(tmp_suggestions.into_iter().filter(|s| {
+                            use_prelude || this.is_builtin_macro(s.res.opt_def_id())
+                        }));
                     }
                 }
                 Scope::BuiltinTypes => {
@@ -733,11 +724,7 @@ impl<'a> Resolver<'a> {
                                         );
 
                                         if filter_fn(crate_mod) {
-                                            Some(TypoSuggestion {
-                                                candidate: ident.name,
-                                                article: "a",
-                                                kind: "crate",
-                                            })
+                                            Some(TypoSuggestion::from_res(ident.name, crate_mod))
                                         } else {
                                             None
                                         }

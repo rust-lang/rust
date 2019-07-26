@@ -372,7 +372,10 @@ fn configure_and_expand_inner<'a>(
         crate_loader,
         &resolver_arenas,
     );
-    syntax_ext::register_builtins(&mut resolver, plugin_info.syntax_exts, sess.edition());
+    syntax_ext::register_builtin_macros(&mut resolver, sess.edition());
+    syntax_ext::plugin_macro_defs::inject(
+        &mut krate, &mut resolver, plugin_info.syntax_exts, sess.edition()
+    );
 
     // Expand all macros
     sess.profiler(|p| p.start_activity("macro expansion"));
