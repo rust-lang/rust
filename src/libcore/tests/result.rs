@@ -1,4 +1,6 @@
 use core::option::*;
+use core::array::FixedSizeArray;
+use core::ops::DerefMut;
 
 fn op1() -> Result<isize, &'static str> { Ok(666) }
 fn op2() -> Result<isize, &'static str> { Err("sadface") }
@@ -225,94 +227,213 @@ fn test_try() {
 }
 
 #[test]
-fn test_result_deref() {
-    // &Result<T: Deref, E>::Ok(T).deref_ok() ->
+fn test_result_as_deref() {
+    // &Result<T: Deref, E>::Ok(T).as_deref_ok() ->
     //      Result<&T::Deref::Target, &E>::Ok(&*T)
     let ref_ok = &Result::Ok::<&i32, u8>(&42);
     let expected_result = Result::Ok::<&i32, &u8>(&42);
-    assert_eq!(ref_ok.deref_ok(), expected_result);
+    assert_eq!(ref_ok.as_deref_ok(), expected_result);
 
     let ref_ok = &Result::Ok::<String, u32>(String::from("a result"));
     let expected_result = Result::Ok::<&str, &u32>("a result");
-    assert_eq!(ref_ok.deref_ok(), expected_result);
+    assert_eq!(ref_ok.as_deref_ok(), expected_result);
 
     let ref_ok = &Result::Ok::<Vec<i32>, u32>(vec![1, 2, 3, 4, 5]);
-    let expected_result = Result::Ok::<&[i32], &u32>(&[1, 2, 3, 4, 5][..]);
-    assert_eq!(ref_ok.deref_ok(), expected_result);
+    let expected_result = Result::Ok::<&[i32], &u32>([1, 2, 3, 4, 5].as_slice());
+    assert_eq!(ref_ok.as_deref_ok(), expected_result);
 
-    // &Result<T: Deref, E: Deref>::Ok(T).deref() ->
+    // &Result<T: Deref, E: Deref>::Ok(T).as_deref() ->
     //      Result<&T::Deref::Target, &E::Deref::Target>::Ok(&*T)
     let ref_ok = &Result::Ok::<&i32, &u8>(&42);
     let expected_result = Result::Ok::<&i32, &u8>(&42);
-    assert_eq!(ref_ok.deref(), expected_result);
+    assert_eq!(ref_ok.as_deref(), expected_result);
 
     let ref_ok = &Result::Ok::<String, &u32>(String::from("a result"));
     let expected_result = Result::Ok::<&str, &u32>("a result");
-    assert_eq!(ref_ok.deref(), expected_result);
+    assert_eq!(ref_ok.as_deref(), expected_result);
 
     let ref_ok = &Result::Ok::<Vec<i32>, &u32>(vec![1, 2, 3, 4, 5]);
-    let expected_result = Result::Ok::<&[i32], &u32>(&[1, 2, 3, 4, 5][..]);
-    assert_eq!(ref_ok.deref(), expected_result);
+    let expected_result = Result::Ok::<&[i32], &u32>([1, 2, 3, 4, 5].as_slice());
+    assert_eq!(ref_ok.as_deref(), expected_result);
 
-    // &Result<T, E: Deref>::Err(T).deref_err() ->
+    // &Result<T, E: Deref>::Err(T).as_deref_err() ->
     //      Result<&T, &E::Deref::Target>::Err(&*E)
     let ref_err = &Result::Err::<u8, &i32>(&41);
     let expected_result = Result::Err::<&u8, &i32>(&41);
-    assert_eq!(ref_err.deref_err(), expected_result);
+    assert_eq!(ref_err.as_deref_err(), expected_result);
 
     let ref_err = &Result::Err::<u32, String>(String::from("an error"));
     let expected_result = Result::Err::<&u32, &str>("an error");
-    assert_eq!(ref_err.deref_err(), expected_result);
+    assert_eq!(ref_err.as_deref_err(), expected_result);
 
     let ref_err = &Result::Err::<u32, Vec<i32>>(vec![5, 4, 3, 2, 1]);
-    let expected_result = Result::Err::<&u32, &[i32]>(&[5, 4, 3, 2, 1][..]);
-    assert_eq!(ref_err.deref_err(), expected_result);
+    let expected_result = Result::Err::<&u32, &[i32]>([5, 4, 3, 2, 1].as_slice());
+    assert_eq!(ref_err.as_deref_err(), expected_result);
 
-    // &Result<T: Deref, E: Deref>::Err(T).deref_err() ->
+    // &Result<T: Deref, E: Deref>::Err(T).as_deref_err() ->
     //      Result<&T, &E::Deref::Target>::Err(&*E)
     let ref_err = &Result::Err::<&u8, &i32>(&41);
     let expected_result = Result::Err::<&u8, &i32>(&41);
-    assert_eq!(ref_err.deref(), expected_result);
+    assert_eq!(ref_err.as_deref(), expected_result);
 
     let ref_err = &Result::Err::<&u32, String>(String::from("an error"));
     let expected_result = Result::Err::<&u32, &str>("an error");
-    assert_eq!(ref_err.deref(), expected_result);
+    assert_eq!(ref_err.as_deref(), expected_result);
 
     let ref_err = &Result::Err::<&u32, Vec<i32>>(vec![5, 4, 3, 2, 1]);
-    let expected_result = Result::Err::<&u32, &[i32]>(&[5, 4, 3, 2, 1][..]);
-    assert_eq!(ref_err.deref(), expected_result);
+    let expected_result = Result::Err::<&u32, &[i32]>([5, 4, 3, 2, 1].as_slice());
+    assert_eq!(ref_err.as_deref(), expected_result);
 
-    // The following cases test calling deref_* with the wrong variant (i.e.
-    // `deref_ok()` with a `Result::Err()`, or `deref_err()` with a `Result::Ok()`.
-    // While unusual, these cases are supported to ensure that an `inner_deref`
+    // The following cases test calling `as_deref_*` with the wrong variant (i.e.
+    // `as_deref_ok()` with a `Result::Err()`, or `as_deref_err()` with a `Result::Ok()`.
+    // While uncommon, these cases are supported to ensure that an `as_deref_*`
     // call can still be made even when one of the Result types does not implement
     // `Deref` (for example, std::io::Error).
 
-    // &Result<T, E: Deref>::Ok(T).deref_err() ->
+    // &Result<T, E: Deref>::Ok(T).as_deref_err() ->
     //      Result<&T, &E::Deref::Target>::Ok(&T)
     let ref_ok = &Result::Ok::<i32, &u8>(42);
     let expected_result = Result::Ok::<&i32, &u8>(&42);
-    assert_eq!(ref_ok.deref_err(), expected_result);
+    assert_eq!(ref_ok.as_deref_err(), expected_result);
 
     let ref_ok = &Result::Ok::<&str, &u32>("a result");
     let expected_result = Result::Ok::<&&str, &u32>(&"a result");
-    assert_eq!(ref_ok.deref_err(), expected_result);
+    assert_eq!(ref_ok.as_deref_err(), expected_result);
 
     let ref_ok = &Result::Ok::<[i32; 5], &u32>([1, 2, 3, 4, 5]);
     let expected_result = Result::Ok::<&[i32; 5], &u32>(&[1, 2, 3, 4, 5]);
-    assert_eq!(ref_ok.deref_err(), expected_result);
+    assert_eq!(ref_ok.as_deref_err(), expected_result);
 
-    // &Result<T: Deref, E>::Err(E).deref_ok() ->
+    // &Result<T: Deref, E>::Err(E).as_deref_ok() ->
     //      Result<&T::Deref::Target, &E>::Err(&E)
     let ref_err = &Result::Err::<&u8, i32>(41);
     let expected_result = Result::Err::<&u8, &i32>(&41);
-    assert_eq!(ref_err.deref_ok(), expected_result);
+    assert_eq!(ref_err.as_deref_ok(), expected_result);
 
     let ref_err = &Result::Err::<&u32, &str>("an error");
     let expected_result = Result::Err::<&u32, &&str>(&"an error");
-    assert_eq!(ref_err.deref_ok(), expected_result);
+    assert_eq!(ref_err.as_deref_ok(), expected_result);
 
     let ref_err = &Result::Err::<&u32, [i32; 5]>([5, 4, 3, 2, 1]);
     let expected_result = Result::Err::<&u32, &[i32; 5]>(&[5, 4, 3, 2, 1]);
-    assert_eq!(ref_err.deref_ok(), expected_result);
+    assert_eq!(ref_err.as_deref_ok(), expected_result);
+}
+
+#[test]
+fn test_result_as_deref_mut() {
+    // &mut Result<T: Deref, E>::Ok(T).as_deref_mut_ok() ->
+    //      Result<&mut T::Deref::Target, &mut E>::Ok(&mut *T)
+    let mut val = 42;
+    let mut expected_val = 42;
+    let mut_ok = &mut Result::Ok::<&mut i32, u8>(&mut val);
+    let expected_result = Result::Ok::<&mut i32, &mut u8>(&mut expected_val);
+    assert_eq!(mut_ok.as_deref_mut_ok(), expected_result);
+
+    let mut expected_string = String::from("a result");
+    let mut_ok = &mut Result::Ok::<String, u32>(expected_string.clone());
+    let expected_result = Result::Ok::<&mut str, &mut u32>(expected_string.deref_mut());
+    assert_eq!(mut_ok.as_deref_mut_ok(), expected_result);
+
+    let mut expected_vec = vec![1, 2, 3, 4, 5];
+    let mut_ok = &mut Result::Ok::<Vec<i32>, u32>(expected_vec.clone());
+    let expected_result = Result::Ok::<&mut [i32], &mut u32>(expected_vec.as_mut_slice());
+    assert_eq!(mut_ok.as_deref_mut_ok(), expected_result);
+
+    // &mut Result<T: Deref, E: Deref>::Ok(T).as_deref_mut() ->
+    //      Result<&mut T::Deref::Target, &mut E::Deref::Target>::Ok(&mut *T)
+    let mut val = 42;
+    let mut expected_val = 42;
+    let mut_ok = &mut Result::Ok::<&mut i32, &mut u8>(&mut val);
+    let expected_result = Result::Ok::<&mut i32, &mut u8>(&mut expected_val);
+    assert_eq!(mut_ok.as_deref_mut(), expected_result);
+
+    let mut expected_string = String::from("a result");
+    let mut_ok = &mut Result::Ok::<String, &mut u32>(expected_string.clone());
+    let expected_result = Result::Ok::<&mut str, &mut u32>(expected_string.deref_mut());
+    assert_eq!(mut_ok.as_deref_mut(), expected_result);
+
+    let mut expected_vec = vec![1, 2, 3, 4, 5];
+    let mut_ok = &mut Result::Ok::<Vec<i32>, &mut u32>(expected_vec.clone());
+    let expected_result = Result::Ok::<&mut [i32], &mut u32>(expected_vec.as_mut_slice());
+    assert_eq!(mut_ok.as_deref_mut(), expected_result);
+
+    // &mut Result<T, E: Deref>::Err(T).as_deref_mut_err() ->
+    //      Result<&mut T, &mut E::Deref::Target>::Err(&mut *E)
+    let mut val = 41;
+    let mut expected_val = 41;
+    let mut_err = &mut Result::Err::<u8, &mut i32>(&mut val);
+    let expected_result = Result::Err::<&mut u8, &mut i32>(&mut expected_val);
+    assert_eq!(mut_err.as_deref_mut_err(), expected_result);
+
+    let mut expected_string = String::from("an error");
+    let mut_err = &mut Result::Err::<u32, String>(expected_string.clone());
+    let expected_result = Result::Err::<&mut u32, &mut str>(expected_string.deref_mut());
+    assert_eq!(mut_err.as_deref_mut_err(), expected_result);
+
+    let mut expected_vec = vec![5, 4, 3, 2, 1];
+    let mut_err = &mut Result::Err::<u32, Vec<i32>>(expected_vec.clone());
+    let expected_result = Result::Err::<&mut u32, &mut [i32]>(expected_vec.as_mut_slice());
+    assert_eq!(mut_err.as_deref_mut_err(), expected_result);
+
+    // &mut Result<T: Deref, E: Deref>::Err(T).as_deref_mut_err() ->
+    //      Result<&mut T, &mut E::Deref::Target>::Err(&mut *E)
+    let mut val = 41;
+    let mut expected_val = 41;
+    let mut_err = &mut Result::Err::<&mut u8, &mut i32>(&mut val);
+    let expected_result = Result::Err::<&mut u8, &mut i32>(&mut expected_val);
+    assert_eq!(mut_err.as_deref_mut(), expected_result);
+
+    let mut expected_string = String::from("an error");
+    let mut_err = &mut Result::Err::<&mut u32, String>(expected_string.clone());
+    let expected_result = Result::Err::<&mut u32, &mut str>(expected_string.as_mut_str());
+    assert_eq!(mut_err.as_deref_mut(), expected_result);
+
+    let mut expected_vec = vec![5, 4, 3, 2, 1];
+    let mut_err = &mut Result::Err::<&mut u32, Vec<i32>>(expected_vec.clone());
+    let expected_result = Result::Err::<&mut u32, &mut [i32]>(expected_vec.as_mut_slice());
+    assert_eq!(mut_err.as_deref_mut(), expected_result);
+
+    // The following cases test calling `as_deref_mut_*` with the wrong variant (i.e.
+    // `as_deref_mut_ok()` with a `Result::Err()`, or `as_deref_mut_err()` with a `Result::Ok()`.
+    // While uncommon, these cases are supported to ensure that an `as_deref_mut_*`
+    // call can still be made even when one of the Result types does not implement
+    // `Deref` (for example, std::io::Error).
+
+    // &mut Result<T, E: Deref>::Ok(T).as_deref_mut_err() ->
+    //      Result<&mut T, &mut E::Deref::Target>::Ok(&mut T)
+    let mut expected_val = 42;
+    let mut_ok = &mut Result::Ok::<i32, &mut u8>(expected_val.clone());
+    let expected_result = Result::Ok::<&mut i32, &mut u8>(&mut expected_val);
+    assert_eq!(mut_ok.as_deref_mut_err(), expected_result);
+
+    let string = String::from("a result");
+    let expected_string = string.clone();
+    let mut ref_str = expected_string.as_ref();
+    let mut_ok = &mut Result::Ok::<&str, &mut u32>(string.as_str());
+    let expected_result = Result::Ok::<&mut &str, &mut u32>(&mut ref_str);
+    assert_eq!(mut_ok.as_deref_mut_err(), expected_result);
+
+    let mut expected_arr = [1, 2, 3, 4, 5];
+    let mut_ok = &mut Result::Ok::<[i32; 5], &mut u32>(expected_arr.clone());
+    let expected_result = Result::Ok::<&mut [i32; 5], &mut u32>(&mut expected_arr);
+    assert_eq!(mut_ok.as_deref_mut_err(), expected_result);
+
+    // &mut Result<T: Deref, E>::Err(E).as_deref_mut_ok() ->
+    //      Result<&mut T::Deref::Target, &mut E>::Err(&mut E)
+    let mut expected_val = 41;
+    let mut_err = &mut Result::Err::<&mut u8, i32>(expected_val.clone());
+    let expected_result = Result::Err::<&mut u8, &mut i32>(&mut expected_val);
+    assert_eq!(mut_err.as_deref_mut_ok(), expected_result);
+
+    let string = String::from("an error");
+    let expected_string = string.clone();
+    let mut ref_str = expected_string.as_ref();
+    let mut_err = &mut Result::Err::<&mut u32, &str>(string.as_str());
+    let expected_result = Result::Err::<&mut u32, &mut &str>(&mut ref_str);
+    assert_eq!(mut_err.as_deref_mut_ok(), expected_result);
+
+    let mut expected_arr = [5, 4, 3, 2, 1];
+    let mut_err = &mut Result::Err::<&mut u32, [i32; 5]>(expected_arr.clone());
+    let expected_result = Result::Err::<&mut u32, &mut [i32; 5]>(&mut expected_arr);
+    assert_eq!(mut_err.as_deref_mut_ok(), expected_result);
 }
