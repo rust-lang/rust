@@ -22,8 +22,8 @@ impl Dumper {
         }
     }
 
-    pub fn to_output(self, f: impl FnOnce(&Analysis)) {
-        f(&self.result)
+    pub fn into_analysis(self) -> Analysis {
+        self.result
     }
 }
 

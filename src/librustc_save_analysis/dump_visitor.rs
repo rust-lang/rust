@@ -75,10 +75,10 @@ macro_rules! access_from_vis {
     };
 }
 
-pub struct DumpVisitor<'l, 'tcx, 'll> {
+pub struct DumpVisitor<'l, 'tcx> {
     save_ctxt: SaveContext<'l, 'tcx>,
     tcx: TyCtxt<'tcx>,
-    dumper: &'ll mut Dumper,
+    dumper: Dumper,
 
     span: SpanUtils<'l>,
 
@@ -90,12 +90,12 @@ pub struct DumpVisitor<'l, 'tcx, 'll> {
     // macro_calls: FxHashSet<Span>,
 }
 
-impl<'l, 'tcx, 'll> DumpVisitor<'l, 'tcx, 'll> {
+impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     pub fn new(
         save_ctxt: SaveContext<'l, 'tcx>,
-        dumper: &'ll mut Dumper,
-    ) -> DumpVisitor<'l, 'tcx, 'll> {
+    ) -> DumpVisitor<'l, 'tcx> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
+        let dumper = Dumper::new(save_ctxt.config.clone());
         DumpVisitor {
             tcx: save_ctxt.tcx,
             save_ctxt,
@@ -106,9 +106,13 @@ impl<'l, 'tcx, 'll> DumpVisitor<'l, 'tcx, 'll> {
         }
     }
 
+    pub fn into_analysis(self) -> rls_data::Analysis {
+        self.dumper.into_analysis()
+    }
+
     fn nest_tables<F>(&mut self, item_id: NodeId, f: F)
     where
-        F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll>),
+        F: FnOnce(&mut Self),
     {
         let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
         if self.tcx.has_typeck_tables(item_def_id) {
@@ -1298,7 +1302,7 @@ impl<'l, 'tcx, 'll> DumpVisitor<'l, 'tcx, 'll> {
     }
 }
 
-impl<'l, 'tcx, 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll> {
+impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
     fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
         // Since we handle explicit modules ourselves in visit_item, this should
         // only get called for the root module of a crate.
