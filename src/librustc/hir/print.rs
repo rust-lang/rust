@@ -941,7 +941,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(st.span.lo());
         match st.node {
             hir::StmtKind::Local(ref loc) => {
-                self.print_local(loc.init.deref(), |this| this.print_local_decl(&loc));
+                self.print_local(loc.init.as_deref(), |this| this.print_local_decl(&loc));
             }
             hir::StmtKind::Item(item) => {
                 self.ann.nested(self, Nested::Item(item))
