@@ -1,6 +1,7 @@
 #![feature(core_intrinsics)]
 
 use std::io::Write;
+use std::intrinsics;
 
 fn main() {
     let _ = ::std::iter::repeat('a' as u8).take(10).collect::<Vec<_>>();
@@ -29,6 +30,18 @@ fn main() {
     println!("{}", 2.3f32.ceil());
     println!("{}", 2.3f32.min(1.0));
     println!("{}", 2.3f32.max(1.0));
+
+    assert_eq!(0b0000000000000000000000000010000010000000000000000000000000000000_0000000000100000000000000000000000001000000000000100000000000000u128.leading_zeros(), 26);
+    assert_eq!(0b0000000000000000000000000010000000000000000000000000000000000000_0000000000000000000000000000000000001000000000000000000010000000u128.trailing_zeros(), 7);
+
+    0i128.checked_div(2i128);
+    0u128.checked_div(2u128);
+    assert_eq!(1u128 + 2, 3);
+
+    assert_eq!(0b100010000000000000000000000000000u128 >> 10, 0b10001000000000000000000u128);
+    assert_eq!(0xFEDCBA987654321123456789ABCDEFu128 >> 64, 0xFEDCBA98765432u128);
+    assert_eq!(0xFEDCBA987654321123456789ABCDEFu128 as i128 >> 64, 0xFEDCBA98765432i128);
+    assert_eq!(353985398u128 * 932490u128, 330087843781020u128);
 }
 
 #[derive(PartialEq)]

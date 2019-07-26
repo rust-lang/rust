@@ -34,6 +34,7 @@ mod allocator;
 mod analyze;
 mod archive;
 mod base;
+mod codegen_i128;
 mod common;
 mod constant;
 mod debuginfo;
@@ -53,7 +54,7 @@ mod vtable;
 mod prelude {
     pub use std::any::Any;
     pub use std::collections::{HashMap, HashSet};
-    pub use std::convert::TryInto;
+    pub use std::convert::{TryFrom, TryInto};
 
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
     pub use syntax::source_map::{Pos, Span, DUMMY_SP};
@@ -241,6 +242,8 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     } else {
         "false"
     }).unwrap();
+
+    flags_builder.set("opt_level", "best").unwrap();
 
     // FIXME enable again when https://github.com/CraneStation/cranelift/issues/664 is fixed
     /*

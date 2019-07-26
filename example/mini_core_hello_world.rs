@@ -236,21 +236,4 @@ fn main() {
     unsafe { assert_eq!(ABC as usize, 0); }
 
     &mut (|| Some(0 as *const ())) as &mut FnMut() -> Option<*const ()>;
-
-    // checked binops
-    let zeroi8 = 0i8;
-    let oneu8 = 1u8;
-    let onei8 = 1i8;
-    zeroi8 - 1;
-    oneu8 - 1;
-    zeroi8 - -2i8;
-    #[allow(unreachable_code)]
-    {
-        if false {
-            let minustwoi8 = -2i8;
-            oneu8 + 255;
-            onei8 + 127;
-            minustwoi8 - 127;
-        }
-    }
 }

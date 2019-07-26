@@ -314,7 +314,7 @@ impl Neg for i16 {
     type Output = i16;
 
     fn neg(self) -> i16 {
-        -self
+        self
     }
 }
 
