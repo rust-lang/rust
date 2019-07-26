@@ -1,8 +1,8 @@
 // run-pass
 #![allow(dead_code)]
-// aux-build:two_macros.rs
+// aux-build:two_macros-rpass.rs
 
-extern crate two_macros;
+extern crate two_macros_rpass as two_macros;
 
 ::two_macros::macro_one!();
 two_macros::macro_one!();

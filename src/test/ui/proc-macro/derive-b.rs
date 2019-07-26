@@ -1,7 +1,7 @@
 // run-pass
-// aux-build:derive-b.rs
+// aux-build:derive-b-rpass.rs
 
-extern crate derive_b;
+extern crate derive_b_rpass as derive_b;
 
 #[derive(Debug, PartialEq, derive_b::B, Eq, Copy, Clone)]
 #[cfg_attr(all(), B[arbitrary tokens])]
