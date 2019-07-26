@@ -6,7 +6,7 @@ LL |     use exported;
    |
    = note: `#[deny(macro_expanded_macro_exports_accessed_by_absolute_paths)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #52234 <https://github.com/rust-lang/rust/issues/52234>
+   = note: see issue #52234 <https://github.com/rust-lang/rust/issues/52234> for more information
 note: the macro is defined here
   --> $DIR/local-modularized-tricky-fail-3.rs:5:5
    |
@@ -25,7 +25,7 @@ LL |     ::exported!();
    |     ^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #52234 <https://github.com/rust-lang/rust/issues/52234>
+   = note: see issue #52234 <https://github.com/rust-lang/rust/issues/52234> for more information
 note: the macro is defined here
   --> $DIR/local-modularized-tricky-fail-3.rs:5:5
    |

@@ -14,7 +14,7 @@ LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(late_bound_lifetime_arguments)]` implied by `#[deny(warnings)]`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/issue-60622.rs:12:15

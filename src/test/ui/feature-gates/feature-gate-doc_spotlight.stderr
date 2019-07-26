@@ -4,7 +4,7 @@ error[E0658]: `#[doc(spotlight)]` is experimental
 LL | #[doc(spotlight)]
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/45040
+   = note: see issue #45040 <https://github.com/rust-lang/rust/issues/45040> for more information
    = help: add `#![feature(doc_spotlight)]` to the crate attributes to enable
 
 error: aborting due to previous error

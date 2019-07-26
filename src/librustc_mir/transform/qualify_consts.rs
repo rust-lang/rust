@@ -1669,8 +1669,8 @@ impl MirPass for QualifyAndPromoteConstants {
                             *span,
                             &format!("use of {} here does not actually short circuit due to \
                             the const evaluator presently not being able to do control flow. \
-                            See issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more \
-                            information.", kind),
+                            See issue #49146 <https://github.com/rust-lang/rust/issues/49146> \
+                            for more information.", kind),
                         );
                     }
                     for local in locals {

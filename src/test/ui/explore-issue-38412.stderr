@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'unstable_undeclared'
 LL |     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_undeclared_pub: _, .. } =
    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/38412
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
@@ -13,7 +13,7 @@ error[E0658]: use of unstable library feature 'unstable_undeclared'
 LL |     r.a_unstable_undeclared_pub;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/38412
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0616]: field `b_crate` of struct `pub_and_stability::Record` is private
@@ -40,7 +40,7 @@ error[E0658]: use of unstable library feature 'unstable_undeclared'
 LL |     t.2;
    |     ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/38412
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0616]: field `3` of struct `pub_and_stability::Tuple` is private
@@ -67,7 +67,7 @@ error[E0658]: use of unstable library feature 'unstable_undeclared'
 LL |     r.unstable_undeclared_trait_method();
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/38412
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
@@ -76,7 +76,7 @@ error[E0658]: use of unstable library feature 'unstable_undeclared'
 LL |     r.unstable_undeclared();
    |       ^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/38412
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0624]: method `pub_crate` is private
@@ -103,7 +103,7 @@ error[E0658]: use of unstable library feature 'unstable_undeclared'
 LL |     t.unstable_undeclared_trait_method();
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/38412
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
@@ -112,7 +112,7 @@ error[E0658]: use of unstable library feature 'unstable_undeclared'
 LL |     t.unstable_undeclared();
    |       ^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/38412
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0624]: method `pub_crate` is private

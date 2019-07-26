@@ -5,6 +5,7 @@ fn main() {
     let _: [u8; 0] = [4; {
         match &1 as *const i32 as usize {
             //~^ ERROR casting pointers to integers in constants
+            //~| NOTE "pointer-to-integer cast" needs an rfc before being allowed inside constants
             //~| NOTE see issue #
             //~| ERROR constant contains unimplemented expression type
             //~| ERROR evaluation of constant value failed

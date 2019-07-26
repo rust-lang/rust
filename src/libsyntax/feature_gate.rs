@@ -1389,7 +1389,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     (sym::link_section, Whitelisted, template!(NameValueStr: "name"), Ungated),
     (sym::no_builtins, Whitelisted, template!(Word), Ungated),
     (sym::no_debug, Whitelisted, template!(Word), Gated(
-        Stability::Deprecated("issue #29721 <https://github.com/rust-lang/rust/issues/29721>", None),
+        Stability::Deprecated("issue #29721 <https://github.com/rust-lang/rust/issues/29721>",
+            None),
         sym::no_debug,
         "the `#[no_debug]` attribute was an experimental feature that has been \
         deprecated due to lack of demand",

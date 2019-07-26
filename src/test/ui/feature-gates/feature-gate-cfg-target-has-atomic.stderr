@@ -4,7 +4,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "8")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -13,7 +13,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "8")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -22,7 +22,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "16")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -31,7 +31,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "16")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -40,7 +40,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "32")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -49,7 +49,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "32")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -58,7 +58,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "64")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -67,7 +67,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "64")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -76,7 +76,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "128")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -85,7 +85,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "128")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -94,7 +94,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "ptr")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -103,7 +103,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL | #[cfg(target_has_atomic = "ptr")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -112,7 +112,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL |     cfg!(target_has_atomic = "8");
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -121,7 +121,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL |     cfg!(target_has_atomic = "16");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -130,7 +130,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL |     cfg!(target_has_atomic = "32");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -139,7 +139,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL |     cfg!(target_has_atomic = "64");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -148,7 +148,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL |     cfg!(target_has_atomic = "128");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
@@ -157,7 +157,7 @@ error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
 LL |     cfg!(target_has_atomic = "ptr");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
+   = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
    = help: add `#![feature(cfg_target_has_atomic)]` to the crate attributes to enable
 
 error: aborting due to 18 previous errors

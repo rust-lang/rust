@@ -10,7 +10,7 @@ note: lint level defined here
 LL | #![warn(indirect_structural_match)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: see issue #62411 <https://github.com/rust-lang/rust/issues/62411> for more information
 
 warning: to use a constant of type `B` in a pattern, `B` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/issue-62307-match-ref-ref-forbidden-without-eq.rs:38:9
@@ -19,5 +19,5 @@ LL |         RR_B1 => { println!("CLAIM RR1: {:?} matches {:?}", RR_B1, RR_B1); 
    |         ^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: see issue #62411 <https://github.com/rust-lang/rust/issues/62411> for more information
 
