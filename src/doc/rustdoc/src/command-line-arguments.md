@@ -361,8 +361,8 @@ the given edition as well. As with `rustc`, the default edition that `rustdoc` w
 
 ## `themes`: add more themes to generated documentation
 
-By default, `rustdoc` only provides the "dark" and light" themes. If you want to add new ones,
-you'll need to this flag as follows:
+By default, `rustdoc` only provides the "dark" and "light" themes. If you want to add new ones,
+you'll need to use this flag as follows:
 
 ```bash
 $ rustdoc src/lib.rs --themes /path/to/your/theme/file.css
