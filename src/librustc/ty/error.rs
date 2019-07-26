@@ -287,7 +287,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 if ty.is_closure() || ty.is_generator() {
                     db.note("closures cannot capture themselves or take themselves as argument;\n\
                              this error may be the result of a recent compiler bug-fix,\n\
-                             see https://github.com/rust-lang/rust/issues/46062 for more details");
+                             see issue #46062 <https://github.com/rust-lang/rust/issues/46062> \
+                             for more information");
                 }
             }
             _ => {}

@@ -737,7 +737,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
         } else {
             format!("{} in a future release!", STANDARD_MESSAGE)
         };
-        let citation = format!("for more information, see {}",
+        let citation = format!("see {} for more information",
                                future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
