@@ -367,34 +367,6 @@ language_item_table! {
 
     DebugTraitLangItem,          "debug_trait",        debug_trait,             Target::Trait;
 
-    // A lang item for each of the 128-bit operators we can optionally lower.
-    I128AddFnLangItem,           "i128_add",           i128_add_fn,             Target::Fn;
-    U128AddFnLangItem,           "u128_add",           u128_add_fn,             Target::Fn;
-    I128SubFnLangItem,           "i128_sub",           i128_sub_fn,             Target::Fn;
-    U128SubFnLangItem,           "u128_sub",           u128_sub_fn,             Target::Fn;
-    I128MulFnLangItem,           "i128_mul",           i128_mul_fn,             Target::Fn;
-    U128MulFnLangItem,           "u128_mul",           u128_mul_fn,             Target::Fn;
-    I128DivFnLangItem,           "i128_div",           i128_div_fn,             Target::Fn;
-    U128DivFnLangItem,           "u128_div",           u128_div_fn,             Target::Fn;
-    I128RemFnLangItem,           "i128_rem",           i128_rem_fn,             Target::Fn;
-    U128RemFnLangItem,           "u128_rem",           u128_rem_fn,             Target::Fn;
-    I128ShlFnLangItem,           "i128_shl",           i128_shl_fn,             Target::Fn;
-    U128ShlFnLangItem,           "u128_shl",           u128_shl_fn,             Target::Fn;
-    I128ShrFnLangItem,           "i128_shr",           i128_shr_fn,             Target::Fn;
-    U128ShrFnLangItem,           "u128_shr",           u128_shr_fn,             Target::Fn;
-    // And overflow versions for the operators that are checkable.
-    // While MIR calls these Checked*, they return (T,bool), not Option<T>.
-    I128AddoFnLangItem,          "i128_addo",          i128_addo_fn,            Target::Fn;
-    U128AddoFnLangItem,          "u128_addo",          u128_addo_fn,            Target::Fn;
-    I128SuboFnLangItem,          "i128_subo",          i128_subo_fn,            Target::Fn;
-    U128SuboFnLangItem,          "u128_subo",          u128_subo_fn,            Target::Fn;
-    I128MuloFnLangItem,          "i128_mulo",          i128_mulo_fn,            Target::Fn;
-    U128MuloFnLangItem,          "u128_mulo",          u128_mulo_fn,            Target::Fn;
-    I128ShloFnLangItem,          "i128_shlo",          i128_shlo_fn,            Target::Fn;
-    U128ShloFnLangItem,          "u128_shlo",          u128_shlo_fn,            Target::Fn;
-    I128ShroFnLangItem,          "i128_shro",          i128_shro_fn,            Target::Fn;
-    U128ShroFnLangItem,          "u128_shro",          u128_shro_fn,            Target::Fn;
-
     // Align offset for stride != 1, must not panic.
     AlignOffsetLangItem,         "align_offset",       align_offset_fn,         Target::Fn;
 
