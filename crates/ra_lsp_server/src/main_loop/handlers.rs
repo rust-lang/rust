@@ -897,6 +897,9 @@ pub fn handle_inlay_hints(
             kind: match api_type.kind {
                 ra_ide_api::InlayKind::LetBindingType => InlayKind::LetBindingType,
                 ra_ide_api::InlayKind::ClosureParameterType => InlayKind::ClosureParameterType,
+                ra_ide_api::InlayKind::ForExpressionBindingType => {
+                    InlayKind::ForExpressionBindingType
+                }
             },
         })
         .collect())
