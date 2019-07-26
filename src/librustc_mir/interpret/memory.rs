@@ -548,7 +548,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 let alloc = self.tcx.alloc_map.lock().get(id);
                 match alloc {
                     Some(GlobalAlloc::Static(did)) => {
-                        // Use size and align of the type
+                        // Use size and align of the type.
                         let ty = self.tcx.type_of(did);
                         let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                         Ok((layout.size, layout.align.abi))
