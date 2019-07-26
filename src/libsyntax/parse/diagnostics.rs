@@ -411,8 +411,8 @@ impl<'a> Parser<'a> {
             } else {
                 err.note("`#![feature(type_ascription)]` lets you annotate an expression with a \
                           type: `<expr>: <type>`");
-                err.note("for more information, see \
-                          https://github.com/rust-lang/rust/issues/23416");
+                err.note("see issue #23416 <https://github.com/rust-lang/rust/issues/23416> \
+                for more information");
             }
         }
     }

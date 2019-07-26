@@ -1623,8 +1623,9 @@ impl MirPass for QualifyAndPromoteConstants {
                                 "{}",
                                 err,
                             );
-                            diag.note("for more information, see issue \
-                                       https://github.com/rust-lang/rust/issues/57563");
+                            diag.note("see issue \
+                                      #57563 <https://github.com/rust-lang/rust/issues/57563> \
+                                      for more information");
                             diag.help(
                                 "add `#![feature(const_fn)]` to the crate attributes to enable",
                             );
@@ -1667,7 +1668,7 @@ impl MirPass for QualifyAndPromoteConstants {
                             *span,
                             &format!("use of {} here does not actually short circuit due to \
                             the const evaluator presently not being able to do control flow. \
-                            See https://github.com/rust-lang/rust/issues/49146 for more \
+                            See issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more \
                             information.", kind),
                         );
                     }
