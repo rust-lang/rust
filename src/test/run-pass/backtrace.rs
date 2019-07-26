@@ -2,7 +2,6 @@
 // ignore-cloudabi spawning processes is not supported
 // ignore-emscripten spawning processes is not supported
 // ignore-openbsd no support for libbacktrace without filename
-// ignore-msvc issue #62844
 // ignore-sgx no processes
 // compile-flags:-g
 
