@@ -1,4 +1,4 @@
-Test cases intended to to document behavior and try to exhaustively
+Test cases intended to document behavior and try to exhaustively
 explore the combinations.
 
 ## Confidence
