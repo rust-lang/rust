@@ -139,9 +139,11 @@ impl<'tcx> ConstEvalErr<'tcx> {
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         match self.error {
             InterpError::Layout(LayoutError::Unknown(_)) |
-            InterpError::TooGeneric => return Err(ErrorHandled::TooGeneric),
+            InterpError::InvalidProgram(InvalidProgramMessage::TooGeneric) =>
+                return Err(ErrorHandled::TooGeneric),
             InterpError::Layout(LayoutError::SizeOverflow(_)) |
-            InterpError::TypeckError => return Err(ErrorHandled::Reported),
+            InterpError::InvalidProgram(InvalidProgramMessage::TypeckError) =>
+                return Err(ErrorHandled::Reported),
             _ => {},
         }
         trace!("reporting const eval failure at {:?}", self.span);
@@ -310,7 +312,7 @@ impl<O: fmt::Debug> fmt::Debug for PanicMessage<O> {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum InvalidProgramMessage<'tcx> {
+pub enum InvalidProgramMessage {
     /// Resolution can fail if we are in a too generic context
     TooGeneric,
     /// Cannot compute this constant because it depends on another one
@@ -321,18 +323,34 @@ pub enum InvalidProgramMessage<'tcx> {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum UndefinedBehaviourMessage {
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum UnsupportedMessage {
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum ResourceExhaustionMessage {
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InterpError<'tcx> {
+    /// The program panicked.
+    Panic(PanicMessage<u64>),
     /// The program caused undefined behavior.
-    UndefinedBehaviour(UndefinedBehaviourMessage<'tcx>),
+    UndefinedBehaviour(UndefinedBehaviourMessage),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
-    Unsupported(UnsupportedMessage<'tcx>),
+    Unsupported(UnsupportedMessage),
     /// The program was invalid (ill-typed, not sufficiently monomorphized, ...).
-    InvalidProgram(InvalidProgramMessage<'tcx>),
+    InvalidProgram(InvalidProgramMessage),
     /// The program exhausted the interpreter's resources (stack/heap too big,
     /// execution takes too long, ..).
-    ResourceExhaustion(ResourceExhaustionMessage<'tcx>),
-    
+    ResourceExhaustion(ResourceExhaustionMessage),
+
+    /// THe above 5 variants are what we want to group all the remaining InterpError variants into
+
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant.
     MachineError(String),
@@ -396,8 +414,6 @@ pub enum InterpError<'tcx> {
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
-    /// The program panicked.
-    Panic(PanicMessage<u64>),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
     UnimplementedTraitSelection,
