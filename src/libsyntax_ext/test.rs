@@ -6,6 +6,7 @@ use syntax::attr::{self, check_builtin_macro_attribute};
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
+use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::print::pprust;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
@@ -237,8 +238,10 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let ref sd = cx.parse_sess.span_diagnostic;
 
     if attr::contains_name(&i.attrs, sym::test) {
-        sd.span_warn(
+        cx.parse_sess.buffer_lint(
+            BufferedEarlyLintId::IllFormedAttributeInput,
             i.span,
+            i.id,
             "multiple test attributes, only one is needed"
         );
         return false;
@@ -299,8 +302,10 @@ fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let ref sd = cx.parse_sess.span_diagnostic;
 
     if attr::contains_name(&i.attrs, sym::bench) {
-        sd.span_warn(
+        cx.parse_sess.buffer_lint(
+            BufferedEarlyLintId::IllFormedAttributeInput,
             i.span,
+            i.id,
             "multiple bench attributes, only one is needed"
         );
         return false;
