@@ -335,7 +335,7 @@ fn main() {
 }
 
 fn in_cargo_miri() {
-    let (subcommand, skip) = match std::env::args().nth(2).deref() {
+    let (subcommand, skip) = match std::env::args().nth(2).as_deref() {
         Some("test") => (MiriCommand::Test, 3),
         Some("run") => (MiriCommand::Run, 3),
         Some("setup") => (MiriCommand::Setup, 3),
