@@ -1173,7 +1173,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                 title: "Index of crates",
                 css_class: "mod",
                 root_path: "./",
-                static_root_path: cx.shared.static_root_path.deref(),
+                static_root_path: cx.shared.static_root_path.as_deref(),
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
                 resource_suffix: &cx.shared.resource_suffix,
@@ -1513,7 +1513,7 @@ impl<'a> SourceCollector<'a> {
             title: &title,
             css_class: "source",
             root_path: &root_path,
-            static_root_path: self.scx.static_root_path.deref(),
+            static_root_path: self.scx.static_root_path.as_deref(),
             description: &desc,
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.scx.resource_suffix,
@@ -2110,7 +2110,7 @@ impl Context {
             title: "List of all items in this crate",
             css_class: "mod",
             root_path: "../",
-            static_root_path: self.shared.static_root_path.deref(),
+            static_root_path: self.shared.static_root_path.as_deref(),
             description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.shared.resource_suffix,
@@ -2137,7 +2137,7 @@ impl Context {
         self.shared.fs.write(&final_file, &v)?;
 
         // Generating settings page.
-        let settings = Settings::new(self.shared.static_root_path.deref().unwrap_or("./"),
+        let settings = Settings::new(self.shared.static_root_path.as_deref().unwrap_or("./"),
                                      &self.shared.resource_suffix);
         page.title = "Rustdoc settings";
         page.description = "Settings of Rustdoc";
@@ -2195,7 +2195,7 @@ impl Context {
         let page = layout::Page {
             css_class: tyname,
             root_path: &self.root_path(),
-            static_root_path: self.shared.static_root_path.deref(),
+            static_root_path: self.shared.static_root_path.as_deref(),
             title: &title,
             description: &desc,
             keywords: &keywords,
