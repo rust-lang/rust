@@ -966,6 +966,13 @@ for LateContextAndPass<'a, 'tcx, T> {
         self.context.tables = old_tables;
     }
 
+    fn visit_arg(&mut self, arg: &'tcx hir::Arg) {
+        self.with_lint_attrs(arg.hir_id, &arg.attrs, |cx| {
+            lint_callback!(cx, check_arg, arg);
+            hir_visit::walk_arg(cx, arg);
+        });
+    }
+
     fn visit_body(&mut self, body: &'tcx hir::Body) {
         lint_callback!(self, check_body, body);
         hir_visit::walk_body(self, body);
@@ -1156,6 +1163,13 @@ for LateContextAndPass<'a, 'tcx, T> {
 }
 
 impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T> {
+    fn visit_arg(&mut self, arg: &'a ast::Arg) {
+        self.with_lint_attrs(arg.id, &arg.attrs, |cx| {
+            run_early_pass!(cx, check_arg, arg);
+            ast_visit::walk_arg(cx, arg);
+        });
+    }
+
     fn visit_item(&mut self, it: &'a ast::Item) {
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
             run_early_pass!(cx, check_item, it);

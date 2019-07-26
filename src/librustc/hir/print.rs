@@ -1767,6 +1767,11 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Pat(pat))
     }
 
+    pub fn print_arg(&mut self, arg: &hir::Arg) {
+        self.print_outer_attributes(&arg.attrs);
+        self.print_pat(&arg.pat);
+    }
+
     pub fn print_arm(&mut self, arm: &hir::Arm) {
         // I have no idea why this check is necessary, but here it
         // is :(

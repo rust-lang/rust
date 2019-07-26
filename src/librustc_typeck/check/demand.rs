@@ -235,40 +235,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &hir::Expr,
     ) -> Option<(Span, &'static str, String)> {
-        if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
-            if let hir::def::Res::Local(id) = path.res {
-                let parent = self.tcx.hir().get_parent_node(id);
-                if let Some(Node::Expr(hir::Expr {
-                    hir_id,
-                    node: hir::ExprKind::Closure(_, decl, ..),
-                    ..
-                })) = self.tcx.hir().find(parent) {
-                    let parent = self.tcx.hir().get_parent_node(*hir_id);
-                    if let (Some(Node::Expr(hir::Expr {
-                        node: hir::ExprKind::MethodCall(path, span, expr),
-                        ..
-                    })), 1) = (self.tcx.hir().find(parent), decl.inputs.len()) {
-                        let self_ty = self.tables.borrow().node_type(expr[0].hir_id);
-                        let self_ty = format!("{:?}", self_ty);
-                        let name = path.ident.as_str();
-                        let is_as_ref_able = (
-                            self_ty.starts_with("&std::option::Option") ||
-                            self_ty.starts_with("&std::result::Result") ||
-                            self_ty.starts_with("std::option::Option") ||
-                            self_ty.starts_with("std::result::Result")
-                        ) && (name == "map" || name == "and_then");
-                        match (is_as_ref_able, self.sess().source_map().span_to_snippet(*span)) {
-                            (true, Ok(src)) => {
-                                return Some((*span, "consider using `as_ref` instead",
-                                             format!("as_ref().{}", src)));
-                            },
-                            _ => ()
-                        }
-                    }
-                }
-            }
+        let path = match expr.node {
+            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => path,
+            _ => return None
+        };
+
+        let local_id = match path.res {
+            hir::def::Res::Local(id) => id,
+            _ => return None
+        };
+
+        let local_parent = self.tcx.hir().get_parent_node(local_id);
+        let arg_hir_id = match self.tcx.hir().find(local_parent) {
+            Some(Node::Arg(hir::Arg { hir_id, .. })) => hir_id,
+            _ => return None
+        };
+
+        let arg_parent = self.tcx.hir().get_parent_node(*arg_hir_id);
+        let (expr_hir_id, closure_fn_decl) = match self.tcx.hir().find(arg_parent) {
+            Some(Node::Expr(
+                hir::Expr { hir_id, node: hir::ExprKind::Closure(_, decl, ..), .. }
+            )) => (hir_id, decl),
+            _ => return None
+        };
+
+        let expr_parent = self.tcx.hir().get_parent_node(*expr_hir_id);
+        let hir = self.tcx.hir().find(expr_parent);
+        let closure_params_len = closure_fn_decl.inputs.len();
+        let (method_path, method_span, method_expr) = match (hir, closure_params_len) {
+            (Some(Node::Expr(
+                hir::Expr { node: hir::ExprKind::MethodCall(path, span, expr), .. }
+            )), 1) => (path, span, expr),
+            _ => return None
+        };
+
+        let self_ty = self.tables.borrow().node_type(method_expr[0].hir_id);
+        let self_ty = format!("{:?}", self_ty);
+        let name = method_path.ident.as_str();
+        let is_as_ref_able = (
+            self_ty.starts_with("&std::option::Option") ||
+            self_ty.starts_with("&std::result::Result") ||
+            self_ty.starts_with("std::option::Option") ||
+            self_ty.starts_with("std::result::Result")
+        ) && (name == "map" || name == "and_then");
+        match (is_as_ref_able, self.sess().source_map().span_to_snippet(*method_span)) {
+            (true, Ok(src)) => {
+                let suggestion = format!("as_ref().{}", src);
+                Some((*method_span, "consider using `as_ref` instead", suggestion))
+            },
+            _ => None
         }
-        None
     }
 
     crate fn is_hir_id_from_struct_pattern_shorthand_field(
