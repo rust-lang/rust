@@ -1493,7 +1493,7 @@ impl Step for ErrorIndex {
 
         builder.info(&format!("Testing error-index stage{}", compiler.stage));
         let _time = util::timeit(&builder);
-        builder.run(&mut tool);
+        builder.run_quiet(&mut tool);
         markdown_test(builder, compiler, &output);
     }
 }
