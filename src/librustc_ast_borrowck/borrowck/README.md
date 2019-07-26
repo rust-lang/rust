@@ -747,7 +747,7 @@ However, it is not always unsafe to freeze the base pointer. In
 particular, if the referent is frozen, there is no harm in it:
 
 ```rust
-// src/test/run-pass/borrowck-borrow-of-mut-base-ptr-safe.rs
+// src/test/ui/borrowck-borrow-of-mut-base-ptr-safe.rs
 fn foo<'a>(mut t0: &'a mut i32,
            mut t1: &'a mut i32) {
     let p: &i32 = &*t0; // Freezes `*t0`
@@ -763,7 +763,7 @@ already frozen. In particular, we cannot assign to `*t0` through the
 new alias `t2`, as demonstrated in this test case:
 
 ```rust
-// src/test/run-pass/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs
+// src/test/ui/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs
 fn foo(t0: & &mut i32) {
     let t1 = t0;
     let p: &i32 = &**t0;

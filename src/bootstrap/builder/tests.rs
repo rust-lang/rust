@@ -629,7 +629,6 @@ fn test_with_no_doc_stage0() {
 fn test_exclude() {
     let mut config = configure(&[], &[]);
     config.exclude = vec![
-        "src/test/run-pass".into(),
         "src/tools/tidy".into(),
     ];
     config.cmd = Subcommand::Test {
@@ -648,11 +647,9 @@ fn test_exclude() {
     let builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
 
-    // Ensure we have really excluded run-pass & tidy
-    assert!(!builder.cache.contains::<test::RunPass>());
+    // Ensure we have really excluded tidy
     assert!(!builder.cache.contains::<test::Tidy>());
 
     // Ensure other tests are not affected.
-    assert!(builder.cache.contains::<test::RunPassFullDeps>());
     assert!(builder.cache.contains::<test::RustdocUi>());
 }

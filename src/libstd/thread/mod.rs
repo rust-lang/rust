@@ -1742,6 +1742,6 @@ mod tests {
         assert!(thread::current().id() != spawned_id);
     }
 
-    // NOTE: the corresponding test for stderr is in run-pass/thread-stderr, due
+    // NOTE: the corresponding test for stderr is in ui/thread-stderr, due
     // to the test harness apparently interfering with stderr configuration.
 }

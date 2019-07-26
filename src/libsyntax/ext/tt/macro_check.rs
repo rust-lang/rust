@@ -238,7 +238,7 @@ fn check_binders(
     match *lhs {
         TokenTree::Token(..) => {}
         // This can only happen when checking a nested macro because this LHS is then in the RHS of
-        // the outer macro. See run-pass/macros/macro-of-higher-order.rs where $y:$fragment in the
+        // the outer macro. See ui/macros/macro-of-higher-order.rs where $y:$fragment in the
         // LHS of the nested macro (and RHS of the outer macro) is parsed as MetaVar(y) Colon
         // MetaVar(fragment) and not as MetaVarDecl(y, fragment).
         TokenTree::MetaVar(span, name) => {

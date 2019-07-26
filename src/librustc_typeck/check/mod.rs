@@ -312,7 +312,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// It is only the `&[1, 2, 3]` expression as a whole that can be coerced
     /// to the type `&[isize]`. Therefore, we propagate this more limited hint,
     /// which still is useful, because it informs integer literals and the like.
-    /// See the test case `test/run-pass/coerce-expect-unsized.rs` and #20169
+    /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
     fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         match fcx.tcx.struct_tail_without_normalization(ty).sty {

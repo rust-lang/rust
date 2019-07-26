@@ -371,7 +371,6 @@ impl<'a> Builder<'a> {
             Kind::Test => describe!(
                 test::Tidy,
                 test::Ui,
-                test::RunPass,
                 test::CompileFail,
                 test::RunFail,
                 test::RunPassValgrind,
@@ -382,10 +381,8 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::RunPassFullDeps,
                 test::Rustdoc,
                 test::Pretty,
-                test::RunPassPretty,
                 test::RunFailPretty,
                 test::RunPassValgrindPretty,
                 test::Crate,

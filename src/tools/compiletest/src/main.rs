@@ -125,8 +125,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "(compile-fail|run-fail|run-pass|\
-             run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+            "(compile-fail|run-fail|run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
         )
         .optopt(
             "",
@@ -814,7 +813,7 @@ fn make_test_name(
 ) -> test::TestName {
     // Convert a complete path to something like
     //
-    //    run-pass/foo/bar/baz.rs
+    //    ui/foo/bar/baz.rs
     let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
