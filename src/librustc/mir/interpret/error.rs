@@ -321,16 +321,20 @@ pub enum InvalidProgramInfo<'tcx> {
     ReferencedConstant,
     /// Abort in case type errors are reached
     TypeckError,
+    /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UndefinedBehaviourInfo {
+    /// Handle cases which for which we do not have a fixed variant
+    Ub(String),
     Unreachable,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsupportedInfo<'tcx> {
+    Unimplemented(String),
     FunctionAbiMismatch(Abi, Abi),
     FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
     FunctionRetMismatch(Ty<'tcx>, Ty<'tcx>),
@@ -362,12 +366,6 @@ pub enum UnsupportedInfo<'tcx> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant.
     MachineError(String),
-
-    /// Not actually an interpreter error -- used to signal that execution has exited
-    /// with the given status code.  Used by Miri, but not by CTFE.
-    Exit(i32),
-
-    Unimplemented(String),
     DerefFunctionPointer,
     ExecuteMemory,
     Intrinsic(String),
@@ -416,6 +414,9 @@ pub enum InterpError<'tcx> {
     /// The program exhausted the interpreter's resources (stack/heap too big,
     /// execution takes too long, ..).
     ResourceExhaustion(ResourceExhaustionInfo),
+    /// Not actually an interpreter error -- used to signal that execution has exited
+    /// with the given status code.  Used by Miri, but not by CTFE.
+    Exit(i32),
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
