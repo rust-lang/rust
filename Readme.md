@@ -29,10 +29,9 @@ $ RUSTFLAGS="-Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/debug/librustc_
 
 ## Not yet supported
 
-* Good non-rust abi support ([scalar pair and vector are passed by-ref](https://github.com/bjorn3/rustc_codegen_cranelift/issues/10))
+* Good non-rust abi support ([vectors are passed by-ref](https://github.com/bjorn3/rustc_codegen_cranelift/issues/10))
 * Checked binops ([some missing instructions in cranelift](https://github.com/CraneStation/cranelift/issues/460))
 * Inline assembly ([no cranelift support](https://github.com/CraneStation/cranelift/issues/444))
-* u128 and i128 ([no cranelift support](https://github.com/CraneStation/cranelift/issues/354))
 * SIMD ([tracked here](https://github.com/bjorn3/rustc_codegen_cranelift/issues/171))
 
 ## Troubleshooting
