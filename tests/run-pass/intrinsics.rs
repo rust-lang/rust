@@ -11,5 +11,5 @@ fn main() {
     assert_eq!(size_of_val(&[1, 2, 3] as &[i32]), 12);
     assert_eq!(size_of_val("foobar"), 6);
 
-    assert_eq!(unsafe { type_name::<Option<i32>>() }, "core::option::Option<i32>");
+    assert_eq!(type_name::<Option<i32>>(), "core::option::Option<i32>");
 }
