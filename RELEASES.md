@@ -21,7 +21,7 @@ Language
   ```
 - [You can now use `_` as an identifier for consts.][61347] e.g. You can write
   `const _: u32 = 5;`.
-- [You can now use `#[repr(align)]` on enums.][61229]
+- [You can now use `#[repr(align(X)]` on enums.][61229]
 - [The  `?`/_"Kleene"_ macro operator is now available in the
   2015 edition.][60932]
 
