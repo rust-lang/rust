@@ -1,11 +1,7 @@
-use std::io::Write;
-
 use rls_data::config::Config;
 use rls_data::{self, Analysis, CompilationOptions, CratePreludeData, Def, DefKind, Impl, Import,
                MacroRef, Ref, RefKind, Relation};
 use rls_span::{Column, Row};
-
-use log::error;
 
 #[derive(Debug)]
 pub struct Access {
@@ -13,68 +9,25 @@ pub struct Access {
     pub public: bool,
 }
 
-pub struct JsonDumper<O: DumpOutput> {
+pub struct Dumper {
     result: Analysis,
     config: Config,
-    output: O,
 }
 
-pub trait DumpOutput {
-    fn dump(&mut self, result: &Analysis);
-}
-
-pub struct WriteOutput<'b, W: Write> {
-    output: &'b mut W,
-}
-
-impl<'b, W: Write> DumpOutput for WriteOutput<'b, W> {
-    fn dump(&mut self, result: &Analysis) {
-        if let Err(e) = serde_json::to_writer(self.output.by_ref(), result) {
-            error!("Can't serialize save-analysis: {:?}", e);
-        }
-    }
-}
-
-pub struct CallbackOutput<'b> {
-    callback: &'b mut dyn FnMut(&Analysis),
-}
-
-impl<'b> DumpOutput for CallbackOutput<'b> {
-    fn dump(&mut self, result: &Analysis) {
-        (self.callback)(result)
-    }
-}
-
-impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
-    pub fn new(writer: &'b mut W, config: Config) -> JsonDumper<WriteOutput<'b, W>> {
-        JsonDumper {
-            output: WriteOutput { output: writer },
+impl Dumper {
+    pub fn new(config: Config) -> Dumper {
+        Dumper {
             config: config.clone(),
             result: Analysis::new(config),
         }
     }
-}
 
-impl<'b> JsonDumper<CallbackOutput<'b>> {
-    pub fn with_callback(
-        callback: &'b mut dyn FnMut(&Analysis),
-        config: Config,
-    ) -> JsonDumper<CallbackOutput<'b>> {
-        JsonDumper {
-            output: CallbackOutput { callback },
-            config: config.clone(),
-            result: Analysis::new(config),
-        }
+    pub fn to_output(self, f: impl FnOnce(&Analysis)) {
+        f(&self.result)
     }
 }
 
-impl<O: DumpOutput> Drop for JsonDumper<O> {
-    fn drop(&mut self) {
-        self.output.dump(&self.result);
-    }
-}
-
-impl<'b, O: DumpOutput + 'b> JsonDumper<O> {
+impl Dumper {
     pub fn crate_prelude(&mut self, data: CratePreludeData) {
         self.result.prelude = Some(data)
     }
