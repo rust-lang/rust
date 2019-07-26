@@ -7,7 +7,7 @@
 #![recursion_limit="256"]
 
 
-mod json_dumper;
+mod dumper;
 mod dump_visitor;
 #[macro_use]
 mod span_utils;
@@ -39,7 +39,7 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{arg_to_string, ty_to_string};
 use syntax_pos::*;
 
-use json_dumper::JsonDumper;
+use dumper::Dumper;
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
@@ -1075,17 +1075,19 @@ impl<'a> SaveHandler for DumpHandler<'a> {
         input: &'l Input,
     ) {
         let sess = &save_ctxt.tcx.sess;
-        let file_name = {
-            let (mut output, file_name) = self.output_file(&save_ctxt);
-            let mut dumper = JsonDumper::new(&mut output, save_ctxt.config.clone());
-            let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+        let (output, file_name) = self.output_file(&save_ctxt);
+        let mut dumper = Dumper::new(save_ctxt.config.clone());
+        let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
-            visitor.dump_crate_info(cratename, krate);
-            visitor.dump_compilation_options(input, cratename);
-            visit::walk_crate(&mut visitor, krate);
+        visitor.dump_crate_info(cratename, krate);
+        visitor.dump_compilation_options(input, cratename);
+        visit::walk_crate(&mut visitor, krate);
 
-            file_name
-        };
+        dumper.to_output(|analysis| {
+            if let Err(e) = serde_json::to_writer(output, analysis) {
+                error!("Can't serialize save-analysis: {:?}", e);
+            }
+        });
 
         if sess.opts.debugging_opts.emit_artifact_notifications {
             sess.parse_sess.span_diagnostic
@@ -1107,17 +1109,19 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
         cratename: &str,
         input: &'l Input,
     ) {
-        // We're using the JsonDumper here because it has the format of the
+        // We're using the Dumper here because it has the format of the
         // save-analysis results that we will pass to the callback. IOW, we are
-        // using the JsonDumper to collect the save-analysis results, but not
+        // using the Dumper to collect the save-analysis results, but not
         // actually to dump them to a file. This is all a bit convoluted and
         // there is certainly a simpler design here trying to get out (FIXME).
-        let mut dumper = JsonDumper::with_callback(self.callback, save_ctxt.config.clone());
+        let mut dumper = Dumper::new(save_ctxt.config.clone());
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
         visitor.dump_compilation_options(input, cratename);
         visit::walk_crate(&mut visitor, krate);
+
+        dumper.to_output(|a| (self.callback)(a))
     }
 }
 
