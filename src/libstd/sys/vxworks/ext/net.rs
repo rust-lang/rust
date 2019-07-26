@@ -5,16 +5,6 @@
 #[cfg(unix)]
 use libc;
 
-// FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
-#[cfg(not(unix))]
-mod libc {
-    pub use libc::c_int;
-    pub type socklen_t = u32;
-    pub struct sockaddr;
-    #[derive(Clone)]
-    pub struct sockaddr_un;
-}
-
 use crate::ascii;
 use crate::ffi::OsStr;
 use crate::fmt;
@@ -29,15 +19,6 @@ use crate::sys::{self, cvt};
 use crate::sys::net::Socket;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
 
-#[cfg(any(target_os = "linux", target_os = "android",
-          target_os = "dragonfly", target_os = "freebsd",
-          target_os = "openbsd", target_os = "netbsd",
-          target_os = "haiku"))]
-use libc::MSG_NOSIGNAL;
-#[cfg(not(any(target_os = "linux", target_os = "android",
-              target_os = "dragonfly", target_os = "freebsd",
-              target_os = "openbsd", target_os = "netbsd",
-              target_os = "haiku")))]
 const MSG_NOSIGNAL: libc::c_int = 0x0;
 
 fn sun_path_offset(addr: &libc::sockaddr_un) -> usize {
@@ -202,13 +183,7 @@ impl SocketAddr {
         let len = self.len as usize - sun_path_offset(&self.addr);
         let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
 
-        // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
-        if len == 0
-            || (cfg!(not(any(target_os = "linux", target_os = "android")))
-                && self.addr.sun_path[0] == 0)
-        {
-            AddressKind::Unnamed
-        } else if self.addr.sun_path[0] == 0 {
+        if self.addr.sun_path[0] == 0 {
             AddressKind::Abstract(&path[1..len])
         } else {
             AddressKind::Pathname(OsStr::from_bytes(&path[..len - 1]).as_ref())
