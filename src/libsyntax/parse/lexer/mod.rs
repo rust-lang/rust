@@ -794,7 +794,7 @@ mod tests {
     use std::path::PathBuf;
     use syntax_pos::{BytePos, Span, NO_EXPANSION, edition::Edition};
     use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-    use rustc_data_structures::sync::Lock;
+    use rustc_data_structures::sync::{Lock, Once};
 
     fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
@@ -817,6 +817,7 @@ mod tests {
             param_attr_spans: Lock::new(Vec::new()),
             let_chains_spans: Lock::new(Vec::new()),
             async_closure_spans: Lock::new(Vec::new()),
+            injected_crate_name: Once::new(),
         }
     }
 

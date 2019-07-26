@@ -10,11 +10,11 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-fmt_macros = { path = "../libfmt_macros" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
-syntax = { path = "../libsyntax" }
-syntax_pos = { path = "../libsyntax_pos" }
+fmt_macros = { path = "../libfmt_macros" }
+log = "0.4"
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_target = { path = "../librustc_target" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
-log = "0.4"
+syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }

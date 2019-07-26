@@ -1,22 +1,18 @@
-//! Syntax extensions in the Rust compiler.
+//! This crate contains implementations of built-in macros and other code generating facilities
+//! injecting code into the crate before it is lowered to HIR.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![deny(rust_2018_idioms)]
 #![deny(unused_lifetimes)]
 
-#![feature(in_band_lifetimes)]
-#![feature(proc_macro_diagnostic)]
-#![feature(proc_macro_internals)]
-#![feature(proc_macro_span)]
 #![feature(decl_macro)]
+#![feature(mem_take)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
-
-extern crate proc_macro;
 
 mod error_codes;
 
@@ -26,20 +22,20 @@ mod cfg;
 mod compile_error;
 mod concat;
 mod concat_idents;
+mod deriving;
 mod env;
 mod format;
 mod format_foreign;
 mod global_allocator;
 mod global_asm;
 mod log_syntax;
-mod proc_macro_server;
+mod source_util;
 mod test;
-mod test_case;
 mod trace_macros;
 
-pub mod deriving;
-pub mod proc_macro_decls;
-pub mod proc_macro_impl;
+pub mod proc_macro_harness;
+pub mod standard_library_imports;
+pub mod test_harness;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
@@ -95,7 +91,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         )* }
     }
 
-    use syntax::ext::source_util::*;
+    use source_util::*;
     register! {
         line: expand_line,
         column: expand_column,
@@ -137,7 +133,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         )),
         allow_internal_unstable: allow_internal_unstable.clone(),
         ..SyntaxExtension::default(
-            SyntaxExtensionKind::LegacyAttr(Box::new(test_case::expand)), edition
+            SyntaxExtensionKind::LegacyAttr(Box::new(test::expand_test_case)), edition
         )
     });
     register(sym::test, SyntaxExtension {
