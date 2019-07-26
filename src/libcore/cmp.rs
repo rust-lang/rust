@@ -319,7 +319,7 @@ impl Ordering {
     /// This method can be used to reverse a comparison:
     ///
     /// ```
-    /// let mut data: &mut [_] = &mut [2, 10, 5, 8];
+    /// let data: &mut [_] = &mut [2, 10, 5, 8];
     ///
     /// // sort the array from largest to smallest.
     /// data.sort_by(|a, b| a.cmp(b).reverse());
