@@ -555,7 +555,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     },
                     Some(GlobalAlloc::Memory(alloc)) =>
                         // Need to duplicate the logic here, because the global allocations have
-                        // different associated types than the interpreter-local ones
+                        // different associated types than the interpreter-local ones.
                         Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align)),
                     Some(GlobalAlloc::Function(_)) => {
                         if let AllocCheck::Dereferencable = liveness {
