@@ -1329,7 +1329,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 base: PlaceBase::Local(local),
                 projection: None,
             }) if self.body.local_decls[local].is_user_variable.is_none() => {
-                if self.body.local_decls[local].ty.is_mutable_pointer() {
+                if self.body.local_decls[local].ty.is_mutable_ptr() {
                     // The variable will be marked as mutable by the borrow.
                     return;
                 }
