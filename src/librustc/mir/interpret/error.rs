@@ -359,31 +359,6 @@ pub enum UnsupportedInfo<'tcx> {
     UnimplementedTraitSelection,
     CalledClosureAsFunction,
     NoMirFor(String),
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum ResourceExhaustionInfo {
-    StackFrameLimitReached,
-    InfiniteLoop,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum InterpError<'tcx> {
-    /// The program panicked.
-    Panic(PanicMessage<u64>),
-    /// The program caused undefined behavior.
-    UndefinedBehaviour(UndefinedBehaviourInfo),
-    /// The program did something the interpreter does not support (some of these *might* be UB
-    /// but the interpreter is not sure).
-    Unsupported(UnsupportedInfo<'tcx>),
-    /// The program was invalid (ill-typed, not sufficiently monomorphized, ...).
-    InvalidProgram(InvalidProgramInfo<'tcx>),
-    /// The program exhausted the interpreter's resources (stack/heap too big,
-    /// execution takes too long, ..).
-    ResourceExhaustion(ResourceExhaustionInfo),
-
-    /// THe above 5 variants are what we want to group all the remaining InterpError variants into
-
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant.
     MachineError(String),
@@ -419,6 +394,28 @@ pub enum InterpError<'tcx> {
     HeapAllocNonPowerOfTwoAlignment(u64),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum ResourceExhaustionInfo {
+    StackFrameLimitReached,
+    InfiniteLoop,
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum InterpError<'tcx> {
+    /// The program panicked.
+    Panic(PanicMessage<u64>),
+    /// The program caused undefined behavior.
+    UndefinedBehaviour(UndefinedBehaviourInfo),
+    /// The program did something the interpreter does not support (some of these *might* be UB
+    /// but the interpreter is not sure).
+    Unsupported(UnsupportedInfo<'tcx>),
+    /// The program was invalid (ill-typed, not sufficiently monomorphized, ...).
+    InvalidProgram(InvalidProgramInfo<'tcx>),
+    /// The program exhausted the interpreter's resources (stack/heap too big,
+    /// execution takes too long, ..).
+    ResourceExhaustion(ResourceExhaustionInfo),
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
