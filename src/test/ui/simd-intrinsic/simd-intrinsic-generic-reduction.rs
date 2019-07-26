@@ -30,13 +30,10 @@ fn main() {
     let z = f32x4(0.0, 0.0, 0.0, 0.0);
 
     unsafe {
-        simd_reduce_add_ordered(z, 0_f32);
-        simd_reduce_mul_ordered(z, 1_f32);
-
-        simd_reduce_add_ordered(z, 2_f32);
-        //~^ ERROR accumulator of simd_reduce_add_ordered is not 0.0
-        simd_reduce_mul_ordered(z, 3_f32);
-        //~^ ERROR accumulator of simd_reduce_mul_ordered is not 1.0
+        simd_reduce_add_ordered(z, 0);
+        //~^ ERROR expected return type `f32` (element of input `f32x4`), found `i32`
+        simd_reduce_mul_ordered(z, 1);
+        //~^ ERROR expected return type `f32` (element of input `f32x4`), found `i32`
 
         let _: f32 = simd_reduce_and(x);
         //~^ ERROR expected return type `u32` (element of input `u32x4`), found `f32`
@@ -56,16 +53,5 @@ fn main() {
         //~^ ERROR unsupported simd_reduce_all from `f32x4` with element `f32` to `bool`
         let _: bool = simd_reduce_any(z);
         //~^ ERROR unsupported simd_reduce_any from `f32x4` with element `f32` to `bool`
-
-        foo(0_f32);
     }
-}
-
-#[inline(never)]
-unsafe fn foo(x: f32) {
-    let z = f32x4(0.0, 0.0, 0.0, 0.0);
-    simd_reduce_add_ordered(z, x);
-    //~^ ERROR accumulator of simd_reduce_add_ordered is not a constant
-    simd_reduce_mul_ordered(z, x);
-    //~^ ERROR accumulator of simd_reduce_mul_ordered is not a constant
 }
