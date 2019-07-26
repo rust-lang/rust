@@ -128,6 +128,14 @@ impl Add for u8 {
     }
 }
 
+impl Add for i8 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
 impl Add for usize {
     type Output = Self;
 
@@ -144,6 +152,30 @@ pub trait Sub<RHS = Self> {
 }
 
 impl Sub for usize {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
+impl Sub for u8 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
+impl Sub for i8 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
+impl Sub for i16 {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -268,6 +300,22 @@ pub trait Neg {
     type Output;
 
     fn neg(self) -> Self::Output;
+}
+
+impl Neg for i8 {
+    type Output = i8;
+
+    fn neg(self) -> i8 {
+        -self
+    }
+}
+
+impl Neg for i16 {
+    type Output = i16;
+
+    fn neg(self) -> i16 {
+        -self
+    }
 }
 
 impl Neg for isize {
