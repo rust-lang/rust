@@ -25,6 +25,9 @@ pub struct FileAttr {
     last_write_time: c::FILETIME,
     file_size: u64,
     reparse_tag: c::DWORD,
+    volume_serial_number: Option<u32>,
+    number_of_links: Option<u32>,
+    file_index: Option<u64>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -156,6 +159,9 @@ impl DirEntry {
                 } else {
                     0
                 },
+            volume_serial_number: None,
+            number_of_links: None,
+            file_index: None,
         })
     }
 }
@@ -291,23 +297,26 @@ impl File {
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         unsafe {
             let mut info: c::BY_HANDLE_FILE_INFORMATION = mem::zeroed();
-            cvt(c::GetFileInformationByHandle(self.handle.raw(),
-                                              &mut info))?;
-            let mut attr = FileAttr {
+            cvt(c::GetFileInformationByHandle(self.handle.raw(), &mut info))?;
+            let mut reparse_tag = 0;
+            if info.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+                if let Ok((_, buf)) = self.reparse_point(&mut b) {
+                    reparse_tag = buf.ReparseTag;
+                }
+            }
+            Ok(FileAttr {
                 attributes: info.dwFileAttributes,
                 creation_time: info.ftCreationTime,
                 last_access_time: info.ftLastAccessTime,
                 last_write_time: info.ftLastWriteTime,
-                file_size: ((info.nFileSizeHigh as u64) << 32) | (info.nFileSizeLow as u64),
-                reparse_tag: 0,
-            };
-            if attr.is_reparse_point() {
-                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-                if let Ok((_, buf)) = self.reparse_point(&mut b) {
-                    attr.reparse_tag = buf.ReparseTag;
-                }
-            }
-            Ok(attr)
+                file_size: (info.nFileSizeLow as u64) | ((info.nFileSizeHigh as u64) << 32),
+                reparse_tag,
+                volume_serial_number: Some(info.dwVolumeSerialNumber),
+                number_of_links: Some(info.nNumberOfLinks),
+                file_index: Some((info.nFileIndexLow as u64) |
+                                 ((info.nFileIndexHigh as u64) << 32)),
+            })
         }
     }
 
@@ -336,6 +345,9 @@ impl File {
                 },
                 file_size: 0,
                 reparse_tag: 0,
+                volume_serial_number: None,
+                number_of_links: None,
+                file_index: None,
             };
             let mut info: c::FILE_STANDARD_INFO = mem::zeroed();
             let size = mem::size_of_val(&info);
@@ -344,6 +356,7 @@ impl File {
                                                 &mut info as *mut _ as *mut libc::c_void,
                                                 size as c::DWORD))?;
             attr.file_size = info.AllocationSize as u64;
+            attr.number_of_links = Some(info.NumberOfLinks);
             if attr.is_reparse_point() {
                 let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
@@ -507,7 +520,9 @@ impl FileAttr {
         FilePermissions { attrs: self.attributes }
     }
 
-    pub fn attrs(&self) -> u32 { self.attributes as u32 }
+    pub fn attrs(&self) -> u32 {
+        self.attributes
+    }
 
     pub fn file_type(&self) -> FileType {
         FileType::new(self.attributes, self.reparse_tag)
@@ -537,8 +552,16 @@ impl FileAttr {
         to_u64(&self.creation_time)
     }
 
-    fn is_reparse_point(&self) -> bool {
-        self.attributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
+    pub fn volume_serial_number(&self) -> Option<u32> {
+        self.volume_serial_number
+    }
+
+    pub fn number_of_links(&self) -> Option<u32> {
+        self.number_of_links
+    }
+
+    pub fn file_index(&self) -> Option<u64> {
+        self.file_index
     }
 }
 

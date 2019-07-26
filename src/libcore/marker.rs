@@ -655,6 +655,12 @@ impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
 #[stable(feature = "pin", since = "1.33.0")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
 
+#[stable(feature = "pin_raw", since = "1.38.0")]
+impl<T: ?Sized> Unpin for *const T {}
+
+#[stable(feature = "pin_raw", since = "1.38.0")]
+impl<T: ?Sized> Unpin for *mut T {}
+
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust

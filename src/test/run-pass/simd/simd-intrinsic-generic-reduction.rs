@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 
 // ignore-emscripten
-// ignore-aarch64 FIXME: https://github.com/rust-lang/rust/issues/54510
+// min-system-llvm-version: 9.0
 
 // Test that the simd_reduce_{op} intrinsics produce the correct results.
 
@@ -124,14 +124,14 @@ fn main() {
         assert_eq!(r, 6_f32);
         let r: f32 = simd_reduce_mul_unordered(x);
         assert_eq!(r, -24_f32);
-        // FIXME: only works correctly for accumulator, 0:
-        // https://bugs.llvm.org/show_bug.cgi?id=36734
         let r: f32 = simd_reduce_add_ordered(x, 0.);
         assert_eq!(r, 6_f32);
-        // FIXME: only works correctly for accumulator, 1:
-        // https://bugs.llvm.org/show_bug.cgi?id=36734
         let r: f32 = simd_reduce_mul_ordered(x, 1.);
         assert_eq!(r, -24_f32);
+        let r: f32 = simd_reduce_add_ordered(x, 1.);
+        assert_eq!(r, 7_f32);
+        let r: f32 = simd_reduce_mul_ordered(x, 2.);
+        assert_eq!(r, -48_f32);
 
         let r: f32 = simd_reduce_min(x);
         assert_eq!(r, -2_f32);

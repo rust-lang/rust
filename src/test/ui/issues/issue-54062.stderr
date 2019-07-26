@@ -1,0 +1,16 @@
+error[E0616]: field `inner` of struct `std::sync::Mutex` is private
+  --> $DIR/issue-54062.rs:10:13
+   |
+LL |     let _ = test.comps.inner.lock().unwrap();
+   |             ^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `unwrap` found for type `std::sys_common::mutex::MutexGuard<'_>` in the current scope
+  --> $DIR/issue-54062.rs:10:37
+   |
+LL |     let _ = test.comps.inner.lock().unwrap();
+   |                                     ^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0599, E0616.
+For more information about an error, try `rustc --explain E0599`.

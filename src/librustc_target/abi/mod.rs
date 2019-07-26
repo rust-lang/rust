@@ -878,23 +878,94 @@ pub enum DiscriminantKind {
     },
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Niche {
+    pub offset: Size,
+    pub scalar: Scalar,
+}
+
+impl Niche {
+    pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
+        let niche = Niche {
+            offset,
+            scalar,
+        };
+        if niche.available(cx) > 0 {
+            Some(niche)
+        } else {
+            None
+        }
+    }
+
+    pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
+        let Scalar { value, valid_range: ref v } = self.scalar;
+        let bits = value.size(cx).bits();
+        assert!(bits <= 128);
+        let max_value = !0u128 >> (128 - bits);
+
+        // Find out how many values are outside the valid range.
+        let niche = v.end().wrapping_add(1)..*v.start();
+        niche.end.wrapping_sub(niche.start) & max_value
+    }
+
+    pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
+        assert!(count > 0);
+
+        let Scalar { value, valid_range: ref v } = self.scalar;
+        let bits = value.size(cx).bits();
+        assert!(bits <= 128);
+        let max_value = !0u128 >> (128 - bits);
+
+        if count > max_value {
+            return None;
+        }
+
+        // Compute the range of invalid values being reserved.
+        let start = v.end().wrapping_add(1) & max_value;
+        let end = v.end().wrapping_add(count) & max_value;
+
+        // If the `end` of our range is inside the valid range,
+        // then we ran out of invalid values.
+        // FIXME(eddyb) abstract this with a wraparound range type.
+        let valid_range_contains = |x| {
+            if v.start() <= v.end() {
+                *v.start() <= x && x <= *v.end()
+            } else {
+                *v.start() <= x || x <= *v.end()
+            }
+        };
+        if valid_range_contains(end) {
+            return None;
+        }
+
+        Some((start, Scalar { value, valid_range: *v.start()..=end }))
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct LayoutDetails {
     pub variants: Variants,
     pub fields: FieldPlacement,
     pub abi: Abi,
+
+    /// The leaf scalar with the largest number of invalid values
+    /// (i.e. outside of its `valid_range`), if it exists.
+    pub largest_niche: Option<Niche>,
+
     pub align: AbiAndPrefAlign,
     pub size: Size
 }
 
 impl LayoutDetails {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
+        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar.clone());
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
         LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Union(0),
             abi: Abi::Scalar(scalar),
+            largest_niche,
             size,
             align,
         }

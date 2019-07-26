@@ -86,7 +86,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 trait_name,
                 item_name,
                 if rcvr_ty.is_region_ptr() && args.is_some() {
-                    if rcvr_ty.is_mutable_pointer() {
+                    if rcvr_ty.is_mutable_ptr() {
                         "&mut "
                     } else {
                         "&"
