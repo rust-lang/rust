@@ -246,6 +246,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let align = a.value.align(dl).max(b_align).max(dl.aggregate_align);
         let b_offset = a.value.size(dl).align_to(b_align.abi);
         let size = (b_offset + b.value.size(dl)).align_to(align.abi);
+
+        // HACK(nox): We iter on `b` and then `a` because `max_by_key`
+        // returns the last maximum.
+        let largest_niche = Niche::from_scalar(dl, b_offset, b.clone())
+            .into_iter()
+            .chain(Niche::from_scalar(dl, Size::ZERO, a.clone()))
+            .max_by_key(|niche| niche.available(dl));
+
         LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Arbitrary {
@@ -253,6 +261,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 memory_index: vec![0, 1]
             },
             abi: Abi::ScalarPair(a, b),
+            largest_niche,
             align,
             size
         }
@@ -321,6 +330,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
 
         let mut offset = Size::ZERO;
+        let mut largest_niche = None;
+        let mut largest_niche_available = 0;
 
         if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
             let prefix_align = if packed {
@@ -354,6 +365,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
             offsets[i as usize] = offset;
+
+            if let Some(mut niche) = field.largest_niche.clone() {
+                let available = niche.available(dl);
+                if available > largest_niche_available {
+                    largest_niche_available = available;
+                    niche.offset += offset;
+                    largest_niche = Some(niche);
+                }
+            }
 
             offset = offset.checked_add(field.size, dl)
                 .ok_or(LayoutError::SizeOverflow(ty))?;
@@ -466,6 +486,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 memory_index
             },
             abi,
+            largest_niche,
             align,
             size
         })
@@ -525,6 +546,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Union(0),
                     abi: Abi::Uninhabited,
+                    largest_niche: None,
                     align: dl.i8_align,
                     size: Size::ZERO
                 })
@@ -583,6 +605,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     Abi::Aggregate { sized: true }
                 };
 
+                let largest_niche = if count != 0 {
+                    element.largest_niche.clone()
+                } else {
+                    None
+                };
+
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
@@ -590,6 +618,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         count
                     },
                     abi,
+                    largest_niche,
                     align: element.align,
                     size
                 })
@@ -603,6 +632,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         count: 0
                     },
                     abi: Abi::Aggregate { sized: false },
+                    largest_niche: None,
                     align: element.align,
                     size: Size::ZERO
                 })
@@ -615,6 +645,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         count: 0
                     },
                     abi: Abi::Aggregate { sized: false },
+                    largest_niche: None,
                     align: dl.i8_align,
                     size: Size::ZERO
                 })
@@ -683,6 +714,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         element: scalar,
                         count
                     },
+                    largest_niche: element.largest_niche.clone(),
                     size,
                     align,
                 })
@@ -768,6 +800,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         variants: Variants::Single { index },
                         fields: FieldPlacement::Union(variants[index].len()),
                         abi,
+                        largest_niche: None,
                         align,
                         size: size.align_to(align.abi)
                     }));
@@ -829,13 +862,37 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             // `#[rustc_layout_scalar_valid_range(n)]`
                             // attribute to widen the range of anything as that would probably
                             // result in UB somewhere
+                            // FIXME(eddyb) the asserts are probably not needed,
+                            // as larger validity ranges would result in missed
+                            // optimizations, *not* wrongly assuming the inner
+                            // value is valid. e.g. unions enlarge validity ranges,
+                            // because the values may be uninitialized.
                             if let Bound::Included(start) = start {
+                                // FIXME(eddyb) this might be incorrect - it doesn't
+                                // account for wrap-around (end < start) ranges.
                                 assert!(*scalar.valid_range.start() <= start);
                                 scalar.valid_range = start..=*scalar.valid_range.end();
                             }
                             if let Bound::Included(end) = end {
+                                // FIXME(eddyb) this might be incorrect - it doesn't
+                                // account for wrap-around (end < start) ranges.
                                 assert!(*scalar.valid_range.end() >= end);
                                 scalar.valid_range = *scalar.valid_range.start()..=end;
+                            }
+
+                            // Update `largest_niche` if we have introduced a larger niche.
+                            let niche = Niche::from_scalar(dl, Size::ZERO, scalar.clone());
+                            if let Some(niche) = niche {
+                                match &st.largest_niche {
+                                    Some(largest_niche) => {
+                                        // Replace the existing niche even if they're equal,
+                                        // because this one is at a lower offset.
+                                        if largest_niche.available(dl) <= niche.available(dl) {
+                                            st.largest_niche = Some(niche);
+                                        }
+                                    }
+                                    None => st.largest_niche = Some(niche),
+                                }
                             }
                         }
                         _ => assert!(
@@ -845,6 +902,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             st,
                         ),
                     }
+
                     return Ok(tcx.intern_layout(st));
                 }
 
@@ -886,8 +944,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let count = (
                             niche_variants.end().as_u32() - niche_variants.start().as_u32() + 1
                         ) as u128;
+                        // FIXME(#62691) use the largest niche across all fields,
+                        // not just the first one.
                         for (field_index, &field) in variants[i].iter().enumerate() {
-                            let niche = match self.find_niche(field)? {
+                            let niche = match &field.largest_niche {
                                 Some(niche) => niche,
                                 _ => continue,
                             };
@@ -937,6 +997,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 abi = Abi::Uninhabited;
                             }
 
+
+                            let largest_niche =
+                                Niche::from_scalar(dl, offset, niche_scalar.clone());
+
                             return Ok(tcx.intern_layout(LayoutDetails {
                                 variants: Variants::Multiple {
                                     discr: niche_scalar,
@@ -953,6 +1017,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     memory_index: vec![0]
                                 },
                                 abi,
+                                largest_niche,
                                 size,
                                 align,
                             }));
@@ -1164,6 +1229,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     abi = Abi::Uninhabited;
                 }
 
+                let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag.clone());
+
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Multiple {
                         discr: tag,
@@ -1175,6 +1242,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         offsets: vec![Size::ZERO],
                         memory_index: vec![0]
                     },
+                    largest_niche,
                     abi,
                     align,
                     size
@@ -1332,16 +1400,31 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
         let discr_index = substs.prefix_tys(def_id, tcx).count();
-        let promoted_tys =
-            ineligible_locals.iter().map(|local| subst_field(info.field_tys[local]));
-        let prefix_tys = substs.prefix_tys(def_id, tcx)
-            .chain(iter::once(substs.discr_ty(tcx)))
-            .chain(promoted_tys);
-        let prefix = self.univariant_uninterned(
+        // FIXME(eddyb) set the correct vaidity range for the discriminant.
+        let discr_layout = self.layout_of(substs.discr_ty(tcx))?;
+        let discr = match &discr_layout.abi {
+            Abi::Scalar(s) => s.clone(),
+            _ => bug!(),
+        };
+        // FIXME(eddyb) wrap each promoted type in `MaybeUninit` so that they
+        // don't poison the `largest_niche` or `abi` fields of `prefix`.
+        let promoted_layouts = ineligible_locals.iter()
+            .map(|local| subst_field(info.field_tys[local]))
+            .map(|ty| self.layout_of(ty));
+        let prefix_layouts = substs.prefix_tys(def_id, tcx)
+            .map(|ty| self.layout_of(ty))
+            .chain(iter::once(Ok(discr_layout)))
+            .chain(promoted_layouts)
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut prefix = self.univariant_uninterned(
             ty,
-            &prefix_tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
+            &prefix_layouts,
             &ReprOptions::default(),
-            StructKind::AlwaysSized)?;
+            StructKind::AlwaysSized,
+        )?;
+        // FIXME(eddyb) need `MaybeUninit` around promoted types (see above).
+        prefix.largest_niche = None;
+
         let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 
         // Split the prefix layout into the "outer" fields (upvars and
@@ -1463,10 +1546,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         } else {
             Abi::Aggregate { sized: true }
         };
-        let discr = match &self.layout_of(substs.discr_ty(tcx))?.abi {
-            Abi::Scalar(s) => s.clone(),
-            _ => bug!(),
-        };
 
         let layout = tcx.intern_layout(LayoutDetails {
             variants: Variants::Multiple {
@@ -1477,6 +1556,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             },
             fields: outer_fields,
             abi,
+            largest_niche: prefix.largest_niche,
             size,
             align,
         });
@@ -1950,6 +2030,7 @@ where
                     variants: Variants::Single { index: variant_index },
                     fields: FieldPlacement::Union(fields),
                     abi: Abi::Uninhabited,
+                    largest_niche: None,
                     align: tcx.data_layout.i8_align,
                     size: Size::ZERO
                 })
@@ -2222,120 +2303,6 @@ where
     }
 }
 
-struct Niche {
-    offset: Size,
-    scalar: Scalar,
-    available: u128,
-}
-
-impl Niche {
-    fn reserve<'tcx>(
-        &self,
-        cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
-        count: u128,
-    ) -> Option<(u128, Scalar)> {
-        if count > self.available {
-            return None;
-        }
-        let Scalar { value, valid_range: ref v } = self.scalar;
-        let bits = value.size(cx).bits();
-        assert!(bits <= 128);
-        let max_value = !0u128 >> (128 - bits);
-        let start = v.end().wrapping_add(1) & max_value;
-        let end = v.end().wrapping_add(count) & max_value;
-        Some((start, Scalar { value, valid_range: *v.start()..=end }))
-    }
-}
-
-impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
-    /// Find the offset of a niche leaf field, starting from
-    /// the given type and recursing through aggregates.
-    // FIXME(eddyb) traverse already optimized enums.
-    fn find_niche(&self, layout: TyLayout<'tcx>) -> Result<Option<Niche>, LayoutError<'tcx>> {
-        let scalar_niche = |scalar: &Scalar, offset| {
-            let Scalar { value, valid_range: ref v } = *scalar;
-
-            let bits = value.size(self).bits();
-            assert!(bits <= 128);
-            let max_value = !0u128 >> (128 - bits);
-
-            // Find out how many values are outside the valid range.
-            let available = if v.start() <= v.end() {
-                v.start() + (max_value - v.end())
-            } else {
-                v.start() - v.end() - 1
-            };
-
-            // Give up if there is no niche value available.
-            if available == 0 {
-                return None;
-            }
-
-            Some(Niche { offset, scalar: scalar.clone(), available })
-        };
-
-        // Locals variables which live across yields are stored
-        // in the generator type as fields. These may be uninitialized
-        // so we don't look for niches there.
-        if let ty::Generator(..) = layout.ty.sty {
-            return Ok(None);
-        }
-
-        match layout.abi {
-            Abi::Scalar(ref scalar) => {
-                return Ok(scalar_niche(scalar, Size::ZERO));
-            }
-            Abi::ScalarPair(ref a, ref b) => {
-                // HACK(nox): We iter on `b` and then `a` because `max_by_key`
-                // returns the last maximum.
-                let niche = iter::once(
-                    (b, a.value.size(self).align_to(b.value.align(self).abi))
-                )
-                    .chain(iter::once((a, Size::ZERO)))
-                    .filter_map(|(scalar, offset)| scalar_niche(scalar, offset))
-                    .max_by_key(|niche| niche.available);
-                return Ok(niche);
-            }
-            Abi::Vector { ref element, .. } => {
-                return Ok(scalar_niche(element, Size::ZERO));
-            }
-            _ => {}
-        }
-
-        // Perhaps one of the fields is non-zero, let's recurse and find out.
-        if let FieldPlacement::Union(_) = layout.fields {
-            // Only Rust enums have safe-to-inspect fields
-            // (a discriminant), other unions are unsafe.
-            if let Variants::Single { .. } = layout.variants {
-                return Ok(None);
-            }
-        }
-        if let FieldPlacement::Array { count: original_64_bit_count, .. } = layout.fields {
-            // rust-lang/rust#57038: avoid ICE within FieldPlacement::count when count too big
-            if original_64_bit_count > usize::max_value() as u64 {
-                return Err(LayoutError::SizeOverflow(layout.ty));
-            }
-            if layout.fields.count() > 0 {
-                return self.find_niche(layout.field(self, 0)?);
-            } else {
-                return Ok(None);
-            }
-        }
-        let mut niche = None;
-        let mut available = 0;
-        for i in 0..layout.fields.count() {
-            if let Some(mut c) = self.find_niche(layout.field(self, i)?)? {
-                if c.available > available {
-                    available = c.available;
-                    c.offset += layout.fields.offset(i);
-                    niche = Some(c);
-                }
-            }
-        }
-        Ok(niche)
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for Variants {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
@@ -2456,10 +2423,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for Scalar {
     }
 }
 
+impl_stable_hash_for!(struct crate::ty::layout::Niche {
+    offset,
+    scalar
+});
+
 impl_stable_hash_for!(struct crate::ty::layout::LayoutDetails {
     variants,
     fields,
     abi,
+    largest_niche,
     size,
     align
 });
