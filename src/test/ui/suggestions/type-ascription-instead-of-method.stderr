@@ -7,7 +7,7 @@ LL |     Box:new("foo".to_string())
    |        help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
+   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
 
 error: aborting due to previous error
 

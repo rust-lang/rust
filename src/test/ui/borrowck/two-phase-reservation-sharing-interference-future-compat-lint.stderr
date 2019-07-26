@@ -15,7 +15,7 @@ note: lint level defined here
 LL |     #![warn(mutable_borrow_reservation_conflict)]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this borrowing pattern was not meant to be accepted, and may become a hard error in the future
-   = note: for more information, see issue #59159 <https://github.com/rust-lang/rust/issues/59159>
+   = note: see issue #59159 <https://github.com/rust-lang/rust/issues/59159> for more information
 
 error: cannot borrow `v` as mutable because it is also borrowed as immutable
   --> $DIR/two-phase-reservation-sharing-interference-future-compat-lint.rs:37:9
@@ -34,7 +34,7 @@ note: lint level defined here
 LL |     #![deny(mutable_borrow_reservation_conflict)]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this borrowing pattern was not meant to be accepted, and may become a hard error in the future
-   = note: for more information, see issue #59159 <https://github.com/rust-lang/rust/issues/59159>
+   = note: see issue #59159 <https://github.com/rust-lang/rust/issues/59159> for more information
 
 error: aborting due to previous error
 

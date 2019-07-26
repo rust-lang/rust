@@ -10,7 +10,7 @@ note: lint level defined here
 LL | #![deny(private_in_public)]
    |         ^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:18:12
@@ -19,7 +19,7 @@ LL |         V1(Priv),
    |            ^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:20:14
@@ -28,7 +28,7 @@ LL |         V2 { field: Priv },
    |              ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:24:9
@@ -37,7 +37,7 @@ LL |         const C: Priv = Priv;
    |         ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error[E0446]: private type `types::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:26:9
@@ -55,7 +55,7 @@ LL |         fn f1(arg: Priv) {}
    |         ^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:29:9
@@ -64,7 +64,7 @@ LL |         fn f2() -> Priv { panic!() }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:33:9
@@ -73,7 +73,7 @@ LL |         pub static ES: Priv;
    |         ^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:35:9
@@ -82,7 +82,7 @@ LL |         pub fn ef1(arg: Priv);
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:37:9
@@ -91,7 +91,7 @@ LL |         pub fn ef2() -> Priv;
    |         ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error[E0446]: private type `types::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:41:9
@@ -109,7 +109,7 @@ LL |     pub type Alias<T: PrivTr> = T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:53:5
@@ -118,7 +118,7 @@ LL |     pub trait Tr1: PrivTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:55:5
@@ -127,7 +127,7 @@ LL |     pub trait Tr2<T: PrivTr> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:57:5
@@ -142,7 +142,7 @@ LL | |     }
    | |_____^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:61:9
@@ -151,7 +151,7 @@ LL |         fn f<T: PrivTr>(arg: T) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:64:5
@@ -160,7 +160,7 @@ LL |     impl<T: PrivTr> Pub<T> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:66:5
@@ -169,7 +169,7 @@ LL |     impl<T: PrivTr> PubTr for Pub<T> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:75:5
@@ -178,7 +178,7 @@ LL |     pub type Alias<T> where T: PrivTr = T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:79:5
@@ -187,7 +187,7 @@ LL |     pub trait Tr2<T> where T: PrivTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:83:9
@@ -196,7 +196,7 @@ LL |         fn f<T>(arg: T) where T: PrivTr {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:87:5
@@ -205,7 +205,7 @@ LL |     impl<T> Pub<T> where T: PrivTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:90:5
@@ -214,7 +214,7 @@ LL |     impl<T> PubTr for Pub<T> where T: PrivTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `generics::PrivTr<generics::Pub>` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:101:5
@@ -223,7 +223,7 @@ LL |     pub trait Tr1: PrivTr<Pub> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `generics::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:104:5
@@ -232,7 +232,7 @@ LL |     pub trait Tr2: PubTr<Priv> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `generics::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:106:5
@@ -241,7 +241,7 @@ LL |     pub trait Tr3: PubTr<[Priv; 1]> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `generics::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:108:5
@@ -250,7 +250,7 @@ LL |     pub trait Tr4: PubTr<Pub<Priv>> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error[E0446]: private type `impls::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:135:9
@@ -268,7 +268,7 @@ LL |         pub fn f(arg: Priv) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:210:9
@@ -313,7 +313,7 @@ LL |     pub trait Tr1: PrivUseAliasTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private trait `aliases_priv::PrivTr1<aliases_priv::Priv2>` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:252:5
@@ -322,7 +322,7 @@ LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 error: private type `aliases_priv::Priv2` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:252:5
@@ -331,7 +331,7 @@ LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: see issue #34537 <https://github.com/rust-lang/rust/issues/34537> for more information
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/private-in-public-warn.rs:50:23

@@ -18,7 +18,7 @@ note: lint level defined here
 LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
    |                     ^^^^^^^^^^^^^
 
-warning: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand. See https://github.com/rust-lang/rust/issues/29721
+warning: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand. See issue #29721 <https://github.com/rust-lang/rust/issues/29721>
   --> $DIR/suggestions.rs:42:1
    |
 LL | #[no_debug] // should suggest removal of deprecated attribute

@@ -13,7 +13,7 @@ note: lint level defined here
 LL | #![deny(late_bound_lifetime_arguments)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:26:14
@@ -25,7 +25,7 @@ LL |     S.late::<'static, 'static>(&0, &0);
    |              ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:29:14
@@ -37,7 +37,7 @@ LL |     S.late::<'static, 'static, 'static>(&0, &0);
    |              ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:33:20
@@ -49,7 +49,7 @@ LL |     S.late_early::<'static>(&0);
    |                    ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:36:20
@@ -61,7 +61,7 @@ LL |     S.late_early::<'static, 'static>(&0);
    |                    ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:39:20
@@ -73,7 +73,7 @@ LL |     S.late_early::<'static, 'static, 'static>(&0);
    |                    ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:44:23
@@ -85,7 +85,7 @@ LL |     S.late_implicit::<'static>(&0, &0);
    |                       ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:47:23
@@ -97,7 +97,7 @@ LL |     S.late_implicit::<'static, 'static>(&0, &0);
    |                       ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:50:23
@@ -109,7 +109,7 @@ LL |     S.late_implicit::<'static, 'static, 'static>(&0, &0);
    |                       ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:54:29
@@ -121,7 +121,7 @@ LL |     S.late_implicit_early::<'static>(&0);
    |                             ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:57:29
@@ -133,7 +133,7 @@ LL |     S.late_implicit_early::<'static, 'static>(&0);
    |                             ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:60:29
@@ -145,7 +145,7 @@ LL |     S.late_implicit_early::<'static, 'static, 'static>(&0);
    |                             ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:69:21
@@ -157,7 +157,7 @@ LL |     S::late_early::<'static>(S, &0);
    |                     ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:73:30
@@ -169,7 +169,7 @@ LL |     S::late_implicit_early::<'static>(S, &0);
    |                              ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-lint-fail.rs:82:9
@@ -181,7 +181,7 @@ LL |     f::<'static, u8>;
    |         ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: see issue #42868 <https://github.com/rust-lang/rust/issues/42868> for more information
 
 error: aborting due to 15 previous errors
 
