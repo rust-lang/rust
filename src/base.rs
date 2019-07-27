@@ -831,6 +831,11 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
         );
     }
 
+    match out_ty.sty {
+        ty::Bool | ty::Uint(_) | ty::Int(_) => {}
+        _ => unreachable!("Out ty {:?} is not an integer or bool", out_ty),
+    }
+
     if let Some(res) = crate::codegen_i128::maybe_codegen(fx, bin_op, false, signed, lhs, rhs, out_ty) {
         return res;
     }
@@ -875,7 +880,9 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     signed: bool,
 ) -> CValue<'tcx> {
     if !fx.tcx.sess.overflow_checks() {
-        return trans_int_binop(fx, bin_op, in_lhs, in_rhs, out_ty, signed);
+        let val = trans_int_binop(fx, bin_op, in_lhs, in_rhs, in_lhs.layout().ty, signed).load_scalar(fx);
+        let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
+        return CValue::by_val_pair(val, is_overflow, fx.layout_of(out_ty));
     }
 
     if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
