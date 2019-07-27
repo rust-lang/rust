@@ -461,7 +461,7 @@ rustc_queries! {
     }
 
     TypeChecking {
-        query check_match(key: DefId) -> () {
+        query check_match(key: DefId) -> SignalledError {
             cache_on_disk_if { key.is_local() }
         }
 
