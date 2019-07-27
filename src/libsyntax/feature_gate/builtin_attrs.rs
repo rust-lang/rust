@@ -457,7 +457,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Internal attributes, Misc:
     // ==========================================================================
-
     gated!(
         lang, Normal, template!(NameValueStr: "name"), lang_items,
         "language items are subject to change",
@@ -498,7 +497,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         overflow checking behavior of several libcore functions that are inlined \
         across crates and will never be stable",
     ),
-    rustc_attr!(rustc_reservation_impl, Normal, template!(Word),
+    rustc_attr!(rustc_reservation_impl, Normal, template!(NameValueStr: "reservation message"),
                 "the `#[rustc_reservation_impl]` attribute is internally used \
                  for reserving for `for<T> From<!> for T` impl"
     ),

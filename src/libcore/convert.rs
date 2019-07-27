@@ -556,7 +556,12 @@ impl<T> From<T> for T {
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 #[cfg(not(boostrap_stdarch_ignore_this))]
-#[rustc_reservation_impl]
+#[rustc_reservation_impl="a future version of Rust might implement `From<!>` for \
+    all types. \
+    However, it is OK to implement `From<!>` for types you own - \
+    when the blanket impl will be added, coherence will be changed \
+    to make these impls not be an error."
+]
 impl<T> From<!> for T {
     fn from(t: !) -> T { t }
 }

@@ -6,6 +6,8 @@ LL | impl MyTrait for MyFoo {}
 LL | // This will conflict with the first impl if we impl `for<T> T: From<!>`.
 LL | impl<T> MyTrait for T where T: From<!> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `MyFoo`
+   |
+   = note: a future version of Rust might implement `From<!>` for all types. However, it is OK to implement `From<!>` for types you own - when the blanket impl will be added, coherence will be changed to make these impls not be an error.
 
 error: aborting due to previous error
 

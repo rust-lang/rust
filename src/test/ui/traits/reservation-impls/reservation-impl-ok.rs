@@ -11,7 +11,7 @@ trait MyTrait<S> {
     fn foo(&self, s: S) -> usize;
 }
 
-#[rustc_reservation_impl]
+#[rustc_reservation_impl = "foo"]
 impl<T> MyTrait<u64> for T {
     fn foo(&self, _x: u64) -> usize { 0 }
 }

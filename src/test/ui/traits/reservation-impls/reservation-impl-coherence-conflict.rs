@@ -5,7 +5,7 @@
 #![feature(rustc_attrs)]
 
 trait MyTrait {}
-#[rustc_reservation_impl]
+#[rustc_reservation_impl="this impl is reserved"]
 impl MyTrait for () {}
 
 trait OtherTrait {}

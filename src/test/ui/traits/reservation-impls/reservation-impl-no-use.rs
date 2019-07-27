@@ -5,7 +5,7 @@
 #![feature(rustc_attrs)]
 
 trait MyTrait { fn foo(&self); }
-#[rustc_reservation_impl]
+#[rustc_reservation_impl = "foo"]
 impl MyTrait for () { fn foo(&self) {} }
 
 fn main() {
