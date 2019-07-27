@@ -12,7 +12,7 @@ use smallvec::smallvec;
 #[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
     Permitted,
-    NotPermitted { reason: &'a str, prev_attr_sp: Option<Span> },
+    NotPermitted { reason: &'a str, saw_doc_comment: bool, prev_attr_sp: Option<Span> },
 }
 
 const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
@@ -43,8 +43,11 @@ impl<'a> Parser<'a> {
                         DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG
                     };
                     let inner_parse_policy =
-                        InnerAttributeParsePolicy::NotPermitted { reason: inner_error_reason,
-                            prev_attr_sp: attrs.last().and_then(|a| Some(a.span)) };
+                        InnerAttributeParsePolicy::NotPermitted {
+                            reason: inner_error_reason,
+                            saw_doc_comment: just_parsed_doc_comment,
+                            prev_attr_sp: attrs.last().and_then(|a| Some(a.span))
+                        };
                     let attr = self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?;
                     attrs.push(attr);
                     just_parsed_doc_comment = false;
@@ -78,8 +81,11 @@ impl<'a> Parser<'a> {
         let inner_parse_policy = if permit_inner {
             InnerAttributeParsePolicy::Permitted
         } else {
-            InnerAttributeParsePolicy::NotPermitted
-                { reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG, prev_attr_sp: None }
+            InnerAttributeParsePolicy::NotPermitted {
+                reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG,
+                saw_doc_comment: false,
+                prev_attr_sp: None
+            }
         };
         self.parse_attribute_with_inner_parse_policy(inner_parse_policy)
     }
@@ -117,8 +123,14 @@ impl<'a> Parser<'a> {
 
                 // Emit error if inner attribute is encountered and not permitted
                 if style == ast::AttrStyle::Inner {
-                    if let InnerAttributeParsePolicy::NotPermitted { reason, prev_attr_sp }
-                            = inner_parse_policy {
+                    if let InnerAttributeParsePolicy::NotPermitted { reason,
+                        saw_doc_comment, prev_attr_sp } = inner_parse_policy {
+                        let prev_attr_note = if saw_doc_comment {
+                            "previous doc comment"
+                        } else {
+                            "previous outer attribute"
+                        };
+
                         let mut diagnostic = self
                             .diagnostic()
                             .struct_span_err(attr_sp, reason);
@@ -126,7 +138,7 @@ impl<'a> Parser<'a> {
                         if let Some(prev_attr_sp) = prev_attr_sp {
                             diagnostic
                                 .span_label(attr_sp, "not permitted following an outer attibute")
-                                .span_label(prev_attr_sp, "previous outer attribute");
+                                .span_label(prev_attr_sp, prev_attr_note);
                         }
 
                         diagnostic
