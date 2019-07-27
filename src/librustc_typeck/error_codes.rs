@@ -1589,37 +1589,44 @@ fn bar(foo: Foo) -> u32 {
 "##,
 
 E0183: r##"
-Fn* traits (`unboxed closures`) are experimental. 
+Manually implementing `Fn*` traits is experimental.
 See [tracking issue #29625][iss29625] for the status of the feature.
-
-Functions must have exactly one (non self) argument, a tuple representing
-the argument list [1]. 
 
 Erroneous code example:
 
 ```compile_fail,E0183
-extern "rust-call" fn echo(arg: (u32,)) -> (u32,) {
-    arg
+#![feature(unboxed_closures)]
+struct Echo {}
+
+impl<A> FnOnce<(A,)> for Echo {
+    type Output = A;
+    extern "rust-call" fn call_once(self, args: (A,)) -> Self::Output {
+        args.0
+    }
 }
 ```
 
-This feature can be enabled with:
+To fix this error the feature `fn_traits` must be enabled with:
 
 ```
-#![feature(unboxed_closures)]
+#![feature(fn_traits)]
 ```
 
 Here's the above example fixed:
 
 ```
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, fn_traits)]
+struct Echo {}
 
-extern "rust-call" fn echo(arg: (u32,)) -> (u32,) {
-    arg
+impl<A> FnOnce<(A,)> for Echo {
+    type Output = A;
+    extern "rust-call" fn call_once(self, args: (A,)) -> Self::Output {
+        args.0
+    }
 }
 ```
 
-[1]: https://doc.rust-lang.org/unstable-book/language-features/unboxed-closures.html
+[1]: https://doc.rust-lang.org/unstable-book/library-features/fn-traits.html
 [iss29625]: https://github.com/rust-lang/rust/issues/29625
 "##,
 
