@@ -1176,7 +1176,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // Invoke the default handler, which prints the actual panic message and optionally a backtrace
     (*DEFAULT_HOOK)(info);
 
-    // Print the infamous ICE message
+    // Separate the output with an empty line
     eprintln!();
 
     let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
