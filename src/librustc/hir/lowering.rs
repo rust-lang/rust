@@ -5753,13 +5753,21 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn maybe_lint_bare_trait(&self, span: Span, id: NodeId, is_global: bool) {
-        self.sess.buffer_lint_with_diagnostic(
-            builtin::BARE_TRAIT_OBJECTS,
-            id,
-            span,
-            "trait objects without an explicit `dyn` are deprecated",
-            builtin::BuiltinLintDiagnostics::BareTraitObject(span, is_global),
-        )
+        // FIXME(davidtwco): This is a hack to detect macros which produce spans of the
+        // call site which do not have a macro backtrace. See #61963.
+        let is_macro_callsite = self.sess.source_map()
+            .span_to_snippet(span)
+            .map(|snippet| snippet.starts_with("#["))
+            .unwrap_or(true);
+        if !is_macro_callsite {
+            self.sess.buffer_lint_with_diagnostic(
+                builtin::BARE_TRAIT_OBJECTS,
+                id,
+                span,
+                "trait objects without an explicit `dyn` are deprecated",
+                builtin::BuiltinLintDiagnostics::BareTraitObject(span, is_global),
+            )
+        }
     }
 
     fn wrap_in_try_constructor(
