@@ -27,7 +27,7 @@ fn main() -> Result<()> {
         .subcommand(
             SubCommand::with_name("install-ra")
                 .arg(Arg::with_name("server").long("--server"))
-                .arg(Arg::with_name("jemalloc").long("jemalloc").requires("server"))
+                .arg(Arg::with_name("jemalloc").long("jemalloc"))
                 .arg(Arg::with_name("client-code").long("client-code").conflicts_with("server")),
         )
         .alias("install-code")
@@ -107,6 +107,12 @@ fn fix_path_for_mac() -> Result<()> {
 
 fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     Cmd { unix: r"npm ci", windows: r"cmd.exe /c npm.cmd ci", work_dir: "./editors/code" }.run()?;
+    Cmd {
+        unix: r"npm run package",
+        windows: r"cmd.exe /c npm.cmd run package",
+        work_dir: "./editors/code",
+    }
+    .run()?;
 
     let code_in_path = Cmd {
         unix: r"code --version",
