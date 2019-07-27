@@ -270,7 +270,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     | UndefinedBehaviour(_) => {},
                     | InvalidProgram(_) => {},
                     | ResourceExhaustion(_) => {},
-                    
                     | Panic(_)
                     => {
                         diagnostic.report_as_lint(

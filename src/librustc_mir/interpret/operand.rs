@@ -646,15 +646,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             } => {
                 let variants_start = niche_variants.start().as_u32() as u128;
                 let variants_end = niche_variants.end().as_u32() as u128;
-                let raw_discr = raw_discr.not_undef()
-                    .map_err(|_| InterpError::Unsupported(InvalidDiscriminant(ScalarMaybeUndef::Undef)))?;
+                let raw_discr = raw_discr.not_undef().map_err(|_| {
+                    InterpError::Unsupported(InvalidDiscriminant(ScalarMaybeUndef::Undef))
+                })?;
                 match raw_discr.to_bits_or_ptr(discr_val.layout.size, self) {
                     Err(ptr) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
                             !self.memory.ptr_may_be_null(ptr);
                         if !ptr_valid {
-                            return err!(Unsupported(InvalidDiscriminant(raw_discr.erase_tag().into())));
+                            return err!(Unsupported(InvalidDiscriminant(
+                                raw_discr.erase_tag().into()
+                            )));
                         }
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
