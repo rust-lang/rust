@@ -1326,7 +1326,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         (result, dep_node)
     }
 
-    // Treat negative impls as unimplemented, and reservation impls as Ok(None)
+    // Treat negative impls as unimplemented, and reservation impls as ambiguity.
     fn filter_negative_and_reservation_impls(
         &self,
         candidate: SelectionCandidate<'tcx>,

@@ -2931,7 +2931,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             (ImplPolarity::Positive, ImplPolarity::Negative) |
             (ImplPolarity::Negative, ImplPolarity::Positive) => {
-                // FIXME: when can this happen?
+                // `impl AutoTrait for Type` + `impl !AutoTrait for Type`
                 debug!("impls_are_allowed_to_overlap({:?}, {:?}) - None (differing polarities)",
                        def_id1, def_id2);
                 return None;
