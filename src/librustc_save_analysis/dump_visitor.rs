@@ -10,7 +10,7 @@
 //!
 //! SpanUtils is used to manipulate spans. In particular, to extract sub-spans
 //! from spans (e.g., the span for `bar` from the above example path).
-//! DumpVisitor walks the AST and processes it, and JsonDumper is used for
+//! DumpVisitor walks the AST and processes it, and Dumper is used for
 //! recording the output.
 
 use rustc::hir::def::{Res, DefKind as HirDefKind};
@@ -38,7 +38,7 @@ use syntax_pos::*;
 
 use crate::{escape, generated_code, id_from_def_id, id_from_node_id, lower_attributes,
             PathCollector, SaveContext};
-use crate::json_dumper::{Access, DumpOutput, JsonDumper};
+use crate::dumper::{Access, Dumper};
 use crate::span_utils::SpanUtils;
 use crate::sig;
 
@@ -75,10 +75,10 @@ macro_rules! access_from_vis {
     };
 }
 
-pub struct DumpVisitor<'l, 'tcx, 'll, O: DumpOutput> {
+pub struct DumpVisitor<'l, 'tcx, 'll> {
     save_ctxt: SaveContext<'l, 'tcx>,
     tcx: TyCtxt<'tcx>,
-    dumper: &'ll mut JsonDumper<O>,
+    dumper: &'ll mut Dumper,
 
     span: SpanUtils<'l>,
 
@@ -92,11 +92,11 @@ pub struct DumpVisitor<'l, 'tcx, 'll, O: DumpOutput> {
     // macro_calls: FxHashSet<Span>,
 }
 
-impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
+impl<'l, 'tcx, 'll> DumpVisitor<'l, 'tcx, 'll> {
     pub fn new(
         save_ctxt: SaveContext<'l, 'tcx>,
-        dumper: &'ll mut JsonDumper<O>,
-    ) -> DumpVisitor<'l, 'tcx, 'll, O> {
+        dumper: &'ll mut Dumper,
+    ) -> DumpVisitor<'l, 'tcx, 'll> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         DumpVisitor {
             tcx: save_ctxt.tcx,
@@ -111,7 +111,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
     fn nest_scope<F>(&mut self, scope_id: NodeId, f: F)
     where
-        F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, O>),
+        F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll>),
     {
         let parent_scope = self.cur_scope;
         self.cur_scope = scope_id;
@@ -121,7 +121,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
     fn nest_tables<F>(&mut self, item_id: NodeId, f: F)
     where
-        F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, O>),
+        F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll>),
     {
         let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
         if self.tcx.has_typeck_tables(item_def_id) {
@@ -1311,7 +1311,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     }
 }
 
-impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, O> {
+impl<'l, 'tcx, 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll> {
     fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
         // Since we handle explicit modules ourselves in visit_item, this should
         // only get called for the root module of a crate.
