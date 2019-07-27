@@ -22,8 +22,10 @@ matrix:
 
     # Tools:
     - name: "rustfmt"
-      install: rustup component add rustfmt-preview
-      script: cargo fmt --all -- --check
+      script: |
+        if rustup component add rustfmt-preview; then
+            cargo fmt --all -- --check
+        fi
     - name: "clippy"
       script: |
         if rustup component add clippy-preview; then
