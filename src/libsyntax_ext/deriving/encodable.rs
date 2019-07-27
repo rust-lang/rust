@@ -98,23 +98,7 @@ pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt<'_>,
                                        mitem: &MetaItem,
                                        item: &Annotatable,
                                        push: &mut dyn FnMut(Annotatable)) {
-    expand_deriving_encodable_imp(cx, span, mitem, item, push, "rustc_serialize")
-}
-
-pub fn expand_deriving_encodable(cx: &mut ExtCtxt<'_>,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable)) {
-    expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
-}
-
-fn expand_deriving_encodable_imp(cx: &mut ExtCtxt<'_>,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable),
-                                 krate: &'static str) {
+    let krate = "rustc_serialize";
     let typaram = &*deriving::hygienic_type_parameter(item, "__S");
 
     let trait_def = TraitDef {

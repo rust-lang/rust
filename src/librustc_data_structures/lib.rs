@@ -22,9 +22,9 @@
 #![feature(stmt_expr_attributes)]
 #![feature(core_intrinsics)]
 #![feature(integer_atomics)]
+#![feature(test)]
 
 #![cfg_attr(unix, feature(libc))]
-#![cfg_attr(test, feature(test))]
 
 #![deny(rust_2018_idioms)]
 #![cfg_attr(not(bootstrap), allow(rustc::default_hash_types))]
