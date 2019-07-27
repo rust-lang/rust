@@ -1,3 +1,12 @@
+error: this type has already been used as a bound predicate
+  --> $DIR/float_cmp.rs:12:5
+   |
+LL |     T: Copy,
+   |     ^^^^^^^
+   |
+   = note: `-D clippy::type-repetition-in-bounds` implied by `-D warnings`
+   = help: consider combining the bounds: `T: Add<T, Output = T>, Copy`
+
 error: strict comparison of f32 or f64
   --> $DIR/float_cmp.rs:60:5
    |
@@ -35,5 +44,5 @@ note: std::f32::EPSILON and std::f64::EPSILON are available.
 LL |     twice(x) != twice(ONE as f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

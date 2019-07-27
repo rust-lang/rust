@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 308] = [
+pub const ALL_LINTS: [Lint; 309] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1847,6 +1847,13 @@ pub const ALL_LINTS: [Lint; 308] = [
         desc: "usage of very complex types that might be better factored into `type` definitions",
         deprecation: None,
         module: "types",
+    },
+    Lint {
+        name: "type_repetition_in_bounds",
+        group: "complexity",
+        desc: "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`",
+        deprecation: None,
+        module: "trait_bounds",
     },
     Lint {
         name: "unicode_not_nfc",

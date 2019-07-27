@@ -263,9 +263,9 @@ pub mod strings;
 pub mod suspicious_trait_impl;
 pub mod swap;
 pub mod temporary_assignment;
+pub mod trait_bounds;
 pub mod transmute;
 pub mod transmuting_null;
-pub mod trait_bounds;
 pub mod trivially_copy_pass_by_ref;
 pub mod try_err;
 pub mod types;
@@ -860,6 +860,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         swap::ALMOST_SWAPPED,
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
+        trait_bounds::TYPE_REPETITION_IN_BOUNDS,
         transmute::CROSSPOINTER_TRANSMUTE,
         transmute::TRANSMUTE_BYTES_TO_STR,
         transmute::TRANSMUTE_INT_TO_BOOL,
@@ -870,7 +871,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         transmute::USELESS_TRANSMUTE,
         transmute::WRONG_TRANSMUTE,
         transmuting_null::TRANSMUTING_NULL,
-        trait_bounds::TYPE_REPETITION_IN_BOUNDS,
         trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF,
         try_err::TRY_ERR,
         types::ABSURD_EXTREME_COMPARISONS,
@@ -1042,6 +1042,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         reference::REF_IN_DEREF,
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
+        trait_bounds::TYPE_REPETITION_IN_BOUNDS,
         transmute::CROSSPOINTER_TRANSMUTE,
         transmute::TRANSMUTE_BYTES_TO_STR,
         transmute::TRANSMUTE_INT_TO_BOOL,

@@ -639,23 +639,20 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 for ty in ty_list {
                     self.hash_ty(ty);
                 }
-
             },
-            TyKind::Path(qpath) => {
-                match qpath {
-                    QPath::Resolved(ref maybe_ty, ref path) => {
-                        if let Some(ref ty) = maybe_ty {
-                            self.hash_ty(ty);
-                        }
-                        for segment in &path.segments {
-                            segment.ident.name.hash(&mut self.s);
-                        }
-                    }, 
-                    QPath::TypeRelative(ref ty, ref segment) => {
+            TyKind::Path(qpath) => match qpath {
+                QPath::Resolved(ref maybe_ty, ref path) => {
+                    if let Some(ref ty) = maybe_ty {
                         self.hash_ty(ty);
+                    }
+                    for segment in &path.segments {
                         segment.ident.name.hash(&mut self.s);
-                    },
-                }
+                    }
+                },
+                QPath::TypeRelative(ref ty, ref segment) => {
+                    self.hash_ty(ty);
+                    segment.ident.name.hash(&mut self.s);
+                },
             },
             TyKind::Def(_, arg_list) => {
                 for arg in arg_list {
@@ -670,14 +667,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             TyKind::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
-
             },
             TyKind::Typeof(anon_const) => {
                 self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
             },
-            TyKind::CVarArgs(lifetime) => {
-                self.hash_lifetime(lifetime) 
-            },
+            TyKind::CVarArgs(lifetime) => self.hash_lifetime(lifetime),
             TyKind::Err | TyKind::Infer | TyKind::Never => {},
         }
     }
