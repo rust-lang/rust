@@ -900,6 +900,9 @@ pub fn handle_inlay_hints(
                 ra_ide_api::InlayKind::ForExpressionBindingType => {
                     InlayKind::ForExpressionBindingType
                 }
+                ra_ide_api::InlayKind::IfExpressionType => InlayKind::IfExpressionType,
+                ra_ide_api::InlayKind::WhileLetExpressionType => InlayKind::WhileLetExpressionType,
+                ra_ide_api::InlayKind::MatchArmType => InlayKind::MatchArmType,
             },
         })
         .collect())
