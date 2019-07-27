@@ -4,6 +4,9 @@ name = "rustc_lexer"
 version = "0.1.0"
 edition = "2018"
 
+[lib]
+name = "rustc_lexer"
+
 # Note that this crate purposefully does not depend on other rustc crates
 [dependencies]
 unicode-xid = { version = "0.1.0", optional = true }
