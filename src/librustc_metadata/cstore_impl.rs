@@ -31,10 +31,10 @@ use syntax::attr;
 use syntax::source_map;
 use syntax::edition::Edition;
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
+use syntax::ext::proc_macro::BangProcMacro;
 use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
 use syntax::symbol::{Symbol, sym};
-use syntax_ext::proc_macro_impl::BangProcMacro;
 use syntax_pos::{Span, NO_EXPANSION, FileName};
 use rustc_data_structures::bit_set::BitSet;
 

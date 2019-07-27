@@ -1,6 +1,6 @@
 use crate::ast::{self, Attribute, Name, PatKind};
 use crate::attr::{HasAttrs, Stability, Deprecation};
-use crate::source_map::{SourceMap, Spanned, FileName, respan};
+use crate::source_map::{SourceMap, Spanned, respan};
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
 use crate::ext::hygiene::{ExpnId, SyntaxContext, Transparency};
@@ -14,7 +14,7 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
 use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;

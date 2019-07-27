@@ -18,11 +18,16 @@
 #![feature(label_break_value)]
 #![feature(mem_take)]
 #![feature(nll)]
+#![feature(proc_macro_diagnostic)]
+#![feature(proc_macro_internals)]
+#![feature(proc_macro_span)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
+
+extern crate proc_macro;
 
 pub use errors;
 use rustc_data_structures::sync::Lock;
@@ -37,6 +42,7 @@ const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
 // errors; eventually we plan to convert all code using panictry to just use
 // normal try.
+#[macro_export]
 macro_rules! panictry {
     ($e:expr) => ({
         use std::result::Result::{Ok, Err};
@@ -147,10 +153,8 @@ pub mod mut_visit;
 pub mod parse;
 pub mod ptr;
 pub mod show_span;
-pub mod std_inject;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
-pub mod test;
 pub mod tokenstream;
 pub mod visit;
 
@@ -161,14 +165,15 @@ pub mod print {
 }
 
 pub mod ext {
+    mod placeholders;
+    mod proc_macro_server;
+
     pub use syntax_pos::hygiene;
     pub mod allocator;
     pub mod base;
     pub mod build;
-    pub mod derive;
     pub mod expand;
-    pub mod placeholders;
-    pub mod source_util;
+    pub mod proc_macro;
 
     pub mod tt {
         pub mod transcribe;
