@@ -1406,24 +1406,21 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             Abi::Scalar(s) => s.clone(),
             _ => bug!(),
         };
-        // FIXME(eddyb) wrap each promoted type in `MaybeUninit` so that they
-        // don't poison the `largest_niche` or `abi` fields of `prefix`.
         let promoted_layouts = ineligible_locals.iter()
             .map(|local| subst_field(info.field_tys[local]))
+            .map(|ty| tcx.mk_maybe_uninit(ty))
             .map(|ty| self.layout_of(ty));
         let prefix_layouts = substs.prefix_tys(def_id, tcx)
             .map(|ty| self.layout_of(ty))
             .chain(iter::once(Ok(discr_layout)))
             .chain(promoted_layouts)
             .collect::<Result<Vec<_>, _>>()?;
-        let mut prefix = self.univariant_uninterned(
+        let prefix = self.univariant_uninterned(
             ty,
             &prefix_layouts,
             &ReprOptions::default(),
             StructKind::AlwaysSized,
         )?;
-        // FIXME(eddyb) need `MaybeUninit` around promoted types (see above).
-        prefix.largest_niche = None;
 
         let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 

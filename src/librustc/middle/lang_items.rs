@@ -365,6 +365,8 @@ language_item_table! {
 
     ManuallyDropItem,            "manually_drop",      manually_drop,           Target::Struct;
 
+    MaybeUninitLangItem,         "maybe_uninit",       maybe_uninit,            Target::Union;
+
     DebugTraitLangItem,          "debug_trait",        debug_trait,             Target::Trait;
 
     // Align offset for stride != 1, must not panic.
