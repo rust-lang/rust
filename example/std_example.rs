@@ -3,6 +3,7 @@
 use std::io::Write;
 use std::intrinsics;
 
+
 fn main() {
     let _ = ::std::iter::repeat('a' as u8).take(10).collect::<Vec<_>>();
     let stderr = ::std::io::stderr();
@@ -43,6 +44,21 @@ fn main() {
     assert_eq!(0xFEDCBA987654321123456789ABCDEFu128 >> 64, 0xFEDCBA98765432u128);
     assert_eq!(0xFEDCBA987654321123456789ABCDEFu128 as i128 >> 64, 0xFEDCBA98765432i128);
     assert_eq!(353985398u128 * 932490u128, 330087843781020u128);
+
+    unsafe {
+        test_simd();
+    }
+}
+
+#[target_feature(enable = "sse2")]
+unsafe fn test_simd() {
+    use std::arch::x86_64::*;
+
+    let x = _mm_setzero_si128();
+    let y = _mm_set1_epi16(7);
+    let or = _mm_or_si128(x, y);
+
+    assert_eq!(std::mem::transmute::<_, [u16; 8]>(or), [7, 7, 7, 7, 7, 7, 7, 7]);
 }
 
 #[derive(PartialEq)]
