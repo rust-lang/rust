@@ -1267,7 +1267,8 @@ pub(crate) mod builtin {
     pub macro test($item:item) { /* compiler built-in */ }
 
     /// Attribute macro applied to a function to turn it into a benchmark test.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "test", issue = "50297",
+               reason = "`bench` is a part of custom test frameworks which are unstable")]
     #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
     #[rustc_macro_transparency = "semitransparent"]
@@ -1309,36 +1310,12 @@ pub(crate) mod builtin {
     #[allow_internal_unstable(core_intrinsics)]
     pub macro Debug($item:item) { /* compiler built-in */ }
 
-    /// Unstable implementation detail of the `rustc` compiler, do not use.
-    #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
-        since = "1.0.0",
-        reason = "derive(Decodable) is deprecated in favor of derive(RustcDecodable)",
-        suggestion = "RustcDecodable",
-    )]
-    #[allow_internal_unstable(core_intrinsics, libstd_sys_internals)]
-    pub macro Decodable($item:item) { /* compiler built-in */ }
-
     /// Derive macro generating an impl of the trait `Default`.
     #[rustc_builtin_macro]
     #[rustc_macro_transparency = "semitransparent"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(core_intrinsics)]
     pub macro Default($item:item) { /* compiler built-in */ }
-
-    /// Unstable implementation detail of the `rustc` compiler, do not use.
-    #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
-        since = "1.0.0",
-        reason = "derive(Encodable) is deprecated in favor of derive(RustcEncodable)",
-        suggestion = "RustcEncodable",
-    )]
-    #[allow_internal_unstable(core_intrinsics)]
-    pub macro Encodable($item:item) { /* compiler built-in */ }
 
     /// Derive macro generating an impl of the trait `Eq`.
     #[rustc_builtin_macro]

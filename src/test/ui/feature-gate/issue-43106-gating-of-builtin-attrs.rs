@@ -32,6 +32,7 @@
 
 // check-pass
 
+#![feature(test)]
 #![warn(unused_attributes, unknown_lints)]
 
 // UNGATED WHITE-LISTED BUILT-IN ATTRIBUTES
