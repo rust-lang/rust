@@ -24,6 +24,8 @@ use crate::clean::{
 
 use super::Clean;
 
+type Attrs<'hir> = rustc::ty::Attributes<'hir>;
+
 /// Attempt to inline a definition into this AST.
 ///
 /// This function will fetch the definition specified, and if it is
@@ -40,6 +42,7 @@ pub fn try_inline(
     cx: &DocContext<'_>,
     res: Res,
     name: ast::Name,
+    attrs: Option<Attrs<'_>>,
     visited: &mut FxHashSet<DefId>
 ) -> Option<Vec<clean::Item>> {
     let did = if let Some(did) = res.opt_def_id() {
@@ -49,10 +52,13 @@ pub fn try_inline(
     };
     if did.is_local() { return None }
     let mut ret = Vec::new();
+
+    let attrs_clone = attrs.clone();
+
     let inner = match res {
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Trait);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, attrs));
             clean::TraitItem(build_external_trait(cx, did))
         }
         Res::Def(DefKind::Fn, did) => {
@@ -61,27 +67,27 @@ pub fn try_inline(
         }
         Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Struct);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, attrs));
             clean::StructItem(build_struct(cx, did))
         }
         Res::Def(DefKind::Union, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Union);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, attrs));
             clean::UnionItem(build_union(cx, did))
         }
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Typedef);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, attrs));
             clean::TypedefItem(build_type_alias(cx, did), false)
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Enum);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, attrs));
             clean::EnumItem(build_enum(cx, did))
         }
         Res::Def(DefKind::ForeignTy, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Foreign);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, attrs));
             clean::ForeignTypeItem
         }
         // Never inline enum variants but leave them shown as re-exports.
@@ -113,11 +119,15 @@ pub fn try_inline(
         }
         _ => return None,
     };
+
+    let target_attrs = load_attrs(cx, did);
+    let attrs = merge_attrs(cx, target_attrs,  attrs_clone);
+
     cx.renderinfo.borrow_mut().inlined.insert(did);
     ret.push(clean::Item {
         source: cx.tcx.def_span(did).clean(cx),
         name: Some(name.clean(cx)),
-        attrs: load_attrs(cx, did),
+        attrs,
         inner,
         visibility: Some(clean::Public),
         stability: cx.tcx.lookup_stability(did).clean(cx),
@@ -144,8 +154,8 @@ pub fn try_inline_glob(cx: &DocContext<'_>, res: Res, visited: &mut FxHashSet<De
     }
 }
 
-pub fn load_attrs(cx: &DocContext<'_>, did: DefId) -> clean::Attributes {
-    cx.tcx.get_attrs(did).clean(cx)
+pub fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
+    cx.tcx.get_attrs(did)
 }
 
 /// Record an external fully qualified name in the external_paths cache.
@@ -187,7 +197,7 @@ pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
     let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
-    let is_spotlight = load_attrs(cx, did).has_doc_flag(sym::spotlight);
+    let is_spotlight = load_attrs(cx, did).clean(cx).has_doc_flag(sym::spotlight);
     let is_auto = cx.tcx.trait_is_auto(did);
     clean::Trait {
         auto: auto_trait,
@@ -274,23 +284,41 @@ fn build_type_alias(cx: &DocContext<'_>, did: DefId) -> clean::Typedef {
     }
 }
 
-pub fn build_impls(cx: &DocContext<'_>, did: DefId) -> Vec<clean::Item> {
+pub fn build_impls(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>) -> Vec<clean::Item> {
     let tcx = cx.tcx;
     let mut impls = Vec::new();
 
     for &did in tcx.inherent_impls(did).iter() {
-        build_impl(cx, did, &mut impls);
+        build_impl(cx, did, attrs.clone(), &mut impls);
     }
 
     impls
 }
 
-pub fn build_impl(cx: &DocContext<'_>, did: DefId, ret: &mut Vec<clean::Item>) {
+fn merge_attrs(cx: &DocContext<'_>, attrs: Attrs<'_>, other_attrs: Option<Attrs<'_>>
+) -> clean::Attributes {
+    let mut merged_attrs: Vec<ast::Attribute> = Vec::with_capacity(attrs.len());
+    // If we have additional attributes (from a re-export),
+    // always insert them first. This ensure that re-export
+    // doc comments show up before the original doc comments
+    // when we render them.
+    if let Some(a) = other_attrs {
+        merged_attrs.extend(a.iter().cloned());
+    }
+    merged_attrs.extend(attrs.to_vec());
+    merged_attrs.clean(cx)
+}
+
+pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
+                  ret: &mut Vec<clean::Item>
+) {
     if !cx.renderinfo.borrow_mut().inlined.insert(did) {
         return
     }
 
-    let attrs = load_attrs(cx, did);
+    let attrs = merge_attrs(cx, load_attrs(cx, did), attrs);
+
+
     let tcx = cx.tcx;
     let associated_trait = tcx.impl_trait_ref(did);
 
@@ -416,7 +444,7 @@ fn build_module(
             let def_id = item.res.def_id();
             if item.vis == ty::Visibility::Public {
                 if did == def_id || !visited.insert(def_id) { continue }
-                if let Some(i) = try_inline(cx, item.res, item.ident.name, visited) {
+                if let Some(i) = try_inline(cx, item.res, item.ident.name, None, visited) {
                     items.extend(i)
                 }
             }
