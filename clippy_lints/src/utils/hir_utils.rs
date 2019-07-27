@@ -513,18 +513,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             ExprKind::Tup(ref tup) => {
-                let c: fn(_) -> _ = ExprKind::Tup;
-                c.hash(&mut self.s);
                 self.hash_exprs(tup);
             },
             ExprKind::Array(ref v) => {
-                let c: fn(_) -> _ = ExprKind::Array;
-                c.hash(&mut self.s);
                 self.hash_exprs(v);
             },
             ExprKind::Type(ref e, ref ty) => {
-                let c: fn(_, _) -> _ = ExprKind::Type;
-                c.hash(&mut self.s);
                 self.hash_expr(e);
                 self.hash_ty(ty);
             },

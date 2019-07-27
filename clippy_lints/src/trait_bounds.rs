@@ -32,10 +32,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
                 if let Some(ref v) = map.insert(h, p.bounds.iter().collect::<Vec<_>>()) {
                     let mut hint_string = format!("consider combining the bounds: `{:?}: ", p.bounded_ty);
                     for b in v.iter() {
-                        hint_string.push_str(&format!("{:?}, ", b));
+                        if let GenericBound::Trait(ref poly_trait_ref, _) = b {
+                            let path = &poly_trait_ref.trait_ref.path;
+                            hint_string.push_str(&format!("{}, ", path));
+                        }
                     }
                     for b in p.bounds.iter() {
-                        hint_string.push_str(&format!("{:?}, ", b));
+                        if let GenericBound::Trait(ref poly_trait_ref, _) = b {
+                            let path = &poly_trait_ref.trait_ref.path;
+                            hint_string.push_str(&format!("{}, ", path));
+                        }
                     }
                     hint_string.truncate(hint_string.len() - 2);
                     hint_string.push('`');
