@@ -8,6 +8,8 @@ edition = "2018"
 [dependencies]
 unicode-xid = { version = "0.1.0", optional = true }
 
+# Note: do not remove this blank `[lib]` section.
+# This will be used when publishing this crate as `rustc-ap-rustc_lexer`.
 [lib]
 doctest = false
 name = "rustc_lexer"
