@@ -584,6 +584,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
         if let LifetimeName::Param(ref name) = lifetime.name {
+            std::mem::discriminant(&name).hash(&mut self.s);
             match name {
                 ParamName::Plain(ref ident) => {
                     ident.name.hash(&mut self.s);
@@ -591,7 +592,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 ParamName::Fresh(ref size) => {
                     size.hash(&mut self.s);
                 },
-                _ => {},
+                ParamName::Error => {},
             }
         }
     }
