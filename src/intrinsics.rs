@@ -59,6 +59,35 @@ macro_rules! intrinsic_match {
     };
 }
 
+macro_rules! call_intrinsic_match {
+    ($fx:expr, $intrinsic:expr, $substs:expr, $ret:expr, $destination:expr, $args:expr, $(
+        $name:ident($($arg:ident),*) -> $ty:ident => $func:ident,
+    )*) => {
+        match $intrinsic {
+            $(
+                stringify!($name) => {
+                    assert!($substs.is_noop());
+                    if let [$($arg),*] = *$args {
+                        let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.tcx.types.$ty);
+                        $ret.write_cvalue($fx, res);
+
+                        if let Some((_, dest)) = $destination {
+                            let ret_ebb = $fx.get_ebb(dest);
+                            $fx.bcx.ins().jump(ret_ebb, &[]);
+                            return;
+                        } else {
+                            unreachable!();
+                        }
+                    } else {
+                        bug!("wrong number of args for intrinsic {:?}", $intrinsic);
+                    }
+                }
+            )*
+            _ => {}
+        }
+    }
+}
+
 macro_rules! atomic_binop_return_old {
     ($fx:expr, $op:ident<$T:ident>($ptr:ident, $src:ident) -> $ret:ident) => {
         let clif_ty = $fx.clif_type($T).unwrap();
@@ -116,6 +145,48 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
 
     let u64_layout = fx.layout_of(fx.tcx.types.u64);
     let usize_layout = fx.layout_of(fx.tcx.types.usize);
+
+    call_intrinsic_match! {
+        fx, intrinsic, substs, ret, destination, args,
+        expf32(flt) -> f32 => expf,
+        expf64(flt) -> f64 => exp,
+        exp2f32(flt) -> f32 => exp2f,
+        exp2f64(flt) -> f64 => exp2,
+        sqrtf32(flt) -> f32 => sqrtf,
+        sqrtf64(flt) -> f64 => sqrt,
+        powif32(a, x) -> f32 => __powisf2, // compiler-builtins
+        powif64(a, x) -> f64 => __powidf2, // compiler-builtins
+        logf32(flt) -> f32 => logf,
+        logf64(flt) -> f64 => log,
+        fabsf32(flt) -> f32 => fabsf,
+        fabsf64(flt) -> f64 => fabs,
+        fmaf32(x, y, z) -> f32 => fmaf,
+        fmaf64(x, y, z) -> f64 => fma,
+
+        // rounding variants
+        floorf32(flt) -> f32 => floorf,
+        floorf64(flt) -> f64 => floor,
+        ceilf32(flt) -> f32 => ceilf,
+        ceilf64(flt) -> f64 => ceil,
+        truncf32(flt) -> f32 => truncf,
+        truncf64(flt) -> f64 => trunc,
+        roundf32(flt) -> f32 => roundf,
+        roundf64(flt) -> f64 => round,
+
+        // trigonometry
+        sinf32(flt) -> f32 => sinf,
+        sinf64(flt) -> f64 => sin,
+        cosf32(flt) -> f32 => cosf,
+        cosf64(flt) -> f64 => cos,
+        tanf32(flt) -> f32 => tanf,
+        tanf64(flt) -> f64 => tan,
+
+        // minmax
+        minnumf32(a, b) -> f32 => fminf,
+        minnumf64(a, b) -> f64 => fmin,
+        maxnumf32(a, b) -> f32 => fmaxf,
+        maxnumf64(a, b) -> f64 => fmax,
+    }
 
     intrinsic_match! {
         fx, intrinsic, substs, args,
@@ -604,73 +675,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         _ if intrinsic.starts_with("atomic_umin"), <T> (v ptr, v src) {
             atomic_minmax!(fx, IntCC::UnsignedLessThan, <T> (ptr, src) -> ret);
         };
-
-        expf32, (c flt) {
-            let res = fx.easy_call("expf", &[flt], fx.tcx.types.f32);
-            ret.write_cvalue(fx, res);
-        };
-        expf64, (c flt) {
-            let res = fx.easy_call("exp", &[flt], fx.tcx.types.f64);
-            ret.write_cvalue(fx, res);
-        };
-        exp2f32, (c flt) {
-            let res = fx.easy_call("exp2f", &[flt], fx.tcx.types.f32);
-            ret.write_cvalue(fx, res);
-        };
-        exp2f64, (c flt) {
-            let res = fx.easy_call("exp2", &[flt], fx.tcx.types.f64);
-            ret.write_cvalue(fx, res);
-        };
-        fabsf32, (c flt) {
-            let res = fx.easy_call("fabsf", &[flt], fx.tcx.types.f32);
-            ret.write_cvalue(fx, res);
-        };
-        fabsf64, (c flt) {
-            let res = fx.easy_call("fabs", &[flt], fx.tcx.types.f64);
-            ret.write_cvalue(fx, res);
-        };
-        sqrtf32, (c flt) {
-            let res = fx.easy_call("sqrtf", &[flt], fx.tcx.types.f32);
-            ret.write_cvalue(fx, res);
-        };
-        sqrtf64, (c flt) {
-            let res = fx.easy_call("sqrt", &[flt], fx.tcx.types.f64);
-            ret.write_cvalue(fx, res);
-        };
-        floorf32, (c flt) {
-            let res = fx.easy_call("floorf", &[flt], fx.tcx.types.f32);
-            ret.write_cvalue(fx, res);
-        };
-        floorf64, (c flt) {
-            let res = fx.easy_call("floor", &[flt], fx.tcx.types.f64);
-            ret.write_cvalue(fx, res);
-        };
-        ceilf32, (c flt) {
-            let res = fx.easy_call("ceilf", &[flt], fx.tcx.types.f32);
-            ret.write_cvalue(fx, res);
-        };
-        ceilf64, (c flt) {
-            let res = fx.easy_call("ceil", &[flt], fx.tcx.types.f64);
-            ret.write_cvalue(fx, res);
-        };
-
-        minnumf32, (c a, c b) {
-            let res = fx.easy_call("fminf", &[a, b], fx.tcx.types.f32);
-            ret.write_cvalue(fx, res);
-        };
-        minnumf64, (c a, c b) {
-            let res = fx.easy_call("fmin", &[a, b], fx.tcx.types.f64);
-            ret.write_cvalue(fx, res);
-        };
-        maxnumf32, (c a, c b) {
-            let res = fx.easy_call("fmaxf", &[a, b], fx.tcx.types.f32);
-            ret.write_cvalue(fx, res);
-        };
-        maxnumf64, (c a, c b) {
-            let res = fx.easy_call("fmax", &[a, b], fx.tcx.types.f64);
-            ret.write_cvalue(fx, res);
-        };
-
     }
 
     if let Some((_, dest)) = destination {
