@@ -1,3 +1,5 @@
+// ignore-emscripten
+
 #![feature(asm)]
 
 fn main() {
