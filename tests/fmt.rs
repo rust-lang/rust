@@ -1,4 +1,5 @@
 #[test]
+#[ignore]
 fn fmt() {
     if option_env!("RUSTC_TEST_SUITE").is_some() {
         return;

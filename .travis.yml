@@ -22,7 +22,7 @@ env:
 install:
   - |
     if [ -z ${INTEGRATION} ]; then
-      rustup component add rustfmt || cargo install --git https://github.com/rust-lang/rustfmt/ --force
+      # rustup component add rustfmt || cargo install --git https://github.com/rust-lang/rustfmt/ --force
       if [ "$TRAVIS_OS_NAME" == "linux" ]; then
         . $HOME/.nvm/nvm.sh
         nvm install stable
