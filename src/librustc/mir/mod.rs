@@ -1927,11 +1927,11 @@ impl<'tcx> Place<'tcx> {
         place_projection: &Option<Box<Projection<'tcx>>>,
         op: impl FnOnce(&'a PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
-        fn iterate_over2<'tcx, R>(
-            place_base: &PlaceBase<'tcx>,
+        fn iterate_over2<'a, 'tcx, R: 'a>(
+            place_base: &'a PlaceBase<'tcx>,
             place_projection: &Option<Box<Projection<'tcx>>>,
             next: &Projections<'_, 'tcx>,
-            op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
+            op: impl FnOnce(&'a PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
         ) -> R {
             match place_projection {
                 None => {
@@ -2240,6 +2240,13 @@ impl<'tcx> Operand<'tcx> {
         match *self {
             Operand::Copy(_) | Operand::Constant(_) => self.clone(),
             Operand::Move(ref place) => Operand::Copy(place.clone()),
+        }
+    }
+
+    pub fn place(&self) -> Option<&Place<'tcx>> {
+        match self {
+            Operand::Copy(place) | Operand::Move(place) => Some(place),
+            Operand::Constant(_) => None,
         }
     }
 }

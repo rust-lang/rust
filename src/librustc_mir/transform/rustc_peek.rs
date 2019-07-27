@@ -155,7 +155,7 @@ fn value_assigned_to_local<'a, 'tcx>(
     local: Local,
 ) -> Option<&'a mir::Rvalue<'tcx>> {
     if let mir::StatementKind::Assign(place, rvalue) = &stmt.kind {
-        if let mir::Place::Base(mir::PlaceBase::Local(l)) = place {
+        if let mir::Place { base: mir::PlaceBase::Local(l), projection: None } = place {
             if local == *l {
                 return Some(&*rvalue);
             }
@@ -206,23 +206,22 @@ impl PeekCall {
 
                 assert_eq!(args.len(), 1);
                 let kind = PeekCallKind::from_arg_ty(substs.type_at(0));
-                let arg = match args[0] {
-                    | mir::Operand::Copy(mir::Place::Base(mir::PlaceBase::Local(local)))
-                    | mir::Operand::Move(mir::Place::Base(mir::PlaceBase::Local(local)))
-                    => local,
-
-                    _ => {
-                        tcx.sess.diagnostic().span_err(
-                            span, "dataflow::sanity_check cannot feed a non-temp to rustc_peek.");
-                        return None;
+                if let mir::Operand::Copy(place) | mir::Operand::Move(place) = &args[0] {
+                    if let mir::Place {
+                        base: mir::PlaceBase::Local(local),
+                        projection: None
+                    } = *place {
+                        return Some(PeekCall {
+                            arg: local,
+                            kind,
+                            span,
+                        });
                     }
-                };
+                }
 
-                return Some(PeekCall {
-                    arg,
-                    kind,
-                    span,
-                });
+                tcx.sess.diagnostic().span_err(
+                    span, "dataflow::sanity_check cannot feed a non-temp to rustc_peek.");
+                return None;
             }
         }
 
@@ -255,7 +254,7 @@ impl<'tcx, O> RustcPeekAt<'tcx> for DataflowResults<'tcx, O>
         let operator = self.operator();
         let flow_state = dataflow::state_for_location(location, operator, self, body);
 
-        match operator.move_data().rev_lookup.find(place) {
+        match operator.move_data().rev_lookup.find(place.as_ref()) {
             LookupResult::Exact(peek_mpi) => {
                 let bit_state = flow_state.contains(peek_mpi);
                 debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
