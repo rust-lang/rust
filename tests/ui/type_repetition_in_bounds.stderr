@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #[deny(clippy::type_repetition_in_bounds)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: consider combining the bounds: `T: Copy + Clone`
+   = help: consider combining the bounds: `T: Copy, Clone`
 
 error: aborting due to previous error
 
