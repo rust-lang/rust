@@ -3,7 +3,7 @@
 
 // run-pass
 
-#![feature(nll, bind_by_move_pattern_guards)]
+#![feature(bind_by_move_pattern_guards)]
 
 // Test that z always point to the same temporary.
 fn referent_stability() {
