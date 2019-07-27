@@ -1,0 +1,72 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-self.rs:21:9
+   |
+LL |     fn ref_self(&self, f: &u32) -> &u32 {
+   |                           ----     ----
+   |                           |
+   |                           this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-self.rs:27:9
+   |
+LL |     fn ref_Self(self: &Self, f: &u32) -> &u32 {
+   |                                 ----     ----
+   |                                 |
+   |                                 this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-self.rs:31:9
+   |
+LL |     fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
+   |                                          ----     ----
+   |                                          |
+   |                                          this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-self.rs:35:9
+   |
+LL |     fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
+   |                                          ----     ----
+   |                                          |
+   |                                          this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-self.rs:39:9
+   |
+LL |     fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
+   |                                                   ----     ----
+   |                                                   |
+   |                                                   this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-self.rs:43:9
+   |
+LL |     fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
+   |                                                   ----     ----
+   |                                                   |
+   |                                                   this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-self.rs:47:9
+   |
+LL |     fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
+   |                                                       ---     ---
+   |                                                       |
+   |                                                       this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error: aborting due to 7 previous errors
+
