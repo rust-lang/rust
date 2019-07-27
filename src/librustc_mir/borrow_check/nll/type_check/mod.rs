@@ -1281,15 +1281,43 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let opaque_defn_ty = tcx.type_of(opaque_def_id);
                         let opaque_defn_ty = opaque_defn_ty.subst(tcx, opaque_decl.substs);
                         let opaque_defn_ty = renumber::renumber_regions(infcx, &opaque_defn_ty);
+                        let concrete_is_opaque = infcx
+                            .resolve_vars_if_possible(&opaque_decl.concrete_ty).is_impl_trait();
+
                         debug!(
-                            "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
+                            "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?} \
+                            concrete_is_opaque={}",
                             opaque_decl.concrete_ty,
                             infcx.resolve_vars_if_possible(&opaque_decl.concrete_ty),
-                            opaque_defn_ty
+                            opaque_defn_ty,
+                            concrete_is_opaque
                         );
-                        obligations.add(infcx
-                            .at(&ObligationCause::dummy(), param_env)
-                            .eq(opaque_decl.concrete_ty, opaque_defn_ty)?);
+
+                        // concrete_is_opaque is `true` when we're using an existential
+                        // type without 'revealing' it. For example, code like this:
+                        //
+                        // existential type Foo: Debug;
+                        // fn foo1() -> Foo { ... }
+                        // fn foo2() -> Foo { foo1() }
+                        //
+                        // In `foo2`, we're not revealing the type of `Foo` - we're
+                        // just treating it as the opaque type.
+                        //
+                        // When this occurs, we do *not* want to try to equate
+                        // the concrete type with the underlying defining type
+                        // of the existential type - this will always fail, since
+                        // the defining type of an existential type is always
+                        // some other type (e.g. not itself)
+                        // Essentially, none of the normal obligations apply here -
+                        // we're just passing around some unknown opaque type,
+                        // without actually looking at the underlying type it
+                        // gets 'revealed' into
+
+                        if !concrete_is_opaque {
+                            obligations.add(infcx
+                                .at(&ObligationCause::dummy(), param_env)
+                                .eq(opaque_decl.concrete_ty, opaque_defn_ty)?);
+                        }
                     }
 
                     debug!("eq_opaque_type_and_type: equated");

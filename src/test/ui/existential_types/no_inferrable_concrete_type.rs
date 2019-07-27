@@ -1,9 +1,9 @@
-// Issue 52985: Cause cycle error if user code provides no use case that allows an existential type
-// to be inferred to a concrete type. This results in an infinite cycle during type normalization.
+// Issue 52985: user code provides no use case that allows an existential type
+// We now emit a 'could not find defining uses' error
 
 #![feature(existential_type)]
 
-existential type Foo: Copy; //~ cycle detected
+existential type Foo: Copy; //~ could not find defining uses
 
 // make compiler happy about using 'Foo'
 fn bar(x: Foo) -> Foo { x }
