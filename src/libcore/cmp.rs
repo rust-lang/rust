@@ -200,6 +200,14 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
     fn ne(&self, other: &Rhs) -> bool { !self.eq(other) }
 }
 
+/// Derive macro generating an impl of the trait `PartialEq`.
+#[cfg(not(bootstrap))]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semitransparent"]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow_internal_unstable(core_intrinsics)]
+pub macro PartialEq($item:item) { /* compiler built-in */ }
+
 /// Trait for equality comparisons which are [equivalence relations](
 /// https://en.wikipedia.org/wiki/Equivalence_relation).
 ///
@@ -255,6 +263,14 @@ pub trait Eq: PartialEq<Self> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
 }
+
+/// Derive macro generating an impl of the trait `Eq`.
+#[cfg(not(bootstrap))]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semitransparent"]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow_internal_unstable(core_intrinsics, derive_eq)]
+pub macro Eq($item:item) { /* compiler built-in */ }
 
 // FIXME: this struct is used solely by #[derive] to
 // assert that every component of a type implements Eq.
@@ -600,6 +616,14 @@ pub trait Ord: Eq + PartialOrd<Self> {
     }
 }
 
+/// Derive macro generating an impl of the trait `Ord`.
+#[cfg(not(bootstrap))]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semitransparent"]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow_internal_unstable(core_intrinsics)]
+pub macro Ord($item:item) { /* compiler built-in */ }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for Ordering {}
 
@@ -841,6 +865,14 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
         }
     }
 }
+
+/// Derive macro generating an impl of the trait `PartialOrd`.
+#[cfg(not(bootstrap))]
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semitransparent"]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow_internal_unstable(core_intrinsics)]
+pub macro PartialOrd($item:item) { /* compiler built-in */ }
 
 /// Compares and returns the minimum of two values.
 ///
