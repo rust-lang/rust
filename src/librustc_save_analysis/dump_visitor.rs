@@ -76,7 +76,7 @@ macro_rules! access_from_vis {
 }
 
 pub struct DumpVisitor<'l, 'tcx> {
-    save_ctxt: SaveContext<'l, 'tcx>,
+    pub save_ctxt: SaveContext<'l, 'tcx>,
     tcx: TyCtxt<'tcx>,
     dumper: Dumper,
 
@@ -106,8 +106,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
     }
 
-    pub fn into_analysis(self) -> rls_data::Analysis {
-        self.dumper.into_analysis()
+    pub fn analysis(&self) -> &rls_data::Analysis {
+        self.dumper.analysis()
     }
 
     fn nest_tables<F>(&mut self, item_id: NodeId, f: F)

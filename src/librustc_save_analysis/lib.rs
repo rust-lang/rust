@@ -43,7 +43,7 @@ use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
 use rls_data::{Def, DefKind, ExternalCrateData, GlobalCrateId, MacroRef, Ref, RefKind, Relation,
-               RelationKind, SpanData, Impl, ImplKind};
+               RelationKind, SpanData, Impl, ImplKind, Analysis};
 use rls_data::config::Config;
 
 use log::{debug, error, info};
@@ -1000,12 +1000,10 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
 
 /// Defines what to do with the results of saving the analysis.
 pub trait SaveHandler {
-    fn save<'l, 'tcx>(
+    fn save(
         &mut self,
-        save_ctxt: SaveContext<'l, 'tcx>,
-        krate: &ast::Crate,
-        cratename: &str,
-        input: &'l Input,
+        save_ctxt: &SaveContext<'_, '_>,
+        analysis: &Analysis,
     );
 }
 
@@ -1065,23 +1063,15 @@ impl<'a> DumpHandler<'a> {
     }
 }
 
-impl<'a> SaveHandler for DumpHandler<'a> {
-    fn save<'l, 'tcx>(
+impl SaveHandler for DumpHandler<'_> {
+    fn save(
         &mut self,
-        save_ctxt: SaveContext<'l, 'tcx>,
-        krate: &ast::Crate,
-        cratename: &str,
-        input: &'l Input,
+        save_ctxt: &SaveContext<'_, '_>,
+        analysis: &Analysis,
     ) {
         let sess = &save_ctxt.tcx.sess;
         let (output, file_name) = self.output_file(&save_ctxt);
-        let mut visitor = DumpVisitor::new(save_ctxt);
-
-        visitor.dump_crate_info(cratename, krate);
-        visitor.dump_compilation_options(input, cratename);
-        visit::walk_crate(&mut visitor, krate);
-
-        if let Err(e) = serde_json::to_writer(output, &visitor.into_analysis()) {
+        if let Err(e) = serde_json::to_writer(output, &analysis) {
             error!("Can't serialize save-analysis: {:?}", e);
         }
 
@@ -1097,21 +1087,13 @@ pub struct CallbackHandler<'b> {
     pub callback: &'b mut dyn FnMut(&rls_data::Analysis),
 }
 
-impl<'b> SaveHandler for CallbackHandler<'b> {
-    fn save<'l, 'tcx>(
+impl SaveHandler for CallbackHandler<'_> {
+    fn save(
         &mut self,
-        save_ctxt: SaveContext<'l, 'tcx>,
-        krate: &ast::Crate,
-        cratename: &str,
-        input: &'l Input,
+        _: &SaveContext<'_, '_>,
+        analysis: &Analysis,
     ) {
-        let mut visitor = DumpVisitor::new(save_ctxt);
-
-        visitor.dump_crate_info(cratename, krate);
-        visitor.dump_compilation_options(input, cratename);
-        visit::walk_crate(&mut visitor, krate);
-
-        (self.callback)(&visitor.into_analysis())
+        (self.callback)(analysis)
     }
 }
 
@@ -1142,7 +1124,13 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             impl_counter: Cell::new(0),
         };
 
-        handler.save(save_ctxt, krate, cratename, input)
+        let mut visitor = DumpVisitor::new(save_ctxt);
+
+        visitor.dump_crate_info(cratename, krate);
+        visitor.dump_compilation_options(input, cratename);
+        visit::walk_crate(&mut visitor, krate);
+
+        handler.save(&visitor.save_ctxt, &visitor.analysis())
     })
 }
 

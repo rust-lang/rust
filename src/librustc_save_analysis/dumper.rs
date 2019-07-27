@@ -22,8 +22,8 @@ impl Dumper {
         }
     }
 
-    pub fn into_analysis(self) -> Analysis {
-        self.result
+    pub fn analysis(&self) -> &Analysis {
+        &self.result
     }
 }
 
