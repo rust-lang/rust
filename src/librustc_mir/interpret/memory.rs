@@ -535,41 +535,48 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
-        // Regular allocations.
-        if let Ok(alloc) = self.get(id) {
-            return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
-        }
-        // Function pointers.
-        if let Ok(_) = self.get_fn_alloc(id) {
-            return if let AllocCheck::Dereferencable = liveness {
-                // The caller requested no function pointers.
-                err!(DerefFunctionPointer)
-            } else {
-                Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
-            };
-        }
-        // Foreign statics.
-        // Can't do this in the match argument, we may get cycle errors since the lock would
-        // be held throughout the match.
-        let alloc = self.tcx.alloc_map.lock().get(id);
-        match alloc {
-            Some(GlobalAlloc::Static(did)) => {
-                assert!(self.tcx.is_foreign_item(did));
-                // Use size and align of the type
-                let ty = self.tcx.type_of(did);
-                let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                return Ok((layout.size, layout.align.abi));
+        // Don't use `self.get` here as that will
+        // a) cause cycles in case `id` refers to a static
+        // b) duplicate a static's allocation in miri
+        match self.alloc_map.get_or(id, || Err(())) {
+            Ok((_, alloc)) => Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align)),
+            Err(()) => {
+                // Not a local allocation, check the global `tcx.alloc_map`.
+
+                // Can't do this in the match argument, we may get cycle errors since the lock would
+                // be held throughout the match.
+                let alloc = self.tcx.alloc_map.lock().get(id);
+                match alloc {
+                    Some(GlobalAlloc::Static(did)) => {
+                        // Use size and align of the type.
+                        let ty = self.tcx.type_of(did);
+                        let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                        Ok((layout.size, layout.align.abi))
+                    },
+                    Some(GlobalAlloc::Memory(alloc)) =>
+                        // Need to duplicate the logic here, because the global allocations have
+                        // different associated types than the interpreter-local ones.
+                        Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align)),
+                    Some(GlobalAlloc::Function(_)) => {
+                        if let AllocCheck::Dereferencable = liveness {
+                            // The caller requested no function pointers.
+                            err!(DerefFunctionPointer)
+                        } else {
+                            Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
+                        }
+                    },
+                    // The rest must be dead.
+                    None => if let AllocCheck::MaybeDead = liveness {
+                        // Deallocated pointers are allowed, we should be able to find
+                        // them in the map.
+                        Ok(*self.dead_alloc_map.get(&id)
+                            .expect("deallocated pointers should all be recorded in \
+                                    `dead_alloc_map`"))
+                    } else {
+                        err!(DanglingPointerDeref)
+                    },
+                }
             }
-            _ => {}
-        }
-        // The rest must be dead.
-        if let AllocCheck::MaybeDead = liveness {
-            // Deallocated pointers are allowed, we should be able to find
-            // them in the map.
-            Ok(*self.dead_alloc_map.get(&id)
-                .expect("deallocated pointers should all be recorded in `dead_alloc_map`"))
-        } else {
-            err!(DanglingPointerDeref)
         }
     }
 
