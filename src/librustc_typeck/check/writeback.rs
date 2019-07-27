@@ -453,36 +453,43 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
                 def_id, opaque_defn, instantiated_ty, span);
 
+            let mut skip_add = false;
+
             if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
                 if def_id == defin_ty_def_id {
-                    // Concrete type resolved to the existential type itself.
-                    // Force a cycle error.
-                    // FIXME(oli-obk): we could just not insert it into `concrete_existential_types`
-                    // which simply would make this use not a defining use.
-                    self.tcx().at(span).type_of(defin_ty_def_id);
+                    debug!("Skipping adding concrete definition for opaque type {:?} {:?}",
+                           opaque_defn, defin_ty_def_id);
+                    skip_add = true;
                 }
             }
 
             if !opaque_defn.substs.has_local_value() {
-                let new = ty::ResolvedOpaqueTy {
-                    concrete_type: definition_ty,
-                    substs: opaque_defn.substs,
-                };
+                // We only want to add an entry into `concrete_existential_types`
+                // if we actually found a defining usage of this existential type.
+                // Otherwise, we do nothing - we'll either find a defining usage
+                // in some other location, or we'll end up emitting an error due
+                // to the lack of defining usage
+                if !skip_add {
+                    let new = ty::ResolvedOpaqueTy {
+                        concrete_type: definition_ty,
+                        substs: opaque_defn.substs,
+                    };
 
-                let old = self.tables
-                    .concrete_existential_types
-                    .insert(def_id, new);
-                if let Some(old) = old {
-                    if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
-                        span_bug!(
-                            span,
-                            "visit_opaque_types tried to write \
-                            different types for the same existential type: {:?}, {:?}, {:?}, {:?}",
-                            def_id,
-                            definition_ty,
-                            opaque_defn,
-                            old,
-                        );
+                    let old = self.tables
+                        .concrete_existential_types
+                        .insert(def_id, new);
+                    if let Some(old) = old {
+                        if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
+                            span_bug!(
+                                span,
+                                "visit_opaque_types tried to write different types for the same \
+                                existential type: {:?}, {:?}, {:?}, {:?}",
+                                def_id,
+                                definition_ty,
+                                opaque_defn,
+                                old,
+                            );
+                        }
                     }
                 }
             } else {
