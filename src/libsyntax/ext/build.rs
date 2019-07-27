@@ -840,14 +840,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn pat_tuple_struct(&self, span: Span, path: ast::Path,
                         subpats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
-        self.pat(span, PatKind::TupleStruct(path, subpats, None))
+        self.pat(span, PatKind::TupleStruct(path, subpats))
     }
     fn pat_struct(&self, span: Span, path: ast::Path,
                   field_pats: Vec<Spanned<ast::FieldPat>>) -> P<ast::Pat> {
         self.pat(span, PatKind::Struct(path, field_pats, false))
     }
     fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
-        self.pat(span, PatKind::Tuple(pats, None))
+        self.pat(span, PatKind::Tuple(pats))
     }
 
     fn pat_some(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {

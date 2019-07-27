@@ -519,21 +519,28 @@ impl fmt::Debug for Pat {
 }
 
 impl Pat {
+    /// Attempt reparsing the pattern as a type.
+    /// This is intended for use by diagnostics.
     pub(super) fn to_ty(&self) -> Option<P<Ty>> {
         let node = match &self.node {
+            // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
+            // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
             PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) => {
                 TyKind::Path(None, Path::from_ident(*ident))
             }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
+            // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
             PatKind::Ref(pat, mutbl) => pat
                 .to_ty()
                 .map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
-            PatKind::Slice(pats, None, _) if pats.len() == 1 => {
-                pats[0].to_ty().map(TyKind::Slice)?
-            }
-            PatKind::Tuple(pats, None) => {
+            // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
+            // when `P` can be reparsed as a type `T`.
+            PatKind::Slice(pats) if pats.len() == 1 => pats[0].to_ty().map(TyKind::Slice)?,
+            // A tuple pattern `(P0, .., Pn)` can be reparsed as `(T0, .., Tn)`
+            // assuming `T0` to `Tn` are all syntactically valid as types.
+            PatKind::Tuple(pats) => {
                 let mut tys = Vec::with_capacity(pats.len());
                 // FIXME(#48994) - could just be collected into an Option<Vec>
                 for pat in pats {
@@ -559,24 +566,28 @@ impl Pat {
             return false;
         }
 
-        match self.node {
-            PatKind::Ident(_, _, Some(ref p)) => p.walk(it),
-            PatKind::Struct(_, ref fields, _) => fields.iter().all(|field| field.node.pat.walk(it)),
-            PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
+        match &self.node {
+            PatKind::Ident(_, _, Some(p)) => p.walk(it),
+            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.node.pat.walk(it)),
+            PatKind::TupleStruct(_, s) | PatKind::Tuple(s) | PatKind::Slice(s) => {
                 s.iter().all(|p| p.walk(it))
             }
-            PatKind::Box(ref s) | PatKind::Ref(ref s, _) | PatKind::Paren(ref s) => s.walk(it),
-            PatKind::Slice(ref before, ref slice, ref after) => {
-                before.iter().all(|p| p.walk(it))
-                    && slice.iter().all(|p| p.walk(it))
-                    && after.iter().all(|p| p.walk(it))
-            }
+            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => s.walk(it),
             PatKind::Wild
+            | PatKind::Rest
             | PatKind::Lit(_)
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
             | PatKind::Mac(_) => true,
+        }
+    }
+
+    /// Is this a `..` pattern?
+    pub fn is_rest(&self) -> bool {
+        match self.node {
+            PatKind::Rest => true,
+            _ => false,
         }
     }
 }
@@ -630,9 +641,7 @@ pub enum PatKind {
     Struct(Path, Vec<Spanned<FieldPat>>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
-    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
-    /// `0 <= position <= subpats.len()`.
-    TupleStruct(Path, Vec<P<Pat>>, Option<usize>),
+    TupleStruct(Path, Vec<P<Pat>>),
 
     /// A possibly qualified path pattern.
     /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
@@ -641,9 +650,7 @@ pub enum PatKind {
     Path(Option<QSelf>, Path),
 
     /// A tuple pattern (`(a, b)`).
-    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
-    /// `0 <= position <= subpats.len()`.
-    Tuple(Vec<P<Pat>>, Option<usize>),
+    Tuple(Vec<P<Pat>>),
 
     /// A `box` pattern.
     Box(P<Pat>),
@@ -657,9 +664,22 @@ pub enum PatKind {
     /// A range pattern (e.g., `1...2`, `1..=2` or `1..2`).
     Range(P<Expr>, P<Expr>, Spanned<RangeEnd>),
 
-    /// `[a, b, ..i, y, z]` is represented as:
-    ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
-    Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+    /// A slice pattern `[a, b, c]`.
+    Slice(Vec<P<Pat>>),
+
+    /// A rest pattern `..`.
+    ///
+    /// Syntactically it is valid anywhere.
+    ///
+    /// Semantically however, it only has meaning immediately inside:
+    /// - a slice pattern: `[a, .., b]`,
+    /// - a binding pattern immediately inside a slice pattern: `[a, r @ ..]`,
+    /// - a tuple pattern: `(a, .., b)`,
+    /// - a tuple struct/variant pattern: `$path(a, .., b)`.
+    ///
+    /// In all of these cases, an additional restriction applies,
+    /// only one rest pattern may occur in the pattern sequences.
+    Rest,
 
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(P<Pat>),

@@ -237,7 +237,7 @@ fn subslice_pattern_from_end(a: &Allocator, arg: bool) {
     if arg {
         let[.., _x, _] = a;
     } else {
-        let[_, _y..] = a;
+        let[_, _y @ ..] = a;
     }
 }
 
@@ -251,7 +251,7 @@ fn subslice_pattern_from_end_with_drop(a: &Allocator, arg: bool, arg2: bool) {
     if arg {
         let[.., _x, _] = a;
     } else {
-        let[_, _y..] = a;
+        let[_, _y @ ..] = a;
     }
 }
 
@@ -266,7 +266,7 @@ fn subslice_pattern_reassign(a: &Allocator) {
     let mut ar = [a.alloc(), a.alloc(), a.alloc()];
     let[_, _, _x] = ar;
     ar = [a.alloc(), a.alloc(), a.alloc()];
-    let[_, _y..] = ar;
+    let[_, _y @ ..] = ar;
 }
 
 fn panic_after_return(a: &Allocator) -> Ptr<'_> {

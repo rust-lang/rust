@@ -17,7 +17,7 @@ matched against that pattern. For example:
 fn is_symmetric(list: &[u32]) -> bool {
     match list {
         &[] | &[_] => true,
-        &[x, ref inside.., y] if x == y => is_symmetric(inside),
+        &[x, ref inside @ .., y] if x == y => is_symmetric(inside),
         &[..] => false,
     }
 }

@@ -15,7 +15,7 @@ pub fn main() {
     ];
     let x: &[Foo] = &x;
     match *x {
-        [_, ref tail..] => {
+        [_, ref tail @ ..] => {
             match tail {
             //~^ ERROR cannot move out of type `[Foo]`
                 &[Foo { string: a },

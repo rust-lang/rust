@@ -9,6 +9,6 @@ fn count_members(v: &[usize]) -> usize {
     match *v {
         []         => 0,
         [_]        => 1,
-        [_, ref xs..] => 1 + count_members(xs)
+        [_, ref xs @ ..] => 1 + count_members(xs)
     }
 }
