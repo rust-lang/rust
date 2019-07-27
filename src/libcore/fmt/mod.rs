@@ -2172,5 +2172,5 @@ impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
     }
 }
 
-// If you expected tests to be here, look instead at the run-pass/ifmt.rs test,
+// If you expected tests to be here, look instead at the ui/ifmt.rs test,
 // it's a lot easier than creating all of the rt::Piece structures here.

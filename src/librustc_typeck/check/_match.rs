@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // For each ampersand peeled off, update the binding mode and push the original
             // type into the adjustments vector.
             //
-            // See the examples in `run-pass/match-defbm*.rs`.
+            // See the examples in `ui/match-defbm*.rs`.
             let mut pat_adjustments = vec![];
             while let ty::Ref(_, inner_ty, inner_mutability) = exp_ty.sty {
                 debug!("inspecting {:?}", exp_ty);

@@ -547,7 +547,7 @@ impl Step for TestHelpers {
     }
 
     /// Compiles the `rust_test_helpers.c` library which we used in various
-    /// `run-pass` test suites for ABI testing.
+    /// `run-pass` tests for ABI testing.
     fn run(self, builder: &Builder<'_>) {
         if builder.config.dry_run {
             return;

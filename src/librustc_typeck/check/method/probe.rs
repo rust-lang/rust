@@ -1394,7 +1394,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// probe. This will result in a pending obligation so when more type-info is available we can
     /// make the final decision.
     ///
-    /// Example (`src/test/run-pass/method-two-trait-defer-resolution-1.rs`):
+    /// Example (`src/test/ui/method-two-trait-defer-resolution-1.rs`):
     ///
     /// ```
     /// trait Foo { ... }

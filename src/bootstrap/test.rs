@@ -820,13 +820,6 @@ default_test_with_compare_mode!(Ui {
     compare_mode: "nll"
 });
 
-default_test_with_compare_mode!(RunPass {
-    path: "src/test/run-pass",
-    mode: "run-pass",
-    suite: "run-pass",
-    compare_mode: "nll"
-});
-
 default_test!(CompileFail {
     path: "src/test/compile-fail",
     mode: "compile-fail",
@@ -881,12 +874,6 @@ host_test!(UiFullDeps {
     suite: "ui-fulldeps"
 });
 
-host_test!(RunPassFullDeps {
-    path: "src/test/run-pass-fulldeps",
-    mode: "run-pass",
-    suite: "run-pass-fulldeps"
-});
-
 host_test!(Rustdoc {
     path: "src/test/rustdoc",
     mode: "rustdoc",
@@ -897,13 +884,6 @@ host_test!(Pretty {
     path: "src/test/pretty",
     mode: "pretty",
     suite: "pretty"
-});
-test!(RunPassPretty {
-    path: "src/test/run-pass/pretty",
-    mode: "pretty",
-    suite: "run-pass",
-    default: false,
-    host: true
 });
 test!(RunFailPretty {
     path: "src/test/run-fail/pretty",

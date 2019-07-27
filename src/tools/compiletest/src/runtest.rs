@@ -5,7 +5,7 @@ use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, Rustdoc};
 use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb};
-use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
+use crate::common::{CompileFail, Pretty, RunFail, RunPassValgrind};
 use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
@@ -260,7 +260,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         env::var_os("PYTHONPATH").hash(&mut hash);
     }
 
-    if let Ui | RunPass | Incremental | Pretty = config.mode {
+    if let Ui | Incremental | Pretty = config.mode {
         config.force_pass_mode.hash(&mut hash);
     }
 
@@ -306,7 +306,7 @@ impl<'test> TestCx<'test> {
             CodegenUnits => self.run_codegen_units_test(),
             Incremental => self.run_incremental_test(),
             RunMake => self.run_rmake_test(),
-            RunPass | Ui => self.run_ui_test(),
+            Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
             JsDocTest => self.run_js_doc_test(),
@@ -321,7 +321,6 @@ impl<'test> TestCx<'test> {
         let pass_mode = self.pass_mode();
         match self.config.mode {
             Ui => pass_mode == Some(PassMode::Run),
-            RunPass => pass_mode == Some(PassMode::Run) || pass_mode.is_none(),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
@@ -329,7 +328,6 @@ impl<'test> TestCx<'test> {
     fn should_compile_successfully(&self) -> bool {
         match self.config.mode {
             CompileFail => false,
-            RunPass => true,
             JsDocTest => true,
             Ui => self.pass_mode().is_some(),
             Incremental => {
@@ -1527,7 +1525,7 @@ impl<'test> TestCx<'test> {
     fn compile_test(&self) -> ProcRes {
         // Only use `make_exe_name` when the test ends up being executed.
         let will_execute = match self.config.mode {
-            RunPass | Ui => self.should_run_successfully(),
+            Ui => self.should_run_successfully(),
             Incremental => self.revision.unwrap().starts_with("r"),
             RunFail | RunPassValgrind | MirOpt |
             DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb | DebugInfoLldb => true,
@@ -1958,7 +1956,7 @@ impl<'test> TestCx<'test> {
                     rustc.arg("-Zui-testing");
                 }
             }
-            RunPass | Ui => {
+            Ui => {
                 if !self
                     .props
                     .compile_flags
@@ -2091,7 +2089,7 @@ impl<'test> TestCx<'test> {
             }
 
             let src = self.config.src_base
-                .parent().unwrap() // chop off `run-pass`
+                .parent().unwrap() // chop off `ui`
                 .parent().unwrap() // chop off `test`
                 .parent().unwrap(); // chop off `src`
             args.push(src.join("src/etc/wasm32-shim.js").display().to_string());
