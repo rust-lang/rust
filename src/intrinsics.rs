@@ -156,6 +156,25 @@ fn simd_for_each_lane<'tcx, B: Backend>(
 }
 
 macro_rules! simd_binop {
+    ($fx:expr, $intrinsic:expr, icmp($cc:ident, $x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, _lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane);
+            let res_lane = fx.bcx.ins().bint(types::I8, res_lane);
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    };
+    ($fx:expr, $intrinsic:expr, icmp($cc_u:ident|$cc_s:ident, $x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
+                ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            let res_lane = fx.bcx.ins().bint(types::I8, res_lane);
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    };
+
     ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
         simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, _lane_layout, ret_lane_layout, x_lane, y_lane| {
             let res_lane = fx.bcx.ins().$op(x_lane, y_lane);
@@ -751,6 +770,25 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
 
         simd_cast, (c x) {
             ret.write_cvalue(fx, x.unchecked_cast_to(ret.layout()));
+        };
+
+        simd_eq, (c x, c y) {
+            simd_binop!(fx, intrinsic, icmp(Equal, x, y) -> ret);
+        };
+        simd_ne, (c x, c y) {
+            simd_binop!(fx, intrinsic, icmp(NotEqual, x, y) -> ret);
+        };
+        simd_lt, (c x, c y) {
+            simd_binop!(fx, intrinsic, icmp(UnsignedLessThan|SignedLessThan, x, y) -> ret);
+        };
+        simd_le, (c x, c y) {
+            simd_binop!(fx, intrinsic, icmp(UnsignedLessThanOrEqual|SignedLessThanOrEqual, x, y) -> ret);
+        };
+        simd_gt, (c x, c y) {
+            simd_binop!(fx, intrinsic, icmp(UnsignedGreaterThan|SignedGreaterThan, x, y) -> ret);
+        };
+        simd_ge, (c x, c y) {
+            simd_binop!(fx, intrinsic, icmp(UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual, x, y) -> ret);
         };
 
         simd_add, (c x, c y) {
