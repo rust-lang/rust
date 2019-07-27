@@ -10,8 +10,7 @@
 
 use crate::prelude::*;
 
-use rustc::middle::allocator::AllocatorKind;
-use rustc_allocator::{AllocatorTy, ALLOCATOR_METHODS};
+use syntax::ext::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 
 /// Returns whether an allocator shim was created
 pub fn codegen(sess: &Session, module: &mut Module<impl Backend + 'static>) -> bool {

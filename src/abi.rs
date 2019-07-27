@@ -379,6 +379,7 @@ fn local_place<'a, 'tcx: 'a>(
                 abi: _,
                 variants: _,
                 fields: _,
+                largest_niche: _,
             } = details;
             match place {
                 CPlace::Stack(stack_slot, _) => fx.add_entity_comment(

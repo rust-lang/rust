@@ -3,7 +3,6 @@
 
 extern crate flate2;
 extern crate rustc;
-extern crate rustc_allocator;
 extern crate rustc_codegen_ssa;
 extern crate rustc_codegen_utils;
 extern crate rustc_data_structures;
