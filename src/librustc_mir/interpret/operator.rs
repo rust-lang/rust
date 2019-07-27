@@ -4,7 +4,7 @@ use syntax::ast::FloatTy;
 use rustc_apfloat::Float;
 use rustc::mir::interpret::{InterpResult, PanicMessage, Scalar};
 
-use super::{InterpCx, PlaceTy, Immediate, Machine, ImmTy};
+use super::{InterpCx, PlaceTy, Immediate, Machine, ImmTy, UnsupportedInfo::*};
 
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -155,7 +155,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 r,
                 right_layout.ty
             );
-            return err!(Unimplemented(msg));
+            return err!(Unsupported(Unimplemented(msg)));
         }
 
         // Operations that need special treatment for signed integers
@@ -250,7 +250,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     r,
                     right_layout.ty,
                 );
-                return err!(Unimplemented(msg));
+                return err!(Unsupported(Unimplemented(msg)));
             }
         };
 

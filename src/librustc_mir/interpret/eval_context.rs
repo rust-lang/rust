@@ -17,7 +17,8 @@ use rustc::mir::interpret::{
     ErrorHandled,
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
     InterpResult, InterpError,
-    truncate, sign_extend,
+    truncate, sign_extend, UnsupportedInfo::*, InvalidProgramInfo::*,
+    ResourceExhaustionInfo::*, UndefinedBehaviourInfo::*,
 };
 use rustc_data_structures::fx::FxHashMap;
 
@@ -135,7 +136,7 @@ pub enum LocalValue<Tag=(), Id=AllocId> {
 impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
-            LocalValue::Dead => err!(DeadLocal),
+            LocalValue::Dead => err!(Unsupported(DeadLocal)),
             LocalValue::Uninitialized =>
                 bug!("The type checker should prevent reading from a never-written local"),
             LocalValue::Live(val) => Ok(val),
@@ -148,7 +149,7 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
         &mut self,
     ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
         match self.value {
-            LocalValue::Dead => err!(DeadLocal),
+            LocalValue::Dead => err!(Unsupported(DeadLocal)),
             LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
             ref mut local @ LocalValue::Live(Operand::Immediate(_)) |
             ref mut local @ LocalValue::Uninitialized => {
@@ -191,7 +192,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     #[inline]
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty))
-            .map_err(|layout| InterpError::Layout(layout).into())
+            .map_err(|layout| InterpError::InvalidProgram(Layout(layout)).into())
     }
 }
 
@@ -302,7 +303,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 &substs,
             )),
             None => if substs.needs_subst() {
-                err!(TooGeneric).into()
+                err!(InvalidProgram(TooGeneric)).into()
             } else {
                 Ok(substs)
             },
@@ -323,7 +324,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env,
             def_id,
             substs,
-        ).ok_or_else(|| InterpError::TooGeneric.into())
+        ).ok_or_else(|| InterpError::InvalidProgram(TooGeneric).into())
     }
 
     pub fn load_mir(
@@ -336,14 +337,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             && self.tcx.has_typeck_tables(did)
             && self.tcx.typeck_tables_of(did).tainted_by_errors
         {
-            return err!(TypeckError);
+            return err!(InvalidProgram(TypeckError));
         }
         trace!("load mir {:?}", instance);
         match instance {
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
                 Ok(self.tcx.optimized_mir(did))
             } else {
-                err!(NoMirFor(self.tcx.def_path_str(def_id)))
+                err!(Unsupported(NoMirFor(self.tcx.def_path_str(def_id))))
             },
             _ => Ok(self.tcx.instance_mir(instance)),
         }
@@ -356,7 +357,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match self.stack.last() {
             Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)?),
             None => if t.needs_subst() {
-                err!(TooGeneric).into()
+                err!(InvalidProgram(TooGeneric)).into()
             } else {
                 Ok(t)
             },
@@ -373,7 +374,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let substituted = t.subst(*self.tcx, substs);
 
         if substituted.needs_subst() {
-            return err!(TooGeneric);
+            return err!(InvalidProgram(TooGeneric));
         }
 
         Ok(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted))
@@ -572,7 +573,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
 
         if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
-            err!(StackFrameLimitReached)
+            err!(ResourceExhaustion(StackFrameLimitReached))
         } else {
             Ok(())
         }
@@ -620,7 +621,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         } else {
             // Uh, that shouldn't happen... the function did not intend to return
-            return err!(Unreachable);
+            return err!(UndefinedBehaviour(Unreachable));
         }
         // Jump to new block -- *after* validation so that the spans make more sense.
         match frame.return_to_block {
@@ -694,8 +695,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
         let val = self.tcx.const_eval_raw(param_env.and(gid)).map_err(|err| {
             match err {
-                ErrorHandled::Reported => InterpError::ReferencedConstant,
-                ErrorHandled::TooGeneric => InterpError::TooGeneric,
+                ErrorHandled::Reported => InterpError::InvalidProgram(ReferencedConstant),
+                ErrorHandled::TooGeneric => InterpError::InvalidProgram(TooGeneric),
             }
         })?;
         self.raw_const_to_mplace(val)

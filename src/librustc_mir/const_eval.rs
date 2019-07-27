@@ -24,7 +24,8 @@ use crate::interpret::{self,
     RawConst, ConstValue,
     InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
-    snapshot, RefTracking, intern_const_alloc_recursive,
+    snapshot, RefTracking, intern_const_alloc_recursive, UnsupportedInfo::*,
+    InvalidProgramInfo::*,
 };
 
 /// Number of steps until the detector even starts doing anything.
@@ -183,7 +184,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
     fn into(self) -> InterpErrorInfo<'tcx> {
-        InterpError::MachineError(self.to_string()).into()
+        InterpError::Unsupported(MachineError(self.to_string())).into()
     }
 }
 
@@ -352,7 +353,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     ecx.goto_block(ret)?; // fully evaluated and done
                     Ok(None)
                 } else {
-                    err!(MachineError(format!("calling non-const function `{}`", instance)))
+                    err!(Unsupported(
+                        MachineError(format!("calling non-const function `{}`", instance))
+                    ))
                 };
             }
         }
@@ -360,7 +363,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Ok(Some(match ecx.load_mir(instance.def) {
             Ok(body) => body,
             Err(err) => {
-                if let InterpError::NoMirFor(ref path) = err.kind {
+                if let InterpError::Unsupported(NoMirFor(ref path)) = err.kind {
                     return Err(
                         ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
                             .into(),
@@ -412,7 +415,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _tcx: TyCtxt<'tcx>,
         _def_id: DefId,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
-        err!(ReadForeignStatic)
+        err!(Unsupported(ReadForeignStatic))
     }
 
     #[inline(always)]
@@ -698,7 +701,7 @@ pub fn const_eval_raw_provider<'tcx>(
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
                     let span = tcx.promoted_mir(def_id)[p].span;
-                    if let InterpError::ReferencedConstant = err.error {
+                    if let InterpError::InvalidProgram(ReferencedConstant) = err.error {
                         err.report_as_error(
                             tcx.at(span),
                             "evaluation of constant expression failed",

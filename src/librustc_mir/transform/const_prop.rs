@@ -257,86 +257,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Err(error) => {
                 let diagnostic = error_to_const_error(&self.ecx, error);
                 use rustc::mir::interpret::InterpError::*;
+                use rustc::mir::interpret::UnsupportedInfo::*;
                 match diagnostic.error {
-                    // don't report these, they make no sense in a const prop context
-                    | MachineError(_)
-                    | Exit(_)
-                    // at runtime these transformations might make sense
-                    // FIXME: figure out the rules and start linting
-                    | FunctionAbiMismatch(..)
-                    | FunctionArgMismatch(..)
-                    | FunctionRetMismatch(..)
-                    | FunctionArgCountMismatch
-                    // fine at runtime, might be a register address or sth
-                    | ReadBytesAsPointer
-                    // fine at runtime
-                    | ReadForeignStatic
-                    | Unimplemented(_)
-                    // don't report const evaluator limits
-                    | StackFrameLimitReached
-                    | NoMirFor(..)
-                    | InlineAsm
-                    => {},
+                    Exit(_) => {},
 
-                    | InvalidMemoryAccess
-                    | DanglingPointerDeref
-                    | DoubleFree
-                    | InvalidFunctionPointer
-                    | InvalidBool
-                    | InvalidDiscriminant(..)
-                    | PointerOutOfBounds { .. }
-                    | InvalidNullPointerUsage
-                    | ValidationFailure(..)
-                    | InvalidPointerMath
-                    | ReadUndefBytes(_)
-                    | DeadLocal
-                    | InvalidBoolOp(_)
-                    | DerefFunctionPointer
-                    | ExecuteMemory
-                    | Intrinsic(..)
-                    | InvalidChar(..)
-                    | AbiViolation(_)
-                    | AlignmentCheckFailed{..}
-                    | CalledClosureAsFunction
-                    | VtableForArgumentlessMethod
-                    | ModifiedConstantMemory
-                    | ModifiedStatic
-                    | AssumptionNotHeld
-                    // FIXME: should probably be removed and turned into a bug! call
-                    | TypeNotPrimitive(_)
-                    | ReallocatedWrongMemoryKind(_, _)
-                    | DeallocatedWrongMemoryKind(_, _)
-                    | ReallocateNonBasePtr
-                    | DeallocateNonBasePtr
-                    | IncorrectAllocationInformation(..)
-                    | UnterminatedCString(_)
-                    | HeapAllocZeroBytes
-                    | HeapAllocNonPowerOfTwoAlignment(_)
-                    | Unreachable
-                    | ReadFromReturnPointer
-                    | ReferencedConstant
-                    | InfiniteLoop
-                    => {
-                        // FIXME: report UB here
-                    },
-
-                    | OutOfTls
-                    | TlsOutOfBounds
-                    | PathNotFound(_)
+                    | Unsupported(OutOfTls)
+                    | Unsupported(TlsOutOfBounds)
+                    | Unsupported(PathNotFound(_))
                     => bug!("these should not be in rustc, but in miri's machine errors"),
 
-                    | Layout(_)
-                    | UnimplementedTraitSelection
-                    | TypeckError
-                    | TooGeneric
-                    // these are just noise
-                    => {},
-
-                    // non deterministic
-                    | ReadPointerAsBytes
-                    // FIXME: implement
-                    => {},
-
+                    | Unsupported(_) => {},
+                    | UndefinedBehaviour(_) => {},
+                    | InvalidProgram(_) => {},
+                    | ResourceExhaustion(_) => {},
+                    
                     | Panic(_)
                     => {
                         diagnostic.report_as_lint(

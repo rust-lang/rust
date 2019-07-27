@@ -4,6 +4,7 @@ use super::{
     Pointer, InterpResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
 };
 
+use super::error::UnsupportedInfo::*;
 use crate::ty::layout::{Size, Align};
 use syntax::ast::Mutability;
 use std::iter;
@@ -244,7 +245,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
                 Ok(&self.get_bytes(cx, ptr, size_with_null)?[..size])
             }
             // This includes the case where `offset` is out-of-bounds to begin with.
-            None => err!(UnterminatedCString(ptr.erase_tag())),
+            None => err!(Unsupported(UnterminatedCString(ptr.erase_tag()))),
         }
     }
 
@@ -446,7 +447,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         if self.relocations(cx, ptr, size).is_empty() {
             Ok(())
         } else {
-            err!(ReadPointerAsBytes)
+            err!(Unsupported(ReadPointerAsBytes))
         }
     }
 
@@ -516,7 +517,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         self.undef_mask.is_range_defined(
             ptr.offset,
             ptr.offset + size,
-        ).or_else(|idx| err!(ReadUndefBytes(idx)))
+        ).or_else(|idx| err!(Unsupported(ReadUndefBytes(idx))))
     }
 
     pub fn mark_definedness(

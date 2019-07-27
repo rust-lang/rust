@@ -14,7 +14,8 @@ use rustc::ty::TypeFoldable;
 use super::{
     GlobalId, AllocId, Allocation, Scalar, InterpResult, Pointer, PointerArithmetic,
     InterpCx, Machine, AllocMap, AllocationExtra, PanicMessage,
-    RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind, LocalValue
+    RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind, LocalValue,
+    UnsupportedInfo::*,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -622,7 +623,7 @@ where
                                 .layout_of(self.monomorphize(self.frame().body.return_ty())?)?,
                         }
                     }
-                    None => return err!(InvalidNullPointerUsage),
+                    None => return err!(Unsupported(InvalidNullPointerUsage)),
                 },
                 PlaceBase::Local(local) => PlaceTy {
                     // This works even for dead/uninitialized locals; we check further when writing

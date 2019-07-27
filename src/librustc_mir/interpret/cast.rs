@@ -9,7 +9,8 @@ use rustc_apfloat::{Float, FloatConvert};
 use rustc::mir::interpret::{
     Scalar, InterpResult, Pointer, PointerArithmetic, InterpError,
 };
-use rustc::mir::CastKind;
+use rustc::mir::{CastKind, interpret::{UnsupportedInfo::*, InvalidProgramInfo::*}};
+
 
 use super::{InterpCx, Machine, PlaceTy, OpTy, Immediate, FnVal};
 
@@ -85,7 +86,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             self.param_env,
                             def_id,
                             substs,
-                        ).ok_or_else(|| InterpError::TooGeneric.into());
+                        ).ok_or_else(|| InterpError::InvalidProgram(TooGeneric).into());
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance?));
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
@@ -199,7 +200,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             },
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
-            _ => err!(Unimplemented(format!("int to {:?} cast", dest_layout.ty))),
+            _ => err!(Unsupported(Unimplemented(format!("int to {:?} cast", dest_layout.ty)))),
         }
     }
 

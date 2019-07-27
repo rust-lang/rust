@@ -11,7 +11,7 @@ use rustc::ty::{self, TyCtxt};
 
 use super::{
     Allocation, AllocId, InterpResult, InterpError, Scalar, AllocationExtra,
-    InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
+    InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory, UnsupportedInfo::*
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -240,9 +240,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
         int: u64,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         Err((if int == 0 {
-            InterpError::InvalidNullPointerUsage
+            InterpError::Unsupported(InvalidNullPointerUsage)
         } else {
-            InterpError::ReadBytesAsPointer
+            InterpError::Unsupported(ReadBytesAsPointer)
         }).into())
     }
 
@@ -251,6 +251,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64> {
-        err!(ReadPointerAsBytes)
+        err!(Unsupported(ReadPointerAsBytes))
     }
 }

@@ -1,5 +1,6 @@
 use std::fmt::{self, Display};
 
+use super::error::UnsupportedInfo::*;
 use crate::mir;
 use crate::ty::layout::{self, HasDataLayout, Size};
 use rustc_macros::HashStable;
@@ -198,11 +199,11 @@ impl<'tcx, Tag> Pointer<Tag> {
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, ()> {
         if self.offset > allocation_size {
-            err!(PointerOutOfBounds {
+            err!(Unsupported(PointerOutOfBounds {
                 ptr: self.erase_tag(),
                 msg,
                 allocation_size,
-            })
+            }))
         } else {
             Ok(())
         }

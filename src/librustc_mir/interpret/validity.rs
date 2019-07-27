@@ -11,7 +11,7 @@ use std::hash::Hash;
 
 use super::{
     GlobalAlloc, InterpResult, InterpError,
-    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
+    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy, UnsupportedInfo::*,
 };
 
 macro_rules! validation_failure {
@@ -22,10 +22,10 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        err!(ValidationFailure(format!(
+        err!(Unsupported(ValidationFailure(format!(
             "encountered {}{}, but expected {}",
             $what, where_, $details,
-        )))
+        ))))
     }};
     ($what:expr, $where:expr) => {{
         let where_ = path_format(&$where);
@@ -34,10 +34,10 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        err!(ValidationFailure(format!(
+        err!(Unsupported(ValidationFailure(format!(
             "encountered {}{}",
             $what, where_,
-        )))
+        ))))
     }};
 }
 
@@ -297,11 +297,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         match self.walk_value(op) {
             Ok(()) => Ok(()),
             Err(err) => match err.kind {
-                InterpError::InvalidDiscriminant(val) =>
+                InterpError::Unsupported(InvalidDiscriminant(val)) =>
                     validation_failure!(
                         val, self.path, "a valid enum discriminant"
                     ),
-                InterpError::ReadPointerAsBytes =>
+                InterpError::Unsupported(ReadPointerAsBytes) =>
                     validation_failure!(
                         "a pointer", self.path, "plain (non-pointer) bytes"
                     ),
@@ -406,13 +406,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             ptr, size, align
                         );
                         match err.kind {
-                            InterpError::InvalidNullPointerUsage =>
+                            InterpError::Unsupported(InvalidNullPointerUsage) =>
                                 return validation_failure!("NULL reference", self.path),
-                            InterpError::AlignmentCheckFailed { required, has } =>
+                            InterpError::Unsupported(AlignmentCheckFailed { required, has }) =>
                                 return validation_failure!(format!("unaligned reference \
                                     (required {} byte alignment but found {})",
                                     required.bytes(), has.bytes()), self.path),
-                            InterpError::ReadBytesAsPointer =>
+                            InterpError::Unsupported(ReadBytesAsPointer) =>
                                 return validation_failure!(
                                     "dangling reference (created from integer)",
                                     self.path
@@ -608,7 +608,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Err(err) => {
                         // For some errors we might be able to provide extra information
                         match err.kind {
-                            InterpError::ReadUndefBytes(offset) => {
+                            InterpError::Unsupported(ReadUndefBytes(offset)) => {
                                 // Some byte was undefined, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.

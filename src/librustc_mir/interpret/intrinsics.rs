@@ -7,7 +7,7 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::mir::BinOp;
 use rustc::mir::interpret::{
-    InterpResult, InterpError, Scalar, PanicMessage,
+    InterpResult, InterpError, Scalar, PanicMessage, UnsupportedInfo::*,
 };
 
 use super::{
@@ -100,11 +100,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits = self.read_scalar(args[0])?.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-                    _ => Err(::rustc::mir::interpret::InterpError::TypeNotPrimitive(ty))?,
+                    _ => Err(InterpError::Unsupported(TypeNotPrimitive(ty)))?,
                 };
                 let out_val = if intrinsic_name.ends_with("_nonzero") {
                     if bits == 0 {
-                        return err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
+                        return err!(
+                            Unsupported(Intrinsic(format!("{} called on 0", intrinsic_name)))
+                        );
                     }
                     numeric_intrinsic(intrinsic_name.trim_end_matches("_nonzero"), bits, kind)?
                 } else {
@@ -190,9 +192,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
                     let r_val =  r.to_scalar()?.to_bits(layout.size)?;
-                    return err!(Intrinsic(
+                    return err!(Unsupported(Intrinsic(
                         format!("Overflowing shift by {} in {}", r_val, intrinsic_name),
-                    ));
+                    )));
                 }
                 self.write_scalar(val, dest)?;
             }
