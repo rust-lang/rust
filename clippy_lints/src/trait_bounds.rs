@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, span_help_and_lint, SpanlessHash};
+use crate::utils::{in_macro, snippet, span_help_and_lint, SpanlessHash};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashMap;
@@ -8,6 +8,20 @@ use rustc::hir::*;
 pub struct TraitBounds;
 
 declare_clippy_lint! {
+    /// **What it does:** This lint warns about unnecessary type repetitions in trait bounds
+    ///
+    /// **Why is this bad?** Complexity
+    ///
+    /// **Example:**
+    /// ```rust
+    /// pub fn foo<T>(t: T) where T: Copy, T: Clone 
+    /// ```
+    ///
+    /// Could be written as:
+    ///
+    /// ```rust
+    /// pub fn foo<T>(t: T) where T: Copy + Clone
+    /// ```
     pub TYPE_REPETITION_IN_BOUNDS,
     complexity,
     "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
@@ -30,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
             if let WherePredicate::BoundPredicate(ref p) = bound {
                 let h = hash(&p.bounded_ty);
                 if let Some(ref v) = map.insert(h, p.bounds.iter().collect::<Vec<_>>()) {
-                    let mut hint_string = format!("consider combining the bounds: `{:?}: ", p.bounded_ty);
+                    let mut hint_string = format!("consider combining the bounds: `{}: ", snippet(cx, p.bounded_ty.span, "_"));
                     for b in v.iter() {
                         if let GenericBound::Trait(ref poly_trait_ref, _) = b {
                             let path = &poly_trait_ref.trait_ref.path;
