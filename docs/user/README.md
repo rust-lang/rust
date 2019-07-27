@@ -1,6 +1,6 @@
 The main interface to rust-analyzer is the
 [LSP](https://microsoft.github.io/language-server-protocol/) implementation. To
-install lsp server, use `cargo install-lsp`, which is a shorthand for `cargo
+install lsp server, use `cargo install-ra --server`, which is a shorthand for `cargo
 install --package ra_lsp_server`. The binary is named `ra_lsp_server`, you
 should be able to use it with any LSP-compatible editor. We use custom
 extensions to LSP, so special client-side support is required to take full
@@ -33,7 +33,7 @@ following commands:
 ```
 $ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
 $ cd rust-analyzer
-$ cargo install-code
+$ cargo install-ra
 ```
 
 The automatic installation is expected to *just work* for common cases, if it

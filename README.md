@@ -32,10 +32,10 @@ For setup for other editors, see [./docs/user](./docs/user).
 $ git clone https://github.com/rust-analyzer/rust-analyzer && cd rust-analyzer
 
 # install both the language server and VS Code extension
-$ cargo install-code
+$ cargo install-ra
 
 # alternatively, install only the server. Binary name is `ra_lsp_server`.
-$ cargo install-lsp
+$ cargo install-ra --server
 ```
 ## Documentation
 

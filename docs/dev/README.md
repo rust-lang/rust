@@ -66,7 +66,7 @@ typescript) and Emacs (in elisp). The `docs` top-level directory contains both
 developer and user documentation.
 
 We have some automation infra in Rust in the `crates/tool` package. It contains
-stuff like formatting checking, code generation and powers `cargo install-code`.
+stuff like formatting checking, code generation and powers `cargo install-ra`.
 The latter syntax is achieved with the help of cargo aliases (see `.cargo`
 directory).
 
@@ -84,7 +84,7 @@ However, launching a VS Code instance with locally build language server is
 possible. There's even a VS Code task for this, so just <kbd>F5</kbd> should
 work (thanks, [@andrew-w-ross](https://github.com/andrew-w-ross)!).
 
-I often just install development version with `cargo jinstall-lsp` and
+I often just install development version with `cargo install-ra --server --jemalloc` and
 restart the host VS Code.
 
 See [./debugging.md](./debugging.md) for how to attach to rust-analyzer with
@@ -110,7 +110,7 @@ ways:
 
 2. Run `npm test` from the command line. Although this is initiated from the
    command line it is not headless; it will also launch a temporary instance of
-   VS Code. 
+   VS Code.
 
 Due to the requirements of running the tests inside VS Code they are **not run
 on CI**. When making changes to the extension please ensure the tests are not
@@ -151,7 +151,7 @@ There's also two VS Code commands which might be of interest:
   $ cargo install --path crates/ra_lsp_server --force --features jemalloc
   ```
 
-  There's an alias for this: `cargo jinstall-lsp`.
+  There's an alias for this: `cargo install-ra --server --jemalloc`.
 
 * `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
 

@@ -1,23 +1,23 @@
 [alias]
 # Automatically generates the ast and syntax kinds files
 gen-syntax   = "run --package ra_tools --bin ra_tools -- gen-syntax"
+
 # Extracts the tests from
 gen-tests    = "run --package ra_tools --bin ra_tools -- gen-tests"
-# Installs ra_lsp_server
-install-lsp = "install --path crates/ra_lsp_server --force"
-# Installs ra_lsp_server with the jemalloc feature
-jinstall-lsp = "install --path crates/ra_lsp_server --force --features jemalloc"
+
 # Installs the visual studio code extension
-install-code = "run --package ra_tools --bin ra_tools -- install-code"
+install-ra   = "run --package ra_tools --bin ra_tools -- install-ra"
+install-code = "run --package ra_tools --bin ra_tools -- install-ra" # just an alias
+
 # Formats the full repository or installs the git hook to do it automatically.
 format       = "run --package ra_tools --bin ra_tools -- format"
 format-hook  = "run --package ra_tools --bin ra_tools -- format-hook"
+
 # Run clippy
 lint         = "run --package ra_tools --bin ra_tools -- lint"
 
 # Runs the fuzzing test suite (currently only parser)
 fuzz-tests   = "run --package ra_tools --bin ra_tools -- fuzz-tests"
 
-render-test  = "run --package ra_cli -- render-test"
 # Parse a file. This should be piped the file contents
 parse        = "run --package ra_cli -- parse"
