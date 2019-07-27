@@ -583,6 +583,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
+        std::mem::discriminant(&lifetime.name).hash(&mut self.s);
         if let LifetimeName::Param(ref name) = lifetime.name {
             std::mem::discriminant(&name).hash(&mut self.s);
             match name {
