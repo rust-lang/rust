@@ -1,21 +1,19 @@
+use crate::ast;
+use crate::ext::base::ExtCtxt;
+use crate::parse::{self, token, ParseSess};
+use crate::parse::lexer::comments;
+use crate::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
+
 use errors::{Diagnostic, DiagnosticBuilder};
-
-use std::panic;
-
-use proc_macro::bridge::{server, TokenTree};
-use proc_macro::{Delimiter, Level, LineColumn, Spacing};
-
 use rustc_data_structures::sync::Lrc;
-use std::ascii;
-use std::ops::Bound;
-use syntax::ast;
-use syntax::ext::base::ExtCtxt;
-use syntax::parse::lexer::comments;
-use syntax::parse::{self, token, ParseSess};
-use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
+use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 use syntax_pos::hygiene::{SyntaxContext, Transparency};
 use syntax_pos::symbol::{kw, sym, Symbol};
-use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
+
+use proc_macro::{Delimiter, Level, LineColumn, Spacing};
+use proc_macro::bridge::{server, TokenTree};
+use std::{ascii, panic};
+use std::ops::Bound;
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -52,7 +50,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
 {
     fn from_internal(((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>))
                     -> Self {
-        use syntax::parse::token::*;
+        use crate::parse::token::*;
 
         let joint = is_joint == Joint;
         let Token { kind, span } = match tree {
@@ -193,7 +191,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
 
 impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
     fn to_internal(self) -> TokenStream {
-        use syntax::parse::token::*;
+        use crate::parse::token::*;
 
         let (ch, joint, span) = match self {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),

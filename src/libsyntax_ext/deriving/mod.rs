@@ -26,7 +26,6 @@ pub mod decodable;
 pub mod hash;
 pub mod debug;
 pub mod default;
-pub mod custom;
 
 #[path="cmp/partial_eq.rs"]
 pub mod partial_eq;

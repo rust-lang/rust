@@ -1,35 +1,23 @@
 // Code that generates a test runner to run all the tests in a crate
 
-#![allow(dead_code)]
-#![allow(unused_imports)]
-
-use HasTestSignature::*;
-
-use std::iter;
-use std::slice;
-use std::mem;
-use std::vec;
-
 use log::debug;
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::{DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
+use syntax::ast::{self, Ident};
+use syntax::attr;
+use syntax::entry::{self, EntryPointType};
+use syntax::ext::base::{ExtCtxt, Resolver};
+use syntax::ext::build::AstBuilder;
+use syntax::ext::expand::ExpansionConfig;
+use syntax::ext::hygiene::{ExpnId, MacroKind};
+use syntax::feature_gate::Features;
+use syntax::mut_visit::{*, ExpectOne};
+use syntax::parse::ParseSess;
+use syntax::ptr::P;
+use syntax::source_map::{ExpnInfo, ExpnKind, dummy_spanned};
+use syntax::symbol::{kw, sym, Symbol};
+use syntax_pos::{Span, DUMMY_SP};
 
-use crate::attr::{self, HasAttrs};
-use crate::source_map::{self, SourceMap, ExpnInfo, ExpnKind, dummy_spanned, respan};
-use crate::config;
-use crate::entry::{self, EntryPointType};
-use crate::ext::base::{ExtCtxt, Resolver};
-use crate::ext::build::AstBuilder;
-use crate::ext::expand::ExpansionConfig;
-use crate::ext::hygiene::{self, ExpnId, SyntaxContext, MacroKind};
-use crate::mut_visit::{*, ExpectOne};
-use crate::feature_gate::Features;
-use crate::util::map_in_place::MapInPlace;
-use crate::parse::{token, ParseSess};
-use crate::ast::{self, Ident};
-use crate::ptr::P;
-use crate::symbol::{self, Symbol, kw, sym};
-use crate::ThinVec;
+use std::{iter, mem};
 
 struct Test {
     span: Span,
@@ -42,22 +30,21 @@ struct TestCtxt<'a> {
     ext_cx: ExtCtxt<'a>,
     test_cases: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
-    is_libtest: bool,
-    features: &'a Features,
     test_runner: Option<ast::Path>,
-
     // top-level re-export submodule, filled out after folding is finished
     toplevel_reexport: Option<Ident>,
 }
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
-pub fn modify_for_testing(sess: &ParseSess,
-                          resolver: &mut dyn Resolver,
-                          should_test: bool,
-                          krate: &mut ast::Crate,
-                          span_diagnostic: &errors::Handler,
-                          features: &Features) {
+pub fn inject(
+    sess: &ParseSess,
+    resolver: &mut dyn Resolver,
+    should_test: bool,
+    krate: &mut ast::Crate,
+    span_diagnostic: &errors::Handler,
+    features: &Features,
+) {
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use __test::main as some_name;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
@@ -267,11 +254,7 @@ fn generate_test_harness(sess: &ParseSess,
         path: Vec::new(),
         test_cases: Vec::new(),
         reexport_test_harness_main,
-        // N.B., doesn't consider the value of `--crate-name` passed on the command line.
-        is_libtest: attr::find_crate_name(&krate.attrs)
-            .map(|s| s == sym::test).unwrap_or(false),
         toplevel_reexport: None,
-        features,
         test_runner
     };
 
@@ -280,19 +263,6 @@ fn generate_test_harness(sess: &ParseSess,
         tests: Vec::new(),
         tested_submods: Vec::new(),
     }.visit_crate(krate);
-}
-
-enum HasTestSignature {
-    Yes,
-    No(BadTestSignature),
-}
-
-#[derive(PartialEq)]
-enum BadTestSignature {
-    NotEvenAFunction,
-    WrongTypeSignature,
-    NoArgumentsAllowed,
-    ShouldPanicOnlyWithNoArgs,
 }
 
 /// Creates a function item for use as the main function of a test build.

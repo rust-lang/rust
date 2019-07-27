@@ -2863,31 +2863,20 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
- "arena 0.0.0",
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc-rayon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_ast_borrowck 0.0.0",
  "rustc_codegen_utils 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
- "rustc_incremental 0.0.0",
  "rustc_interface 0.0.0",
- "rustc_lint 0.0.0",
  "rustc_metadata 0.0.0",
  "rustc_mir 0.0.0",
- "rustc_passes 0.0.0",
- "rustc_plugin 0.0.0",
- "rustc_privacy 0.0.0",
- "rustc_resolve 0.0.0",
  "rustc_save_analysis 0.0.0",
  "rustc_target 0.0.0",
- "rustc_traits 0.0.0",
- "rustc_typeck 0.0.0",
  "serialize 0.0.0",
- "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -3019,7 +3008,6 @@ dependencies = [
  "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
- "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",
 ]
 
@@ -3064,9 +3052,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
- "rustc_mir 0.0.0",
  "syntax 0.0.0",
- "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",
 ]
 

@@ -278,7 +278,12 @@ pub fn register_plugins<'a>(
 
     krate = time(sess, "crate injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| &**s);
-        syntax::std_inject::maybe_inject_crates_ref(krate, alt_std_name, sess.edition())
+        let (krate, name) =
+            syntax_ext::standard_library_imports::inject(krate, alt_std_name, sess.edition());
+        if let Some(name) = name {
+            sess.parse_sess.injected_crate_name.set(name);
+        }
+        krate
     });
 
     let registrars = time(sess, "plugin loading", || {
@@ -456,7 +461,7 @@ fn configure_and_expand_inner<'a>(
     sess.profiler(|p| p.end_activity("macro expansion"));
 
     time(sess, "maybe building test harness", || {
-        syntax::test::modify_for_testing(
+        syntax_ext::test_harness::inject(
             &sess.parse_sess,
             &mut resolver,
             sess.opts.test,
@@ -485,7 +490,7 @@ fn configure_and_expand_inner<'a>(
             let num_crate_types = crate_types.len();
             let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
             let is_test_crate = sess.opts.test;
-            syntax_ext::proc_macro_decls::modify(
+            syntax_ext::proc_macro_harness::inject(
                 &sess.parse_sess,
                 &mut resolver,
                 krate,

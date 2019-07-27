@@ -1,37 +1,22 @@
-use crate::ast;
-use crate::attr;
-use crate::edition::Edition;
-use crate::ext::hygiene::{ExpnId, MacroKind};
-use crate::symbol::{Ident, Symbol, kw, sym};
-use crate::source_map::{ExpnInfo, ExpnKind, dummy_spanned, respan};
-use crate::ptr::P;
-use crate::tokenstream::TokenStream;
-
-use std::cell::Cell;
-use std::iter;
+use syntax::{ast, attr};
+use syntax::edition::Edition;
+use syntax::ext::hygiene::{ExpnId, MacroKind};
+use syntax::ptr::P;
+use syntax::source_map::{ExpnInfo, ExpnKind, dummy_spanned, respan};
+use syntax::symbol::{Ident, Symbol, kw, sym};
+use syntax::tokenstream::TokenStream;
 use syntax_pos::DUMMY_SP;
 
-pub fn injected_crate_name() -> Option<&'static str> {
-    INJECTED_CRATE_NAME.with(|name| name.get())
-}
+use std::iter;
 
-thread_local! {
-    // A `Symbol` might make more sense here, but it doesn't work, probably for
-    // reasons relating to the use of thread-local storage for the Symbol
-    // interner.
-    static INJECTED_CRATE_NAME: Cell<Option<&'static str>> = Cell::new(None);
-}
-
-pub fn maybe_inject_crates_ref(
-    mut krate: ast::Crate,
-    alt_std_name: Option<&str>,
-    edition: Edition,
-) -> ast::Crate {
+pub fn inject(
+    mut krate: ast::Crate, alt_std_name: Option<&str>, edition: Edition
+) -> (ast::Crate, Option<Symbol>) {
     let rust_2018 = edition >= Edition::Edition2018;
 
     // the first name in this list is the crate name of the crate with the prelude
     let names: &[&str] = if attr::contains_name(&krate.attrs, sym::no_core) {
-        return krate;
+        return (krate, None);
     } else if attr::contains_name(&krate.attrs, sym::no_std) {
         if attr::contains_name(&krate.attrs, sym::compiler_builtins) {
             &["core"]
@@ -73,8 +58,6 @@ pub fn maybe_inject_crates_ref(
     // the prelude.
     let name = names[0];
 
-    INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
-
     let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::std_inject), DUMMY_SP, edition,
         [sym::prelude_import][..].into(),
@@ -108,5 +91,5 @@ pub fn maybe_inject_crates_ref(
         tokens: None,
     }));
 
-    krate
+    (krate, Some(Symbol::intern(name)))
 }

@@ -7,20 +7,14 @@ use syntax::ext::base::{ExtCtxt, MacroKind};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::ext::hygiene::ExpnId;
+use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
-
-const PROC_MACRO_KINDS: [Symbol; 3] = [
-    sym::proc_macro_derive,
-    sym::proc_macro_attribute,
-    sym::proc_macro
-];
 
 struct ProcMacroDerive {
     trait_name: ast::Name,
@@ -44,7 +38,7 @@ struct CollectProcMacros<'a> {
     is_test_crate: bool,
 }
 
-pub fn modify(sess: &ParseSess,
+pub fn inject(sess: &ParseSess,
               resolver: &mut dyn (::syntax::ext::base::Resolver),
               mut krate: ast::Crate,
               is_proc_macro_crate: bool,
@@ -86,10 +80,6 @@ pub fn modify(sess: &ParseSess,
     krate.module.items.push(mk_decls(&mut cx, &derives, &attr_macros, &bang_macros));
 
     krate
-}
-
-pub fn is_proc_macro_attr(attr: &ast::Attribute) -> bool {
-    PROC_MACRO_KINDS.iter().any(|kind| attr.check_name(*kind))
 }
 
 impl<'a> CollectProcMacros<'a> {
