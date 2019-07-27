@@ -1368,6 +1368,27 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
         }
 
+        // Count the number of variants in use. If only one of them, then it is
+        // impossible to overlap any locals in our layout. In this case it's
+        // always better to make the remaining locals ineligible, so we can
+        // lay them out with the other locals in the prefix and eliminate
+        // unnecessary padding bytes.
+        {
+            let mut used_variants = BitSet::new_empty(info.variant_fields.len());
+            for assignment in &assignments {
+                match assignment {
+                    Assigned(idx) => { used_variants.insert(*idx); }
+                    _ => {}
+                }
+            }
+            if used_variants.count() < 2 {
+                for assignment in assignments.iter_mut() {
+                    *assignment = Ineligible(None);
+                }
+                ineligible_locals.insert_all();
+            }
+        }
+
         // Write down the order of our locals that will be promoted to the prefix.
         {
             let mut idx = 0u32;
