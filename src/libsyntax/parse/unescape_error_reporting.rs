@@ -3,11 +3,10 @@
 use std::ops::Range;
 use std::iter::once;
 
+use rustc_lexer::unescape::{EscapeError, Mode};
 use syntax_pos::{Span, BytePos};
 
 use crate::errors::{Handler, Applicability};
-
-use super::unescape::{EscapeError, Mode};
 
 pub(crate) fn emit_unescape_error(
     handler: &Handler,
@@ -191,7 +190,7 @@ pub(crate) fn emit_unescape_error(
             handler.span_err(span, "empty character literal")
         }
         EscapeError::LoneSlash => {
-            panic!("lexer accepted unterminated literal with trailing slash")
+            handler.span_err(span, "invalid trailing slash in literal")
         }
     }
 }

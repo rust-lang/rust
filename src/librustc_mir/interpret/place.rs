@@ -13,7 +13,7 @@ use rustc::ty::TypeFoldable;
 
 use super::{
     GlobalId, AllocId, Allocation, Scalar, InterpResult, Pointer, PointerArithmetic,
-    InterpCx, Machine, AllocMap, AllocationExtra,
+    InterpCx, Machine, AllocMap, AllocationExtra, PanicMessage,
     RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind, LocalValue
 };
 
@@ -356,7 +356,7 @@ where
                     // This can be violated because this runs during promotion on code where the
                     // type system has not yet ensured that such things don't happen.
                     debug!("tried to access element {} of array/slice with length {}", field, len);
-                    return err!(BoundsCheck { len, index: field });
+                    return err!(Panic(PanicMessage::BoundsCheck { len, index: field }));
                 }
                 stride * field
             }

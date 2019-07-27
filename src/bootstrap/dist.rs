@@ -903,7 +903,7 @@ impl Step for Src {
             "src/libtest",
             "src/libterm",
             "src/libprofiler_builtins",
-            "src/stdsimd",
+            "src/stdarch",
             "src/libproc_macro",
             "src/tools/rustc-std-workspace-core",
             "src/tools/rustc-std-workspace-alloc",

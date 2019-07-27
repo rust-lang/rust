@@ -414,12 +414,12 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                     required.bytes(), has.bytes()), self.path),
                             InterpError::ReadBytesAsPointer =>
                                 return validation_failure!(
-                                    "integer pointer in non-ZST reference",
+                                    "dangling reference (created from integer)",
                                     self.path
                                 ),
                             _ =>
                                 return validation_failure!(
-                                    "dangling (not entirely in bounds) reference",
+                                    "dangling reference (not entirely in bounds)",
                                     self.path
                                 ),
                         }

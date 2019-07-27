@@ -95,7 +95,6 @@ impl Step for Std {
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
 
-        let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
         builder.info(&format!("Building stage{} std artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target));
         run_cargo(builder,
@@ -326,7 +325,7 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) {
         let for_compiler = self.compiler;
         let target = self.target;
-        if !target.contains("pc-windows-gnu") {
+        if !target.contains("windows-gnu") {
             return
         }
 
@@ -422,7 +421,6 @@ impl Step for Test {
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "build");
         test_cargo(builder, &compiler, target, &mut cargo);
 
-        let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
         builder.info(&format!("Building stage{} test artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target));
         run_cargo(builder,
@@ -555,7 +553,6 @@ impl Step for Rustc {
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "build");
         rustc_cargo(builder, &mut cargo);
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustc", compiler.stage));
         builder.info(&format!("Building stage{} compiler artifacts ({} -> {})",
                  compiler.stage, &compiler.host, target));
         run_cargo(builder,
@@ -710,7 +707,6 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         let files = run_cargo(builder,
                               cargo.arg("--features").arg(features),
                               vec![],
@@ -1130,6 +1126,7 @@ pub fn run_cargo(builder: &Builder<'_>,
             // Skip files like executables
             if !filename.ends_with(".rlib") &&
                !filename.ends_with(".lib") &&
+               !filename.ends_with(".a") &&
                !is_dylib(&filename) &&
                !(is_check && filename.ends_with(".rmeta")) {
                 continue;

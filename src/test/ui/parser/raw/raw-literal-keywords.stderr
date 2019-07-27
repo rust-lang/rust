@@ -5,34 +5,34 @@ LL |     r#if true { }
    |          ^^^^ expected one of 8 possible tokens here
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
-  --> $DIR/raw-literal-keywords.rs:7:14
+  --> $DIR/raw-literal-keywords.rs:6:14
    |
 LL |     r#struct Test;
    |              ^^^^ expected one of 8 possible tokens here
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
-  --> $DIR/raw-literal-keywords.rs:12:13
+  --> $DIR/raw-literal-keywords.rs:10:13
    |
 LL |     r#union Test;
    |             ^^^^ expected one of 8 possible tokens here
 
 error[E0425]: cannot find value `if` in this scope
-  --> $DIR/raw-literal-keywords.rs:2:5
+  --> $DIR/raw-literal-keywords.rs:14:13
    |
-LL |     r#if true { }
-   |     ^^^^ not found in this scope
+LL |     let _ = r#if;
+   |             ^^^^ not found in this scope
 
 error[E0425]: cannot find value `struct` in this scope
-  --> $DIR/raw-literal-keywords.rs:7:5
+  --> $DIR/raw-literal-keywords.rs:18:13
    |
-LL |     r#struct Test;
-   |     ^^^^^^^^ not found in this scope
+LL |     let _ = r#struct;
+   |             ^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `union` in this scope
-  --> $DIR/raw-literal-keywords.rs:12:5
+  --> $DIR/raw-literal-keywords.rs:22:13
    |
-LL |     r#union Test;
-   |     ^^^^^^^ not found in this scope
+LL |     let _ = r#union;
+   |             ^^^^^^^ not found in this scope
 
 error: aborting due to 6 previous errors
 

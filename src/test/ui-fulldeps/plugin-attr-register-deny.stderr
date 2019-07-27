@@ -10,7 +10,7 @@ note: lint level defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/plugin-attr-register-deny.rs:14:5
    |
 LL |     #[bar]

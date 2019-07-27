@@ -5,10 +5,10 @@
 // compile-flags: -Cprofile-generate -Ccodegen-units=1 -Cpanic=abort
 
 // CHECK: @__llvm_profile_raw_version =
-// CHECK: @__profc_{{.*}}pgo_instrumentation{{.*}}some_function{{.*}} = private global
-// CHECK: @__profd_{{.*}}pgo_instrumentation{{.*}}some_function{{.*}} = private global
-// CHECK: @__profc_{{.*}}pgo_instrumentation{{.*}}some_other_function{{.*}} = private global
-// CHECK: @__profd_{{.*}}pgo_instrumentation{{.*}}some_other_function{{.*}} = private global
+// CHECK-DAG: @__profc_{{.*}}pgo_instrumentation{{.*}}some_function{{.*}} = {{.*}}global
+// CHECK-DAG: @__profd_{{.*}}pgo_instrumentation{{.*}}some_function{{.*}} = {{.*}}global
+// CHECK-DAG: @__profc_{{.*}}pgo_instrumentation{{.*}}some_other_function{{.*}} = {{.*}}global
+// CHECK-DAG: @__profd_{{.*}}pgo_instrumentation{{.*}}some_other_function{{.*}} = {{.*}}global
 // CHECK: @__llvm_profile_filename = {{.*}}"default_%m.profraw\00"{{.*}}
 
 #![crate_type="lib"]

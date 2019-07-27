@@ -5,7 +5,7 @@ LL |     fn foo(self: isize, x: isize) -> isize {
    |                  ^^^^^
    |
    = note: type must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0307]: invalid method receiver type: Bar<isize>
   --> $DIR/ufcs-explicit-self-bad.rs:19:18
@@ -14,7 +14,7 @@ LL |     fn foo(self: Bar<isize>, x: isize) -> isize {
    |                  ^^^^^^^^^^
    |
    = note: type must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0307]: invalid method receiver type: &Bar<usize>
   --> $DIR/ufcs-explicit-self-bad.rs:23:18
@@ -23,7 +23,7 @@ LL |     fn bar(self: &Bar<usize>, x: isize) -> isize {
    |                  ^^^^^^^^^^^
    |
    = note: type must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0308]: mismatched method receiver
   --> $DIR/ufcs-explicit-self-bad.rs:37:21

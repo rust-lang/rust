@@ -41,10 +41,14 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
         if self.optimizations.and_stars.remove(&location) {
             debug!("replacing `&*`: {:?}", rvalue);
             let new_place = match *rvalue {
-                Rvalue::Ref(_, _, Place::Projection(ref mut projection)) => {
+                Rvalue::Ref(_, _, Place {
+                    ref mut base,
+                    projection: Some(ref mut projection),
+                }) => Place {
                     // Replace with dummy
-                    mem::replace(&mut projection.base, Place::Base(PlaceBase::Local(Local::new(0))))
-                }
+                    base: mem::replace(base, PlaceBase::Local(Local::new(0))),
+                    projection: projection.base.take(),
+                },
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };
             *rvalue = Rvalue::Use(Operand::Copy(new_place))
@@ -78,9 +82,12 @@ impl OptimizationFinder<'b, 'tcx> {
 
 impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        if let Rvalue::Ref(_, _, Place::Projection(ref projection)) = *rvalue {
+        if let Rvalue::Ref(_, _, Place {
+            ref base,
+            projection: Some(ref projection),
+        }) = *rvalue {
             if let ProjectionElem::Deref = projection.elem {
-                if projection.base.ty(self.body, self.tcx).ty.is_region_ptr() {
+                if Place::ty_from(&base, &projection.base, self.body, self.tcx).ty.is_region_ptr() {
                     self.optimizations.and_stars.insert(location);
                 }
             }

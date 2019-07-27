@@ -13,7 +13,7 @@ note: lint level defined here
    |
 LL | #[deny(warnings)]
    |        ^^^^^^^^
-   = note: #[deny(unused_variables)] implied by #[deny(warnings)]
+   = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
 
 error: aborting due to previous error
 

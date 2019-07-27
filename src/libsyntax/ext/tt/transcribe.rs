@@ -12,7 +12,6 @@ use smallvec::{smallvec, SmallVec};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::mem;
-use std::rc::Rc;
 
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame {
@@ -65,9 +64,9 @@ impl Iterator for Frame {
 /// `transcribe` would return a `TokenStream` containing `println!("{}", stringify!(bar));`.
 ///
 /// Along the way, we do some additional error checking.
-pub fn transcribe(
+pub(super) fn transcribe(
     cx: &ExtCtxt<'_>,
-    interp: &FxHashMap<Ident, Rc<NamedMatch>>,
+    interp: &FxHashMap<Ident, NamedMatch>,
     src: Vec<quoted::TokenTree>,
 ) -> TokenStream {
     // Nothing for us to transcribe...
@@ -183,7 +182,7 @@ pub fn transcribe(
 
                         // Is the repetition empty?
                         if len == 0 {
-                            if seq.op == quoted::KleeneOp::OneOrMore {
+                            if seq.kleene.op == quoted::KleeneOp::OneOrMore {
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
@@ -212,14 +211,14 @@ pub fn transcribe(
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
-                    if let MatchedNonterminal(ref nt) = *cur_matched {
+                    if let MatchedNonterminal(ref nt) = cur_matched {
                         // FIXME #2887: why do we apply a mark when matching a token tree meta-var
                         // (e.g. `$x:tt`), but not when we are matching any other type of token
                         // tree?
                         if let NtTT(ref tt) = **nt {
                             result.push(tt.clone().into());
                         } else {
-                            sp = sp.apply_mark(cx.current_expansion.mark);
+                            sp = sp.apply_mark(cx.current_expansion.id);
                             let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
                             result.push(token.into());
                         }
@@ -234,8 +233,8 @@ pub fn transcribe(
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
                     let ident =
-                        Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.mark));
-                    sp = sp.apply_mark(cx.current_expansion.mark);
+                        Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.id));
+                    sp = sp.apply_mark(cx.current_expansion.id);
                     result.push(TokenTree::token(token::Dollar, sp).into());
                     result.push(TokenTree::Token(Token::from_ast_ident(ident)).into());
                 }
@@ -247,7 +246,7 @@ pub fn transcribe(
             // jump back out of the Delimited, pop the result_stack and add the new results back to
             // the previous results (from outside the Delimited).
             quoted::TokenTree::Delimited(mut span, delimited) => {
-                span = span.apply_mark(cx.current_expansion.mark);
+                span = span.apply_mark(cx.current_expansion.id);
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span });
                 result_stack.push(mem::take(&mut result));
             }
@@ -255,7 +254,7 @@ pub fn transcribe(
             // Nothing much to do here. Just push the token to the result, being careful to
             // preserve syntax context.
             quoted::TokenTree::Token(token) => {
-                let mut marker = Marker(cx.current_expansion.mark);
+                let mut marker = Marker(cx.current_expansion.id);
                 let mut tt = TokenTree::Token(token);
                 noop_visit_tt(&mut tt, &mut marker);
                 result.push(tt.into());
@@ -273,18 +272,17 @@ pub fn transcribe(
 /// See the definition of `repeats` in the `transcribe` function. `repeats` is used to descend
 /// into the right place in nested matchers. If we attempt to descend too far, the macro writer has
 /// made a mistake, and we return `None`.
-fn lookup_cur_matched(
+fn lookup_cur_matched<'a>(
     ident: Ident,
-    interpolations: &FxHashMap<Ident, Rc<NamedMatch>>,
+    interpolations: &'a FxHashMap<Ident, NamedMatch>,
     repeats: &[(usize, usize)],
-) -> Option<Rc<NamedMatch>> {
+) -> Option<&'a NamedMatch> {
     interpolations.get(&ident).map(|matched| {
-        let mut matched = matched.clone();
+        let mut matched = matched;
         for &(idx, _) in repeats {
-            let m = matched.clone();
-            match *m {
+            match matched {
                 MatchedNonterminal(_) => break,
-                MatchedSeq(ref ads, _) => matched = Rc::new(ads[idx].clone()),
+                MatchedSeq(ref ads, _) => matched = ads.get(idx).unwrap(),
             }
         }
 
@@ -343,7 +341,7 @@ impl LockstepIterSize {
 /// multiple nested matcher sequences.
 fn lockstep_iter_size(
     tree: &quoted::TokenTree,
-    interpolations: &FxHashMap<Ident, Rc<NamedMatch>>,
+    interpolations: &FxHashMap<Ident, NamedMatch>,
     repeats: &[(usize, usize)],
 ) -> LockstepIterSize {
     use quoted::TokenTree;
@@ -360,7 +358,7 @@ fn lockstep_iter_size(
         }
         TokenTree::MetaVar(_, name) | TokenTree::MetaVarDecl(_, name, _) => {
             match lookup_cur_matched(name, interpolations, repeats) {
-                Some(matched) => match *matched {
+                Some(matched) => match matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ref ads, _) => LockstepIterSize::Constraint(ads.len(), name),
                 },

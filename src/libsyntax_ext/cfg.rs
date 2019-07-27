@@ -17,7 +17,7 @@ pub fn expand_cfg(
     sp: Span,
     tts: &[tokenstream::TokenTree],
 ) -> Box<dyn base::MacResult + 'static> {
-    let sp = sp.apply_mark(cx.current_expansion.mark);
+    let sp = sp.apply_mark(cx.current_expansion.id);
 
     match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {

@@ -1328,7 +1328,7 @@ mod tests {
                 matches_codepattern,
                 "matches_codepattern",
                 pprust::to_string(|s| fake_print_crate(s, &krate)),
-                "macro_rules! zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)));".to_string());
+                "macro_rules! zz{(zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+))}".to_string());
         })
     }
 }

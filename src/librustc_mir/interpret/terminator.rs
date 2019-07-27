@@ -135,8 +135,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.goto_block(Some(target))?;
                 } else {
                     // Compute error message
-                    use rustc::mir::interpret::InterpError::*;
-                    return match *msg {
+                    use rustc::mir::interpret::PanicMessage::*;
+                    return match msg {
                         BoundsCheck { ref len, ref index } => {
                             let len = self.read_immediate(self.eval_operand(len, None)?)
                                 .expect("can't eval len").to_scalar()?
@@ -144,15 +144,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let index = self.read_immediate(self.eval_operand(index, None)?)
                                 .expect("can't eval index").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            err!(BoundsCheck { len, index })
+                            err!(Panic(BoundsCheck { len, index }))
                         }
-                        Overflow(op) => Err(Overflow(op).into()),
-                        OverflowNeg => Err(OverflowNeg.into()),
-                        DivisionByZero => Err(DivisionByZero.into()),
-                        RemainderByZero => Err(RemainderByZero.into()),
-                        GeneratorResumedAfterReturn |
-                        GeneratorResumedAfterPanic => unimplemented!(),
-                        _ => bug!(),
+                        Overflow(op) =>
+                            err!(Panic(Overflow(*op))),
+                        OverflowNeg =>
+                            err!(Panic(OverflowNeg)),
+                        DivisionByZero =>
+                            err!(Panic(DivisionByZero)),
+                        RemainderByZero =>
+                            err!(Panic(RemainderByZero)),
+                        GeneratorResumedAfterReturn =>
+                            err!(Panic(GeneratorResumedAfterReturn)),
+                        GeneratorResumedAfterPanic =>
+                            err!(Panic(GeneratorResumedAfterPanic)),
+                        Panic { .. } =>
+                            bug!("`Panic` variant cannot occur in MIR"),
                     };
                 }
             }
@@ -280,8 +287,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             _ => bug!("unexpected callee ty: {:?}", instance_ty),
                         }
                     };
-                    // Rust and RustCall are compatible
-                    let normalize_abi = |abi| if abi == Abi::RustCall { Abi::Rust } else { abi };
+                    let normalize_abi = |abi| match abi {
+                        Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
+                            // These are all the same ABI, really.
+                            Abi::Rust,
+                        abi =>
+                            abi,
+                    };
                     if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
                         return err!(FunctionAbiMismatch(caller_abi, callee_abi));
                     }

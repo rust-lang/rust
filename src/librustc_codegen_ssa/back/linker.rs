@@ -16,7 +16,7 @@ use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
                              LinkerPluginLto, Lto};
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
-use serialize::{json, Encoder};
+use rustc_serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
@@ -373,6 +373,26 @@ impl<'a> Linker for GccLinker<'a> {
             }
         } else {
             self.cmd.arg("-shared");
+            if self.sess.target.target.options.is_like_windows {
+                // The output filename already contains `dll_suffix` so
+                // the resulting import library will have a name in the
+                // form of libfoo.dll.a
+                let implib_name = out_filename
+                    .file_name()
+                    .and_then(|file| file.to_str())
+                    .map(|file| format!("{}{}{}",
+                         self.sess.target.target.options.staticlib_prefix,
+                         file,
+                         self.sess.target.target.options.staticlib_suffix));
+                if let Some(implib_name) = implib_name {
+                    let implib = out_filename
+                        .parent()
+                        .map(|dir| dir.join(&implib_name));
+                    if let Some(implib) = implib {
+                        self.linker_arg(&format!("--out-implib,{}", (*implib).to_str().unwrap()));
+                    }
+                }
+            }
         }
     }
 

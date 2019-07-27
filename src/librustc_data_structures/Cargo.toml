@@ -15,7 +15,7 @@ indexmap = "1"
 log = "0.4"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 lazy_static = "1"
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../libserialize", package = "serialize" }
 graphviz = { path = "../libgraphviz" }
 cfg-if = "0.1.2"
 crossbeam-utils = { version = "0.6.5", features = ["nightly"] }

@@ -240,8 +240,8 @@ impl MovePathLookup {
     // alternative will *not* create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
-    pub fn find(&self, place: &Place<'tcx>) -> LookupResult {
-        place.iterate(|place_base, place_projection| {
+    pub fn find(&self, place_ref: PlaceRef<'cx, 'tcx>) -> LookupResult {
+        place_ref.iterate(|place_base, place_projection| {
             let mut result = match place_base {
                 PlaceBase::Local(local) => self.locals[*local],
                 PlaceBase::Static(..) => return LookupResult::Parent(None),
@@ -318,7 +318,10 @@ impl<'tcx> MoveData<'tcx> {
     pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
         loop {
             let path = &self.move_paths[mpi];
-            if let Place::Base(PlaceBase::Local(l)) = path.place { return Some(l); }
+            if let Place {
+                base: PlaceBase::Local(l),
+                projection: None,
+            } = path.place { return Some(l); }
             if let Some(parent) = path.parent { mpi = parent; continue } else { return None }
         }
     }

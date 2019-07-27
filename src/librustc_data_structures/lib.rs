@@ -31,8 +31,6 @@
 
 #[macro_use]
 extern crate log;
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
 #[macro_use]
@@ -77,7 +75,6 @@ pub mod flock;
 pub mod fx;
 pub mod graph;
 pub mod indexed_vec;
-pub mod interner;
 pub mod jobserver;
 pub mod obligation_forest;
 pub mod owning_ref;
@@ -89,6 +86,7 @@ pub use ena::snapshot_vec;
 pub mod sorted_map;
 #[macro_use] pub mod stable_hasher;
 pub mod sync;
+pub mod sharded;
 pub mod tiny_list;
 pub mod thin_vec;
 pub mod transitive_relation;

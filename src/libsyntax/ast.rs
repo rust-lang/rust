@@ -5,8 +5,8 @@ pub use UnsafeSource::*;
 pub use crate::symbol::{Ident, Symbol as Name};
 pub use crate::util::parser::ExprPrecedence;
 
-use crate::ext::hygiene::{Mark, SyntaxContext};
-use crate::parse::token;
+use crate::ext::hygiene::{ExpnId, SyntaxContext};
+use crate::parse::token::{self, DelimToken};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
@@ -22,7 +22,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use serialize::{self, Decoder, Encoder};
+use rustc_serialize::{self, Decoder, Encoder};
 use std::fmt;
 
 pub use rustc_target::abi::FloatTy;
@@ -251,12 +251,12 @@ mod node_id_inner {
 pub use node_id_inner::NodeId;
 
 impl NodeId {
-    pub fn placeholder_from_mark(mark: Mark) -> Self {
-        NodeId::from_u32(mark.as_u32())
+    pub fn placeholder_from_expn_id(expn_id: ExpnId) -> Self {
+        NodeId::from_u32(expn_id.as_u32())
     }
 
-    pub fn placeholder_to_mark(self) -> Mark {
-        Mark::from_u32(self.as_u32())
+    pub fn placeholder_to_expn_id(self) -> ExpnId {
+        ExpnId::from_u32(self.as_u32())
     }
 }
 
@@ -266,13 +266,13 @@ impl fmt::Display for NodeId {
     }
 }
 
-impl serialize::UseSpecializedEncodable for NodeId {
+impl rustc_serialize::UseSpecializedEncodable for NodeId {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_u32(self.as_u32())
     }
 }
 
-impl serialize::UseSpecializedDecodable for NodeId {
+impl rustc_serialize::UseSpecializedDecodable for NodeId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
         d.read_u32().map(NodeId::from_u32)
     }
@@ -1295,6 +1295,16 @@ pub enum MacDelimiter {
 impl Mac_ {
     pub fn stream(&self) -> TokenStream {
         self.tts.clone()
+    }
+}
+
+impl MacDelimiter {
+    crate fn to_token(self) -> DelimToken {
+        match self {
+            MacDelimiter::Parenthesis => DelimToken::Paren,
+            MacDelimiter::Bracket => DelimToken::Bracket,
+            MacDelimiter::Brace => DelimToken::Brace,
+        }
     }
 }
 
@@ -2404,12 +2414,11 @@ impl ForeignItemKind {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serialize;
 
     // Are ASTs encodable?
     #[test]
     fn check_asts_encodable() {
-        fn assert_encodable<T: serialize::Encodable>() {}
+        fn assert_encodable<T: rustc_serialize::Encodable>() {}
         assert_encodable::<Crate>();
     }
 }

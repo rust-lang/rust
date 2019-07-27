@@ -1263,6 +1263,12 @@ fn get_concurrency() -> usize {
         1
     }
 
+    #[cfg(target_os = "vxworks")]
+    fn num_cpus() -> usize {
+        // FIXME: Implement num_cpus on vxWorks
+        1
+    }
+
     #[cfg(any(
         all(target_arch = "wasm32", not(target_os = "emscripten")),
         all(target_vendor = "fortanix", target_env = "sgx")

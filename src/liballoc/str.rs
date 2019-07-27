@@ -37,7 +37,7 @@ use core::unicode::conversions;
 
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
-use crate::slice::{SliceConcat, SliceIndex};
+use crate::slice::{Concat, Join, SliceIndex};
 use crate::string::String;
 use crate::vec::Vec;
 
@@ -71,17 +71,22 @@ pub use core::str::SplitAsciiWhitespace;
 #[stable(feature = "str_escape", since = "1.34.0")]
 pub use core::str::{EscapeDebug, EscapeDefault, EscapeUnicode};
 
-#[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist",
-           issue = "27747")]
-impl<S: Borrow<str>> SliceConcat<str> for S {
+/// Note: `str` in `Concat<str>` is not meaningful here.
+/// This type parameter of the trait only exists to enable another impl.
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<S: Borrow<str>> Concat<str> for [S] {
     type Output = String;
 
-    fn concat(slice: &[Self]) -> String {
-        Self::join(slice, "")
+    fn concat(slice: &Self) -> String {
+        Join::join(slice, "")
     }
+}
 
-    fn join(slice: &[Self], sep: &str) -> String {
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<S: Borrow<str>> Join<&str> for [S] {
+    type Output = String;
+
+    fn join(slice: &Self, sep: &str) -> String {
         unsafe {
             String::from_utf8_unchecked( join_generic_copy(slice, sep.as_bytes()) )
         }

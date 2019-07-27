@@ -2,6 +2,7 @@ use crate::edition::Edition;
 use crate::ext::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
 use crate::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::ext::expand::{AstFragment, AstFragmentKind};
+use crate::ext::tt::macro_check;
 use crate::ext::tt::macro_parser::{parse, parse_failure_msg};
 use crate::ext::tt::macro_parser::{Error, Failure, Success};
 use crate::ext::tt::macro_parser::{MatchedNonterminal, MatchedSeq};
@@ -18,7 +19,7 @@ use crate::{ast, attr, attr::TransparencyError};
 
 use errors::FatalError;
 use log::debug;
-use syntax_pos::{symbol::Ident, Span};
+use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::borrow::Cow;
@@ -273,7 +274,7 @@ pub fn compile(
                     if body.legacy { token::Semi } else { token::Comma },
                     def.span,
                 )),
-                op: quoted::KleeneOp::OneOrMore,
+                kleene: quoted::KleeneToken::new(quoted::KleeneOp::OneOrMore, def.span),
                 num_captures: 2,
             }),
         ),
@@ -283,7 +284,7 @@ pub fn compile(
             Lrc::new(quoted::SequenceRepetition {
                 tts: vec![quoted::TokenTree::token(token::Semi, def.span)],
                 separator: None,
-                op: quoted::KleeneOp::ZeroOrMore,
+                kleene: quoted::KleeneToken::new(quoted::KleeneOp::ZeroOrMore, def.span),
                 num_captures: 0,
             }),
         ),
@@ -307,7 +308,7 @@ pub fn compile(
     let mut valid = true;
 
     // Extract the arguments:
-    let lhses = match *argument_map[&lhs_nm] {
+    let lhses = match argument_map[&lhs_nm] {
         MatchedSeq(ref s, _) => s
             .iter()
             .map(|m| {
@@ -334,7 +335,7 @@ pub fn compile(
         _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
     };
 
-    let rhses = match *argument_map[&rhs_nm] {
+    let rhses = match argument_map[&rhs_nm] {
         MatchedSeq(ref s, _) => s
             .iter()
             .map(|m| {
@@ -366,13 +367,11 @@ pub fn compile(
     // don't abort iteration early, so that errors for multiple lhses can be reported
     for lhs in &lhses {
         valid &= check_lhs_no_empty_seq(sess, slice::from_ref(lhs));
-        valid &= check_lhs_duplicate_matcher_bindings(
-            sess,
-            slice::from_ref(lhs),
-            &mut FxHashMap::default(),
-            def.id,
-        );
     }
+
+    // We use CRATE_NODE_ID instead of `def.id` otherwise we may emit buffered lints for a node id
+    // that is not lint-checked and trigger the "failed to process buffered lint here" bug.
+    valid &= macro_check::check_meta_variables(sess, ast::CRATE_NODE_ID, def.span, &lhses, &rhses);
 
     let expander: Box<_> =
         Box::new(MacroRulesMacroExpander { name: def.ident, span: def.span, lhses, rhses, valid });
@@ -438,6 +437,7 @@ pub fn compile(
         deprecation: attr::find_deprecation(&sess, &def.attrs, def.span),
         helper_attrs: Vec::new(),
         edition,
+        is_builtin: attr::contains_name(&def.attrs, sym::rustc_builtin_macro),
     }
 }
 
@@ -477,8 +477,8 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
                     && seq.tts.iter().all(|seq_tt| match *seq_tt {
                         TokenTree::MetaVarDecl(_, _, id) => id.name == sym::vis,
                         TokenTree::Sequence(_, ref sub_seq) => {
-                            sub_seq.op == quoted::KleeneOp::ZeroOrMore
-                                || sub_seq.op == quoted::KleeneOp::ZeroOrOne
+                            sub_seq.kleene.op == quoted::KleeneOp::ZeroOrMore
+                                || sub_seq.kleene.op == quoted::KleeneOp::ZeroOrOne
                         }
                         _ => false,
                     })
@@ -491,45 +491,6 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
                     return false;
                 }
             }
-        }
-    }
-
-    true
-}
-
-/// Check that the LHS contains no duplicate matcher bindings. e.g. `$a:expr, $a:expr` would be
-/// illegal, since it would be ambiguous which `$a` to use if we ever needed to.
-fn check_lhs_duplicate_matcher_bindings(
-    sess: &ParseSess,
-    tts: &[quoted::TokenTree],
-    metavar_names: &mut FxHashMap<Ident, Span>,
-    node_id: ast::NodeId,
-) -> bool {
-    use self::quoted::TokenTree;
-    for tt in tts {
-        match *tt {
-            TokenTree::MetaVarDecl(span, name, _kind) => {
-                if let Some(&prev_span) = metavar_names.get(&name) {
-                    sess.span_diagnostic
-                        .struct_span_err(span, "duplicate matcher binding")
-                        .span_note(prev_span, "previous declaration was here")
-                        .emit();
-                    return false;
-                } else {
-                    metavar_names.insert(name, span);
-                }
-            }
-            TokenTree::Delimited(_, ref del) => {
-                if !check_lhs_duplicate_matcher_bindings(sess, &del.tts, metavar_names, node_id) {
-                    return false;
-                }
-            }
-            TokenTree::Sequence(_, ref seq) => {
-                if !check_lhs_duplicate_matcher_bindings(sess, &seq.tts, metavar_names, node_id) {
-                    return false;
-                }
-            }
-            _ => {}
         }
     }
 
@@ -628,8 +589,8 @@ impl FirstSets {
 
                         // Reverse scan: Sequence comes before `first`.
                         if subfirst.maybe_empty
-                            || seq_rep.op == quoted::KleeneOp::ZeroOrMore
-                            || seq_rep.op == quoted::KleeneOp::ZeroOrOne
+                            || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrMore
+                            || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrOne
                         {
                             // If sequence is potentially empty, then
                             // union them (preserving first emptiness).
@@ -665,38 +626,37 @@ impl FirstSets {
                     return first;
                 }
                 TokenTree::Sequence(sp, ref seq_rep) => {
-                    match self.first.get(&sp.entire()) {
-                        Some(&Some(ref subfirst)) => {
-                            // If the sequence contents can be empty, then the first
-                            // token could be the separator token itself.
-
-                            if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
-                                first.add_one_maybe(TokenTree::Token(sep.clone()));
-                            }
-
-                            assert!(first.maybe_empty);
-                            first.add_all(subfirst);
-                            if subfirst.maybe_empty
-                                || seq_rep.op == quoted::KleeneOp::ZeroOrMore
-                                || seq_rep.op == quoted::KleeneOp::ZeroOrOne
-                            {
-                                // continue scanning for more first
-                                // tokens, but also make sure we
-                                // restore empty-tracking state
-                                first.maybe_empty = true;
-                                continue;
-                            } else {
-                                return first;
-                            }
-                        }
-
+                    let subfirst_owned;
+                    let subfirst = match self.first.get(&sp.entire()) {
+                        Some(&Some(ref subfirst)) => subfirst,
                         Some(&None) => {
-                            panic!("assume all sequences have (unique) spans for now");
+                            subfirst_owned = self.first(&seq_rep.tts[..]);
+                            &subfirst_owned
                         }
-
                         None => {
                             panic!("We missed a sequence during FirstSets construction");
                         }
+                    };
+
+                    // If the sequence contents can be empty, then the first
+                    // token could be the separator token itself.
+                    if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
+                        first.add_one_maybe(TokenTree::Token(sep.clone()));
+                    }
+
+                    assert!(first.maybe_empty);
+                    first.add_all(subfirst);
+                    if subfirst.maybe_empty
+                        || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrMore
+                        || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrOne
+                    {
+                        // Continue scanning for more first
+                        // tokens, but also make sure we
+                        // restore empty-tracking state.
+                        first.maybe_empty = true;
+                        continue;
+                    } else {
+                        return first;
                     }
                 }
             }

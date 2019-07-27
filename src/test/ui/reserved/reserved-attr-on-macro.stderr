@@ -7,14 +7,11 @@ LL | #[rustc_attribute_should_be_reserved]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
-error[E0658]: The attribute `rustc_attribute_should_be_reserved` is currently unknown to the compiler and may have meaning added to it in the future
+error: cannot find attribute macro `rustc_attribute_should_be_reserved` in this scope
   --> $DIR/reserved-attr-on-macro.rs:1:3
    |
 LL | #[rustc_attribute_should_be_reserved]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
 
 error: cannot determine resolution for the macro `foo`
   --> $DIR/reserved-attr-on-macro.rs:10:5

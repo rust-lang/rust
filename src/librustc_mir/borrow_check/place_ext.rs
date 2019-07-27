@@ -55,7 +55,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
 
             for proj in place_projection {
                 if proj.elem == ProjectionElem::Deref {
-                    let ty = proj.base.ty(body, tcx).ty;
+                    let ty = Place::ty_from(place_base, &proj.base, body, tcx).ty;
                     match ty.sty {
                         // For both derefs of raw pointers and `&T`
                         // references, the original path is `Copy` and

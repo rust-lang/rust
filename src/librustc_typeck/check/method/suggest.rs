@@ -10,7 +10,6 @@ use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::map as hir_map;
-use rustc::hir::print;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Obligation;
 use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
@@ -78,6 +77,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        let print_disambiguation_help = |
+            err: &mut DiagnosticBuilder<'_>,
+            trait_name: String,
+        | {
+            err.help(&format!(
+                "to disambiguate the method call, write `{}::{}({}{})` instead",
+                trait_name,
+                item_name,
+                if rcvr_ty.is_region_ptr() && args.is_some() {
+                    if rcvr_ty.is_mutable_ptr() {
+                        "&mut "
+                    } else {
+                        "&"
+                    }
+                } else {
+                    ""
+                },
+                args.map(|arg| arg
+                    .iter()
+                    .map(|arg| self.tcx.sess.source_map().span_to_snippet(arg.span)
+                        .unwrap_or_else(|_| "...".to_owned()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+                ).unwrap_or_else(|| "...".to_owned())
+            ));
+        };
+
         let report_candidates = |
             span: Span,
             err: &mut DiagnosticBuilder<'_>,
@@ -139,6 +165,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             err.note(&note_str);
                         }
+                        if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
+                            print_disambiguation_help(err, self.tcx.def_path_str(trait_ref.def_id));
+                        }
                     }
                     CandidateSource::TraitSource(trait_did) => {
                         let item = match self.associated_item(
@@ -163,24 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        "the candidate is defined in the trait `{}`",
                                        self.tcx.def_path_str(trait_did));
                         }
-                        err.help(&format!("to disambiguate the method call, write `{}::{}({}{})` \
-                                          instead",
-                                          self.tcx.def_path_str(trait_did),
-                                          item_name,
-                                          if rcvr_ty.is_region_ptr() && args.is_some() {
-                                              if rcvr_ty.is_mutable_pointer() {
-                                                  "&mut "
-                                              } else {
-                                                  "&"
-                                              }
-                                          } else {
-                                              ""
-                                          },
-                                          args.map(|arg| arg.iter()
-                                              .map(|arg| print::to_string(print::NO_ANN,
-                                                                          |s| s.print_expr(arg)))
-                                              .collect::<Vec<_>>()
-                                              .join(", ")).unwrap_or_else(|| "...".to_owned())));
+                        print_disambiguation_help(err, self.tcx.def_path_str(trait_did));
                     }
                 }
             }
@@ -331,6 +343,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.note("try using `<*const T>::as_ref()` to get a reference to the \
                                       type behind the pointer: https://doc.rust-lang.org/std/\
                                       primitive.pointer.html#method.as_ref");
+                            err.note("using `<*const T>::as_ref()` on a pointer \
+                                      which is unaligned or points to invalid \
+                                      or uninitialized memory is undefined behavior");
                         }
                         err
                     }
@@ -640,13 +655,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_traits_to_import<'b>(&self,
-                                    err: &mut DiagnosticBuilder<'_>,
-                                    span: Span,
-                                    rcvr_ty: Ty<'tcx>,
-                                    item_name: ast::Ident,
-                                    source: SelfSource<'b>,
-                                    valid_out_of_scope_traits: Vec<DefId>) {
+    fn suggest_traits_to_import<'b>(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_name: ast::Ident,
+        source: SelfSource<'b>,
+        valid_out_of_scope_traits: Vec<DefId>,
+    ) {
         if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
             return;
         }
@@ -680,30 +697,96 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             candidates.sort_by(|a, b| a.cmp(b).reverse());
             candidates.dedup();
 
-            // FIXME #21673: this help message could be tuned to the case
-            // of a type parameter: suggest adding a trait bound rather
-            // than implementing.
-            err.help("items from traits can only be used if the trait is implemented and in scope");
-            let mut msg = format!("the following {traits_define} an item `{name}`, \
-                                   perhaps you need to implement {one_of_them}:",
-                                  traits_define = if candidates.len() == 1 {
-                                      "trait defines"
-                                  } else {
-                                      "traits define"
-                                  },
-                                  one_of_them = if candidates.len() == 1 {
-                                      "it"
-                                  } else {
-                                      "one of them"
-                                  },
-                                  name = item_name);
+            let param_type = match rcvr_ty.sty {
+                ty::Param(param) => Some(param),
+                ty::Ref(_, ty, _) => match ty.sty {
+                    ty::Param(param) => Some(param),
+                    _ => None,
+                }
+                _ => None,
+            };
+            err.help(if param_type.is_some() {
+                "items from traits can only be used if the type parameter is bounded by the trait"
+            } else {
+                "items from traits can only be used if the trait is implemented and in scope"
+            });
+            let mut msg = format!(
+                "the following {traits_define} an item `{name}`, perhaps you need to {action} \
+                 {one_of_them}:",
+                traits_define = if candidates.len() == 1 {
+                    "trait defines"
+                } else {
+                    "traits define"
+                },
+                action = if let Some(param) = param_type {
+                    format!("restrict type parameter `{}` with", param)
+                } else {
+                    "implement".to_string()
+                },
+                one_of_them = if candidates.len() == 1 {
+                    "it"
+                } else {
+                    "one of them"
+                },
+                name = item_name,
+            );
+            // Obtain the span for `param` and use it for a structured suggestion.
+            let mut suggested = false;
+            if let (Some(ref param), Some(ref table)) = (param_type, self.in_progress_tables) {
+                let table = table.borrow();
+                if let Some(did) = table.local_id_root {
+                    let generics = self.tcx.generics_of(did);
+                    let type_param = generics.type_param(param, self.tcx);
+                    let hir = &self.tcx.hir();
+                    if let Some(id) = hir.as_local_hir_id(type_param.def_id) {
+                        // Get the `hir::Param` to verify whether it already has any bounds.
+                        // We do this to avoid suggesting code that ends up as `T: FooBar`,
+                        // instead we suggest `T: Foo + Bar` in that case.
+                        let mut has_bounds = false;
+                        if let Node::GenericParam(ref param) = hir.get(id) {
+                            has_bounds = !param.bounds.is_empty();
+                        }
+                        let sp = hir.span(id);
+                        // `sp` only covers `T`, change it so that it covers
+                        // `T:` when appropriate
+                        let sp = if has_bounds {
+                            sp.to(self.tcx
+                                .sess
+                                .source_map()
+                                .next_point(self.tcx.sess.source_map().next_point(sp)))
+                        } else {
+                            sp
+                        };
 
-            for (i, trait_info) in candidates.iter().enumerate() {
-                msg.push_str(&format!("\ncandidate #{}: `{}`",
-                                      i + 1,
-                                      self.tcx.def_path_str(trait_info.def_id)));
+                        // FIXME: contrast `t.def_id` against `param.bounds` to not suggest traits
+                        // already there. That can happen when the cause is that we're in a const
+                        // scope or associated function used as a method.
+                        err.span_suggestions(
+                            sp,
+                            &msg[..],
+                            candidates.iter().map(|t| format!(
+                                "{}: {}{}",
+                                param,
+                                self.tcx.def_path_str(t.def_id),
+                                if has_bounds { " +"} else { "" },
+                            )),
+                            Applicability::MaybeIncorrect,
+                        );
+                        suggested = true;
+                    }
+                };
             }
-            err.note(&msg[..]);
+
+            if !suggested {
+                for (i, trait_info) in candidates.iter().enumerate() {
+                    msg.push_str(&format!(
+                        "\ncandidate #{}: `{}`",
+                        i + 1,
+                        self.tcx.def_path_str(trait_info.def_id),
+                    ));
+                }
+                err.note(&msg[..]);
+            }
         }
     }
 

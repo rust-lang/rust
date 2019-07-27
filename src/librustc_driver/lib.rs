@@ -46,7 +46,7 @@ use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
 use rustc_data_structures::sync::SeqCst;
 
-use serialize::json::ToJson;
+use rustc_serialize::json::ToJson;
 
 use std::borrow::Cow;
 use std::cmp::max;
@@ -105,13 +105,20 @@ pub fn abort_on_err<T>(result: Result<T, ErrorReported>, sess: &Session) -> T {
 pub trait Callbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, _config: &mut interface::Config) {}
-    /// Called after parsing and returns true to continue execution
-    fn after_parsing(&mut self, _compiler: &interface::Compiler) -> bool {
-        true
+    /// Called after parsing. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_parsing(&mut self, _compiler: &interface::Compiler) -> Compilation {
+        Compilation::Continue
     }
-    /// Called after analysis and returns true to continue execution
-    fn after_analysis(&mut self, _compiler: &interface::Compiler) -> bool {
-        true
+    /// Called after expansion. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_expansion(&mut self, _compiler: &interface::Compiler) -> Compilation {
+        Compilation::Continue
+    }
+    /// Called after analysis. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_analysis(&mut self, _compiler: &interface::Compiler) -> Compilation {
+        Compilation::Continue
     }
 }
 
@@ -294,7 +301,7 @@ pub fn run_compiler(
             }
         }
 
-        if !callbacks.after_parsing(compiler) {
+        if callbacks.after_parsing(compiler) == Compilation::Stop {
             return sess.compile_status();
         }
 
@@ -309,6 +316,11 @@ pub fn run_compiler(
         // Lint plugins are registered; now we can process command line flags.
         if sess.opts.describe_lints {
             describe_lints(&sess, &sess.lint_store.borrow(), true);
+            return sess.compile_status();
+        }
+
+        compiler.expansion()?;
+        if callbacks.after_expansion(compiler) == Compilation::Stop {
             return sess.compile_status();
         }
 
@@ -355,7 +367,7 @@ pub fn run_compiler(
 
         compiler.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
-        if !callbacks.after_analysis(compiler) {
+        if callbacks.after_analysis(compiler) == Compilation::Stop {
             return sess.compile_status();
         }
 

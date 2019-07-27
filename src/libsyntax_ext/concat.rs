@@ -60,6 +60,6 @@ pub fn expand_syntax_ext(
     } else if has_errors {
         return base::DummyResult::expr(sp);
     }
-    let sp = sp.apply_mark(cx.current_expansion.mark);
+    let sp = sp.apply_mark(cx.current_expansion.id);
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&accumulator)))
 }

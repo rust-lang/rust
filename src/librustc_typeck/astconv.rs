@@ -1650,7 +1650,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             Applicability::MaybeIncorrect,
                         );
                     } else {
-                        err.span_label(span, format!("variant not found in `{}`", qself_ty));
+                        err.span_label(
+                            assoc_ident.span,
+                            format!("variant not found in `{}`", qself_ty),
+                        );
                     }
 
                     if let Some(sp) = tcx.hir().span_if_local(adt_def.did) {

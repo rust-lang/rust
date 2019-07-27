@@ -53,10 +53,10 @@ LL |     0o;
    |     ^^
 
 error: expected at least one digit in exponent
-  --> $DIR/lex-bad-numeric-literals.rs:12:8
+  --> $DIR/lex-bad-numeric-literals.rs:12:5
    |
 LL |     1e+;
-   |        ^
+   |     ^^^
 
 error: hexadecimal float literal is not supported
   --> $DIR/lex-bad-numeric-literals.rs:13:5

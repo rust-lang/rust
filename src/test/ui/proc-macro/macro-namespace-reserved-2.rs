@@ -35,7 +35,7 @@ fn check_bang3() {
                        //~| ERROR expected macro, found derive macro `crate::MyTrait`
 }
 
-#[my_macro] //~ ERROR attribute `my_macro` is currently unknown
+#[my_macro] //~ ERROR cannot find attribute macro `my_macro` in this scope
 #[crate::my_macro] //~ ERROR can't use a procedural macro from the same crate that defines it
                    //~| ERROR expected attribute, found macro `crate::my_macro`
 fn check_attr1() {}

@@ -318,8 +318,10 @@ impl<'test> TestCx<'test> {
     }
 
     fn should_run_successfully(&self) -> bool {
+        let pass_mode = self.pass_mode();
         match self.config.mode {
-            RunPass | Ui => self.pass_mode() == Some(PassMode::Run),
+            Ui => pass_mode == Some(PassMode::Run),
+            RunPass => pass_mode == Some(PassMode::Run) || pass_mode.is_none(),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
@@ -1648,6 +1650,18 @@ impl<'test> TestCx<'test> {
                     .envs(env.clone());
                 self.compose_and_run(
                     test_client,
+                    self.config.run_lib_path.to_str().unwrap(),
+                    Some(aux_dir.to_str().unwrap()),
+                    None,
+                )
+            }
+            _ if self.config.target.contains("vxworks") => {
+                let aux_dir = self.aux_output_dir_name();
+                let ProcArgs { prog, args } = self.make_run_args();
+                let mut vx_run = Command::new("vx-run");
+                vx_run.args(&[&prog]).args(args).envs(env.clone());
+                self.compose_and_run(
+                    vx_run,
                     self.config.run_lib_path.to_str().unwrap(),
                     Some(aux_dir.to_str().unwrap()),
                     None,

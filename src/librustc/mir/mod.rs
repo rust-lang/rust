@@ -7,9 +7,8 @@
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir::{self, InlineAsm as HirInlineAsm};
-use crate::mir::interpret::{ConstValue, InterpError, Scalar};
+use crate::mir::interpret::{ConstValue, PanicMessage, Scalar};
 use crate::mir::visit::MirVisitable;
-use crate::rustc_serialize as serialize;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::layout::VariantIdx;
@@ -28,6 +27,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::MappedReadGuard;
 use rustc_macros::HashStable;
+use rustc_serialize::{Encodable, Decodable};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
@@ -463,8 +463,8 @@ impl<T> ClearCrossCrate<T> {
     }
 }
 
-impl<T: serialize::Encodable> serialize::UseSpecializedEncodable for ClearCrossCrate<T> {}
-impl<T: serialize::Decodable> serialize::UseSpecializedDecodable for ClearCrossCrate<T> {}
+impl<T: Encodable> rustc_serialize::UseSpecializedEncodable for ClearCrossCrate<T> {}
+impl<T: Decodable> rustc_serialize::UseSpecializedDecodable for ClearCrossCrate<T> {}
 
 /// Grouped information about the source code origin of a MIR entity.
 /// Intended to be inspected by diagnostics and debuginfo.
@@ -1718,11 +1718,11 @@ impl<'tcx> Debug for Statement<'tcx> {
 #[derive(
     Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
 )]
-pub enum Place<'tcx> {
-    Base(PlaceBase<'tcx>),
+pub struct Place<'tcx> {
+    pub base: PlaceBase<'tcx>,
 
     /// projection out of a place (access a field, deref a pointer, etc)
-    Projection(Box<Projection<'tcx>>),
+    pub projection: Option<Box<Projection<'tcx>>>,
 }
 
 #[derive(
@@ -1761,7 +1761,7 @@ impl_stable_hash_for!(struct Static<'tcx> {
     Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
 )]
 pub struct Projection<'tcx> {
-    pub base: Place<'tcx>,
+    pub base: Option<Box<Projection<'tcx>>>,
     pub elem: PlaceElem<'tcx>,
 }
 
@@ -1826,8 +1826,17 @@ newtype_index! {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PlaceRef<'a, 'tcx> {
+    pub base: &'a PlaceBase<'tcx>,
+    pub projection: &'a Option<Box<Projection<'tcx>>>,
+}
+
 impl<'tcx> Place<'tcx> {
-    pub const RETURN_PLACE: Place<'tcx> = Place::Base(PlaceBase::Local(RETURN_PLACE));
+    pub const RETURN_PLACE: Place<'tcx> = Place {
+        base: PlaceBase::Local(RETURN_PLACE),
+        projection: None,
+    };
 
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
         self.elem(ProjectionElem::Field(f, ty))
@@ -1853,7 +1862,10 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn elem(self, elem: PlaceElem<'tcx>) -> Place<'tcx> {
-        Place::Projection(Box::new(Projection { base: self, elem }))
+        Place {
+            base: self.base,
+            projection: Some(Box::new(Projection { base: self.projection, elem })),
+        }
     }
 
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
@@ -1862,24 +1874,18 @@ impl<'tcx> Place<'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self {
-            Place::Base(PlaceBase::Local(local))
-            | Place::Projection(box Projection {
-                base: Place::Base(PlaceBase::Local(local)),
-                elem: ProjectionElem::Deref,
-            }) => Some(*local),
+            Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } |
+            Place {
+                base: PlaceBase::Local(local),
+                projection: Some(box Projection {
+                    base: None,
+                    elem: ProjectionElem::Deref,
+                }),
+            } => Some(*local),
             _ => None,
-        }
-    }
-
-    /// Finds the innermost `Local` from this `Place`.
-    pub fn base_local(&self) -> Option<Local> {
-        let mut place = self;
-        loop {
-            match place {
-                Place::Projection(proj) => place = &proj.base,
-                Place::Base(PlaceBase::Static(_)) => return None,
-                Place::Base(PlaceBase::Local(local)) => return Some(*local),
-            }
         }
     }
 
@@ -1889,33 +1895,92 @@ impl<'tcx> Place<'tcx> {
         &self,
         op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
-        self.iterate2(&Projections::Empty, op)
+        Place::iterate_over(&self.base, &self.projection, op)
     }
 
-    fn iterate2<R>(
-        &self,
-        next: &Projections<'_, 'tcx>,
+    pub fn iterate_over<R>(
+        place_base: &PlaceBase<'tcx>,
+        place_projection: &Option<Box<Projection<'tcx>>>,
         op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
-        match self {
-            Place::Projection(interior) => {
-                interior.base.iterate2(&Projections::List { projection: interior, next }, op)
-            }
+        fn iterate_over2<'tcx, R>(
+            place_base: &PlaceBase<'tcx>,
+            place_projection: &Option<Box<Projection<'tcx>>>,
+            next: &Projections<'_, 'tcx>,
+            op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
+        ) -> R {
+            match place_projection {
+                None => {
+                    op(place_base, next.iter())
+                }
 
-            Place::Base(base) => op(base, next.iter()),
+                Some(interior) => {
+                    iterate_over2(
+                        place_base,
+                        &interior.base,
+                        &Projections::List {
+                            projection: interior,
+                            next,
+                        },
+                        op,
+                    )
+                }
+            }
+        }
+
+        iterate_over2(place_base, place_projection, &Projections::Empty, op)
+    }
+
+    pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
+        PlaceRef {
+            base: &self.base,
+            projection: &self.projection,
         }
     }
 }
 
 impl From<Local> for Place<'_> {
     fn from(local: Local) -> Self {
-        Place::Base(local.into())
+        Place {
+            base: local.into(),
+            projection: None,
+        }
     }
 }
 
 impl From<Local> for PlaceBase<'_> {
     fn from(local: Local) -> Self {
         PlaceBase::Local(local)
+    }
+}
+
+impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
+    pub fn iterate<R>(
+        &self,
+        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
+    ) -> R {
+        Place::iterate_over(self.base, self.projection, op)
+    }
+
+    /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
+    /// a single deref of a local.
+    //
+    // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
+    pub fn local_or_deref_local(&self) -> Option<Local> {
+        match self {
+            PlaceRef {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } |
+            PlaceRef {
+                base: PlaceBase::Local(local),
+                projection: Some(box Projection {
+                    base: None,
+                    elem: ProjectionElem::Deref,
+                }),
+            } => Some(*local),
+            _ => None,
+        }
     }
 }
 
@@ -3087,13 +3152,16 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 }
             }
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let msg = if let InterpError::BoundsCheck { ref len, ref index } = *msg {
-                    InterpError::BoundsCheck {
-                        len: len.fold_with(folder),
-                        index: index.fold_with(folder),
-                    }
-                } else {
-                    msg.clone()
+                use PanicMessage::*;
+                let msg = match msg {
+                    BoundsCheck { ref len, ref index } =>
+                        BoundsCheck {
+                            len: len.fold_with(folder),
+                            index: index.fold_with(folder),
+                        },
+                    Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
+                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic =>
+                        msg.clone(),
                 };
                 Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
             }
@@ -3132,10 +3200,14 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             }
             Assert { ref cond, ref msg, .. } => {
                 if cond.visit_with(visitor) {
-                    if let InterpError::BoundsCheck { ref len, ref index } = *msg {
-                        len.visit_with(visitor) || index.visit_with(visitor)
-                    } else {
-                        false
+                    use PanicMessage::*;
+                    match msg {
+                        BoundsCheck { ref len, ref index } =>
+                            len.visit_with(visitor) || index.visit_with(visitor),
+                        Panic { .. } | Overflow(_) | OverflowNeg |
+                        DivisionByZero | RemainderByZero |
+                        GeneratorResumedAfterReturn | GeneratorResumedAfterPanic =>
+                            false
                     }
                 } else {
                     false
@@ -3155,18 +3227,14 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        match self {
-            &Place::Projection(ref p) => Place::Projection(p.fold_with(folder)),
-            _ => self.clone(),
+        Place {
+            base: self.base.clone(),
+            projection: self.projection.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        if let &Place::Projection(ref p) = self {
-            p.visit_with(visitor)
-        } else {
-            false
-        }
+        self.projection.visit_with(visitor)
     }
 }
 

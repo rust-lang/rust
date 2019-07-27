@@ -26,7 +26,6 @@ use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
 use syntax::symbol::{kw, InternedString};
 
-use serialize;
 use self::InferTy::*;
 use self::TyKind::*;
 
@@ -640,7 +639,7 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<ExistentialPredicate<'tcx>> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx List<ExistentialPredicate<'tcx>> {}
 
 impl<'tcx> List<ExistentialPredicate<'tcx>> {
     /// Returns the "principal def id" of this set of existential predicates.
@@ -1324,7 +1323,7 @@ pub enum RegionKind {
     ReClosureBound(RegionVid),
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for Region<'tcx> {}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, PartialOrd, Ord)]
 pub struct EarlyBoundRegion {
@@ -1848,7 +1847,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_mutable_pointer(&self) -> bool {
+    pub fn is_mutable_ptr(&self) -> bool {
         match self.sty {
             RawPtr(TypeAndMut { mutbl: hir::Mutability::MutMutable, .. }) |
             Ref(_, _, hir::Mutability::MutMutable) => true,
@@ -2003,7 +2002,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_pointer_sized(&self) -> bool {
+    pub fn is_ptr_sized_integral(&self) -> bool {
         match self.sty {
             Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => true,
             _ => false,
@@ -2333,7 +2332,7 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
 
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd,

@@ -1,14 +1,12 @@
 use std::mem;
 
-use crate::deriving;
-
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::source_map::{ExpnInfo, ExpnKind, respan};
 use syntax::ext::base::{ExtCtxt, MacroKind};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
@@ -135,10 +133,6 @@ impl<'a> CollectProcMacros<'a> {
         if !trait_ident.name.can_be_raw() {
             self.handler.span_err(trait_attr.span,
                                   &format!("`{}` cannot be a name of derive macro", trait_ident));
-        }
-        if deriving::is_builtin_trait(trait_ident.name) {
-            self.handler.span_err(trait_attr.span,
-                                  "cannot override a built-in derive macro");
         }
 
         let attributes_attr = list.get(1);
@@ -346,7 +340,7 @@ fn mk_decls(
     custom_attrs: &[ProcMacroDef],
     custom_macros: &[ProcMacroDef],
 ) -> P<ast::Item> {
-    let span = DUMMY_SP.fresh_expansion(Mark::root(), ExpnInfo::allow_unstable(
+    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
         [sym::rustc_attrs, sym::proc_macro_internals][..].into(),
     ));

@@ -23,6 +23,6 @@
 //~| NOTE reason in lint attribute must come last
 #![warn(missing_copy_implementations, reason)]
 //~^ WARN unknown lint
-//~| NOTE #[warn(unknown_lints)] on by default
+//~| NOTE `#[warn(unknown_lints)]` on by default
 
 fn main() {}

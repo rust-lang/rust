@@ -25,9 +25,9 @@ cargo: beta
 #
 # This means that there's a small window of time (a few days) where artifacts
 # are downloaded from dev-static.rust-lang.org instead of static.rust-lang.org.
-# In order to ease this transition we have an extra key is in this configuration
-# file below. When uncommented this will instruct the bootstrap.py script to
-# download from dev-static.rust-lang.org.
+# In order to ease this transition we have an extra key which is in the 
+# configuration file below. When uncommented this will instruct the bootstrap.py
+# script to download from dev-static.rust-lang.org.
 #
 # This key is typically commented out at all times. If you're looking at a
 # stable release tarball it should *definitely* be commented out. If you're

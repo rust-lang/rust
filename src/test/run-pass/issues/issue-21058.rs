@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-#![feature(core_intrinsics)]
 
 use std::fmt::Debug;
 
@@ -12,7 +11,7 @@ macro_rules! check {
         assert_eq!(type_name_of_val($ty_of), $expected);
     };
     ($ty:ty, $expected:expr) => {
-        assert_eq!(unsafe { std::intrinsics::type_name::<$ty>()}, $expected);
+        assert_eq!(std::any::type_name::<$ty>(), $expected);
     };
 }
 
@@ -50,7 +49,7 @@ fn bar<T: Trait>() {
 }
 
 fn type_name_of_val<T>(_: T) -> &'static str {
-    unsafe { std::intrinsics::type_name::<T>() }
+    std::any::type_name::<T>()
 }
 
 #[derive(Debug)]

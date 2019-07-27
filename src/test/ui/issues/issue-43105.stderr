@@ -12,7 +12,7 @@ LL | const NUM: u8 = xyz();
    |                 |
    |                 calling non-const function `xyz`
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: could not evaluate constant pattern
   --> $DIR/issue-43105.rs:9:9

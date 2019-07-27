@@ -4,7 +4,7 @@ warning: Trait bound std::vec::Vec<str>: std::fmt::Debug does not depend on any 
 LL | pub fn foo() where Vec<str>: Debug, str: Copy {
    |                              ^^^^^
    |
-   = note: #[warn(trivial_bounds)] on by default
+   = note: `#[warn(trivial_bounds)]` on by default
 
 warning: Trait bound str: std::marker::Copy does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent-well-formed.rs:7:42

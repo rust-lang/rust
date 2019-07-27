@@ -626,27 +626,44 @@ macro_rules! todo {
 /// Creates an array of [`MaybeUninit`].
 ///
 /// This macro constructs an uninitialized array of the type `[MaybeUninit<K>; N]`.
+/// It exists solely because bootstrap does not yet support const array-init expressions.
 ///
 /// [`MaybeUninit`]: mem/union.MaybeUninit.html
+// FIXME: Remove both versions of this macro once bootstrap is 1.38.
 #[macro_export]
 #[unstable(feature = "maybe_uninit_array", issue = "53491")]
-macro_rules! uninitialized_array {
+#[cfg(bootstrap)]
+macro_rules! uninit_array {
     // This `assume_init` is safe because an array of `MaybeUninit` does not
     // require initialization.
-    // FIXME(#49147): Could be replaced by an array initializer, once those can
-    // be any const expression.
     ($t:ty; $size:expr) => (unsafe {
         MaybeUninit::<[MaybeUninit<$t>; $size]>::uninit().assume_init()
     });
 }
 
-/// Built-in macros to the compiler itself.
+/// Creates an array of [`MaybeUninit`].
 ///
-/// These macros do not have any corresponding definition with a `macro_rules!`
-/// macro, but are documented here. Their implementations can be found hardcoded
-/// into libsyntax itself.
-#[cfg(rustdoc)]
-mod builtin {
+/// This macro constructs an uninitialized array of the type `[MaybeUninit<K>; N]`.
+/// It exists solely because bootstrap does not yet support const array-init expressions.
+///
+/// [`MaybeUninit`]: mem/union.MaybeUninit.html
+// FIXME: Just inline this version of the macro once bootstrap is 1.38.
+#[macro_export]
+#[unstable(feature = "maybe_uninit_array", issue = "53491")]
+#[cfg(not(bootstrap))]
+macro_rules! uninit_array {
+    ($t:ty; $size:expr) => (
+        [MaybeUninit::<$t>::UNINIT; $size]
+    );
+}
+
+/// Definitions of built-in macros.
+///
+/// Most of the macro properties (stability, visibility, etc.) are taken from the source code here,
+/// with exception of expansion functions transforming macro inputs into outputs,
+/// those functions are provided by the compiler.
+#[cfg(not(bootstrap))]
+pub(crate) mod builtin {
 
     /// Causes compilation to fail with the given error message when encountered.
     ///
@@ -933,7 +950,7 @@ mod builtin {
 
     /// Same as `column`, but less likely to be shadowed.
     #[unstable(feature = "__rust_unstable_column", issue = "0",
-               reason = "internal implementation detail of the `column` macro")]
+               reason = "internal implementation detail of the `panic` macro")]
     #[rustc_builtin_macro]
     #[rustc_macro_transparency = "semitransparent"]
     pub macro __rust_unstable_column() { /* compiler built-in */ }
@@ -1263,6 +1280,13 @@ mod builtin {
     #[rustc_builtin_macro]
     #[rustc_macro_transparency = "semitransparent"]
     pub macro test_case($item:item) { /* compiler built-in */ }
+
+    /// Attribute macro applied to a static to register it as a global allocator.
+    #[stable(feature = "global_allocator", since = "1.28.0")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro global_allocator($item:item) { /* compiler built-in */ }
 
     /// Derive macro generating an impl of the trait `Clone`.
     #[rustc_builtin_macro]

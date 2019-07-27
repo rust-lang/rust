@@ -26,7 +26,7 @@ use rustc_errors::{Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
 use rustc_errors::emitter::{Emitter};
 use rustc_target::spec::MergeFunctions;
 use syntax::attr;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax_pos::MultiSpan;
 use syntax_pos::symbol::{Symbol, sym};
 use jobserver::{Client, Acquired};
@@ -1775,7 +1775,7 @@ impl SharedEmitterMain {
                     }
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
-                    match Mark::from_u32(cookie).expn_info() {
+                    match ExpnId::from_u32(cookie).expn_info() {
                         Some(ei) => sess.span_err(ei.call_site, &msg),
                         None     => sess.err(&msg),
                     }

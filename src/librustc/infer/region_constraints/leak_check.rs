@@ -78,10 +78,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 }
 
                 return Err(if overly_polymorphic {
-                    debug!("Overly polymorphic!");
+                    debug!("overly polymorphic!");
                     TypeError::RegionsOverlyPolymorphic(placeholder.name, tainted_region)
                 } else {
-                    debug!("Not as polymorphic!");
+                    debug!("not as polymorphic!");
                     TypeError::RegionsInsufficientlyPolymorphic(placeholder.name, tainted_region)
                 });
             }

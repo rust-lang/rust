@@ -6,7 +6,7 @@ LL | const VALUE: u8 = unsafe { *REG_ADDR };
    |                            |
    |                            a memory access tried to interpret some bytes as a pointer
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to previous error
 

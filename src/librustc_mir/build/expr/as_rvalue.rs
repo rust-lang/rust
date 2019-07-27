@@ -7,7 +7,7 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::middle::region;
-use rustc::mir::interpret::InterpError;
+use rustc::mir::interpret::PanicMessage;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
 use syntax_pos::Span;
@@ -101,7 +101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         Operand::Move(is_min),
                         false,
-                        InterpError::OverflowNeg,
+                        PanicMessage::OverflowNeg,
                         expr_span,
                     );
                 }
@@ -128,7 +128,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         expr_span,
                         scope,
                         result,
-                        value.ty,
+                        expr.ty,
                     );
                 }
 
@@ -401,7 +401,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val = result_value.clone().field(val_fld, ty);
             let of = result_value.field(of_fld, bool_ty);
 
-            let err = InterpError::Overflow(op);
+            let err = PanicMessage::Overflow(op);
 
             block = self.assert(block, Operand::Move(of), false, err, span);
 
@@ -411,11 +411,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Checking division and remainder is more complex, since we 1. always check
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
-                let (zero_err, overflow_err) = if op == BinOp::Div {
-                    (InterpError::DivisionByZero, InterpError::Overflow(op))
+                let zero_err = if op == BinOp::Div {
+                    PanicMessage::DivisionByZero
                 } else {
-                    (InterpError::RemainderByZero, InterpError::Overflow(op))
+                    PanicMessage::RemainderByZero
                 };
+                let overflow_err = PanicMessage::Overflow(op);
 
                 // Check for / 0
                 let is_zero = self.temp(bool_ty, span);
@@ -497,32 +498,48 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let arg_place = unpack!(block = this.as_place(block, arg));
 
         let mutability = match arg_place {
-            Place::Base(PlaceBase::Local(local)) => this.local_decls[local].mutability,
-            Place::Projection(box Projection {
-                base: Place::Base(PlaceBase::Local(local)),
-                elem: ProjectionElem::Deref,
-            }) => {
+            Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } => this.local_decls[local].mutability,
+            Place {
+                base: PlaceBase::Local(local),
+                projection: Some(box Projection {
+                    base: None,
+                    elem: ProjectionElem::Deref,
+                })
+            } => {
                 debug_assert!(
                     this.local_decls[local].is_ref_for_guard(),
                     "Unexpected capture place",
                 );
                 this.local_decls[local].mutability
             }
-            Place::Projection(box Projection {
+            Place {
                 ref base,
-                elem: ProjectionElem::Field(upvar_index, _),
-            })
-            | Place::Projection(box Projection {
-                base:
-                    Place::Projection(box Projection {
-                        ref base,
+                projection: Some(box Projection {
+                    base: ref base_proj,
+                    elem: ProjectionElem::Field(upvar_index, _),
+                }),
+            }
+            | Place {
+                ref base,
+                projection: Some(box Projection {
+                    base: Some(box Projection {
+                        base: ref base_proj,
                         elem: ProjectionElem::Field(upvar_index, _),
                     }),
-                elem: ProjectionElem::Deref,
-            }) => {
+                    elem: ProjectionElem::Deref,
+                }),
+            } => {
+                let place = PlaceRef {
+                    base,
+                    projection: base_proj,
+                };
+
                 // Not projected from the implicit `self` in a closure.
                 debug_assert!(
-                    match base.local_or_deref_local() {
+                    match place.local_or_deref_local() {
                         Some(local) => local == Local::new(1),
                         None => false,
                     },

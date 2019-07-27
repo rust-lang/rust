@@ -764,16 +764,17 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
         }
 
-        span_bug!(
+        // Errors in earlier passes can yield error variables without
+        // resolution errors here; delay ICE in favor of those errors.
+        self.tcx().sess.delay_span_bug(
             self.var_infos[node_idx].origin.span(),
-            "collect_error_for_expanding_node() could not find \
-             error for var {:?} in universe {:?}, lower_bounds={:#?}, \
-             upper_bounds={:#?}",
-            node_idx,
-            node_universe,
-            lower_bounds,
-            upper_bounds
-        );
+            &format!("collect_error_for_expanding_node() could not find \
+                      error for var {:?} in universe {:?}, lower_bounds={:#?}, \
+                      upper_bounds={:#?}",
+                     node_idx,
+                     node_universe,
+                     lower_bounds,
+                     upper_bounds));
     }
 
     fn collect_concrete_regions(
@@ -873,7 +874,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             constraints.retain(|constraint| {
                 let (edge_changed, retain) = body(constraint);
                 if edge_changed {
-                    debug!("Updated due to constraint {:?}", constraint);
+                    debug!("updated due to constraint {:?}", constraint);
                     changed = true;
                 }
                 retain

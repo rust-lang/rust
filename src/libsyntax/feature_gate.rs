@@ -19,8 +19,7 @@ use crate::ast::{
     self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
     PatKind, RangeEnd,
 };
-use crate::attr;
-use crate::early_buffered_lints::BufferedEarlyLintId;
+use crate::attr::{self, check_builtin_attribute, AttributeTemplate};
 use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
@@ -125,6 +124,9 @@ declare_features! (
     // -------------------------------------------------------------------------
 
     // no-tracking-issue-start
+
+    // Allows using compiler's own crates.
+    (active, rustc_private, "1.0.0", Some(27812), None),
 
     // Allows using the `rust-intrinsic`'s "ABI".
     (active, intrinsics, "1.0.0", None, None),
@@ -559,10 +561,10 @@ declare_features! (
     // Allows `if/while p && let q = r && ...` chains.
     (active, let_chains, "1.37.0", Some(53667), None),
 
-    // #[repr(transparent)] on enums.
+    // Allows #[repr(transparent)] on enums (RFC 2645).
     (active, transparent_enums, "1.37.0", Some(60405), None),
 
-    // #[repr(transparent)] on unions.
+    // Allows #[repr(transparent)] on unions (RFC 2645).
     (active, transparent_unions, "1.37.0", Some(60405), None),
 
     // Allows explicit discriminants on non-unit enum variants.
@@ -576,6 +578,9 @@ declare_features! (
 
     // Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests
     (active, cfg_doctest, "1.37.0", Some(62210), None),
+
+    // Allows `[x; N]` where `x` is a constant (RFC 2203).
+    (active, const_in_array_repeat_expressions, "1.37.0", Some(49147), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
@@ -900,27 +905,6 @@ pub enum AttributeGate {
     Ungated,
 }
 
-/// A template that the attribute input must match.
-/// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
-#[derive(Clone, Copy)]
-pub struct AttributeTemplate {
-    word: bool,
-    list: Option<&'static str>,
-    name_value_str: Option<&'static str>,
-}
-
-impl AttributeTemplate {
-    /// Checks that the given meta-item is compatible with this template.
-    fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
-        match meta_item_kind {
-            ast::MetaItemKind::Word => self.word,
-            ast::MetaItemKind::List(..) => self.list.is_some(),
-            ast::MetaItemKind::NameValue(lit) if lit.node.is_str() => self.name_value_str.is_some(),
-            ast::MetaItemKind::NameValue(..) => false,
-        }
-    }
-}
-
 /// A convenience macro for constructing attribute templates.
 /// E.g., `template!(Word, List: "description")` means that the attribute
 /// supports forms `#[attr]` and `#[attr(description)]`.
@@ -1111,7 +1095,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                             "the `#[rustc_const_unstable]` attribute \
                                             is an internal feature",
                                             cfg_fn!(rustc_const_unstable))),
-    (sym::global_allocator, Normal, template!(Word), Ungated),
     (sym::default_lib_allocator, Whitelisted, template!(Word), Gated(Stability::Unstable,
                                             sym::allocator_internals,
                                             "the `#[default_lib_allocator]` \
@@ -1451,7 +1434,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     template!(Word),
     Gated(Stability::Unstable,
         sym::dropck_eyepatch,
-        "may_dangle has unstable semantics and may be removed in the future",
+        "`may_dangle` has unstable semantics and may be removed in the future",
         cfg_fn!(dropck_eyepatch))),
     (sym::unwind, Whitelisted, template!(List: "allowed|aborts"), Gated(Stability::Unstable,
                                 sym::unwind_attributes,
@@ -1693,8 +1676,8 @@ impl<'a> Context<'a> {
             // Only run the custom attribute lint during regular feature gate
             // checking. Macro gating runs before the plugin attributes are
             // registered, so we skip this in that case.
-            let msg = format!("The attribute `{}` is currently unknown to the compiler and \
-                                may have meaning added to it in the future", attr.path);
+            let msg = format!("the attribute `{}` is currently unknown to the compiler and \
+                               may have meaning added to it in the future", attr.path);
             gate_feature!(self, custom_attribute, attr.span, &msg);
         }
     }
@@ -1896,70 +1879,6 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::System => {}
         }
     }
-
-    fn check_builtin_attribute(&mut self, attr: &ast::Attribute, name: Symbol,
-                               template: AttributeTemplate) {
-        // Some special attributes like `cfg` must be checked
-        // before the generic check, so we skip them here.
-        let should_skip = |name| name == sym::cfg;
-        // Some of previously accepted forms were used in practice,
-        // report them as warnings for now.
-        let should_warn = |name| name == sym::doc || name == sym::ignore ||
-                                 name == sym::inline || name == sym::link;
-
-        match attr.parse_meta(self.context.parse_sess) {
-            Ok(meta) => if !should_skip(name) && !template.compatible(&meta.node) {
-                let error_msg = format!("malformed `{}` attribute input", name);
-                let mut msg = "attribute must be of the form ".to_owned();
-                let mut suggestions = vec![];
-                let mut first = true;
-                if template.word {
-                    first = false;
-                    let code = format!("#[{}]", name);
-                    msg.push_str(&format!("`{}`", &code));
-                    suggestions.push(code);
-                }
-                if let Some(descr) = template.list {
-                    if !first {
-                        msg.push_str(" or ");
-                    }
-                    first = false;
-                    let code = format!("#[{}({})]", name, descr);
-                    msg.push_str(&format!("`{}`", &code));
-                    suggestions.push(code);
-                }
-                if let Some(descr) = template.name_value_str {
-                    if !first {
-                        msg.push_str(" or ");
-                    }
-                    let code = format!("#[{} = \"{}\"]", name, descr);
-                    msg.push_str(&format!("`{}`", &code));
-                    suggestions.push(code);
-                }
-                if should_warn(name) {
-                    self.context.parse_sess.buffer_lint(
-                        BufferedEarlyLintId::IllFormedAttributeInput,
-                        meta.span,
-                        ast::CRATE_NODE_ID,
-                        &msg,
-                    );
-                } else {
-                    self.context.parse_sess.span_diagnostic.struct_span_err(meta.span, &error_msg)
-                        .span_suggestions(
-                            meta.span,
-                            if suggestions.len() == 1 {
-                                "must be of the form"
-                            } else {
-                                "the following are the possible correct uses"
-                            },
-                            suggestions.into_iter(),
-                            Applicability::HasPlaceholders,
-                        ).emit();
-                }
-            }
-            Err(mut err) => err.emit(),
-        }
-    }
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
@@ -2000,7 +1919,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match attr_info {
             // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
             Some(&(name, _, template, _)) if name != sym::rustc_dummy =>
-                self.check_builtin_attribute(attr, name, template),
+                check_builtin_attribute(self.context.parse_sess, attr, name, template),
             _ => if let Some(TokenTree::Token(token)) = attr.tokens.trees().next() {
                 if token == token::Eq {
                     // All key-value attributes are restricted to meta-item syntax.

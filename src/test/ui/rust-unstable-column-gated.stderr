@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature '__rust_unstable_column': internal implementation detail of the `column` macro
+error[E0658]: use of unstable library feature '__rust_unstable_column': internal implementation detail of the `panic` macro
   --> $DIR/rust-unstable-column-gated.rs:2:20
    |
 LL |     println!("{}", __rust_unstable_column!());

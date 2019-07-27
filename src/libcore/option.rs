@@ -136,7 +136,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
-use crate::{convert, hint, mem, ops::{self, Deref}};
+use crate::{convert, fmt, hint, mem, ops::{self, Deref, DerefMut}};
 use crate::pin::Pin;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
@@ -291,6 +291,8 @@ impl<T> Option<T> {
 
 
     /// Converts from [`Pin`]`<&Option<T>>` to `Option<`[`Pin`]`<&T>>`.
+    ///
+    /// [`Pin`]: ../pin/struct.Pin.html
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref<'a>(self: Pin<&'a Option<T>>) -> Option<Pin<&'a T>> {
@@ -300,6 +302,8 @@ impl<T> Option<T> {
     }
 
     /// Converts from [`Pin`]`<&mut Option<T>>` to `Option<`[`Pin`]`<&mut T>>`.
+    ///
+    /// [`Pin`]: ../pin/struct.Pin.html
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut<'a>(self: Pin<&'a mut Option<T>>) -> Option<Pin<&'a mut T>> {
@@ -973,6 +977,92 @@ impl<T: Clone> Option<&mut T> {
     }
 }
 
+impl<T: fmt::Debug> Option<T> {
+    /// Unwraps an option, expecting [`None`] and returning nothing.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is a [`Some`], with a panic message including the
+    /// passed message, and the content of the [`Some`].
+    ///
+    /// [`Some`]: #variant.Some
+    /// [`None`]: #variant.None
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_expect_none)]
+    ///
+    /// use std::collections::HashMap;
+    /// let mut squares = HashMap::new();
+    /// for i in -10..=10 {
+    ///     // This will not panic, since all keys are unique.
+    ///     squares.insert(i, i * i).expect_none("duplicate key");
+    /// }
+    /// ```
+    ///
+    /// ```{.should_panic}
+    /// #![feature(option_expect_none)]
+    ///
+    /// use std::collections::HashMap;
+    /// let mut sqrts = HashMap::new();
+    /// for i in -10..=10 {
+    ///     // This will panic, since both negative and positive `i` will
+    ///     // insert the same `i * i` key, returning the old `Some(i)`.
+    ///     sqrts.insert(i * i, i).expect_none("duplicate key");
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_expect_none", reason = "newly added", issue = "62633")]
+    pub fn expect_none(self, msg: &str) {
+        if let Some(val) = self {
+            expect_none_failed(msg, &val);
+        }
+    }
+
+    /// Unwraps an option, expecting [`None`] and returning nothing.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is a [`Some`], with a custom panic message provided
+    /// by the [`Some`]'s value.
+    ///
+    /// [`Some(v)`]: #variant.Some
+    /// [`None`]: #variant.None
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_unwrap_none)]
+    ///
+    /// use std::collections::HashMap;
+    /// let mut squares = HashMap::new();
+    /// for i in -10..=10 {
+    ///     // This will not panic, since all keys are unique.
+    ///     squares.insert(i, i * i).unwrap_none();
+    /// }
+    /// ```
+    ///
+    /// ```{.should_panic}
+    /// #![feature(option_unwrap_none)]
+    ///
+    /// use std::collections::HashMap;
+    /// let mut sqrts = HashMap::new();
+    /// for i in -10..=10 {
+    ///     // This will panic, since both negative and positive `i` will
+    ///     // insert the same `i * i` key, returning the old `Some(i)`.
+    ///     sqrts.insert(i * i, i).unwrap_none();
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_unwrap_none", reason = "newly added", issue = "62633")]
+    pub fn unwrap_none(self) {
+        if let Some(val) = self {
+            expect_none_failed("called `Option::unwrap_none()` on a `Some` value", &val);
+        }
+    }
+}
+
 impl<T: Default> Option<T> {
     /// Returns the contained value or a default
     ///
@@ -1014,14 +1104,25 @@ impl<T: Default> Option<T> {
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref> Option<T> {
-    /// Converts from `&Option<T>` to `Option<&T::Target>`.
+    /// Converts from `Option<T>` (or `&Option<T>`) to `Option<&T::Target>`.
     ///
     /// Leaves the original Option in-place, creating a new one with a reference
     /// to the original one, additionally coercing the contents via [`Deref`].
     ///
     /// [`Deref`]: ../../std/ops/trait.Deref.html
-    pub fn deref(&self) -> Option<&T::Target> {
+    pub fn as_deref(&self) -> Option<&T::Target> {
         self.as_ref().map(|t| t.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: DerefMut> Option<T> {
+    /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
+    ///
+    /// Leaves the original `Option` in-place, creating a new one containing a mutable reference to
+    /// the inner type's `Deref::Target` type.
+    pub fn as_deref_mut(&mut self) -> Option<&mut T::Target> {
+        self.as_mut().map(|t| t.deref_mut())
     }
 }
 
@@ -1063,6 +1164,13 @@ impl<T, E> Option<Result<T, E>> {
 #[cold]
 fn expect_failed(msg: &str) -> ! {
     panic!("{}", msg)
+}
+
+// This is a separate function to reduce the code size of .expect_none() itself.
+#[inline(never)]
+#[cold]
+fn expect_none_failed(msg: &str, value: &dyn fmt::Debug) -> ! {
+    panic!("{}: {:?}", msg, value)
 }
 
 /////////////////////////////////////////////////////////////////////////////

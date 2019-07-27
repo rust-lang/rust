@@ -34,7 +34,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
     {
         debug!(
             "normalize::<{}>(value={:?}, param_env={:?})",
-            unsafe { ::std::intrinsics::type_name::<T>() },
+            ::std::any::type_name::<T>(),
             value,
             self.param_env,
         );

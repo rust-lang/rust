@@ -161,11 +161,11 @@ of print values are:
 
 ## `-g`: include debug information
 
-A synonym for `-C debuginfo=2`, for more see [here](codegen-options/index.html#debuginfo).
+A synonym for `-C debuginfo=2`, for more see [here](codegen-options/index.md#debuginfo).
 
 ## `-O`: optimize your code
 
-A synonym for `-C opt-level=2`, for more see [here](codegen-options/index.html#opt-level).
+A synonym for `-C opt-level=2`, for more see [here](codegen-options/index.md#opt-level).
 
 ## `-o`: filename of the output
 
@@ -188,23 +188,23 @@ and instead produce a test harness.
 
 ## `--target`: select a target triple to build
 
-This controls which [target](targets/index.html) to produce.
+This controls which [target](targets/index.md) to produce.
 
 ## `-W`: set lint warnings
 
-This flag will set which lints should be set to the [warn level](lints/levels.html#warn).
+This flag will set which lints should be set to the [warn level](lints/levels.md#warn).
 
 ## `-A`: set lint allowed
 
-This flag will set which lints should be set to the [allow level](lints/levels.html#allow).
+This flag will set which lints should be set to the [allow level](lints/levels.md#allow).
 
 ## `-D`: set lint denied
 
-This flag will set which lints should be set to the [deny level](lints/levels.html#deny).
+This flag will set which lints should be set to the [deny level](lints/levels.md#deny).
 
 ## `-F`: set lint forbidden
 
-This flag will set which lints should be set to the [forbid level](lints/levels.html#forbid).
+This flag will set which lints should be set to the [forbid level](lints/levels.md#forbid).
 
 ## `-Z`: set unstable options
 
@@ -215,11 +215,11 @@ run: `rustc -Z help`.
 
 ## `--cap-lints`: set the most restrictive lint level
 
-This flag lets you 'cap' lints, for more, [see here](lints/levels.html#capping-lints).
+This flag lets you 'cap' lints, for more, [see here](lints/levels.md#capping-lints).
 
 ## `-C`/`--codegen`: code generation options
 
-This flag will allow you to set [codegen options](codegen-options/index.html).
+This flag will allow you to set [codegen options](codegen-options/index.md).
 
 ## `-V`/`--version`: print a version
 

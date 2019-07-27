@@ -29,7 +29,7 @@ error: expected type, found `'a`
   --> $DIR/trait-object-lifetime-parens.rs:9:17
    |
 LL |     let _: Box<('a) + Trait>;
-   |         -       ^^
+   |         -       ^^ expected type
    |         |
    |         while parsing the type for `_`
 

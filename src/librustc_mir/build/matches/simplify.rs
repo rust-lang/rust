@@ -161,7 +161,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().features().never_type &&
                         self.hir.tcx().features().exhaustive_patterns &&
                         !v.uninhabited_from(self.hir.tcx(), substs, adt_def.adt_kind()).is_empty()
                     }

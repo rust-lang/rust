@@ -599,11 +599,12 @@ impl CString {
     ///
     /// [`Drop`]: ../ops/trait.Drop.html
     fn into_inner(self) -> Box<[u8]> {
-        unsafe {
-            let result = ptr::read(&self.inner);
-            mem::forget(self);
-            result
-        }
+        // Rationale: `mem::forget(self)` invalidates the previous call to `ptr::read(&self.inner)`
+        // so we use `ManuallyDrop` to ensure `self` is not dropped.
+        // Then we can return the box directly without invalidating it.
+        // See https://github.com/rust-lang/rust/issues/62553.
+        let this = mem::ManuallyDrop::new(self);
+        unsafe { ptr::read(&this.inner) }
     }
 }
 

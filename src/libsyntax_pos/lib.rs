@@ -19,15 +19,12 @@
 #![feature(specialization)]
 #![feature(step_trait)]
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
-
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
+use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;
-pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnKind, MacroKind, DesugaringKind};
+pub use hygiene::{ExpnId, SyntaxContext, ExpnInfo, ExpnKind, MacroKind, DesugaringKind};
 
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -516,13 +513,13 @@ impl Span {
     }
 
     #[inline]
-    pub fn apply_mark(self, mark: Mark) -> Span {
+    pub fn apply_mark(self, mark: ExpnId) -> Span {
         let span = self.data();
         span.with_ctxt(span.ctxt.apply_mark(mark))
     }
 
     #[inline]
-    pub fn remove_mark(&mut self) -> Mark {
+    pub fn remove_mark(&mut self) -> ExpnId {
         let mut span = self.data();
         let mark = span.ctxt.remove_mark();
         *self = Span::new(span.lo, span.hi, span.ctxt);
@@ -530,34 +527,34 @@ impl Span {
     }
 
     #[inline]
-    pub fn adjust(&mut self, expansion: Mark) -> Option<Mark> {
+    pub fn adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         let mut span = self.data();
-        let mark = span.ctxt.adjust(expansion);
+        let mark = span.ctxt.adjust(expn_id);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }
 
     #[inline]
-    pub fn modernize_and_adjust(&mut self, expansion: Mark) -> Option<Mark> {
+    pub fn modernize_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         let mut span = self.data();
-        let mark = span.ctxt.modernize_and_adjust(expansion);
+        let mark = span.ctxt.modernize_and_adjust(expn_id);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }
 
     #[inline]
-    pub fn glob_adjust(&mut self, expansion: Mark, glob_span: Span) -> Option<Option<Mark>> {
+    pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
         let mut span = self.data();
-        let mark = span.ctxt.glob_adjust(expansion, glob_span);
+        let mark = span.ctxt.glob_adjust(expn_id, glob_span);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }
 
     #[inline]
-    pub fn reverse_glob_adjust(&mut self, expansion: Mark, glob_span: Span)
-                               -> Option<Option<Mark>> {
+    pub fn reverse_glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span)
+                               -> Option<Option<ExpnId>> {
         let mut span = self.data();
-        let mark = span.ctxt.reverse_glob_adjust(expansion, glob_span);
+        let mark = span.ctxt.reverse_glob_adjust(expn_id, glob_span);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }
@@ -594,7 +591,7 @@ impl Default for Span {
     }
 }
 
-impl serialize::UseSpecializedEncodable for Span {
+impl rustc_serialize::UseSpecializedEncodable for Span {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let span = self.data();
         s.emit_struct("Span", 2, |s| {
@@ -609,7 +606,7 @@ impl serialize::UseSpecializedEncodable for Span {
     }
 }
 
-impl serialize::UseSpecializedDecodable for Span {
+impl rustc_serialize::UseSpecializedDecodable for Span {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
         d.read_struct("Span", 2, |d| {
             let lo = d.read_struct_field("lo", 0, Decodable::decode)?;

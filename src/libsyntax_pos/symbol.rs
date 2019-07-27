@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::newtype_index;
 use rustc_macros::symbols;
-use serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::fmt;
@@ -199,6 +199,7 @@ symbols! {
         const_fn_union,
         const_generics,
         const_indexing,
+        const_in_array_repeat_expressions,
         const_let,
         const_panic,
         const_raw_ptr_deref,
@@ -603,6 +604,7 @@ symbols! {
         rustc_then_this_would_need,
         rustc_variance,
         rustdoc,
+        rustfmt,
         rust_eh_personality,
         rust_eh_unwind_resume,
         rust_oom,

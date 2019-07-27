@@ -27,6 +27,16 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:20:5
    |
 LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
+   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
+   |                                               |
+   |                                               has type `&mut core::ffi::VaListImpl<'1>`
+LL |     *ap0 = ap1;
+   |     ^^^^ assignment requires that `'1` must outlive `'2`
+
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:20:5
+   |
+LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
    |                                               -------                   ------- has type `core::ffi::VaListImpl<'1>`
    |                                               |
    |                                               has type `&mut core::ffi::VaListImpl<'2>`
@@ -34,7 +44,7 @@ LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'1` must outlive `'2`
 
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:24:5
+  --> $DIR/variadic-ffi-4.rs:25:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
    |                                               ---                   ------- has type `core::ffi::VaListImpl<'2>`
@@ -44,7 +54,7 @@ LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:24:5
+  --> $DIR/variadic-ffi-4.rs:25:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
    |                                               ---                   ------- has type `core::ffi::VaListImpl<'1>`
@@ -54,7 +64,7 @@ LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
 error[E0384]: cannot assign to immutable argument `ap0`
-  --> $DIR/variadic-ffi-4.rs:24:5
+  --> $DIR/variadic-ffi-4.rs:25:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
    |                                               --- help: make this binding mutable: `mut ap0`
@@ -62,7 +72,7 @@ LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ cannot assign to immutable argument
 
 error[E0597]: `ap1` does not live long enough
-  --> $DIR/variadic-ffi-4.rs:24:11
+  --> $DIR/variadic-ffi-4.rs:25:11
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
    |                                                    - let's call the lifetime of this reference `'1`
@@ -76,16 +86,26 @@ LL | }
    | - `ap1` dropped here while still borrowed
 
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:32:5
+  --> $DIR/variadic-ffi-4.rs:33:12
+   |
+LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
+   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
+   |                                               |
+   |                                               has type `&mut core::ffi::VaListImpl<'1>`
+LL |     *ap0 = ap1.clone();
+   |            ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:33:12
    |
 LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
    |                                               -------                   ------- has type `core::ffi::VaListImpl<'1>`
    |                                               |
    |                                               has type `&mut core::ffi::VaListImpl<'2>`
 LL |     *ap0 = ap1.clone();
-   |     ^^^^ assignment requires that `'1` must outlive `'2`
+   |            ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
-error: aborting due to 9 previous errors
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0384, E0597, E0621.
 For more information about an error, try `rustc --explain E0384`.

@@ -15,7 +15,7 @@ use std::borrow::Borrow;
 use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax::symbol::{Symbol, sym, InternedString};
 use syntax_pos::{Span, DUMMY_SP};
 use crate::util::nodemap::NodeMap;
@@ -93,16 +93,16 @@ pub struct Definitions {
     node_to_def_index: NodeMap<DefIndex>,
     def_index_to_node: Vec<ast::NodeId>,
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
-    /// If `Mark` is an ID of some macro expansion,
+    /// If `ExpnId` is an ID of some macro expansion,
     /// then `DefId` is the normal module (`mod`) in which the expanded macro was defined.
-    parent_modules_of_macro_defs: FxHashMap<Mark, DefId>,
-    /// Item with a given `DefIndex` was defined during macro expansion with ID `Mark`.
-    expansions_that_defined: FxHashMap<DefIndex, Mark>,
+    parent_modules_of_macro_defs: FxHashMap<ExpnId, DefId>,
+    /// Item with a given `DefIndex` was defined during macro expansion with ID `ExpnId`.
+    expansions_that_defined: FxHashMap<DefIndex, ExpnId>,
     next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
     def_index_to_span: FxHashMap<DefIndex, Span>,
-    /// When collecting definitions from an AST fragment produced by a macro invocation `Mark`
+    /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table.
-    invocation_parents: FxHashMap<Mark, DefIndex>,
+    invocation_parents: FxHashMap<ExpnId, DefIndex>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -437,7 +437,7 @@ impl Definitions {
         assert!(self.def_index_to_node.is_empty());
         self.def_index_to_node.push(ast::CRATE_NODE_ID);
         self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
-        self.set_invocation_parent(Mark::root(), root_index);
+        self.set_invocation_parent(ExpnId::root(), root_index);
 
         // Allocate some other DefIndices that always must exist.
         GlobalMetaDataKind::allocate_def_indices(self);
@@ -450,7 +450,7 @@ impl Definitions {
                                   parent: DefIndex,
                                   node_id: ast::NodeId,
                                   data: DefPathData,
-                                  expansion: Mark,
+                                  expn_id: ExpnId,
                                   span: Span)
                                   -> DefIndex {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
@@ -498,8 +498,8 @@ impl Definitions {
             self.node_to_def_index.insert(node_id, index);
         }
 
-        if expansion != Mark::root() {
-            self.expansions_that_defined.insert(index, expansion);
+        if expn_id != ExpnId::root() {
+            self.expansions_that_defined.insert(index, expn_id);
         }
 
         // The span is added if it isn't dummy
@@ -519,23 +519,23 @@ impl Definitions {
         self.node_to_hir_id = mapping;
     }
 
-    pub fn expansion_that_defined(&self, index: DefIndex) -> Mark {
-        self.expansions_that_defined.get(&index).cloned().unwrap_or(Mark::root())
+    pub fn expansion_that_defined(&self, index: DefIndex) -> ExpnId {
+        self.expansions_that_defined.get(&index).cloned().unwrap_or(ExpnId::root())
     }
 
-    pub fn parent_module_of_macro_def(&self, mark: Mark) -> DefId {
-        self.parent_modules_of_macro_defs[&mark]
+    pub fn parent_module_of_macro_def(&self, expn_id: ExpnId) -> DefId {
+        self.parent_modules_of_macro_defs[&expn_id]
     }
 
-    pub fn add_parent_module_of_macro_def(&mut self, mark: Mark, module: DefId) {
-        self.parent_modules_of_macro_defs.insert(mark, module);
+    pub fn add_parent_module_of_macro_def(&mut self, expn_id: ExpnId, module: DefId) {
+        self.parent_modules_of_macro_defs.insert(expn_id, module);
     }
 
-    pub fn invocation_parent(&self, invoc_id: Mark) -> DefIndex {
+    pub fn invocation_parent(&self, invoc_id: ExpnId) -> DefIndex {
         self.invocation_parents[&invoc_id]
     }
 
-    pub fn set_invocation_parent(&mut self, invoc_id: Mark, parent: DefIndex) {
+    pub fn set_invocation_parent(&mut self, invoc_id: ExpnId, parent: DefIndex) {
         let old_parent = self.invocation_parents.insert(invoc_id, parent);
         assert!(old_parent.is_none(), "parent def-index is reset for an invocation");
     }
@@ -624,7 +624,7 @@ macro_rules! define_global_metadata_kind {
                         CRATE_DEF_INDEX,
                         ast::DUMMY_NODE_ID,
                         DefPathData::GlobalMetaData(instance.name().as_interned_str()),
-                        Mark::root(),
+                        ExpnId::root(),
                         DUMMY_SP
                     );
 

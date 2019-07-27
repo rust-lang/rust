@@ -494,10 +494,10 @@ impl<T> [T] {
     /// assert_eq!([[1, 2], [3, 4]].concat(), [1, 2, 3, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn concat<Separator: ?Sized>(&self) -> T::Output
-        where T: SliceConcat<Separator>
+    pub fn concat<Item: ?Sized>(&self) -> <Self as Concat<Item>>::Output
+        where Self: Concat<Item>
     {
-        SliceConcat::concat(self)
+        Concat::concat(self)
     }
 
     /// Flattens a slice of `T` into a single value `Self::Output`, placing a
@@ -508,12 +508,13 @@ impl<T> [T] {
     /// ```
     /// assert_eq!(["hello", "world"].join(" "), "hello world");
     /// assert_eq!([[1, 2], [3, 4]].join(&0), [1, 2, 0, 3, 4]);
+    /// assert_eq!([[1, 2], [3, 4]].join(&[0, 0][..]), [1, 2, 0, 0, 3, 4]);
     /// ```
     #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
-    pub fn join<Separator: ?Sized>(&self, sep: &Separator) -> T::Output
-        where T: SliceConcat<Separator>
+    pub fn join<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
+        where Self: Join<Separator>
     {
-        SliceConcat::join(self, sep)
+        Join::join(self, sep)
     }
 
     /// Flattens a slice of `T` into a single value `Self::Output`, placing a
@@ -528,10 +529,10 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
-    pub fn connect<Separator: ?Sized>(&self, sep: &Separator) -> T::Output
-        where T: SliceConcat<Separator>
+    pub fn connect<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
+        where Self: Join<Separator>
     {
-        SliceConcat::join(self, sep)
+        Join::join(self, sep)
     }
 
 }
@@ -578,30 +579,63 @@ impl [u8] {
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Helper trait for [`[T]::concat`](../../std/primitive.slice.html#method.concat)
-/// and [`[T]::join`](../../std/primitive.slice.html#method.join)
+/// Helper trait for [`[T]::concat`](../../std/primitive.slice.html#method.concat).
+///
+/// Note: the `Item` type parameter is not used in this trait,
+/// but it allows impls to be more generic.
+/// Without it, we get this error:
+///
+/// ```error
+/// error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predica
+///    --> src/liballoc/slice.rs:608:6
+///     |
+/// 608 | impl<T: Clone, V: Borrow<[T]>> Concat for [V] {
+///     |      ^ unconstrained type parameter
+/// ```
+///
+/// This is because there could exist `V` types with multiple `Borrow<[_]>` impls,
+/// such that multiple `T` types would apply:
+///
+/// ```
+/// # #[allow(dead_code)]
+/// pub struct Foo(Vec<u32>, Vec<String>);
+///
+/// impl std::borrow::Borrow<[u32]> for Foo {
+///     fn borrow(&self) -> &[u32] { &self.0 }
+/// }
+///
+/// impl std::borrow::Borrow<[String]> for Foo {
+///     fn borrow(&self) -> &[String] { &self.1 }
+/// }
+/// ```
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
-pub trait SliceConcat<Separator: ?Sized>: Sized {
+pub trait Concat<Item: ?Sized> {
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
     type Output;
 
     /// Implementation of [`[T]::concat`](../../std/primitive.slice.html#method.concat)
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
-    fn concat(slice: &[Self]) -> Self::Output;
+    fn concat(slice: &Self) -> Self::Output;
+}
+
+/// Helper trait for [`[T]::join`](../../std/primitive.slice.html#method.join)
+#[unstable(feature = "slice_concat_trait", issue = "27747")]
+pub trait Join<Separator> {
+    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    /// The resulting type after concatenation
+    type Output;
 
     /// Implementation of [`[T]::join`](../../std/primitive.slice.html#method.join)
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
-    fn join(slice: &[Self], sep: &Separator) -> Self::Output;
+    fn join(slice: &Self, sep: Separator) -> Self::Output;
 }
 
-#[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist",
-           issue = "27747")]
-impl<T: Clone, V: Borrow<[T]>> SliceConcat<T> for V {
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     type Output = Vec<T>;
 
-    fn concat(slice: &[Self]) -> Vec<T> {
+    fn concat(slice: &Self) -> Vec<T> {
         let size = slice.iter().map(|slice| slice.borrow().len()).sum();
         let mut result = Vec::with_capacity(size);
         for v in slice {
@@ -609,19 +643,47 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcat<T> for V {
         }
         result
     }
+}
 
-    fn join(slice: &[Self], sep: &T) -> Vec<T> {
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
+    type Output = Vec<T>;
+
+    fn join(slice: &Self, sep: &T) -> Vec<T> {
         let mut iter = slice.iter();
         let first = match iter.next() {
             Some(first) => first,
             None => return vec![],
         };
-        let size = slice.iter().map(|slice| slice.borrow().len()).sum::<usize>() + slice.len() - 1;
+        let size = slice.iter().map(|v| v.borrow().len()).sum::<usize>() + slice.len() - 1;
         let mut result = Vec::with_capacity(size);
         result.extend_from_slice(first.borrow());
 
         for v in iter {
             result.push(sep.clone());
+            result.extend_from_slice(v.borrow())
+        }
+        result
+    }
+}
+
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
+    type Output = Vec<T>;
+
+    fn join(slice: &Self, sep: &[T]) -> Vec<T> {
+        let mut iter = slice.iter();
+        let first = match iter.next() {
+            Some(first) => first,
+            None => return vec![],
+        };
+        let size = slice.iter().map(|v| v.borrow().len()).sum::<usize>() +
+            sep.len() * (slice.len() - 1);
+        let mut result = Vec::with_capacity(size);
+        result.extend_from_slice(first.borrow());
+
+        for v in iter {
+            result.extend_from_slice(sep);
             result.extend_from_slice(v.borrow())
         }
         result

@@ -3,7 +3,8 @@
 
 use super::StringReader;
 use errors::{Applicability, DiagnosticBuilder};
-use syntax_pos::{Pos, Span, NO_EXPANSION};
+use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION, symbol::kw};
+use crate::parse::token;
 
 #[rustfmt::skip] // for line breaks
 const UNICODE_ARRAY: &[(char, &str, char)] = &[
@@ -50,7 +51,7 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('─', "Box Drawings Light Horizontal", '-'),
     ('━', "Box Drawings Heavy Horizontal", '-'),
     ('㇐', "CJK Stroke H", '-'),
-    ('ꟷ', "Latin Epigraphic Letter Dideways", '-'),
+    ('ꟷ', "Latin Epigraphic Letter Sideways I", '-'),
     ('ᅳ', "Hangul Jungseong Eu", '-'),
     ('ㅡ', "Hangul Letter Eu", '-'),
     ('一', "CJK Unified Ideograph-4E00", '-'),
@@ -297,57 +298,64 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('＞', "Fullwidth Greater-Than Sign", '>'),
 ];
 
-const ASCII_ARRAY: &[(char, &str)] = &[
-    (' ', "Space"),
-    ('_', "Underscore"),
-    ('-', "Minus/Hyphen"),
-    (',', "Comma"),
-    (';', "Semicolon"),
-    (':', "Colon"),
-    ('!', "Exclamation Mark"),
-    ('?', "Question Mark"),
-    ('.', "Period"),
-    ('\'', "Single Quote"),
-    ('"', "Quotation Mark"),
-    ('(', "Left Parenthesis"),
-    (')', "Right Parenthesis"),
-    ('[', "Left Square Bracket"),
-    (']', "Right Square Bracket"),
-    ('{', "Left Curly Brace"),
-    ('}', "Right Curly Brace"),
-    ('*', "Asterisk"),
-    ('/', "Slash"),
-    ('\\', "Backslash"),
-    ('&', "Ampersand"),
-    ('+', "Plus Sign"),
-    ('<', "Less-Than Sign"),
-    ('=', "Equals Sign"),
-    ('>', "Greater-Than Sign"),
+// FIXME: the lexer could be used to turn the ASCII version of unicode homoglyphs, instead of
+// keeping the substitution token in this table. Ideally, this should be inside `rustc_lexer`.
+// However, we should first remove compound tokens like `<<` from `rustc_lexer`, and then add
+// fancier error recovery to it, as there will be less overall work to do this way.
+const ASCII_ARRAY: &[(char, &str, Option<token::TokenKind>)] = &[
+    (' ', "Space", Some(token::Whitespace)),
+    ('_', "Underscore", Some(token::Ident(kw::Underscore, false))),
+    ('-', "Minus/Hyphen", Some(token::BinOp(token::Minus))),
+    (',', "Comma", Some(token::Comma)),
+    (';', "Semicolon", Some(token::Semi)),
+    (':', "Colon", Some(token::Colon)),
+    ('!', "Exclamation Mark", Some(token::Not)),
+    ('?', "Question Mark", Some(token::Question)),
+    ('.', "Period", Some(token::Dot)),
+    ('(', "Left Parenthesis", Some(token::OpenDelim(token::Paren))),
+    (')', "Right Parenthesis", Some(token::CloseDelim(token::Paren))),
+    ('[', "Left Square Bracket", Some(token::OpenDelim(token::Bracket))),
+    (']', "Right Square Bracket", Some(token::CloseDelim(token::Bracket))),
+    ('{', "Left Curly Brace", Some(token::OpenDelim(token::Brace))),
+    ('}', "Right Curly Brace", Some(token::CloseDelim(token::Brace))),
+    ('*', "Asterisk", Some(token::BinOp(token::Star))),
+    ('/', "Slash", Some(token::BinOp(token::Slash))),
+    ('\\', "Backslash", None),
+    ('&', "Ampersand", Some(token::BinOp(token::And))),
+    ('+', "Plus Sign", Some(token::BinOp(token::Plus))),
+    ('<', "Less-Than Sign", Some(token::Lt)),
+    ('=', "Equals Sign", Some(token::Eq)),
+    ('>', "Greater-Than Sign", Some(token::Gt)),
+    // FIXME: Literals are already lexed by this point, so we can't recover gracefully just by
+    // spitting the correct token out.
+    ('\'', "Single Quote", None),
+    ('"', "Quotation Mark", None),
 ];
 
 crate fn check_for_substitution<'a>(
     reader: &StringReader<'a>,
+    pos: BytePos,
     ch: char,
     err: &mut DiagnosticBuilder<'a>,
-) -> bool {
+) -> Option<token::TokenKind> {
     let (u_name, ascii_char) = match UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch) {
         Some(&(_u_char, u_name, ascii_char)) => (u_name, ascii_char),
-        None => return false,
+        None => return None,
     };
 
-    let span = Span::new(reader.pos, reader.next_pos, NO_EXPANSION);
+    let span = Span::new(pos, pos + Pos::from_usize(ch.len_utf8()), NO_EXPANSION);
 
-    let ascii_name = match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
-        Some((_ascii_char, ascii_name)) => ascii_name,
+    let (ascii_name, token) = match ASCII_ARRAY.iter().find(|&&(c, _, _)| c == ascii_char) {
+        Some((_ascii_char, ascii_name, token)) => (ascii_name, token),
         None => {
             let msg = format!("substitution character not found for '{}'", ch);
             reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
-            return false
-        },
+            return None;
+        }
     };
 
     // special help suggestion for "directed" double quotes
-    if let Some(s) = reader.peek_delimited('“', '”') {
+    if let Some(s) = peek_delimited(&reader.src[reader.src_index(pos)..], '“', '”') {
         let msg = format!(
             "Unicode characters '“' (Left Double Quotation Mark) and \
              '”' (Right Double Quotation Mark) look like '{}' ({}), but are not",
@@ -355,8 +363,8 @@ crate fn check_for_substitution<'a>(
         );
         err.span_suggestion(
             Span::new(
-                reader.pos,
-                reader.next_pos + Pos::from_usize(s.len()) + Pos::from_usize('”'.len_utf8()),
+                pos,
+                pos + Pos::from_usize('“'.len_utf8() + s.len() + '”'.len_utf8()),
                 NO_EXPANSION,
             ),
             &msg,
@@ -368,26 +376,18 @@ crate fn check_for_substitution<'a>(
             "Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
             ch, u_name, ascii_char, ascii_name
         );
-        err.span_suggestion(
-            span,
-            &msg,
-            ascii_char.to_string(),
-            Applicability::MaybeIncorrect,
-        );
+        err.span_suggestion(span, &msg, ascii_char.to_string(), Applicability::MaybeIncorrect);
     }
-    true
+    token.clone()
 }
 
-impl StringReader<'_> {
-    /// Immutably extract string if found at current position with given delimiters
-    fn peek_delimited(&self, from_ch: char, to_ch: char) -> Option<&str> {
-        let tail = &self.src[self.src_index(self.pos)..];
-        let mut chars = tail.chars();
-        let first_char = chars.next()?;
-        if first_char != from_ch {
-            return None;
-        }
-        let last_char_idx = chars.as_str().find(to_ch)?;
-        Some(&chars.as_str()[..last_char_idx])
+/// Extract string if found at current position with given delimiters
+fn peek_delimited(text: &str, from_ch: char, to_ch: char) -> Option<&str> {
+    let mut chars = text.chars();
+    let first_char = chars.next()?;
+    if first_char != from_ch {
+        return None;
     }
+    let last_char_idx = chars.as_str().find(to_ch)?;
+    Some(&chars.as_str()[..last_char_idx])
 }

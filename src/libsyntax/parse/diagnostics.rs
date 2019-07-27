@@ -2,6 +2,7 @@ use crate::ast::{
     self, Arg, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
+use crate::feature_gate::{feature_err, UnstableFeatures};
 use crate::parse::{SeqSep, PResult, Parser, ParseSess};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
 use crate::parse::token::{self, TokenKind};
@@ -15,6 +16,7 @@ use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::{debug, trace};
+use std::mem;
 
 /// Creates a placeholder argument.
 crate fn dummy_arg(ident: Ident) -> Arg {
@@ -325,8 +327,8 @@ impl<'a> Parser<'a> {
             self.token.is_keyword(kw::Return) ||
             self.token.is_keyword(kw::While)
         );
-        let cm = self.sess.source_map();
-        match (cm.lookup_line(self.token.span.lo()), cm.lookup_line(sp.lo())) {
+        let sm = self.sess.source_map();
+        match (sm.lookup_line(self.token.span.lo()), sm.lookup_line(sp.lo())) {
             (Ok(ref a), Ok(ref b)) if a.line != b.line && is_semi_suggestable => {
                 // The spans are in different lines, expected `;` and found `let` or `return`.
                 // High likelihood that it is only a missing `;`.
@@ -364,7 +366,51 @@ impl<'a> Parser<'a> {
                 err.span_label(self.token.span, "unexpected token");
             }
         }
+        self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
+    }
+
+    pub fn maybe_annotate_with_ascription(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        maybe_expected_semicolon: bool,
+    ) {
+        if let Some((sp, likely_path)) = self.last_type_ascription {
+            let sm = self.sess.source_map();
+            let next_pos = sm.lookup_char_pos(self.token.span.lo());
+            let op_pos = sm.lookup_char_pos(sp.hi());
+
+            if likely_path {
+                err.span_suggestion(
+                    sp,
+                    "maybe write a path separator here",
+                    "::".to_string(),
+                    match self.sess.unstable_features {
+                        UnstableFeatures::Disallow => Applicability::MachineApplicable,
+                        _ => Applicability::MaybeIncorrect,
+                    },
+                );
+            } else if op_pos.line != next_pos.line && maybe_expected_semicolon {
+                err.span_suggestion(
+                    sp,
+                    "try using a semicolon",
+                    ";".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if let UnstableFeatures::Disallow = self.sess.unstable_features {
+                err.span_label(sp, "tried to parse a type due to this");
+            } else {
+                err.span_label(sp, "tried to parse a type due to this type ascription");
+            }
+            if let UnstableFeatures::Disallow = self.sess.unstable_features {
+                // Give extra information about type ascription only if it's a nightly compiler.
+            } else {
+                err.note("`#![feature(type_ascription)]` lets you annotate an expression with a \
+                          type: `<expr>: <type>`");
+                err.note("for more information, see \
+                          https://github.com/rust-lang/rust/issues/23416");
+            }
+        }
     }
 
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
@@ -555,7 +601,7 @@ impl<'a> Parser<'a> {
         .collect::<Vec<_>>();
 
         if !discriminant_spans.is_empty() && has_fields {
-            let mut err = crate::feature_gate::feature_err(
+            let mut err = feature_err(
                 sess,
                 sym::arbitrary_enum_discriminant,
                 discriminant_spans.clone(),
@@ -768,8 +814,8 @@ impl<'a> Parser<'a> {
                 return Ok(recovered);
             }
         }
-        let cm = self.sess.source_map();
-        match (cm.lookup_line(prev_sp.lo()), cm.lookup_line(sp.lo())) {
+        let sm = self.sess.source_map();
+        match (sm.lookup_line(prev_sp.lo()), sm.lookup_line(sp.lo())) {
             (Ok(ref a), Ok(ref b)) if a.line == b.line => {
                 // When the spans are in the same line, it means that the only content
                 // between them is whitespace, point only at the found token.
@@ -781,6 +827,42 @@ impl<'a> Parser<'a> {
             }
         }
         Err(err)
+    }
+
+    crate fn parse_semi_or_incorrect_foreign_fn_body(
+        &mut self,
+        ident: &Ident,
+        extern_sp: Span,
+    ) -> PResult<'a, ()> {
+        if self.token != token::Semi {
+            // this might be an incorrect fn definition (#62109)
+            let parser_snapshot = self.clone();
+            match self.parse_inner_attrs_and_block() {
+                Ok((_, body)) => {
+                    self.struct_span_err(ident.span, "incorrect `fn` inside `extern` block")
+                        .span_label(ident.span, "can't have a body")
+                        .span_label(body.span, "this body is invalid here")
+                        .span_label(
+                            extern_sp,
+                            "`extern` blocks define existing foreign functions and `fn`s \
+                             inside of them cannot have a body")
+                        .help("you might have meant to write a function accessible through ffi, \
+                               which can be done by writing `extern fn` outside of the \
+                               `extern` block")
+                        .note("for more information, visit \
+                               https://doc.rust-lang.org/std/keyword.extern.html")
+                        .emit();
+                }
+                Err(mut err) => {
+                    err.cancel();
+                    mem::replace(self, parser_snapshot);
+                    self.expect(&token::Semi)?;
+                }
+            }
+        } else {
+            self.bump();
+        }
+        Ok(())
     }
 
     /// Consume alternative await syntaxes like `await <expr>`, `await? <expr>`, `await(<expr>)`
@@ -850,47 +932,9 @@ impl<'a> Parser<'a> {
             self.look_ahead(2, |t| t.is_ident()) ||
             self.look_ahead(1, |t| t == &token::Colon) &&  // `foo:bar:baz`
             self.look_ahead(2, |t| t.is_ident()) ||
-            self.look_ahead(1, |t| t == &token::ModSep) &&  // `foo:bar::baz`
-            self.look_ahead(2, |t| t.is_ident())
-    }
-
-    crate fn bad_type_ascription(
-        &self,
-        err: &mut DiagnosticBuilder<'a>,
-        lhs_span: Span,
-        cur_op_span: Span,
-        next_sp: Span,
-        maybe_path: bool,
-    ) {
-        err.span_label(self.token.span, "expecting a type here because of type ascription");
-        let cm = self.sess.source_map();
-        let next_pos = cm.lookup_char_pos(next_sp.lo());
-        let op_pos = cm.lookup_char_pos(cur_op_span.hi());
-        if op_pos.line != next_pos.line {
-            err.span_suggestion(
-                cur_op_span,
-                "try using a semicolon",
-                ";".to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        } else {
-            if maybe_path {
-                err.span_suggestion(
-                    cur_op_span,
-                    "maybe you meant to write a path separator here",
-                    "::".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.note("#![feature(type_ascription)] lets you annotate an \
-                          expression with a type: `<expr>: <type>`")
-                    .span_note(
-                        lhs_span,
-                        "this expression expects an ascribed type after the colon",
-                    )
-                    .help("this might be indicative of a syntax error elsewhere");
-            }
-        }
+            self.look_ahead(1, |t| t == &token::ModSep) &&
+            (self.look_ahead(2, |t| t.is_ident()) ||   // `foo:bar::baz`
+             self.look_ahead(2, |t| t == &token::Lt))  // `foo:bar::<baz>`
     }
 
     crate fn recover_seq_parse_error(

@@ -112,7 +112,7 @@ $COMMIT\t$(cat "$TOOLSTATE_FILE")
 }
 
 if [ "$RUST_RELEASE_CHANNEL" = nightly ]; then
-    if [ -n "${TOOLSTATE_REPO_ACCESS_TOKEN+is_set}" ]; then
+    if [ -n "${TOOLSTATE_PUBLISH+is_set}" ]; then
         . "$(dirname $0)/repo.sh"
         MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
         echo "($OS CI update)" > "$MESSAGE_FILE"

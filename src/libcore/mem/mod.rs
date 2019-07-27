@@ -456,7 +456,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// Bypasses Rust's normal memory-initialization checks by pretending to
 /// produce a value of type `T`, while doing nothing at all.
 ///
-/// **This functon is deprecated.** Use [`MaybeUninit<T>`] instead.
+/// **This function is deprecated.** Use [`MaybeUninit<T>`] instead.
 ///
 /// The reason for deprecation is that the function basically cannot be used
 /// correctly: [the Rust compiler assumes][inv] that values are properly initialized.

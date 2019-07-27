@@ -248,8 +248,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         }], &[]);
                     }
                 }
-                let is_borrow_of_interior_mut = context.is_borrow() && !proj.base
-                    .ty(self.body, self.tcx)
+                let is_borrow_of_interior_mut = context.is_borrow() &&
+                    !Place::ty_from(&place.base, &proj.base, self.body, self.tcx)
                     .ty
                     .is_freeze(self.tcx, self.param_env, self.source_info.span);
                 // prevent
@@ -264,15 +264,15 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     );
                 }
                 let old_source_info = self.source_info;
-                if let Place::Base(PlaceBase::Local(local)) = proj.base {
-                    if self.body.local_decls[local].internal {
+                if let (PlaceBase::Local(local), None) = (&place.base, &proj.base) {
+                    if self.body.local_decls[*local].internal {
                         // Internal locals are used in the `move_val_init` desugaring.
                         // We want to check unsafety against the source info of the
                         // desugaring, rather than the source info of the RHS.
-                        self.source_info = self.body.local_decls[local].source_info;
+                        self.source_info = self.body.local_decls[*local].source_info;
                     }
                 }
-                let base_ty = proj.base.ty(self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(&place.base, &proj.base, self.body, self.tcx).ty;
                 match base_ty.sty {
                     ty::RawPtr(..) => {
                         self.require_unsafe("dereference of raw pointer",
@@ -404,15 +404,16 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     }
     fn check_mut_borrowing_layout_constrained_field(
         &mut self,
-        mut place: &Place<'tcx>,
+        place: &Place<'tcx>,
         is_mut_use: bool,
     ) {
-        while let &Place::Projection(box Projection {
-            ref base, ref elem
-        }) = place {
-            match *elem {
+        let mut projection = &place.projection;
+        while let Some(proj) = projection {
+            match proj.elem {
                 ProjectionElem::Field(..) => {
-                    let ty = base.ty(&self.body.local_decls, self.tcx).ty;
+                    let ty =
+                        Place::ty_from(&place.base, &proj.base, &self.body.local_decls, self.tcx)
+                            .ty;
                     match ty.sty {
                         ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
                             (Bound::Unbounded, Bound::Unbounded) => {},
@@ -446,7 +447,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 }
                 _ => {}
             }
-            place = base;
+            projection = &proj.base;
         }
     }
 }

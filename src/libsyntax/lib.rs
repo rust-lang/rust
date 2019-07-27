@@ -24,9 +24,6 @@
 
 #![recursion_limit="256"]
 
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
-
 pub use errors;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::bit_set::GrowableBitSet;
@@ -165,6 +162,7 @@ pub mod print {
 
 pub mod ext {
     pub use syntax_pos::hygiene;
+    pub mod allocator;
     pub mod base;
     pub mod build;
     pub mod derive;
@@ -174,6 +172,7 @@ pub mod ext {
 
     pub mod tt {
         pub mod transcribe;
+        pub mod macro_check;
         pub mod macro_parser;
         pub mod macro_rules;
         pub mod quoted;

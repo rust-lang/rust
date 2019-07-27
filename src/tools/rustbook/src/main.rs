@@ -7,9 +7,6 @@ use std::path::{Path, PathBuf};
 
 use clap::{App, ArgMatches, SubCommand, AppSettings};
 
-use mdbook_1::{MDBook as MDBook1};
-use mdbook_1::errors::{Result as Result1};
-
 use mdbook::MDBook;
 use mdbook::errors::{Result as Result3};
 
@@ -25,8 +22,6 @@ fn main() {
 'The output directory for your book{n}(Defaults to ./book when omitted)'";
     let dir_message = "[dir]
 'A directory for your book{n}(Defaults to Current Directory when omitted)'";
-    let vers_message = "-m, --mdbook-vers=[md-version]
-'The version of mdbook to use for your book{n}(Defaults to 1 when omitted)'";
 
     let matches = App::new("rustbook")
                     .about("Build a book with mdBook")
@@ -36,8 +31,7 @@ fn main() {
                     .subcommand(SubCommand::with_name("build")
                         .about("Build the book from the markdown files")
                         .arg_from_usage(d_message)
-                        .arg_from_usage(dir_message)
-                        .arg_from_usage(vers_message))
+                        .arg_from_usage(dir_message))
                     .subcommand(SubCommand::with_name("linkcheck")
                         .about("Run linkcheck with mdBook 3")
                         .arg_from_usage(dir_message))
@@ -46,33 +40,15 @@ fn main() {
     // Check which subcomamnd the user ran...
     match matches.subcommand() {
         ("build", Some(sub_matches)) => {
-            match sub_matches.value_of("mdbook-vers") {
-                None | Some("1") => {
-                    if let Err(e) = build_1(sub_matches) {
-                        eprintln!("Error: {}", e);
+            if let Err(e) = build(sub_matches) {
+                eprintln!("Error: {}", e);
 
-                        for cause in e.iter().skip(1) {
-                            eprintln!("\tCaused By: {}", cause);
-                        }
-
-                        ::std::process::exit(101);
-                    }
+                for cause in e.iter().skip(1) {
+                    eprintln!("\tCaused By: {}", cause);
                 }
-                Some("2") | Some("3") => {
-                    if let Err(e) = build(sub_matches) {
-                        eprintln!("Error: {}", e);
 
-                        for cause in e.iter().skip(1) {
-                            eprintln!("\tCaused By: {}", cause);
-                        }
-
-                        ::std::process::exit(101);
-                    }
-                }
-                _ => {
-                    panic!("Invalid mdBook version! Select '1' or '2' or '3'");
-                }
-            };
+                ::std::process::exit(101);
+            }
         },
         ("linkcheck", Some(sub_matches)) => {
             if let Err(err) = linkcheck(sub_matches) {
@@ -107,23 +83,6 @@ pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
 #[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
 pub fn linkcheck(_args: &ArgMatches<'_>) -> Result<(), Error> {
     println!("mdbook-linkcheck only works on x86_64 linux targets.");
-    Ok(())
-}
-
-// Build command implementation
-pub fn build_1(args: &ArgMatches<'_>) -> Result1<()> {
-    let book_dir = get_book_dir(args);
-    let mut book = MDBook1::load(&book_dir)?;
-
-    // Set this to allow us to catch bugs in advance.
-    book.config.build.create_missing = false;
-
-    if let Some(dest_dir) = args.value_of("dest-dir") {
-        book.config.build.build_dir = PathBuf::from(dest_dir);
-    }
-
-    book.build()?;
-
     Ok(())
 }
 

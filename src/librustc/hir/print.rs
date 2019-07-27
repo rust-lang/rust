@@ -4,7 +4,7 @@ use syntax::source_map::{SourceMap, Spanned};
 use syntax::parse::ParseSess;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pprust::{Comments, PrintState};
+use syntax::print::pprust::{self, Comments, PrintState};
 use syntax::symbol::kw;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
@@ -89,6 +89,15 @@ impl std::ops::DerefMut for State<'_> {
 impl<'a> PrintState<'a> for State<'a> {
     fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
+    }
+
+    fn print_ident(&mut self, ident: ast::Ident) {
+        self.s.word(pprust::ast_ident_to_string(ident, ident.is_raw_guess()));
+        self.ann.post(self, AnnNode::Name(&ident.name))
+    }
+
+    fn print_generic_args(&mut self, args: &ast::GenericArgs, _colons_before_params: bool) {
+        span_bug!(args.span(), "AST generic args printed by HIR pretty-printer");
     }
 }
 
@@ -932,7 +941,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(st.span.lo());
         match st.node {
             hir::StmtKind::Local(ref loc) => {
-                self.print_local(loc.init.deref(), |this| this.print_local_decl(&loc));
+                self.print_local(loc.init.as_deref(), |this| this.print_local_decl(&loc));
             }
             hir::StmtKind::Item(item) => {
                 self.ann.nested(self, Nested::Item(item))
@@ -1440,15 +1449,6 @@ impl<'a> State<'a> {
 
     pub fn print_usize(&mut self, i: usize) {
         self.s.word(i.to_string())
-    }
-
-    pub fn print_ident(&mut self, ident: ast::Ident) {
-        if ident.is_raw_guess() {
-            self.s.word(format!("r#{}", ident.name));
-        } else {
-            self.s.word(ident.as_str().to_string());
-        }
-        self.ann.post(self, AnnNode::Name(&ident.name))
     }
 
     pub fn print_name(&mut self, name: ast::Name) {

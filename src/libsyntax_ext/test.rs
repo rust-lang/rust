@@ -1,31 +1,34 @@
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
+use syntax::ast;
+use syntax::attr::{self, check_builtin_macro_attribute};
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
-use syntax::attr;
-use syntax::ast;
 use syntax::print::pprust;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
+
 use std::iter;
 
 pub fn expand_test(
     cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
-    _meta_item: &ast::MetaItem,
+    meta_item: &ast::MetaItem,
     item: Annotatable,
 ) -> Vec<Annotatable> {
+    check_builtin_macro_attribute(cx, meta_item, sym::test);
     expand_test_or_bench(cx, attr_sp, item, false)
 }
 
 pub fn expand_bench(
     cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
-    _meta_item: &ast::MetaItem,
+    meta_item: &ast::MetaItem,
     item: Annotatable,
 ) -> Vec<Annotatable> {
+    check_builtin_macro_attribute(cx, meta_item, sym::bench);
     expand_test_or_bench(cx, attr_sp, item, true)
 }
 
@@ -42,12 +45,12 @@ pub fn expand_test_or_bench(
         if let Annotatable::Item(i) = item { i }
         else {
             cx.parse_sess.span_diagnostic.span_fatal(item.span(),
-                "#[test] attribute is only allowed on non associated functions").raise();
+                "`#[test]` attribute is only allowed on non associated functions").raise();
         };
 
     if let ast::ItemKind::Mac(_) = item.node {
         cx.parse_sess.span_diagnostic.span_warn(item.span,
-            "#[test] attribute should not be used on macros. Use #[cfg(test)] instead.");
+            "`#[test]` attribute should not be used on macros. Use `#[cfg(test)]` instead.");
         return vec![Annotatable::Item(item)];
     }
 
@@ -59,7 +62,7 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    let ctxt = SyntaxContext::empty().apply_mark(cx.current_expansion.mark);
+    let ctxt = SyntaxContext::empty().apply_mark(cx.current_expansion.id);
     let (sp, attr_sp) = (item.span.with_ctxt(ctxt), attr_sp.with_ctxt(ctxt));
 
     // Gensym "test" so we can extern crate without conflicting with any local names
@@ -167,7 +170,7 @@ pub fn expand_test_or_bench(
         ast::ItemKind::ExternCrate(Some(sym::test))
     );
 
-    log::debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+    log::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
         // Access to libtest under a gensymed name

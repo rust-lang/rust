@@ -19,6 +19,7 @@ fn main() {
                                    "InstrProfilingPlatformDarwin.c",
                                    "InstrProfilingPlatformLinux.c",
                                    "InstrProfilingPlatformOther.c",
+                                   "InstrProfilingPlatformWindows.c",
                                    "InstrProfilingRuntime.cc",
                                    "InstrProfilingUtil.c",
                                    "InstrProfilingValue.c",

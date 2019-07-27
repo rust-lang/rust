@@ -4,7 +4,7 @@ warning: denote infinite loops with `loop { ... }`
 LL |         while true { while true { while true { x = y; x.clone(); } } }
    |         ^^^^^^^^^^ help: use `loop`
    |
-   = note: #[warn(while_true)] on by default
+   = note: `#[warn(while_true)]` on by default
 
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/liveness-move-in-while.rs:8:22

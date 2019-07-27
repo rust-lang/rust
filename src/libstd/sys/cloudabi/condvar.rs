@@ -79,16 +79,21 @@ impl Condvar {
             },
             ..mem::zeroed()
         };
-        let mut event: abi::event = mem::uninitialized();
-        let mut nevents: usize = mem::uninitialized();
-        let ret = abi::poll(&subscription, &mut event, 1, &mut nevents);
+        let mut event: mem::MaybeUninit<abi::event> = mem::MaybeUninit::uninit();
+        let mut nevents: mem::MaybeUninit<usize> = mem::MaybeUninit::uninit();
+        let ret = abi::poll(
+            &subscription,
+            event.as_mut_ptr(),
+            1,
+            nevents.as_mut_ptr()
+        );
         assert_eq!(
             ret,
             abi::errno::SUCCESS,
             "Failed to wait on condition variable"
         );
         assert_eq!(
-            event.error,
+            event.assume_init().error,
             abi::errno::SUCCESS,
             "Failed to wait on condition variable"
         );
@@ -131,21 +136,27 @@ impl Condvar {
                 ..mem::zeroed()
             },
         ];
-        let mut events: [abi::event; 2] = mem::uninitialized();
-        let mut nevents: usize = mem::uninitialized();
-        let ret = abi::poll(subscriptions.as_ptr(), events.as_mut_ptr(), 2, &mut nevents);
+        let mut events: [mem::MaybeUninit<abi::event>; 2] = [mem::MaybeUninit::uninit(); 2];
+        let mut nevents: mem::MaybeUninit<usize> = mem::MaybeUninit::uninit();
+        let ret = abi::poll(
+            subscriptions.as_ptr(),
+            mem::MaybeUninit::first_ptr_mut(&mut events),
+            2,
+            nevents.as_mut_ptr()
+        );
         assert_eq!(
             ret,
             abi::errno::SUCCESS,
             "Failed to wait on condition variable"
         );
+        let nevents = nevents.assume_init();
         for i in 0..nevents {
             assert_eq!(
-                events[i].error,
+                events[i].assume_init().error,
                 abi::errno::SUCCESS,
                 "Failed to wait on condition variable"
             );
-            if events[i].type_ == abi::eventtype::CONDVAR {
+            if events[i].assume_init().type_ == abi::eventtype::CONDVAR {
                 return true;
             }
         }
