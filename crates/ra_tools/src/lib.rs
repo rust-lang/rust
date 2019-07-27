@@ -79,6 +79,29 @@ pub fn project_root() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR")).ancestors().nth(2).unwrap().to_path_buf()
 }
 
+pub struct Cmd {
+    pub unix: &'static str,
+    pub windows: &'static str,
+    pub work_dir: &'static str,
+}
+
+impl Cmd {
+    pub fn run(self) -> Result<()> {
+        if cfg!(windows) {
+            run(self.windows, self.work_dir)
+        } else {
+            run(self.unix, self.work_dir)
+        }
+    }
+    pub fn run_with_output(self) -> Result<Output> {
+        if cfg!(windows) {
+            run_with_output(self.windows, self.work_dir)
+        } else {
+            run_with_output(self.unix, self.work_dir)
+        }
+    }
+}
+
 pub fn run(cmdline: &str, dir: &str) -> Result<()> {
     do_run(cmdline, dir, |c| {
         c.stdout(Stdio::inherit());

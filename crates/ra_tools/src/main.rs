@@ -1,70 +1,73 @@
-use clap::{App, SubCommand};
+use clap::{App, Arg, SubCommand};
 use core::str;
 use ra_tools::{
-    gen_tests, generate, install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt,
-    run_with_output, Overwrite, Result,
+    gen_tests, generate, install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt, Cmd,
+    Overwrite, Result,
 };
 use std::{env, path::PathBuf};
+
+struct InstallOpt {
+    client: Option<ClientOpt>,
+    server: Option<ServerOpt>,
+}
+
+enum ClientOpt {
+    VsCode,
+}
+
+struct ServerOpt {
+    jemalloc: bool,
+}
 
 fn main() -> Result<()> {
     let matches = App::new("tasks")
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
         .subcommand(SubCommand::with_name("gen-syntax"))
         .subcommand(SubCommand::with_name("gen-tests"))
-        .subcommand(SubCommand::with_name("install-code"))
+        .subcommand(
+            SubCommand::with_name("install-ra")
+                .arg(Arg::with_name("server").long("--server"))
+                .arg(Arg::with_name("jemalloc").long("jemalloc").requires("server"))
+                .arg(Arg::with_name("client-code").long("client-code").conflicts_with("server")),
+        )
+        .alias("install-code")
         .subcommand(SubCommand::with_name("format"))
         .subcommand(SubCommand::with_name("format-hook"))
         .subcommand(SubCommand::with_name("fuzz-tests"))
         .subcommand(SubCommand::with_name("lint"))
         .get_matches();
-    match matches.subcommand_name().expect("Subcommand must be specified") {
-        "install-code" => {
-            if cfg!(target_os = "macos") {
-                fix_path_for_mac()?;
-            }
-            install_code_extension()?;
+    match matches.subcommand() {
+        ("install-ra", Some(matches)) => {
+            let opts = InstallOpt {
+                client: if matches.is_present("server") { None } else { Some(ClientOpt::VsCode) },
+                server: if matches.is_present("client-code") {
+                    None
+                } else {
+                    Some(ServerOpt { jemalloc: matches.is_present("jemalloc") })
+                },
+            };
+            install(opts)?
         }
-        "gen-tests" => gen_tests(Overwrite)?,
-        "gen-syntax" => generate(Overwrite)?,
-        "format" => run_rustfmt(Overwrite)?,
-        "format-hook" => install_format_hook()?,
-        "lint" => run_clippy()?,
-        "fuzz-tests" => run_fuzzer()?,
+        ("gen-tests", _) => gen_tests(Overwrite)?,
+        ("gen-syntax", _) => generate(Overwrite)?,
+        ("format", _) => run_rustfmt(Overwrite)?,
+        ("format-hook", _) => install_format_hook()?,
+        ("lint", _) => run_clippy()?,
+        ("fuzz-tests", _) => run_fuzzer()?,
         _ => unreachable!(),
     }
     Ok(())
 }
 
-fn install_code_extension() -> Result<()> {
-    run("cargo install --path crates/ra_lsp_server --force", ".")?;
-    if cfg!(windows) {
-        run(r"cmd.exe /c npm.cmd ci", "./editors/code")?;
-        run(r"cmd.exe /c npm.cmd run package", "./editors/code")?;
-    } else {
-        run(r"npm ci", "./editors/code")?;
-        run(r"npm run package", "./editors/code")?;
+fn install(opts: InstallOpt) -> Result<()> {
+    if cfg!(target_os = "macos") {
+        fix_path_for_mac()?
     }
-    if cfg!(windows) {
-        run(
-            r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix --force",
-            "./editors/code",
-        )?;
-    } else {
-        run(r"code --install-extension ./ra-lsp-0.0.1.vsix --force", "./editors/code")?;
+    if let Some(client) = opts.client {
+        install_client(client)?;
     }
-    verify_installed_extensions()?;
-    Ok(())
-}
-
-fn verify_installed_extensions() -> Result<()> {
-    let exts = if cfg!(windows) {
-        run_with_output(r"cmd.exe /c code.cmd --list-extensions", ".")?
-    } else {
-        run_with_output(r"code --list-extensions", ".")?
-    };
-    if !str::from_utf8(&exts.stdout)?.contains("ra-lsp") {
-        Err("Could not install the Visual Studio Code extension. Please make sure you \
-             have at least NodeJS 10.x installed and try again.")?;
+    if let Some(server) = opts.server {
+        install_server(server)?;
     }
     Ok(())
 }
@@ -100,4 +103,48 @@ fn fix_path_for_mac() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
+    Cmd { unix: r"npm ci", windows: r"cmd.exe /c npm.cmd ci", work_dir: "./editors/code" }.run()?;
+
+    let code_in_path = Cmd {
+        unix: r"code --version",
+        windows: r"cmd.exe /c code.cmd --version",
+        work_dir: "./editors/code",
+    }
+    .run()
+    .is_ok();
+    if !code_in_path {
+        Err("Can't execute `code --version`. Perhaps it is not in $PATH?")?;
+    }
+
+    Cmd {
+        unix: r"code --install-extension ./ra-lsp-0.0.1.vsix --force",
+        windows: r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix --force",
+        work_dir: "./editors/code",
+    }
+    .run()?;
+
+    let output = Cmd {
+        unix: r"code --list-extensions",
+        windows: r"cmd.exe /c code.cmd --list-extensions",
+        work_dir: ".",
+    }
+    .run_with_output()?;
+
+    if !str::from_utf8(&output.stdout)?.contains("ra-lsp") {
+        Err("Could not install the Visual Studio Code extension. \
+             Please make sure you have at least NodeJS 10.x installed and try again.")?;
+    }
+
+    Ok(())
+}
+
+fn install_server(opts: ServerOpt) -> Result<()> {
+    if opts.jemalloc {
+        run("cargo install --path crates/ra_lsp_server --force --features jemalloc", ".")
+    } else {
+        run("cargo install --path crates/ra_lsp_server --force", ".")
+    }
 }
