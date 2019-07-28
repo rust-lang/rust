@@ -472,7 +472,7 @@ declare_features! (
     (active, doc_alias, "1.27.0", Some(50146), None),
 
     // Allows defining `existential type`s.
-    (active, existential_type, "1.28.0", Some(34511), None),
+    (active, existential_type, "1.28.0", Some(63063), None),
 
     // Allows inconsistent bounds in where clauses.
     (active, trivial_bounds, "1.28.0", Some(48214), None),
@@ -525,7 +525,7 @@ declare_features! (
     (active, bind_by_move_pattern_guards, "1.30.0", Some(15287), None),
 
     // Allows `impl Trait` in bindings (`let`, `const`, `static`).
-    (active, impl_trait_in_bindings, "1.30.0", Some(34511), None),
+    (active, impl_trait_in_bindings, "1.30.0", Some(63065), None),
 
     // Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
