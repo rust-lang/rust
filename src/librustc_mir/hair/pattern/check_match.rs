@@ -583,7 +583,6 @@ fn check_legality_of_move_bindings(
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
         } else if has_guard {
-            cx.signalled_error = SignalledError::SawSomeError;
             if !cx.tcx.features().bind_by_move_pattern_guards {
                 let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
                                             "cannot bind by-move into a pattern guard");
