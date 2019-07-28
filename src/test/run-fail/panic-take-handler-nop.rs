@@ -3,6 +3,6 @@
 use std::panic;
 
 fn main() {
-    panic::take_hook();
+    let _ = panic::take_hook();
     panic!("foobar");
 }

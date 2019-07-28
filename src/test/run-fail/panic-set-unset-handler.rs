@@ -6,6 +6,6 @@ fn main() {
     panic::set_hook(Box::new(|i| {
         eprint!("greetings from the panic handler");
     }));
-    panic::take_hook();
+    let _ = panic::take_hook();
     panic!("foobar");
 }

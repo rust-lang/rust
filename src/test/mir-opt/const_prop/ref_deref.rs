@@ -1,3 +1,5 @@
+#![allow(unused_must_use)]
+
 fn main() {
     *(&4);
 }

@@ -19,5 +19,5 @@ impl<'i, 't> Parser<'i, 't> {
 
 fn main() {
     let x = 0u8;
-    Parser(&x, &x).parse_nested_block(|input| input.expect_exhausted()).unwrap();
+    let _ = Parser(&x, &x).parse_nested_block(|input| input.expect_exhausted()).unwrap();
 }
