@@ -57,8 +57,12 @@ unsafe fn test_simd() {
     let x = _mm_setzero_si128();
     let y = _mm_set1_epi16(7);
     let or = _mm_or_si128(x, y);
+    let cmp_eq = _mm_cmpeq_epi8(y, y);
+    let cmp_lt = _mm_cmplt_epi8(y, y);
 
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(or), [7, 7, 7, 7, 7, 7, 7, 7]);
+    assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_eq), [0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]);
+    assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_lt), [0, 0, 0, 0, 0, 0, 0, 0]);
 }
 
 #[derive(PartialEq)]

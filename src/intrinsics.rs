@@ -155,26 +155,40 @@ fn simd_for_each_lane<'tcx, B: Backend>(
     }
 }
 
-macro_rules! simd_binop {
-    ($fx:expr, $intrinsic:expr, icmp($cc:ident, $x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, _lane_layout, ret_lane_layout, x_lane, y_lane| {
+fn bool_to_zero_or_max_uint<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    layout: TyLayout<'tcx>,
+    val: Value,
+) -> CValue<'tcx> {
+    let ty = fx.clif_type(layout.ty).unwrap();
+
+    let zero = fx.bcx.ins().iconst(ty, 0);
+    let max = fx.bcx.ins().iconst(ty, (u64::max_value() >> (64 - ty.bits())) as i64);
+    let res = crate::common::codegen_select(&mut fx.bcx, val, max, zero);
+    CValue::by_val(res, layout)
+}
+
+macro_rules! simd_cmp {
+    ($fx:expr, $intrinsic:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, _lane_layout, res_lane_layout, x_lane, y_lane| {
             let res_lane = fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane);
-            let res_lane = fx.bcx.ins().bint(types::I8, res_lane);
-            CValue::by_val(res_lane, ret_lane_layout)
+            bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
         });
     };
-    ($fx:expr, $intrinsic:expr, icmp($cc_u:ident|$cc_s:ident, $x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+    ($fx:expr, $intrinsic:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
             let res_lane = match lane_layout.ty.sty {
                 ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
                 ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
                 _ => unreachable!("{:?}", lane_layout.ty),
             };
-            let res_lane = fx.bcx.ins().bint(types::I8, res_lane);
-            CValue::by_val(res_lane, ret_lane_layout)
+            bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
         });
     };
 
+}
+
+macro_rules! simd_binop {
     ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
         simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, _lane_layout, ret_lane_layout, x_lane, y_lane| {
             let res_lane = fx.bcx.ins().$op(x_lane, y_lane);
@@ -773,22 +787,22 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
 
         simd_eq, (c x, c y) {
-            simd_binop!(fx, intrinsic, icmp(Equal, x, y) -> ret);
+            simd_cmp!(fx, intrinsic, Equal(x, y) -> ret);
         };
         simd_ne, (c x, c y) {
-            simd_binop!(fx, intrinsic, icmp(NotEqual, x, y) -> ret);
+            simd_cmp!(fx, intrinsic, NotEqual(x, y) -> ret);
         };
         simd_lt, (c x, c y) {
-            simd_binop!(fx, intrinsic, icmp(UnsignedLessThan|SignedLessThan, x, y) -> ret);
+            simd_cmp!(fx, intrinsic, UnsignedLessThan|SignedLessThan(x, y) -> ret);
         };
         simd_le, (c x, c y) {
-            simd_binop!(fx, intrinsic, icmp(UnsignedLessThanOrEqual|SignedLessThanOrEqual, x, y) -> ret);
+            simd_cmp!(fx, intrinsic, UnsignedLessThanOrEqual|SignedLessThanOrEqual(x, y) -> ret);
         };
         simd_gt, (c x, c y) {
-            simd_binop!(fx, intrinsic, icmp(UnsignedGreaterThan|SignedGreaterThan, x, y) -> ret);
+            simd_cmp!(fx, intrinsic, UnsignedGreaterThan|SignedGreaterThan(x, y) -> ret);
         };
         simd_ge, (c x, c y) {
-            simd_binop!(fx, intrinsic, icmp(UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual, x, y) -> ret);
+            simd_cmp!(fx, intrinsic, UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual(x, y) -> ret);
         };
 
         simd_add, (c x, c y) {
