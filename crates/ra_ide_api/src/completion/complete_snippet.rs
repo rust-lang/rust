@@ -84,33 +84,31 @@ mod tests {
     #[test]
     fn completes_snippets_in_items() {
         assert_debug_snapshot_matches!(
-                    do_snippet_completion(
-                        r"
+            do_snippet_completion(
+                r"
                 #[cfg(test)]
                 mod tests {
                     <|>
                 }
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "Test function",
-       ⋮        source_range: [78; 78),
-       ⋮        delete: [78; 78),
-       ⋮        insert: "#[test]\nfn ${1:feature}() {\n    $0\n}",
-       ⋮        kind: Snippet,
-       ⋮        lookup: "tfn",
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "pub(crate)",
-       ⋮        source_range: [78; 78),
-       ⋮        delete: [78; 78),
-       ⋮        insert: "pub(crate) $0",
-       ⋮        kind: Snippet,
-       ⋮    },
-       ⋮]
-        "###
-                );
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Test function",
+        source_range: [78; 78),
+        delete: [78; 78),
+        insert: "#[test]\nfn ${1:feature}() {\n    $0\n}",
+        kind: Snippet,
+        lookup: "tfn",
+    },
+    CompletionItem {
+        label: "pub(crate)",
+        source_range: [78; 78),
+        delete: [78; 78),
+        insert: "pub(crate) $0",
+        kind: Snippet,
+    },
+]"###
+        );
     }
 }
