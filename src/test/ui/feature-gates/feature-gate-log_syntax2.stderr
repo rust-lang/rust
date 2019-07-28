@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'log_syntax': `log_syntax!` is not stable enough for use and is subject to change
-  --> $DIR/feature-gate-log_syntax2.rs:4:22
+  --> $DIR/feature-gate-log_syntax2.rs:2:22
    |
 LL |     println!("{:?}", log_syntax!());
    |                      ^^^^^^^^^^
