@@ -35,7 +35,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
     #[inline]
     fn pointer_inbounds(&self, ptr: Pointer<Tag>) -> InterpResult<'tcx> {
         let (size, _align) = self.memory().get_size_and_align(ptr.alloc_id, AllocCheck::Live)?;
-        ptr.check_in_alloc(size, CheckInAllocMsg::InboundsTest)
+        ptr.check_inbounds_alloc(size, CheckInAllocMsg::InboundsTest)
     }
 
     fn binary_ptr_op(
