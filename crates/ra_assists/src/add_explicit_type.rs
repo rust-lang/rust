@@ -77,6 +77,11 @@ mod tests {
             "fn f() { let a<|> = 42f64; }",
             "fn f() { let a<|>: f64 = 42f64; }",
         );
+        check_assist(
+            add_explicit_type,
+            "fn f() { let a<|> = 42f32; }",
+            "fn f() { let a<|>: f32 = 42f32; }",
+        );
     }
 
     #[test]
