@@ -131,51 +131,49 @@ mod tests {
     #[test]
     fn completes_bindings_from_let() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 fn quux(x: i32) {
                     let y = 92;
                     1 + <|>;
                     let z = ();
                 }
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "quux",
-       ⋮        source_range: [91; 91),
-       ⋮        delete: [91; 91),
-       ⋮        insert: "quux($0)",
-       ⋮        kind: Function,
-       ⋮        detail: "fn quux(x: i32)",
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "x",
-       ⋮        source_range: [91; 91),
-       ⋮        delete: [91; 91),
-       ⋮        insert: "x",
-       ⋮        kind: Binding,
-       ⋮        detail: "i32",
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "y",
-       ⋮        source_range: [91; 91),
-       ⋮        delete: [91; 91),
-       ⋮        insert: "y",
-       ⋮        kind: Binding,
-       ⋮        detail: "i32",
-       ⋮    },
-       ⋮]
-        "###
-                );
+            ),
+            @r###"[
+    CompletionItem {
+        label: "quux",
+        source_range: [91; 91),
+        delete: [91; 91),
+        insert: "quux($0)",
+        kind: Function,
+        detail: "fn quux(x: i32)",
+    },
+    CompletionItem {
+        label: "x",
+        source_range: [91; 91),
+        delete: [91; 91),
+        insert: "x",
+        kind: Binding,
+        detail: "i32",
+    },
+    CompletionItem {
+        label: "y",
+        source_range: [91; 91),
+        delete: [91; 91),
+        insert: "y",
+        kind: Binding,
+        detail: "i32",
+    },
+]"###
+        );
     }
 
     #[test]
     fn completes_bindings_from_if_let() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 fn quux() {
                     if let Some(x) = foo() {
                         let y = 92;
@@ -186,188 +184,178 @@ mod tests {
                     }
                 }
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "a",
-       ⋮        source_range: [242; 242),
-       ⋮        delete: [242; 242),
-       ⋮        insert: "a",
-       ⋮        kind: Binding,
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "b",
-       ⋮        source_range: [242; 242),
-       ⋮        delete: [242; 242),
-       ⋮        insert: "b",
-       ⋮        kind: Binding,
-       ⋮        detail: "i32",
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "quux",
-       ⋮        source_range: [242; 242),
-       ⋮        delete: [242; 242),
-       ⋮        insert: "quux()$0",
-       ⋮        kind: Function,
-       ⋮        detail: "fn quux()",
-       ⋮    },
-       ⋮]
-        "###
-                );
+            ),
+            @r###"[
+    CompletionItem {
+        label: "a",
+        source_range: [242; 242),
+        delete: [242; 242),
+        insert: "a",
+        kind: Binding,
+    },
+    CompletionItem {
+        label: "b",
+        source_range: [242; 242),
+        delete: [242; 242),
+        insert: "b",
+        kind: Binding,
+        detail: "i32",
+    },
+    CompletionItem {
+        label: "quux",
+        source_range: [242; 242),
+        delete: [242; 242),
+        insert: "quux()$0",
+        kind: Function,
+        detail: "fn quux()",
+    },
+]"###
+        );
     }
 
     #[test]
     fn completes_bindings_from_for() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 fn quux() {
                     for x in &[1, 2, 3] {
                         <|>
                     }
                 }
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "quux",
-       ⋮        source_range: [95; 95),
-       ⋮        delete: [95; 95),
-       ⋮        insert: "quux()$0",
-       ⋮        kind: Function,
-       ⋮        detail: "fn quux()",
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "x",
-       ⋮        source_range: [95; 95),
-       ⋮        delete: [95; 95),
-       ⋮        insert: "x",
-       ⋮        kind: Binding,
-       ⋮    },
-       ⋮]
-        "###
-                );
+            ),
+            @r###"[
+    CompletionItem {
+        label: "quux",
+        source_range: [95; 95),
+        delete: [95; 95),
+        insert: "quux()$0",
+        kind: Function,
+        detail: "fn quux()",
+    },
+    CompletionItem {
+        label: "x",
+        source_range: [95; 95),
+        delete: [95; 95),
+        insert: "x",
+        kind: Binding,
+    },
+]"###
+        );
     }
 
     #[test]
     fn completes_generic_params() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 fn quux<T>() {
                     <|>
                 }
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "T",
-       ⋮        source_range: [52; 52),
-       ⋮        delete: [52; 52),
-       ⋮        insert: "T",
-       ⋮        kind: TypeParam,
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "quux",
-       ⋮        source_range: [52; 52),
-       ⋮        delete: [52; 52),
-       ⋮        insert: "quux()$0",
-       ⋮        kind: Function,
-       ⋮        detail: "fn quux<T>()",
-       ⋮    },
-       ⋮]
-        "###
-                );
+            ),
+            @r###"[
+    CompletionItem {
+        label: "T",
+        source_range: [52; 52),
+        delete: [52; 52),
+        insert: "T",
+        kind: TypeParam,
+    },
+    CompletionItem {
+        label: "quux",
+        source_range: [52; 52),
+        delete: [52; 52),
+        insert: "quux()$0",
+        kind: Function,
+        detail: "fn quux<T>()",
+    },
+]"###
+        );
     }
 
     #[test]
     fn completes_generic_params_in_struct() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 struct X<T> {
                     x: <|>
                 }
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "T",
-       ⋮        source_range: [54; 54),
-       ⋮        delete: [54; 54),
-       ⋮        insert: "T",
-       ⋮        kind: TypeParam,
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "X",
-       ⋮        source_range: [54; 54),
-       ⋮        delete: [54; 54),
-       ⋮        insert: "X",
-       ⋮        kind: Struct,
-       ⋮    },
-       ⋮]
-        "###
-                );
+            ),
+            @r###"[
+    CompletionItem {
+        label: "T",
+        source_range: [54; 54),
+        delete: [54; 54),
+        insert: "T",
+        kind: TypeParam,
+    },
+    CompletionItem {
+        label: "X",
+        source_range: [54; 54),
+        delete: [54; 54),
+        insert: "X",
+        kind: Struct,
+    },
+]"###
+        );
     }
 
     #[test]
     fn completes_module_items() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 struct Foo;
                 enum Baz {}
                 fn quux() {
                     <|>
                 }
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "Baz",
-       ⋮        source_range: [105; 105),
-       ⋮        delete: [105; 105),
-       ⋮        insert: "Baz",
-       ⋮        kind: Enum,
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "Foo",
-       ⋮        source_range: [105; 105),
-       ⋮        delete: [105; 105),
-       ⋮        insert: "Foo",
-       ⋮        kind: Struct,
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "quux",
-       ⋮        source_range: [105; 105),
-       ⋮        delete: [105; 105),
-       ⋮        insert: "quux()$0",
-       ⋮        kind: Function,
-       ⋮        detail: "fn quux()",
-       ⋮    },
-       ⋮]
-        "###
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Baz",
+        source_range: [105; 105),
+        delete: [105; 105),
+        insert: "Baz",
+        kind: Enum,
+    },
+    CompletionItem {
+        label: "Foo",
+        source_range: [105; 105),
+        delete: [105; 105),
+        insert: "Foo",
+        kind: Struct,
+    },
+    CompletionItem {
+        label: "quux",
+        source_range: [105; 105),
+        delete: [105; 105),
+        insert: "quux()$0",
+        kind: Function,
+        detail: "fn quux()",
+    },
+]"###
                 );
     }
 
     #[test]
     fn completes_extern_prelude() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 //- /lib.rs
                 use <|>;
 
                 //- /other_crate/lib.rs
                 // nothing here
                 "
-                    ),
-        @r#"[
+            ),
+            @r#"[
     CompletionItem {
         label: "other_crate",
         source_range: [4; 4),
@@ -376,79 +364,75 @@ mod tests {
         kind: Module,
     },
 ]"#
-                );
+        );
     }
 
     #[test]
     fn completes_module_items_in_nested_modules() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 struct Foo;
                 mod m {
                     struct Bar;
                     fn quux() { <|> }
                 }
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "Bar",
-       ⋮        source_range: [117; 117),
-       ⋮        delete: [117; 117),
-       ⋮        insert: "Bar",
-       ⋮        kind: Struct,
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "quux",
-       ⋮        source_range: [117; 117),
-       ⋮        delete: [117; 117),
-       ⋮        insert: "quux()$0",
-       ⋮        kind: Function,
-       ⋮        detail: "fn quux()",
-       ⋮    },
-       ⋮]
-        "###
-                );
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Bar",
+        source_range: [117; 117),
+        delete: [117; 117),
+        insert: "Bar",
+        kind: Struct,
+    },
+    CompletionItem {
+        label: "quux",
+        source_range: [117; 117),
+        delete: [117; 117),
+        insert: "quux()$0",
+        kind: Function,
+        detail: "fn quux()",
+    },
+]"###
+        );
     }
 
     #[test]
     fn completes_return_type() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 struct Foo;
                 fn x() -> <|>
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "Foo",
-       ⋮        source_range: [55; 55),
-       ⋮        delete: [55; 55),
-       ⋮        insert: "Foo",
-       ⋮        kind: Struct,
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "x",
-       ⋮        source_range: [55; 55),
-       ⋮        delete: [55; 55),
-       ⋮        insert: "x()$0",
-       ⋮        kind: Function,
-       ⋮        detail: "fn x()",
-       ⋮    },
-       ⋮]
-        "###
-                );
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Foo",
+        source_range: [55; 55),
+        delete: [55; 55),
+        insert: "Foo",
+        kind: Struct,
+    },
+    CompletionItem {
+        label: "x",
+        source_range: [55; 55),
+        delete: [55; 55),
+        insert: "x()$0",
+        kind: Function,
+        detail: "fn x()",
+    },
+]"###
+        );
     }
 
     #[test]
     fn dont_show_both_completions_for_shadowing() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        r"
+            do_reference_completion(
+                r"
                 fn foo() {
                     let bar = 92;
                     {
@@ -457,35 +441,33 @@ mod tests {
                     }
                 }
                 "
-                    ),
-        @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "bar",
-       ⋮        source_range: [146; 146),
-       ⋮        delete: [146; 146),
-       ⋮        insert: "bar",
-       ⋮        kind: Binding,
-       ⋮        detail: "i32",
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "foo",
-       ⋮        source_range: [146; 146),
-       ⋮        delete: [146; 146),
-       ⋮        insert: "foo()$0",
-       ⋮        kind: Function,
-       ⋮        detail: "fn foo()",
-       ⋮    },
-       ⋮]
-        "###
-                );
+            ),
+            @r###"[
+    CompletionItem {
+        label: "bar",
+        source_range: [146; 146),
+        delete: [146; 146),
+        insert: "bar",
+        kind: Binding,
+        detail: "i32",
+    },
+    CompletionItem {
+        label: "foo",
+        source_range: [146; 146),
+        delete: [146; 146),
+        insert: "foo()$0",
+        kind: Function,
+        detail: "fn foo()",
+    },
+]"###
+        );
     }
 
     #[test]
     fn completes_self_in_methods() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(r"impl S { fn foo(&self) { <|> } }"),
-        @r#"[
+            do_reference_completion(r"impl S { fn foo(&self) { <|> } }"),
+            @r#"[
     CompletionItem {
         label: "Self",
         source_range: [25; 25),
@@ -502,14 +484,14 @@ mod tests {
         detail: "&{unknown}",
     },
 ]"#
-                );
+        );
     }
 
     #[test]
     fn completes_prelude() {
         assert_debug_snapshot_matches!(
-                    do_reference_completion(
-                        "
+            do_reference_completion(
+                "
                 //- /main.rs
                 fn foo() { let x: <|> }
 
@@ -521,8 +503,8 @@ mod tests {
                     struct Option;
                 }
                 "
-                    ),
-        @r#"[
+            ),
+            @r#"[
     CompletionItem {
         label: "Option",
         source_range: [18; 18),
@@ -546,6 +528,6 @@ mod tests {
         kind: Module,
     },
 ]"#
-                );
+        );
     }
 }
