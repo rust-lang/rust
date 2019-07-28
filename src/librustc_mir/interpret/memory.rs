@@ -535,14 +535,26 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
+        // # Regular allocations
         // Don't use `self.get` here as that will
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a static's allocation in miri
         if let Some((_, alloc)) = self.alloc_map.get(id) {
             return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
         }
-        // Not a local allocation, check the global `tcx.alloc_map`.
 
+        // # Function pointers
+        // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
+        if let Ok(_) = self.get_fn_alloc(id) {
+            return if let AllocCheck::Dereferencable = liveness {
+                // The caller requested no function pointers.
+                err!(DerefFunctionPointer)
+            } else {
+                Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
+            };
+        }
+
+        // # Statics
         // Can't do this in the match argument, we may get cycle errors since the lock would
         // be held throughout the match.
         let alloc = self.tcx.alloc_map.lock().get(id);
@@ -557,14 +569,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
                 Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align)),
-            Some(GlobalAlloc::Function(_)) => {
-                if let AllocCheck::Dereferencable = liveness {
-                    // The caller requested no function pointers.
-                    err!(DerefFunctionPointer)
-                } else {
-                    Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
-                }
-            },
+            Some(GlobalAlloc::Function(_)) =>
+                bug!("We already checked function pointers above"),
             // The rest must be dead.
             None => if let AllocCheck::MaybeDead = liveness {
                 // Deallocated pointers are allowed, we should be able to find
