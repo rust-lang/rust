@@ -315,7 +315,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if !value.needs_subst() {
             return self.tcx.erase_regions(&value);
         }
-        // can't use `TyCtxt::subst_and_normalize_erasing_regions`, because that call
+        // can't use `TyCtxt::subst_and_normalize_erasing_regions`, because that calls
         // `normalize_erasing_regions`, even if the value still `needs_subst` after substituting.
         // This will trigger an assertion in `normalize_erasing_late_bound_regions`.
         // So we handroll the code here.
