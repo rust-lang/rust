@@ -10,7 +10,6 @@ use crate::parse::{self, ParseSess};
 use crate::print::pp::{self, Breaks};
 use crate::print::pp::Breaks::{Consistent, Inconsistent};
 use crate::ptr::P;
-use crate::std_inject;
 use crate::symbol::{kw, sym};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 
@@ -114,7 +113,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
         is_expanded,
     };
 
-    if is_expanded && std_inject::injected_crate_name().is_some() {
+    if is_expanded && sess.injected_crate_name.try_get().is_some() {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
         // However we don't want these attributes in the AST because

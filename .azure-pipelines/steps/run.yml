@@ -138,43 +138,11 @@ steps:
 
 # Ensure the `aws` CLI is installed so we can deploy later on, cache docker
 # images, etc.
-- bash: |
-    set -e
-    # Temporary code to debug #62967.
-    debug_failed_connections() {
-        echo "trying to ping pypi.org"
-        ping pypi.org -c10 || true
-        echo "trying to ping google.com"
-        ping google.com -c10 || true
-        echo "trying to ping 8.8.8.8"
-        ping 8.8.8.8 -c10 || true
-        echo "trying to download pypi.org"
-        curl https://pypi.org || true
-        echo "trying to download from our S3 bucket"
-        curl https://rust-lang-ci2.s3.amazonaws.com || true
-        echo "trying to dig pypi.org"
-        dig pypi.org || true
-        echo "trying to dig files.pythonhosted.org"
-        dig files.pythonhosted.org || true
-        echo "trying to connect to pypi.org with openssl"
-        echo | openssl s_client -connect pypi.org:443 || true
-        echo "trying to connect to files.pythonhosted.org with openssl"
-        echo | openssl s_client -connect files.pythonhosted.org:443 || true
-    }
-    debug_failed_connections_and_fail() {
-        debug_failed_connections
-        return 1
-    }
-    source src/ci/shared.sh
-    sudo apt-get install -y python3-setuptools
-    debug_failed_connections
-    retry pip3 install -r src/ci/awscli-requirements.txt --upgrade --user || debug_failed_connections_and_fail
-    echo "##vso[task.prependpath]$HOME/.local/bin"
-  displayName: Install awscli (Linux)
-  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Linux'))
-- script: pip install -r src/ci/awscli-requirements.txt
-  displayName: Install awscli (non-Linux)
-  condition: and(succeeded(), not(variables.SKIP_JOB), ne(variables['Agent.OS'], 'Linux'))
+- bash: src/ci/install-awscli.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+  displayName: Install awscli
 
 # Configure our CI_JOB_NAME variable which log analyzers can use for the main
 # step to see what's going on.

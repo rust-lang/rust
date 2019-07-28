@@ -4,6 +4,7 @@ use crate::parse::{SeqSep, PResult};
 use crate::parse::token::{self, Nonterminal, DelimToken};
 use crate::parse::parser::{Parser, TokenType, PathStyle};
 use crate::tokenstream::{TokenStream, TokenTree};
+use crate::source_map::Span;
 
 use log::debug;
 use smallvec::smallvec;
@@ -11,7 +12,7 @@ use smallvec::smallvec;
 #[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
     Permitted,
-    NotPermitted { reason: &'a str },
+    NotPermitted { reason: &'a str, saw_doc_comment: bool, prev_attr_sp: Option<Span> },
 }
 
 const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
@@ -42,7 +43,11 @@ impl<'a> Parser<'a> {
                         DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG
                     };
                     let inner_parse_policy =
-                        InnerAttributeParsePolicy::NotPermitted { reason: inner_error_reason };
+                        InnerAttributeParsePolicy::NotPermitted {
+                            reason: inner_error_reason,
+                            saw_doc_comment: just_parsed_doc_comment,
+                            prev_attr_sp: attrs.last().and_then(|a| Some(a.span))
+                        };
                     let attr = self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?;
                     attrs.push(attr);
                     just_parsed_doc_comment = false;
@@ -76,8 +81,11 @@ impl<'a> Parser<'a> {
         let inner_parse_policy = if permit_inner {
             InnerAttributeParsePolicy::Permitted
         } else {
-            InnerAttributeParsePolicy::NotPermitted
-                { reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG }
+            InnerAttributeParsePolicy::NotPermitted {
+                reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG,
+                saw_doc_comment: false,
+                prev_attr_sp: None
+            }
         };
         self.parse_attribute_with_inner_parse_policy(inner_parse_policy)
     }
@@ -98,19 +106,9 @@ impl<'a> Parser<'a> {
                 if let InnerAttributeParsePolicy::Permitted = inner_parse_policy {
                     self.expected_tokens.push(TokenType::Token(token::Not));
                 }
+
                 let style = if self.token == token::Not {
                     self.bump();
-                    if let InnerAttributeParsePolicy::NotPermitted { reason } = inner_parse_policy
-                    {
-                        let span = self.token.span;
-                        self.diagnostic()
-                            .struct_span_err(span, reason)
-                            .note("inner attributes, like `#![no_std]`, annotate the item \
-                                   enclosing them, and are usually found at the beginning of \
-                                   source files. Outer attributes, like `#[test]`, annotate the \
-                                   item following them.")
-                            .emit()
-                    }
                     ast::AttrStyle::Inner
                 } else {
                     ast::AttrStyle::Outer
@@ -121,7 +119,38 @@ impl<'a> Parser<'a> {
                 self.expect(&token::CloseDelim(token::Bracket))?;
                 let hi = self.prev_span;
 
-                (lo.to(hi), path, tokens, style)
+                let attr_sp = lo.to(hi);
+
+                // Emit error if inner attribute is encountered and not permitted
+                if style == ast::AttrStyle::Inner {
+                    if let InnerAttributeParsePolicy::NotPermitted { reason,
+                        saw_doc_comment, prev_attr_sp } = inner_parse_policy {
+                        let prev_attr_note = if saw_doc_comment {
+                            "previous doc comment"
+                        } else {
+                            "previous outer attribute"
+                        };
+
+                        let mut diagnostic = self
+                            .diagnostic()
+                            .struct_span_err(attr_sp, reason);
+
+                        if let Some(prev_attr_sp) = prev_attr_sp {
+                            diagnostic
+                                .span_label(attr_sp, "not permitted following an outer attibute")
+                                .span_label(prev_attr_sp, prev_attr_note);
+                        }
+
+                        diagnostic
+                            .note("inner attributes, like `#![no_std]`, annotate the item \
+                                   enclosing them, and are usually found at the beginning of \
+                                   source files. Outer attributes, like `#[test]`, annotate the \
+                                   item following them.")
+                            .emit()
+                    }
+                }
+
+                (attr_sp, path, tokens, style)
             }
             _ => {
                 let token_str = self.this_token_to_string();

@@ -14,12 +14,12 @@ use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
+use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
-use syntax_ext::proc_macro_decls::is_proc_macro_attr;
 use syntax_pos::{Span, MultiSpan};
 use errors::{Applicability, FatalError};
 

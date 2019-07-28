@@ -1,5 +1,6 @@
 use crate::ops::{Mul, Add};
 use crate::num::Wrapping;
+use crate::iter::adapters::{OptionShunt, ResultShunt};
 
 /// Trait to represent types that can be created by summing up an iterator.
 ///
@@ -114,74 +115,6 @@ macro_rules! float_sum_product {
 integer_sum_product! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 float_sum_product! { f32 f64 }
 
-/// An iterator adapter that produces output as long as the underlying
-/// iterator produces `Result::Ok` values.
-///
-/// If an error is encountered, the iterator stops and the error is
-/// stored. The error may be recovered later via `reconstruct`.
-struct ResultShunt<I, E> {
-    iter: I,
-    error: Option<E>,
-}
-
-impl<I, T, E> ResultShunt<I, E>
-    where I: Iterator<Item = Result<T, E>>
-{
-    /// Process the given iterator as if it yielded a `T` instead of a
-    /// `Result<T, _>`. Any errors will stop the inner iterator and
-    /// the overall result will be an error.
-    pub fn process<F, U>(iter: I, mut f: F) -> Result<U, E>
-        where F: FnMut(&mut Self) -> U
-    {
-        let mut shunt = ResultShunt::new(iter);
-        let value = f(shunt.by_ref());
-        shunt.reconstruct(value)
-    }
-
-    fn new(iter: I) -> Self {
-        ResultShunt {
-            iter,
-            error: None,
-        }
-    }
-
-    /// Consume the adapter and rebuild a `Result` value. This should
-    /// *always* be called, otherwise any potential error would be
-    /// lost.
-    fn reconstruct<U>(self, val: U) -> Result<U, E> {
-        match self.error {
-            None => Ok(val),
-            Some(e) => Err(e),
-        }
-    }
-}
-
-impl<I, T, E> Iterator for ResultShunt<I, E>
-    where I: Iterator<Item = Result<T, E>>
-{
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some(Ok(v)) => Some(v),
-            Some(Err(e)) => {
-                self.error = Some(e);
-                None
-            }
-            None => None,
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.error.is_some() {
-            (0, Some(0))
-        } else {
-            let (_, upper) = self.iter.size_hint();
-            (0, upper)
-        }
-    }
-}
-
 #[stable(feature = "iter_arith_traits_result", since="1.16.0")]
 impl<T, U, E> Sum<Result<U, E>> for Result<T, E>
     where T: Sum<U>,
@@ -221,73 +154,6 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
         where I: Iterator<Item = Result<U, E>>,
     {
         ResultShunt::process(iter, |i| i.product())
-    }
-}
-
-/// An iterator adapter that produces output as long as the underlying
-/// iterator produces `Option::Some` values.
-struct OptionShunt<I> {
-    iter: I,
-    exited_early: bool,
-}
-
-impl<I, T> OptionShunt<I>
-where
-    I: Iterator<Item = Option<T>>,
-{
-    /// Process the given iterator as if it yielded a `T` instead of a
-    /// `Option<T>`. Any `None` value will stop the inner iterator and
-    /// the overall result will be a `None`.
-    pub fn process<F, U>(iter: I, mut f: F) -> Option<U>
-    where
-        F: FnMut(&mut Self) -> U,
-    {
-        let mut shunt = OptionShunt::new(iter);
-        let value = f(shunt.by_ref());
-        shunt.reconstruct(value)
-    }
-
-    fn new(iter: I) -> Self {
-        OptionShunt {
-            iter,
-            exited_early: false,
-        }
-    }
-
-    /// Consume the adapter and rebuild a `Option` value.
-    fn reconstruct<U>(self, val: U) -> Option<U> {
-        if self.exited_early {
-            None
-        } else {
-            Some(val)
-        }
-    }
-}
-
-impl<I, T> Iterator for OptionShunt<I>
-where
-    I: Iterator<Item = Option<T>>,
-{
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some(Some(v)) => Some(v),
-            Some(None) => {
-                self.exited_early = true;
-                None
-            }
-            None => None,
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.exited_early {
-            (0, Some(0))
-        } else {
-            let (_, upper) = self.iter.size_hint();
-            (0, upper)
-        }
     }
 }
 
