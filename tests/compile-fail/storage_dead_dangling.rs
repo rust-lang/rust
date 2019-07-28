@@ -8,8 +8,7 @@ fn fill(v: &mut i32) {
 }
 
 fn evil() {
-    let v = unsafe { &mut *(LEAK as *mut i32) }; //~ ERROR dangling pointer was dereferenced
-    let _x = *v;
+    unsafe { &mut *(LEAK as *mut i32) }; //~ ERROR dangling pointer was dereferenced
 }
 
 fn main() {
