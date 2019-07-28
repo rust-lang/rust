@@ -121,6 +121,7 @@ fn lane_type_and_count<'tcx>(
     layout: TyLayout<'tcx>,
     intrinsic: &str,
 ) -> (TyLayout<'tcx>, usize) {
+    assert!(layout.ty.is_simd());
     let lane_count = match layout.fields {
         layout::FieldPlacement::Array { stride: _, count } => usize::try_from(count).unwrap(),
         _ => panic!("Non vector type {:?} passed to or returned from simd_* intrinsic {}", layout.ty, intrinsic),
@@ -805,6 +806,26 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             simd_cmp!(fx, intrinsic, UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual(x, y) -> ret);
         };
 
+        // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
+        _ if intrinsic.starts_with("simd_shuffle"), (c x, c y, c idx) {
+            let n: usize = intrinsic["simd_shuffle".len()..].parse().unwrap();
+
+            assert_eq!(x.layout(), y.layout());
+            let layout = x.layout();
+
+            let (lane_type, lane_count) = lane_type_and_count(fx, layout, intrinsic);
+            let (ret_lane_type, ret_lane_count) = lane_type_and_count(fx, ret.layout(), intrinsic);
+
+            assert_eq!(lane_type, ret_lane_type);
+            assert_eq!(n, ret_lane_count);
+
+            let total_len = lane_count * 2;
+
+            // TODO get shuffle indices
+            fx.tcx.sess.warn("simd_shuffle* not yet implemented");
+            crate::trap::trap_unimplemented(fx, "simd_shuffle* not yet implemented");
+        };
+
         simd_add, (c x, c y) {
             simd_binop!(fx, intrinsic, iadd(x, y) -> ret);
         };
@@ -832,7 +853,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         simd_or, (c x, c y) {
             simd_binop!(fx, intrinsic, bor(x, y) -> ret);
         };
-        simd_bxor, (c x, c y) {
+        simd_xor, (c x, c y) {
             simd_binop!(fx, intrinsic, bxor(x, y) -> ret);
         };
 

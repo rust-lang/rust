@@ -19,3 +19,11 @@ pub fn codegen_llvm_intrinsic_call<'a, 'tcx: 'a>(
         trap_unreachable(fx, "[corruption] Diverging intrinsic returned.");
     }
 }
+
+// llvm.x86.sse2.pmovmskb.128
+// llvm.x86.avx2.vperm2i128
+// llvm.x86.ssse3.pshuf.b.128
+// llvm.x86.avx2.pshuf.b
+// llvm.x86.avx2.pmovmskb
+// llvm.x86.avx2.psrli.w
+// llvm.x86.sse2.psrli.w
