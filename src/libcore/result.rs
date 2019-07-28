@@ -231,7 +231,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
-use crate::iter::{FromIterator, FusedIterator, TrustedLen};
+use crate::iter::{FromIterator, FusedIterator, TrustedLen, ResultShunt};
 use crate::ops::{self, Deref, DerefMut};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
@@ -1343,39 +1343,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
-        struct Adapter<Iter, E> {
-            iter: Iter,
-            err: Option<E>,
-        }
-
-        impl<T, E, Iter: Iterator<Item=Result<T, E>>> Iterator for Adapter<Iter, E> {
-            type Item = T;
-
-            #[inline]
-            fn next(&mut self) -> Option<T> {
-                match self.iter.next() {
-                    Some(Ok(value)) => Some(value),
-                    Some(Err(err)) => {
-                        self.err = Some(err);
-                        None
-                    }
-                    None => None,
-                }
-            }
-
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                let (_min, max) = self.iter.size_hint();
-                (0, max)
-            }
-        }
-
-        let mut adapter = Adapter { iter: iter.into_iter(), err: None };
-        let v: V = FromIterator::from_iter(adapter.by_ref());
-
-        match adapter.err {
-            Some(err) => Err(err),
-            None => Ok(v),
-        }
+        ResultShunt::process(iter.into_iter(), |i| i.collect())
     }
 }
 
