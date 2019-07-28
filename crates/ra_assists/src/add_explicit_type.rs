@@ -69,6 +69,16 @@ mod tests {
         );
     }
 
+    // https://github.com/rust-analyzer/rust-analyzer/issues/1592
+    #[test]
+    fn add_explicit_type_infers_correct_type_for_floating_point_literal() {
+        check_assist(
+            add_explicit_type,
+            "fn f() { let a<|> = 42f64; }",
+            "fn f() { let a<|>: f64 = 42f64; }",
+        );
+    }
+
     #[test]
     fn add_explicit_type_not_applicable_if_ty_not_inferred() {
         check_assist_not_applicable(add_explicit_type, "fn f() { let a<|> = None; }");
