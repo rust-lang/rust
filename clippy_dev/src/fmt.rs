@@ -10,6 +10,7 @@ pub enum CliError {
     CommandFailed(String),
     IoError(io::Error),
     ProjectRootNotFound,
+    RustfmtNotInstalled,
     WalkDirError(walkdir::Error),
 }
 
@@ -35,6 +36,8 @@ pub fn run(check: bool, verbose: bool) {
         let mut success = true;
 
         let project_root = project_root()?;
+
+        rustfmt_test(context)?;
 
         success &= cargo_fmt(context, project_root.as_path())?;
         success &= cargo_fmt(context, &project_root.join("clippy_dev"))?;
@@ -68,6 +71,9 @@ pub fn run(check: bool, verbose: bool) {
             },
             CliError::ProjectRootNotFound => {
                 eprintln!("error: Can't determine root of project. Please run inside a Clippy working dir.");
+            },
+            CliError::RustfmtNotInstalled => {
+                eprintln!("error: rustfmt nightly is not installed.");
             },
             CliError::WalkDirError(err) => {
                 eprintln!("error: {}", err);
@@ -137,6 +143,29 @@ fn cargo_fmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
     let success = exec(context, "cargo", path, &args)?;
 
     Ok(success)
+}
+
+fn rustfmt_test(context: &FmtContext) -> Result<(), CliError> {
+    let program = "rustfmt";
+    let dir = std::env::current_dir()?;
+    let args = &["+nightly", "--version"];
+
+    if context.verbose {
+        println!("{}", format_command(&program, &dir, args));
+    }
+
+    let output = Command::new(&program).current_dir(&dir).args(args.iter()).output()?;
+
+    if output.status.success() {
+        Ok(())
+    } else if std::str::from_utf8(&output.stderr)
+        .unwrap_or("")
+        .starts_with("error: 'rustfmt' is not installed")
+    {
+        Err(CliError::RustfmtNotInstalled)
+    } else {
+        Err(CliError::CommandFailed(format_command(&program, &dir, args)))
+    }
 }
 
 fn rustfmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
