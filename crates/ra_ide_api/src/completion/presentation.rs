@@ -182,9 +182,9 @@ impl Completions {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-	use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot_matches;
+    use test_utils::covers;
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
@@ -194,13 +194,13 @@ mod tests {
     fn inserts_parens_for_function_calls() {
         covers!(inserts_parens_for_function_calls);
         assert_debug_snapshot_matches!(
-            do_reference_completion(
-                r"
+                    do_reference_completion(
+                        r"
                 fn no_args() {}
                 fn main() { no_<|> }
                 "
-            ),
-@r###"
+                    ),
+        @r###"
        ⋮[
        ⋮    CompletionItem {
        ⋮        label: "main",
@@ -220,15 +220,15 @@ mod tests {
        ⋮    },
        ⋮]
         "###
-        );
+                );
         assert_debug_snapshot_matches!(
-            do_reference_completion(
-                r"
+                    do_reference_completion(
+                        r"
                 fn with_args(x: i32, y: String) {}
                 fn main() { with_<|> }
                 "
-            ),
-@r###"
+                    ),
+        @r###"
        ⋮[
        ⋮    CompletionItem {
        ⋮        label: "main",
@@ -248,10 +248,10 @@ mod tests {
        ⋮    },
        ⋮]
         "###
-        );
+                );
         assert_debug_snapshot_matches!(
-            do_reference_completion(
-                r"
+                    do_reference_completion(
+                        r"
                 struct S {}
                 impl S {
                     fn foo(&self) {}
@@ -260,8 +260,8 @@ mod tests {
                     s.f<|>
                 }
                 "
-            ),
-@r###"
+                    ),
+        @r###"
        ⋮[
        ⋮    CompletionItem {
        ⋮        label: "foo",
@@ -273,20 +273,20 @@ mod tests {
        ⋮    },
        ⋮]
         "###
-        );
+                );
     }
 
     #[test]
     fn dont_render_function_parens_in_use_item() {
         assert_debug_snapshot_matches!(
-            do_reference_completion(
-                "
+                    do_reference_completion(
+                        "
                 //- /lib.rs
                 mod m { pub fn foo() {} }
                 use crate::m::f<|>;
                 "
-            ),
-@r#"[
+                    ),
+        @r#"[
     CompletionItem {
         label: "foo",
         source_range: [40; 41),
@@ -296,22 +296,22 @@ mod tests {
         detail: "pub fn foo()",
     },
 ]"#
-        );
+                );
     }
 
     #[test]
     fn dont_render_function_parens_if_already_call() {
         assert_debug_snapshot_matches!(
-            do_reference_completion(
-                "
+                    do_reference_completion(
+                        "
                 //- /lib.rs
                 fn frobnicate() {}
                 fn main() {
                     frob<|>();
                 }
                 "
-            ),
-@r#"[
+                    ),
+        @r#"[
     CompletionItem {
         label: "frobnicate",
         source_range: [35; 39),
@@ -329,10 +329,10 @@ mod tests {
         detail: "fn main()",
     },
 ]"#
-        );
+                );
         assert_debug_snapshot_matches!(
-            do_reference_completion(
-                "
+                    do_reference_completion(
+                        "
                 //- /lib.rs
                 struct Foo {}
                 impl Foo { fn new() -> Foo {} }
@@ -340,8 +340,8 @@ mod tests {
                     Foo::ne<|>();
                 }
                 "
-            ),
-@r#"[
+                    ),
+        @r#"[
     CompletionItem {
         label: "new",
         source_range: [67; 69),
@@ -351,6 +351,6 @@ mod tests {
         detail: "fn new() -> Foo",
     },
 ]"#
-        );
+                );
     }
 }

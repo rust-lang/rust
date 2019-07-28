@@ -40,7 +40,7 @@ fn ${1:feature}() {
 #[cfg(test)]
 mod tests {
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-	use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot_matches;
 
     fn do_snippet_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Snippet)
@@ -49,8 +49,8 @@ mod tests {
     #[test]
     fn completes_snippets_in_expressions() {
         assert_debug_snapshot_matches!(
-            do_snippet_completion(r"fn foo(x: i32) { <|> }"),
-@r#"[
+                    do_snippet_completion(r"fn foo(x: i32) { <|> }"),
+        @r#"[
     CompletionItem {
         label: "pd",
         source_range: [17; 17),
@@ -66,33 +66,33 @@ mod tests {
         kind: Snippet,
     },
 ]"#
-        );
+                );
     }
 
     #[test]
     fn should_not_complete_snippets_in_path() {
         assert_debug_snapshot_matches!(
-            do_snippet_completion(r"fn foo(x: i32) { ::foo<|> }"),
-@r#"[]"#
-        );
+                    do_snippet_completion(r"fn foo(x: i32) { ::foo<|> }"),
+        @r#"[]"#
+                );
         assert_debug_snapshot_matches!(
-            do_snippet_completion(r"fn foo(x: i32) { ::<|> }"),
-@r#"[]"#
-        );
+                    do_snippet_completion(r"fn foo(x: i32) { ::<|> }"),
+        @r#"[]"#
+                );
     }
 
     #[test]
     fn completes_snippets_in_items() {
         assert_debug_snapshot_matches!(
-            do_snippet_completion(
-                r"
+                    do_snippet_completion(
+                        r"
                 #[cfg(test)]
                 mod tests {
                     <|>
                 }
                 "
-            ),
-@r###"
+                    ),
+        @r###"
        ⋮[
        ⋮    CompletionItem {
        ⋮        label: "Test function",
@@ -111,6 +111,6 @@ mod tests {
        ⋮    },
        ⋮]
         "###
-        );
+                );
     }
 }

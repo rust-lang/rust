@@ -205,7 +205,7 @@ fn very_obsolete() {}
         .unwrap();
         let structure = file_structure(&file);
         assert_debug_snapshot_matches!(structure,
-@r#"[
+        @r#"[
     StructureNode {
         parent: None,
         label: "Foo",
@@ -390,6 +390,6 @@ fn very_obsolete() {}
         deprecated: true,
     },
 ]"#
-        );
+                );
     }
 }

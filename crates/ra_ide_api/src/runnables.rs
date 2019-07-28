@@ -93,7 +93,7 @@ mod tests {
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
         assert_debug_snapshot_matches!(&runnables,
-@r#"[
+        @r#"[
     Runnable {
         range: [1; 21),
         kind: Bin,
@@ -111,7 +111,7 @@ mod tests {
         },
     },
 ]"#
-        );
+                );
     }
 
     #[test]
@@ -127,8 +127,8 @@ mod tests {
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot_matches!(&runnables, 
-@r#"[
+        assert_debug_snapshot_matches!(&runnables,
+        @r#"[
     Runnable {
         range: [1; 59),
         kind: TestMod {
@@ -142,7 +142,7 @@ mod tests {
         },
     },
 ]"#
-        );
+                );
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
         assert_debug_snapshot_matches!(&runnables,
-@r#"[
+        @r#"[
     Runnable {
         range: [23; 85),
         kind: TestMod {
@@ -175,7 +175,7 @@ mod tests {
         },
     },
 ]"#
-        );
+                );
     }
 
     #[test]
@@ -196,7 +196,7 @@ mod tests {
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
         assert_debug_snapshot_matches!(&runnables,
-@r#"[
+        @r#"[
     Runnable {
         range: [41; 115),
         kind: TestMod {
@@ -210,7 +210,7 @@ mod tests {
         },
     },
 ]"#
-        );
+                );
     }
 
     #[test]
