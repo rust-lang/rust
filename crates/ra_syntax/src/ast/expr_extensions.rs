@@ -247,9 +247,7 @@ impl ast::Literal {
                 // The lexer treats e.g. `1f64` as an integer literal. See
                 // https://github.com/rust-analyzer/rust-analyzer/issues/1592
                 // and the comments on the linked PR.
-                let float_suffix_list = [
-                    "f32", "f64"
-                ];
+                let float_suffix_list = ["f32", "f64"];
 
                 let text = self.token().text().to_string();
 
