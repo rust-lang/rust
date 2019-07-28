@@ -425,6 +425,127 @@ pub enum UnsupportedInfo<'tcx> {
     PathNotFound(Vec<String>),
 }
 
+impl fmt::Debug for UnsupportedInfo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use UnsupportedInfo::*;
+        match self {
+            PointerOutOfBounds { ptr, msg, allocation_size } => {
+                write!(f, "{} failed: pointer must be in-bounds at offset {}, \
+                          but is outside bounds of allocation {} which has size {}",
+                    msg, ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
+            },
+            ValidationFailure(ref err) => {
+                write!(f, "type validation failed: {}", err)
+            }
+            NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
+            FunctionAbiMismatch(caller_abi, callee_abi) =>
+                write!(f, "tried to call a function with ABI {:?} using caller ABI {:?}",
+                    callee_abi, caller_abi),
+            FunctionArgMismatch(caller_ty, callee_ty) =>
+                write!(f, "tried to call a function with argument of type {:?} \
+                           passing data of type {:?}",
+                    callee_ty, caller_ty),
+            FunctionRetMismatch(caller_ty, callee_ty) =>
+                write!(f, "tried to call a function with return type {:?} \
+                           passing return place of type {:?}",
+                    callee_ty, caller_ty),
+            FunctionArgCountMismatch =>
+                write!(f, "tried to call a function with incorrect number of arguments"),
+            ReallocatedWrongMemoryKind(ref old, ref new) =>
+                write!(f, "tried to reallocate memory from {} to {}", old, new),
+            DeallocatedWrongMemoryKind(ref old, ref new) =>
+                write!(f, "tried to deallocate {} memory but gave {} as the kind", old, new),
+            InvalidChar(c) =>
+                write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
+            AlignmentCheckFailed { required, has } =>
+               write!(f, "tried to access memory with alignment {}, but alignment {} is required",
+                      has.bytes(), required.bytes()),
+            TypeNotPrimitive(ty) =>
+                write!(f, "expected primitive type, got {}", ty),
+            PathNotFound(ref path) =>
+                write!(f, "Cannot find path {:?}", path),
+            IncorrectAllocationInformation(size, size2, align, align2) =>
+                write!(f, "incorrect alloc info: expected size {} and align {}, \
+                           got size {} and align {}",
+                    size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
+            InvalidDiscriminant(val) =>
+                write!(f, "encountered invalid enum discriminant {}", val),
+            InvalidMemoryAccess =>
+                write!(f, "tried to access memory through an invalid pointer"),
+            DanglingPointerDeref =>
+                write!(f, "dangling pointer was dereferenced"),
+            DoubleFree =>
+                write!(f, "tried to deallocate dangling pointer"),
+            InvalidFunctionPointer =>
+                write!(f, "tried to use a function pointer after offsetting it"),
+            InvalidBool =>
+                write!(f, "invalid boolean value read"),
+            InvalidNullPointerUsage =>
+                write!(f, "invalid use of NULL pointer"),
+            ReadPointerAsBytes =>
+                write!(f, "a raw memory access tried to access part of a pointer value as raw \
+                    bytes"),
+            ReadBytesAsPointer =>
+                write!(f, "a memory access tried to interpret some bytes as a pointer"),
+            ReadForeignStatic =>
+                write!(f, "tried to read from foreign (extern) static"),
+            InvalidPointerMath =>
+                write!(f, "attempted to do invalid arithmetic on pointers that would leak base \
+                    addresses, e.g., comparing pointers into different allocations"),
+            DeadLocal =>
+                write!(f, "tried to access a dead local variable"),
+            DerefFunctionPointer =>
+                write!(f, "tried to dereference a function pointer"),
+            ExecuteMemory =>
+                write!(f, "tried to treat a memory pointer as a function pointer"),
+            OutOfTls =>
+                write!(f, "reached the maximum number of representable TLS keys"),
+            TlsOutOfBounds =>
+                write!(f, "accessed an invalid (unallocated) TLS key"),
+            CalledClosureAsFunction =>
+                write!(f, "tried to call a closure through a function pointer"),
+            VtableForArgumentlessMethod =>
+                write!(f, "tried to call a vtable function without arguments"),
+            ModifiedConstantMemory =>
+                write!(f, "tried to modify constant memory"),
+            ModifiedStatic =>
+                write!(f, "tried to modify a static's initial value from another static's \
+                    initializer"),
+            AssumptionNotHeld =>
+                write!(f, "`assume` argument was false"),
+            InlineAsm =>
+                write!(f, "miri does not support inline assembly"),
+            ReallocateNonBasePtr =>
+                write!(f, "tried to reallocate with a pointer not to the beginning of an \
+                    existing object"),
+            DeallocateNonBasePtr =>
+                write!(f, "tried to deallocate with a pointer not to the beginning of an \
+                    existing object"),
+            HeapAllocZeroBytes =>
+                write!(f, "tried to re-, de- or allocate zero bytes on the heap"),
+            ReadFromReturnPointer =>
+                write!(f, "tried to read from the return pointer"),
+            UnimplementedTraitSelection =>
+                write!(f, "there were unresolved type arguments during trait selection"),
+            InvalidBoolOp(_) =>
+                write!(f, "invalid boolean operation"),
+            UnterminatedCString(_) =>
+                write!(f, "attempted to get length of a null terminated string, but no null \
+                    found before end of allocation"),
+            ReadUndefBytes(_) =>
+                write!(f, "attempted to read undefined bytes"),
+            HeapAllocNonPowerOfTwoAlignment(_) =>
+                write!(f, "tried to re-, de-, or allocate heap memory with alignment that is \
+                    not a power of two"),
+            MachineError(ref msg) |
+            Unimplemented(ref msg) |
+            AbiViolation(ref msg) |
+            Intrinsic(ref msg) =>
+                write!(f, "{}", msg),
+        }
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum ResourceExhaustionInfo {
     StackFrameLimitReached,
@@ -475,121 +596,9 @@ impl fmt::Display for InterpError<'_> {
 impl fmt::Debug for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InterpError::*;
-        use UnsupportedInfo::*;
         match *self {
-            Unsupported(PointerOutOfBounds { ptr, msg, allocation_size }) => {
-                write!(f, "{} failed: pointer must be in-bounds at offset {}, \
-                          but is outside bounds of allocation {} which has size {}",
-                    msg, ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
-            },
-            Unsupported(ValidationFailure(ref err)) => {
-                write!(f, "type validation failed: {}", err)
-            }
-            Unsupported(NoMirFor(ref func)) => write!(f, "no mir for `{}`", func),
-            Unsupported(FunctionAbiMismatch(caller_abi, callee_abi)) =>
-                write!(f, "tried to call a function with ABI {:?} using caller ABI {:?}",
-                    callee_abi, caller_abi),
-            Unsupported(FunctionArgMismatch(caller_ty, callee_ty)) =>
-                write!(f, "tried to call a function with argument of type {:?} \
-                           passing data of type {:?}",
-                    callee_ty, caller_ty),
-            Unsupported(FunctionRetMismatch(caller_ty, callee_ty)) =>
-                write!(f, "tried to call a function with return type {:?} \
-                           passing return place of type {:?}",
-                    callee_ty, caller_ty),
-            Unsupported(FunctionArgCountMismatch) =>
-                write!(f, "tried to call a function with incorrect number of arguments"),
-            Unsupported(ReallocatedWrongMemoryKind(ref old, ref new)) =>
-                write!(f, "tried to reallocate memory from {} to {}", old, new),
-            Unsupported(DeallocatedWrongMemoryKind(ref old, ref new)) =>
-                write!(f, "tried to deallocate {} memory but gave {} as the kind", old, new),
-            Unsupported(InvalidChar(c)) =>
-                write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
-            Unsupported(AlignmentCheckFailed { required, has }) =>
-               write!(f, "tried to access memory with alignment {}, but alignment {} is required",
-                      has.bytes(), required.bytes()),
-            Unsupported(TypeNotPrimitive(ty)) =>
-                write!(f, "expected primitive type, got {}", ty),
-            Unsupported(PathNotFound(ref path)) =>
-                write!(f, "Cannot find path {:?}", path),
-            Unsupported(IncorrectAllocationInformation(size, size2, align, align2)) =>
-                write!(f, "incorrect alloc info: expected size {} and align {}, \
-                           got size {} and align {}",
-                    size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
-            Unsupported(InvalidDiscriminant(val)) =>
-                write!(f, "encountered invalid enum discriminant {}", val),
-            Unsupported(InvalidMemoryAccess) =>
-                write!(f, "tried to access memory through an invalid pointer"),
-            Unsupported(DanglingPointerDeref) =>
-                write!(f, "dangling pointer was dereferenced"),
-            Unsupported(DoubleFree) =>
-                write!(f, "tried to deallocate dangling pointer"),
-            Unsupported(InvalidFunctionPointer) =>
-                write!(f, "tried to use a function pointer after offsetting it"),
-            Unsupported(InvalidBool) =>
-                write!(f, "invalid boolean value read"),
-            Unsupported(InvalidNullPointerUsage) =>
-                write!(f, "invalid use of NULL pointer"),
-            Unsupported(ReadPointerAsBytes) =>
-                write!(f, "a raw memory access tried to access part of a pointer value as raw \
-                    bytes"),
-            Unsupported(ReadBytesAsPointer) =>
-                write!(f, "a memory access tried to interpret some bytes as a pointer"),
-            Unsupported(ReadForeignStatic) =>
-                write!(f, "tried to read from foreign (extern) static"),
-            Unsupported(InvalidPointerMath) =>
-                write!(f, "attempted to do invalid arithmetic on pointers that would leak base \
-                    addresses, e.g., comparing pointers into different allocations"),
-            Unsupported(DeadLocal) =>
-                write!(f, "tried to access a dead local variable"),
-            Unsupported(DerefFunctionPointer) =>
-                write!(f, "tried to dereference a function pointer"),
-            Unsupported(ExecuteMemory) =>
-                write!(f, "tried to treat a memory pointer as a function pointer"),
-            Unsupported(OutOfTls) =>
-                write!(f, "reached the maximum number of representable TLS keys"),
-            Unsupported(TlsOutOfBounds) =>
-                write!(f, "accessed an invalid (unallocated) TLS key"),
-            Unsupported(CalledClosureAsFunction) =>
-                write!(f, "tried to call a closure through a function pointer"),
-            Unsupported(VtableForArgumentlessMethod) =>
-                write!(f, "tried to call a vtable function without arguments"),
-            Unsupported(ModifiedConstantMemory) =>
-                write!(f, "tried to modify constant memory"),
-            Unsupported(ModifiedStatic) =>
-                write!(f, "tried to modify a static's initial value from another static's \
-                    initializer"),
-            Unsupported(AssumptionNotHeld) =>
-                write!(f, "`assume` argument was false"),
-            Unsupported(InlineAsm) =>
-                write!(f, "miri does not support inline assembly"),
-            Unsupported(ReallocateNonBasePtr) =>
-                write!(f, "tried to reallocate with a pointer not to the beginning of an \
-                    existing object"),
-            Unsupported(DeallocateNonBasePtr) =>
-                write!(f, "tried to deallocate with a pointer not to the beginning of an \
-                    existing object"),
-            Unsupported(HeapAllocZeroBytes) =>
-                write!(f, "tried to re-, de- or allocate zero bytes on the heap"),
-            Unsupported(ReadFromReturnPointer) =>
-                write!(f, "tried to read from the return pointer"),
-            Unsupported(UnimplementedTraitSelection) =>
-                write!(f, "there were unresolved type arguments during trait selection"),
-            Unsupported(InvalidBoolOp(_)) =>
-                write!(f, "invalid boolean operation"),
-            Unsupported(UnterminatedCString(_)) =>
-                write!(f, "attempted to get length of a null terminated string, but no null \
-                    found before end of allocation"),
-            Unsupported(ReadUndefBytes(_)) =>
-                write!(f, "attempted to read undefined bytes"),
-            Unsupported(HeapAllocNonPowerOfTwoAlignment(_)) =>
-                write!(f, "tried to re-, de-, or allocate heap memory with alignment that is \
-                    not a power of two"),
-            Unsupported(MachineError(ref msg)) |
-            Unsupported(Unimplemented(ref msg)) |
-            Unsupported(AbiViolation(ref msg)) |
-            Unsupported(Intrinsic(ref msg)) =>
-                write!(f, "{}", msg),
+            Unsupported(ref msg) =>
+                write!(f, "{:?}", msg),
             InvalidProgram(ref msg) =>
                 write!(f, "{:?}", msg),
             UndefinedBehaviour(ref msg) =>
