@@ -555,21 +555,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         if let PatKind::Binding(..) = inner.node {
-            let parent_id = tcx.hir().get_parent_node(pat.hir_id);
-            let parent = tcx.hir().get(parent_id);
-            debug!("inner {:?} pat {:?} parent {:?}", inner, pat, parent);
-            match parent {
-                hir::Node::Item(hir::Item { node: hir::ItemKind::Fn(..), .. }) |
-                hir::Node::ForeignItem(hir::ForeignItem {
-                    node: hir::ForeignItemKind::Fn(..), ..
-                }) |
-                hir::Node::TraitItem(hir::TraitItem { node: hir::TraitItemKind::Method(..), .. }) |
-                hir::Node::ImplItem(hir::ImplItem { node: hir::ImplItemKind::Method(..), .. }) => {
-                    // this pat is likely an argument
+            let binding_parent_id = tcx.hir().get_parent_node(pat.hir_id);
+            let binding_parent = tcx.hir().get(binding_parent_id);
+            debug!("inner {:?} pat {:?} parent {:?}", inner, pat, binding_parent);
+            match binding_parent {
+                hir::Node::Arg(hir::Arg { span, .. }) => {
                     if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
-                        // FIXME: turn into structured suggestion, will need a span that also
-                        // includes the the arg's type.
-                        err.help(&format!("did you mean `{}: &{}`?", snippet, expected));
+                        err.span_suggestion(
+                            *span,
+                            &format!("did you mean `{}`", snippet),
+                            format!(" &{}", expected),
+                            Applicability::MachineApplicable,
+                        );
                     }
                 }
                 hir::Node::Arm(_) |

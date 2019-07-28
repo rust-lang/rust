@@ -966,6 +966,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             attrs: ThinVec::default(),
             id: ast::DUMMY_NODE_ID,
             pat: arg_pat,
+            span,
             ty,
         }
     }

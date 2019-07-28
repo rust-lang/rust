@@ -363,6 +363,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.currently_in_body = prev_in_body;
     }
 
+    fn visit_arg(&mut self, arg: &'hir Arg) {
+        let node = Node::Arg(arg);
+        self.insert(arg.pat.span, arg.hir_id, node);
+        self.with_parent(arg.hir_id, |this| {
+            intravisit::walk_arg(this, arg);
+        });
+    }
+
     fn visit_item(&mut self, i: &'hir Item) {
         debug!("visit_item: {:?}", i);
         debug_assert_eq!(i.hir_id.owner,

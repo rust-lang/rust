@@ -1515,6 +1515,7 @@ impl<'a> Parser<'a> {
     where
         F: Fn(&token::Token) -> bool
     {
+        let lo = self.token.span;
         let attrs = self.parse_arg_attributes()?;
         if let Some(mut arg) = self.parse_self_arg()? {
             arg.attrs = attrs.into();
@@ -1578,11 +1579,14 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok(Arg { attrs: attrs.into(), id: ast::DUMMY_NODE_ID, pat, ty })
+        let span = lo.to(self.token.span);
+
+        Ok(Arg { attrs: attrs.into(), id: ast::DUMMY_NODE_ID, pat, span, ty })
     }
 
     /// Parses an argument in a lambda header (e.g., `|arg, arg|`).
     fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
+        let lo = self.token.span;
         let attrs = self.parse_arg_attributes()?;
         let pat = self.parse_pat(Some("argument name"))?;
         let t = if self.eat(&token::Colon) {
@@ -1594,10 +1598,12 @@ impl<'a> Parser<'a> {
                 span: self.prev_span,
             })
         };
+        let span = lo.to(self.token.span);
         Ok(Arg {
             attrs: attrs.into(),
             ty: t,
             pat,
+            span,
             id: ast::DUMMY_NODE_ID
         })
     }

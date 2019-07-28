@@ -1,12 +1,70 @@
+// edition:2018
+
 // Exercise the unused_mut attribute in some positive and negative cases
 
-#![allow(unused_assignments)]
-#![allow(unused_variables)]
-#![allow(dead_code)]
 #![deny(unused_mut)]
+#![feature(async_await, async_closure, param_attrs)]
 
+async fn baz_async(
+    mut a: i32,
+    //~^ ERROR: variable does not need to be mutable
+    #[allow(unused_mut)] mut b: i32,
+) {}
+fn baz(
+    mut a: i32,
+    //~^ ERROR: variable does not need to be mutable
+    #[allow(unused_mut)] mut b: i32,
+    #[allow(unused_mut)] (mut c, d): (i32, i32)
+) {}
+
+struct RefStruct {}
+impl RefStruct {
+    async fn baz_async(
+        mut a: i32,
+        //~^ ERROR: variable does not need to be mutable
+        #[allow(unused_mut)] mut b: i32,
+    ) {}
+    fn baz(
+        &self,
+        mut a: i32,
+        //~^ ERROR: variable does not need to be mutable
+        #[allow(unused_mut)] mut b: i32,
+        #[allow(unused_mut)] (mut c, d): (i32, i32)
+    ) {}
+}
+
+trait RefTrait {
+    fn baz(
+        &self,
+        mut a: i32,
+        //~^ ERROR: variable does not need to be mutable
+        #[allow(unused_mut)] mut b: i32,
+        #[allow(unused_mut)] (mut c, d): (i32, i32)
+    ) {}
+}
+impl RefTrait for () {
+    fn baz(
+        &self,
+        mut a: i32,
+        //~^ ERROR: variable does not need to be mutable
+        #[allow(unused_mut)] mut b: i32,
+        #[allow(unused_mut)] (mut c, d): (i32, i32)
+    ) {}
+}
 
 fn main() {
+    let _ = async move |
+        mut a: i32,
+        //~^ ERROR: variable does not need to be mutable
+        #[allow(unused_mut)] mut b: i32,
+    | {};
+    let _ = |
+        mut a: i32,
+        //~^ ERROR: variable does not need to be mutable
+        #[allow(unused_mut)] mut b: i32,
+        #[allow(unused_mut)] (mut c, d): (i32, i32)
+    | {};
+
     // negative cases
     let mut a = 3; //~ ERROR: variable does not need to be mutable
 

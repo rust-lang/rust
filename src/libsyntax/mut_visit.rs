@@ -558,10 +558,11 @@ pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_visit_arg<T: MutVisitor>(Arg { attrs, id, pat, ty }: &mut Arg, vis: &mut T) {
+pub fn noop_visit_arg<T: MutVisitor>(Arg { attrs, id, pat, span, ty }: &mut Arg, vis: &mut T) {
     vis.visit_id(id);
     visit_thin_attrs(attrs, vis);
     vis.visit_pat(pat);
+    vis.visit_span(span);
     vis.visit_ty(ty);
 }
 

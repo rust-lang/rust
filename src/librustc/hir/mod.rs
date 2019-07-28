@@ -2010,8 +2010,10 @@ pub struct InlineAsm {
 /// Represents an argument in a function header.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct Arg {
-    pub pat: P<Pat>,
+    pub attrs: HirVec<Attribute>,
     pub hir_id: HirId,
+    pub pat: P<Pat>,
+    pub span: Span,
 }
 
 /// Represents the header (not the body) of a function declaration.
@@ -2701,6 +2703,7 @@ impl CodegenFnAttrs {
 
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'hir> {
+    Arg(&'hir Arg),
     Item(&'hir Item),
     ForeignItem(&'hir ForeignItem),
     TraitItem(&'hir TraitItem),

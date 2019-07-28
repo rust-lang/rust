@@ -1796,6 +1796,7 @@ pub struct Arg {
     pub ty: P<Ty>,
     pub pat: P<Pat>,
     pub id: NodeId,
+    pub span: Span,
 }
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.
@@ -1854,6 +1855,7 @@ impl Arg {
                 node: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
                 span,
             }),
+            span,
             ty,
             id: DUMMY_NODE_ID,
         };
