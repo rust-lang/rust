@@ -1325,19 +1325,35 @@ fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     check_packed(tcx, span, def_id);
 }
 
-fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, substs: SubstsRef<'tcx>, span: Span) {
+fn check_opaque<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+    span: Span,
+    origin: &hir::ExistTyOrigin
+) {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
-        let mut err = struct_span_err!(
-            tcx.sess, span, E0720,
-            "opaque type expands to a recursive type",
-        );
-        err.span_label(span, "expands to a recursive type");
-        if let ty::Opaque(..) = partially_expanded_type.sty {
-            err.note("type resolves to itself");
+        if let hir::ExistTyOrigin::AsyncFn = origin {
+            struct_span_err!(
+                tcx.sess, span, E0733,
+                "recursion in an `async fn` requires boxing",
+            )
+            .span_label(span, "an `async fn` cannot invoke itself directly")
+            .note("a recursive `async fn` must be rewritten to return a boxed future.")
+            .emit();
         } else {
-            err.note(&format!("expanded type is `{}`", partially_expanded_type));
+            let mut err = struct_span_err!(
+                tcx.sess, span, E0720,
+                "opaque type expands to a recursive type",
+            );
+            err.span_label(span, "expands to a recursive type");
+            if let ty::Opaque(..) = partially_expanded_type.sty {
+                err.note("type resolves to itself");
+            } else {
+                err.note(&format!("expanded type is `{}`", partially_expanded_type));
+            }
+            err.emit();
         }
-        err.emit();
     }
 }
 
@@ -1387,11 +1403,11 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
         hir::ItemKind::Union(..) => {
             check_union(tcx, it.hir_id, it.span);
         }
-        hir::ItemKind::Existential(..) => {
+        hir::ItemKind::Existential(hir::ExistTy{origin, ..}) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
 
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
-            check_opaque(tcx, def_id, substs, it.span);
+            check_opaque(tcx, def_id, substs, it.span, &origin);
         }
         hir::ItemKind::Ty(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
