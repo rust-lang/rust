@@ -678,14 +678,6 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
             sess.fatal(&format!("failed to run dsymutil: {}", e))
         }
     }
-
-    if sess.opts.target_triple.triple() == "wasm32-unknown-unknown" {
-        super::wasm::add_producer_section(
-            &out_filename,
-            &sess.edition().to_string(),
-            option_env!("CFG_VERSION").unwrap_or("unknown"),
-        );
-    }
 }
 
 /// Returns a boolean indicating whether the specified crate should be ignored
