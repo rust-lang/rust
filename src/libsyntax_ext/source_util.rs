@@ -1,11 +1,11 @@
-use crate::ast;
-use crate::ext::base::{self, *};
-use crate::ext::build::AstBuilder;
-use crate::parse::{self, token, DirectoryOwnership};
-use crate::print::pprust;
-use crate::ptr::P;
-use crate::symbol::Symbol;
-use crate::tokenstream;
+use syntax::{ast, panictry};
+use syntax::ext::base::{self, *};
+use syntax::ext::build::AstBuilder;
+use syntax::parse::{self, token, DirectoryOwnership};
+use syntax::print::pprust;
+use syntax::ptr::P;
+use syntax::symbol::Symbol;
+use syntax::tokenstream;
 
 use smallvec::SmallVec;
 use syntax_pos::{self, Pos, Span};
@@ -94,7 +94,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: &[tokenstrea
             while self.p.token != token::Eof {
                 match panictry!(self.p.parse_item()) {
                     Some(item) => ret.push(item),
-                    None => self.p.diagnostic().span_fatal(self.p.token.span,
+                    None => self.p.sess.span_diagnostic.span_fatal(self.p.token.span,
                                                            &format!("expected item, found `{}`",
                                                                     self.p.this_token_to_string()))
                                                .raise()
