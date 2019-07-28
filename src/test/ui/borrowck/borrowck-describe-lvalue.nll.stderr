@@ -192,8 +192,8 @@ error[E0503]: cannot use `v[..]` because it was mutably borrowed
 LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 LL |         match v {
-LL |             &[x..] => println!("{:?}", x),
-   |               ^ use of borrowed `v`
+LL |             &[x @ ..] => println!("{:?}", x),
+   |               ^^^^^^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
@@ -204,8 +204,8 @@ error[E0503]: cannot use `v[..]` because it was mutably borrowed
 LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 ...
-LL |             &[_, x..] => println!("{:?}", x),
-   |                  ^ use of borrowed `v`
+LL |             &[_, x @ ..] => println!("{:?}", x),
+   |                  ^^^^^^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
@@ -216,8 +216,8 @@ error[E0503]: cannot use `v[..]` because it was mutably borrowed
 LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 ...
-LL |             &[x.., _] => println!("{:?}", x),
-   |               ^ use of borrowed `v`
+LL |             &[x @ .., _] => println!("{:?}", x),
+   |               ^^^^^^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
@@ -228,8 +228,8 @@ error[E0503]: cannot use `v[..]` because it was mutably borrowed
 LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 ...
-LL |             &[_, x.., _] => println!("{:?}", x),
-   |                  ^ use of borrowed `v`
+LL |             &[_, x @ .., _] => println!("{:?}", x),
+   |                  ^^^^^^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here

@@ -13,14 +13,14 @@ pub fn main() {
         Foo { string: "baz" }
     ];
     match x {
-        [ref first, ref tail..] => {
+        [ref first, ref tail @ ..] => {
             assert_eq!(first.string, "foo");
             assert_eq!(tail.len(), 2);
             assert_eq!(tail[0].string, "bar");
             assert_eq!(tail[1].string, "baz");
 
             match *(tail as &[_]) {
-                [Foo { .. }, _, Foo { .. }, ref _tail..] => {
+                [Foo { .. }, _, Foo { .. }, ref _tail @ ..] => {
                     unreachable!();
                 }
                 [Foo { string: ref a }, Foo { string: ref b }] => {
