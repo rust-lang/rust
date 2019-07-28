@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc::ty::{self, Ty, TypeAndMut};
 use rustc::ty::layout::{self, TyLayout, Size};
 use rustc::ty::adjustment::{PointerCast};
 use syntax::ast::FloatTy;
@@ -68,9 +68,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 match src.layout.ty.sty {
                     ty::Closure(def_id, substs) => {
                         let substs = self.subst_and_normalize_erasing_regions_in_frame(substs);
-                        if substs.needs_subst() {
-                            return err!(TooGeneric);
-                        }
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,

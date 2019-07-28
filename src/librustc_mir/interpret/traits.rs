@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty, Instance, TypeFoldable};
+use rustc::ty::{self, Ty, Instance};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic,};
 
@@ -31,10 +31,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let methods = if let Some(poly_trait_ref) = poly_trait_ref {
             let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
             let trait_ref = self.tcx.erase_regions(&trait_ref);
-
-            if trait_ref.needs_subst() {
-                return err!(TooGeneric);
-            }
 
             self.tcx.vtable_methods(trait_ref)
         } else {
