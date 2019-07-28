@@ -332,9 +332,9 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         alloc: &Allocation,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
-        let align = alloc.align; // follow what CTFE did, not what the layout says
+        assert_eq!(alloc.align, layout.align.abi);
         let init = const_alloc_to_llvm(self, alloc);
-        let base_addr = self.static_addr_of(init, align, None);
+        let base_addr = self.static_addr_of(init, alloc.align, None);
 
         let llval = unsafe { llvm::LLVMConstInBoundsGEP(
             self.const_bitcast(base_addr, self.type_i8p()),
@@ -342,7 +342,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             1,
         )};
         let llval = self.const_bitcast(llval, self.type_ptr_to(layout.llvm_type(self)));
-        PlaceRef::new_sized(llval, layout, align)
+        PlaceRef::new_sized(llval, layout, alloc.align)
     }
 
     fn const_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
