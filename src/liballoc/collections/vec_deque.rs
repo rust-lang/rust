@@ -9,6 +9,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::array::LengthAtMost32;
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::iter::{repeat_with, FromIterator, FusedIterator};
@@ -2571,13 +2572,14 @@ impl<A: PartialEq> PartialEq for VecDeque<A> {
 impl<A: Eq> Eq for VecDeque<A> {}
 
 macro_rules! __impl_slice_eq1 {
-    ($Lhs: ty, $Rhs: ty) => {
-        __impl_slice_eq1! { $Lhs, $Rhs, Sized }
-    };
-    ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
+    ([$($vars:tt)*] $lhs:ty, $rhs:ty, $($constraints:tt)*) => {
         #[stable(feature = "vec_deque_partial_eq_slice", since = "1.17.0")]
-        impl<A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
-            fn eq(&self, other: &$Rhs) -> bool {
+        impl<A, B, $($vars)*> PartialEq<$rhs> for $lhs
+        where
+            A: PartialEq<B>,
+            $($constraints)*
+        {
+            fn eq(&self, other: &$rhs) -> bool {
                 if self.len() != other.len() {
                     return false;
                 }
@@ -2589,26 +2591,12 @@ macro_rules! __impl_slice_eq1 {
     }
 }
 
-__impl_slice_eq1! { VecDeque<A>, Vec<B> }
-__impl_slice_eq1! { VecDeque<A>, &[B] }
-__impl_slice_eq1! { VecDeque<A>, &mut [B] }
-
-macro_rules! array_impls {
-    ($($N: expr)+) => {
-        $(
-            __impl_slice_eq1! { VecDeque<A>, [B; $N] }
-            __impl_slice_eq1! { VecDeque<A>, &[B; $N] }
-            __impl_slice_eq1! { VecDeque<A>, &mut [B; $N] }
-        )+
-    }
-}
-
-array_impls! {
-     0  1  2  3  4  5  6  7  8  9
-    10 11 12 13 14 15 16 17 18 19
-    20 21 22 23 24 25 26 27 28 29
-    30 31 32
-}
+__impl_slice_eq1! { [] VecDeque<A>, Vec<B>, }
+__impl_slice_eq1! { [] VecDeque<A>, &[B], }
+__impl_slice_eq1! { [] VecDeque<A>, &mut [B], }
+__impl_slice_eq1! { [const N: usize] VecDeque<A>, [B; N], [B; N]: LengthAtMost32 }
+__impl_slice_eq1! { [const N: usize] VecDeque<A>, &[B; N], [B; N]: LengthAtMost32 }
+__impl_slice_eq1! { [const N: usize] VecDeque<A>, &mut [B; N], [B; N]: LengthAtMost32 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialOrd> PartialOrd for VecDeque<A> {
