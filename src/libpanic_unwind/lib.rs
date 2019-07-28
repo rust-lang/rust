@@ -17,8 +17,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 
-#![deny(rust_2018_idioms)]
-
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(libc)]

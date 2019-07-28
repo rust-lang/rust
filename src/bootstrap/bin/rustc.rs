@@ -15,7 +15,8 @@
 //! switching compilers for the bootstrap and for build scripts will probably
 //! never get replaced.
 
-#![deny(warnings)]
+// NO-RUSTC-WRAPPER
+#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
 
 use std::env;
 use std::ffi::OsString;
@@ -126,8 +127,11 @@ fn main() {
 
     if env::var_os("RUSTC_DENY_WARNINGS").is_some() &&
        env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
+        // When extending this list, search for `NO-RUSTC-WRAPPER` and add the new lints
+        // there as well, some code doesn't go through this `rustc` wrapper.
         cmd.arg("-Dwarnings");
         cmd.arg("-Drust_2018_idioms");
+        cmd.arg("-Dunused_lifetimes");
         // cfg(not(bootstrap)): Remove this during the next stage 0 compiler update.
         // `-Drustc::internal` is a new feature and `rustc_version` mis-reports the `stage`.
         let cfg_not_bootstrap = stage != "0" && crate_name != Some("rustc_version");

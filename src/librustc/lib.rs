@@ -28,9 +28,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -81,8 +78,7 @@ extern crate libc;
 
 // Use the test crate here so we depend on getopts through it. This allow tools to link to both
 // librustc_driver and libtest.
-#[allow(unused_extern_crates)]
-extern crate test;
+extern crate test as _;
 
 #[macro_use]
 mod macros;

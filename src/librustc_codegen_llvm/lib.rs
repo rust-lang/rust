@@ -12,7 +12,6 @@
 #![feature(crate_visibility_modifier)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
-#![allow(unused_attributes)]
 #![feature(libc)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
@@ -22,8 +21,6 @@
 #![feature(static_nobundle)]
 #![feature(trusted_len)]
 #![feature(mem_take)]
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
 
 use back::write::{create_target_machine, create_informational_target_machine};
 use syntax_pos::symbol::Symbol;

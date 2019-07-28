@@ -8,8 +8,6 @@ Core encoding and decoding interfaces.
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(allow(unused_variables), deny(warnings))))]
 
-#![deny(rust_2018_idioms)]
-
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(specialization)]

@@ -209,9 +209,8 @@
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
-
-#![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
+#![allow(unused_lifetimes)]
 
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]

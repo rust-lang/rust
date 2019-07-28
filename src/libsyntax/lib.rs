@@ -7,9 +7,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-
 #![feature(bind_by_move_pattern_guards)]
 #![feature(box_syntax)]
 #![feature(const_fn)]

@@ -123,7 +123,6 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt<'_>,
     MacEager::items(smallvec![])
 }
 
-#[allow(deprecated)]
 pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                           span: Span,
                                           token_tree: &[TokenTree])
@@ -149,7 +148,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                 ecx.span_bug(span, &format!(
                     "error writing metadata for triple `{}` and crate `{}`, error: {}, \
                      cause: {:?}",
-                    target_triple, crate_name, e.description(), e.cause()
+                    target_triple, crate_name, e.description(), e.source()
                 ));
             }
         });

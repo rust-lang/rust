@@ -62,8 +62,6 @@
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
-
-#![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
 
 #![cfg_attr(not(test), feature(generator_trait))]

@@ -16,9 +16,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-
 pub extern crate getopts;
 #[cfg(unix)]
 extern crate libc;

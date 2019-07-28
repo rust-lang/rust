@@ -10,7 +10,6 @@
 #![panic_runtime]
 
 #![allow(unused_features)]
-#![deny(rust_2018_idioms)]
 
 #![feature(core_intrinsics)]
 #![feature(libc)]

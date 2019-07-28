@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 register_long_diagnostics! {
 
 E0445: r##"

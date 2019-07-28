@@ -17,8 +17,6 @@
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
-#![deny(rust_2018_idioms)]
-
 #![feature(nll)]
 #![feature(staged_api)]
 #![feature(const_fn)]

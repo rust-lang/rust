@@ -1,5 +1,3 @@
-#![allow(non_upper_case_globals)]
-
 use crate::attributes;
 use crate::llvm;
 use crate::llvm_util;

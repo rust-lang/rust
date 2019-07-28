@@ -2,30 +2,18 @@ use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
 
 use rustc_incremental::DepGraphFuture;
-use rustc_data_structures::sync::Lrc;
-use rustc::session::config::{Input, OutputFilenames, OutputType};
-use rustc::session::Session;
+use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::util::common::{time, ErrorReported};
-use rustc::util::profiling::ProfileCategory;
-use rustc::lint;
 use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::ty;
 use rustc::ty::steal::Steal;
 use rustc::dep_graph::DepGraph;
-use rustc_passes::hir_stats;
-use rustc_plugin::registry::Registry;
-use rustc_serialize::json;
 use std::cell::{Ref, RefMut, RefCell};
-use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::any::Any;
 use std::mem;
-use syntax::parse::{self, PResult};
-use syntax::util::node_count::NodeCounter;
-use syntax::{self, ast, attr, diagnostics, visit};
-use syntax_pos::hygiene;
+use syntax::{self, ast};
 
 /// Represent the result of a query.
 /// This result can be stolen with the `take` method and returned with the `give` method.

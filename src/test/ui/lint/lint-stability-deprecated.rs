@@ -5,7 +5,6 @@
 // aux-build:stability-cfg2.rs
 // ignore-tidy-linelength
 #![warn(deprecated)]
-#![allow(dead_code, unused_extern_crates)]
 #![feature(staged_api, unstable_test_feature)]
 
 #![stable(feature = "rust1", since = "1.0.0")]

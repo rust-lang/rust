@@ -15,9 +15,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-
 extern crate libc;
 extern crate proc_macro;
 

@@ -5,12 +5,9 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(crate_visibility_modifier)]
-#![allow(unused_attributes)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
 
 pub use emitter::ColorConfig;
 

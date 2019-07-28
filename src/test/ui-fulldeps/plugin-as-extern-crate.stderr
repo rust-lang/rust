@@ -1,5 +1,5 @@
 error: compiler plugin used as an ordinary library
-  --> $DIR/plugin-as-extern-crate.rs:10:1
+  --> $DIR/plugin-as-extern-crate.rs:9:1
    |
 LL | extern crate attr_plugin_test;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

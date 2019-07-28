@@ -1,7 +1,5 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 
-#![allow(unreachable_code)]
-
 use crate::borrow_check::borrow_set::BorrowSet;
 use crate::borrow_check::location::LocationTable;
 use crate::borrow_check::nll::constraints::{OutlivesConstraintSet, OutlivesConstraint};

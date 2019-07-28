@@ -5,7 +5,8 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-#![deny(warnings)]
+// NO-RUSTC-WRAPPER
+#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
 
 use std::env;
 

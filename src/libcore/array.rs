@@ -217,7 +217,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, A, B, const N: usize> PartialEq<[B; N]> for [A; N]
+impl<A, B, const N: usize> PartialEq<[B; N]> for [A; N]
 where
     A: PartialEq<B>,
     [A; N]: LengthAtMost32,
@@ -234,7 +234,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, A, B, const N: usize> PartialEq<[B]> for [A; N]
+impl<A, B, const N: usize> PartialEq<[B]> for [A; N]
 where
     A: PartialEq<B>,
     [A; N]: LengthAtMost32,
@@ -250,7 +250,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, A, B, const N: usize> PartialEq<[A; N]> for [B]
+impl<A, B, const N: usize> PartialEq<[A; N]> for [B]
 where
     B: PartialEq<A>,
     [A; N]: LengthAtMost32,
@@ -266,7 +266,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, A, B, const N: usize> PartialEq<&'b [B]> for [A; N]
+impl<'b, A, B, const N: usize> PartialEq<&'b [B]> for [A; N]
 where
     A: PartialEq<B>,
     [A; N]: LengthAtMost32,
@@ -282,7 +282,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, A, B, const N: usize> PartialEq<[A; N]> for &'b [B]
+impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b [B]
 where
     B: PartialEq<A>,
     [A; N]: LengthAtMost32,
@@ -298,7 +298,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, A, B, const N: usize> PartialEq<&'b mut [B]> for [A; N]
+impl<'b, A, B, const N: usize> PartialEq<&'b mut [B]> for [A; N]
 where
     A: PartialEq<B>,
     [A; N]: LengthAtMost32,
@@ -314,7 +314,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, A, B, const N: usize> PartialEq<[A; N]> for &'b mut [B]
+impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b mut [B]
 where
     B: PartialEq<A>,
     [A; N]: LengthAtMost32,

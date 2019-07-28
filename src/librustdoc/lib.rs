@@ -1,6 +1,3 @@
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
