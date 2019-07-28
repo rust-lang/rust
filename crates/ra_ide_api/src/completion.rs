@@ -16,7 +16,7 @@ mod complete_postfix;
 use ra_db::SourceDatabase;
 
 #[cfg(test)]
-use crate::completion::completion_item::{check_completion, do_completion};
+use crate::completion::completion_item::do_completion;
 use crate::{
     completion::{
         completion_context::CompletionContext,
