@@ -1,3 +1,5 @@
+use std::process::Command;
+
 #[test]
 #[ignore]
 fn fmt() {
@@ -5,9 +7,20 @@ fn fmt() {
         return;
     }
 
+    // Skip this test if rustup nightly is unavailable
+    let rustup_output = Command::new("rustup")
+        .args(&["component", "list", "--toolchain", "nightly"])
+        .output()
+        .unwrap();
+    assert!(rustup_output.status.success());
+    let component_output = String::from_utf8_lossy(&rustup_output.stdout);
+    if !component_output.contains("rustfmt") {
+        return;
+    }
+
     let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let dev_dir = root_dir.join("clippy_dev");
-    let output = std::process::Command::new("cargo")
+    let output = Command::new("cargo")
         .current_dir(dev_dir)
         .args(&["+nightly", "run", "--", "fmt", "--check"])
         .output()
