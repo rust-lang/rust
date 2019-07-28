@@ -438,7 +438,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(fun);
                 self.hash_exprs(args);
             },
-            ExprKind::Cast(ref e, ref ty) => {
+            ExprKind::Cast(ref e, ref ty) | ExprKind::Type(ref e, ref ty) => {
                 self.hash_expr(e);
                 self.hash_ty(ty);
             },
@@ -518,10 +518,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Array(ref v) => {
                 self.hash_exprs(v);
             },
-            ExprKind::Type(ref e, ref ty) => {
-                self.hash_expr(e);
-                self.hash_ty(ty);
-            },
             ExprKind::Unary(lop, ref le) => {
                 lop.hash(&mut self.s);
                 self.hash_expr(le);
@@ -585,7 +581,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
         std::mem::discriminant(&lifetime.name).hash(&mut self.s);
         if let LifetimeName::Param(ref name) = lifetime.name {
-            std::mem::discriminant(&name).hash(&mut self.s);
+            std::mem::discriminant(name).hash(&mut self.s);
             match name {
                 ParamName::Plain(ref ident) => {
                     ident.name.hash(&mut self.s);
@@ -603,7 +599,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_tykind(&mut self, ty: &TyKind) {
-        std::mem::discriminant(&ty).hash(&mut self.s);
+        std::mem::discriminant(ty).hash(&mut self.s);
         match ty {
             TyKind::Slice(ty) => {
                 self.hash_ty(ty);
