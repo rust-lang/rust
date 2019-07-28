@@ -43,30 +43,18 @@ pub mod unstable_book;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
-        "src/llvm",
-        "src/llvm-project",
         "src/llvm-emscripten",
-        "src/libbacktrace",
-        "src/librustc_data_structures/owning_ref",
-        "src/vendor",
+        "src/llvm-project",
+        "src/stdarch",
         "src/tools/cargo",
-        "src/tools/clang",
-        "src/tools/rls",
         "src/tools/clippy",
+        "src/tools/miri",
+        "src/tools/rls",
         "src/tools/rust-installer",
         "src/tools/rustfmt",
-        "src/tools/miri",
-        "src/tools/lld",
-        "src/tools/lldb",
-        "src/target",
-        "src/stdarch",
-        "src/rust-sgx",
-        "target",
-        "vendor",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }
-
 
 fn walk_many(
     paths: &[&Path], skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&DirEntry, &str)
