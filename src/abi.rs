@@ -643,6 +643,11 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
         let instance =
             ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
 
+        if fx.tcx.symbol_name(instance).as_str().starts_with("llvm.") {
+            crate::llvm_intrinsics::codegen_llvm_intrinsic_call(fx, &fx.tcx.symbol_name(instance).as_str(), substs, args, destination);
+            return;
+        }
+
         match instance.def {
             InstanceDef::Intrinsic(_) => {
                 crate::intrinsics::codegen_intrinsic_call(fx, def_id, substs, args, destination);
