@@ -1,4 +1,4 @@
-// This is a test of the borrowck migrate mode. It leverages #27282, a
+// This is a test of the borrowck migrate mode. It leverages #38899, a
 // bug that is fixed by NLL: this code is (unsoundly) accepted by
 // AST-borrowck, but is correctly rejected by the NLL borrowck.
 //
@@ -18,15 +18,17 @@
 //[zflag] run-pass
 //[edition] run-pass
 
-fn main() {
-    match Some(&4) {
-        None => {},
-        ref mut foo
-            if {
-                (|| { let bar = foo; bar.take() })();
-                false
-            } => {},
-        Some(ref _s) => println!("Note this arm is bogus; the `Some` became `None` in the guard."),
-        _ => println!("Here is some supposedly unreachable code."),
-    }
+pub struct Block<'a> {
+    current: &'a u8,
+    unrelated: &'a u8,
 }
+
+fn bump<'a>(mut block: &mut Block<'a>) {
+    let x = &mut block;
+    let p: &'a u8 = &*block.current;
+    // (use `x` and `p` so enabling NLL doesn't assign overly short lifetimes)
+    drop(x);
+    drop(p);
+}
+
+fn main() {}
