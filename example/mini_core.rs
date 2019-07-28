@@ -1,4 +1,7 @@
-#![feature(no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types, untagged_unions)]
+#![feature(
+    no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types,
+    untagged_unions, decl_macro, rustc_attrs
+)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -483,3 +486,15 @@ extern {
 #[lang = "va_list"]
 #[repr(transparent)]
 pub struct VaList<'a>(&'a mut VaListImpl);
+
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro stringify($($t:tt)*) { /* compiler built-in */ }
+
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro file() { /* compiler built-in */ }
+
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro line() { /* compiler built-in */ }
