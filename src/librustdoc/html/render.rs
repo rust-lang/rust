@@ -1322,13 +1322,13 @@ fn write_minify_replacer<W: Write>(
                  {
                     let tokens: Tokens<'_> = simple_minify(contents)
                         .into_iter()
-                        .filter(|f| {
+                        .filter(|(f, next)| {
                             // We keep backlines.
-                            minifier::js::clean_token_except(f, &|c: &Token<'_>| {
+                            minifier::js::clean_token_except(f, next, &|c: &Token<'_>| {
                                 c.get_char() != Some(ReservedChar::Backline)
                             })
                         })
-                        .map(|f| {
+                        .map(|(f, _)| {
                             minifier::js::replace_token_with(f, &|t: &Token<'_>| {
                                 match *t {
                                     Token::Keyword(Keyword::Null) => Some(Token::Other("N")),
@@ -1363,7 +1363,7 @@ fn write_minify_replacer<W: Write>(
                             // shouldn't be aggregated.
                             |tokens, pos| {
                                 pos < 2 ||
-                                !tokens[pos - 1].is_char(ReservedChar::OpenBracket) ||
+                                !tokens[pos - 1].eq_char(ReservedChar::OpenBracket) ||
                                 tokens[pos - 2].get_other() != Some("searchIndex")
                             }
                         )
