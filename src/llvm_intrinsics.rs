@@ -6,7 +6,7 @@ pub fn codegen_llvm_intrinsic_call<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     intrinsic: &str,
     substs: SubstsRef<'tcx>,
-    args: Vec<CValue<'tcx>>,
+    args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
     fx.tcx.sess.warn(&format!("unsupported llvm intrinsic {}; replacing with trap", intrinsic));

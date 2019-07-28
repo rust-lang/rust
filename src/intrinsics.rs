@@ -12,11 +12,14 @@ macro_rules! intrinsic_pat {
 }
 
 macro_rules! intrinsic_arg {
-    (c $fx:expr, $arg:ident) => {
+    (o $fx:expr, $arg:ident) => {
         $arg
     };
+    (c $fx:expr, $arg:ident) => {
+        trans_operand($fx, $arg)
+    };
     (v $fx:expr, $arg:ident) => {
-        $arg.load_scalar($fx)
+        trans_operand($fx, $arg).load_scalar($fx)
     };
 }
 
@@ -40,9 +43,9 @@ macro_rules! intrinsic_match {
                         $(
                             intrinsic_substs!($substs, 0, $($subst),*);
                         )?
-                        if let [$($arg),*] = *$args {
-                            let ($($arg),*) = (
-                                $(intrinsic_arg!($a $fx, $arg)),*
+                        if let [$($arg),*] = $args {
+                            let ($($arg,)*) = (
+                                $(intrinsic_arg!($a $fx, $arg),)*
                             );
                             #[warn(unused_parens, non_snake_case)]
                             {
@@ -67,7 +70,10 @@ macro_rules! call_intrinsic_match {
             $(
                 stringify!($name) => {
                     assert!($substs.is_noop());
-                    if let [$($arg),*] = *$args {
+                    if let [$(ref $arg),*] = *$args {
+                        let ($($arg,)*) = (
+                            $(trans_operand($fx, $arg),)*
+                        );
                         let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.tcx.types.$ty);
                         $ret.write_cvalue($fx, res);
 
@@ -120,10 +126,10 @@ fn lane_type_and_count<'tcx>(
     fx: &FunctionCx<'_, 'tcx, impl Backend>,
     layout: TyLayout<'tcx>,
     intrinsic: &str,
-) -> (TyLayout<'tcx>, usize) {
+) -> (TyLayout<'tcx>, u32) {
     assert!(layout.ty.is_simd());
     let lane_count = match layout.fields {
-        layout::FieldPlacement::Array { stride: _, count } => usize::try_from(count).unwrap(),
+        layout::FieldPlacement::Array { stride: _, count } => u32::try_from(count).unwrap(),
         _ => panic!("Non vector type {:?} passed to or returned from simd_* intrinsic {}", layout.ty, intrinsic),
     };
     let lane_layout = layout.field(fx, 0);
@@ -146,7 +152,7 @@ fn simd_for_each_lane<'tcx, B: Backend>(
     assert_eq!(lane_count, ret_lane_count);
 
     for lane in 0..lane_count {
-        let lane = mir::Field::new(lane);
+        let lane = mir::Field::new(lane.try_into().unwrap());
         let x_lane = x.value_field(fx, lane).load_scalar(fx);
         let y_lane = y.value_field(fx, lane).load_scalar(fx);
 
@@ -212,7 +218,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     def_id: DefId,
     substs: SubstsRef<'tcx>,
-    args: Vec<CValue<'tcx>>,
+    args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
     let intrinsic = fx.tcx.item_name(def_id).as_str();
@@ -499,7 +505,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
             let base_val = base.load_scalar(fx);
             let res = fx.bcx.ins().iadd(base_val, ptr_diff);
-            ret.write_cvalue(fx, CValue::by_val(res, args[0].layout()));
+            ret.write_cvalue(fx, CValue::by_val(res, base.layout()));
         };
 
         transmute, <src_ty, dst_ty> (c from) {
@@ -807,8 +813,8 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
 
         // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
-        _ if intrinsic.starts_with("simd_shuffle"), (c x, c y, c idx) {
-            let n: usize = intrinsic["simd_shuffle".len()..].parse().unwrap();
+        _ if intrinsic.starts_with("simd_shuffle"), (c x, c y, o idx) {
+            let n: u32 = intrinsic["simd_shuffle".len()..].parse().unwrap();
 
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();
@@ -821,9 +827,60 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
 
             let total_len = lane_count * 2;
 
-            // TODO get shuffle indices
-            fx.tcx.sess.warn("simd_shuffle* not yet implemented");
-            crate::trap::trap_unimplemented(fx, "simd_shuffle* not yet implemented");
+            let indexes = {
+                use rustc::mir::interpret::*;
+                let idx_place = match idx {
+                    Operand::Copy(idx_place) => {
+                        idx_place
+                    }
+                    _ => panic!("simd_shuffle* idx is not Operand::Copy, but {:?}", idx),
+                };
+
+                assert!(idx_place.projection.is_none());
+                let static_ = match &idx_place.base {
+                    PlaceBase::Static(static_) => {
+                        static_
+                    }
+                    PlaceBase::Local(_) => panic!("simd_shuffle* idx is not constant, but a local"),
+                };
+
+                let idx_const = match &static_.kind {
+                    StaticKind::Static(_) => unimplemented!(),
+                    StaticKind::Promoted(promoted) => {
+                        fx.tcx.const_eval(ParamEnv::reveal_all().and(GlobalId {
+                            instance: fx.instance,
+                            promoted: Some(*promoted),
+                        })).unwrap()
+                    }
+                };
+
+                let idx_bytes = match idx_const.val {
+                    ConstValue::ByRef { align: _, offset, alloc } => {
+                        let ptr = Pointer::new(AllocId(0 /* dummy */), offset);
+                        let size = Size::from_bytes(4 * u64::from(ret_lane_count) /* size_of([u32; ret_lane_count]) */);
+                        alloc.get_bytes(fx, ptr, size).unwrap()
+                    }
+                    _ => unreachable!("{:?}", idx_const),
+                };
+
+                (0..ret_lane_count).map(|i| {
+                    let i = usize::try_from(i).unwrap();
+                    let idx = rustc::mir::interpret::read_target_uint(
+                        fx.tcx.data_layout.endian,
+                        &idx_bytes[4*i.. 4*i + 4],
+                    ).expect("read_target_uint");
+                    u32::try_from(idx).expect("try_from u32")
+                }).collect::<Vec<u32>>()
+            };
+
+            for &idx in &indexes {
+                assert!(idx < total_len, "idx {} out of range 0..{}", idx, total_len);
+            }
+
+
+
+            println!("{:?}", indexes);
+            unimplemented!();
         };
 
         simd_add, (c x, c y) {

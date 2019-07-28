@@ -613,28 +613,6 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
     let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
     let sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
-    // Unpack arguments tuple for closures
-    let args = if sig.abi == Abi::RustCall {
-        assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
-        let self_arg = trans_operand(fx, &args[0]);
-        let pack_arg = trans_operand(fx, &args[1]);
-        let mut args = Vec::new();
-        args.push(self_arg);
-        match pack_arg.layout().ty.sty {
-            ty::Tuple(ref tupled_arguments) => {
-                for (i, _) in tupled_arguments.iter().enumerate() {
-                    args.push(pack_arg.value_field(fx, mir::Field::new(i)));
-                }
-            }
-            _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
-        }
-        args
-    } else {
-        args.into_iter()
-            .map(|arg| trans_operand(fx, arg))
-            .collect::<Vec<_>>()
-    };
-
     let destination = destination
         .as_ref()
         .map(|&(ref place, bb)| (trans_place(fx, place), bb));
@@ -663,6 +641,28 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
             _ => {}
         }
     }
+
+    // Unpack arguments tuple for closures
+    let args = if sig.abi == Abi::RustCall {
+        assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
+        let self_arg = trans_operand(fx, &args[0]);
+        let pack_arg = trans_operand(fx, &args[1]);
+        let mut args = Vec::new();
+        args.push(self_arg);
+        match pack_arg.layout().ty.sty {
+            ty::Tuple(ref tupled_arguments) => {
+                for (i, _) in tupled_arguments.iter().enumerate() {
+                    args.push(pack_arg.value_field(fx, mir::Field::new(i)));
+                }
+            }
+            _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
+        }
+        args
+    } else {
+        args.into_iter()
+            .map(|arg| trans_operand(fx, arg))
+            .collect::<Vec<_>>()
+    };
 
     codegen_call_inner(
         fx,
