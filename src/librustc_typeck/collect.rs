@@ -1706,18 +1706,20 @@ fn find_existential_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     } else {
         debug!("find_existential_constraints: scope={:?}", tcx.hir().get(scope));
         match tcx.hir().get(scope) {
-            // We explicitly call 'visit_*' methods, instead of using intravisit::walk_* methods
+            // We explicitly call `visit_*` methods, instead of using `intravisit::walk_*` methods
             // This allows our visitor to process the defining item itself, causing
             // it to pick up any 'sibling' defining uses.
             //
             // For example, this code:
+            // ```
             // fn foo() {
             //     existential type Blah: Debug;
             //     let my_closure = || -> Blah { true };
             // }
+            // ```
             //
-            // requires us to explicitly process 'foo()' in order
-            // to notice the defining usage of 'Blah'
+            // requires us to explicitly process `foo()` in order
+            // to notice the defining usage of `Blah`.
             Node::Item(ref it) => locator.visit_item(it),
             Node::ImplItem(ref it) => locator.visit_impl_item(it),
             Node::TraitItem(ref it) => locator.visit_trait_item(it),
