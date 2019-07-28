@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
 };
-use rustc::ty::subst::{Subst, SubstsRef};
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -321,20 +321,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         param_substs: SubstsRef<'tcx>,
         value: T,
     ) -> T {
-        if !value.needs_subst() {
-            return self.tcx.erase_regions(&value);
-        }
-        // can't use `TyCtxt::subst_and_normalize_erasing_regions`, because that calls
-        // `normalize_erasing_regions`, even if the value still `needs_subst` after substituting.
-        // This will trigger an assertion in `normalize_erasing_late_bound_regions`.
-        // So we handroll the code here.
-        let substituted = value.subst(self.tcx.tcx, param_substs);
-        if substituted.needs_subst() {
-            return self.tcx.erase_regions(&substituted);
-        }
-        self.tcx.normalize_erasing_regions(
+        self.tcx.subst_and_normalize_erasing_regions(
+            param_substs,
             self.param_env,
-            substituted,
+            &value,
         )
     }
 
