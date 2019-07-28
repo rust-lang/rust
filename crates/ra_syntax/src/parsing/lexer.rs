@@ -145,3 +145,16 @@ pub fn classify_literal(text: &str) -> Option<Token> {
     };
     Some(Token { kind, len: TextUnit::from_usize(t.len) })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lex_float_literal() {
+        assert_eq!(
+            tokenize("42f64")[0],
+            Token { kind: FLOAT_NUMBER, len: TextUnit::from_usize(5)}
+        );
+    }
+}
