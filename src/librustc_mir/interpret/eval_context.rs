@@ -298,8 +298,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ty.is_freeze(*self.tcx, self.param_env, DUMMY_SP)
     }
 
-    /// Convenience wrapper around `subst_and_normalize_erasing_regions`, using the top (active)
-    /// frame's `substs`.
+    /// Call this whenever you have a value that `needs_subst`. Not guaranteed to actually
+    /// monomorphize the value. If we are e.g. const propagating inside a generic function, some
+    /// things may depend on a generic parameter and thus can never be monomorphized.
     pub(super) fn subst_and_normalize_erasing_regions_in_frame<T: TypeFoldable<'tcx>>(
         &self,
         value: T,
@@ -309,9 +310,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.subst_and_normalize_erasing_regions(substs, value)
     }
 
-    /// Call this whenever you have a value that `needs_subst`. Not guaranteed to actually
-    /// monomorphize the value. If we are e.g. const propagating inside a generic function, some
-    /// things may depend on a generic parameter and thus can never be monomorphized.
+    /// Same thing as `subst_and_normalize_erasing_regions_in_frame` but not taking its substs
+    /// from the top stack frame, but requiring you to pass specific substs.
     ///
     /// Only call this function if you want to compute the substs of a specific frame (that is
     /// definitely not the frame currently being evaluated). You need to make sure to pass correct
