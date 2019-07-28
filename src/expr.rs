@@ -110,12 +110,11 @@ pub(crate) fn format_expr(
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
         }
+        ast::ExprKind::Let(..) => None,
         ast::ExprKind::If(..)
-        | ast::ExprKind::IfLet(..)
         | ast::ExprKind::ForLoop(..)
         | ast::ExprKind::Loop(..)
-        | ast::ExprKind::While(..)
-        | ast::ExprKind::WhileLet(..) => to_control_flow(expr, expr_type)
+        | ast::ExprKind::While(..) => to_control_flow(expr, expr_type)
             .and_then(|control_flow| control_flow.rewrite(context, shape)),
         ast::ExprKind::Block(ref block, opt_label) => {
             match expr_type {
@@ -610,21 +609,21 @@ struct ControlFlow<'a> {
     span: Span,
 }
 
+fn extract_pats_and_cond(expr: &ast::Expr) -> (Vec<&ast::Pat>, &ast::Expr) {
+    match expr.node {
+        ast::ExprKind::Let(ref pats, ref cond) => (ptr_vec_to_ref_vec(pats), cond),
+        _ => (vec![], expr),
+    }
+}
+
+// FIXME: Refactor this.
 fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<'_>> {
     match expr.node {
-        ast::ExprKind::If(ref cond, ref if_block, ref else_block) => Some(ControlFlow::new_if(
-            cond,
-            vec![],
-            if_block,
-            else_block.as_ref().map(|e| &**e),
-            expr_type == ExprType::SubExpression,
-            false,
-            expr.span,
-        )),
-        ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
+        ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
+            let (pats, cond) = extract_pats_and_cond(cond);
             Some(ControlFlow::new_if(
                 cond,
-                ptr_vec_to_ref_vec(pat),
+                pats,
                 if_block,
                 else_block.as_ref().map(|e| &**e),
                 expr_type == ExprType::SubExpression,
@@ -638,16 +637,10 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
         ast::ExprKind::Loop(ref block, label) => {
             Some(ControlFlow::new_loop(block, label, expr.span))
         }
-        ast::ExprKind::While(ref cond, ref block, label) => Some(ControlFlow::new_while(
-            vec![],
-            cond,
-            block,
-            label,
-            expr.span,
-        )),
-        ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => Some(
-            ControlFlow::new_while(ptr_vec_to_ref_vec(pat), cond, block, label, expr.span),
-        ),
+        ast::ExprKind::While(ref cond, ref block, label) => {
+            let (pats, cond) = extract_pats_and_cond(cond);
+            Some(ControlFlow::new_while(pats, cond, block, label, expr.span))
+        }
         _ => None,
     }
 }
@@ -1020,22 +1013,11 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 // from being formatted on a single line.
                 // Note how we're passing the original shape, as the
                 // cost of "else" should not cascade.
-                ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref next_else_block) => {
-                    ControlFlow::new_if(
-                        cond,
-                        ptr_vec_to_ref_vec(pat),
-                        if_block,
-                        next_else_block.as_ref().map(|e| &**e),
-                        false,
-                        true,
-                        mk_sp(else_block.span.lo(), self.span.hi()),
-                    )
-                    .rewrite(context, shape)
-                }
                 ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
+                    let (pats, cond) = extract_pats_and_cond(cond);
                     ControlFlow::new_if(
                         cond,
-                        vec![],
+                        pats,
                         if_block,
                         next_else_block.as_ref().map(|e| &**e),
                         false,
@@ -1332,11 +1314,9 @@ pub(crate) fn can_be_overflowed_expr(
                 || context.config.overflow_delimited_expr()
         }
         ast::ExprKind::If(..)
-        | ast::ExprKind::IfLet(..)
         | ast::ExprKind::ForLoop(..)
         | ast::ExprKind::Loop(..)
-        | ast::ExprKind::While(..)
-        | ast::ExprKind::WhileLet(..) => {
+        | ast::ExprKind::While(..) => {
             context.config.combine_control_expr() && context.use_block_indent() && args_len == 1
         }
 

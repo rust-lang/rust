@@ -48,7 +48,7 @@ pub struct FormatReportFormatter<'a> {
 
 impl<'a> Display for FormatReportFormatter<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let formatter = DisplayListFormatter::new(self.enable_colors);
+        let formatter = DisplayListFormatter::new(self.enable_colors, false);
         let errors_by_file = &self.report.internal.borrow().0;
 
         for (file, errors) in errors_by_file {

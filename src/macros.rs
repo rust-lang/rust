@@ -916,7 +916,7 @@ impl MacroArgParser {
                     break;
                 }
                 TokenTree::Token(ref t) => {
-                    buffer.push_str(&pprust::token_to_string(&t.kind));
+                    buffer.push_str(&pprust::token_to_string(&t));
                     hi = t.span.hi();
                 }
                 _ => return None,
@@ -945,13 +945,13 @@ impl MacroArgParser {
             self.lo = t.span.lo();
             self.start_tok = t.clone();
         } else {
-            let needs_space = match next_space(&self.last_tok) {
+            let needs_space = match next_space(&self.last_tok.kind) {
                 SpaceState::Ident => ident_like(t),
                 SpaceState::Punctuation => !ident_like(t),
                 SpaceState::Always => true,
                 SpaceState::Never => false,
             };
-            if force_space_before(t) || needs_space {
+            if force_space_before(&t.kind) || needs_space {
                 self.buf.push(' ');
             }
         }
@@ -974,7 +974,7 @@ impl MacroArgParser {
             }
         }
 
-        if force_space_before(&self.start_tok) {
+        if force_space_before(&self.start_tok.kind) {
             return true;
         }
 
@@ -1013,7 +1013,7 @@ impl MacroArgParser {
                 TokenTree::Token(ref t) => self.update_buffer(t),
                 TokenTree::Delimited(delimited_span, delimited, ref tts) => {
                     if !self.buf.is_empty() {
-                        if next_space(&self.last_tok) == SpaceState::Always {
+                        if next_space(&self.last_tok.kind) == SpaceState::Always {
                             self.add_separator();
                         } else {
                             self.add_other();

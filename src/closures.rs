@@ -372,11 +372,7 @@ fn is_block_closure_forced(context: &RewriteContext<'_>, expr: &ast::Expr) -> bo
 
 fn is_block_closure_forced_inner(expr: &ast::Expr, version: Version) -> bool {
     match expr.node {
-        ast::ExprKind::If(..)
-        | ast::ExprKind::IfLet(..)
-        | ast::ExprKind::While(..)
-        | ast::ExprKind::WhileLet(..)
-        | ast::ExprKind::ForLoop(..) => true,
+        ast::ExprKind::If(..) | ast::ExprKind::While(..) | ast::ExprKind::ForLoop(..) => true,
         ast::ExprKind::Loop(..) if version == Version::Two => true,
         ast::ExprKind::AddrOf(_, ref expr)
         | ast::ExprKind::Box(ref expr)
@@ -398,11 +394,9 @@ fn is_block_closure_forced_inner(expr: &ast::Expr, version: Version) -> bool {
 fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
     match e.node {
         ast::ExprKind::If(..)
-        | ast::ExprKind::IfLet(..)
         | ast::ExprKind::Match(..)
         | ast::ExprKind::Block(..)
         | ast::ExprKind::While(..)
-        | ast::ExprKind::WhileLet(..)
         | ast::ExprKind::Loop(..)
         | ast::ExprKind::ForLoop(..)
         | ast::ExprKind::TryBlock(..) => false,

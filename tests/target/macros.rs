@@ -11,8 +11,6 @@ itemmacro!(
 
 itemmacro! {this, is.brace().formatted()}
 
-peg_file! modname("mygrammarfile.rustpeg");
-
 fn main() {
     foo!();
 
@@ -1051,7 +1049,6 @@ pub fn fold_abi<V: Fold + ?Sized>(_visitor: &mut V, _i: Abi) -> Abi {
 
 // #3463
 x! {()}
-x! y {()}
 
 // #3583
 foo!(|x = y|);

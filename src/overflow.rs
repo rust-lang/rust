@@ -414,11 +414,9 @@ impl<'a> Context<'a> {
                     // When overflowing the expressions which consists of a control flow
                     // expression, avoid condition to use multi line.
                     ast::ExprKind::If(..)
-                    | ast::ExprKind::IfLet(..)
                     | ast::ExprKind::ForLoop(..)
                     | ast::ExprKind::Loop(..)
                     | ast::ExprKind::While(..)
-                    | ast::ExprKind::WhileLet(..)
                     | ast::ExprKind::Match(..) => {
                         let multi_line = rewrite_cond(self.context, expr, shape)
                             .map_or(false, |cond| cond.contains('\n'));

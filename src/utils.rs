@@ -10,7 +10,7 @@ use syntax::ast::{
 use syntax::ptr;
 use syntax::source_map::{BytePos, Span, NO_EXPANSION};
 use syntax::symbol::{sym, Symbol};
-use syntax_pos::Mark;
+use syntax_pos::ExpnId;
 use unicode_width::UnicodeWidthStr;
 
 use crate::comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
@@ -284,10 +284,9 @@ pub(crate) fn semicolon_for_expr(context: &RewriteContext<'_>, expr: &ast::Expr)
 pub(crate) fn semicolon_for_stmt(context: &RewriteContext<'_>, stmt: &ast::Stmt) -> bool {
     match stmt.node {
         ast::StmtKind::Semi(ref expr) => match expr.node {
-            ast::ExprKind::While(..)
-            | ast::ExprKind::WhileLet(..)
-            | ast::ExprKind::Loop(..)
-            | ast::ExprKind::ForLoop(..) => false,
+            ast::ExprKind::While(..) | ast::ExprKind::Loop(..) | ast::ExprKind::ForLoop(..) => {
+                false
+            }
             ast::ExprKind::Break(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Ret(..) => {
                 context.config.trailing_semicolon()
             }
@@ -453,9 +452,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Array(..)
         | ast::ExprKind::Struct(..)
         | ast::ExprKind::While(..)
-        | ast::ExprKind::WhileLet(..)
         | ast::ExprKind::If(..)
-        | ast::ExprKind::IfLet(..)
         | ast::ExprKind::Block(..)
         | ast::ExprKind::Loop(..)
         | ast::ExprKind::ForLoop(..)
@@ -630,7 +627,7 @@ pub(crate) trait NodeIdExt {
 
 impl NodeIdExt for NodeId {
     fn root() -> NodeId {
-        NodeId::placeholder_from_mark(Mark::root())
+        NodeId::placeholder_from_expn_id(ExpnId::root())
     }
 }
 
