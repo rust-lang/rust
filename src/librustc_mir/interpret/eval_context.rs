@@ -316,7 +316,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Only call this function if you want to compute the substs of a specific frame (that is
     /// definitely not the frame currently being evaluated). You need to make sure to pass correct
     /// substs.
-    pub(super) fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
+    fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
         param_substs: SubstsRef<'tcx>,
         value: T,
