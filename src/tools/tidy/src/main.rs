@@ -22,6 +22,7 @@ fn main() {
     style::check(&path, &mut bad);
     errors::check(&path, &mut bad);
     cargo::check(&path, &mut bad);
+    edition::check(&path, &mut bad);
     let collected = features::check(&path, &mut bad, verbose);
     pal::check(&path, &mut bad);
     unstable_book::check(&path, collected, &mut bad);
