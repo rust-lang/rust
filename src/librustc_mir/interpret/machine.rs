@@ -57,18 +57,12 @@ pub trait AllocMap<K: Hash + Eq, V> {
 
     /// Read-only lookup.
     fn get(&self, k: K) -> Option<&V> {
-        match self.get_or(k, || Err(())) {
-            Ok(v) => Some(v),
-            Err(()) => None,
-        }
+        self.get_or(k, || Err(())).ok()
     }
 
     /// Mutable lookup.
     fn get_mut(&mut self, k: K) -> Option<&mut V> {
-        match self.get_mut_or(k, || Err(())) {
-            Ok(v) => Some(v),
-            Err(()) => None,
-        }
+        self.get_mut_or(k, || Err(())).ok()
     }
 }
 
