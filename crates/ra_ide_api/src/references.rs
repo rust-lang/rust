@@ -389,7 +389,7 @@ mod tests {
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
         assert_debug_snapshot_matches!(&source_change,
-@r###"Some(
+        @r###"Some(
     SourceChange {
         label: "rename",
         source_file_edits: [
@@ -421,7 +421,7 @@ mod tests {
         cursor_position: None,
     },
 )"###
-       );
+               );
     }
 
     fn test_rename(text: &str, new_name: &str, expected: &str) {

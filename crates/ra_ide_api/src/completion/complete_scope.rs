@@ -307,16 +307,16 @@ mod tests {
     #[test]
     fn completes_module_items() {
         assert_debug_snapshot_matches!(
-            do_reference_completion(
-                r"
+        do_reference_completion(
+            r"
                 struct Foo;
                 enum Baz {}
                 fn quux() {
                     <|>
                 }
                 "
-            ),
-            @r###"[
+        ),
+        @r###"[
     CompletionItem {
         label: "Baz",
         source_range: [105; 105),
@@ -340,7 +340,7 @@ mod tests {
         detail: "fn quux()",
     },
 ]"###
-                );
+            );
     }
 
     #[test]
