@@ -4763,7 +4763,53 @@ assert_eq!(1, discriminant(&Enum::Struct{a: 7, b: 11}));
 ```
 "##,
 
+E0733: r##"
+Recursion in an `async fn` requires boxing. For example, this will not compile:
+
+```edition2018,compile_fail,E0733
+#![feature(async_await)]
+async fn foo(n: usize) {
+    if n > 0 {
+        foo(n - 1).await;
+    }
 }
+```
+
+To achieve async recursion, the `async fn` needs to be desugared
+such that the `Future` is explicit in the return type:
+
+```edition2018,compile_fail,E0720
+# #![feature(async_await)]
+use std::future::Future;
+fn foo_desugered(n: usize) -> impl Future<Output = ()> {
+    async move {
+        if n > 0 {
+            foo_desugered(n - 1).await;
+        }
+    }
+}
+```
+
+Finally, the future is wrapped in a pinned box:
+
+```edition2018
+# #![feature(async_await)]
+use std::future::Future;
+use std::pin::Pin;
+fn foo_recursive(n: usize) -> Pin<Box<dyn Future<Output = ()>>> {
+    Box::pin(async move {
+        if n > 0 {
+            foo_recursive(n - 1).await;
+        }
+    })
+}
+```
+
+The `Box<...>` ensures that the result is of known size,
+and the pin is required to keep it in the same place in memory.
+"##,
+
+}  // (end of detailed error messages)
 
 register_diagnostics! {
 //  E0035, merged into E0087/E0089

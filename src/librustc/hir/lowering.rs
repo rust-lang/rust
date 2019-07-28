@@ -2461,8 +2461,10 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_arg(&mut self, arg: &Arg) -> hir::Arg {
         hir::Arg {
+            attrs: self.lower_attrs(&arg.attrs),
             hir_id: self.lower_node_id(arg.id),
             pat: self.lower_pat(&arg.pat),
+            span: arg.span,
         }
     }
 
@@ -3279,11 +3281,16 @@ impl<'a> LoweringContext<'a> {
                 //
                 // If this is the simple case, this argument will end up being the same as the
                 // original argument, but with a different pattern id.
+                let mut stmt_attrs = ThinVec::new();
+                stmt_attrs.extend(argument.attrs.iter().cloned());
                 let (new_argument_pat, new_argument_id) = this.pat_ident(desugared_span, ident);
                 let new_argument = hir::Arg {
+                    attrs: argument.attrs,
                     hir_id: argument.hir_id,
                     pat: new_argument_pat,
+                    span: argument.span,
                 };
+
 
                 if is_simple_argument {
                     // If this is the simple case, then we only insert one statement that is
@@ -3291,7 +3298,12 @@ impl<'a> LoweringContext<'a> {
                     // `HirId`s are densely assigned.
                     let expr = this.expr_ident(desugared_span, ident, new_argument_id);
                     let stmt = this.stmt_let_pat(
-                        desugared_span, Some(P(expr)), argument.pat, hir::LocalSource::AsyncFn);
+                        stmt_attrs,
+                        desugared_span,
+                        Some(P(expr)),
+                        argument.pat,
+                        hir::LocalSource::AsyncFn
+                    );
                     statements.push(stmt);
                 } else {
                     // If this is not the simple case, then we construct two statements:
@@ -3313,14 +3325,23 @@ impl<'a> LoweringContext<'a> {
                         desugared_span, ident, hir::BindingAnnotation::Mutable);
                     let move_expr = this.expr_ident(desugared_span, ident, new_argument_id);
                     let move_stmt = this.stmt_let_pat(
-                        desugared_span, Some(P(move_expr)), move_pat, hir::LocalSource::AsyncFn);
+                        ThinVec::new(),
+                        desugared_span,
+                        Some(P(move_expr)),
+                        move_pat,
+                        hir::LocalSource::AsyncFn
+                    );
 
                     // Construct the `let <pat> = __argN;` statement. We re-use the original
                     // argument's pattern so that `HirId`s are densely assigned.
                     let pattern_expr = this.expr_ident(desugared_span, ident, move_id);
                     let pattern_stmt = this.stmt_let_pat(
-                        desugared_span, Some(P(pattern_expr)), argument.pat,
-                        hir::LocalSource::AsyncFn);
+                        stmt_attrs,
+                        desugared_span,
+                        Some(P(pattern_expr)),
+                        argument.pat,
+                        hir::LocalSource::AsyncFn
+                    );
 
                     statements.push(move_stmt);
                     statements.push(pattern_stmt);
@@ -5030,6 +5051,7 @@ impl<'a> LoweringContext<'a> {
 
                 // `let mut __next`
                 let next_let = self.stmt_let_pat(
+                    ThinVec::new(),
                     desugared_span,
                     None,
                     next_pat,
@@ -5039,6 +5061,7 @@ impl<'a> LoweringContext<'a> {
                 // `let <pat> = __next`
                 let pat = self.lower_pat(pat);
                 let pat_let = self.stmt_let_pat(
+                    ThinVec::new(),
                     head_sp,
                     Some(next_expr),
                     pat,
@@ -5533,19 +5556,20 @@ impl<'a> LoweringContext<'a> {
 
     fn stmt_let_pat(
         &mut self,
+        attrs: ThinVec<Attribute>,
         span: Span,
         init: Option<P<hir::Expr>>,
         pat: P<hir::Pat>,
         source: hir::LocalSource,
     ) -> hir::Stmt {
         let local = hir::Local {
-            pat,
-            ty: None,
-            init,
+            attrs,
             hir_id: self.next_id(),
-            span,
+            init,
+            pat,
             source,
-            attrs: ThinVec::new()
+            span,
+            ty: None,
         };
         self.stmt(span, hir::StmtKind::Local(P(local)))
     }
@@ -5959,6 +5983,7 @@ impl<'a> LoweringContext<'a> {
             hir::BindingAnnotation::Mutable,
         );
         let pinned_let = self.stmt_let_pat(
+            ThinVec::new(),
             span,
             Some(expr),
             pinned_pat,

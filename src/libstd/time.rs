@@ -396,6 +396,7 @@ impl SystemTime {
     /// This function may fail because measurements taken earlier are not
     /// guaranteed to always be before later measurements (due to anomalies such
     /// as the system clock being adjusted either forwards or backwards).
+    /// [`Instant`] can be used to measure elapsed time without this risk of failure.
     ///
     /// If successful, [`Ok`]`(`[`Duration`]`)` is returned where the duration represents
     /// the amount of time elapsed from the specified measurement to this one.
@@ -406,6 +407,7 @@ impl SystemTime {
     /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Instant`]: ../../std/time/struct.Instant.html
     ///
     /// # Examples
     ///
@@ -414,7 +416,7 @@ impl SystemTime {
     ///
     /// let sys_time = SystemTime::now();
     /// let difference = sys_time.duration_since(sys_time)
-    ///                          .expect("SystemTime::duration_since failed");
+    ///                          .expect("Clock may have gone backwards");
     /// println!("{:?}", difference);
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
@@ -423,7 +425,8 @@ impl SystemTime {
         self.0.sub_time(&earlier.0).map_err(SystemTimeError)
     }
 
-    /// Returns the amount of time elapsed since this system time was created.
+    /// Returns the difference between the clock time when this
+    /// system time was created, and the current clock time.
     ///
     /// This function may fail as the underlying system clock is susceptible to
     /// drift and updates (e.g., the system clock could go backwards), so this
@@ -431,12 +434,15 @@ impl SystemTime {
     /// returned where the duration represents the amount of time elapsed from
     /// this time measurement to the current time.
     ///
+    /// To measure elapsed time reliably, use [`Instant`] instead.
+    ///
     /// Returns an [`Err`] if `self` is later than the current system time, and
     /// the error contains how far from the current system time `self` is.
     ///
     /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Instant`]: ../../std/time/struct.Instant.html
     ///
     /// # Examples
     ///

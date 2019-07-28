@@ -10,7 +10,7 @@ This allows moving and dropping of a `OwningRef` without needing to recreate the
 This can sometimes be useful because Rust borrowing rules normally prevent
 moving a type that has been moved from. For example, this kind of code gets rejected:
 
-```rust,ignore
+```compile_fail,E0515
 fn return_owned_and_referenced<'a>() -> (Vec<u8>, &'a [u8]) {
     let v = vec![1, 2, 3, 4];
     let s = &v[1..3];
@@ -43,7 +43,8 @@ and preventing mutable access to root containers, which in practice requires hea
 as provided by `Box<T>`, `Rc<T>`, etc.
 
 Also provided are typedefs for common owner type combinations,
-which allow for less verbose type signatures. For example, `BoxRef<T>` instead of `OwningRef<Box<T>, T>`.
+which allow for less verbose type signatures.
+For example, `BoxRef<T>` instead of `OwningRef<Box<T>, T>`.
 
 The crate also provides the more advanced `OwningHandle` type,
 which allows more freedom in bundling a dependent handle object
@@ -498,7 +499,8 @@ impl<O, T: ?Sized> OwningRef<O, T> {
         }
     }
 
-    /// Erases the concrete base type of the owner with a trait object which implements `Send` and `Sync`.
+    /// Erases the concrete base type of the owner with a trait object
+    /// which implements `Send` and `Sync`.
     ///
     /// This allows mixing of owned references with different owner base types.
     pub fn erase_send_sync_owner<'a>(self) -> OwningRef<O::Erased, T>
@@ -510,7 +512,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
         }
     }
 
-    // TODO: wrap_owner
+    // UNIMPLEMENTED: wrap_owner
 
     // FIXME: Naming convention?
     /// A getter for the underlying owner.
@@ -756,7 +758,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
         }
     }
 
-    // TODO: wrap_owner
+    // UNIMPLEMENTED: wrap_owner
 
     // FIXME: Naming convention?
     /// A getter for the underlying owner.

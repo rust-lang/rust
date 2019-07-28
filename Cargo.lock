@@ -1700,7 +1700,7 @@ dependencies = [
 
 [[package]]
 name = "minifier"
-version = "0.0.30"
+version = "0.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "macro-utils 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3195,7 +3195,7 @@ dependencies = [
 name = "rustdoc"
 version = "0.0.0"
 dependencies = [
- "minifier 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "minifier 0.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4442,7 +4442,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum memoffset 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ce6075db033bbbb7ee5a0bbd3a3186bbae616f57fb001c485c7ff77955f8177f"
 "checksum mime 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)" = "3e27ca21f40a310bd06d9031785f4801710d566c184a6e15bad4f1d9b65f9425"
 "checksum mime_guess 2.0.0-alpha.6 (registry+https://github.com/rust-lang/crates.io-index)" = "30de2e4613efcba1ec63d8133f344076952090c122992a903359be5a4f99c3ed"
-"checksum minifier 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)" = "4c909e78edf61f3aa0dd2086da168cdf304329044bbf248768ca3d20253ec8c0"
+"checksum minifier 0.0.33 (registry+https://github.com/rust-lang/crates.io-index)" = "70bf0db2475f5e627787da77ca52fe33c294063f49f4134b8bc662eedb5e7332"
 "checksum miniz-sys 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)" = "0300eafb20369952951699b68243ab4334f4b10a88f411c221d444b36c40e649"
 "checksum miniz_oxide 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5ad30a47319c16cde58d0314f5d98202a80c9083b5f61178457403dfb14e509c"
 "checksum miniz_oxide_c_api 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "28edaef377517fd9fe3e085c37d892ce7acd1fbeab9239c5a36eec352d8a8b7e"

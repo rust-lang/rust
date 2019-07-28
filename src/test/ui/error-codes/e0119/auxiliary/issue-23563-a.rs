@@ -9,7 +9,7 @@ pub trait LolInto<T>: Sized {
 }
 
 pub trait LolFrom<T> {
-    fn from(T) -> Self;
+    fn from(_: T) -> Self;
 }
 
 impl<'a, T: ?Sized, U> LolInto<U> for &'a T where T: LolTo<U> {
