@@ -277,6 +277,10 @@ where
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
+    ///
+    /// Only call this if you are sure the place is "valid" (aligned and inbounds), or do not
+    /// want to ever use the place for memory access!
+    /// Generally prefer `deref_operand`.
     pub fn ref_to_mplace(
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
