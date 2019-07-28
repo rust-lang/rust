@@ -13,8 +13,8 @@ error[E0382]: use of moved value: `a[..]`
    |
 LL |     let [_x, _] = a;
    |          -- value moved here
-LL |     let [_y..] = a;
-   |          ^^ value used here after move
+LL |     let [_y @ ..] = a;
+   |          ^^^^^^^ value used here after move
    |
    = note: move occurs because `a[..]` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
 

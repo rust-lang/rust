@@ -70,7 +70,7 @@ fn const_index_mixed(s: &mut [i32]) {
 
 fn const_index_and_subslice_ok(s: &mut [i32]) {
     if let [ref first, ref second, ..] = *s {
-        if let [_, _, ref mut tail..] = *s {
+        if let [_, _, ref mut tail @ ..] = *s {
             nop(&[first, second]);
             nop_subslice(tail);
         }
@@ -79,7 +79,7 @@ fn const_index_and_subslice_ok(s: &mut [i32]) {
 
 fn const_index_and_subslice_err(s: &mut [i32]) {
     if let [ref first, ref second, ..] = *s {
-        if let [_, ref mut tail..] = *s { //~ERROR
+        if let [_, ref mut tail @ ..] = *s { //~ERROR
             nop(&[first, second]);
             nop_subslice(tail);
         }
@@ -88,7 +88,7 @@ fn const_index_and_subslice_err(s: &mut [i32]) {
 
 fn const_index_and_subslice_from_end_ok(s: &mut [i32]) {
     if let [.., ref second, ref first] = *s {
-        if let [ref mut tail.., _, _] = *s {
+        if let [ref mut tail @ .., _, _] = *s {
             nop(&[first, second]);
             nop_subslice(tail);
         }
@@ -97,7 +97,7 @@ fn const_index_and_subslice_from_end_ok(s: &mut [i32]) {
 
 fn const_index_and_subslice_from_end_err(s: &mut [i32]) {
     if let [.., ref second, ref first] = *s {
-        if let [ref mut tail.., _] = *s { //~ERROR
+        if let [ref mut tail @ .., _] = *s { //~ERROR
             nop(&[first, second]);
             nop_subslice(tail);
         }
@@ -105,8 +105,8 @@ fn const_index_and_subslice_from_end_err(s: &mut [i32]) {
 }
 
 fn subslices(s: &mut [i32]) {
-    if let [_, _, _, ref s1..] = *s {
-        if let [ref mut s2.., _, _, _] = *s { //~ERROR
+    if let [_, _, _, ref s1 @ ..] = *s {
+        if let [ref mut s2 @ .., _, _, _] = *s { //~ERROR
             nop_subslice(s1);
             nop_subslice(s2);
         }

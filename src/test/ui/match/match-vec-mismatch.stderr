@@ -19,8 +19,8 @@ LL |         [0] => {},
 error[E0528]: pattern requires at least 4 elements but array has 3
   --> $DIR/match-vec-mismatch.rs:25:9
    |
-LL |         [0, 1, 2, 3, x..] => {}
-   |         ^^^^^^^^^^^^^^^^^ pattern cannot match array of 3 elements
+LL |         [0, 1, 2, 3, x @ ..] => {}
+   |         ^^^^^^^^^^^^^^^^^^^^ pattern cannot match array of 3 elements
 
 error[E0282]: type annotations needed
   --> $DIR/match-vec-mismatch.rs:36:9
