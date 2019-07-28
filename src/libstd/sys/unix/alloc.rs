@@ -29,7 +29,7 @@ unsafe impl GlobalAlloc for System {
         if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
             libc::calloc(layout.size(), 1) as *mut u8
         } else {
-            let ptr = self.alloc(layout.clone());
+            let ptr = self.alloc(layout);
             if !ptr.is_null() {
                 ptr::write_bytes(ptr, 0, layout.size());
             }
