@@ -4,7 +4,7 @@ use crate::attr::{self, HasAttrs};
 use crate::source_map::{dummy_spanned, respan};
 use crate::config::StripUnconfigured;
 use crate::ext::base::*;
-use crate::ext::derive::{add_derived_markers, collect_derives};
+use crate::ext::proc_macro::{add_derived_markers, collect_derives};
 use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnInfo, ExpnKind};
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};

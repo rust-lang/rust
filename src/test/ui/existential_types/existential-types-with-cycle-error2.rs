@@ -5,7 +5,7 @@ pub trait Bar<T> {
 }
 
 existential type Foo: Bar<Foo, Item = Foo>;
-//~^ ERROR: cycle detected when processing `Foo`
+//~^ ERROR: could not find defining uses
 
 fn crash(x: Foo) -> Foo {
     x

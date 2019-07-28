@@ -428,9 +428,9 @@ pub fn walk_assoc_ty_constraint<'a, V: Visitor<'a>>(visitor: &mut V,
 
 pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
     match pattern.node {
-        PatKind::TupleStruct(ref path, ref children, _) => {
+        PatKind::TupleStruct(ref path, ref elems) => {
             visitor.visit_path(path, pattern.id);
-            walk_list!(visitor, visit_pat, children);
+            walk_list!(visitor, visit_pat, elems);
         }
         PatKind::Path(ref opt_qself, ref path) => {
             if let Some(ref qself) = *opt_qself {
@@ -446,8 +446,8 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
                 visitor.visit_pat(&field.node.pat)
             }
         }
-        PatKind::Tuple(ref tuple_elements, _) => {
-            walk_list!(visitor, visit_pat, tuple_elements);
+        PatKind::Tuple(ref elems) => {
+            walk_list!(visitor, visit_pat, elems);
         }
         PatKind::Box(ref subpattern) |
         PatKind::Ref(ref subpattern, _) |
@@ -463,11 +463,9 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             visitor.visit_expr(lower_bound);
             visitor.visit_expr(upper_bound);
         }
-        PatKind::Wild => (),
-        PatKind::Slice(ref prepatterns, ref slice_pattern, ref postpatterns) => {
-            walk_list!(visitor, visit_pat, prepatterns);
-            walk_list!(visitor, visit_pat, slice_pattern);
-            walk_list!(visitor, visit_pat, postpatterns);
+        PatKind::Wild | PatKind::Rest => {},
+        PatKind::Slice(ref elems) => {
+            walk_list!(visitor, visit_pat, elems);
         }
         PatKind::Mac(ref mac) => visitor.visit_mac(mac),
     }

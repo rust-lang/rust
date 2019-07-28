@@ -46,7 +46,7 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
     type Item = Utf8LossyChunk<'a>;
 
     fn next(&mut self) -> Option<Utf8LossyChunk<'a>> {
-        if self.source.len() == 0 {
+        if self.source.is_empty() {
             return None;
         }
 
@@ -141,7 +141,7 @@ impl fmt::Display for Utf8Lossy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // If we're the empty string then our iterator won't actually yield
         // anything, so perform the formatting manually
-        if self.bytes.len() == 0 {
+        if self.bytes.is_empty() {
             return "".fmt(f)
         }
 

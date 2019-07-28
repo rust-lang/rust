@@ -10,9 +10,10 @@ use crate::parse::token::TokenKind;
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
 use crate::print::pprust;
+use crate::symbol::Symbol;
 
 use errors::{Applicability, FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::{Lrc, Lock, Once};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use syntax_pos::edition::Edition;
 
@@ -58,6 +59,7 @@ pub struct ParseSess {
     pub let_chains_spans: Lock<Vec<Span>>,
     // Places where `async || ..` exprs were used and should be feature gated.
     pub async_closure_spans: Lock<Vec<Span>>,
+    pub injected_crate_name: Once<Symbol>,
 }
 
 impl ParseSess {
@@ -86,6 +88,7 @@ impl ParseSess {
             param_attr_spans: Lock::new(Vec::new()),
             let_chains_spans: Lock::new(Vec::new()),
             async_closure_spans: Lock::new(Vec::new()),
+            injected_crate_name: Once::new(),
         }
     }
 

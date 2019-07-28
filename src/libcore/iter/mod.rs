@@ -360,7 +360,7 @@ pub use self::adapters::Flatten;
 #[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::adapters::Copied;
 
-pub(crate) use self::adapters::TrustedRandomAccess;
+pub(crate) use self::adapters::{TrustedRandomAccess, OptionShunt, ResultShunt};
 
 mod range;
 mod sources;

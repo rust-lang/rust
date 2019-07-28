@@ -305,7 +305,7 @@ impl HygieneData {
         // was defined at its invocation (i.e., inside the macros 2.0 definition)
         // so that the macros 2.0 definition remains hygienic.
         //
-        // See the example at `test/run-pass/hygiene/legacy_interaction.rs`.
+        // See the example at `test/ui/hygiene/legacy_interaction.rs`.
         for (expn_id, transparency) in self.marks(ctxt) {
             call_site_ctxt = self.apply_mark_internal(call_site_ctxt, expn_id, transparency);
         }

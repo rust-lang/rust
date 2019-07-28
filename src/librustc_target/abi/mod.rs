@@ -111,30 +111,45 @@ impl TargetDataLayout {
         let mut dl = TargetDataLayout::default();
         let mut i128_align_src = 64;
         for spec in target.data_layout.split('-') {
-            match spec.split(':').collect::<Vec<_>>()[..] {
+            let spec_parts = spec.split(':').collect::<Vec<_>>();
+
+            match &*spec_parts {
                 ["e"] => dl.endian = Endian::Little,
                 ["E"] => dl.endian = Endian::Big,
-                ["a", ref a..] => dl.aggregate_align = align(a, "a")?,
-                ["f32", ref a..] => dl.f32_align = align(a, "f32")?,
-                ["f64", ref a..] => dl.f64_align = align(a, "f64")?,
-                [p @ "p", s, ref a..] | [p @ "p0", s, ref a..] => {
-                    dl.pointer_size = size(s, p)?;
-                    dl.pointer_align = align(a, p)?;
-                    resize_and_set(&mut dl.pointers, 0, Some((dl.pointer_size,
-                                                              dl.pointer_align)));
-                },
-                [p, s, ref a..] if p.starts_with('p') => {
-                  let idx = parse_bits(&p[1..], "u32", "address space index")? as usize;
-                  let size = size(s, p)?;
-                  let align = align(a, p)?;
-                  resize_and_set(&mut dl.pointers, idx, Some((size, align)));
-                },
                 [ref p] if p.starts_with("P") => {
                     let idx = parse_bits(&p[1..], "u32",
                                          "instruction address space")? as u32;
                     dl.instruction_address_space = AddrSpaceIdx(idx);
-                },
-                [s, ref a..] if s.starts_with("i") => {
+                }
+                // FIXME: Ping cfg(bootstrap) -- Use `ref a @ ..` with new bootstrap compiler.
+                ["a", ..] => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    dl.aggregate_align = align(a, "a")?
+                }
+                ["f32", ..] => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    dl.f32_align = align(a, "f32")?
+                }
+                ["f64", ..] => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    dl.f64_align = align(a, "f64")?
+                }
+                [p @ "p", s, ..] | [p @ "p0", s, ..] => {
+                    let a = &spec_parts[2..]; // FIXME inline into pattern.
+                    dl.pointer_size = size(s, p)?;
+                    dl.pointer_align = align(a, p)?;
+                    resize_and_set(&mut dl.pointers, 0, Some((dl.pointer_size,
+                                                              dl.pointer_align)));
+                }
+                [p, s, ..] if p.starts_with('p') => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    let idx = parse_bits(&p[1..], "u32", "address space index")? as usize;
+                    let size = size(s, p)?;
+                    let align = align(a, p)?;
+                    resize_and_set(&mut dl.pointers, idx, Some((size, align)));
+                }
+                [s, ..] if s.starts_with("i") => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
                     let bits = match s[1..].parse::<u64>() {
                         Ok(bits) => bits,
                         Err(_) => {
@@ -157,8 +172,9 @@ impl TargetDataLayout {
                         i128_align_src = bits;
                         dl.i128_align = a;
                     }
-                },
-                [s, ref a..] if s.starts_with("v") => {
+                }
+                [s, ..] if s.starts_with("v") => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
                     let v_size = size(&s[1..], "v")?;
                     let a = align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {

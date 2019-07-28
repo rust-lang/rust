@@ -237,15 +237,15 @@ impl<T> LinkedList<T> {
 
         // Not creating new mutable (unique!) references overlapping `element`.
         match node.prev {
-            Some(prev) => (*prev.as_ptr()).next = node.next.clone(),
+            Some(prev) => (*prev.as_ptr()).next = node.next,
             // this node is the head node
-            None => self.head = node.next.clone(),
+            None => self.head = node.next,
         };
 
         match node.next {
-            Some(next) => (*next.as_ptr()).prev = node.prev.clone(),
+            Some(next) => (*next.as_ptr()).prev = node.prev,
             // this node is the tail node
-            None => self.tail = node.prev.clone(),
+            None => self.tail = node.prev,
         };
 
         self.len -= 1;

@@ -1,4 +1,5 @@
-//! Syntax extensions in the Rust compiler.
+//! This crate contains implementations of built-in macros and other code generating facilities
+//! injecting code into the crate before it is lowered to HIR.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
@@ -7,21 +8,15 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
+#![feature(mem_take)]
 #![feature(nll)]
-#![feature(proc_macro_diagnostic)]
-#![feature(proc_macro_internals)]
-#![feature(proc_macro_span)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(unicode_internals)]
-
-extern crate proc_macro;
 
 use crate::deriving::*;
 
 use syntax::ast::Ident;
 use syntax::edition::Edition;
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
-use syntax::ext::source_util;
 use syntax::symbol::sym;
 
 mod error_codes;
@@ -32,21 +27,21 @@ mod cfg;
 mod compile_error;
 mod concat;
 mod concat_idents;
+mod deriving;
 mod env;
 mod format;
 mod format_foreign;
 mod global_allocator;
 mod global_asm;
 mod log_syntax;
-mod proc_macro_server;
+mod source_util;
 mod test;
-mod test_case;
 mod trace_macros;
 
-pub mod deriving;
 pub mod plugin_macro_defs;
-pub mod proc_macro_decls;
-pub mod proc_macro_impl;
+pub mod proc_macro_harness;
+pub mod standard_library_imports;
+pub mod test_harness;
 
 pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, edition: Edition) {
     let mut register = |name, kind| resolver.register_builtin_macro(
@@ -93,7 +88,7 @@ pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, e
         bench: test::expand_bench,
         global_allocator: global_allocator::expand,
         test: test::expand_test,
-        test_case: test_case::expand,
+        test_case: test::expand_test_case,
     }
 
     register_derive! {

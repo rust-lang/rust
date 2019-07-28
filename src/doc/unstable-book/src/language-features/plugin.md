@@ -44,7 +44,7 @@ code that manipulates syntax trees at
 compile time.
 
 Let's write a plugin
-[`roman_numerals.rs`](https://github.com/rust-lang/rust/blob/master/src/test/run-pass-fulldeps/auxiliary/roman_numerals.rs)
+[`roman_numerals.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/roman_numerals.rs)
 that implements Roman numeral integer literals.
 
 ```rust,ignore

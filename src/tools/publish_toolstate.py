@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+## This script publishes the new "current" toolstate in the toolstate repo (not to be
+## confused with publishing the test results, which happens in
+## `src/ci/docker/x86_64-gnu-tools/checktools.sh`).
+## It is set as callback for `src/ci/docker/x86_64-gnu-tools/repo.sh` by the CI scripts
+## when a new commit lands on `master` (i.e., after it passed all checks on `auto`).
+
 import sys
 import re
 import os

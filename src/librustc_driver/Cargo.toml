@@ -10,30 +10,19 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-arena = { path = "../libarena" }
 graphviz = { path = "../libgraphviz" }
 log = "0.4"
 env_logger = { version = "0.5", default-features = false }
-rayon = { version = "0.2.0", package = "rustc-rayon" }
 rustc = { path = "../librustc" }
 rustc_target = { path = "../librustc_target" }
 rustc_ast_borrowck = { path = "../librustc_ast_borrowck" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
-rustc_incremental = { path = "../librustc_incremental" }
-rustc_lint = { path = "../librustc_lint" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
-rustc_passes = { path = "../librustc_passes" }
-rustc_plugin = { path = "../librustc_plugin" }
-rustc_privacy = { path = "../librustc_privacy" }
-rustc_resolve = { path = "../librustc_resolve" }
 rustc_save_analysis = { path = "../librustc_save_analysis" }
-rustc_traits = { path = "../librustc_traits" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
-rustc_typeck = { path = "../librustc_typeck" }
 rustc_interface = { path = "../librustc_interface" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
-smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 syntax_pos = { path = "../libsyntax_pos" }
