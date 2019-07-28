@@ -815,7 +815,7 @@ impl<T> Rc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.dealloc(self.mem, self.layout.clone());
+                    Global.dealloc(self.mem, self.layout);
                 }
             }
         }

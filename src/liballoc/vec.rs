@@ -56,6 +56,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::array::LengthAtMost32;
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{self, Hash};
@@ -2171,47 +2172,36 @@ impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
 }
 
 macro_rules! __impl_slice_eq1 {
-    ($Lhs: ty, $Rhs: ty) => {
-        __impl_slice_eq1! { $Lhs, $Rhs, Sized }
-    };
-    ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
+    ([$($vars:tt)*] $lhs:ty, $rhs:ty, $($constraints:tt)*) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
+        impl<A, B, $($vars)*> PartialEq<$rhs> for $lhs
+        where
+            A: PartialEq<B>,
+            $($constraints)*
+        {
             #[inline]
-            fn eq(&self, other: &$Rhs) -> bool { self[..] == other[..] }
+            fn eq(&self, other: &$rhs) -> bool { self[..] == other[..] }
             #[inline]
-            fn ne(&self, other: &$Rhs) -> bool { self[..] != other[..] }
+            fn ne(&self, other: &$rhs) -> bool { self[..] != other[..] }
         }
     }
 }
 
-__impl_slice_eq1! { Vec<A>, Vec<B> }
-__impl_slice_eq1! { Vec<A>, &'b [B] }
-__impl_slice_eq1! { Vec<A>, &'b mut [B] }
-__impl_slice_eq1! { Cow<'a, [A]>, &'b [B], Clone }
-__impl_slice_eq1! { Cow<'a, [A]>, &'b mut [B], Clone }
-__impl_slice_eq1! { Cow<'a, [A]>, Vec<B>, Clone }
+__impl_slice_eq1! { [] Vec<A>, Vec<B>, }
+__impl_slice_eq1! { [] Vec<A>, &[B], }
+__impl_slice_eq1! { [] Vec<A>, &mut [B], }
+__impl_slice_eq1! { [] Cow<'_, [A]>, &[B], A: Clone }
+__impl_slice_eq1! { [] Cow<'_, [A]>, &mut [B], A: Clone }
+__impl_slice_eq1! { [] Cow<'_, [A]>, Vec<B>, A: Clone }
+__impl_slice_eq1! { [const N: usize] Vec<A>, [B; N], [B; N]: LengthAtMost32 }
+__impl_slice_eq1! { [const N: usize] Vec<A>, &[B; N], [B; N]: LengthAtMost32 }
 
-macro_rules! array_impls {
-    ($($N: expr)+) => {
-        $(
-            // NOTE: some less important impls are omitted to reduce code bloat
-            __impl_slice_eq1! { Vec<A>, [B; $N] }
-            __impl_slice_eq1! { Vec<A>, &'b [B; $N] }
-            // __impl_slice_eq1! { Vec<A>, &'b mut [B; $N] }
-            // __impl_slice_eq1! { Cow<'a, [A]>, [B; $N], Clone }
-            // __impl_slice_eq1! { Cow<'a, [A]>, &'b [B; $N], Clone }
-            // __impl_slice_eq1! { Cow<'a, [A]>, &'b mut [B; $N], Clone }
-        )+
-    }
-}
-
-array_impls! {
-     0  1  2  3  4  5  6  7  8  9
-    10 11 12 13 14 15 16 17 18 19
-    20 21 22 23 24 25 26 27 28 29
-    30 31 32
-}
+// NOTE: some less important impls are omitted to reduce code bloat
+// FIXME(Centril): Reconsider this?
+//__impl_slice_eq1! { [const N: usize] Vec<A>, &mut [B; N], [B; N]: LengthAtMost32 }
+//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, [B; N], [B; N]: LengthAtMost32 }
+//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &[B; N], [B; N]: LengthAtMost32 }
+//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &mut [B; N], [B; N]: LengthAtMost32 }
 
 /// Implements comparison of vectors, lexicographically.
 #[stable(feature = "rust1", since = "1.0.0")]

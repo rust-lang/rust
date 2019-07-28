@@ -1140,19 +1140,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 bug!("try_report_cannot_return_reference_to_local: not a local")
             };
             match self.body.local_kind(*local) {
-                LocalKind::ReturnPointer | LocalKind::Temp => {
-                    (
-                        "temporary value".to_string(),
-                        "temporary value created here".to_string(),
-                    )
-                }
-                LocalKind::Arg => {
-                    (
-                        "function parameter".to_string(),
-                        "function parameter borrowed here".to_string(),
-                    )
-                },
-                LocalKind::Var => bug!("local variable without a name"),
+                LocalKind::ReturnPointer | LocalKind::Temp => (
+                    "temporary value".to_string(),
+                    "temporary value created here".to_string(),
+                ),
+                LocalKind::Arg => (
+                    "function parameter".to_string(),
+                    "function parameter borrowed here".to_string(),
+                ),
+                LocalKind::Var => (
+                    "local binding".to_string(),
+                    "local binding introduced here".to_string(),
+                ),
             }
         };
 

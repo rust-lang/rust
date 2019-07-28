@@ -42,6 +42,13 @@ commit_toolstate_change() {
     MESSAGE_FILE="$1"
     shift
     for RETRY_COUNT in 1 2 3 4 5; do
+        # Call the callback.
+        # - If we are in the `auto` branch (pre-landing), this is called from `checktools.sh` and
+        #   the callback is `change_toolstate` in that file. The purpose of this is to publish the
+        #   test results (the new commit-to-toolstate mapping) in the toolstate repo.
+        # - If we are in the `master` branch (post-landing), this is called by the CI pipeline
+        #   and the callback is `src/tools/publish_toolstate.py`. The purpose is to publish
+        #   the new "current" toolstate in the toolstate repo.
         "$@"
         # `git commit` failing means nothing to commit.
         FAILURE=0

@@ -890,14 +890,13 @@ impl<'a> Parser<'a> {
     /// Parses a sequence, including the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_seq_to_end<T, F>(&mut self,
-                                  ket: &TokenKind,
-                                  sep: SeqSep,
-                                  f: F)
-                                  -> PResult<'a, Vec<T>> where
-        F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
-    {
-        let (val, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
+    pub fn parse_seq_to_end<T>(
+        &mut self,
+        ket: &TokenKind,
+        sep: SeqSep,
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
+    ) -> PResult<'a, Vec<T>> {
+        let (val, _, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
         if !recovered {
             self.bump();
         }
@@ -907,39 +906,39 @@ impl<'a> Parser<'a> {
     /// Parses a sequence, not including the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_seq_to_before_end<T, F>(
+    pub fn parse_seq_to_before_end<T>(
         &mut self,
         ket: &TokenKind,
         sep: SeqSep,
-        f: F,
-    ) -> PResult<'a, (Vec<T>, bool)>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>
-    {
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool, bool)> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
 
-    crate fn parse_seq_to_before_tokens<T, F>(
+    fn expect_any_with_type(&mut self, kets: &[&TokenKind], expect: TokenExpectType) -> bool {
+        kets.iter().any(|k| {
+            match expect {
+                TokenExpectType::Expect => self.check(k),
+                TokenExpectType::NoExpect => self.token == **k,
+            }
+        })
+    }
+
+    crate fn parse_seq_to_before_tokens<T>(
         &mut self,
         kets: &[&TokenKind],
         sep: SeqSep,
         expect: TokenExpectType,
-        mut f: F,
-    ) -> PResult<'a, (Vec<T>, bool /* recovered */)>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>
-    {
+        mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool /* trailing */, bool /* recovered */)> {
         let mut first = true;
         let mut recovered = false;
+        let mut trailing = false;
         let mut v = vec![];
-        while !kets.iter().any(|k| {
-                match expect {
-                    TokenExpectType::Expect => self.check(k),
-                    TokenExpectType::NoExpect => self.token == **k,
-                }
-            }) {
-            match self.token.kind {
-                token::CloseDelim(..) | token::Eof => break,
-                _ => {}
-            };
+        while !self.expect_any_with_type(kets, expect) {
+            if let token::CloseDelim(..) | token::Eof = self.token.kind {
+                break
+            }
             if let Some(ref t) = sep.sep {
                 if first {
                     first = false;
@@ -973,12 +972,8 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            if sep.trailing_sep_allowed && kets.iter().any(|k| {
-                match expect {
-                    TokenExpectType::Expect => self.check(k),
-                    TokenExpectType::NoExpect => self.token == **k,
-                }
-            }) {
+            if sep.trailing_sep_allowed && self.expect_any_with_type(kets, expect) {
+                trailing = true;
                 break;
             }
 
@@ -986,27 +981,45 @@ impl<'a> Parser<'a> {
             v.push(t);
         }
 
-        Ok((v, recovered))
+        Ok((v, trailing, recovered))
     }
 
     /// Parses a sequence, including the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    fn parse_unspanned_seq<T, F>(
+    fn parse_unspanned_seq<T>(
         &mut self,
         bra: &TokenKind,
         ket: &TokenKind,
         sep: SeqSep,
-        f: F,
-    ) -> PResult<'a, Vec<T>> where
-        F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    {
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool)> {
         self.expect(bra)?;
-        let (result, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
+        let (result, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
         if !recovered {
             self.eat(ket);
         }
-        Ok(result)
+        Ok((result, trailing))
+    }
+
+    fn parse_delim_comma_seq<T>(
+        &mut self,
+        delim: DelimToken,
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool)> {
+        self.parse_unspanned_seq(
+            &token::OpenDelim(delim),
+            &token::CloseDelim(delim),
+            SeqSep::trailing_allowed(token::Comma),
+            f,
+        )
+    }
+
+    fn parse_paren_comma_seq<T>(
+        &mut self,
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, bool)> {
+        self.parse_delim_comma_seq(token::Paren, f)
     }
 
     /// Advance the parser by one token
@@ -1804,15 +1817,7 @@ impl<'a> Parser<'a> {
                 AngleBracketedArgs { args, constraints, span }.into()
             } else {
                 // `(T, U) -> R`
-                self.bump(); // `(`
-                let (inputs, recovered) = self.parse_seq_to_before_tokens(
-                    &[&token::CloseDelim(token::Paren)],
-                    SeqSep::trailing_allowed(token::Comma),
-                    TokenExpectType::Expect,
-                    |p| p.parse_ty())?;
-                if !recovered {
-                    self.bump(); // `)`
-                }
+                let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
                 let span = lo.to(self.prev_span);
                 let output = if self.eat(&token::RArrow) {
                     Some(self.parse_ty_common(false, false, false)?)
@@ -2516,12 +2521,7 @@ impl<'a> Parser<'a> {
         Ok(match self.token.kind {
             token::OpenDelim(token::Paren) => {
                 // Method call `expr.f()`
-                let mut args = self.parse_unspanned_seq(
-                    &token::OpenDelim(token::Paren),
-                    &token::CloseDelim(token::Paren),
-                    SeqSep::trailing_allowed(token::Comma),
-                    |p| Ok(p.parse_expr()?)
-                )?;
+                let mut args = self.parse_paren_expr_seq()?;
                 args.insert(0, self_arg);
 
                 let span = lo.to(self.prev_span);
@@ -2606,12 +2606,7 @@ impl<'a> Parser<'a> {
             match self.token.kind {
                 // expr(...)
                 token::OpenDelim(token::Paren) => {
-                    let seq = self.parse_unspanned_seq(
-                        &token::OpenDelim(token::Paren),
-                        &token::CloseDelim(token::Paren),
-                        SeqSep::trailing_allowed(token::Comma),
-                        |p| Ok(p.parse_expr()?)
-                    ).map(|es| {
+                    let seq = self.parse_paren_expr_seq().map(|es| {
                         let nd = self.mk_call(e, es);
                         let hi = self.prev_span;
                         self.mk_expr(lo.to(hi), nd, ThinVec::new())
@@ -2633,6 +2628,10 @@ impl<'a> Parser<'a> {
             }
         }
         return Ok(e);
+    }
+
+    fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
+        self.parse_paren_comma_seq(|p| p.parse_expr()).map(|(r, _)| r)
     }
 
     crate fn process_potential_macro_variable(&mut self) {
@@ -3536,122 +3535,6 @@ impl<'a> Parser<'a> {
         };
     }
 
-    // Parses a parenthesized list of patterns like
-    // `()`, `(p)`, `(p,)`, `(p, q)`, or `(p, .., q)`. Returns:
-    // - a vector of the patterns that were parsed
-    // - an option indicating the index of the `..` element
-    // - a boolean indicating whether a trailing comma was present.
-    // Trailing commas are significant because (p) and (p,) are different patterns.
-    fn parse_parenthesized_pat_list(&mut self) -> PResult<'a, (Vec<P<Pat>>, Option<usize>, bool)> {
-        self.expect(&token::OpenDelim(token::Paren))?;
-        let result = match self.parse_pat_list() {
-            Ok(result) => result,
-            Err(mut err) => { // recover from parse error in tuple pattern list
-                err.emit();
-                self.consume_block(token::Paren);
-                return Ok((vec![], Some(0), false));
-            }
-        };
-        self.expect(&token::CloseDelim(token::Paren))?;
-        Ok(result)
-    }
-
-    fn parse_pat_list(&mut self) -> PResult<'a, (Vec<P<Pat>>, Option<usize>, bool)> {
-        let mut fields = Vec::new();
-        let mut ddpos = None;
-        let mut prev_dd_sp = None;
-        let mut trailing_comma = false;
-        loop {
-            if self.eat(&token::DotDot) {
-                if ddpos.is_none() {
-                    ddpos = Some(fields.len());
-                    prev_dd_sp = Some(self.prev_span);
-                } else {
-                    // Emit a friendly error, ignore `..` and continue parsing
-                    let mut err = self.struct_span_err(
-                        self.prev_span,
-                        "`..` can only be used once per tuple or tuple struct pattern",
-                    );
-                    err.span_label(self.prev_span, "can only be used once per pattern");
-                    if let Some(sp) = prev_dd_sp {
-                        err.span_label(sp, "previously present here");
-                    }
-                    err.emit();
-                }
-            } else if !self.check(&token::CloseDelim(token::Paren)) {
-                fields.push(self.parse_pat(None)?);
-            } else {
-                break
-            }
-
-            trailing_comma = self.eat(&token::Comma);
-            if !trailing_comma {
-                break
-            }
-        }
-
-        if ddpos == Some(fields.len()) && trailing_comma {
-            // `..` needs to be followed by `)` or `, pat`, `..,)` is disallowed.
-            let msg = "trailing comma is not permitted after `..`";
-            self.struct_span_err(self.prev_span, msg)
-                .span_label(self.prev_span, msg)
-                .emit();
-        }
-
-        Ok((fields, ddpos, trailing_comma))
-    }
-
-    fn parse_pat_vec_elements(
-        &mut self,
-    ) -> PResult<'a, (Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>)> {
-        let mut before = Vec::new();
-        let mut slice = None;
-        let mut after = Vec::new();
-        let mut first = true;
-        let mut before_slice = true;
-
-        while self.token != token::CloseDelim(token::Bracket) {
-            if first {
-                first = false;
-            } else {
-                self.expect(&token::Comma)?;
-
-                if self.token == token::CloseDelim(token::Bracket)
-                        && (before_slice || !after.is_empty()) {
-                    break
-                }
-            }
-
-            if before_slice {
-                if self.eat(&token::DotDot) {
-
-                    if self.check(&token::Comma) ||
-                            self.check(&token::CloseDelim(token::Bracket)) {
-                        slice = Some(P(Pat {
-                            id: ast::DUMMY_NODE_ID,
-                            node: PatKind::Wild,
-                            span: self.prev_span,
-                        }));
-                        before_slice = false;
-                    }
-                    continue
-                }
-            }
-
-            let subpat = self.parse_pat(None)?;
-            if before_slice && self.eat(&token::DotDot) {
-                slice = Some(subpat);
-                before_slice = false;
-            } else if before_slice {
-                before.push(subpat);
-            } else {
-                after.push(subpat);
-            }
-        }
-
-        Ok((before, slice, after))
-    }
-
     fn parse_pat_field(
         &mut self,
         lo: Span,
@@ -3847,20 +3730,34 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // helper function to decide whether to parse as ident binding or to try to do
-    // something more complex like range patterns
+    /// Is the current token suitable as the start of a range patterns end?
+    fn is_pat_range_end_start(&self) -> bool {
+        self.token.is_path_start() // e.g. `MY_CONST`;
+            || self.token == token::Dot // e.g. `.5` for recovery;
+            || self.token.can_begin_literal_or_bool() // e.g. `42`.
+    }
+
+    // Helper function to decide whether to parse as ident binding
+    // or to try to do something more complex like range patterns.
     fn parse_as_ident(&mut self) -> bool {
         self.look_ahead(1, |t| match t.kind {
             token::OpenDelim(token::Paren) | token::OpenDelim(token::Brace) |
-            token::DotDotDot | token::DotDotEq | token::ModSep | token::Not => Some(false),
-            // ensure slice patterns [a, b.., c] and [a, b, c..] don't go into the
-            // range pattern branch
-            token::DotDot => None,
-            _ => Some(true),
-        }).unwrap_or_else(|| self.look_ahead(2, |t| match t.kind {
-            token::Comma | token::CloseDelim(token::Bracket) => true,
-            _ => false,
-        }))
+            token::DotDotDot | token::DotDotEq | token::DotDot |
+            token::ModSep | token::Not => false,
+            _ => true,
+        })
+    }
+
+    /// Parse and throw away a parentesized comma separated
+    /// sequence of patterns until `)` is reached.
+    fn skip_pat_list(&mut self) -> PResult<'a, ()> {
+        while !self.check(&token::CloseDelim(token::Paren)) {
+            self.parse_pat(None)?;
+            if !self.eat(&token::Comma) {
+                return Ok(())
+            }
+        }
+        Ok(())
     }
 
     /// A wrapper around `parse_pat` with some special error handling for the
@@ -3876,7 +3773,7 @@ impl<'a> Parser<'a> {
             // later.
             let comma_span = self.token.span;
             self.bump();
-            if let Err(mut err) = self.parse_pat_list() {
+            if let Err(mut err) = self.skip_pat_list() {
                 // We didn't expect this to work anyway; we just wanted
                 // to advance to the end of the comma-sequence so we know
                 // the span to suggest parenthesizing
@@ -3908,6 +3805,53 @@ impl<'a> Parser<'a> {
         self.parse_pat_with_range_pat(true, expected)
     }
 
+    /// Parse a range-to pattern, e.g. `..X` and `..=X` for recovery.
+    fn parse_pat_range_to(&mut self, re: RangeEnd, form: &str) -> PResult<'a, PatKind> {
+        let lo = self.prev_span;
+        let end = self.parse_pat_range_end()?;
+        let range_span = lo.to(end.span);
+        let begin = self.mk_expr(range_span, ExprKind::Err, ThinVec::new());
+
+        self.diagnostic()
+            .struct_span_err(range_span, &format!("`{}X` range patterns are not supported", form))
+            .span_suggestion(
+                range_span,
+                "try using the minimum value for the type",
+                format!("MIN{}{}", form, pprust::expr_to_string(&end)),
+                Applicability::HasPlaceholders,
+            )
+            .emit();
+
+        Ok(PatKind::Range(begin, end, respan(lo, re)))
+    }
+
+    /// Parse the end of a `X..Y`, `X..=Y`, or `X...Y` range pattern  or recover
+    /// if that end is missing treating it as `X..`, `X..=`, or `X...` respectively.
+    fn parse_pat_range_end_opt(&mut self, begin: &Expr, form: &str) -> PResult<'a, P<Expr>> {
+        if self.is_pat_range_end_start() {
+            // Parsing e.g. `X..=Y`.
+            self.parse_pat_range_end()
+        } else {
+            // Parsing e.g. `X..`.
+            let range_span = begin.span.to(self.prev_span);
+
+            self.diagnostic()
+                .struct_span_err(
+                    range_span,
+                    &format!("`X{}` range patterns are not supported", form),
+                )
+                .span_suggestion(
+                    range_span,
+                    "try using the maximum value for the type",
+                    format!("{}{}MAX", pprust::expr_to_string(&begin), form),
+                    Applicability::HasPlaceholders,
+                )
+                .emit();
+
+            Ok(self.mk_expr(range_span, ExprKind::Err, ThinVec::new()))
+        }
+    }
+
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
     /// allowed).
     fn parse_pat_with_range_pat(
@@ -3934,20 +3878,41 @@ impl<'a> Parser<'a> {
                 pat = PatKind::Ref(subpat, mutbl);
             }
             token::OpenDelim(token::Paren) => {
-                // Parse (pat,pat,pat,...) as tuple pattern
-                let (fields, ddpos, trailing_comma) = self.parse_parenthesized_pat_list()?;
-                pat = if fields.len() == 1 && ddpos.is_none() && !trailing_comma {
+                // Parse a tuple or parenthesis pattern.
+                let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
+
+                // Here, `(pat,)` is a tuple pattern.
+                // For backward compatibility, `(..)` is a tuple pattern as well.
+                pat = if fields.len() == 1 && !(trailing_comma || fields[0].is_rest()) {
                     PatKind::Paren(fields.into_iter().nth(0).unwrap())
                 } else {
-                    PatKind::Tuple(fields, ddpos)
+                    PatKind::Tuple(fields)
                 };
             }
             token::OpenDelim(token::Bracket) => {
-                // Parse [pat,pat,...] as slice pattern
+                // Parse `[pat, pat,...]` as a slice pattern.
+                let (slice, _) = self.parse_delim_comma_seq(token::Bracket, |p| p.parse_pat(None))?;
+                pat = PatKind::Slice(slice);
+            }
+            token::DotDot => {
                 self.bump();
-                let (before, slice, after) = self.parse_pat_vec_elements()?;
-                self.expect(&token::CloseDelim(token::Bracket))?;
-                pat = PatKind::Slice(before, slice, after);
+                pat = if self.is_pat_range_end_start() {
+                    // Parse `..42` for recovery.
+                    self.parse_pat_range_to(RangeEnd::Excluded, "..")?
+                } else {
+                    // A rest pattern `..`.
+                    PatKind::Rest
+                };
+            }
+            token::DotDotEq => {
+                // Parse `..=42` for recovery.
+                self.bump();
+                pat = self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotEq), "..=")?;
+            }
+            token::DotDotDot => {
+                // Parse `...42` for recovery.
+                self.bump();
+                pat = self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotDot), "...")?;
             }
             // At this point, token != &, &&, (, [
             _ => if self.eat_keyword(kw::Underscore) {
@@ -4004,10 +3969,10 @@ impl<'a> Parser<'a> {
                         pat = PatKind::Mac(mac);
                     }
                     token::DotDotDot | token::DotDotEq | token::DotDot => {
-                        let end_kind = match self.token.kind {
-                            token::DotDot => RangeEnd::Excluded,
-                            token::DotDotDot => RangeEnd::Included(RangeSyntax::DotDotDot),
-                            token::DotDotEq => RangeEnd::Included(RangeSyntax::DotDotEq),
+                        let (end_kind, form) = match self.token.kind {
+                            token::DotDot => (RangeEnd::Excluded, ".."),
+                            token::DotDotDot => (RangeEnd::Included(RangeSyntax::DotDotDot), "..."),
+                            token::DotDotEq => (RangeEnd::Included(RangeSyntax::DotDotEq), "..="),
                             _ => panic!("can only parse `..`/`...`/`..=` for ranges \
                                          (checked above)"),
                         };
@@ -4016,9 +3981,8 @@ impl<'a> Parser<'a> {
                         let span = lo.to(self.prev_span);
                         let begin = self.mk_expr(span, ExprKind::Path(qself, path), ThinVec::new());
                         self.bump();
-                        let end = self.parse_pat_range_end()?;
-                        let op = Spanned { span: op_span, node: end_kind };
-                        pat = PatKind::Range(begin, end, op);
+                        let end = self.parse_pat_range_end_opt(&begin, form)?;
+                        pat = PatKind::Range(begin, end, respan(op_span, end_kind));
                     }
                     token::OpenDelim(token::Brace) => {
                         if qself.is_some() {
@@ -4045,8 +4009,8 @@ impl<'a> Parser<'a> {
                             return Err(err);
                         }
                         // Parse tuple struct or enum pattern
-                        let (fields, ddpos, _) = self.parse_parenthesized_pat_list()?;
-                        pat = PatKind::TupleStruct(path, fields, ddpos)
+                        let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
+                        pat = PatKind::TupleStruct(path, fields)
                     }
                     _ => pat = PatKind::Path(qself, path),
                 }
@@ -4057,19 +4021,18 @@ impl<'a> Parser<'a> {
                         let op_span = self.token.span;
                         if self.check(&token::DotDot) || self.check(&token::DotDotEq) ||
                                 self.check(&token::DotDotDot) {
-                            let end_kind = if self.eat(&token::DotDotDot) {
-                                RangeEnd::Included(RangeSyntax::DotDotDot)
+                            let (end_kind, form) = if self.eat(&token::DotDotDot) {
+                                (RangeEnd::Included(RangeSyntax::DotDotDot), "...")
                             } else if self.eat(&token::DotDotEq) {
-                                RangeEnd::Included(RangeSyntax::DotDotEq)
+                                (RangeEnd::Included(RangeSyntax::DotDotEq), "..=")
                             } else if self.eat(&token::DotDot) {
-                                RangeEnd::Excluded
+                                (RangeEnd::Excluded, "..")
                             } else {
                                 panic!("impossible case: we already matched \
                                         on a range-operator token")
                             };
-                            let end = self.parse_pat_range_end()?;
-                            let op = Spanned { span: op_span, node: end_kind };
-                            pat = PatKind::Range(begin, end, op);
+                            let end = self.parse_pat_range_end_opt(&begin, form)?;
+                            pat = PatKind::Range(begin, end, respan(op_span, end_kind))
                         } else {
                             pat = PatKind::Lit(begin);
                         }
@@ -5359,59 +5322,48 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_args(&mut self, named_args: bool, allow_c_variadic: bool)
                      -> PResult<'a, (Vec<Arg> , bool)> {
-        self.expect(&token::OpenDelim(token::Paren))?;
-
         let sp = self.token.span;
         let mut c_variadic = false;
-        let (args, recovered): (Vec<Option<Arg>>, bool) =
-            self.parse_seq_to_before_end(
-                &token::CloseDelim(token::Paren),
-                SeqSep::trailing_allowed(token::Comma),
-                |p| {
-                    let do_not_enforce_named_arguments_for_c_variadic =
-                        |token: &token::Token| -> bool {
-                            if token == &token::DotDotDot {
-                                false
-                            } else {
-                                named_args
-                            }
-                        };
-                    match p.parse_arg_general(
-                        false,
-                        allow_c_variadic,
-                        do_not_enforce_named_arguments_for_c_variadic
-                    ) {
-                        Ok(arg) => {
-                            if let TyKind::CVarArgs = arg.ty.node {
-                                c_variadic = true;
-                                if p.token != token::CloseDelim(token::Paren) {
-                                    let span = p.token.span;
-                                    p.span_err(span,
-                                        "`...` must be the last argument of a C-variadic function");
-                                    Ok(None)
-                                } else {
-                                    Ok(Some(arg))
-                                }
-                            } else {
-                                Ok(Some(arg))
-                            }
-                        },
-                        Err(mut e) => {
-                            e.emit();
-                            let lo = p.prev_span;
-                            // Skip every token until next possible arg or end.
-                            p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
-                            // Create a placeholder argument for proper arg count (issue #34264).
-                            let span = lo.to(p.prev_span);
-                            Ok(Some(dummy_arg(Ident::new(kw::Invalid, span))))
-                        }
+        let (args, _): (Vec<Option<Arg>>, _) = self.parse_paren_comma_seq(|p| {
+            let do_not_enforce_named_arguments_for_c_variadic =
+                |token: &token::Token| -> bool {
+                    if token == &token::DotDotDot {
+                        false
+                    } else {
+                        named_args
                     }
+                };
+            match p.parse_arg_general(
+                false,
+                allow_c_variadic,
+                do_not_enforce_named_arguments_for_c_variadic
+            ) {
+                Ok(arg) => {
+                    if let TyKind::CVarArgs = arg.ty.node {
+                        c_variadic = true;
+                        if p.token != token::CloseDelim(token::Paren) {
+                            let span = p.token.span;
+                            p.span_err(span,
+                                "`...` must be the last argument of a C-variadic function");
+                            Ok(None)
+                        } else {
+                            Ok(Some(arg))
+                        }
+                    } else {
+                        Ok(Some(arg))
+                    }
+                },
+                Err(mut e) => {
+                    e.emit();
+                    let lo = p.prev_span;
+                    // Skip every token until next possible arg or end.
+                    p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
+                    // Create a placeholder argument for proper arg count (issue #34264).
+                    let span = lo.to(p.prev_span);
+                    Ok(Some(dummy_arg(Ident::new(kw::Invalid, span))))
                 }
-            )?;
-
-        if !recovered {
-            self.eat(&token::CloseDelim(token::Paren));
-        }
+            }
+        })?;
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
 
@@ -5573,7 +5525,7 @@ impl<'a> Parser<'a> {
                 (vec![self_arg], false)
             } else if self.eat(&token::Comma) {
                 let mut fn_inputs = vec![self_arg];
-                let (mut input, recovered) = self.parse_seq_to_before_end(
+                let (mut input, _, recovered) = self.parse_seq_to_before_end(
                     &token::CloseDelim(token::Paren), sep, parse_arg_fn)?;
                 fn_inputs.append(&mut input);
                 (fn_inputs, recovered)
@@ -5584,7 +5536,9 @@ impl<'a> Parser<'a> {
                 }
             }
         } else {
-            self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?
+            let (input, _, recovered) =
+                self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?;
+            (input, recovered)
         };
 
         if !recovered {
@@ -6185,26 +6139,20 @@ impl<'a> Parser<'a> {
     fn parse_tuple_struct_body(&mut self) -> PResult<'a, Vec<StructField>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
-        let fields = self.parse_unspanned_seq(
-            &token::OpenDelim(token::Paren),
-            &token::CloseDelim(token::Paren),
-            SeqSep::trailing_allowed(token::Comma),
-            |p| {
-                let attrs = p.parse_outer_attributes()?;
-                let lo = p.token.span;
-                let vis = p.parse_visibility(true)?;
-                let ty = p.parse_ty()?;
-                Ok(StructField {
-                    span: lo.to(ty.span),
-                    vis,
-                    ident: None,
-                    id: ast::DUMMY_NODE_ID,
-                    ty,
-                    attrs,
-                })
-            })?;
-
-        Ok(fields)
+        self.parse_paren_comma_seq(|p| {
+            let attrs = p.parse_outer_attributes()?;
+            let lo = p.token.span;
+            let vis = p.parse_visibility(true)?;
+            let ty = p.parse_ty()?;
+            Ok(StructField {
+                span: lo.to(ty.span),
+                vis,
+                ident: None,
+                id: ast::DUMMY_NODE_ID,
+                ty,
+                attrs,
+            })
+        }).map(|(r, _)| r)
     }
 
     /// Parses a structure field declaration.
@@ -7786,11 +7734,8 @@ impl<'a> Parser<'a> {
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, Vec<(UseTree, ast::NodeId)>> {
-        self.parse_unspanned_seq(&token::OpenDelim(token::Brace),
-                                 &token::CloseDelim(token::Brace),
-                                 SeqSep::trailing_allowed(token::Comma), |this| {
-            Ok((this.parse_use_tree()?, ast::DUMMY_NODE_ID))
-        })
+        self.parse_delim_comma_seq(token::Brace, |p| Ok((p.parse_use_tree()?, ast::DUMMY_NODE_ID)))
+            .map(|(r, _)| r)
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {

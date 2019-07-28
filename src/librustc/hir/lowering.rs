@@ -58,6 +58,7 @@ use std::mem;
 use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast;
+use syntax::ptr::P as AstP;
 use syntax::ast::*;
 use syntax::errors;
 use syntax::ext::hygiene::ExpnId;
@@ -467,7 +468,7 @@ impl<'a> LoweringContext<'a> {
             fn visit_pat(&mut self, p: &'tcx Pat) {
                 match p.node {
                     // Doesn't generate a HIR node
-                    PatKind::Paren(..) => {},
+                    PatKind::Paren(..) | PatKind::Rest => {},
                     _ => {
                         if let Some(owner) = self.hir_id_owner {
                             self.lctx.lower_node_id_with_owner(p.id, owner);
@@ -1156,7 +1157,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         capture_clause: CaptureBy,
         closure_node_id: NodeId,
-        ret_ty: Option<syntax::ptr::P<Ty>>,
+        ret_ty: Option<AstP<Ty>>,
         span: Span,
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
@@ -4171,33 +4172,11 @@ impl<'a> LoweringContext<'a> {
         let node = match p.node {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
-                match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
-                    // `None` can occur in body-less function signatures
-                    res @ None | res @ Some(Res::Local(_)) => {
-                        let canonical_id = match res {
-                            Some(Res::Local(id)) => id,
-                            _ => p.id,
-                        };
-
-                        hir::PatKind::Binding(
-                            self.lower_binding_mode(binding_mode),
-                            self.lower_node_id(canonical_id),
-                            ident,
-                            sub.as_ref().map(|x| self.lower_pat(x)),
-                        )
-                    }
-                    Some(res) => hir::PatKind::Path(hir::QPath::Resolved(
-                        None,
-                        P(hir::Path {
-                            span: ident.span,
-                            res: self.lower_res(res),
-                            segments: hir_vec![hir::PathSegment::from_ident(ident)],
-                        }),
-                    )),
-                }
+                let lower_sub = |this: &mut Self| sub.as_ref().map(|x| this.lower_pat(x));
+                self.lower_pat_ident(p, binding_mode, ident, lower_sub)
             }
             PatKind::Lit(ref e) => hir::PatKind::Lit(P(self.lower_expr(e))),
-            PatKind::TupleStruct(ref path, ref pats, ddpos) => {
+            PatKind::TupleStruct(ref path, ref pats) => {
                 let qpath = self.lower_qpath(
                     p.id,
                     &None,
@@ -4205,11 +4184,8 @@ impl<'a> LoweringContext<'a> {
                     ParamMode::Optional,
                     ImplTraitContext::disallowed(),
                 );
-                hir::PatKind::TupleStruct(
-                    qpath,
-                    pats.iter().map(|x| self.lower_pat(x)).collect(),
-                    ddpos,
-                )
+                let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
+                hir::PatKind::TupleStruct(qpath, pats, ddpos)
             }
             PatKind::Path(ref qself, ref path) => {
                 let qpath = self.lower_qpath(
@@ -4246,8 +4222,9 @@ impl<'a> LoweringContext<'a> {
                     .collect();
                 hir::PatKind::Struct(qpath, fs, etc)
             }
-            PatKind::Tuple(ref elts, ddpos) => {
-                hir::PatKind::Tuple(elts.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
+            PatKind::Tuple(ref pats) => {
+                let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
+                hir::PatKind::Tuple(pats, ddpos)
             }
             PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
             PatKind::Ref(ref inner, mutbl) => {
@@ -4258,20 +4235,165 @@ impl<'a> LoweringContext<'a> {
                 P(self.lower_expr(e2)),
                 self.lower_range_end(end),
             ),
-            PatKind::Slice(ref before, ref slice, ref after) => hir::PatKind::Slice(
-                before.iter().map(|x| self.lower_pat(x)).collect(),
-                slice.as_ref().map(|x| self.lower_pat(x)),
-                after.iter().map(|x| self.lower_pat(x)).collect(),
-            ),
+            PatKind::Slice(ref pats) => self.lower_pat_slice(pats),
+            PatKind::Rest => {
+                // If we reach here the `..` pattern is not semantically allowed.
+                self.ban_illegal_rest_pat(p.span)
+            }
             PatKind::Paren(ref inner) => return self.lower_pat(inner),
             PatKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
+        self.pat_with_node_id_of(p, node)
+    }
+
+    fn lower_pat_tuple(
+        &mut self,
+        pats: &[AstP<Pat>],
+        ctx: &str,
+    ) -> (HirVec<P<hir::Pat>>, Option<usize>) {
+        let mut elems = Vec::with_capacity(pats.len());
+        let mut rest = None;
+
+        let mut iter = pats.iter().enumerate();
+        while let Some((idx, pat)) = iter.next() {
+            // Interpret the first `..` pattern as a subtuple pattern.
+            if pat.is_rest() {
+                rest = Some((idx, pat.span));
+                break;
+            }
+            // It was not a subslice pattern so lower it normally.
+            elems.push(self.lower_pat(pat));
+        }
+
+        while let Some((_, pat)) = iter.next() {
+            // There was a previous subtuple pattern; make sure we don't allow more.
+            if pat.is_rest() {
+                self.ban_extra_rest_pat(pat.span, rest.unwrap().1, ctx);
+            } else {
+                elems.push(self.lower_pat(pat));
+            }
+        }
+
+        (elems.into(), rest.map(|(ddpos, _)| ddpos))
+    }
+
+    fn lower_pat_slice(&mut self, pats: &[AstP<Pat>]) -> hir::PatKind {
+        let mut before = Vec::new();
+        let mut after = Vec::new();
+        let mut slice = None;
+        let mut prev_rest_span = None;
+
+        let mut iter = pats.iter();
+        while let Some(pat) = iter.next() {
+            // Interpret the first `((ref mut?)? x @)? ..` pattern as a subslice pattern.
+            match pat.node {
+                PatKind::Rest => {
+                    prev_rest_span = Some(pat.span);
+                    slice = Some(self.pat_wild_with_node_id_of(pat));
+                    break;
+                },
+                PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
+                    prev_rest_span = Some(sub.span);
+                    let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
+                    let node = self.lower_pat_ident(pat, bm, ident, lower_sub);
+                    slice = Some(self.pat_with_node_id_of(pat, node));
+                    break;
+                },
+                _ => {}
+            }
+
+            // It was not a subslice pattern so lower it normally.
+            before.push(self.lower_pat(pat));
+        }
+
+        while let Some(pat) = iter.next() {
+            // There was a previous subslice pattern; make sure we don't allow more.
+            let rest_span = match pat.node {
+                PatKind::Rest => Some(pat.span),
+                PatKind::Ident(.., Some(ref sub)) if sub.is_rest() => {
+                    // The `HirValidator` is merciless; add a `_` pattern to avoid ICEs.
+                    after.push(self.pat_wild_with_node_id_of(pat));
+                    Some(sub.span)
+                },
+                _ => None,
+            };
+            if let Some(rest_span) = rest_span {
+                self.ban_extra_rest_pat(rest_span, prev_rest_span.unwrap(), "slice");
+            } else {
+                after.push(self.lower_pat(pat));
+            }
+        }
+
+        hir::PatKind::Slice(before.into(), slice, after.into())
+    }
+
+    fn lower_pat_ident(
+        &mut self,
+        p: &Pat,
+        binding_mode: &BindingMode,
+        ident: Ident,
+        lower_sub: impl FnOnce(&mut Self) -> Option<P<hir::Pat>>,
+    ) -> hir::PatKind {
+        match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
+            // `None` can occur in body-less function signatures
+            res @ None | res @ Some(Res::Local(_)) => {
+                let canonical_id = match res {
+                    Some(Res::Local(id)) => id,
+                    _ => p.id,
+                };
+
+                hir::PatKind::Binding(
+                    self.lower_binding_mode(binding_mode),
+                    self.lower_node_id(canonical_id),
+                    ident,
+                    lower_sub(self),
+                )
+            }
+            Some(res) => hir::PatKind::Path(hir::QPath::Resolved(
+                None,
+                P(hir::Path {
+                    span: ident.span,
+                    res: self.lower_res(res),
+                    segments: hir_vec![hir::PathSegment::from_ident(ident)],
+                }),
+            )),
+        }
+    }
+
+    fn pat_wild_with_node_id_of(&mut self, p: &Pat) -> P<hir::Pat> {
+        self.pat_with_node_id_of(p, hir::PatKind::Wild)
+    }
+
+    /// Construct a `Pat` with the `HirId` of `p.id` lowered.
+    fn pat_with_node_id_of(&mut self, p: &Pat, node: hir::PatKind) -> P<hir::Pat> {
         P(hir::Pat {
             hir_id: self.lower_node_id(p.id),
             node,
             span: p.span,
         })
+    }
+
+    /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
+    fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
+        self.diagnostic()
+            .struct_span_err(sp, &format!("`..` can only be used once per {} pattern", ctx))
+            .span_label(sp, &format!("can only be used once per {} pattern", ctx))
+            .span_label(prev_sp, "previously used here")
+            .emit();
+    }
+
+    /// Used to ban the `..` pattern in places it shouldn't be semantically.
+    fn ban_illegal_rest_pat(&self, sp: Span) -> hir::PatKind {
+        self.diagnostic()
+            .struct_span_err(sp, "`..` patterns are not allowed here")
+            .note("only allowed in tuple, tuple struct, and slice patterns")
+            .emit();
+
+        // We're not in a list context so `..` can be reasonably treated
+        // as `_` because it should always be valid and roughly matches the
+        // intent of `..` (notice that the rest of a single slot is that slot).
+        hir::PatKind::Wild
     }
 
     fn lower_range_end(&mut self, e: &RangeEnd) -> hir::RangeEnd {
