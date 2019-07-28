@@ -763,7 +763,9 @@ where
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
 
-        let ptr = match self.check_mplace_access(dest, None)? {
+        let ptr = match self.check_mplace_access(dest, None)
+            .expect("places should be checked on creation")
+        {
             Some(ptr) => ptr,
             None => return Ok(()), // zero-sized access
         };
@@ -866,8 +868,10 @@ where
         });
         assert_eq!(src.meta, dest.meta, "Can only copy between equally-sized instances");
 
-        let src = self.check_mplace_access(src, Some(size))?;
-        let dest = self.check_mplace_access(dest, Some(size))?;
+        let src = self.check_mplace_access(src, Some(size))
+            .expect("places should be checked on creation");
+        let dest = self.check_mplace_access(dest, Some(size))
+            .expect("places should be checked on creation");
         let (src_ptr, dest_ptr) = match (src, dest) {
             (Some(src_ptr), Some(dest_ptr)) => (src_ptr, dest_ptr),
             (None, None) => return Ok(()), // zero-sized copy
