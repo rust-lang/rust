@@ -308,16 +308,8 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
-        let mut place = self.ref_to_mplace(val)?;
-        let (size, align) = self.size_and_align_of_mplace(place)?
-            .unwrap_or((place.layout.size, place.layout.align.abi));
-        assert!(place.mplace.align <= align, "dynamic alignment less strict than static one?");
-        place.mplace.align = align; // maximally strict checking
-        // When dereferencing a pointer, it must be non-NULL, aligned, and live.
-        if let Some(ptr) = self.check_mplace_access(place, Some(size))? {
-            place.mplace.ptr = ptr.into();
-        }
-        Ok(place)
+        let place = self.ref_to_mplace(val)?;
+        self.mplace_access_checked(place)
     }
 
     /// Check if the given place is good for memory access with the given
@@ -338,6 +330,23 @@ where
             place.layout.size
         });
         self.memory.check_ptr_access(place.ptr, size, place.align)
+    }
+
+    /// Return the "access-checked" version of this `MPlace`, where for non-ZST
+    /// this is definitely a `Pointer`.
+    pub fn mplace_access_checked(
+        &self,
+        mut place: MPlaceTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let (size, align) = self.size_and_align_of_mplace(place)?
+            .unwrap_or((place.layout.size, place.layout.align.abi));
+        assert!(place.mplace.align <= align, "dynamic alignment less strict than static one?");
+        place.mplace.align = align; // maximally strict checking
+        // When dereferencing a pointer, it must be non-NULL, aligned, and live.
+        if let Some(ptr) = self.check_mplace_access(place, Some(size))? {
+            place.mplace.ptr = ptr.into();
+        }
+        Ok(place)
     }
 
     /// Force `place.ptr` to a `Pointer`.
