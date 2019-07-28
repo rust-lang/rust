@@ -150,6 +150,7 @@ pub fn classify_literal(text: &str) -> Option<Token> {
 mod tests {
     use super::*;
 
+    // https://github.com/rust-analyzer/rust-analyzer/issues/1592
     #[test]
     fn lex_float_literal() {
         assert_eq!(
