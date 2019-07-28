@@ -357,38 +357,40 @@ mod tests {
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
         assert_debug_snapshot_matches!(&source_change,
-@r#"Some(
-    SourceChange {
-        label: "rename",
-        source_file_edits: [
-            SourceFileEdit {
-                file_id: FileId(
-                    1,
-                ),
-                edit: TextEdit {
-                    atoms: [
-                        AtomTextEdit {
-                            delete: [4; 7),
-                            insert: "foo2",
-                        },
-                    ],
-                },
-            },
-        ],
-        file_system_edits: [
-            MoveFile {
-                src: FileId(
-                    2,
-                ),
-                dst_source_root: SourceRootId(
-                    0,
-                ),
-                dst_path: "foo2/mod.rs",
-            },
-        ],
-        cursor_position: None,
-    },
-)"#);
+@r###"
+       ⋮Some(
+       ⋮    SourceChange {
+       ⋮        label: "rename",
+       ⋮        source_file_edits: [
+       ⋮            SourceFileEdit {
+       ⋮                file_id: FileId(
+       ⋮                    1,
+       ⋮                ),
+       ⋮                edit: TextEdit {
+       ⋮                    atoms: [
+       ⋮                        AtomTextEdit {
+       ⋮                            delete: [4; 7),
+       ⋮                            insert: "foo2",
+       ⋮                        },
+       ⋮                    ],
+       ⋮                },
+       ⋮            },
+       ⋮        ],
+       ⋮        file_system_edits: [
+       ⋮            MoveFile {
+       ⋮                src: FileId(
+       ⋮                    2,
+       ⋮                ),
+       ⋮                dst_source_root: SourceRootId(
+       ⋮                    0,
+       ⋮                ),
+       ⋮                dst_path: "foo2/mod.rs",
+       ⋮            },
+       ⋮        ],
+       ⋮        cursor_position: None,
+       ⋮    },
+       ⋮)
+        "###);
     }
 
     fn test_rename(text: &str, new_name: &str, expected: &str) {
