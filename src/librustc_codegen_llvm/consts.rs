@@ -72,8 +72,8 @@ pub fn codegen_static_initializer(
 
     let alloc = match static_.val {
         ConstValue::ByRef {
-            offset, align, alloc,
-        } if offset.bytes() == 0 && align == alloc.align => {
+            alloc, offset,
+        } if offset.bytes() == 0 => {
             alloc
         },
         _ => bug!("static const eval returned {:#?}", static_),

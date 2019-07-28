@@ -218,10 +218,8 @@ impl LiteralExpander<'tcx> {
             (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => {
                 let alloc = self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id);
                 ConstValue::ByRef {
-                    offset: p.offset,
-                    // FIXME(oli-obk): this should be the type's layout
-                    align: alloc.align,
                     alloc,
+                    offset: p.offset,
                 }
             },
             // unsize array to slice if pattern is array but match value or other patterns are slice

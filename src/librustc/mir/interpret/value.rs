@@ -2,7 +2,7 @@ use std::fmt;
 use rustc_macros::HashStable;
 use rustc_apfloat::{Float, ieee::{Double, Single}};
 
-use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size, Align}, subst::SubstsRef};
+use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}, subst::SubstsRef};
 use crate::ty::PlaceholderConst;
 use crate::hir::def_id::DefId;
 
@@ -45,18 +45,11 @@ pub enum ConstValue<'tcx> {
 
     /// A value not represented/representable by `Scalar` or `Slice`
     ByRef {
-        /// The alignment exists to allow `const_field` to have `ByRef` access to nonprimitive
-        /// fields of `repr(packed)` structs. The alignment may be lower than the type of this
-        /// constant. This permits reads with lower alignment than what the type would normally
-        /// require.
-        /// FIXME(RalfJ,oli-obk): The alignment checks are part of miri, but const eval doesn't
-        /// really need them. Disabling them may be too hard though.
-        align: Align,
-        /// Offset into `alloc`
-        offset: Size,
         /// The backing memory of the value, may contain more memory than needed for just the value
         /// in order to share `Allocation`s between values
         alloc: &'tcx Allocation,
+        /// Offset into `alloc`
+        offset: Size,
     },
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other

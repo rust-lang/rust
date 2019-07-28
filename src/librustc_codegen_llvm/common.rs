@@ -11,7 +11,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 
 use crate::consts::const_alloc_to_llvm;
-use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size, Align};
+use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
 use rustc::mir::interpret::{Scalar, GlobalAlloc, Allocation};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 
@@ -329,10 +329,10 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn from_const_alloc(
         &self,
         layout: TyLayout<'tcx>,
-        align: Align,
         alloc: &Allocation,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
+        let align = alloc.align; // follow what CTFE did, not what the layout says
         let init = const_alloc_to_llvm(self, alloc);
         let base_addr = self.static_addr_of(init, align, None);
 
