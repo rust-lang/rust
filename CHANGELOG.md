@@ -2,10 +2,17 @@
 
 ## [Unreleased]
 
+## [1.4.0] 2019-07-29
+
 ### Added
 
 - Add new attribute `rustfmt::skip::attributes` to prevent rustfmt 
 from formatting an attribute #3665
+
+### Changed
+
+- Updated `rustc-ap-*` crates to 541.0.0.
+- Remove multiple semicolons.
 
 ## [1.3.3] 2019-07-15
 
