@@ -1,3 +1,4 @@
+// Checks to ensure that we properly detect when a closure constrains an existential type
 #![feature(existential_type)]
 
 use std::fmt::Debug;
