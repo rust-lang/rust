@@ -4,7 +4,7 @@ error[E0658]: existential types are unstable
 LL | existential type Foo: std::fmt::Debug;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/34511
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
    = help: add `#![feature(existential_type)]` to the crate attributes to enable
 
 error[E0658]: existential types are unstable
@@ -13,7 +13,7 @@ error[E0658]: existential types are unstable
 LL |     existential type Baa: std::fmt::Debug;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/34511
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
    = help: add `#![feature(existential_type)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
