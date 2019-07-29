@@ -1,7 +1,7 @@
 use std::borrow::Cow;
+use std::sync::Arc;
 
-use arrayvec::ArrayVec;
-use ra_db::FileId;
+use ra_db::{FileId, SourceRoot};
 use ra_syntax::{ast, SmolStr};
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
@@ -105,6 +105,7 @@ where
             module_id,
             file_id: file_id.into(),
             raw_items: &raw_items,
+            parent_module: None,
         }
         .collect(raw_items.items());
 
@@ -455,8 +456,14 @@ where
         if !self.macro_stack_monitor.is_poison(macro_def_id) {
             let file_id: HirFileId = macro_call_id.as_file(MacroFileKind::Items);
             let raw_items = self.db.raw_items(file_id);
-            ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
-                .collect(raw_items.items());
+            ModCollector {
+                def_collector: &mut *self,
+                file_id,
+                module_id,
+                raw_items: &raw_items,
+                parent_module: None,
+            }
+            .collect(raw_items.items());
         } else {
             log::error!("Too deep macro expansion: {:?}", macro_call_id);
             self.def_map.poison_macros.insert(macro_def_id);
@@ -476,6 +483,7 @@ struct ModCollector<'a, D> {
     module_id: CrateModuleId,
     file_id: HirFileId,
     raw_items: &'a raw::RawItems,
+    parent_module: Option<&'a Name>,
 }
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
@@ -508,6 +516,7 @@ where
                     module_id,
                     file_id: self.file_id,
                     raw_items: self.raw_items,
+                    parent_module: Some(name),
                 }
                 .collect(&*items);
             }
@@ -521,6 +530,7 @@ where
                     name,
                     is_root,
                     attr_path.as_ref(),
+                    self.parent_module,
                 ) {
                     Ok(file_id) => {
                         let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
@@ -530,6 +540,7 @@ where
                             module_id,
                             file_id: file_id.into(),
                             raw_items: &raw_items,
+                            parent_module: None,
                         }
                         .collect(raw_items.items())
                     }
@@ -636,46 +647,47 @@ fn resolve_submodule(
     name: &Name,
     is_root: bool,
     attr_path: Option<&SmolStr>,
+    parent_module: Option<&Name>,
 ) -> Result<FileId, RelativePathBuf> {
-    // FIXME: handle submodules of inline modules properly
     let file_id = file_id.original_file(db);
     let source_root_id = db.file_source_root(file_id);
     let path = db.file_relative_path(file_id);
     let root = RelativePathBuf::default();
     let dir_path = path.parent().unwrap_or(&root);
     let mod_name = path.file_stem().unwrap_or("unknown");
-    let is_dir_owner = is_root || mod_name == "mod";
 
-    let file_mod = dir_path.join(format!("{}.rs", name));
-    let dir_mod = dir_path.join(format!("{}/mod.rs", name));
-    let file_dir_mod = dir_path.join(format!("{}/{}.rs", mod_name, name));
-    let mut candidates = ArrayVec::<[_; 3]>::new();
-    let file_attr_mod = attr_path.map(|file_path| {
-        let file_path = normalize_attribute_path(file_path);
-        let file_attr_mod = dir_path.join(file_path.as_ref()).normalize();
-        candidates.push(file_attr_mod.clone());
-
-        file_attr_mod
-    });
-    if is_dir_owner {
-        candidates.push(file_mod.clone());
-        candidates.push(dir_mod);
-    } else {
-        candidates.push(file_dir_mod.clone());
-    };
-    let sr = db.source_root(source_root_id);
-    let mut points_to = candidates.into_iter().filter_map(|path| sr.files.get(&path)).copied();
-    // FIXME: handle ambiguity
-    match points_to.next() {
-        Some(file_id) => Ok(file_id),
-        None => {
-            if let Some(file_attr_mod) = file_attr_mod {
-                Err(file_attr_mod)
+    let resolve_mode = match (attr_path.filter(|p| !p.is_empty()), parent_module) {
+        (Some(file_path), Some(parent_name)) => {
+            let file_path = normalize_attribute_path(file_path);
+            let path = dir_path.join(format!("{}/{}", parent_name, file_path)).normalize();
+            ResolutionMode::InsideInlineModule(InsideInlineModuleMode::WithAttributePath(path))
+        }
+        (Some(file_path), None) => {
+            let file_path = normalize_attribute_path(file_path);
+            let path = dir_path.join(file_path.as_ref()).normalize();
+            ResolutionMode::OutOfLine(OutOfLineMode::WithAttributePath(path))
+        }
+        (None, Some(parent_name)) => {
+            let path = dir_path.join(format!("{}/{}.rs", parent_name, name));
+            ResolutionMode::InsideInlineModule(InsideInlineModuleMode::File(path))
+        }
+        _ => {
+            let is_dir_owner = is_root || mod_name == "mod";
+            if is_dir_owner {
+                let file_mod = dir_path.join(format!("{}.rs", name));
+                let dir_mod = dir_path.join(format!("{}/mod.rs", name));
+                ResolutionMode::OutOfLine(OutOfLineMode::RootOrModRs {
+                    file: file_mod,
+                    directory: dir_mod,
+                })
             } else {
-                Err(if is_dir_owner { file_mod } else { file_dir_mod })
+                let path = dir_path.join(format!("{}/{}.rs", mod_name, name));
+                ResolutionMode::OutOfLine(OutOfLineMode::FileInDirectory(path))
             }
         }
-    }
+    };
+
+    resolve_mode.resolve(db.source_root(source_root_id))
 }
 
 fn normalize_attribute_path(file_path: &SmolStr) -> Cow<str> {
@@ -690,6 +702,74 @@ fn normalize_attribute_path(file_path: &SmolStr) -> Cow<str> {
         Cow::Owned(current_dir_normalize.replace(windows_path_separator, "/"))
     } else {
         Cow::Borrowed(current_dir_normalize)
+    }
+}
+
+enum OutOfLineMode {
+    RootOrModRs { file: RelativePathBuf, directory: RelativePathBuf },
+    FileInDirectory(RelativePathBuf),
+    WithAttributePath(RelativePathBuf),
+}
+
+impl OutOfLineMode {
+    pub fn resolve(&self, source_root: Arc<SourceRoot>) -> Result<FileId, RelativePathBuf> {
+        match self {
+            OutOfLineMode::RootOrModRs { file, directory } => match source_root.files.get(file) {
+                None => resolve_simple_path(source_root, directory).map_err(|_| file.clone()),
+                file_id => resolve_find_result(file_id, file),
+            },
+            OutOfLineMode::FileInDirectory(path) => resolve_simple_path(source_root, path),
+            OutOfLineMode::WithAttributePath(path) => resolve_simple_path(source_root, path),
+        }
+    }
+}
+
+enum InsideInlineModuleMode {
+    File(RelativePathBuf),
+    WithAttributePath(RelativePathBuf),
+}
+
+impl InsideInlineModuleMode {
+    pub fn resolve(&self, source_root: Arc<SourceRoot>) -> Result<FileId, RelativePathBuf> {
+        match self {
+            InsideInlineModuleMode::File(path) => resolve_simple_path(source_root, path),
+            InsideInlineModuleMode::WithAttributePath(path) => {
+                resolve_simple_path(source_root, path)
+            }
+        }
+    }
+}
+
+enum ResolutionMode {
+    OutOfLine(OutOfLineMode),
+    InsideInlineModule(InsideInlineModuleMode),
+}
+
+impl ResolutionMode {
+    pub fn resolve(&self, source_root: Arc<SourceRoot>) -> Result<FileId, RelativePathBuf> {
+        use self::ResolutionMode::*;
+
+        match self {
+            OutOfLine(mode) => mode.resolve(source_root),
+            InsideInlineModule(mode) => mode.resolve(source_root),
+        }
+    }
+}
+
+fn resolve_simple_path(
+    source_root: Arc<SourceRoot>,
+    path: &RelativePathBuf,
+) -> Result<FileId, RelativePathBuf> {
+    resolve_find_result(source_root.files.get(path), path)
+}
+
+fn resolve_find_result(
+    file_id: Option<&FileId>,
+    path: &RelativePathBuf,
+) -> Result<FileId, RelativePathBuf> {
+    match file_id {
+        Some(file_id) => Ok(file_id.clone()),
+        None => Err(path.clone()),
     }
 }
 
