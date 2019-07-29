@@ -562,9 +562,12 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
                 AssistId("auto_import"),
                 format!("import {} in mod {}", fmt_segments(&segments), name.text()),
                 |edit| {
-                    let mut text_edit = TextEditBuilder::default();
-                    apply_auto_import(item_list.syntax(), &path, &segments, &mut text_edit);
-                    edit.set_edit_builder(text_edit);
+                    apply_auto_import(
+                        item_list.syntax(),
+                        &path,
+                        &segments,
+                        edit.text_edit_builder(),
+                    );
                 },
             );
         }
@@ -574,9 +577,12 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
             AssistId("auto_import"),
             format!("import {} in the current file", fmt_segments(&segments)),
             |edit| {
-                let mut text_edit = TextEditBuilder::default();
-                apply_auto_import(current_file.syntax(), &path, &segments, &mut text_edit);
-                edit.set_edit_builder(text_edit);
+                apply_auto_import(
+                    current_file.syntax(),
+                    &path,
+                    &segments,
+                    edit.text_edit_builder(),
+                );
             },
         );
     }
