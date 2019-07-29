@@ -1524,9 +1524,7 @@ impl Step for RustcGuide {
     fn run(self, builder: &Builder<'_>) {
         let src = builder.src.join("src/doc/rustc-guide");
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        builder.run(rustbook_cmd
-                       .arg("linkcheck")
-                       .arg(&src));
+        try_run_quiet(builder, rustbook_cmd.arg("linkcheck").arg(&src));
     }
 }
 
