@@ -20,5 +20,5 @@ use b::B;
 
 //? #[rustc_clean(label="typeck_tables_of", cfg="rpass2")]
 pub fn main() {
-    A + B;
+    let _ = A + B;
 }
