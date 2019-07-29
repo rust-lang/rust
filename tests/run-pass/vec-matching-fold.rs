@@ -9,7 +9,7 @@ fn foldl<T, U, F>(values: &[T],
     U: Clone+Debug, T:Debug,
     F: FnMut(U, &T) -> U,
 {    match values {
-        &[ref head, ref tail..] =>
+        &[ref head, ref tail @ ..] =>
             foldl(tail, function(initial, head), function),
         &[] => {
             let res = initial.clone(); res
@@ -25,7 +25,7 @@ fn foldr<T, U, F>(values: &[T],
     F: FnMut(&T, U) -> U,
 {
     match values {
-        &[ref head.., ref tail] =>
+        &[ref head @ .., ref tail] =>
             foldr(head, function(tail, initial), function),
         &[] => {
             let res = initial.clone(); res
