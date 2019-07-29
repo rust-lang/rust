@@ -1,6 +1,6 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
-existential type Foo: Fn() -> Foo;
+type Foo = impl Fn() -> Foo;
 //~^ ERROR: could not find defining uses
 
 fn crash(x: Foo) -> Foo {

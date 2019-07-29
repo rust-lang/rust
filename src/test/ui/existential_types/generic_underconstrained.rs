@@ -1,9 +1,9 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
 trait Trait {}
-existential type Underconstrained<T: Trait>: 'static; //~ ERROR the trait bound `T: Trait`
+type Underconstrained<T: Trait> = impl 'static; //~ ERROR the trait bound `T: Trait`
 //~^ ERROR: at least one trait must be specified
 
 // no `Trait` bound

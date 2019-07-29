@@ -1,6 +1,6 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
 // declared but never defined
-existential type Bar: std::fmt::Debug; //~ ERROR could not find defining uses
+type Bar = impl std::fmt::Debug; //~ ERROR could not find defining uses

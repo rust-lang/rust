@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {
     assert_eq!(foo().to_string(), "foo");
@@ -16,14 +16,14 @@ fn main() {
 }
 
 // single definition
-existential type Foo: std::fmt::Display;
+type Foo = impl std::fmt::Display;
 
 fn foo() -> Foo {
     "foo"
 }
 
 // two definitions
-existential type Bar: std::fmt::Display;
+type Bar = impl std::fmt::Display;
 
 fn bar1() -> Bar {
     "bar1"
@@ -34,7 +34,7 @@ fn bar2() -> Bar {
 }
 
 // definition in submodule
-existential type Boo: std::fmt::Display;
+type Boo = impl std::fmt::Display;
 
 mod boo {
     pub fn boo() -> super::Boo {
@@ -42,7 +42,7 @@ mod boo {
     }
 }
 
-existential type MyIter<T>: Iterator<Item = T>;
+type MyIter<T> = impl Iterator<Item = T>;
 
 fn my_iter<T>(t: T) -> MyIter<T> {
     std::iter::once(t)
@@ -63,21 +63,21 @@ fn my_iter4<U, V>(_: U, v: V) -> MyIter<V> {
 }
 
 // param names should not have an effect!
-existential type MyOtherIter<T>: Iterator<Item = T>;
+type MyOtherIter<T> = impl Iterator<Item = T>;
 
 fn my_other_iter<U>(u: U) -> MyOtherIter<U> {
     std::iter::once(u)
 }
 
 trait Trait {}
-existential type GenericBound<'a, T: Trait>: Sized + 'a;
+type GenericBound<'a, T: Trait> = impl Sized + 'a;
 
 fn generic_bound<'a, T: Trait + 'a>(t: T) -> GenericBound<'a, T> {
     t
 }
 
 mod pass_through {
-    pub existential type Passthrough<T>: Sized + 'static;
+    pub type Passthrough<T> = impl Sized + 'static;
 
     fn define_passthrough<T: 'static>(t: T) -> Passthrough<T> {
         t

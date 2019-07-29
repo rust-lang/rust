@@ -1,11 +1,11 @@
 // build-pass (FIXME(62277): could be check-pass?)
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
 // two definitions with different types
-existential type Foo: std::fmt::Debug;
+type Foo = impl std::fmt::Debug;
 
 fn foo() -> Foo {
     ""

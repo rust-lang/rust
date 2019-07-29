@@ -1,4 +1,4 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {
 }
@@ -7,7 +7,7 @@ trait TraitWithAssoc {
     type Assoc;
 }
 
-existential type Foo<V>: Trait<V::Assoc>; //~ associated type `Assoc` not found for `V`
+type Foo<V> = impl Trait<V::Assoc>; //~ associated type `Assoc` not found for `V`
 
 trait Trait<U> {}
 

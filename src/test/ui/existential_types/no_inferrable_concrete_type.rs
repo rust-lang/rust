@@ -1,9 +1,9 @@
 // Issue 52985: user code provides no use case that allows an existential type
 // We now emit a 'could not find defining uses' error
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
-existential type Foo: Copy; //~ could not find defining uses
+type Foo = impl Copy; //~ could not find defining uses
 
 // make compiler happy about using 'Foo'
 fn bar(x: Foo) -> Foo { x }

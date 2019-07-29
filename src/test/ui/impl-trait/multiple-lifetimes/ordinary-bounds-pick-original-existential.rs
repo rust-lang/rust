@@ -4,7 +4,7 @@
 //[mir]compile-flags: -Z borrowck=mir
 
 #![feature(member_constraints)]
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 trait Trait<'a, 'b> { }
 impl<T> Trait<'_, '_> for T { }
@@ -12,7 +12,7 @@ impl<T> Trait<'_, '_> for T { }
 // Here we wind up selecting `'a` and `'b` in the hidden type because
 // those are the types that appear in the original values.
 
-existential type Foo<'a, 'b>: Trait<'a, 'b>;
+type Foo<'a, 'b> = impl Trait<'a, 'b>;
 
 fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> Foo<'a, 'b> {
     // In this simple case, you have a hidden type `(&'0 u8, &'1 u8)` and constraints like

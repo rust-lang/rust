@@ -1,16 +1,16 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {
 }
 
-existential type PartiallyDefined<T>: 'static;
+type PartiallyDefined<T> = impl 'static;
 //~^ ERROR: at least one trait must be specified
 
 fn partially_defined<T: std::fmt::Debug>(_: T) -> PartiallyDefined<T> {
     4u32
 }
 
-existential type PartiallyDefined2<T>: 'static;
+type PartiallyDefined2<T> = impl 'static;
 //~^ ERROR: at least one trait must be specified
 
 fn partially_defined2<T: std::fmt::Debug>(_: T) -> PartiallyDefined2<T> {

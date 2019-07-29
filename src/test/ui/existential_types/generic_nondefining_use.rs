@@ -1,8 +1,8 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
-existential type Cmp<T>: 'static;
+type Cmp<T> = impl 'static;
 //~^ ERROR could not find defining uses
 //~^^ ERROR: at least one trait must be specified
 

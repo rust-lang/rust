@@ -1,14 +1,14 @@
 // compile-flags:-Zborrowck=mir
 
 #![feature(member_constraints)]
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 #[derive(Clone)]
 struct CopyIfEq<T, U>(T, U);
 
 impl<T: Copy> Copy for CopyIfEq<T, T> {}
 
-existential type E<'a, 'b>: Sized;
+type E<'a, 'b> = impl Sized;
 
 fn foo<'a, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
     //~^ ERROR lifetime may not live long enough

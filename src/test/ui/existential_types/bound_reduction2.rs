@@ -1,4 +1,4 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {
 }
@@ -7,7 +7,7 @@ trait TraitWithAssoc {
     type Assoc;
 }
 
-existential type Foo<V>: Trait<V>;
+type Foo<V> = impl Trait<V>;
 //~^ ERROR could not find defining uses
 
 trait Trait<U> {}

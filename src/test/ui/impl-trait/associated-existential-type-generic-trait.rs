@@ -1,4 +1,4 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 // build-pass (FIXME(62277): could be check-pass?)
 
 trait Bar {}
@@ -11,7 +11,7 @@ trait Foo<T> {
 }
 
 impl<W> Foo<W> for i32 {
-    existential type Assoc: Bar;
+    type Assoc = impl Bar;
     fn foo(w: W) -> Self::Assoc {
         Dummy(w)
     }
@@ -21,7 +21,7 @@ struct NonGeneric;
 impl Bar for NonGeneric {}
 
 impl<W> Foo<W> for u32 {
-    existential type Assoc: Bar;
+    type Assoc = impl Bar;
     fn foo(_: W) -> Self::Assoc {
         NonGeneric
     }

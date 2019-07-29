@@ -1,9 +1,9 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
 mod boo {
-    pub existential type Boo: ::std::fmt::Debug;
+    pub type Boo = impl ::std::fmt::Debug;
     fn bomp() -> Boo {
         ""
     }

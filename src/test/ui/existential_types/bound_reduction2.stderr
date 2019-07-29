@@ -9,8 +9,8 @@ LL | | }
 error: could not find defining uses
   --> $DIR/bound_reduction2.rs:10:1
    |
-LL | existential type Foo<V>: Trait<V>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type Foo<V> = impl Trait<V>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

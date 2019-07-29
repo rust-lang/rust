@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 // Regression test for issue #61863
 
@@ -22,6 +22,6 @@ pub fn bla2() -> TE {
 }
 
 
-existential type TE: MyTrait;
+type TE = impl MyTrait;
 
 fn main() {}

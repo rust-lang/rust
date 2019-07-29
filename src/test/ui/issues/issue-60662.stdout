@@ -1,7 +1,7 @@
 // build-pass (FIXME(62277): could be check-pass?)
 // compile-flags: -Z unpretty=hir
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 #[prelude_import]
 use ::std::prelude::v1::*;
 #[macro_use]

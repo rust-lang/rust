@@ -2,12 +2,12 @@
 
 #![allow(warnings)]
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {
 }
 
-existential type Foo<V>: std::fmt::Debug;
+type Foo<V> = impl std::fmt::Debug;
 
 trait Trait<U> {}
 

@@ -1,8 +1,8 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
-existential type Underconstrained<T: std::fmt::Debug>: 'static;
+type Underconstrained<T: std::fmt::Debug> = impl 'static;
 //~^ ERROR `U` doesn't implement `std::fmt::Debug`
 //~^^ ERROR: at least one trait must be specified
 
@@ -11,7 +11,7 @@ fn underconstrained<U>(_: U) -> Underconstrained<U> {
     5u32
 }
 
-existential type Underconstrained2<T: std::fmt::Debug>: 'static;
+type Underconstrained2<T: std::fmt::Debug> = impl 'static;
 //~^ ERROR `V` doesn't implement `std::fmt::Debug`
 //~^^ ERROR: at least one trait must be specified
 

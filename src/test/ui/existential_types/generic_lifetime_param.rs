@@ -1,10 +1,10 @@
 // build-pass (FIXME(62277): could be check-pass?)
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
-existential type Region<'a>: std::fmt::Debug;
+type Region<'a> = impl std::fmt::Debug;
 
 fn region<'b>(a: &'b ()) -> Region<'b> {
     a

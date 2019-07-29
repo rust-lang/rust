@@ -1,8 +1,8 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
-existential type WrongGeneric<T: 'static>: 'static;
+type WrongGeneric<T: 'static> = impl 'static;
 //~^ ERROR: at least one trait must be specified
 
 fn wrong_generic<U: 'static, V: 'static>(_: U, v: V) -> WrongGeneric<U> {

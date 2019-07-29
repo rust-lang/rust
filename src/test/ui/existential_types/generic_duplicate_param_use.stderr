@@ -10,8 +10,8 @@ LL | | }
 error: could not find defining uses
   --> $DIR/generic_duplicate_param_use.rs:8:1
    |
-LL | existential type Two<T, U>: Debug;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type Two<T, U> = impl Debug;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

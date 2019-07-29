@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(associated_type_bounds)]
-#![feature(existential_type)]
 
 use std::ops::Add;
 

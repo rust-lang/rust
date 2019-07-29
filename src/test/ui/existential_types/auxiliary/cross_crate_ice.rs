@@ -2,9 +2,9 @@
 
 #![crate_type="rlib"]
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
-pub existential type Foo: std::fmt::Debug;
+pub type Foo = impl std::fmt::Debug;
 
 pub fn foo() -> Foo {
     5

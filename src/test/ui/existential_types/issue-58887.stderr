@@ -23,8 +23,8 @@ LL | |     }
 error: could not find defining uses
   --> $DIR/issue-58887.rs:13:5
    |
-LL |     existential type Iter: Iterator<Item = T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type Iter = impl Iterator<Item = T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

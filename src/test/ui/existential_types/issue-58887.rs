@@ -1,4 +1,4 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 trait UnwrapItemsExt {
     type Iter;
@@ -10,7 +10,7 @@ where
     I: Iterator<Item = Result<T, E>>,
     E: std::fmt::Debug,
 {
-    existential type Iter: Iterator<Item = T>;
+    type Iter = impl Iterator<Item = T>;
     //~^ ERROR: could not find defining uses
 
     fn unwrap_items(self) -> Self::Iter {

@@ -1,11 +1,11 @@
 // build-pass (FIXME(62277): could be check-pass?)
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 use std::fmt::Debug;
 
 fn main() {}
 
-existential type Two<A, B>: Debug;
+type Two<A, B> = impl Debug;
 
 fn two<T: Debug + Copy, U>(t: T, u: U) -> Two<T, U> {
     (t, t)

@@ -1,8 +1,8 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
-existential type MyIter<T>: Iterator<Item = T>;
+type MyIter<T> = impl Iterator<Item = T>;
 
 fn my_iter<T>(t: T) -> MyIter<T> {
     std::iter::once(t)

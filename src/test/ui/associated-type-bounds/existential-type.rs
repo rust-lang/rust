@@ -1,7 +1,7 @@
 // run-pass
 
 #![feature(associated_type_bounds)]
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 use std::ops::Add;
 
@@ -17,15 +17,15 @@ struct S1;
 struct S2;
 impl Tr1 for S1 { type As1 = S2; fn mk(self) -> Self::As1 { S2 } }
 
-existential type Et1: Tr1<As1: Copy>;
+type Et1 = impl Tr1<As1: Copy>;
 fn def_et1() -> Et1 { S1 }
 pub fn use_et1() { assert_copy(def_et1().mk()); }
 
-existential type Et2: Tr1<As1: 'static>;
+type Et2 = impl Tr1<As1: 'static>;
 fn def_et2() -> Et2 { S1 }
 pub fn use_et2() { assert_static(def_et2().mk()); }
 
-existential type Et3: Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>>;
+type Et3 = impl Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>>;
 fn def_et3() -> Et3 {
     struct A;
     impl Tr1 for A {
@@ -44,7 +44,7 @@ pub fn use_et3() {
     assert_eq!(s, (0..10).map(|x| x + 1).sum());
 }
 
-existential type Et4: Tr1<As1: for<'a> Tr2<'a>>;
+type Et4 = impl Tr1<As1: for<'a> Tr2<'a>>;
 fn def_et4() -> Et4 {
     #[derive(Copy, Clone)]
     struct A;

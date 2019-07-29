@@ -1,10 +1,10 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 // build-pass (FIXME(62277): could be check-pass?)
 mod my_mod {
   use std::fmt::Debug;
 
-  pub existential type Foo: Debug;
-  pub existential type Foot: Debug;
+  pub type Foo = impl Debug;
+  pub type Foot = impl Debug;
 
   pub fn get_foo() -> Foo {
       5i32

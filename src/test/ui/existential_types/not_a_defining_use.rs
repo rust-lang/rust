@@ -1,10 +1,10 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 use std::fmt::Debug;
 
 fn main() {}
 
-existential type Two<T, U>: Debug;
+type Two<T, U> = impl Debug;
 
 fn two<T: Debug>(t: T) -> Two<T, u32> {
     //~^ ERROR defining existential type use does not fully define existential type

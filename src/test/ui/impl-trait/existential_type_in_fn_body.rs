@@ -1,11 +1,11 @@
 // build-pass (FIXME(62277): could be check-pass?)
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 use std::fmt::Debug;
 
 fn main() {
-    existential type Existential: Debug;
+    type Existential = impl Debug;
 
     fn f() -> Existential {}
     println!("{:?}", f());

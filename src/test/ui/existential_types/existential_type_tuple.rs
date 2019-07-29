@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 #![allow(dead_code)]
 
 pub trait MyTrait {}
@@ -28,6 +28,6 @@ fn make_foo() -> Foo {
     true
 }
 
-existential type Foo: MyTrait;
+type Foo = impl MyTrait;
 
 fn main() {}

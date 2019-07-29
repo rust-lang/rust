@@ -1,8 +1,8 @@
 error: at least one trait must be specified
-  --> $DIR/existential-types-with-no-traits.rs:3:23
+  --> $DIR/existential-types-with-no-traits.rs:3:17
    |
-LL | existential type Foo: 'static;
-   |                       ^^^^^^^
+LL | type Foo = impl 'static;
+   |                 ^^^^^^^
 
 error: at least one trait must be specified
   --> $DIR/existential-types-with-no-traits.rs:10:13

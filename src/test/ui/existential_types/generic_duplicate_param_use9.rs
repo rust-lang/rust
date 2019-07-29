@@ -1,10 +1,10 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 use std::fmt::Debug;
 
 fn main() {}
 
-existential type Two<A, B>: Debug;
+type Two<A, B> = impl Debug;
 
 trait Foo {
     type Bar: Debug;

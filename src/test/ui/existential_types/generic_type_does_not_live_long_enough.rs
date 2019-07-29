@@ -1,4 +1,4 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {
     let y = 42;
@@ -6,7 +6,7 @@ fn main() {
     let z: i32 = x; //~ ERROR mismatched types
 }
 
-existential type WrongGeneric<T>: 'static;
+type WrongGeneric<T> = impl 'static;
 //~^ ERROR the parameter type `T` may not live long enough
 //~^^ ERROR: at least one trait must be specified
 

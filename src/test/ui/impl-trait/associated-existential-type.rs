@@ -1,4 +1,4 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 // build-pass (FIXME(62277): could be check-pass?)
 
 trait Bar {}
@@ -12,7 +12,7 @@ trait Foo {
 }
 
 impl Foo for i32 {
-    existential type Assoc: Bar;
+    type Assoc = impl Bar;
     fn foo() -> Self::Assoc {
         Dummy
     }

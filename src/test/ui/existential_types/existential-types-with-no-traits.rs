@@ -1,6 +1,6 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
-existential type Foo: 'static;
+type Foo = impl 'static;
 //~^ ERROR: at least one trait must be specified
 
 fn foo() -> Foo {

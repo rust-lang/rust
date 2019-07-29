@@ -1,11 +1,11 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 use std::fmt::Debug;
 
 fn main() {}
 
 // test that unused generic parameters are ok
-existential type Two<T, U>: Debug;
+type Two<T, U> = impl Debug;
 //~^ could not find defining uses
 
 fn one<T: Debug>(t: T) -> Two<T, T> {

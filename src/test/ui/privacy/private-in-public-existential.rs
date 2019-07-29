@@ -1,9 +1,9 @@
 // build-pass (FIXME(62277): could be check-pass?)
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 #![deny(private_in_public)]
 
-pub existential type Pub: Default;
+pub type Pub = impl Default;
 
 #[derive(Default)]
 struct Priv;
@@ -18,7 +18,7 @@ pub trait Trait {
 }
 
 impl Trait for u8 {
-    existential type Pub: Default;
+    type Pub = impl Default;
     fn method() -> Self::Pub { Priv }
 }
 

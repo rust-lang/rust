@@ -1,8 +1,8 @@
 error: at least one trait must be specified
-  --> $DIR/generic_type_does_not_live_long_enough.rs:9:35
+  --> $DIR/generic_type_does_not_live_long_enough.rs:9:29
    |
-LL | existential type WrongGeneric<T>: 'static;
-   |                                   ^^^^^^^
+LL | type WrongGeneric<T> = impl 'static;
+   |                             ^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/generic_type_does_not_live_long_enough.rs:6:18
@@ -16,8 +16,8 @@ LL |     let z: i32 = x;
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/generic_type_does_not_live_long_enough.rs:9:1
    |
-LL | existential type WrongGeneric<T>: 'static;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type WrongGeneric<T> = impl 'static;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
    |                  - help: consider adding an explicit lifetime bound `T: 'static`...
@@ -25,8 +25,8 @@ LL | fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
 note: ...so that the type `T` will meet its required lifetime bounds
   --> $DIR/generic_type_does_not_live_long_enough.rs:9:1
    |
-LL | existential type WrongGeneric<T>: 'static;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type WrongGeneric<T> = impl 'static;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

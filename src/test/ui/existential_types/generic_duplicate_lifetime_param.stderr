@@ -7,10 +7,10 @@ LL | | }
    | |_^
    |
 note: lifetime used multiple times
-  --> $DIR/generic_duplicate_lifetime_param.rs:5:22
+  --> $DIR/generic_duplicate_lifetime_param.rs:5:10
    |
-LL | existential type Two<'a, 'b>: std::fmt::Debug;
-   |                      ^^  ^^
+LL | type Two<'a, 'b> = impl std::fmt::Debug;
+   |          ^^  ^^
 
 error: aborting due to previous error
 

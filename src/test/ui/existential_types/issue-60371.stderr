@@ -1,17 +1,17 @@
 error[E0658]: existential types are unstable
   --> $DIR/issue-60371.rs:8:5
    |
-LL |     existential type Item: Bug;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type Item = impl Bug;
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/63063
-   = help: add `#![feature(existential_type)]` to the crate attributes to enable
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `(): Bug` is not satisfied
   --> $DIR/issue-60371.rs:8:5
    |
-LL |     existential type Item: Bug;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bug` is not implemented for `()`
+LL |     type Item = impl Bug;
+   |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Bug` is not implemented for `()`
    |
    = help: the following implementations were found:
              <&() as Bug>
@@ -20,8 +20,8 @@ LL |     existential type Item: Bug;
 error: could not find defining uses
   --> $DIR/issue-60371.rs:8:5
    |
-LL |     existential type Item: Bug;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type Item = impl Bug;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

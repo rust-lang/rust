@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `S: std::marker::Copy` is not satisfied in `(S, T)`
   --> $DIR/issue-55872-1.rs:12:5
    |
-LL |     existential type E: Copy;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ within `(S, T)`, the trait `std::marker::Copy` is not implemented for `S`
+LL |     type E = impl Copy;
+   |     ^^^^^^^^^^^^^^^^^^^ within `(S, T)`, the trait `std::marker::Copy` is not implemented for `S`
    |
    = help: consider adding a `where S: std::marker::Copy` bound
    = note: required because it appears within the type `(S, T)`
@@ -11,8 +11,8 @@ LL |     existential type E: Copy;
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied in `(S, T)`
   --> $DIR/issue-55872-1.rs:12:5
    |
-LL |     existential type E: Copy;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ within `(S, T)`, the trait `std::marker::Copy` is not implemented for `T`
+LL |     type E = impl Copy;
+   |     ^^^^^^^^^^^^^^^^^^^ within `(S, T)`, the trait `std::marker::Copy` is not implemented for `T`
    |
    = help: consider adding a `where T: std::marker::Copy` bound
    = note: required because it appears within the type `(S, T)`

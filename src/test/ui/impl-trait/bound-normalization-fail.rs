@@ -2,7 +2,6 @@
 // edition:2018
 
 #![feature(async_await)]
-#![feature(existential_type)]
 #![feature(impl_trait_in_bindings)]
 //~^ WARNING the feature `impl_trait_in_bindings` is incomplete
 

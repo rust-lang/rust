@@ -1,9 +1,9 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
 // don't reveal the concrete type
-existential type NoReveal: std::fmt::Debug;
+type NoReveal = impl std::fmt::Debug;
 
 fn define_no_reveal() -> NoReveal {
     ""
