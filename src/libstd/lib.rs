@@ -238,7 +238,7 @@
 #![feature(array_error_internals)]
 #![feature(asm)]
 #![feature(associated_type_bounds)]
-#![feature(bind_by_move_pattern_guards)]
+#![cfg_attr(bootstrap, feature(bind_by_move_pattern_guards))]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
 #![feature(cfg_target_has_atomic)]

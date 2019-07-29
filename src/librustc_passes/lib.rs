@@ -8,7 +8,7 @@
 
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(bind_by_move_pattern_guards)]
+#![cfg_attr(bootstrap, feature(bind_by_move_pattern_guards))]
 
 #![recursion_limit="256"]
 
