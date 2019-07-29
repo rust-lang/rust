@@ -287,22 +287,7 @@ impl File {
         let fd = cvt_r(|| unsafe {
             open(path.as_ptr(), flags, opts.mode as c_int)
         })?;
-        let fd = FileDesc::new(fd);
-        // Currently the standard library supports Linux 2.6.18 which did not
-        // have the O_CLOEXEC flag (passed above). If we're running on an older
-        // Linux kernel then the flag is just ignored by the OS. After we open
-        // the first file, we check whether it has CLOEXEC set. If it doesn't,
-        // we will explicitly ask for a CLOEXEC fd for every further file we
-        // open, if it does, we will skip that step.
-        //
-        // The CLOEXEC flag, however, is supported on versions of macOS/BSD/etc
-        // that we support, so we only do this on Linux currently.
-        fn ensure_cloexec(_: &FileDesc) -> io::Result<()> {
-            Ok(())
-        }
-
-        ensure_cloexec(&fd)?;
-        Ok(File(fd))
+        Ok(File(FileDesc::new(fd)))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
