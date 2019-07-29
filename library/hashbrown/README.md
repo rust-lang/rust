@@ -12,6 +12,10 @@ and `HashSet` types.
 The original C++ version of SwissTable can be found [here], and this
 [CppCon talk] gives an overview of how the algorithm works.
 
+Since Rust 1.36, this is now the `HashMap` implementation for the Rust standard
+library. All benchmarks and features below are compared to the previous hash
+table implementation in the Rust standard library.
+
 [SwissTable]: https://abseil.io/blog/20180927-swisstables
 [here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
 [CppCon talk]: https://www.youtube.com/watch?v=ncHmEUmJZf4
@@ -30,7 +34,7 @@ The original C++ version of SwissTable can be found [here], and this
 
 ## Performance
 
-Compared to `std::collections::HashMap`:
+Compared to the previous implementation of `std::collections::HashMap`:
 
 ```text
  name               stdhash ns/iter  hashbrown ns/iter  diff ns/iter    diff %  speedup
