@@ -601,7 +601,7 @@ impl<'a> Iterator for Chars<'a> {
 }
 
 #[stable(feature = "chars_debug_impl", since = "1.38.0")]
-impl<'a> fmt::Debug for Chars<'a> {
+impl fmt::Debug for Chars<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Chars(")?;
         f.debug_list().entries(self.clone()).finish()?;

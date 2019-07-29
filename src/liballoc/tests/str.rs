@@ -1109,7 +1109,7 @@ fn test_iterator_last() {
 }
 
 #[test]
-fn test_chars_display() {
+fn test_chars_debug() {
     let s = "ศไทย中华Việt Nam";
     let c = s.chars();
     assert_eq!(
