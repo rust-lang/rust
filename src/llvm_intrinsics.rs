@@ -33,15 +33,15 @@ pub fn codegen_llvm_intrinsic_call<'a, 'tcx: 'a>(
             crate::trap::trap_unimplemented(fx, intrinsic);
         };
 
-        // Used by _mm_movemask_epi8
-        llvm.x86.sse2.pmovmskb.128, (c a) {
+        // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
+        llvm.x86.sse2.pmovmskb.128 | llvm.x86.avx2.pmovmskb, (c a) {
             let (lane_layout, lane_count) = crate::intrinsics::lane_type_and_count(fx, a.layout(), intrinsic);
             assert_eq!(lane_layout.ty.sty, fx.tcx.types.i8.sty);
-            assert_eq!(lane_count, 16);
+            assert!(lane_count == 16 || lane_count == 32);
 
             let mut res = fx.bcx.ins().iconst(types::I32, 0);
 
-            for lane in 0..16 {
+            for lane in 0..lane_count {
                 let a_lane = a.value_field(fx, mir::Field::new(lane.try_into().unwrap())).load_scalar(fx);
                 let a_lane_sign = fx.bcx.ins().ushr_imm(a_lane, 7); // extract sign bit of 8bit int
                 let a_lane_sign = fx.bcx.ins().uextend(types::I32, a_lane_sign);
@@ -65,6 +65,5 @@ pub fn codegen_llvm_intrinsic_call<'a, 'tcx: 'a>(
 // llvm.x86.avx2.vperm2i128
 // llvm.x86.ssse3.pshuf.b.128
 // llvm.x86.avx2.pshuf.b
-// llvm.x86.avx2.pmovmskb
 // llvm.x86.avx2.psrli.w
 // llvm.x86.sse2.psrli.w

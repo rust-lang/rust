@@ -65,6 +65,8 @@ unsafe fn test_simd() {
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_lt), [0, 0, 0, 0, 0, 0, 0, 0]);
 
     test_mm_slli_si128();
+    test_mm_movemask_epi8();
+    test_mm256_movemask_epi8();
 }
 
 #[target_feature(enable = "sse2")]
@@ -107,6 +109,31 @@ unsafe fn test_mm_slli_si128() {
     );
     let r = _mm_slli_si128(a, -0x80000000);
     assert_eq_m128i(r, _mm_set1_epi8(0));
+}
+
+#[target_feature(enable = "sse2")]
+unsafe fn test_mm_movemask_epi8() {
+    use std::arch::x86_64::*;
+
+    #[rustfmt::skip]
+    let a = _mm_setr_epi8(
+        0b1000_0000u8 as i8, 0b0, 0b1000_0000u8 as i8, 0b01,
+        0b0101, 0b1111_0000u8 as i8, 0, 0,
+        0, 0, 0b1111_0000u8 as i8, 0b0101,
+        0b01, 0b1000_0000u8 as i8, 0b0, 0b1000_0000u8 as i8,
+    );
+    let r = _mm_movemask_epi8(a);
+    assert_eq!(r, 0b10100100_00100101);
+}
+
+#[target_feature(enable = "avx2")]
+unsafe fn test_mm256_movemask_epi8() {
+    use std::arch::x86_64::*;
+
+    let a = _mm256_set1_epi8(-1);
+    let r = _mm256_movemask_epi8(a);
+    let e = -1;
+    assert_eq!(r, e);
 }
 
 fn assert_eq_m128i(x: std::arch::x86_64::__m128i, y: std::arch::x86_64::__m128i) {
