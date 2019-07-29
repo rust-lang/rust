@@ -697,7 +697,7 @@ pub fn const_eval_raw_provider<'tcx>(
                 // promoting runtime code is only allowed to error if it references broken constants
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
-                    use crate::interpret::InvalidProgramInfo::*;
+                    use crate::interpret::InvalidProgramInfo::ReferencedConstant;
                     let span = tcx.promoted_mir(def_id)[p].span;
                     if let InterpError::InvalidProgram(ReferencedConstant) = err.error {
                         err.report_as_error(
