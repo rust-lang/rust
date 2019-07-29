@@ -877,10 +877,15 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 assert!(idx < total_len, "idx {} out of range 0..{}", idx, total_len);
             }
 
-
-
-            println!("{:?}", indexes);
-            unimplemented!();
+            for (out_idx, in_idx) in indexes.into_iter().enumerate() {
+                let in_lane = if in_idx < lane_count {
+                    x.value_field(fx, mir::Field::new(in_idx.try_into().unwrap()))
+                } else {
+                    y.value_field(fx, mir::Field::new((in_idx - lane_count).try_into().unwrap()))
+                };
+                let out_lane = ret.place_field(fx, mir::Field::new(out_idx));
+                out_lane.write_cvalue(fx, in_lane);
+            }
         };
 
         simd_add, (c x, c y) {

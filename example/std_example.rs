@@ -59,12 +59,60 @@ unsafe fn test_simd() {
     let or = _mm_or_si128(x, y);
     let cmp_eq = _mm_cmpeq_epi8(y, y);
     let cmp_lt = _mm_cmplt_epi8(y, y);
-    let shl = _mm_slli_si128(y, 1);
 
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(or), [7, 7, 7, 7, 7, 7, 7, 7]);
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_eq), [0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]);
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_lt), [0, 0, 0, 0, 0, 0, 0, 0]);
-    assert_eq!(std::mem::transmute::<_, [u16; 8]>(or), [7, 7, 7, 7, 7, 7, 7, 0]);
+
+    test_mm_slli_si128();
+}
+
+#[target_feature(enable = "sse2")]
+unsafe fn test_mm_slli_si128() {
+    use std::arch::x86_64::*;
+
+    #[rustfmt::skip]
+    let a = _mm_setr_epi8(
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+    );
+    let r = _mm_slli_si128(a, 1);
+    let e = _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    assert_eq_m128i(r, e);
+
+    #[rustfmt::skip]
+    let a = _mm_setr_epi8(
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+    );
+    let r = _mm_slli_si128(a, 15);
+    let e = _mm_setr_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+    assert_eq_m128i(r, e);
+
+    #[rustfmt::skip]
+    let a = _mm_setr_epi8(
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+    );
+    let r = _mm_slli_si128(a, 16);
+    assert_eq_m128i(r, _mm_set1_epi8(0));
+
+    #[rustfmt::skip]
+    let a = _mm_setr_epi8(
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+    );
+    let r = _mm_slli_si128(a, -1);
+    assert_eq_m128i(_mm_set1_epi8(0), r);
+
+    #[rustfmt::skip]
+    let a = _mm_setr_epi8(
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+    );
+    let r = _mm_slli_si128(a, -0x80000000);
+    assert_eq_m128i(r, _mm_set1_epi8(0));
+}
+
+fn assert_eq_m128i(x: std::arch::x86_64::__m128i, y: std::arch::x86_64::__m128i) {
+    unsafe {
+        assert_eq!(std::mem::transmute::<_, [u8; 16]>(x), std::mem::transmute::<_, [u8; 16]>(x));
+    }
 }
 
 #[derive(PartialEq)]
