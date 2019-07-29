@@ -116,6 +116,8 @@ Due to the requirements of running the tests inside VS Code they are **not run
 on CI**. When making changes to the extension please ensure the tests are not
 broken locally before opening a Pull Request.
 
+To install **only** the VS Code extension, use `cargo install-ra --client-code`.
+
 # Logging
 
 Logging is done by both rust-analyzer and VS Code, so it might be tricky to

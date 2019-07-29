@@ -58,6 +58,9 @@ Beyond basic LSP features, there are some extension commands which you can
 invoke via <kbd>Ctrl+Shift+P</kbd> or bind to a shortcut. See [./features.md](./features.md)
 for details.
 
+For updates, pull the latest changes from the master branch, run `cargo install-ra` again, and **restart** VS Code instance.
+See https://github.com/microsoft/vscode/issues/72308[microsoft/vscode#72308] for why a full restart is needed.
+
 ### Settings
 
 * `rust-analyzer.highlightingOn`: enables experimental syntax highlighting
