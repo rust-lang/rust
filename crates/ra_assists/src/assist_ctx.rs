@@ -129,10 +129,13 @@ pub(crate) struct AssistBuilder {
 }
 
 impl AssistBuilder {
+    /// Replaces specified `range` of text with a given string.
     pub(crate) fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
     }
 
+    /// Replaces specified `node` of text with a given string, reindenting the
+    /// string to maintain `node`'s existing indent.
     pub(crate) fn replace_node_and_indent(
         &mut self,
         node: &SyntaxNode,
@@ -145,27 +148,31 @@ impl AssistBuilder {
         self.replace(node.text_range(), replace_with)
     }
 
-    pub(crate) fn set_edit_builder(&mut self, edit: TextEditBuilder) {
-        self.edit = edit;
-    }
-
+    /// Remove specified `range` of text.
     #[allow(unused)]
     pub(crate) fn delete(&mut self, range: TextRange) {
         self.edit.delete(range)
     }
 
+    /// Append specified `text` at the given `offset`
     pub(crate) fn insert(&mut self, offset: TextUnit, text: impl Into<String>) {
         self.edit.insert(offset, text.into())
     }
 
+    /// Specify desired position of the cursor after the assist is applied.
     pub(crate) fn set_cursor(&mut self, offset: TextUnit) {
         self.cursor_position = Some(offset)
     }
 
+    /// Specify that the assist should be active withing the `target` range.
+    ///
+    /// Target ranges are used to sort assists: the smaller the target range,
+    /// the more specific assist is, and so it should be sorted first.
     pub(crate) fn target(&mut self, target: TextRange) {
         self.target = Some(target)
     }
 
+    /// Get access to the raw `TextEditBuilder`.
     pub(crate) fn text_edit_builder(&mut self) -> &mut TextEditBuilder {
         &mut self.edit
     }
