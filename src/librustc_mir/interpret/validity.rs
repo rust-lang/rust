@@ -22,10 +22,10 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        err!(Unsupported(ValidationFailure(format!(
+        err!(ValidationFailure(format!(
             "encountered {}{}, but expected {}",
             $what, where_, $details,
-        ))))
+        )))
     }};
     ($what:expr, $where:expr) => {{
         let where_ = path_format(&$where);
@@ -34,10 +34,10 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        err!(Unsupported(ValidationFailure(format!(
+        err!(ValidationFailure(format!(
             "encountered {}{}",
             $what, where_,
-        ))))
+        )))
     }};
 }
 

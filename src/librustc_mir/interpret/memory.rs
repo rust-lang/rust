@@ -67,9 +67,9 @@ impl<'tcx, Other> FnVal<'tcx, Other> {
         match self {
             FnVal::Instance(instance) =>
                 Ok(instance),
-            FnVal::Other(_) => err!(Unsupported(MachineError(format!(
+            FnVal::Other(_) => err!(MachineError(format!(
                 "Expected instance function pointer, got 'other' pointer"
-            )))),
+            ))),
         }
     }
 }
@@ -203,7 +203,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKinds>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         if ptr.offset.bytes() != 0 {
-            return err!(Unsupported(ReallocateNonBasePtr));
+            return err!(ReallocateNonBasePtr);
         }
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
@@ -244,7 +244,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         trace!("deallocating: {}", ptr.alloc_id);
 
         if ptr.offset.bytes() != 0 {
-            return err!(Unsupported(DeallocateNonBasePtr));
+            return err!(DeallocateNonBasePtr);
         }
 
         let (alloc_kind, mut alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
@@ -252,33 +252,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             None => {
                 // Deallocating static memory -- always an error
                 return match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
-                    Some(GlobalAlloc::Function(..)) => err!(Unsupported(DeallocatedWrongMemoryKind(
+                    Some(GlobalAlloc::Function(..)) => err!(DeallocatedWrongMemoryKind(
                         "function".to_string(),
                         format!("{:?}", kind),
-                    ))),
+                    )),
                     Some(GlobalAlloc::Static(..)) |
-                    Some(GlobalAlloc::Memory(..)) => err!(Unsupported(DeallocatedWrongMemoryKind(
+                    Some(GlobalAlloc::Memory(..)) => err!(DeallocatedWrongMemoryKind(
                         "static".to_string(),
                         format!("{:?}", kind),
-                    ))),
-                    None => err!(Unsupported(DoubleFree))
+                    )),
+                    None => err!(DoubleFree)
                 }
             }
         };
 
         if alloc_kind != kind {
-            return err!(Unsupported(DeallocatedWrongMemoryKind(
+            return err!(DeallocatedWrongMemoryKind(
                 format!("{:?}", alloc_kind),
                 format!("{:?}", kind),
-            )));
+            ));
         }
         if let Some((size, align)) = old_size_and_align {
             if size.bytes() != alloc.bytes.len() as u64 || align != alloc.align {
                 let bytes = Size::from_bytes(alloc.bytes.len() as u64);
-                return err!(Unsupported(IncorrectAllocationInformation(size,
-                                                           bytes,
-                                                           align,
-                                                           alloc.align)));
+                return err!(IncorrectAllocationInformation(size, bytes, align, alloc.align));
             }
         }
 
@@ -323,10 +320,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             } else {
                 // The biggest power of two through which `offset` is divisible.
                 let offset_pow2 = 1 << offset.trailing_zeros();
-                err!(Unsupported(AlignmentCheckFailed {
+                err!(AlignmentCheckFailed {
                     has: Align::from_bytes(offset_pow2).unwrap(),
                     required: align,
-                }))
+                })
             }
         }
 
@@ -345,7 +342,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 assert!(size.bytes() == 0);
                 // Must be non-NULL and aligned.
                 if bits == 0 {
-                    return err!(Unsupported(InvalidNullPointerUsage));
+                    return err!(InvalidNullPointerUsage);
                 }
                 check_offset_align(bits, align)?;
                 None
@@ -366,10 +363,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     // got picked we might be aligned even if this check fails.
                     // We instead have to fall back to converting to an integer and checking
                     // the "real" alignment.
-                    return err!(Unsupported(AlignmentCheckFailed {
+                    return err!(AlignmentCheckFailed {
                         has: alloc_align,
                         required: align,
-                    }));
+                    });
                 }
                 check_offset_align(ptr.offset.bytes(), align)?;
 
@@ -417,9 +414,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Memory(mem)) =>
                 Cow::Borrowed(mem),
             Some(GlobalAlloc::Function(..)) =>
-                return err!(Unsupported(DerefFunctionPointer)),
+                return err!(DerefFunctionPointer),
             None =>
-                return err!(Unsupported(DanglingPointerDeref)),
+                return err!(DanglingPointerDeref),
             Some(GlobalAlloc::Static(def_id)) => {
                 // We got a "lazy" static that has not been computed yet.
                 if tcx.is_foreign_item(def_id) {
@@ -507,11 +504,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // to give us a cheap reference.
             let alloc = Self::get_static_alloc(memory_extra, tcx, id)?;
             if alloc.mutability == Mutability::Immutable {
-                return err!(Unsupported(ModifiedConstantMemory));
+                return err!(ModifiedConstantMemory);
             }
             match M::STATIC_KIND {
                 Some(kind) => Ok((MemoryKind::Machine(kind), alloc.into_owned())),
-                None => err!(Unsupported(ModifiedStatic)),
+                None => err!(ModifiedStatic),
             }
         });
         // Unpack the error type manually because type inference doesn't
@@ -521,7 +518,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Ok(a) => {
                 let a = &mut a.1;
                 if a.mutability == Mutability::Immutable {
-                    return err!(Unsupported(ModifiedConstantMemory));
+                    return err!(ModifiedConstantMemory);
                 }
                 Ok(a)
             }
@@ -604,7 +601,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         let ptr = self.force_ptr(ptr)?; // We definitely need a pointer value.
         if ptr.offset.bytes() != 0 {
-            return err!(Unsupported(InvalidFunctionPointer));
+            return err!(InvalidFunctionPointer);
         }
         self.get_fn_alloc(ptr.alloc_id)
     }
@@ -839,9 +836,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     if (src.offset <= dest.offset && src.offset + size > dest.offset) ||
                         (dest.offset <= src.offset && dest.offset + size > src.offset)
                     {
-                        return err!(Unsupported(Intrinsic(
+                        return err!(Intrinsic(
                             "copy_nonoverlapping called on overlapping ranges".to_string(),
-                        )));
+                        ));
                     }
                 }
 

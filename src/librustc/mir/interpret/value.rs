@@ -2,7 +2,6 @@ use std::fmt;
 use rustc_macros::HashStable;
 use rustc_apfloat::{Float, ieee::{Double, Single}};
 
-use super::error::UnsupportedInfo::*;
 use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size, Align}, subst::SubstsRef};
 use crate::ty::PlaceholderConst;
 use crate::hir::def_id::DefId;
@@ -361,7 +360,7 @@ impl<'tcx, Tag> Scalar<Tag> {
                 Scalar::check_data(data, size);
                 Ok(data)
             }
-            Scalar::Ptr(_) => err!(Unsupported(ReadPointerAsBytes)),
+            Scalar::Ptr(_) => err!(ReadPointerAsBytes),
         }
     }
 
@@ -374,8 +373,8 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
         match self {
-            Scalar::Raw { data: 0, .. } => err!(Unsupported(InvalidNullPointerUsage)),
-            Scalar::Raw { .. } => err!(Unsupported(ReadBytesAsPointer)),
+            Scalar::Raw { data: 0, .. } => err!(InvalidNullPointerUsage),
+            Scalar::Raw { .. } => err!(ReadBytesAsPointer),
             Scalar::Ptr(p) => Ok(p),
         }
     }
@@ -407,7 +406,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         match self {
             Scalar::Raw { data: 0, size: 1 } => Ok(false),
             Scalar::Raw { data: 1, size: 1 } => Ok(true),
-            _ => err!(Unsupported(InvalidBool)),
+            _ => err!(InvalidBool),
         }
     }
 
@@ -415,7 +414,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         let val = self.to_u32()?;
         match ::std::char::from_u32(val) {
             Some(c) => Ok(c),
-            None => err!(Unsupported(InvalidChar(val as u128))),
+            None => err!(InvalidChar(val as u128)),
         }
     }
 
@@ -538,7 +537,7 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     pub fn not_undef(self) -> InterpResult<'static, Scalar<Tag>> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
-            ScalarMaybeUndef::Undef => err!(Unsupported(ReadUndefBytes(Size::from_bytes(0)))),
+            ScalarMaybeUndef::Undef => err!(ReadUndefBytes(Size::from_bytes(0))),
         }
     }
 

@@ -17,8 +17,7 @@ use rustc::mir::interpret::{
     ErrorHandled,
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
     InterpResult, InterpError,
-    truncate, sign_extend, UnsupportedInfo::*, InvalidProgramInfo::*,
-    ResourceExhaustionInfo::*, UndefinedBehaviourInfo::*,
+    truncate, sign_extend, InvalidProgramInfo::*,
 };
 use rustc_data_structures::fx::FxHashMap;
 
@@ -136,7 +135,7 @@ pub enum LocalValue<Tag=(), Id=AllocId> {
 impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
-            LocalValue::Dead => err!(Unsupported(DeadLocal)),
+            LocalValue::Dead => err!(DeadLocal),
             LocalValue::Uninitialized =>
                 bug!("The type checker should prevent reading from a never-written local"),
             LocalValue::Live(val) => Ok(val),
@@ -149,7 +148,7 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
         &mut self,
     ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
         match self.value {
-            LocalValue::Dead => err!(Unsupported(DeadLocal)),
+            LocalValue::Dead => err!(DeadLocal),
             LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
             ref mut local @ LocalValue::Live(Operand::Immediate(_)) |
             ref mut local @ LocalValue::Uninitialized => {
@@ -303,7 +302,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 &substs,
             )),
             None => if substs.needs_subst() {
-                err!(InvalidProgram(TooGeneric)).into()
+                err_inval!(TooGeneric).into()
             } else {
                 Ok(substs)
             },
@@ -337,14 +336,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             && self.tcx.has_typeck_tables(did)
             && self.tcx.typeck_tables_of(did).tainted_by_errors
         {
-            return err!(InvalidProgram(TypeckError));
+            return err_inval!(TypeckError);
         }
         trace!("load mir {:?}", instance);
         match instance {
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
                 Ok(self.tcx.optimized_mir(did))
             } else {
-                err!(Unsupported(NoMirFor(self.tcx.def_path_str(def_id))))
+                err!(NoMirFor(self.tcx.def_path_str(def_id)))
             },
             _ => Ok(self.tcx.instance_mir(instance)),
         }
@@ -357,7 +356,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match self.stack.last() {
             Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)?),
             None => if t.needs_subst() {
-                err!(InvalidProgram(TooGeneric)).into()
+                err_inval!(TooGeneric).into()
             } else {
                 Ok(t)
             },
@@ -374,7 +373,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let substituted = t.subst(*self.tcx, substs);
 
         if substituted.needs_subst() {
-            return err!(InvalidProgram(TooGeneric));
+            return err_inval!(TooGeneric);
         }
 
         Ok(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted))
@@ -573,7 +572,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
 
         if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
-            err!(ResourceExhaustion(StackFrameLimitReached))
+            err_exhaust!(StackFrameLimitReached)
         } else {
             Ok(())
         }
@@ -621,7 +620,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         } else {
             // Uh, that shouldn't happen... the function did not intend to return
-            return err!(UndefinedBehaviour(Unreachable));
+            return err_ub!(Unreachable);
         }
         // Jump to new block -- *after* validation so that the spans make more sense.
         match frame.return_to_block {

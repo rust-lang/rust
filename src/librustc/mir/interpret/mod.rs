@@ -2,7 +2,47 @@
 
 #[macro_export]
 macro_rules! err {
-    ($($tt:tt)*) => { Err($crate::mir::interpret::InterpError::$($tt)*.into()) };
+    ($($tt:tt)*) => {
+        Err($crate::mir::interpret::InterpError::Unsupported(
+            $crate::mir::interpret::UnsupportedInfo::$($tt)*
+        ).into())
+    };
+}
+
+#[macro_export]
+macro_rules! err_inval {
+    ($($tt:tt)*) => {
+        Err($crate::mir::interpret::InterpError::InvalidProgram(
+            $crate::mir::interpret::InvalidProgramInfo::$($tt)*
+        ).into())
+    };
+}
+
+#[macro_export]
+macro_rules! err_ub {
+    ($($tt:tt)*) => {
+        Err($crate::mir::interpret::InterpError::UndefinedBehaviour(
+            $crate::mir::interpret::UndefinedBehaviourInfo::$($tt)*
+        ).into())
+    };
+}
+
+#[macro_export]
+macro_rules! err_panic {
+    ($($tt:tt)*) => {
+        Err($crate::mir::interpret::InterpError::Panic(
+            $crate::mir::interpret::PanicMessage::$($tt)*
+        ).into())
+    };
+}
+
+#[macro_export]
+macro_rules! err_exhaust {
+    ($($tt:tt)*) => {
+        Err($crate::mir::interpret::InterpError::ResourceExhaustion(
+            $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
+        ).into())
+    };
 }
 
 mod error;

@@ -4,7 +4,7 @@
 
 use rustc::mir;
 use rustc::ty::layout::LayoutOf;
-use rustc::mir::interpret::{InterpResult, Scalar, PointerArithmetic, UnsupportedInfo};
+use rustc::mir::interpret::{InterpResult, Scalar, PointerArithmetic};
 
 use super::{InterpCx, Machine};
 
@@ -121,7 +121,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // size of MIR constantly.
             Nop => {}
 
-            InlineAsm { .. } => return err!(Unsupported(UnsupportedInfo::InlineAsm)),
+            InlineAsm { .. } => return err!(InlineAsm),
         }
 
         self.stack[frame_idx].stmt += 1;

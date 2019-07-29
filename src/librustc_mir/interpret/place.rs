@@ -13,9 +13,8 @@ use rustc::ty::TypeFoldable;
 
 use super::{
     GlobalId, AllocId, Allocation, Scalar, InterpResult, Pointer, PointerArithmetic,
-    InterpCx, Machine, AllocMap, AllocationExtra, PanicMessage,
+    InterpCx, Machine, AllocMap, AllocationExtra,
     RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind, LocalValue,
-    UnsupportedInfo::*,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -357,7 +356,7 @@ where
                     // This can be violated because this runs during promotion on code where the
                     // type system has not yet ensured that such things don't happen.
                     debug!("tried to access element {} of array/slice with length {}", field, len);
-                    return err!(Panic(PanicMessage::BoundsCheck { len, index: field }));
+                    return err_panic!(BoundsCheck { len, index: field });
                 }
                 stride * field
             }
@@ -623,7 +622,7 @@ where
                                 .layout_of(self.monomorphize(self.frame().body.return_ty())?)?,
                         }
                     }
-                    None => return err!(Unsupported(InvalidNullPointerUsage)),
+                    None => return err!(InvalidNullPointerUsage),
                 },
                 PlaceBase::Local(local) => PlaceTy {
                     // This works even for dead/uninitialized locals; we check further when writing

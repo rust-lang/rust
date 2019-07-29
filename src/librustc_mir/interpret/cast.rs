@@ -9,7 +9,7 @@ use rustc_apfloat::{Float, FloatConvert};
 use rustc::mir::interpret::{
     Scalar, InterpResult, Pointer, PointerArithmetic, InterpError,
 };
-use rustc::mir::{CastKind, interpret::{UnsupportedInfo::*, InvalidProgramInfo::*}};
+use rustc::mir::{CastKind, interpret::{InvalidProgramInfo::*}};
 
 
 use super::{InterpCx, Machine, PlaceTy, OpTy, Immediate, FnVal};
@@ -200,7 +200,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             },
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
-            _ => err!(Unsupported(Unimplemented(format!("int to {:?} cast", dest_layout.ty)))),
+            _ => err!(Unimplemented(format!("int to {:?} cast", dest_layout.ty))),
         }
     }
 
