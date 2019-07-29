@@ -97,6 +97,7 @@ macro_rules! early_lint_passes {
             DeprecatedAttr: DeprecatedAttr::new(),
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
+            IncompleteFeatures: IncompleteFeatures,
         ]);
     )
 }

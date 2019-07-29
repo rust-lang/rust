@@ -33,13 +33,12 @@ use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 use rustc::util::nodemap::FxHashSet;
 
 use syntax::tokenstream::{TokenTree, TokenStream};
-use syntax::ast;
+use syntax::ast::{self, Expr};
 use syntax::ptr::P;
-use syntax::ast::Expr;
 use syntax::attr::{self, HasAttrs, AttributeTemplate};
 use syntax::source_map::Spanned;
 use syntax::edition::Edition;
-use syntax::feature_gate::{AttributeGate, AttributeType};
+use syntax::feature_gate::{self, AttributeGate, AttributeType};
 use syntax::feature_gate::{Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::{Symbol, kw, sym};
@@ -1829,5 +1828,37 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                 err.emit();
             }
         }
+    }
+}
+
+declare_lint! {
+    pub INCOMPLETE_FEATURES,
+    Warn,
+    "incomplete features that may function improperly in some or all cases"
+}
+
+declare_lint_pass!(
+    /// Check for used feature gates in `INCOMPLETE_FEATURES` in `feature_gate.rs`.
+    IncompleteFeatures => [INCOMPLETE_FEATURES]
+);
+
+impl EarlyLintPass for IncompleteFeatures {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
+        let features = cx.sess.features_untracked();
+        features.declared_lang_features
+            .iter().map(|(name, span, _)| (name, span))
+            .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
+            .filter(|(name, _)| feature_gate::INCOMPLETE_FEATURES.iter().any(|f| name == &f))
+            .for_each(|(name, &span)| {
+                cx.struct_span_lint(
+                    INCOMPLETE_FEATURES,
+                    span,
+                    &format!(
+                        "the feature `{}` is incomplete and may cause the compiler to crash",
+                        name,
+                    )
+                )
+                .emit();
+            });
     }
 }
