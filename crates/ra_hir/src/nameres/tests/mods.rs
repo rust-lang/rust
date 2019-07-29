@@ -336,10 +336,10 @@ fn module_resolution_explicit_path_mod_rs_with_win_separator() {
     "###);
 }
 
-// FIXME: issue #1510. not support out-of-line modules inside inline.
+// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
 #[ignore]
-fn module_resolution_decl_inside_inline_module() {
+fn module_resolution_decl_inside_inline_module_with_path_attribute() {
     let map = def_map_with_crate_graph(
         r###"
         //- /main.rs
@@ -368,10 +368,39 @@ fn module_resolution_decl_inside_inline_module() {
     "###);
 }
 
-// FIXME: issue #1510. not support out-of-line modules inside inline.
+#[test]
+fn module_resolution_decl_inside_inline_module() {
+    let map = def_map_with_crate_graph(
+        r###"
+        //- /main.rs
+        mod foo {
+            mod bar;
+        }
+
+        //- /foo/bar.rs
+        pub struct Baz;
+        "###,
+        crate_graph! {
+            "main": ("/main.rs", []),
+        },
+    );
+
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮foo: t
+        ⋮
+        ⋮crate::foo
+        ⋮bar: t
+        ⋮
+        ⋮crate::foo::bar
+        ⋮Baz: t v
+    "###);
+}
+
+// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
 #[ignore]
-fn module_resolution_decl_inside_inline_module_2() {
+fn module_resolution_decl_inside_inline_module_2_with_path_attribute() {
     let map = def_map_with_crate_graph(
         r###"
         //- /main.rs
@@ -400,7 +429,7 @@ fn module_resolution_decl_inside_inline_module_2() {
     "###);
 }
 
-// FIXME: issue #1510. not support out-of-line modules inside inline.
+// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
 #[ignore]
 fn module_resolution_decl_inside_inline_module_3() {
@@ -433,7 +462,7 @@ fn module_resolution_decl_inside_inline_module_3() {
     "###);
 }
 
-// FIXME: issue #1510. not support out-of-line modules inside inline.
+// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
 #[ignore]
 fn module_resolution_decl_inside_inline_module_empty_path() {
@@ -491,7 +520,7 @@ fn module_resolution_decl_empty_path() {
     "###);
 }
 
-// FIXME: issue #1510. not support out-of-line modules inside inline.
+// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
 #[ignore]
 fn module_resolution_decl_inside_inline_module_relative_path() {
@@ -523,9 +552,7 @@ fn module_resolution_decl_inside_inline_module_relative_path() {
     "###);
 }
 
-// FIXME: issue #1510. not support out-of-line modules inside inline.
 #[test]
-#[ignore]
 fn module_resolution_decl_inside_inline_module_in_crate_root() {
     let map = def_map_with_crate_graph(
         r###"
@@ -557,9 +584,7 @@ fn module_resolution_decl_inside_inline_module_in_crate_root() {
     "###);
 }
 
-// FIXME: issue #1510. not support out-of-line modules inside inline.
 #[test]
-#[ignore]
 fn module_resolution_decl_inside_inline_module_in_mod_rs() {
     let map = def_map_with_crate_graph(
         r###"
@@ -597,9 +622,7 @@ fn module_resolution_decl_inside_inline_module_in_mod_rs() {
     "###);
 }
 
-// FIXME: issue #1510. not support out-of-line modules inside inline.
 #[test]
-#[ignore]
 fn module_resolution_decl_inside_inline_module_in_non_crate_root() {
     let map = def_map_with_crate_graph(
         r###"
@@ -613,7 +636,7 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root() {
         }
         use self::bar::baz::Baz;
 
-        //- /foo/bar/qwe.rs
+        //- /bar/qwe.rs
         pub struct Baz;
         "###,
         crate_graph! {
@@ -637,7 +660,7 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root() {
     "###);
 }
 
-// FIXME: issue #1510. not support out-of-line modules inside inline.
+// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
 #[ignore]
 fn module_resolution_decl_inside_inline_module_in_non_crate_root_2() {
