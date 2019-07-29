@@ -363,6 +363,7 @@ impl fmt::Debug for UndefinedBehaviourInfo {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsupportedInfo<'tcx> {
+    /// Handle cases which for which we do not have a fixed variant.
     Unimplemented(String),
 
     // -- Everything below is not classified yet --
