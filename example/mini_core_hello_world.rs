@@ -117,12 +117,22 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsiz
 fn take_f32(_f: f32) {}
 fn take_unique(_u: Unique<()>) {}
 
+fn return_u128_pair() -> (u128, u128) {
+    (0, 0)
+}
+
+fn call_return_u128_pair() {
+    return_u128_pair();
+}
+
 fn main() {
     take_unique(Unique {
         pointer: 0 as *const (),
         _marker: PhantomData,
     });
     take_f32(0.1);
+
+    call_return_u128_pair();
 
     //return;
 

@@ -113,10 +113,16 @@ fn get_pass_mode<'tcx>(
                 PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone()))
             }
             layout::Abi::ScalarPair(a, b) => {
-                PassMode::ByValPair(
-                    scalar_to_clif_type(tcx, a.clone()),
-                    scalar_to_clif_type(tcx, b.clone()),
-                )
+                let a = scalar_to_clif_type(tcx, a.clone());
+                let b = scalar_to_clif_type(tcx, b.clone());
+                if a == types::I128 && b == types::I128 {
+                    // Returning (i128, i128) by-val-pair would take 4 regs, while only 3 are
+                    // available on x86_64. Cranelift gets confused when too many return params
+                    // are used.
+                    PassMode::ByRef
+                } else {
+                    PassMode::ByValPair(a, b)
+                }
             }
 
             // FIXME implement Vector Abi in a cg_llvm compatible way
