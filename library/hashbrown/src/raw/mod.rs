@@ -829,18 +829,21 @@ impl<T> RawTable<T> {
     pub fn insert(&mut self, hash: u64, value: T, hasher: impl Fn(&T) -> u64) -> Bucket<T> {
         unsafe {
             let mut index = self.find_insert_slot(hash);
+
+            // We can avoid growing the table once we have reached our load
+            // factor if we are replacing a tombstone. This works since the
+            // number of EMPTY slots does not change in this case.
             let old_ctrl = *self.ctrl(index);
-            if self.growth_left == 0 && special_is_empty(old_ctrl) {
+            if unlikely(self.growth_left == 0 && special_is_empty(old_ctrl)) {
                 self.reserve(1, hasher);
                 index = self.find_insert_slot(hash);
-                self.growth_left -= 1;
-            } else {
-                self.growth_left -= special_is_empty(old_ctrl) as usize
             }
-            self.items += 1;
-            self.set_ctrl(index, h2(hash));
+
             let bucket = self.bucket(index);
+            self.growth_left -= special_is_empty(old_ctrl) as usize;
+            self.set_ctrl(index, h2(hash));
             bucket.write(value);
+            self.items += 1;
             bucket
         }
     }
@@ -851,6 +854,7 @@ impl<T> RawTable<T> {
     ///
     /// This does not check if the given element already exists in the table.
     #[inline]
+    #[cfg(feature = "rustc-internal-api")]
     pub fn insert_no_grow(&mut self, hash: u64, value: T) -> Bucket<T> {
         unsafe {
             let index = self.find_insert_slot(hash);
