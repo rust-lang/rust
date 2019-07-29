@@ -3,7 +3,8 @@
 
 use std::mem;
 
-const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) }; // Ok (CTFE does not check alignment)
+const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
+//~^ ERROR it is undefined behavior to use this value
 
 const NULL: &u16 = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
