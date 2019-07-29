@@ -374,6 +374,7 @@ impl<T> RawTable<T> {
         buckets: usize,
         fallability: Fallibility,
     ) -> Result<Self, CollectionAllocErr> {
+        debug_assert!(buckets.is_power_of_two());
         let (layout, data_offset) =
             calculate_layout::<T>(buckets).ok_or_else(|| fallability.capacity_overflow())?;
         let ctrl = NonNull::new(alloc(layout)).ok_or_else(|| fallability.alloc_err(layout))?;
@@ -452,6 +453,7 @@ impl<T> RawTable<T> {
     #[inline]
     pub unsafe fn erase_no_drop(&mut self, item: &Bucket<T>) {
         let index = self.bucket_index(item);
+        debug_assert!(is_full(*self.ctrl(index)));
         let index_before = index.wrapping_sub(Group::WIDTH) & self.bucket_mask;
         let empty_before = Group::load(self.ctrl(index_before)).match_empty();
         let empty_after = Group::load(self.ctrl(index)).match_empty();
@@ -825,8 +827,25 @@ impl<T> RawTable<T> {
     /// This does not check if the given element already exists in the table.
     #[inline]
     pub fn insert(&mut self, hash: u64, value: T, hasher: impl Fn(&T) -> u64) -> Bucket<T> {
-        self.reserve(1, hasher);
-        self.insert_no_grow(hash, value)
+        unsafe {
+            let mut index = self.find_insert_slot(hash);
+
+            // We can avoid growing the table once we have reached our load
+            // factor if we are replacing a tombstone. This works since the
+            // number of EMPTY slots does not change in this case.
+            let old_ctrl = *self.ctrl(index);
+            if unlikely(self.growth_left == 0 && special_is_empty(old_ctrl)) {
+                self.reserve(1, hasher);
+                index = self.find_insert_slot(hash);
+            }
+
+            let bucket = self.bucket(index);
+            self.growth_left -= special_is_empty(old_ctrl) as usize;
+            self.set_ctrl(index, h2(hash));
+            bucket.write(value);
+            self.items += 1;
+            bucket
+        }
     }
 
     /// Inserts a new element into the table, without growing the table.
@@ -835,6 +854,7 @@ impl<T> RawTable<T> {
     ///
     /// This does not check if the given element already exists in the table.
     #[inline]
+    #[cfg(feature = "rustc-internal-api")]
     pub fn insert_no_grow(&mut self, hash: u64, value: T) -> Bucket<T> {
         unsafe {
             let index = self.find_insert_slot(hash);
