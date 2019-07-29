@@ -1345,13 +1345,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// any, and then branches to the arm. Returns the block for the case where
     /// the guard fails.
     ///
-    /// Note: we check earlier that if there is a guard, there cannot be move
-    /// bindings (unless feature(bind_by_move_pattern_guards) is used). This
-    /// isn't really important for the self-consistency of this fn, but the
-    /// reason for it should be clear: after we've done the assignments, if
-    /// there were move bindings, further tests would be a use-after-move.
-    /// bind_by_move_pattern_guards avoids this by only moving the binding once
-    /// the guard has evaluated to true (see below).
+    /// Note: we do not check earlier that if there is a guard,
+    /// there cannot be move bindings. We avoid a use-after-move by only
+    /// moving the binding once the guard has evaluated to true (see below).
     fn bind_and_guard_matched_candidate<'pat>(
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
