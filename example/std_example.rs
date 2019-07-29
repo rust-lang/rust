@@ -67,6 +67,9 @@ unsafe fn test_simd() {
     test_mm_slli_si128();
     test_mm_movemask_epi8();
     test_mm256_movemask_epi8();
+
+    let mask1 = _mm_movemask_epi8(dbg!(_mm_setr_epi8(255u8 as i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
+    assert_eq!(mask1, 1);
 }
 
 #[target_feature(enable = "sse2")]

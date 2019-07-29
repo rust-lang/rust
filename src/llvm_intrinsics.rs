@@ -41,7 +41,7 @@ pub fn codegen_llvm_intrinsic_call<'a, 'tcx: 'a>(
 
             let mut res = fx.bcx.ins().iconst(types::I32, 0);
 
-            for lane in 0..lane_count {
+            for lane in (0..lane_count).rev() {
                 let a_lane = a.value_field(fx, mir::Field::new(lane.try_into().unwrap())).load_scalar(fx);
                 let a_lane_sign = fx.bcx.ins().ushr_imm(a_lane, 7); // extract sign bit of 8bit int
                 let a_lane_sign = fx.bcx.ins().uextend(types::I32, a_lane_sign);
