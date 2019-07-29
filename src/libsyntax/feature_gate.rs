@@ -569,10 +569,10 @@ declare_features! (
     // -------------------------------------------------------------------------
 );
 
-// Some features are known to be incomplete and using them is likely to have
-// unanticipated results, such as compiler crashes. We warn the user about these
-// to alert them.
-const INCOMPLETE_FEATURES: &[Symbol] = &[
+/// Some features are known to be incomplete and using them is likely to have
+/// unanticipated results, such as compiler crashes. We warn the user about these
+/// to alert them.
+pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::impl_trait_in_bindings,
     sym::generic_associated_types,
     sym::const_generics,
@@ -2338,15 +2338,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             }
 
             let name = mi.name_or_empty();
-            if INCOMPLETE_FEATURES.iter().any(|f| name == *f) {
-                span_handler.struct_span_warn(
-                    mi.span(),
-                    &format!(
-                        "the feature `{}` is incomplete and may cause the compiler to crash",
-                        name
-                    )
-                ).emit();
-            }
 
             if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
                 if *edition <= crate_edition {
