@@ -152,7 +152,6 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("serde"),
     Crate("serde_derive"),
     Crate("smallvec"),
-    Crate("spin"),
     Crate("stable_deref_trait"),
     Crate("syn"),
     Crate("synstructure"),
