@@ -4,18 +4,6 @@ error: expected one of `,` or `>`, found `&&`
 LL |         true && let 1 = 1
    |              ^^ expected one of `,` or `>` here
 
-warning: the feature `const_generics` is incomplete and may cause the compiler to crash
-  --> $DIR/disallowed-positions.rs:20:12
-   |
-LL | #![feature(const_generics)]
-   |            ^^^^^^^^^^^^^^
-
-warning: the feature `let_chains` is incomplete and may cause the compiler to crash
-  --> $DIR/disallowed-positions.rs:22:12
-   |
-LL | #![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
-   |            ^^^^^^^^^^
-
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:32:9
    |
@@ -510,6 +498,20 @@ LL |         true && let 1 = 1
    |
    = note: only supported directly in conditions of `if`- and `while`-expressions
    = note: as well as when nested within `&&` and parenthesis in those conditions
+
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/disallowed-positions.rs:20:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `let_chains` is incomplete and may cause the compiler to crash
+  --> $DIR/disallowed-positions.rs:22:12
+   |
+LL | #![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
+   |            ^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:32:8

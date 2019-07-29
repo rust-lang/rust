@@ -3,6 +3,8 @@ warning: the feature `impl_trait_in_bindings` is incomplete and may cause the co
    |
 LL | #![feature(impl_trait_in_bindings)]
    |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
   --> $DIR/duplicate.rs:12:36
