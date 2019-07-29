@@ -8,7 +8,7 @@
 //! * Initial values
 //! * Return values for functions that are not defined
 //!   over their entire input range (partial functions)
-//! * Return value for otherwise reporting simple errors, where `None` is
+//! * Return value for otherwise reporting simple errors, where [`None`] is
 //!   returned on error
 //! * Optional struct fields
 //! * Struct fields that can be loaned or "taken"
@@ -752,7 +752,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns [`Some`] if exactly one of `self`, `optb` is [`Some`], otherwise returns `None`.
+    /// Returns [`Some`] if exactly one of `self`, `optb` is [`Some`], otherwise returns [`None`].
     ///
     /// [`Some`]: #variant.Some
     /// [`None`]: #variant.None
