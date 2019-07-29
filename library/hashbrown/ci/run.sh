@@ -4,7 +4,7 @@ set -ex
 
 : "${TARGET?The TARGET environment variable must be set.}"
 
-FEATURES="rayon,serde"
+FEATURES="rayon,serde,rustc-internal-api"
 if [ "${TRAVIS_RUST_VERSION}" = "nightly" ]; then
     FEATURES="${FEATURES},nightly"
     export RUSTFLAGS="$RUSTFLAGS -D warnings"
