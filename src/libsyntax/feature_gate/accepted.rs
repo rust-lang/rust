@@ -241,6 +241,8 @@ declare_features! (
     (accepted, underscore_const_names, "1.37.0", Some(54912), None),
     /// Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
     (accepted, async_await, "1.39.0", Some(50547), None),
+    /// Allows mixing bind-by-move in patterns and references to those identifiers in guards.
+    (accepted, bind_by_move_pattern_guards, "1.39.0", Some(15287), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
