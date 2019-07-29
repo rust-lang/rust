@@ -85,7 +85,10 @@ export class HintsUpdater {
                 range: hint.range,
                 renderOptions: { after: { contentText: `: ${hint.label}` } }
             }));
-            return editor.setDecorations(typeHintDecorationType, newDecorations);
+            return editor.setDecorations(
+                typeHintDecorationType,
+                newDecorations
+            );
         }
     }
 
