@@ -901,7 +901,45 @@ pub struct WasmLd<'a> {
 }
 
 impl<'a> WasmLd<'a> {
-    fn new(cmd: Command, sess: &'a Session, info: &'a LinkerInfo) -> WasmLd<'a> {
+    fn new(mut cmd: Command, sess: &'a Session, info: &'a LinkerInfo) -> WasmLd<'a> {
+        // If the atomics feature is enabled for wasm then we need a whole bunch
+        // of flags:
+        //
+        // * `--shared-memory` - the link won't even succeed without this, flags
+        //   the one linear memory as `shared`
+        //
+        // * `--max-memory=1G` - when specifying a shared memory this must also
+        //   be specified. We conservatively choose 1GB but users should be able
+        //   to override this with `-C link-arg`.
+        //
+        // * `--import-memory` - it doesn't make much sense for memory to be
+        //   exported in a threaded module because typically you're
+        //   sharing memory and instantiating the module multiple times. As a
+        //   result if it were exported then we'd just have no sharing.
+        //
+        // * `--passive-segments` - all memory segments should be passive to
+        //   prevent each module instantiation from reinitializing memory.
+        //
+        // * `--export=__wasm_init_memory` - when using `--passive-segments` the
+        //   linker will synthesize this function, and so we need to make sure
+        //   that our usage of `--export` below won't accidentally cause this
+        //   function to get deleted.
+        //
+        // * `--export=*tls*` - when `#[thread_local]` symbols are used these
+        //   symbols are how the TLS segments are initialized and configured.
+        let atomics = sess.opts.cg.target_feature.contains("+atomics") ||
+            sess.target.target.options.features.contains("+atomics");
+        if atomics {
+            cmd.arg("--shared-memory");
+            cmd.arg("--max-memory=1073741824");
+            cmd.arg("--import-memory");
+            cmd.arg("--passive-segments");
+            cmd.arg("--export=__wasm_init_memory");
+            cmd.arg("--export=__wasm_init_tls");
+            cmd.arg("--export=__tls_size");
+            cmd.arg("--export=__tls_align");
+            cmd.arg("--export=__tls_base");
+        }
         WasmLd { cmd, sess, info }
     }
 }
@@ -1004,6 +1042,13 @@ impl<'a> Linker for WasmLd<'a> {
         for sym in self.info.exports[&crate_type].iter() {
             self.cmd.arg("--export").arg(&sym);
         }
+
+        // LLD will hide these otherwise-internal symbols since our `--export`
+        // list above is a whitelist of what to export. Various bits and pieces
+        // of tooling use this, so be sure these symbols make their way out of
+        // the linker as well.
+        self.cmd.arg("--export=__heap_base");
+        self.cmd.arg("--export=__data_end");
     }
 
     fn subsystem(&mut self, _subsystem: &str) {

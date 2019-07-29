@@ -913,9 +913,12 @@ pub fn compile_unit_metadata(
     }
 
     debug!("compile_unit_metadata: {:?}", name_in_debuginfo);
+    let rustc_producer = format!(
+        "rustc version {}",
+        option_env!("CFG_VERSION").expect("CFG_VERSION"),
+    );
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
-    let producer = format!("clang LLVM (rustc version {})",
-                           (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
+    let producer = format!("clang LLVM ({})", rustc_producer);
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let name_in_debuginfo = SmallCStr::new(&name_in_debuginfo);
@@ -978,6 +981,21 @@ pub fn compile_unit_metadata(
             llvm::LLVMAddNamedMetadataOperand(debug_context.llmod,
                                               llvm_gcov_ident.as_ptr(),
                                               gcov_metadata);
+        }
+
+        // Insert `llvm.ident` metadata on the wasm32 targets since that will
+        // get hooked up to the "producer" sections `processed-by` information.
+        if tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+            let name_metadata = llvm::LLVMMDStringInContext(
+                debug_context.llcontext,
+                rustc_producer.as_ptr() as *const _,
+                rustc_producer.as_bytes().len() as c_uint,
+            );
+            llvm::LLVMAddNamedMetadataOperand(
+                debug_context.llmod,
+                const_cstr!("llvm.ident").as_ptr(),
+                llvm::LLVMMDNodeInContext(debug_context.llcontext, &name_metadata, 1),
+            );
         }
 
         return unit_metadata;

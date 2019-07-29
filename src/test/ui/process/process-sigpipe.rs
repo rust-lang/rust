@@ -14,6 +14,7 @@
 
 // ignore-cloudabi no subprocesses support
 // ignore-emscripten no threads support
+// ignore-vxworks no 'sh'
 
 use std::process;
 use std::thread;

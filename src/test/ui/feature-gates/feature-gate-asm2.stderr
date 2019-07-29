@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'asm': inline assembly is not stable enough for use and is subject to change
-  --> $DIR/feature-gate-asm2.rs:6:26
+  --> $DIR/feature-gate-asm2.rs:5:26
    |
 LL |         println!("{:?}", asm!(""));
    |                          ^^^

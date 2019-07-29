@@ -243,9 +243,6 @@ declare_features! (
     // Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
     (active, allocator_internals, "1.20.0", None, None),
 
-    // Allows using the `format_args_nl` macro.
-    (active, format_args_nl, "1.29.0", Some(0), None),
-
     // no-tracking-issue-end
 
     // Added for testing E0705; perma-unstable.
@@ -286,12 +283,6 @@ declare_features! (
     // feature-group-start: actual feature gates
     // -------------------------------------------------------------------------
 
-    // Allows using `asm!` macro with which inline assembly can be embedded.
-    (active, asm, "1.0.0", Some(29722), None),
-
-    // Allows using the `concat_idents!` macro with which identifiers can be concatenated.
-    (active, concat_idents, "1.0.0", Some(29599), None),
-
     // Allows using the `#[link_args]` attribute.
     (active, link_args, "1.0.0", Some(29596), None),
 
@@ -306,12 +297,6 @@ declare_features! (
 
     // Allows using `#[thread_local]` on `static` items.
     (active, thread_local, "1.0.0", Some(29594), None),
-
-    // Allows using the `log_syntax!` macro.
-    (active, log_syntax, "1.0.0", Some(29598), None),
-
-    // Allows using the `trace_macros!` macro.
-    (active, trace_macros, "1.0.0", Some(29598), None),
 
     // Allows the use of SIMD types in functions declared in `extern` blocks.
     (active, simd_ffi, "1.0.0", Some(27731), None),
@@ -402,9 +387,6 @@ declare_features! (
     // Allows `extern "x86-interrupt" fn()`.
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
 
-    // Allows module-level inline assembly by way of `global_asm!()`.
-    (active, global_asm, "1.18.0", Some(35119), None),
-
     // Allows overlapping impls of marker traits.
     (active, overlapping_marker_traits, "1.18.0", Some(29864), None),
 
@@ -472,7 +454,7 @@ declare_features! (
     (active, doc_alias, "1.27.0", Some(50146), None),
 
     // Allows defining `existential type`s.
-    (active, existential_type, "1.28.0", Some(34511), None),
+    (active, existential_type, "1.28.0", Some(63063), None),
 
     // Allows inconsistent bounds in where clauses.
     (active, trivial_bounds, "1.28.0", Some(48214), None),
@@ -525,7 +507,7 @@ declare_features! (
     (active, bind_by_move_pattern_guards, "1.30.0", Some(15287), None),
 
     // Allows `impl Trait` in bindings (`let`, `const`, `static`).
-    (active, impl_trait_in_bindings, "1.30.0", Some(34511), None),
+    (active, impl_trait_in_bindings, "1.30.0", Some(63065), None),
 
     // Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),

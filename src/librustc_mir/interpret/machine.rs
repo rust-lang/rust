@@ -54,6 +54,16 @@ pub trait AllocMap<K: Hash + Eq, V> {
         k: K,
         vacant: impl FnOnce() -> Result<V, E>
     ) -> Result<&mut V, E>;
+
+    /// Read-only lookup.
+    fn get(&self, k: K) -> Option<&V> {
+        self.get_or(k, || Err(())).ok()
+    }
+
+    /// Mutable lookup.
+    fn get_mut(&mut self, k: K) -> Option<&mut V> {
+        self.get_mut_or(k, || Err(())).ok()
+    }
 }
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail

@@ -75,11 +75,6 @@ panic_immediate_abort = ["core/panic_immediate_abort"]
 # requires rebuilding the standard library to use it.
 wasm_syscall = []
 
-# An off-by-default features to enable libstd to assume that wasm-bindgen is in
-# the environment for hooking up some thread-related information like the
-# current thread id and accessing/getting the current thread's TCB
-wasm-bindgen-threads = []
-
 # Enable std_detect default features for stdarch/crates/std_detect:
 # https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
 std_detect_file_io = []
