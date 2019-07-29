@@ -538,11 +538,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Scalar::Ptr(ptr) => Scalar::Ptr(self.tag_static_base_pointer(ptr)),
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         };
+        let value = self.subst_and_normalize_erasing_regions_in_frame(val.val);
         // Early-return cases.
-        match val.val {
-            ConstValue::Param(_) =>
-                // FIXME(oli-obk): try to monomorphize
-                throw_inval!(TooGeneric),
+        match value {
+            ConstValue::Param(_) => throw_inval!(TooGeneric),
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId {
@@ -556,7 +555,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = from_known_layout(layout, || {
             self.layout_of(self.subst_and_normalize_erasing_regions_in_frame(val.ty))
         })?;
-        let op = match val.val {
+        let op = match value {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
