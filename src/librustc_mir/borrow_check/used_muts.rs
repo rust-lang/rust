@@ -120,7 +120,7 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
                 );
                 if let Place {
                     base: PlaceBase::Local(user_local),
-                    projection: None,
+                    projection: box [],
                 } = path.place {
                     self.mbcx.used_mut.insert(user_local);
                 }

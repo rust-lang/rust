@@ -425,22 +425,20 @@ impl Inliner<'tcx> {
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
                 fn dest_needs_borrow(place: &Place<'_>) -> bool {
-                    place.iterate(|place_base, place_projection| {
-                        for proj in place_projection {
-                            match proj.elem {
-                                ProjectionElem::Deref |
-                                ProjectionElem::Index(_) => return true,
-                                _ => {}
-                            }
+                    for elem in place.projection.iter() {
+                        match elem {
+                            ProjectionElem::Deref |
+                            ProjectionElem::Index(_) => return true,
+                            _ => {}
                         }
+                    }
 
-                        match place_base {
-                            // Static variables need a borrow because the callee
-                            // might modify the same static.
-                            PlaceBase::Static(_) => true,
-                            _ => false
-                        }
-                    })
+                    match place.base {
+                        // Static variables need a borrow because the callee
+                        // might modify the same static.
+                        PlaceBase::Static(_) => true,
+                        _ => false
+                    }
                 }
 
                 let dest = if dest_needs_borrow(&destination.0) {
@@ -591,7 +589,7 @@ impl Inliner<'tcx> {
 
         if let Operand::Move(Place {
             base: PlaceBase::Local(local),
-            projection: None,
+            projection: box [],
         }) = arg {
             if caller_body.local_kind(local) == LocalKind::Temp {
                 // Reuse the operand if it's a temporary already
@@ -660,7 +658,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             match self.destination {
                 Place {
                     base: PlaceBase::Local(l),
-                    projection: None,
+                    projection: box [],
                 } => {
                     *local = l;
                     return;
@@ -684,7 +682,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         match place {
             Place {
                 base: PlaceBase::Local(RETURN_PLACE),
-                projection: None,
+                projection: box [],
             } => {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();

@@ -391,7 +391,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Don't forget to check the return type!
                     if let Some(caller_ret) = dest {
                         let callee_ret = self.eval_place(
-                            &mir::Place::RETURN_PLACE
+                            &mir::Place::return_place()
                         )?;
                         if !Self::check_argument_compat(
                             rust_abi,

@@ -19,7 +19,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::StatementKind::Assign(ref place, ref rvalue) => {
                 if let mir::Place {
                     base: mir::PlaceBase::Local(index),
-                    projection: None,
+                    projection: box [],
                 } = *place {
                     match self.locals[index] {
                         LocalRef::Place(cg_dest) => {

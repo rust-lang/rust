@@ -609,7 +609,7 @@ where
         unpack!(block = builder.in_breakable_scope(
             None,
             START_BLOCK,
-            Place::RETURN_PLACE,
+            Place::return_place(),
             |builder| {
                 builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(block, &arguments, arg_scope, &body.value)
@@ -670,7 +670,7 @@ fn construct_const<'a, 'tcx>(
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(&Place::RETURN_PLACE, block, expr));
+    unpack!(block = builder.into_expr(&Place::return_place(), block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -871,7 +871,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Place::RETURN_PLACE, block, body)
+        self.into(&Place::return_place(), block, body)
     }
 
     fn set_correct_source_scope_for_arg(

@@ -942,13 +942,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for Binding { source, .. }
                 in matched_candidates.iter().flat_map(|candidate| &candidate.bindings)
             {
-                let mut cursor = &source.projection;
-                while let Some(box Projection { base, elem }) = cursor {
-                    cursor = base;
+                for (i, elem) in source.projection.iter().enumerate().rev() {
+                    let proj_base = &source.projection[..i];
+
                     if let ProjectionElem::Deref = elem {
                         fake_borrows.insert(Place {
                             base: source.base.clone(),
-                            projection: cursor.clone(),
+                            projection: proj_base.to_vec().into_boxed_slice(),
                         });
                         break;
                     }
@@ -1295,18 +1295,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Insert a Shallow borrow of the prefixes of any fake borrows.
         for place in fake_borrows
         {
-            let mut prefix_cursor = &place.projection;
-            while let Some(box Projection { base, elem }) = prefix_cursor {
+            for (i, elem) in place.projection.iter().enumerate().rev() {
+                let proj_base = &place.projection[..i];
+
                 if let ProjectionElem::Deref = elem {
                     // Insert a shallow borrow after a deref. For other
                     // projections the borrow of prefix_cursor will
                     // conflict with any mutation of base.
                     all_fake_borrows.push(PlaceRef {
                         base: &place.base,
-                        projection: base,
+                        projection: proj_base,
                     });
                 }
-                prefix_cursor = base;
             }
 
             all_fake_borrows.push(place.as_ref());
@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     BorrowKind::Shallow,
                     Place {
                         base: place.base.clone(),
-                        projection: place.projection.clone(),
+                        projection: place.projection.to_vec().into_boxed_slice(),
                     },
                 );
                 self.cfg.push_assign(

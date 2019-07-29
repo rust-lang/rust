@@ -96,7 +96,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                         StatementKind::Assign(
                             Place {
                                 base: PlaceBase::Local(local),
-                                projection: None,
+                                projection: box [],
                             },
                             box Rvalue::Use(ref operand)
                         ) if local == dest_local => {
@@ -150,21 +150,21 @@ fn eliminate_self_assignments(
                     StatementKind::Assign(
                         Place {
                             base: PlaceBase::Local(local),
-                            projection: None,
+                            projection: box [],
                         },
                         box Rvalue::Use(Operand::Copy(Place {
                             base: PlaceBase::Local(src_local),
-                            projection: None,
+                            projection: box [],
                         })),
                     ) |
                     StatementKind::Assign(
                         Place {
                             base: PlaceBase::Local(local),
-                            projection: None,
+                            projection: box [],
                         },
                         box Rvalue::Use(Operand::Move(Place {
                             base: PlaceBase::Local(src_local),
-                            projection: None,
+                            projection: box [],
                         })),
                     ) if local == dest_local && dest_local == src_local => {}
                     _ => {
@@ -194,7 +194,7 @@ impl<'tcx> Action<'tcx> {
         // The source must be a local.
         let src_local = if let Place {
             base: PlaceBase::Local(local),
-            projection: None,
+            projection: box [],
         } = *src_place {
             local
         } else {
@@ -351,11 +351,11 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
         match *operand {
             Operand::Copy(Place {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: box [],
             }) |
             Operand::Move(Place {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: box [],
             }) if local == self.dest_local => {}
             _ => return,
         }

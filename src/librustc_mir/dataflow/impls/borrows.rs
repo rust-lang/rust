@@ -208,7 +208,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             // If the borrowed place is a local with no projections, all other borrows of this
             // local must conflict. This is purely an optimization so we don't have to call
             // `places_conflict` for every borrow.
-            if place.projection.is_none() {
+            if place.projection.is_empty() {
                 trans.kill_all(other_borrows_of_local);
                 return;
             }

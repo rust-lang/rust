@@ -200,127 +200,127 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     place: &Place<'tcx>,
                     context: PlaceContext,
                     _location: Location) {
-        place.iterate(|place_base, place_projections| {
-            match place_base {
-                PlaceBase::Local(..) => {
-                    // Locals are safe.
-                }
-                PlaceBase::Static(box Static { kind: StaticKind::Promoted(_, _), .. }) => {
-                    bug!("unsafety checking should happen before promotion")
-                }
-                PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }) => {
-                    if self.tcx.is_mutable_static(*def_id) {
-                        self.require_unsafe("use of mutable static",
-                            "mutable statics can be mutated by multiple threads: aliasing \
-                             violations or data races will cause undefined behavior",
-                             UnsafetyViolationKind::General);
-                    } else if self.tcx.is_foreign_item(*def_id) {
-                        let source_info = self.source_info;
-                        let lint_root =
-                            self.source_scope_local_data[source_info.scope].lint_root;
-                        self.register_violations(&[UnsafetyViolation {
-                            source_info,
-                            description: InternedString::intern("use of extern static"),
-                            details: InternedString::intern(
-                                "extern statics are not controlled by the Rust type system: \
-                                invalid data, aliasing violations or data races will cause \
-                                undefined behavior"),
-                            kind: UnsafetyViolationKind::ExternStatic(lint_root)
-                        }], &[]);
-                    }
+        match place.base {
+            PlaceBase::Local(..) => {
+                // Locals are safe.
+            }
+            PlaceBase::Static(box Static { kind: StaticKind::Promoted(_, _), .. }) => {
+                bug!("unsafety checking should happen before promotion")
+            }
+            PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }) => {
+                if self.tcx.is_mutable_static(def_id) {
+                    self.require_unsafe("use of mutable static",
+                        "mutable statics can be mutated by multiple threads: aliasing \
+                         violations or data races will cause undefined behavior",
+                         UnsafetyViolationKind::General);
+                } else if self.tcx.is_foreign_item(def_id) {
+                    let source_info = self.source_info;
+                    let lint_root =
+                        self.source_scope_local_data[source_info.scope].lint_root;
+                    self.register_violations(&[UnsafetyViolation {
+                        source_info,
+                        description: InternedString::intern("use of extern static"),
+                        details: InternedString::intern(
+                            "extern statics are not controlled by the Rust type system: \
+                            invalid data, aliasing violations or data races will cause \
+                            undefined behavior"),
+                        kind: UnsafetyViolationKind::ExternStatic(lint_root)
+                    }], &[]);
                 }
             }
+        }
 
-            for proj in place_projections {
-                if context.is_borrow() {
-                    if util::is_disaligned(self.tcx, self.body, self.param_env, place) {
-                        let source_info = self.source_info;
-                        let lint_root =
-                            self.source_scope_local_data[source_info.scope].lint_root;
-                        self.register_violations(&[UnsafetyViolation {
-                            source_info,
-                            description: InternedString::intern("borrow of packed field"),
-                            details: InternedString::intern(
-                                "fields of packed structs might be misaligned: dereferencing a \
-                                misaligned pointer or even just creating a misaligned reference \
-                                is undefined behavior"),
-                            kind: UnsafetyViolationKind::BorrowPacked(lint_root)
-                        }], &[]);
-                    }
+        for (i, elem) in place.projection.iter().enumerate() {
+            let proj_base = &place.projection[..i];
+
+            if context.is_borrow() {
+                if util::is_disaligned(self.tcx, self.body, self.param_env, place) {
+                    let source_info = self.source_info;
+                    let lint_root =
+                        self.source_scope_local_data[source_info.scope].lint_root;
+                    self.register_violations(&[UnsafetyViolation {
+                        source_info,
+                        description: InternedString::intern("borrow of packed field"),
+                        details: InternedString::intern(
+                            "fields of packed structs might be misaligned: dereferencing a \
+                            misaligned pointer or even just creating a misaligned reference \
+                            is undefined behavior"),
+                        kind: UnsafetyViolationKind::BorrowPacked(lint_root)
+                    }], &[]);
                 }
-                let is_borrow_of_interior_mut = context.is_borrow() &&
-                    !Place::ty_from(&place.base, &proj.base, self.body, self.tcx)
-                    .ty
-                    .is_freeze(self.tcx, self.param_env, self.source_info.span);
-                // prevent
-                // * `&mut x.field`
-                // * `x.field = y;`
-                // * `&x.field` if `field`'s type has interior mutability
-                // because either of these would allow modifying the layout constrained field and
-                // insert values that violate the layout constraints.
-                if context.is_mutating_use() || is_borrow_of_interior_mut {
-                    self.check_mut_borrowing_layout_constrained_field(
-                        place, context.is_mutating_use(),
-                    );
+            }
+            let is_borrow_of_interior_mut = context.is_borrow() &&
+                !Place::ty_from(&place.base, proj_base, self.body, self.tcx)
+                .ty
+                .is_freeze(self.tcx, self.param_env, self.source_info.span);
+            // prevent
+            // * `&mut x.field`
+            // * `x.field = y;`
+            // * `&x.field` if `field`'s type has interior mutability
+            // because either of these would allow modifying the layout constrained field and
+            // insert values that violate the layout constraints.
+            if context.is_mutating_use() || is_borrow_of_interior_mut {
+                self.check_mut_borrowing_layout_constrained_field(
+                    place, context.is_mutating_use(),
+                );
+            }
+            let old_source_info = self.source_info;
+            if let (PlaceBase::Local(local), []) = (&place.base, proj_base) {
+                if self.body.local_decls[*local].internal {
+                    // Internal locals are used in the `move_val_init` desugaring.
+                    // We want to check unsafety against the source info of the
+                    // desugaring, rather than the source info of the RHS.
+                    self.source_info = self.body.local_decls[*local].source_info;
                 }
-                let old_source_info = self.source_info;
-                if let (PlaceBase::Local(local), None) = (&place.base, &proj.base) {
-                    if self.body.local_decls[*local].internal {
-                        // Internal locals are used in the `move_val_init` desugaring.
-                        // We want to check unsafety against the source info of the
-                        // desugaring, rather than the source info of the RHS.
-                        self.source_info = self.body.local_decls[*local].source_info;
-                    }
+            }
+            let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
+            match base_ty.sty {
+                ty::RawPtr(..) => {
+                    self.require_unsafe("dereference of raw pointer",
+                        "raw pointers may be NULL, dangling or unaligned; they can violate \
+                         aliasing rules and cause data races: all of these are undefined \
+                         behavior", UnsafetyViolationKind::General)
                 }
-                let base_ty = Place::ty_from(&place.base, &proj.base, self.body, self.tcx).ty;
-                match base_ty.sty {
-                    ty::RawPtr(..) => {
-                        self.require_unsafe("dereference of raw pointer",
-                            "raw pointers may be NULL, dangling or unaligned; they can violate \
-                             aliasing rules and cause data races: all of these are undefined \
-                             behavior", UnsafetyViolationKind::General)
-                    }
-                    ty::Adt(adt, _) => {
-                        if adt.is_union() {
-                            if context == PlaceContext::MutatingUse(MutatingUseContext::Store) ||
-                                context == PlaceContext::MutatingUse(MutatingUseContext::Drop) ||
-                                context == PlaceContext::MutatingUse(
-                                    MutatingUseContext::AsmOutput
-                                )
-                            {
-                                let elem_ty = match proj.elem {
-                                    ProjectionElem::Field(_, ty) => ty,
-                                    _ => span_bug!(
-                                        self.source_info.span,
-                                        "non-field projection {:?} from union?",
-                                        place)
-                                };
-                                if !elem_ty.is_copy_modulo_regions(
-                                    self.tcx,
-                                    self.param_env,
+                ty::Adt(adt, _) => {
+                    if adt.is_union() {
+                        if context == PlaceContext::MutatingUse(MutatingUseContext::Store) ||
+                            context == PlaceContext::MutatingUse(MutatingUseContext::Drop) ||
+                            context == PlaceContext::MutatingUse(
+                                MutatingUseContext::AsmOutput
+                            )
+                        {
+                            let elem_ty = match elem {
+                                ProjectionElem::Field(_, ty) => ty,
+                                _ => span_bug!(
                                     self.source_info.span,
-                                ) {
-                                    self.require_unsafe(
-                                        "assignment to non-`Copy` union field",
-                                        "the previous content of the field will be dropped, which \
-                                         causes undefined behavior if the field was not properly \
-                                         initialized", UnsafetyViolationKind::General)
-                                } else {
-                                    // write to non-move union, safe
-                                }
+                                    "non-field projection {:?} from union?",
+                                    place)
+                            };
+                            if !elem_ty.is_copy_modulo_regions(
+                                self.tcx,
+                                self.param_env,
+                                self.source_info.span,
+                            ) {
+                                self.require_unsafe(
+                                    "assignment to non-`Copy` union field",
+                                    "the previous content of the field will be dropped, which \
+                                     causes undefined behavior if the field was not properly \
+                                     initialized", UnsafetyViolationKind::General)
                             } else {
-                                self.require_unsafe("access to union field",
-                                    "the field may not be properly initialized: using \
-                                     uninitialized data will cause undefined behavior",
-                                     UnsafetyViolationKind::General)
+                                // write to non-move union, safe
                             }
+                        } else {
+                            self.require_unsafe("access to union field",
+                                "the field may not be properly initialized: using \
+                                 uninitialized data will cause undefined behavior",
+                                 UnsafetyViolationKind::General)
                         }
                     }
-                    _ => {}
                 }
-                self.source_info = old_source_info;
+                _ => {}
             }
-        });
+            self.source_info = old_source_info;
+        }
     }
 }
 
@@ -407,12 +407,13 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         place: &Place<'tcx>,
         is_mut_use: bool,
     ) {
-        let mut projection = &place.projection;
-        while let Some(proj) = projection {
-            match proj.elem {
+        for (i, elem) in place.projection.iter().enumerate().rev() {
+            let proj_base = &place.projection[..i];
+
+            match elem {
                 ProjectionElem::Field(..) => {
                     let ty =
-                        Place::ty_from(&place.base, &proj.base, &self.body.local_decls, self.tcx)
+                        Place::ty_from(&place.base, proj_base, &self.body.local_decls, self.tcx)
                             .ty;
                     match ty.sty {
                         ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
@@ -447,7 +448,6 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 }
                 _ => {}
             }
-            projection = &proj.base;
         }
     }
 }

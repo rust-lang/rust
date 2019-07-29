@@ -120,11 +120,11 @@ fn each_block<'tcx, O>(
     let peek_arg_place = match args[0] {
         mir::Operand::Copy(ref place @ mir::Place {
             base: mir::PlaceBase::Local(_),
-            projection: None,
+            projection: box [],
         }) |
         mir::Operand::Move(ref place @ mir::Place {
             base: mir::PlaceBase::Local(_),
-            projection: None,
+            projection: box [],
         }) => Some(place),
         _ => None,
     };

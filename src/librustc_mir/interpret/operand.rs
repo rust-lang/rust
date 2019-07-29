@@ -472,39 +472,37 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     // avoid allocations.
     pub(super) fn eval_place_to_op(
         &self,
-        mir_place: &mir::Place<'tcx>,
+        place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::PlaceBase;
 
-        mir_place.iterate(|place_base, place_projection| {
-            let mut op = match place_base {
-                PlaceBase::Local(mir::RETURN_PLACE) =>
-                    throw_unsup!(ReadFromReturnPointer),
-                PlaceBase::Local(local) => {
-                    // Do not use the layout passed in as argument if the base we are looking at
-                    // here is not the entire place.
-                    // FIXME use place_projection.is_empty() when is available
-                    let layout = if mir_place.projection.is_none() {
-                        layout
-                    } else {
-                        None
-                    };
+        let mut op = match &place.base {
+            PlaceBase::Local(mir::RETURN_PLACE) =>
+                throw_unsup!(ReadFromReturnPointer),
+            PlaceBase::Local(local) => {
+                // Do not use the layout passed in as argument if the base we are looking at
+                // here is not the entire place.
+                // FIXME use place_projection.is_empty() when is available
+                let layout = if place.projection.is_empty() {
+                    layout
+                } else {
+                    None
+                };
 
-                    self.access_local(self.frame(), *local, layout)?
-                }
-                PlaceBase::Static(place_static) => {
-                    self.eval_static_to_mplace(place_static)?.into()
-                }
-            };
-
-            for proj in place_projection {
-                op = self.operand_projection(op, &proj.elem)?
+                self.access_local(self.frame(), *local, layout)?
             }
+            PlaceBase::Static(place_static) => {
+                self.eval_static_to_mplace(&place_static)?.into()
+            }
+        };
 
-            trace!("eval_place_to_op: got {:?}", *op);
-            Ok(op)
-        })
+        for elem in place.projection.iter() {
+            op = self.operand_projection(op, elem)?
+        }
+
+        trace!("eval_place_to_op: got {:?}", *op);
+        Ok(op)
     }
 
     /// Evaluate the operand, returning a place where you can then find the data.

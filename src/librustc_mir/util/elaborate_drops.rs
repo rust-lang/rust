@@ -586,10 +586,7 @@ where
                 BorrowKind::Mut { allow_two_phase_borrow: false },
                 Place {
                     base: PlaceBase::Local(cur),
-                    projection: Some(Box::new(Projection {
-                        base: None,
-                        elem: ProjectionElem::Deref,
-                    })),
+                    projection: Box::new([ProjectionElem::Deref]),
                 }
              ),
              Rvalue::BinaryOp(BinOp::Offset, move_(&Place::from(cur)), one))

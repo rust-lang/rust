@@ -91,7 +91,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(StatementKind::Assign(
                     Place {
                         base: PlaceBase::Local(local),
-                        projection: None,
+                        projection: box [],
                     },
                     box Rvalue::Use(Operand::Move(move_from)),
                 )) = self.body.basic_blocks()[location.block]
@@ -274,16 +274,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         place: &Place<'tcx>,
         span: Span
     ) -> DiagnosticBuilder<'a> {
-        let description = if place.projection.is_none() {
+        let description = if place.projection.is_empty() {
             format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
         } else {
-            let mut base_static = &place.projection;
-            while let Some(box Projection { base: Some(ref proj), .. }) = base_static {
-                base_static = &proj.base;
-            }
             let base_static = PlaceRef {
                 base: &place.base,
-                projection: base_static,
+                projection: &place.projection[..1],
             };
 
             format!(
@@ -310,16 +306,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .find_map(|p| self.is_upvar_field_projection(p));
 
         let deref_base = match deref_target_place.projection {
-            Some(box Projection { ref base, elem: ProjectionElem::Deref }) => PlaceRef {
-                base: &deref_target_place.base,
-                projection: base,
-            },
+            box [.., ProjectionElem::Deref] => {
+                let proj_base =
+                    &deref_target_place.projection[..deref_target_place.projection.len() - 1];
+
+                PlaceRef {
+                    base: &deref_target_place.base,
+                    projection: proj_base,
+                }
+            }
             _ => bug!("deref_target_place is not a deref projection"),
         };
 
         if let PlaceRef {
             base: PlaceBase::Local(local),
-            projection: None,
+            projection: [],
         } = deref_base {
             let decl = &self.body.local_decls[*local];
             if decl.is_ref_for_guard() {

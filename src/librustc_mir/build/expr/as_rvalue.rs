@@ -500,14 +500,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mutability = match arg_place {
             Place {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: box [],
             } => this.local_decls[local].mutability,
             Place {
                 base: PlaceBase::Local(local),
-                projection: Some(box Projection {
-                    base: None,
-                    elem: ProjectionElem::Deref,
-                })
+                projection: box [ProjectionElem::Deref],
             } => {
                 debug_assert!(
                     this.local_decls[local].is_ref_for_guard(),
@@ -517,21 +514,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             Place {
                 ref base,
-                projection: Some(box Projection {
-                    base: ref base_proj,
-                    elem: ProjectionElem::Field(upvar_index, _),
-                }),
+                projection: box [.., ProjectionElem::Field(upvar_index, _)],
             }
             | Place {
                 ref base,
-                projection: Some(box Projection {
-                    base: Some(box Projection {
-                        base: ref base_proj,
-                        elem: ProjectionElem::Field(upvar_index, _),
-                    }),
-                    elem: ProjectionElem::Deref,
-                }),
+                projection: box [.., ProjectionElem::Field(upvar_index, _), ProjectionElem::Deref],
             } => {
+                let base_proj = if let ProjectionElem::Deref =
+                    arg_place.projection[arg_place.projection.len() - 1]
+                {
+                    &arg_place.projection[..arg_place.projection.len() - 2]
+                } else {
+                    &arg_place.projection[..arg_place.projection.len() - 1]
+                };
+
                 let place = PlaceRef {
                     base,
                     projection: base_proj,

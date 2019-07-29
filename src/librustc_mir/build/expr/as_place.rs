@@ -129,7 +129,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     kind: StaticKind::Static,
                     def_id: id,
                 })),
-                projection: None,
+                projection: box [],
             }),
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {

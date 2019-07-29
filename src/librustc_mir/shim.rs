@@ -308,7 +308,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
     let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env, builder.span);
 
-    let dest = Place::RETURN_PLACE;
+    let dest = Place::return_place();
     let src = Place::from(Local::new(1+0)).deref();
 
     match self_ty.sty {
@@ -415,7 +415,7 @@ impl CloneShimBuilder<'tcx> {
         let rcvr = Place::from(Local::new(1+0)).deref();
         let ret_statement = self.make_statement(
             StatementKind::Assign(
-                Place::RETURN_PLACE,
+                Place::return_place(),
                 box Rvalue::Use(Operand::Copy(rcvr))
             )
         );
@@ -773,7 +773,7 @@ fn build_call_shim<'tcx>(
     block(&mut blocks, statements, TerminatorKind::Call {
         func: callee,
         args,
-        destination: Some((Place::RETURN_PLACE,
+        destination: Some((Place::return_place(),
                            BasicBlock::new(1))),
         cleanup: if let Adjustment::RefMut = rcvr_adjustment {
             Some(BasicBlock::new(3))
@@ -868,7 +868,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
     debug!("build_ctor: variant_index={:?}", variant_index);
 
     let statements = expand_aggregate(
-        Place::RETURN_PLACE,
+        Place::return_place(),
         adt_def
             .variants[variant_index]
             .fields

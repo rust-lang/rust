@@ -318,7 +318,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         ty,
                         def_id,
                     }),
-                    projection: None,
+                    projection: box [],
                 }
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
@@ -334,9 +334,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             Operand::Move(Place {
                                 base: mem::replace(
                                     &mut place.base,
-                                    promoted_place(ty, span).base
+                                    promoted_place(ty, span).base,
                                 ),
-                                projection: None,
+                                projection: box [],
                             })
                         }
                         _ => bug!()
@@ -422,7 +422,7 @@ pub fn promote_candidates<'tcx>(
                 match body[block].statements[statement_index].kind {
                     StatementKind::Assign(Place {
                         base: PlaceBase::Local(local),
-                        projection: None,
+                        projection: box [],
                     }, _) => {
                         if temps[local] == TempState::PromotedOut {
                             // Already promoted.
@@ -475,7 +475,7 @@ pub fn promote_candidates<'tcx>(
             match statement.kind {
                 StatementKind::Assign(Place {
                     base: PlaceBase::Local(index),
-                    projection: None,
+                    projection: box [],
                 }, _) |
                 StatementKind::StorageLive(index) |
                 StatementKind::StorageDead(index) => {
@@ -488,7 +488,7 @@ pub fn promote_candidates<'tcx>(
         match terminator.kind {
             TerminatorKind::Drop { location: Place {
                 base: PlaceBase::Local(index),
-                projection: None,
+                projection: box [],
             }, target, .. } => {
                 if promoted(index) {
                     terminator.kind = TerminatorKind::Goto {

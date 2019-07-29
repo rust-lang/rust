@@ -314,7 +314,7 @@ impl<'tcx> Scopes<'tcx> {
         match target {
             BreakableTarget::Return => {
                 let scope = &self.breakable_scopes[0];
-                if scope.break_destination != Place::RETURN_PLACE {
+                if scope.break_destination != Place::return_place() {
                     span_bug!(span, "`return` in item with no return scope");
                 }
                 (scope.break_block, scope.region_scope, Some(scope.break_destination.clone()))
@@ -853,11 +853,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ if self.local_scope().is_none() => (),
             Operand::Copy(Place {
                 base: PlaceBase::Local(cond_temp),
-                projection: None,
+                projection: box [],
             })
             | Operand::Move(Place {
                 base: PlaceBase::Local(cond_temp),
-                projection: None,
+                projection: box [],
             }) => {
                 // Manually drop the condition on both branches.
                 let top_scope = self.scopes.scopes.last_mut().unwrap();
