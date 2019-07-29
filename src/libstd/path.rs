@@ -1712,7 +1712,7 @@ impl AsRef<OsStr> for PathBuf {
 ///
 /// This type supports a number of operations for inspecting a path, including
 /// breaking the path into its components (separated by `/` on Unix and by either
-/// `/` or `\` on Windows), extracting the file name, determining whether the path
+/// `/` or `\\` on Windows), extracting the file name, determining whether the path
 /// is absolute, and so on.
 ///
 /// This is an *unsized* type, meaning that it must always be used behind a
