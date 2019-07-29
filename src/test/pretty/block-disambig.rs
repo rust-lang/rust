@@ -7,7 +7,7 @@
 
 use std::cell::Cell;
 
-fn test1() { let val = &0; { } *val; }
+fn test1() { let val = &0; { } let _ = *val; }
 
 fn test2() -> isize { let val = &0; { } *val }
 

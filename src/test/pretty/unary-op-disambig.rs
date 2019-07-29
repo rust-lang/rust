@@ -16,4 +16,4 @@ fn alt_semi() -> isize { match true { true => { f() } _ => { } }; -1 }
 
 fn alt_no_semi() -> isize { (match true { true => { 0 } _ => { 1 } }) - 1 }
 
-fn stmt() { { f() }; -1; }
+fn stmt() { { f() }; let _ = -1; }
