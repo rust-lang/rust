@@ -464,7 +464,7 @@ Section: Iterators
 ///
 /// [`chars`]: ../../std/primitive.str.html#method.chars
 /// [`str`]: ../../std/primitive.str.html
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
@@ -597,6 +597,16 @@ impl<'a> Iterator for Chars<'a> {
     fn last(mut self) -> Option<char> {
         // No need to go through the entire string.
         self.next_back()
+    }
+}
+
+#[stable(feature = "chars_debug_impl", since = "1.38.0")]
+impl fmt::Debug for Chars<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Chars(")?;
+        f.debug_list().entries(self.clone()).finish()?;
+        write!(f, ")")?;
+        Ok(())
     }
 }
 
