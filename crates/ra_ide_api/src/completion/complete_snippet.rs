@@ -39,39 +39,76 @@ fn ${1:feature}() {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{check_completion, CompletionKind};
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use insta::assert_debug_snapshot_matches;
 
-    fn check_snippet_completion(name: &str, code: &str) {
-        check_completion(name, code, CompletionKind::Snippet);
+    fn do_snippet_completion(code: &str) -> Vec<CompletionItem> {
+        do_completion(code, CompletionKind::Snippet)
     }
 
     #[test]
     fn completes_snippets_in_expressions() {
-        check_snippet_completion("snippets_in_expressions", r"fn foo(x: i32) { <|> }");
+        assert_debug_snapshot_matches!(
+                    do_snippet_completion(r"fn foo(x: i32) { <|> }"),
+        @r#"[
+    CompletionItem {
+        label: "pd",
+        source_range: [17; 17),
+        delete: [17; 17),
+        insert: "eprintln!(\"$0 = {:?}\", $0);",
+        kind: Snippet,
+    },
+    CompletionItem {
+        label: "ppd",
+        source_range: [17; 17),
+        delete: [17; 17),
+        insert: "eprintln!(\"$0 = {:#?}\", $0);",
+        kind: Snippet,
+    },
+]"#
+                );
     }
 
     #[test]
     fn should_not_complete_snippets_in_path() {
-        check_snippet_completion(
-            "should_not_complete_snippets_in_path",
-            r"fn foo(x: i32) { ::foo<|> }",
-        );
-        check_snippet_completion(
-            "should_not_complete_snippets_in_path2",
-            r"fn foo(x: i32) { ::<|> }",
-        );
+        assert_debug_snapshot_matches!(
+                    do_snippet_completion(r"fn foo(x: i32) { ::foo<|> }"),
+        @r#"[]"#
+                );
+        assert_debug_snapshot_matches!(
+                    do_snippet_completion(r"fn foo(x: i32) { ::<|> }"),
+        @r#"[]"#
+                );
     }
 
     #[test]
     fn completes_snippets_in_items() {
-        check_snippet_completion(
-            "snippets_in_items",
-            r"
-            #[cfg(test)]
-            mod tests {
-                <|>
-            }
-            ",
+        assert_debug_snapshot_matches!(
+            do_snippet_completion(
+                r"
+                #[cfg(test)]
+                mod tests {
+                    <|>
+                }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Test function",
+        source_range: [78; 78),
+        delete: [78; 78),
+        insert: "#[test]\nfn ${1:feature}() {\n    $0\n}",
+        kind: Snippet,
+        lookup: "tfn",
+    },
+    CompletionItem {
+        label: "pub(crate)",
+        source_range: [78; 78),
+        delete: [78; 78),
+        insert: "pub(crate) $0",
+        kind: Snippet,
+    },
+]"###
         );
     }
 }

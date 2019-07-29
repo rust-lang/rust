@@ -92,7 +92,26 @@ mod tests {
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot_matches!("runnables", &runnables)
+        assert_debug_snapshot_matches!(&runnables,
+        @r#"[
+    Runnable {
+        range: [1; 21),
+        kind: Bin,
+    },
+    Runnable {
+        range: [22; 46),
+        kind: Test {
+            name: "test_foo",
+        },
+    },
+    Runnable {
+        range: [47; 81),
+        kind: Test {
+            name: "test_foo",
+        },
+    },
+]"#
+                );
     }
 
     #[test]
@@ -108,7 +127,22 @@ mod tests {
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot_matches!("runnables_module", &runnables)
+        assert_debug_snapshot_matches!(&runnables,
+        @r#"[
+    Runnable {
+        range: [1; 59),
+        kind: TestMod {
+            path: "test_mod",
+        },
+    },
+    Runnable {
+        range: [28; 57),
+        kind: Test {
+            name: "test_foo1",
+        },
+    },
+]"#
+                );
     }
 
     #[test]
@@ -126,7 +160,22 @@ mod tests {
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot_matches!("runnables_one_depth_layer_module", &runnables)
+        assert_debug_snapshot_matches!(&runnables,
+        @r#"[
+    Runnable {
+        range: [23; 85),
+        kind: TestMod {
+            path: "foo::test_mod",
+        },
+    },
+    Runnable {
+        range: [46; 79),
+        kind: Test {
+            name: "test_foo1",
+        },
+    },
+]"#
+                );
     }
 
     #[test]
@@ -146,7 +195,22 @@ mod tests {
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot_matches!("runnables_multiple_depth_module", &runnables)
+        assert_debug_snapshot_matches!(&runnables,
+        @r#"[
+    Runnable {
+        range: [41; 115),
+        kind: TestMod {
+            path: "foo::bar::test_mod",
+        },
+    },
+    Runnable {
+        range: [68; 105),
+        kind: Test {
+            name: "test_foo1",
+        },
+    },
+]"#
+                );
     }
 
     #[test]

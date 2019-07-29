@@ -299,10 +299,3 @@ pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionI
     kind_completions.sort_by_key(|c| c.label.clone());
     kind_completions
 }
-
-#[cfg(test)]
-pub(crate) fn check_completion(test_name: &str, code: &str, kind: CompletionKind) {
-    use insta::assert_debug_snapshot_matches;
-    let kind_completions = do_completion(code, kind);
-    assert_debug_snapshot_matches!(test_name, kind_completions);
-}

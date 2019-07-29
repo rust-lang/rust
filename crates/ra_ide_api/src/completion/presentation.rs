@@ -182,80 +182,169 @@ impl Completions {
 
 #[cfg(test)]
 mod tests {
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use insta::assert_debug_snapshot_matches;
     use test_utils::covers;
 
-    use crate::completion::{check_completion, CompletionKind};
-
-    fn check_reference_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Reference);
+    fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
+        do_completion(code, CompletionKind::Reference)
     }
 
     #[test]
     fn inserts_parens_for_function_calls() {
         covers!(inserts_parens_for_function_calls);
-        check_reference_completion(
-            "inserts_parens_for_function_calls1",
-            r"
-            fn no_args() {}
-            fn main() { no_<|> }
-            ",
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                r"
+                fn no_args() {}
+                fn main() { no_<|> }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "main",
+        source_range: [61; 64),
+        delete: [61; 64),
+        insert: "main()$0",
+        kind: Function,
+        detail: "fn main()",
+    },
+    CompletionItem {
+        label: "no_args",
+        source_range: [61; 64),
+        delete: [61; 64),
+        insert: "no_args()$0",
+        kind: Function,
+        detail: "fn no_args()",
+    },
+]"###
         );
-        check_reference_completion(
-            "inserts_parens_for_function_calls2",
-            r"
-            fn with_args(x: i32, y: String) {}
-            fn main() { with_<|> }
-            ",
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                r"
+                fn with_args(x: i32, y: String) {}
+                fn main() { with_<|> }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "main",
+        source_range: [80; 85),
+        delete: [80; 85),
+        insert: "main()$0",
+        kind: Function,
+        detail: "fn main()",
+    },
+    CompletionItem {
+        label: "with_args",
+        source_range: [80; 85),
+        delete: [80; 85),
+        insert: "with_args($0)",
+        kind: Function,
+        detail: "fn with_args(x: i32, y: String)",
+    },
+]"###
         );
-        check_reference_completion(
-            "inserts_parens_for_function_calls3",
-            r"
-            struct S {}
-            impl S {
-                fn foo(&self) {}
-            }
-            fn bar(s: &S) {
-                s.f<|>
-            }
-            ",
-        )
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                r"
+                struct S {}
+                impl S {
+                    fn foo(&self) {}
+                }
+                fn bar(s: &S) {
+                    s.f<|>
+                }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "foo",
+        source_range: [163; 164),
+        delete: [163; 164),
+        insert: "foo()$0",
+        kind: Method,
+        detail: "fn foo(&self)",
+    },
+]"###
+        );
     }
 
     #[test]
     fn dont_render_function_parens_in_use_item() {
-        check_reference_completion(
-            "dont_render_function_parens_in_use_item",
-            "
-            //- /lib.rs
-            mod m { pub fn foo() {} }
-            use crate::m::f<|>;
-            ",
-        )
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                mod m { pub fn foo() {} }
+                use crate::m::f<|>;
+                "
+            ),
+            @r#"[
+    CompletionItem {
+        label: "foo",
+        source_range: [40; 41),
+        delete: [40; 41),
+        insert: "foo",
+        kind: Function,
+        detail: "pub fn foo()",
+    },
+]"#
+        );
     }
 
     #[test]
     fn dont_render_function_parens_if_already_call() {
-        check_reference_completion(
-            "dont_render_function_parens_if_already_call",
-            "
-            //- /lib.rs
-            fn frobnicate() {}
-            fn main() {
-                frob<|>();
-            }
-            ",
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                fn frobnicate() {}
+                fn main() {
+                    frob<|>();
+                }
+                "
+            ),
+            @r#"[
+    CompletionItem {
+        label: "frobnicate",
+        source_range: [35; 39),
+        delete: [35; 39),
+        insert: "frobnicate",
+        kind: Function,
+        detail: "fn frobnicate()",
+    },
+    CompletionItem {
+        label: "main",
+        source_range: [35; 39),
+        delete: [35; 39),
+        insert: "main",
+        kind: Function,
+        detail: "fn main()",
+    },
+]"#
         );
-        check_reference_completion(
-            "dont_render_function_parens_if_already_call_assoc_fn",
-            "
-            //- /lib.rs
-            struct Foo {}
-            impl Foo { fn new() -> Foo {} }
-            fn main() {
-                Foo::ne<|>();
-            }
-            ",
-        )
+        assert_debug_snapshot_matches!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                struct Foo {}
+                impl Foo { fn new() -> Foo {} }
+                fn main() {
+                    Foo::ne<|>();
+                }
+                "
+            ),
+            @r#"[
+    CompletionItem {
+        label: "new",
+        source_range: [67; 69),
+        delete: [67; 69),
+        insert: "new",
+        kind: Function,
+        detail: "fn new() -> Foo",
+    },
+]"#
+        );
     }
-
 }
