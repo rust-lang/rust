@@ -79,12 +79,17 @@ export class HintsUpdater {
         documentUri: string,
         editor: TextEditor
     ): Promise<void> {
-        const newHints = (await this.queryHints(documentUri)) || [];
-        const newDecorations = newHints.map(hint => ({
-            range: hint.range,
-            renderOptions: { after: { contentText: `: ${hint.label}` } }
-        }));
-        return editor.setDecorations(typeHintDecorationType, newDecorations);
+        const newHints = await this.queryHints(documentUri);
+        if (newHints != null) {
+            const newDecorations = newHints.map(hint => ({
+                range: hint.range,
+                renderOptions: { after: { contentText: `: ${hint.label}` } }
+            }));
+            return editor.setDecorations(
+                typeHintDecorationType,
+                newDecorations
+            );
+        }
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
