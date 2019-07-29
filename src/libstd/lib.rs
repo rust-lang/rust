@@ -218,7 +218,7 @@
 // std may use features in a platform-specific way
 #![allow(unused_features)]
 
-#![cfg_attr(test, feature(print_internals, set_stdio, test, update_panic_count))]
+#![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
             feature(slice_index_methods, decl_macro, coerce_unsized,
                     sgx_platform, ptr_wrapping_offset_from))]
@@ -304,6 +304,7 @@
 #![feature(stdsimd)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
+#![feature(test)]
 #![feature(thread_local)]
 #![feature(todo_macro)]
 #![feature(toowned_clone_into)]

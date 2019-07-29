@@ -18,7 +18,7 @@
 // cargo) to detect this crate.
 
 #![crate_name = "test"]
-#![unstable(feature = "test", issue = "27812")]
+#![unstable(feature = "test", issue = "50297")]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
 #![feature(asm)]
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc, rustc_private))]
