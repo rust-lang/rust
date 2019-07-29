@@ -7,9 +7,10 @@ use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, ParentScope
 use crate::Determinacy::{self, *};
 use crate::Namespace::{self, TypeNS, MacroNS};
 use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
-use crate::{Resolver, ResolutionError, Segment};
+use crate::{Resolutions, Resolver, ResolutionError, Segment};
 use crate::{names_to_string, module_to_string};
 use crate::ModuleKind;
+use crate::build_reduced_graph::BuildReducedGraphVisitor;
 use crate::diagnostics::Suggestion;
 
 use errors::Applicability;
@@ -161,9 +162,22 @@ impl<'a> NameResolution<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    crate fn resolution(&self, module: Module<'a>, ident: Ident, ns: Namespace)
+    crate fn resolutions(&mut self, module: Module<'a>) -> &'a Resolutions<'a> {
+        if module.populate_on_access.get() {
+            module.populate_on_access.set(false);
+            let def_id = module.def_id().expect("unpopulated module without a def-id");
+            for child in self.cstore.item_children_untracked(def_id, self.session) {
+                let child = child.map_id(|_| panic!("unexpected id"));
+                BuildReducedGraphVisitor { parent_scope: self.dummy_parent_scope(), r: self }
+                    .build_reduced_graph_for_external_crate_res(module, child);
+            }
+        }
+        &module.lazy_resolutions
+    }
+
+    crate fn resolution(&mut self, module: Module<'a>, ident: Ident, ns: Namespace)
                   -> &'a RefCell<NameResolution<'a>> {
-        *module.resolutions.borrow_mut().entry((ident.modern(), ns))
+        *self.resolutions(module).borrow_mut().entry((ident.modern(), ns))
                .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
 
@@ -241,8 +255,6 @@ impl<'a> Resolver<'a> {
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
         };
-
-        self.populate_module_if_necessary(module);
 
         let resolution = self.resolution(module, ident, ns)
             .try_borrow_mut()
@@ -1027,7 +1039,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
             return if all_ns_failed {
                 let resolutions = match module {
-                    ModuleOrUniformRoot::Module(module) => Some(module.resolutions.borrow()),
+                    ModuleOrUniformRoot::Module(module) => Some(self.r.resolutions(module).borrow()),
                     _ => None,
                 };
                 let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
@@ -1265,8 +1277,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             }
         };
 
-        self.r.populate_module_if_necessary(module);
-
         if module.is_trait() {
             self.r.session.span_err(directive.span, "items in traits are not importable.");
             return;
@@ -1282,7 +1292,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
-        let bindings = module.resolutions.borrow().iter().filter_map(|(&ident, resolution)| {
+        let bindings = self.r.resolutions(module).borrow().iter().filter_map(|(&ident, resolution)| {
             resolution.borrow().binding().map(|binding| (ident, binding))
         }).collect::<Vec<_>>();
         for ((mut ident, ns), binding) in bindings {
@@ -1310,7 +1320,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         let mut reexports = Vec::new();
 
-        for (&(ident, ns), resolution) in module.resolutions.borrow().iter() {
+        for (&(ident, ns), resolution) in self.r.resolutions(module).borrow().iter() {
             let resolution = &mut *resolution.borrow_mut();
             let binding = match resolution.binding {
                 Some(binding) => binding,
@@ -1369,8 +1379,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             Some(ModuleOrUniformRoot::Module(module)) => module,
                             _ => bug!("module should exist"),
                         };
-                        let resolutions = imported_module.parent.expect("parent should exist")
-                            .resolutions.borrow();
+                        let parent_module = imported_module.parent.expect("parent should exist");
+                        let resolutions = self.r.resolutions(parent_module).borrow();
                         let enum_path_segment_index = directive.module_path.len() - 1;
                         let enum_ident = directive.module_path[enum_path_segment_index].ident;
 

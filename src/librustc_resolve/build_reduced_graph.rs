@@ -159,19 +159,6 @@ impl<'a> Resolver<'a> {
         Some(ext)
     }
 
-    /// Ensures that the reduced graph rooted at the given external module
-    /// is built, building it if it is not.
-    crate fn populate_module_if_necessary(&mut self, module: Module<'a>) {
-        if module.populated.get() { return }
-        let def_id = module.def_id().unwrap();
-        for child in self.cstore.item_children_untracked(def_id, self.session) {
-            let child = child.map_id(|_| panic!("unexpected id"));
-            BuildReducedGraphVisitor { parent_scope: ParentScope::module(module), r: self }
-                .build_reduced_graph_for_external_crate_res(child);
-        }
-        module.populated.set(true)
-    }
-
     crate fn build_reduced_graph(
         &mut self, fragment: &AstFragment, parent_scope: ParentScope<'a>
     ) -> LegacyScope<'a> {
@@ -184,6 +171,10 @@ impl<'a> Resolver<'a> {
 struct BuildReducedGraphVisitor<'a, 'b> {
     r: &'b mut Resolver<'a>,
     parent_scope: ParentScope<'a>,
+}
+
+impl<'a> AsMut<Resolver<'a>> for BuildReducedGraphVisitor<'a, '_> {
+    fn as_mut(&mut self) -> &mut Resolver<'a> { self.r }
 }
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
@@ -603,8 +594,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     self.r.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
                 };
 
-                self.r.populate_module_if_necessary(module);
-
                 let used = self.process_legacy_macro_imports(item, module);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
@@ -922,6 +911,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                              span);
                 self.r.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
 
+                module.populate_on_access.set(false);
                 for child in self.r.cstore.item_children_untracked(def_id, self.r.session) {
                     let res = child.res.map_id(|_| panic!("unexpected id"));
                     let ns = if let Res::Def(DefKind::AssocTy, _) = res {
@@ -935,7 +925,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         self.r.has_self.insert(res.def_id());
                     }
                 }
-                module.populated.set(true);
             }
             Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
                 self.r.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
@@ -952,7 +941,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn legacy_import_macro(&mut self,
-                           name: Name,
+                           name: ast::Name,
                            binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
@@ -1021,9 +1010,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         if let Some(span) = import_all {
             let directive = macro_use_directive(self, span);
             self.r.potentially_unused_imports.push(directive);
-            module.for_each_child(|ident, ns, binding| if ns == MacroNS {
-                let imported_binding = self.r.import(binding, directive);
-                self.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
+            module.for_each_child(self, |this, ident, ns, binding| if ns == MacroNS {
+                let imported_binding = this.r.import(binding, directive);
+                this.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
             });
         } else {
             for ident in single_imports.iter().cloned() {
