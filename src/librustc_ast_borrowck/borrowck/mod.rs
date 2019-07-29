@@ -66,6 +66,13 @@ fn borrowck(tcx: TyCtxt<'_>, owner_def_id: DefId) -> &BorrowCheckResult {
 
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
+    let signalled_error = tcx.check_match(owner_def_id);
+    if let SignalledError::SawSomeError = signalled_error {
+        return tcx.arena.alloc(BorrowCheckResult {
+            signalled_any_error: SignalledError::SawSomeError,
+        })
+    }
+
     let owner_id = tcx.hir().as_local_hir_id(owner_def_id).unwrap();
 
     match tcx.hir().get(owner_id) {

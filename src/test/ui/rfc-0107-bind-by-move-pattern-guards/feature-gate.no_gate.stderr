@@ -1,5 +1,5 @@
 error[E0008]: cannot bind by-move into a pattern guard
-  --> $DIR/feature-gate.rs:33:16
+  --> $DIR/feature-gate.rs:28:16
    |
 LL |         A { a: v } if *v == 42 => v,
    |                ^ moves value into pattern guard
