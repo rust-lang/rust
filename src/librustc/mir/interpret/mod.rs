@@ -31,7 +31,7 @@ macro_rules! err_ub {
 macro_rules! err_panic {
     ($($tt:tt)*) => {
         Err($crate::mir::interpret::InterpError::Panic(
-            $crate::mir::interpret::PanicMessage::$($tt)*
+            $crate::mir::interpret::PanicInfo::$($tt)*
         ).into())
     };
 }
@@ -52,7 +52,7 @@ mod pointer;
 
 pub use self::error::{
     InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
-    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicMessage, UnsupportedInfo,
+    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicInfo, UnsupportedInfo,
     InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviourInfo,
 };
 

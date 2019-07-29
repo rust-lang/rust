@@ -237,7 +237,7 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum PanicMessage<O> {
+pub enum PanicInfo<O> {
     Panic {
         msg: Symbol,
         line: u32,
@@ -257,14 +257,14 @@ pub enum PanicMessage<O> {
 }
 
 /// Type for MIR `Assert` terminator error messages.
-pub type AssertMessage<'tcx> = PanicMessage<mir::Operand<'tcx>>;
+pub type AssertMessage<'tcx> = PanicInfo<mir::Operand<'tcx>>;
 
-impl<O> PanicMessage<O> {
+impl<O> PanicInfo<O> {
     /// Getting a description does not require `O` to be printable, and does not
     /// require allocation.
     /// The caller is expected to handle `Panic` and `BoundsCheck` separately.
     pub fn description(&self) -> &'static str {
-        use PanicMessage::*;
+        use PanicInfo::*;
         match self {
             Overflow(mir::BinOp::Add) =>
                 "attempt to add with overflow",
@@ -293,14 +293,14 @@ impl<O> PanicMessage<O> {
             GeneratorResumedAfterPanic =>
                 "generator resumed after panicking",
             Panic { .. } | BoundsCheck { .. } =>
-                bug!("Unexpected PanicMessage"),
+                bug!("Unexpected PanicInfo"),
         }
     }
 }
 
-impl<O: fmt::Debug> fmt::Debug for PanicMessage<O> {
+impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use PanicMessage::*;
+        use PanicInfo::*;
         match self {
             Panic { ref msg, line, col, ref file } =>
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
@@ -568,7 +568,7 @@ impl fmt::Debug for ResourceExhaustionInfo {
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InterpError<'tcx> {
     /// The program panicked.
-    Panic(PanicMessage<u64>),
+    Panic(PanicInfo<u64>),
     /// The program caused undefined behavior.
     UndefinedBehaviour(UndefinedBehaviourInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB

@@ -136,7 +136,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.goto_block(Some(target))?;
                 } else {
                     // Compute error message
-                    use rustc::mir::interpret::PanicMessage::*;
+                    use rustc::mir::interpret::PanicInfo::*;
                     return match msg {
                         BoundsCheck { ref len, ref index } => {
                             let len = self.read_immediate(self.eval_operand(len, None)?)

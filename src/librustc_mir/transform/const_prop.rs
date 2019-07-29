@@ -13,7 +13,7 @@ use rustc::mir::{
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
 };
-use rustc::mir::interpret::{Scalar, GlobalId, InterpResult, InterpError, PanicMessage};
+use rustc::mir::interpret::{Scalar, GlobalId, InterpResult, InterpError, PanicInfo};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
@@ -526,7 +526,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     )
                 } else {
                     if overflow {
-                        let err = InterpError::Panic(PanicMessage::Overflow(op)).into();
+                        let err = InterpError::Panic(PanicInfo::Overflow(op)).into();
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
                     }
@@ -763,12 +763,12 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             .as_local_hir_id(self.source.def_id())
                             .expect("some part of a failing const eval must be local");
                         let msg = match msg {
-                            PanicMessage::Overflow(_) |
-                            PanicMessage::OverflowNeg |
-                            PanicMessage::DivisionByZero |
-                            PanicMessage::RemainderByZero =>
+                            PanicInfo::Overflow(_) |
+                            PanicInfo::OverflowNeg |
+                            PanicInfo::DivisionByZero |
+                            PanicInfo::RemainderByZero =>
                                 msg.description().to_owned(),
-                            PanicMessage::BoundsCheck { ref len, ref index } => {
+                            PanicInfo::BoundsCheck { ref len, ref index } => {
                                 let len = self
                                     .eval_operand(len, source_info)
                                     .expect("len must be const");

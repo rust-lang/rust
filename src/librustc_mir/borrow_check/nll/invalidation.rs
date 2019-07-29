@@ -207,8 +207,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 cleanup: _,
             } => {
                 self.consume_operand(location, cond);
-                use rustc::mir::interpret::PanicMessage;
-                if let PanicMessage::BoundsCheck { ref len, ref index } = *msg {
+                use rustc::mir::interpret::PanicInfo;
+                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(location, len);
                     self.consume_operand(location, index);
                 }
