@@ -239,16 +239,32 @@ impl ast::Literal {
     pub fn kind(&self) -> LiteralKind {
         match self.token().kind() {
             INT_NUMBER => {
-                let allowed_suffix_list = [
+                let int_suffix_list = [
                     "isize", "i128", "i64", "i32", "i16", "i8", "usize", "u128", "u64", "u32",
                     "u16", "u8",
                 ];
+
+                // The lexer treats e.g. `1f64` as an integer literal. See
+                // https://github.com/rust-analyzer/rust-analyzer/issues/1592
+                // and the comments on the linked PR.
+                let float_suffix_list = ["f32", "f64"];
+
                 let text = self.token().text().to_string();
-                let suffix = allowed_suffix_list
+
+                let float_suffix = float_suffix_list
                     .iter()
                     .find(|&s| text.ends_with(s))
                     .map(|&suf| SmolStr::new(suf));
-                LiteralKind::IntNumber { suffix }
+
+                if float_suffix.is_some() {
+                    LiteralKind::FloatNumber { suffix: float_suffix }
+                } else {
+                    let suffix = int_suffix_list
+                        .iter()
+                        .find(|&s| text.ends_with(s))
+                        .map(|&suf| SmolStr::new(suf));
+                    LiteralKind::IntNumber { suffix }
+                }
             }
             FLOAT_NUMBER => {
                 let allowed_suffix_list = ["f64", "f32"];
