@@ -1,7 +1,7 @@
 fn main() {
     match Some(()) {
         None => { },
-        option if option.take().is_none() => {}, //~ ERROR E0301
+        option if option.take().is_none() => {},
         Some(_) => { } //~^ ERROR E0596
     }
 }

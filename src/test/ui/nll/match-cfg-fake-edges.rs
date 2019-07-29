@@ -1,8 +1,6 @@
 // Test that we have enough false edges to avoid exposing the exact matching
 // algorithm in borrow checking.
 
-#![feature(bind_by_move_pattern_guards)]
-
 fn guard_always_precedes_arm(y: i32) {
     let mut x;
     // x should always be initialized, as the only way to reach the arm is
