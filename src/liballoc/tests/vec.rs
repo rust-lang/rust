@@ -583,7 +583,7 @@ fn test_drain_inclusive_out_of_bounds() {
 fn test_splice() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(2..4, a.iter().cloned());
+    let _ = v.splice(2..4, a.iter().cloned());
     assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
     v.splice(1..3, Some(20));
     assert_eq!(v, &[1, 20, 11, 12, 5]);
@@ -606,7 +606,7 @@ fn test_splice_inclusive_range() {
 fn test_splice_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(5..6, a.iter().cloned());
+    let _ = v.splice(5..6, a.iter().cloned());
 }
 
 #[test]
@@ -614,7 +614,7 @@ fn test_splice_out_of_bounds() {
 fn test_splice_inclusive_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(5..=5, a.iter().cloned());
+    let _ = v.splice(5..=5, a.iter().cloned());
 }
 
 #[test]
