@@ -41,10 +41,9 @@ matrix:
             - xvfb
           before_install: cd editors/code
           install:
-            - npm install
+            - npm ci
             - npm run vscode:prepublish
           script:
-            - npm ci
             - npm run travis
           env:
             - CXX="g++-4.9", CC="gcc-4.9"
