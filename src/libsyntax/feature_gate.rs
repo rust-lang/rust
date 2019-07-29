@@ -243,9 +243,6 @@ declare_features! (
     // Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
     (active, allocator_internals, "1.20.0", None, None),
 
-    // Allows using the `format_args_nl` macro.
-    (active, format_args_nl, "1.29.0", Some(0), None),
-
     // no-tracking-issue-end
 
     // Added for testing E0705; perma-unstable.
@@ -286,12 +283,6 @@ declare_features! (
     // feature-group-start: actual feature gates
     // -------------------------------------------------------------------------
 
-    // Allows using `asm!` macro with which inline assembly can be embedded.
-    (active, asm, "1.0.0", Some(29722), None),
-
-    // Allows using the `concat_idents!` macro with which identifiers can be concatenated.
-    (active, concat_idents, "1.0.0", Some(29599), None),
-
     // Allows using the `#[link_args]` attribute.
     (active, link_args, "1.0.0", Some(29596), None),
 
@@ -306,12 +297,6 @@ declare_features! (
 
     // Allows using `#[thread_local]` on `static` items.
     (active, thread_local, "1.0.0", Some(29594), None),
-
-    // Allows using the `log_syntax!` macro.
-    (active, log_syntax, "1.0.0", Some(29598), None),
-
-    // Allows using the `trace_macros!` macro.
-    (active, trace_macros, "1.0.0", Some(29598), None),
 
     // Allows the use of SIMD types in functions declared in `extern` blocks.
     (active, simd_ffi, "1.0.0", Some(27731), None),
@@ -401,9 +386,6 @@ declare_features! (
 
     // Allows `extern "x86-interrupt" fn()`.
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
-
-    // Allows module-level inline assembly by way of `global_asm!()`.
-    (active, global_asm, "1.18.0", Some(35119), None),
 
     // Allows overlapping impls of marker traits.
     (active, overlapping_marker_traits, "1.18.0", Some(29864), None),
