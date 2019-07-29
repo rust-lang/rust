@@ -2,42 +2,50 @@ use crate::prelude::*;
 
 use rustc::ty::subst::SubstsRef;
 
-macro_rules! intrinsic_pat {
+macro intrinsic_pat {
     (_) => {
         _
-    };
+    },
     ($name:ident) => {
         stringify!($name)
+    },
+    ($name:literal) => {
+        stringify!($name)
+    },
+    ($x:ident . $($xs:tt).*) => {
+        concat!(stringify!($x), ".", intrinsic_pat!($($xs).*))
     }
 }
 
-macro_rules! intrinsic_arg {
+macro intrinsic_arg {
     (o $fx:expr, $arg:ident) => {
         $arg
-    };
+    },
     (c $fx:expr, $arg:ident) => {
         trans_operand($fx, $arg)
-    };
+    },
     (v $fx:expr, $arg:ident) => {
         trans_operand($fx, $arg).load_scalar($fx)
-    };
+    }
 }
 
-macro_rules! intrinsic_substs {
-    ($substs:expr, $index:expr,) => {};
+macro intrinsic_substs {
+    ($substs:expr, $index:expr,) => {},
     ($substs:expr, $index:expr, $first:ident $(,$rest:ident)*) => {
         let $first = $substs.type_at($index);
         intrinsic_substs!($substs, $index+1, $($rest),*);
-    };
+    }
 }
 
-macro_rules! intrinsic_match {
-    ($fx:expr, $intrinsic:expr, $substs:expr, $args:expr, $(
-        $($name:tt)|+ $(if $cond:expr)?, $(<$($subst:ident),*>)? ($($a:ident $arg:ident),*) $content:block;
+pub macro intrinsic_match {
+    ($fx:expr, $intrinsic:expr, $substs:expr, $args:expr,
+    _ => $unknown:block;
+    $(
+        $($($name:tt).*)|+ $(if $cond:expr)?, $(<$($subst:ident),*>)? ($($a:ident $arg:ident),*) $content:block;
     )*) => {
         match $intrinsic {
             $(
-                $(intrinsic_pat!($name))|* $(if $cond)? => {
+                $(intrinsic_pat!($($name).*))|* $(if $cond)? => {
                     #[allow(unused_parens, non_snake_case)]
                     {
                         $(
@@ -57,9 +65,9 @@ macro_rules! intrinsic_match {
                     }
                 }
             )*
-            _ => unimpl!("unsupported intrinsic {}", $intrinsic),
+            _ => $unknown,
         }
-    };
+    }
 }
 
 macro_rules! call_intrinsic_match {
@@ -122,7 +130,7 @@ macro_rules! atomic_minmax {
     };
 }
 
-fn lane_type_and_count<'tcx>(
+pub fn lane_type_and_count<'tcx>(
     fx: &FunctionCx<'_, 'tcx, impl Backend>,
     layout: TyLayout<'tcx>,
     intrinsic: &str,
@@ -282,6 +290,9 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
 
     intrinsic_match! {
         fx, intrinsic, substs, args,
+        _ => {
+            unimpl!("unsupported intrinsic {}", intrinsic)
+        };
 
         assume, (c _a) {};
         likely | unlikely, (c a) {
