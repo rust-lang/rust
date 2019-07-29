@@ -1,6 +1,6 @@
 // revisions:rpass1 rpass2
+// check-pass
 // compile-flags: --crate-type staticlib
-// skip-codegen
 
 #![deny(unused_attributes)]
 
