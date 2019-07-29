@@ -216,6 +216,9 @@ pub enum InlayKind {
     LetBindingType,
     ClosureParameterType,
     ForExpressionBindingType,
+    IfExpressionType,
+    WhileLetExpressionType,
+    MatchArmType,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
