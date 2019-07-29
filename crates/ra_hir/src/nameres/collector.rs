@@ -105,8 +105,9 @@ where
             module_id,
             file_id: file_id.into(),
             raw_items: &raw_items,
+            parent_module: None,
         }
-        .collect(None, raw_items.items());
+        .collect(raw_items.items());
 
         // main name resolution fixed-point loop.
         let mut i = 0;
@@ -455,8 +456,14 @@ where
         if !self.macro_stack_monitor.is_poison(macro_def_id) {
             let file_id: HirFileId = macro_call_id.as_file(MacroFileKind::Items);
             let raw_items = self.db.raw_items(file_id);
-            ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
-                .collect(None, raw_items.items());
+            ModCollector {
+                def_collector: &mut *self,
+                file_id,
+                module_id,
+                raw_items: &raw_items,
+                parent_module: None,
+            }
+            .collect(raw_items.items());
         } else {
             log::error!("Too deep macro expansion: {:?}", macro_call_id);
             self.def_map.poison_macros.insert(macro_def_id);
@@ -476,16 +483,17 @@ struct ModCollector<'a, D> {
     module_id: CrateModuleId,
     file_id: HirFileId,
     raw_items: &'a raw::RawItems,
+    parent_module: Option<&'a Name>,
 }
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
 where
     DB: DefDatabase,
 {
-    fn collect(&mut self, parent_module: Option<&Name>, items: &[raw::RawItem]) {
+    fn collect(&mut self, items: &[raw::RawItem]) {
         for item in items {
             match *item {
-                raw::RawItem::Module(m) => self.collect_module(parent_module, &self.raw_items[m]),
+                raw::RawItem::Module(m) => self.collect_module(&self.raw_items[m]),
                 raw::RawItem::Import(import) => self.def_collector.unresolved_imports.push((
                     self.module_id,
                     import,
@@ -497,7 +505,7 @@ where
         }
     }
 
-    fn collect_module(&mut self, _module: Option<&Name>, module: &raw::ModuleData) {
+    fn collect_module(&mut self, module: &raw::ModuleData) {
         match module {
             // inline module, just recurse
             raw::ModuleData::Definition { name, items, ast_id } => {
@@ -508,8 +516,9 @@ where
                     module_id,
                     file_id: self.file_id,
                     raw_items: self.raw_items,
+                    parent_module: Some(name),
                 }
-                .collect(Some(name), &*items);
+                .collect(&*items);
             }
             // out of line module, resolve, parse and recurse
             raw::ModuleData::Declaration { name, ast_id, attr_path } => {
@@ -521,7 +530,7 @@ where
                     name,
                     is_root,
                     attr_path.as_ref(),
-                    _module,
+                    self.parent_module,
                 ) {
                     Ok(file_id) => {
                         let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
@@ -531,8 +540,9 @@ where
                             module_id,
                             file_id: file_id.into(),
                             raw_items: &raw_items,
+                            parent_module: None,
                         }
-                        .collect(None, raw_items.items())
+                        .collect(raw_items.items())
                     }
                     Err(candidate) => self.def_collector.def_map.diagnostics.push(
                         DefDiagnostic::UnresolvedModule {
