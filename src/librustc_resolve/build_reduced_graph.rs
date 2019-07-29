@@ -365,7 +365,6 @@ impl<'a> Resolver<'a> {
                     self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
                 };
 
-                self.populate_module_if_necessary(module);
                 if let Some(name) = self.session.parse_sess.injected_crate_name.try_get() {
                     if name.as_str() == ident.name.as_str() {
                         self.injected_crate = Some(module);
@@ -632,7 +631,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(
+    crate fn build_reduced_graph_for_external_crate_res(
         &mut self,
         parent: Module<'a>,
         child: Export<ast::NodeId>,
@@ -686,6 +685,7 @@ impl<'a> Resolver<'a> {
                                              span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
 
+                module.populate_on_access.set(false);
                 for child in self.cstore.item_children_untracked(def_id, self.session) {
                     let res = child.res.map_id(|_| panic!("unexpected id"));
                     let ns = if let Res::Def(DefKind::AssocTy, _) = res {
@@ -699,7 +699,6 @@ impl<'a> Resolver<'a> {
                         self.has_self.insert(res.def_id());
                     }
                 }
-                module.populated.set(true);
             }
             Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
                 self.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
@@ -780,18 +779,6 @@ impl<'a> Resolver<'a> {
         Some(ext)
     }
 
-    /// Ensures that the reduced graph rooted at the given external module
-    /// is built, building it if it is not.
-    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
-        if module.populated.get() { return }
-        let def_id = module.def_id().unwrap();
-        for child in self.cstore.item_children_untracked(def_id, self.session) {
-            let child = child.map_id(|_| panic!("unexpected id"));
-            self.build_reduced_graph_for_external_crate_res(module, child);
-        }
-        module.populated.set(true)
-    }
-
     fn legacy_import_macro(&mut self,
                            name: Name,
                            binding: &'a NameBinding<'a>,
@@ -863,9 +850,9 @@ impl<'a> Resolver<'a> {
         if let Some(span) = import_all {
             let directive = macro_use_directive(span);
             self.potentially_unused_imports.push(directive);
-            module.for_each_child(|ident, ns, binding| if ns == MacroNS {
-                let imported_binding = self.import(binding, directive);
-                self.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
+            module.for_each_child(self, |this, ident, ns, binding| if ns == MacroNS {
+                let imported_binding = this.import(binding, directive);
+                this.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
             });
         } else {
             for ident in single_imports.iter().cloned() {
