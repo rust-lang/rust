@@ -6805,40 +6805,29 @@ impl<'a> Parser<'a> {
         Ok(self.mk_item(lo.to(prev_span), invalid, ItemKind::ForeignMod(m), visibility, attrs))
     }
 
-    /// Parses `type Foo = Bar;`
-    /// or
-    /// `existential type Foo: Bar;`
-    /// or
-    /// `return `None``
+    /// Parses `type Foo = Bar;` or returns `None`
     /// without modifying the parser state.
     fn eat_type(&mut self) -> Option<PResult<'a, (Ident, AliasKind, ast::Generics)>> {
         // This parses the grammar:
         //     Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"
-        if self.check_keyword(kw::Type) ||
-           self.check_keyword(kw::Existential) &&
-                self.is_keyword_ahead(1, &[kw::Type]) {
-            let existential = self.eat_keyword(kw::Existential);
-            assert!(self.eat_keyword(kw::Type));
-            Some(self.parse_existential_or_alias(existential))
+        if self.eat_keyword(kw::Type) {
+            Some(self.parse_type_alias())
         } else {
             None
         }
     }
 
     /// Parses a type alias or existential type.
-    fn parse_existential_or_alias(
-        &mut self,
-        existential: bool,
-    ) -> PResult<'a, (Ident, AliasKind, ast::Generics)> {
+    fn parse_type_alias(&mut self) -> PResult<'a, (Ident, AliasKind, ast::Generics)> {
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
         tps.where_clause = self.parse_where_clause()?;
-        let alias = if existential {
-            self.expect(&token::Colon)?;
+        self.expect(&token::Eq)?;
+        let alias = if self.check_keyword(kw::Impl) {
+            self.bump();
             let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
             AliasKind::Existential(bounds)
         } else {
-            self.expect(&token::Eq)?;
             let ty = self.parse_ty()?;
             AliasKind::Weak(ty)
         };

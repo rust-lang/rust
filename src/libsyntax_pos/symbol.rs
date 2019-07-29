@@ -677,6 +677,7 @@ symbols! {
         tuple_indexing,
         Ty,
         ty,
+        type_alias_impl_trait,
         TyCtxt,
         TyKind,
         type_alias_enum_variants,
