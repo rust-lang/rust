@@ -803,17 +803,17 @@ impl<'a> CrateLoader<'a> {
             return
         }
 
-        let any_unsupported = self.sess.crate_types.borrow().iter().any(|ct| {
+        let all_supported = self.sess.crate_types.borrow().iter().all(|ct| {
             match *ct {
                 config::CrateType::Executable |
                 config::CrateType::Staticlib |
                 config::CrateType::Cdylib |
                 config::CrateType::Dylib |
-                config::CrateType::Rlib => false,
-                _ => true,
+                config::CrateType::Rlib => true,
+                _ => false,
             }
         });
-        if any_unsupported {
+        if !all_supported {
             self.sess.err("Only executables, staticlibs, cdylibs, dylibs and rlibs can be compiled \
                             with `-Z sanitizer`");
             self.sess.injected_sanitizer_runtime.set(None);
