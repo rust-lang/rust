@@ -1326,7 +1326,7 @@ dependencies = [
  "ra_parser 0.1.0",
  "ra_rustc_lexer 0.1.0-pre.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_text_edit 0.1.0",
- "rowan 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rowan 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1596,7 +1596,7 @@ dependencies = [
 
 [[package]]
 name = "rowan"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2281,7 +2281,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0e7790c7f1cc73d831d28dc5a7deb316a006e7848e6a7f467cdb10a0a9e0fb1c"
 "checksum remove_dir_all 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4a83fa3702a688b9359eccba92d153ac33fd2e8462f9e0e3fdf155239ea7792e"
 "checksum ron 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "17f52a24414403f81528b67488cf8edc4eda977d3af1646bb6b106a600ead78f"
-"checksum rowan 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a796c0517d6969224c42e9ef01356363b0a7c57d10ec986c9a600d075666a5ff"
+"checksum rowan 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "03e34c2e5f01d7fa4ab7e6a49da44f59fb38ffb61e6c9f714deb8e157274c2c7"
 "checksum rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)" = "a7f4dccf6f4891ebcc0c39f9b6eb1a83b9bf5d747cb439ec6fba4f3b977038af"
 "checksum rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
