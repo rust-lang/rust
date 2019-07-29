@@ -12,7 +12,7 @@ use rustc::mir::interpret::{
     GlobalId, AllocId,
     ConstValue, Pointer, Scalar,
     InterpResult, InterpError,
-    sign_extend, truncate, UnsupportedInfo::*,
+    sign_extend, truncate, UnsupportedOpInfo,
 };
 use super::{
     InterpCx, Machine,
@@ -331,8 +331,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
-        let str = ::std::str::from_utf8(bytes)
-            .map_err(|err| InterpError::Unsupported(ValidationFailure(err.to_string())))?;
+        let str = ::std::str::from_utf8(bytes).map_err(|err| {
+            InterpError::Unsupported(UnsupportedOpInfo::ValidationFailure(err.to_string()))
+        })?;
         Ok(str)
     }
 
@@ -603,6 +604,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);
         // post-process
+        use rustc::mir::interpret::UnsupportedOpInfo::InvalidDiscriminant;
         Ok(match *discr_kind {
             layout::DiscriminantKind::Tag => {
                 let bits_discr = match raw_discr.to_bits(discr_val.layout.size) {

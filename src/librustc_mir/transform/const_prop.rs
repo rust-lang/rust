@@ -257,9 +257,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Err(error) => {
                 let diagnostic = error_to_const_error(&self.ecx, error);
                 use rustc::mir::interpret::InterpError::*;
-                use rustc::mir::interpret::UnsupportedInfo::*;
+                use rustc::mir::interpret::UnsupportedOpInfo::*;
                 match diagnostic.error {
-                    Exit(_) => {},
+                    Exit(_) => bug!("the CTFE program cannot exit"),
 
                     | Unsupported(OutOfTls)
                     | Unsupported(TlsOutOfBounds)

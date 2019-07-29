@@ -4,7 +4,7 @@
 macro_rules! err {
     ($($tt:tt)*) => {
         Err($crate::mir::interpret::InterpError::Unsupported(
-            $crate::mir::interpret::UnsupportedInfo::$($tt)*
+            $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
         ).into())
     };
 }
@@ -52,7 +52,7 @@ mod pointer;
 
 pub use self::error::{
     InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
-    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicInfo, UnsupportedInfo,
+    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicInfo, UnsupportedOpInfo,
     InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviourInfo,
 };
 

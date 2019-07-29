@@ -17,7 +17,7 @@ use rustc::mir::interpret::{
     ErrorHandled,
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
     InterpResult, InterpError,
-    truncate, sign_extend, InvalidProgramInfo::*,
+    truncate, sign_extend, InvalidProgramInfo,
 };
 use rustc_data_structures::fx::FxHashMap;
 
@@ -190,8 +190,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
-        self.tcx.layout_of(self.param_env.and(ty))
-            .map_err(|layout| InterpError::InvalidProgram(Layout(layout)).into())
+        self.tcx
+            .layout_of(self.param_env.and(ty))
+            .map_err(|layout| {
+                InterpError::InvalidProgram(InvalidProgramInfo::Layout(layout)).into()
+            })
     }
 }
 
@@ -302,7 +305,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 &substs,
             )),
             None => if substs.needs_subst() {
-                err_inval!(TooGeneric).into()
+                err_inval!(TooGeneric)
             } else {
                 Ok(substs)
             },
@@ -323,7 +326,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env,
             def_id,
             substs,
-        ).ok_or_else(|| InterpError::InvalidProgram(TooGeneric).into())
+        ).ok_or_else(|| InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric).into())
     }
 
     pub fn load_mir(
@@ -694,8 +697,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
         let val = self.tcx.const_eval_raw(param_env.and(gid)).map_err(|err| {
             match err {
-                ErrorHandled::Reported => InterpError::InvalidProgram(ReferencedConstant),
-                ErrorHandled::TooGeneric => InterpError::InvalidProgram(TooGeneric),
+                ErrorHandled::Reported =>
+                    InterpError::InvalidProgram(InvalidProgramInfo::ReferencedConstant),
+                ErrorHandled::TooGeneric =>
+                    InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric),
             }
         })?;
         self.raw_const_to_mplace(val)

@@ -11,7 +11,7 @@ use std::hash::Hash;
 
 use super::{
     GlobalAlloc, InterpResult, InterpError,
-    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy, UnsupportedInfo::*,
+    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy, UnsupportedOpInfo,
 };
 
 macro_rules! validation_failure {
@@ -297,11 +297,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         match self.walk_value(op) {
             Ok(()) => Ok(()),
             Err(err) => match err.kind {
-                InterpError::Unsupported(InvalidDiscriminant(val)) =>
+                InterpError::Unsupported(UnsupportedOpInfo::InvalidDiscriminant(val)) =>
                     validation_failure!(
                         val, self.path, "a valid enum discriminant"
                     ),
-                InterpError::Unsupported(ReadPointerAsBytes) =>
+                InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes) =>
                     validation_failure!(
                         "a pointer", self.path, "plain (non-pointer) bytes"
                     ),
@@ -405,6 +405,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             "{:?} did not pass access check for size {:?}, align {:?}",
                             ptr, size, align
                         );
+                        use super::UnsupportedOpInfo::*;
                         match err.kind {
                             InterpError::Unsupported(InvalidNullPointerUsage) =>
                                 return validation_failure!("NULL reference", self.path),
@@ -608,7 +609,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Err(err) => {
                         // For some errors we might be able to provide extra information
                         match err.kind {
-                            InterpError::Unsupported(ReadUndefBytes(offset)) => {
+                            InterpError::Unsupported(UnsupportedOpInfo::ReadUndefBytes(offset)) => {
                                 // Some byte was undefined, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.

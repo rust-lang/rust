@@ -5,7 +5,7 @@
 
 use rustc::ty::{Ty, TyCtxt, ParamEnv, self};
 use rustc::mir::interpret::{
-    InterpResult, ErrorHandled, UnsupportedInfo::*,
+    InterpResult, ErrorHandled, UnsupportedOpInfo,
 };
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -293,7 +293,7 @@ pub fn intern_const_alloc_recursive(
         if let Err(error) = interned {
             // This can happen when e.g. the tag of an enum is not a valid discriminant. We do have
             // to read enum discriminants in order to find references in enum variant fields.
-            if let InterpError::Unsupported(ValidationFailure(_)) = error.kind {
+            if let InterpError::Unsupported(UnsupportedOpInfo::ValidationFailure(_)) = error.kind {
                 let err = crate::const_eval::error_to_const_error(&ecx, error);
                 match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
                     Ok(mut diag) => {

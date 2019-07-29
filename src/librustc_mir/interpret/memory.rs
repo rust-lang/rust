@@ -19,8 +19,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     InterpResult, Scalar, InterpError, GlobalAlloc, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg, UnsupportedInfo::*,
-    InvalidProgramInfo::*
+    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg, InvalidProgramInfo,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -438,9 +437,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                             assert!(tcx.is_static(def_id));
                             match err {
                                 ErrorHandled::Reported =>
-                                    InterpError::InvalidProgram(ReferencedConstant),
+                                    InterpError::InvalidProgram(
+                                        InvalidProgramInfo::ReferencedConstant
+                                    ),
                                 ErrorHandled::TooGeneric =>
-                                    InterpError::InvalidProgram(TooGeneric),
+                                    InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric),
                             }
                         })?;
                     // Make sure we use the ID of the resolved memory, not the lazy one!
@@ -590,7 +591,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         } else {
             match self.tcx.alloc_map.lock().get(id) {
                 Some(GlobalAlloc::Function(instance)) => Ok(FnVal::Instance(instance)),
-                _ => Err(InterpError::Unsupported(ExecuteMemory).into()),
+                _ => err!(ExecuteMemory),
             }
         }
     }

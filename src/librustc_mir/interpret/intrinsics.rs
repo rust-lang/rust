@@ -7,7 +7,7 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::mir::BinOp;
 use rustc::mir::interpret::{
-    InterpResult, InterpError, Scalar, PanicInfo, UnsupportedInfo::*,
+    InterpResult, InterpError, Scalar, PanicInfo, UnsupportedOpInfo,
 };
 
 use super::{
@@ -100,7 +100,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits = self.read_scalar(args[0])?.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-                    _ => Err(InterpError::Unsupported(TypeNotPrimitive(ty)))?,
+                    _ => Err(InterpError::Unsupported(UnsupportedOpInfo::TypeNotPrimitive(ty)))?,
                 };
                 let out_val = if intrinsic_name.ends_with("_nonzero") {
                     if bits == 0 {

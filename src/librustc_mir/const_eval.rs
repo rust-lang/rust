@@ -24,8 +24,7 @@ use crate::interpret::{self,
     RawConst, ConstValue,
     InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
-    snapshot, RefTracking, intern_const_alloc_recursive, UnsupportedInfo::*,
-    InvalidProgramInfo::*,
+    snapshot, RefTracking, intern_const_alloc_recursive, UnsupportedOpInfo,
 };
 
 /// Number of steps until the detector even starts doing anything.
@@ -184,7 +183,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
     fn into(self) -> InterpErrorInfo<'tcx> {
-        InterpError::Unsupported(MachineError(self.to_string())).into()
+        InterpError::Unsupported(UnsupportedOpInfo::MachineError(self.to_string())).into()
     }
 }
 
@@ -361,7 +360,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Ok(Some(match ecx.load_mir(instance.def) {
             Ok(body) => body,
             Err(err) => {
-                if let InterpError::Unsupported(NoMirFor(ref path)) = err.kind {
+                if let InterpError::Unsupported(UnsupportedOpInfo::NoMirFor(ref path)) = err.kind {
                     return Err(
                         ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
                             .into(),
@@ -698,6 +697,7 @@ pub fn const_eval_raw_provider<'tcx>(
                 // promoting runtime code is only allowed to error if it references broken constants
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
+                    use crate::interpret::InvalidProgramInfo::*;
                     let span = tcx.promoted_mir(def_id)[p].span;
                     if let InterpError::InvalidProgram(ReferencedConstant) = err.error {
                         err.report_as_error(

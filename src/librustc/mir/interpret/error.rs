@@ -314,12 +314,12 @@ impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InvalidProgramInfo<'tcx> {
-    /// Resolution can fail if we are in a too generic context
+    /// Resolution can fail if we are in a too generic context.
     TooGeneric,
     /// Cannot compute this constant because it depends on another one
-    /// which already produced an error
+    /// which already produced an error.
     ReferencedConstant,
-    /// Abort in case type errors are reached
+    /// Abort in case type errors are reached.
     TypeckError,
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
@@ -362,7 +362,7 @@ impl fmt::Debug for UndefinedBehaviourInfo {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum UnsupportedInfo<'tcx> {
+pub enum UnsupportedOpInfo<'tcx> {
     /// Handle cases which for which we do not have a fixed variant.
     Unimplemented(String),
 
@@ -426,9 +426,9 @@ pub enum UnsupportedInfo<'tcx> {
     PathNotFound(Vec<String>),
 }
 
-impl fmt::Debug for UnsupportedInfo<'tcx> {
+impl fmt::Debug for UnsupportedOpInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use UnsupportedInfo::*;
+        use UnsupportedOpInfo::*;
         match self {
             PointerOutOfBounds { ptr, msg, allocation_size } => {
                 write!(f, "{} failed: pointer must be in-bounds at offset {}, \
@@ -574,7 +574,7 @@ pub enum InterpError<'tcx> {
     UndefinedBehaviour(UndefinedBehaviourInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
-    Unsupported(UnsupportedInfo<'tcx>),
+    Unsupported(UnsupportedOpInfo<'tcx>),
     /// The program was invalid (ill-typed, not sufficiently monomorphized, ...).
     InvalidProgram(InvalidProgramInfo<'tcx>),
     /// The program exhausted the interpreter's resources (stack/heap too big,

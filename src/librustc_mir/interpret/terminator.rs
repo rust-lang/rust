@@ -9,7 +9,7 @@ use rustc_target::spec::abi::Abi;
 use super::{
     InterpResult, PointerArithmetic, InterpError, Scalar,
     InterpCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
-    UnsupportedInfo::*,
+    UnsupportedOpInfo,
 };
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -221,7 +221,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(());
         }
         let caller_arg = caller_arg.next()
-            .ok_or_else(|| InterpError::Unsupported(FunctionArgCountMismatch))?;
+            .ok_or_else(|| InterpError::Unsupported(UnsupportedOpInfo::FunctionArgCountMismatch))?;
         if rust_abi {
             debug_assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
         }

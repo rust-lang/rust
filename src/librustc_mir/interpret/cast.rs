@@ -9,8 +9,7 @@ use rustc_apfloat::{Float, FloatConvert};
 use rustc::mir::interpret::{
     Scalar, InterpResult, Pointer, PointerArithmetic, InterpError,
 };
-use rustc::mir::{CastKind, interpret::{InvalidProgramInfo::*}};
-
+use rustc::mir::CastKind;
 
 use super::{InterpCx, Machine, PlaceTy, OpTy, Immediate, FnVal};
 
@@ -75,6 +74,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Pointer(PointerCast::ReifyFnPointer) => {
+                use rustc::mir::interpret::InvalidProgramInfo::TooGeneric;
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::FnDef(def_id, substs) => {
