@@ -14,7 +14,7 @@ use crate::ThinVec;
 use crate::util::parser::AssocOp;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_data_structures::fx::FxHashSet;
-use syntax_pos::{Span, DUMMY_SP, MultiSpan};
+use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
 use std::mem;
 
@@ -197,6 +197,10 @@ impl<'a> Parser<'a> {
 
     crate fn diagnostic(&self) -> &'a errors::Handler {
         &self.sess.span_diagnostic
+    }
+
+    crate fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
+        self.sess.source_map().span_to_snippet(span)
     }
 
     crate fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
@@ -549,8 +553,10 @@ impl<'a> Parser<'a> {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // respan to include both operators
                 let op_span = op.span.to(self.token.span);
-                let mut err = self.diagnostic().struct_span_err(op_span,
-                    "chained comparison operators require parentheses");
+                let mut err = self.struct_span_err(
+                    op_span,
+                    "chained comparison operators require parentheses",
+                );
                 if op.node == BinOpKind::Lt &&
                     *outer_op == AssocOp::Less ||  // Include `<` to provide this recommendation
                     *outer_op == AssocOp::Greater  // even in a case like the following:
@@ -717,8 +723,6 @@ impl<'a> Parser<'a> {
         path.span = ty_span.to(self.prev_span);
 
         let ty_str = self
-            .sess
-            .source_map()
             .span_to_snippet(ty_span)
             .unwrap_or_else(|_| pprust::ty_to_string(&ty));
         self.diagnostic()
@@ -889,7 +893,7 @@ impl<'a> Parser<'a> {
             err.span_label(await_sp, "while parsing this incorrect await expression");
             err
         })?;
-        let expr_str = self.sess.source_map().span_to_snippet(expr.span)
+        let expr_str = self.span_to_snippet(expr.span)
             .unwrap_or_else(|_| pprust::expr_to_string(&expr));
         let suggestion = format!("{}.await{}", expr_str, if is_question { "?" } else { "" });
         let sp = lo.to(expr.span);
@@ -920,6 +924,48 @@ impl<'a> Parser<'a> {
                     String::new(),
                     Applicability::MachineApplicable,
                 ).emit()
+        }
+    }
+
+    /// Recover a situation like `for ( $pat in $expr )`
+    /// and suggest writing `for $pat in $expr` instead.
+    ///
+    /// This should be called before parsing the `$block`.
+    crate fn recover_parens_around_for_head(
+        &mut self,
+        pat: P<Pat>,
+        expr: &Expr,
+        begin_paren: Option<Span>,
+    ) -> P<Pat> {
+        match (&self.token.kind, begin_paren) {
+            (token::CloseDelim(token::Paren), Some(begin_par_sp)) => {
+                self.bump();
+
+                let pat_str = self
+                    // Remove the `(` from the span of the pattern:
+                    .span_to_snippet(pat.span.trim_start(begin_par_sp).unwrap())
+                    .unwrap_or_else(|_| pprust::pat_to_string(&pat));
+
+                self.struct_span_err(self.prev_span, "unexpected closing `)`")
+                    .span_label(begin_par_sp, "opening `(`")
+                    .span_suggestion(
+                        begin_par_sp.to(self.prev_span),
+                        "remove parenthesis in `for` loop",
+                        format!("{} in {}", pat_str, pprust::expr_to_string(&expr)),
+                        // With e.g. `for (x) in y)` this would replace `(x) in y)`
+                        // with `x) in y)` which is syntactically invalid.
+                        // However, this is prevented before we get here.
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+
+                // Unwrap `(pat)` into `pat` to avoid the `unused_parens` lint.
+                pat.and_then(|pat| match pat.node {
+                    PatKind::Paren(pat) => pat,
+                    _ => P(pat),
+                })
+            }
+            _ => pat,
         }
     }
 
@@ -1105,17 +1151,14 @@ impl<'a> Parser<'a> {
     crate fn check_for_for_in_in_typo(&mut self, in_span: Span) {
         if self.eat_keyword(kw::In) {
             // a common typo: `for _ in in bar {}`
-            let mut err = self.sess.span_diagnostic.struct_span_err(
-                self.prev_span,
-                "expected iterable, found keyword `in`",
-            );
-            err.span_suggestion_short(
-                in_span.until(self.prev_span),
-                "remove the duplicated `in`",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
-            err.emit();
+            self.struct_span_err(self.prev_span, "expected iterable, found keyword `in`")
+                .span_suggestion_short(
+                    in_span.until(self.prev_span),
+                    "remove the duplicated `in`",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
         }
     }
 
@@ -1128,12 +1171,12 @@ impl<'a> Parser<'a> {
 
     crate fn eat_incorrect_doc_comment_for_arg_type(&mut self) {
         if let token::DocComment(_) = self.token.kind {
-            let mut err = self.diagnostic().struct_span_err(
+            self.struct_span_err(
                 self.token.span,
                 "documentation comments cannot be applied to a function parameter's type",
-            );
-            err.span_label(self.token.span, "doc comments are not allowed here");
-            err.emit();
+            )
+            .span_label(self.token.span, "doc comments are not allowed here")
+            .emit();
             self.bump();
         } else if self.token == token::Pound && self.look_ahead(1, |t| {
             *t == token::OpenDelim(token::Bracket)
@@ -1145,12 +1188,12 @@ impl<'a> Parser<'a> {
             }
             let sp = lo.to(self.token.span);
             self.bump();
-            let mut err = self.diagnostic().struct_span_err(
+            self.struct_span_err(
                 sp,
                 "attributes cannot be applied to a function parameter's type",
-            );
-            err.span_label(sp, "attributes are not allowed here");
-            err.emit();
+            )
+            .span_label(sp, "attributes are not allowed here")
+            .emit();
         }
     }
 
@@ -1206,18 +1249,19 @@ impl<'a> Parser<'a> {
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
-        let mut err = self.diagnostic().struct_span_err_with_code(
-            pat.span,
-            "patterns aren't allowed in methods without bodies",
-            DiagnosticId::Error("E0642".into()),
-        );
-        err.span_suggestion_short(
-            pat.span,
-            "give this argument a name or use an underscore to ignore it",
-            "_".to_owned(),
-            Applicability::MachineApplicable,
-        );
-        err.emit();
+        self.diagnostic()
+            .struct_span_err_with_code(
+                pat.span,
+                "patterns aren't allowed in methods without bodies",
+                DiagnosticId::Error("E0642".into()),
+            )
+            .span_suggestion_short(
+                pat.span,
+                "give this argument a name or use an underscore to ignore it",
+                "_".to_owned(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
         let pat = P(Pat {
