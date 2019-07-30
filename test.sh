@@ -1,4 +1,13 @@
 #!/bin/bash
+
+if [[ "$1" == "--release" ]]; then
+    export CHANNEL='release'
+    cargo build --release
+else
+    export CHANNEL='debug'
+    cargo build
+fi
+
 source config.sh
 
 rm -r target/out || true
@@ -38,6 +47,19 @@ $RUSTC example/mod_bench.rs --crate-type bin
 # FIXME linker gives multiple definitions error on Linux
 #echo "[BUILD] sysroot in release mode"
 #./build_sysroot/build_sysroot.sh --release
+
+pushd regex
+echo "[TEST] rust-lang/regex example shootout-regex-dna"
+../cargo.sh clean
+# Make sure `[codegen mono items] start` doesn't poison the diff
+../cargo.sh build --example shootout-regex-dna
+cat examples/regexdna-input.txt | ../cargo.sh run --example shootout-regex-dna > res.txt
+diff -u res.txt examples/regexdna-output.txt
+
+# FIXME compile libtest
+# echo "[TEST] rust-lang/regex standalone tests"
+# ../cargo.sh test
+popd
 
 COMPILE_MOD_BENCH_INLINE="$RUSTC example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -O --crate-name mod_bench_inline"
 COMPILE_MOD_BENCH_LLVM_0="rustc example/mod_bench.rs --crate-type bin -Copt-level=0 -o target/out/mod_bench_llvm_0 -Cpanic=abort"
