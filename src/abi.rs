@@ -274,7 +274,9 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             .module
             .declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
-        self.add_comment(call_inst, format!("easy_call {}", name));
+        #[cfg(debug_assertions)] {
+            self.add_comment(call_inst, format!("easy_call {}", name));
+        }
         let results = self.bcx.inst_results(call_inst);
         assert!(results.len() <= 2, "{}", results.len());
         results
