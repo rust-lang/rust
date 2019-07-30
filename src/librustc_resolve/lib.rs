@@ -1221,25 +1221,6 @@ impl<'a> ModuleData<'a> {
         }
     }
 
-    fn for_each_child<F>(&'a self, resolver: &mut Resolver<'a>, mut f: F)
-        where F: FnMut(&mut Resolver<'a>, Ident, Namespace, &'a NameBinding<'a>)
-    {
-        for (&(ident, ns), name_resolution) in resolver.resolutions(self).borrow().iter() {
-            name_resolution.borrow().binding.map(|binding| f(resolver, ident, ns, binding));
-        }
-    }
-
-    fn for_each_child_stable<F>(&'a self, resolver: &mut Resolver<'a>, mut f: F)
-        where F: FnMut(&mut Resolver<'a>, Ident, Namespace, &'a NameBinding<'a>)
-    {
-        let resolutions = resolver.resolutions(self).borrow();
-        let mut resolutions = resolutions.iter().collect::<Vec<_>>();
-        resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.as_str(), ns));
-        for &(&(ident, ns), &resolution) in resolutions.iter() {
-            resolution.borrow().binding.map(|binding| f(resolver, ident, ns, binding));
-        }
-    }
-
     fn res(&self) -> Option<Res> {
         match self.kind {
             ModuleKind::Def(kind, def_id, _) => Some(Res::Def(kind, def_id)),
@@ -1904,9 +1885,7 @@ impl<'a> Resolver<'a> {
         seg.id = self.session.next_node_id();
         seg
     }
-}
 
-impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
                cstore: &'a CStore,
                krate: &Crate,
@@ -2114,6 +2093,43 @@ impl<'a> Resolver<'a> {
     ) -> Module<'a> {
         let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expn_id, span);
         self.arenas.alloc_module(module)
+    }
+
+    fn resolutions(&mut self, module: Module<'a>) -> &'a Resolutions<'a> {
+        if module.populate_on_access.get() {
+            module.populate_on_access.set(false);
+            let def_id = module.def_id().expect("unpopulated module without a def-id");
+            for child in self.cstore.item_children_untracked(def_id, self.session) {
+                let child = child.map_id(|_| panic!("unexpected id"));
+                self.build_reduced_graph_for_external_crate_res(module, child);
+            }
+        }
+        &module.lazy_resolutions
+    }
+
+    fn resolution(&mut self, module: Module<'a>, ident: Ident, ns: Namespace)
+                  -> &'a RefCell<NameResolution<'a>> {
+        *self.resolutions(module).borrow_mut().entry((ident.modern(), ns))
+               .or_insert_with(|| self.arenas.alloc_name_resolution())
+    }
+
+    fn for_each_child<F>(&mut self, module: Module<'a>, mut f: F)
+        where F: FnMut(&mut Resolver<'a>, Ident, Namespace, &'a NameBinding<'a>)
+    {
+        for (&(ident, ns), name_resolution) in self.resolutions(module).borrow().iter() {
+            name_resolution.borrow().binding.map(|binding| f(self, ident, ns, binding));
+        }
+    }
+
+    fn for_each_child_stable<F>(&mut self, module: Module<'a>, mut f: F)
+        where F: FnMut(&mut Resolver<'a>, Ident, Namespace, &'a NameBinding<'a>)
+    {
+        let resolutions = self.resolutions(module).borrow();
+        let mut resolutions = resolutions.iter().collect::<Vec<_>>();
+        resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.as_str(), ns));
+        for &(&(ident, ns), &resolution) in resolutions.iter() {
+            resolution.borrow().binding.map(|binding| f(self, ident, ns, binding));
+        }
     }
 
     fn record_use(&mut self, ident: Ident, ns: Namespace,
@@ -4531,7 +4547,7 @@ impl<'a> Resolver<'a> {
         let mut traits = module.traits.borrow_mut();
         if traits.is_none() {
             let mut collected_traits = Vec::new();
-            module.for_each_child(self, |_, name, ns, binding| {
+            self.for_each_child(module, |_, name, ns, binding| {
                 if ns != TypeNS { return }
                 match binding.res() {
                     Res::Def(DefKind::Trait, _) |

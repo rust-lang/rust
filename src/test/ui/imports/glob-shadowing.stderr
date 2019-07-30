@@ -4,14 +4,18 @@ error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope
 LL |         let x = env!("PATH");
    |                 ^^^ ambiguous name
    |
-   = note: `env` could refer to a macro from prelude
-note: `env` could also refer to the macro imported here
+note: `env` could refer to the macro imported here
   --> $DIR/glob-shadowing.rs:9:9
    |
 LL |     use m::*;
    |         ^^^^
    = help: consider adding an explicit import of `env` to disambiguate
    = help: or use `self::env` to refer to this macro unambiguously
+note: `env` could also refer to the macro defined here
+  --> $SRC_DIR/libstd/prelude/v1.rs:LL:COL
+   |
+LL |     env,
+   |     ^^^
 
 error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
   --> $DIR/glob-shadowing.rs:19:21
@@ -19,13 +23,17 @@ error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope
 LL |             let x = env!("PATH");
    |                     ^^^ ambiguous name
    |
-   = note: `env` could refer to a macro from prelude
-note: `env` could also refer to the macro imported here
+note: `env` could refer to the macro imported here
   --> $DIR/glob-shadowing.rs:17:13
    |
 LL |         use m::*;
    |             ^^^^
    = help: consider adding an explicit import of `env` to disambiguate
+note: `env` could also refer to the macro defined here
+  --> $SRC_DIR/libstd/prelude/v1.rs:LL:COL
+   |
+LL |     env,
+   |     ^^^
 
 error[E0659]: `fenv` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
   --> $DIR/glob-shadowing.rs:29:21

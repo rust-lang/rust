@@ -5,7 +5,7 @@ use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, ParentScope
 use crate::Determinacy::{self, *};
 use crate::Namespace::{self, TypeNS, MacroNS};
 use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
-use crate::{Resolutions, Resolver, Segment};
+use crate::{Resolver, Segment};
 use crate::{names_to_string, module_to_string};
 use crate::{resolve_error, ResolutionError};
 use crate::ModuleKind;
@@ -36,7 +36,7 @@ use syntax_pos::{MultiSpan, Span};
 
 use log::*;
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::{mem, ptr};
 
 type Res = def::Res<NodeId>;
@@ -156,24 +156,6 @@ impl<'a> NameResolution<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    crate fn resolutions(&mut self, module: Module<'a>) -> &'a Resolutions<'a> {
-        if module.populate_on_access.get() {
-            module.populate_on_access.set(false);
-            let def_id = module.def_id().expect("unpopulated module without a def-id");
-            for child in self.cstore.item_children_untracked(def_id, self.session) {
-                let child = child.map_id(|_| panic!("unexpected id"));
-                self.build_reduced_graph_for_external_crate_res(module, child);
-            }
-        }
-        &module.lazy_resolutions
-    }
-
-    fn resolution(&mut self, module: Module<'a>, ident: Ident, ns: Namespace)
-                  -> &'a RefCell<NameResolution<'a>> {
-        *self.resolutions(module).borrow_mut().entry((ident.modern(), ns))
-               .or_insert_with(|| self.arenas.alloc_name_resolution())
-    }
-
     crate fn resolve_ident_in_module_unadjusted(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
