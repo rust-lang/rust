@@ -4,6 +4,7 @@ use super::_match::WitnessPreference::*;
 
 use super::{Pattern, PatternContext, PatternError, PatternKind};
 
+use rustc::middle::borrowck::SignalledError;
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
@@ -26,21 +27,24 @@ use std::slice;
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
-pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
+crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) -> SignalledError {
     let body_id = if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
         tcx.hir().body_owned_by(id)
     } else {
-        return;
+        return SignalledError::NoErrorsSeen;
     };
 
-    MatchVisitor {
+    let mut visitor = MatchVisitor {
         tcx,
         body_owner: def_id,
         tables: tcx.body_tables(body_id),
         region_scope_tree: &tcx.region_scope_tree(def_id),
         param_env: tcx.param_env(def_id),
         identity_substs: InternalSubsts::identity_for_item(tcx, def_id),
-    }.visit_body(tcx.hir().body(body_id));
+        signalled_error: SignalledError::NoErrorsSeen,
+    };
+    visitor.visit_body(tcx.hir().body(body_id));
+    visitor.signalled_error
 }
 
 fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
@@ -54,6 +58,7 @@ struct MatchVisitor<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: SubstsRef<'tcx>,
     region_scope_tree: &'a region::ScopeTree,
+    signalled_error: SignalledError,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
@@ -64,11 +69,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
 
-        match ex.node {
-            hir::ExprKind::Match(ref scrut, ref arms, source) => {
-                self.check_match(scrut, arms, source);
-            }
-            _ => {}
+        if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.node {
+            self.check_match(scrut, arms, source);
         }
     }
 
@@ -130,7 +132,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
-    fn check_patterns(&self, has_guard: bool, pats: &[P<Pat>]) {
+    fn check_patterns(&mut self, has_guard: bool, pats: &[P<Pat>]) {
         check_legality_of_move_bindings(self, has_guard, pats);
         for pat in pats {
             check_legality_of_bindings_in_at_patterns(self, pat);
@@ -138,11 +140,11 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 
     fn check_match(
-        &self,
+        &mut self,
         scrut: &hir::Expr,
         arms: &'tcx [hir::Arm],
-        source: hir::MatchSource)
-    {
+        source: hir::MatchSource
+    ) {
         for arm in arms {
             // First, check legality of move bindings.
             self.check_patterns(arm.guard.is_some(), &arm.pats);
@@ -150,6 +152,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Second, if there is a guard on each arm, make sure it isn't
             // assigning or borrowing anything mutably.
             if let Some(ref guard) = arm.guard {
+                self.signalled_error = SignalledError::SawSomeError;
                 if !self.tcx.features().bind_by_move_pattern_guards {
                     check_for_mutation_in_guard(self, &guard);
                 }
@@ -548,7 +551,7 @@ fn maybe_point_at_variant(
 
 // Legality of move bindings checking
 fn check_legality_of_move_bindings(
-    cx: &MatchVisitor<'_, '_>,
+    cx: &mut MatchVisitor<'_, '_>,
     has_guard: bool,
     pats: &[P<Pat>],
 ) {
@@ -565,7 +568,12 @@ fn check_legality_of_move_bindings(
         })
     }
     let span_vec = &mut Vec::new();
-    let check_move = |p: &Pat, sub: Option<&Pat>, span_vec: &mut Vec<Span>| {
+    let check_move = |
+        cx: &mut MatchVisitor<'_, '_>,
+        p: &Pat,
+        sub: Option<&Pat>,
+        span_vec: &mut Vec<Span>,
+    | {
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
@@ -574,15 +582,17 @@ fn check_legality_of_move_bindings(
                              "cannot bind by-move with sub-bindings")
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
-        } else if has_guard && !cx.tcx.features().bind_by_move_pattern_guards {
-            let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
-                                           "cannot bind by-move into a pattern guard");
-            err.span_label(p.span, "moves value into pattern guard");
-            if cx.tcx.sess.opts.unstable_features.is_nightly_build() {
-                err.help("add `#![feature(bind_by_move_pattern_guards)]` to the \
-                          crate attributes to enable");
+        } else if has_guard {
+            if !cx.tcx.features().bind_by_move_pattern_guards {
+                let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
+                                            "cannot bind by-move into a pattern guard");
+                err.span_label(p.span, "moves value into pattern guard");
+                if cx.tcx.sess.opts.unstable_features.is_nightly_build() {
+                    err.help("add `#![feature(bind_by_move_pattern_guards)]` to the \
+                            crate attributes to enable");
+                }
+                err.emit();
             }
-            err.emit();
         } else if let Some(_by_ref_span) = by_ref_span {
             span_vec.push(p.span);
         }
@@ -596,7 +606,7 @@ fn check_legality_of_move_bindings(
                         ty::BindByValue(..) => {
                             let pat_ty = cx.tables.node_type(p.hir_id);
                             if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
-                                check_move(p, sub.as_ref().map(|p| &**p), span_vec);
+                                check_move(cx, p, sub.as_ref().map(|p| &**p), span_vec);
                             }
                         }
                         _ => {}
