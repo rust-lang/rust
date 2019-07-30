@@ -1,7 +1,7 @@
 use crate::io::{self, Error, ErrorKind};
-use libc::{self, c_int};
+use libc::{self, c_int, c_char};
 use libc::{RTP_ID};
-
+use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::rtp;
 use crate::sys::process::process_common::*;
@@ -15,8 +15,6 @@ impl Command {
                  -> io::Result<(Process, StdioPipes)> {
         use crate::sys::{cvt_r};
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
-
-        let envp = self.capture_env();
 
         if self.saw_nul() {
             return Err(io::Error::new(ErrorKind::InvalidInput,
@@ -54,19 +52,10 @@ impl Command {
                 t!(cvt(libc::chdir(cwd.as_ptr())));
             }
 
-            //            let envp = envp.map(|c| c.as_ptr())
-            //                .unwrap_or(*sys::os::environ() as *const _);
-            // FIXME: https://github.com/rust-lang/rust/issues/61993
-            let envp_empty = CStringArray::with_capacity(0);
-            let envp = match envp {
-                Some(x) => x,
-                None => envp_empty,
-            };
-            let envp = envp.as_ptr();
             let ret = rtp::rtpSpawn(
                 self.get_argv()[0],                   // executing program
                 self.get_argv().as_ptr() as *const _, // argv
-                envp as *const _,                     // environment variable pointers
+                *sys::os::environ() as *const *const c_char,
                 100 as c_int,                         // initial priority
                 0x16000,                                    // initial stack size. 0 defaults
                                                       // to 0x4000 in 32 bit and 0x8000 in 64 bit
