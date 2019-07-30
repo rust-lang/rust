@@ -4166,11 +4166,11 @@ mod tests {
         let a = _mm_setr_epi8(
             0b1000_0000u8 as i8, 0b0, 0b1000_0000u8 as i8, 0b01,
             0b0101, 0b1111_0000u8 as i8, 0, 0,
-            0, 0, 0b1111_0000u8 as i8, 0b0101,
+            0, 0b1011_0101u8 as i8, 0b1111_0000u8 as i8, 0b0101,
             0b01, 0b1000_0000u8 as i8, 0b0, 0b1000_0000u8 as i8,
         );
         let r = _mm_movemask_epi8(a);
-        assert_eq!(r, 0b10100100_00100101);
+        assert_eq!(r, 0b10100110_00100101);
     }
 
     #[simd_test(enable = "sse2")]
