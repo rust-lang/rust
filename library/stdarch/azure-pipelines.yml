@@ -5,7 +5,7 @@ resources:
     - repository: rustinfra
       type: github
       name: rust-lang/simpleinfra
-      endpoint: rust-lang
+      endpoint: gnzlbg
 trigger: ["master"]
 pr: ["master"]
 
