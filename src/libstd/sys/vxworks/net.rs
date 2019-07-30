@@ -141,10 +141,6 @@ impl Socket {
 
     pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t)
                   -> io::Result<Socket> {
-        // Unfortunately the only known way right now to accept a socket and
-        // atomically set the CLOEXEC flag is to use the `accept4` syscall on
-        // Linux. This was added in 2.6.28, however, and because we support
-        // 2.6.18 we must detect this support dynamically.
         let fd = cvt_r(|| unsafe {
             libc::accept(self.0.raw(), storage, len)
         })?;
