@@ -1,5 +1,5 @@
 use rustc::hir::intravisit as visit;
-use rustc::hir::*;
+use rustc::hir::{self, *};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt_, Categorization};
@@ -101,6 +101,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
     }
 }
 
+// TODO: Replace with Map::is_argument(..) when it's fixed
+fn is_argument(map: &hir::map::Map<'_>, id: HirId) -> bool {
+    match map.find(id) {
+        Some(Node::Binding(_)) => (),
+        _ => return false,
+    }
+
+    match map.find(map.get_parent_node(id)) {
+        Some(Node::Arg(_)) => true,
+        _ => false,
+    }
+}
+
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, _: HirId, _: Span, cmt: &cmt_<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
@@ -113,11 +126,13 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: &cmt_<'tcx>, _: ConsumeMode) {
         let map = &self.cx.tcx.hir();
-        if map.is_argument(consume_pat.hir_id) {
+        if is_argument(map, consume_pat.hir_id) {
             // Skip closure arguments
-            if let Some(Node::Expr(..)) = map.find(map.get_parent_node(consume_pat.hir_id)) {
+            let parent_id = map.get_parent_node(consume_pat.hir_id);
+            if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
                 return;
             }
+
             if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
                 self.set.insert(consume_pat.hir_id);
             }
