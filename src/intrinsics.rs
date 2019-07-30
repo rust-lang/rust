@@ -144,7 +144,7 @@ pub fn lane_type_and_count<'tcx>(
     (lane_layout, lane_count)
 }
 
-fn simd_for_each_lane<'tcx, B: Backend>(
+pub fn simd_for_each_lane<'tcx, B: Backend>(
     fx: &mut FunctionCx<'_, 'tcx, B>,
     intrinsic: &str,
     x: CValue<'tcx>,
@@ -170,23 +170,37 @@ fn simd_for_each_lane<'tcx, B: Backend>(
     }
 }
 
-fn bool_to_zero_or_max_uint<'tcx>(
+pub fn bool_to_zero_or_max_uint<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     layout: TyLayout<'tcx>,
     val: Value,
 ) -> CValue<'tcx> {
     let ty = fx.clif_type(layout.ty).unwrap();
 
-    let zero = fx.bcx.ins().iconst(ty, 0);
-    let max = fx.bcx.ins().iconst(ty, (u64::max_value() >> (64 - ty.bits())) as i64);
-    let res = crate::common::codegen_select(&mut fx.bcx, val, max, zero);
+    let int_ty = match ty {
+        types::F32 => types::I32,
+        types::F64 => types::I64,
+        ty => ty,
+    };
+
+    let zero = fx.bcx.ins().iconst(int_ty, 0);
+    let max = fx.bcx.ins().iconst(int_ty, (u64::max_value() >> (64 - int_ty.bits())) as i64);
+    let mut res = crate::common::codegen_select(&mut fx.bcx, val, max, zero);
+
+    if ty.is_float() {
+        res = fx.bcx.ins().bitcast(ty, res);
+    }
+
     CValue::by_val(res, layout)
 }
 
 macro_rules! simd_cmp {
     ($fx:expr, $intrinsic:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, _lane_layout, res_lane_layout, x_lane, y_lane| {
-            let res_lane = fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane);
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
             bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
         });
     };
@@ -203,10 +217,13 @@ macro_rules! simd_cmp {
 
 }
 
-macro_rules! simd_binop {
+macro_rules! simd_int_binop {
     ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, _lane_layout, ret_lane_layout, x_lane, y_lane| {
-            let res_lane = fx.bcx.ins().$op(x_lane, y_lane);
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
             CValue::by_val(res_lane, ret_lane_layout)
         });
     };
@@ -220,6 +237,42 @@ macro_rules! simd_binop {
             CValue::by_val(res_lane, ret_lane_layout)
         });
     };
+}
+
+macro_rules! simd_int_flt_binop {
+    ($fx:expr, $intrinsic:expr, $op:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
+                ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    };
+    ($fx:expr, $intrinsic:expr, $op_u:ident|$op_s:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
+                ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
+                ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    };
+}
+
+macro_rules! simd_flt_binop {
+    ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Float(_) => fx.bcx.ins().$op(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    }
 }
 
 pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
@@ -840,30 +893,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
 
             let indexes = {
                 use rustc::mir::interpret::*;
-                let idx_place = match idx {
-                    Operand::Copy(idx_place) => {
-                        idx_place
-                    }
-                    _ => panic!("simd_shuffle* idx is not Operand::Copy, but {:?}", idx),
-                };
-
-                assert!(idx_place.projection.is_none());
-                let static_ = match &idx_place.base {
-                    PlaceBase::Static(static_) => {
-                        static_
-                    }
-                    PlaceBase::Local(_) => panic!("simd_shuffle* idx is not constant, but a local"),
-                };
-
-                let idx_const = match &static_.kind {
-                    StaticKind::Static(_) => unimplemented!(),
-                    StaticKind::Promoted(promoted) => {
-                        fx.tcx.const_eval(ParamEnv::reveal_all().and(GlobalId {
-                            instance: fx.instance,
-                            promoted: Some(*promoted),
-                        })).unwrap()
-                    }
-                };
+                let idx_const = crate::constant::mir_operand_get_const_val(fx, idx).expect("simd_shuffle* idx not const");
 
                 let idx_bytes = match idx_const.val {
                     ConstValue::ByRef { align: _, offset, alloc } => {
@@ -900,41 +930,38 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
 
         simd_add, (c x, c y) {
-            simd_binop!(fx, intrinsic, iadd(x, y) -> ret);
+            simd_int_flt_binop!(fx, intrinsic, iadd|fadd(x, y) -> ret);
         };
         simd_sub, (c x, c y) {
-            simd_binop!(fx, intrinsic, isub(x, y) -> ret);
+            simd_int_flt_binop!(fx, intrinsic, isub|fsub(x, y) -> ret);
         };
         simd_mul, (c x, c y) {
-            simd_binop!(fx, intrinsic, imul(x, y) -> ret);
+            simd_int_flt_binop!(fx, intrinsic, imul|fmul(x, y) -> ret);
         };
         simd_div, (c x, c y) {
-            simd_binop!(fx, intrinsic, udiv|sdiv(x, y) -> ret);
-        };
-        simd_rem, (c x, c y) {
-            simd_binop!(fx, intrinsic, urem|srem(x, y) -> ret);
+            simd_int_flt_binop!(fx, intrinsic, udiv|sdiv|fdiv(x, y) -> ret);
         };
         simd_shl, (c x, c y) {
-            simd_binop!(fx, intrinsic, ishl(x, y) -> ret);
+            simd_int_binop!(fx, intrinsic, ishl(x, y) -> ret);
         };
         simd_shr, (c x, c y) {
-            simd_binop!(fx, intrinsic, ushr|sshr(x, y) -> ret);
+            simd_int_binop!(fx, intrinsic, ushr|sshr(x, y) -> ret);
         };
         simd_and, (c x, c y) {
-            simd_binop!(fx, intrinsic, band(x, y) -> ret);
+            simd_int_binop!(fx, intrinsic, band(x, y) -> ret);
         };
         simd_or, (c x, c y) {
-            simd_binop!(fx, intrinsic, bor(x, y) -> ret);
+            simd_int_binop!(fx, intrinsic, bor(x, y) -> ret);
         };
         simd_xor, (c x, c y) {
-            simd_binop!(fx, intrinsic, bxor(x, y) -> ret);
+            simd_int_binop!(fx, intrinsic, bxor(x, y) -> ret);
         };
 
         simd_fmin, (c x, c y) {
-            simd_binop!(fx, intrinsic, fmin(x, y) -> ret);
+            simd_flt_binop!(fx, intrinsic, fmin(x, y) -> ret);
         };
         simd_fmax, (c x, c y) {
-            simd_binop!(fx, intrinsic, fmax(x, y) -> ret);
+            simd_flt_binop!(fx, intrinsic, fmax(x, y) -> ret);
         };
     }
 
