@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 #![allow(non_camel_case_types)]
 #![deny(keyword_idents)]
 
@@ -29,6 +29,9 @@ macro_rules! await {
 }
 
 fn main() {
+    await!(); //~ ERROR `await` is a keyword in the 2018 edition
+    //~^ WARN this was previously accepted by the compiler
+
     match await { await => {} } //~ ERROR `await` is a keyword in the 2018 edition
     //~^ ERROR `await` is a keyword in the 2018 edition
     //~^^ WARN this was previously accepted by the compiler

@@ -4685,7 +4685,7 @@ impl<'a> LoweringContext<'a> {
                     })
                 })
             }
-            ExprKind::Await(_origin, ref expr) => self.lower_await(e.span, expr),
+            ExprKind::Await(ref expr) => self.lower_await(e.span, expr),
             ExprKind::Closure(
                 capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span
             ) => {

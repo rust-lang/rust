@@ -3,6 +3,8 @@ warning: the feature `const_generics` is incomplete and may cause the compiler t
    |
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0282]: type annotations needed
   --> $DIR/cannot-infer-const-args.rs:9:5

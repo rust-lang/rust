@@ -2234,7 +2234,7 @@ impl<'a> Parser<'a> {
                 } else if self.eat_keyword(kw::Let) {
                     return self.parse_let_expr(attrs);
                 } else if is_span_rust_2018 && self.eat_keyword(kw::Await) {
-                    let (await_hi, e_kind) = self.parse_await_macro_or_alt(lo, self.prev_span)?;
+                    let (await_hi, e_kind) = self.parse_incorrect_await_syntax(lo, self.prev_span)?;
                     hi = await_hi;
                     ex = e_kind;
                 } else if self.token.is_path_start() {
@@ -2280,31 +2280,6 @@ impl<'a> Parser<'a> {
 
         let expr = self.mk_expr(lo.to(hi), ex, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
-    }
-
-    /// Parse `await!(<expr>)` calls, or alternatively recover from incorrect but reasonable
-    /// alternative syntaxes `await <expr>`, `await? <expr>`, `await(<expr>)` and
-    /// `await { <expr> }`.
-    fn parse_await_macro_or_alt(
-        &mut self,
-        lo: Span,
-        await_sp: Span,
-    ) -> PResult<'a, (Span, ExprKind)> {
-        if self.token == token::Not {
-            // Handle correct `await!(<expr>)`.
-            // FIXME: make this an error when `await!` is no longer supported
-            // https://github.com/rust-lang/rust/issues/60610
-            self.expect(&token::Not)?;
-            self.expect(&token::OpenDelim(token::Paren))?;
-            let expr = self.parse_expr().map_err(|mut err| {
-                err.span_label(await_sp, "while parsing this await macro call");
-                err
-            })?;
-            self.expect(&token::CloseDelim(token::Paren))?;
-            Ok((self.prev_span, ExprKind::Await(ast::AwaitOrigin::MacroLike, expr)))
-        } else { // Handle `await <expr>`.
-            self.parse_incorrect_await_syntax(lo, await_sp)
-        }
     }
 
     fn maybe_parse_struct_expr(
@@ -2509,18 +2484,19 @@ impl<'a> Parser<'a> {
         )
     }
 
-    // Assuming we have just parsed `.`, continue parsing into an expression.
+    fn mk_await_expr(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
+        let span = lo.to(self.prev_span);
+        let await_expr = self.mk_expr(span, ExprKind::Await(self_arg), ThinVec::new());
+        self.recover_from_await_method_call();
+        Ok(await_expr)
+    }
+
+    /// Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         if self.token.span.rust_2018() && self.eat_keyword(kw::Await) {
-            let span = lo.to(self.prev_span);
-            let await_expr = self.mk_expr(
-                span,
-                ExprKind::Await(ast::AwaitOrigin::FieldLike, self_arg),
-                ThinVec::new(),
-            );
-            self.recover_from_await_method_call();
-            return Ok(await_expr);
+            return self.mk_await_expr(self_arg, lo);
         }
+
         let segment = self.parse_path_segment(PathStyle::Expr)?;
         self.check_trailing_angle_brackets(&segment, token::OpenDelim(token::Paren));
 

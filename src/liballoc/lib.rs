@@ -10,9 +10,9 @@
 //!
 //! ## Boxed values
 //!
-//! The [`Box`](boxed/index.html) type is a smart pointer type. There can
-//! only be one owner of a `Box`, and the owner can decide to mutate the
-//! contents, which live on the heap.
+//! The [`Box`] type is a smart pointer type. There can only be one owner of a
+//! [`Box`], and the owner can decide to mutate the contents, which live on the
+//! heap.
 //!
 //! This type can be sent among threads efficiently as the size of a `Box` value
 //! is the same as that of a pointer. Tree-like data structures are often built
@@ -20,20 +20,20 @@
 //!
 //! ## Reference counted pointers
 //!
-//! The [`Rc`](rc/index.html) type is a non-threadsafe reference-counted pointer
-//! type intended for sharing memory within a thread. An `Rc` pointer wraps a
-//! type, `T`, and only allows access to `&T`, a shared reference.
+//! The [`Rc`] type is a non-threadsafe reference-counted pointer type intended
+//! for sharing memory within a thread. An [`Rc`] pointer wraps a type, `T`, and
+//! only allows access to `&T`, a shared reference.
 //!
-//! This type is useful when inherited mutability (such as using `Box`) is too
-//! constraining for an application, and is often paired with the `Cell` or
-//! `RefCell` types in order to allow mutation.
+//! This type is useful when inherited mutability (such as using [`Box`]) is too
+//! constraining for an application, and is often paired with the [`Cell`] or
+//! [`RefCell`] types in order to allow mutation.
 //!
 //! ## Atomically reference counted pointers
 //!
-//! The [`Arc`](sync/index.html) type is the threadsafe equivalent of the `Rc`
-//! type. It provides all the same functionality of `Rc`, except it requires
-//! that the contained type `T` is shareable. Additionally, `Arc<T>` is itself
-//! sendable while `Rc<T>` is not.
+//! The [`Arc`] type is the threadsafe equivalent of the [`Rc`] type. It
+//! provides all the same functionality of [`Rc`], except it requires that the
+//! contained type `T` is shareable. Additionally, [`Arc<T>`][`Arc`] is itself
+//! sendable while [`Rc<T>`][`Rc`] is not.
 //!
 //! This type allows for shared access to the contained data, and is often
 //! paired with synchronization primitives such as mutexes to allow mutation of
@@ -49,6 +49,12 @@
 //!
 //! The [`alloc`](alloc/index.html) module defines the low-level interface to the
 //! default global allocator. It is not compatible with the libc allocator API.
+//!
+//! [`Arc`]: sync/index.html
+//! [`Box`]: boxed/index.html
+//! [`Cell`]: ../core/cell/index.html
+//! [`Rc`]: rc/index.html
+//! [`RefCell`]: ../core/cell/index.html
 
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
@@ -63,6 +69,7 @@
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
+#![cfg_attr(not(bootstrap), allow(incomplete_features))]
 
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
