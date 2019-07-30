@@ -1109,6 +1109,16 @@ fn test_iterator_last() {
 }
 
 #[test]
+fn test_chars_debug() {
+    let s = "ศไทย中华Việt Nam";
+    let c = s.chars();
+    assert_eq!(
+        format!("{:?}", c),
+        r#"Chars(['ศ', 'ไ', 'ท', 'ย', '中', '华', 'V', 'i', 'ệ', 't', ' ', 'N', 'a', 'm'])"#
+    );
+}
+
+#[test]
 fn test_bytesator() {
     let s = "ศไทย中华Việt Nam";
     let v = [
