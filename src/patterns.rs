@@ -37,15 +37,15 @@ pub(crate) fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
 
 fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
     match pat.node {
-        ast::PatKind::Wild | ast::PatKind::Lit(_) => true,
+        ast::PatKind::Rest | ast::PatKind::Wild | ast::PatKind::Lit(_) => true,
         ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
         ast::PatKind::Struct(..)
         | ast::PatKind::Mac(..)
         | ast::PatKind::Slice(..)
         | ast::PatKind::Path(..)
         | ast::PatKind::Range(..) => false,
-        ast::PatKind::Tuple(ref subpats, _) => subpats.len() <= 1,
-        ast::PatKind::TupleStruct(ref path, ref subpats, _) => {
+        ast::PatKind::Tuple(ref subpats) => subpats.len() <= 1,
+        ast::PatKind::TupleStruct(ref path, ref subpats) => {
             path.segments.len() <= 1 && subpats.len() <= 1
         }
         ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) | ast::PatKind::Paren(ref p) => {
@@ -88,6 +88,13 @@ impl Rewrite for Pat {
                     None
                 }
             }
+            PatKind::Rest => {
+                if 1 <= shape.width {
+                    Some("..".to_owned())
+                } else {
+                    None
+                }
+            }
             PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
                 let infix = match end_kind.node {
                     RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
@@ -112,42 +119,27 @@ impl Rewrite for Pat {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, shape)
             }
-            PatKind::Tuple(ref items, dotdot_pos) => {
-                rewrite_tuple_pat(items, dotdot_pos, None, self.span, context, shape)
-            }
+            PatKind::Tuple(ref items) => rewrite_tuple_pat(items, None, self.span, context, shape),
             PatKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)
             }
-            PatKind::TupleStruct(ref path, ref pat_vec, dotdot_pos) => {
+            PatKind::TupleStruct(ref path, ref pat_vec) => {
                 let path_str = rewrite_path(context, PathContext::Expr, None, path, shape)?;
-                rewrite_tuple_pat(
-                    pat_vec,
-                    dotdot_pos,
-                    Some(path_str),
-                    self.span,
-                    context,
-                    shape,
-                )
+                rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
-            PatKind::Slice(ref prefix, ref slice_pat, ref suffix) => {
-                // Rewrite all the sub-patterns.
-                let prefix = prefix.iter().map(|p| p.rewrite(context, shape));
-                let slice_pat = slice_pat
-                    .as_ref()
-                    .and_then(|p| p.rewrite(context, shape))
-                    .map(|rw| Some(format!("{}..", if rw == "_" { "" } else { &rw })));
-                let suffix = suffix.iter().map(|p| p.rewrite(context, shape));
-
-                // Munge them together.
-                let pats: Option<Vec<String>> =
-                    prefix.chain(slice_pat.into_iter()).chain(suffix).collect();
-
-                // Check that all the rewrites succeeded, and if not return `None`.
-                let pats = pats?;
-
-                // Unwrap all the sub-strings and join them with commas.
-                Some(format!("[{}]", pats.join(", ")))
+            PatKind::Slice(ref slice_pat) => {
+                let rw: Vec<String> = slice_pat
+                    .iter()
+                    .map(|p| {
+                        if let Some(rw) = p.rewrite(context, shape) {
+                            format!("{}", if rw == "_" { "" } else { &rw })
+                        } else {
+                            format!("{}", context.snippet(p.span))
+                        }
+                    })
+                    .collect();
+                Some(format!("[{}]", rw.join(", ")))
             }
             PatKind::Struct(ref path, ref fields, ellipsis) => {
                 rewrite_struct_pat(path, fields, ellipsis, self.span, context, shape)
@@ -303,7 +295,6 @@ pub(crate) fn can_be_overflowed_pat(
 
 fn rewrite_tuple_pat(
     pats: &[ptr::P<ast::Pat>],
-    dotdot_pos: Option<usize>,
     path_str: Option<String>,
     span: Span,
     context: &RewriteContext<'_>,
@@ -311,52 +302,26 @@ fn rewrite_tuple_pat(
 ) -> Option<String> {
     let mut pat_vec: Vec<_> = pats.iter().map(|x| TuplePatField::Pat(x)).collect();
 
-    if let Some(pos) = dotdot_pos {
-        let prev = if pos == 0 {
-            span.lo()
-        } else {
-            pats[pos - 1].span().hi()
-        };
-        let next = if pos + 1 >= pats.len() {
-            span.hi()
-        } else {
-            pats[pos + 1].span().lo()
-        };
-        let dot_span = mk_sp(prev, next);
-        let snippet = context.snippet(dot_span);
-        let lo = dot_span.lo() + BytePos(snippet.find_uncommented("..").unwrap() as u32);
-        let dotdot = TuplePatField::Dotdot(Span::new(
-            lo,
-            // 2 == "..".len()
-            lo + BytePos(2),
-            source_map::NO_EXPANSION,
-        ));
-        pat_vec.insert(pos, dotdot);
-    }
     if pat_vec.is_empty() {
         return Some(format!("{}()", path_str.unwrap_or_default()));
     }
     let wildcard_suffix_len = count_wildcard_suffix_len(context, &pat_vec, span, shape);
-    let (pat_vec, span, condensed) =
-        if context.config.condense_wildcard_suffixes() && wildcard_suffix_len >= 2 {
-            let new_item_count = 1 + pat_vec.len() - wildcard_suffix_len;
-            let sp = pat_vec[new_item_count - 1].span();
-            let snippet = context.snippet(sp);
-            let lo = sp.lo() + BytePos(snippet.find_uncommented("_").unwrap() as u32);
-            pat_vec[new_item_count - 1] = TuplePatField::Dotdot(mk_sp(lo, lo + BytePos(1)));
-            (
-                &pat_vec[..new_item_count],
-                mk_sp(span.lo(), lo + BytePos(1)),
-                true,
-            )
-        } else {
-            (&pat_vec[..], span, false)
-        };
+    let (pat_vec, span) = if context.config.condense_wildcard_suffixes() && wildcard_suffix_len >= 2
+    {
+        let new_item_count = 1 + pat_vec.len() - wildcard_suffix_len;
+        let sp = pat_vec[new_item_count - 1].span();
+        let snippet = context.snippet(sp);
+        let lo = sp.lo() + BytePos(snippet.find_uncommented("_").unwrap() as u32);
+        pat_vec[new_item_count - 1] = TuplePatField::Dotdot(mk_sp(lo, lo + BytePos(1)));
+        (
+            &pat_vec[..new_item_count],
+            mk_sp(span.lo(), lo + BytePos(1)),
+        )
+    } else {
+        (&pat_vec[..], span)
+    };
 
-    // add comma if `(x,)`
-    let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none() && !condensed;
     let path_str = path_str.unwrap_or_default();
-
     overflow::rewrite_with_parens(
         &context,
         &path_str,
@@ -364,13 +329,7 @@ fn rewrite_tuple_pat(
         shape,
         span,
         context.config.max_width(),
-        if dotdot_pos.is_some() {
-            Some(SeparatorTactic::Never)
-        } else if add_comma {
-            Some(SeparatorTactic::Always)
-        } else {
-            None
-        },
+        None,
     )
 }
 

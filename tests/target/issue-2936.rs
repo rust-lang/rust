@@ -10,7 +10,7 @@ impl Something for AStruct {
             ContextualParseError::InvalidMediaRule(ref err) => {
                 let err: &CStr = match err.kind {
                     ParseErrorKind::Custom(StyleParseErrorKind::MediaQueryExpectedFeatureName(
-                        ..
+                        ..,
                     )) => cstr!("PEMQExpectedFeatureName"),
                 };
             }
