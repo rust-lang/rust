@@ -1315,7 +1315,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
        sess.target.target.options.is_like_msvc &&
        sess.panic_strategy() == PanicStrategy::Unwind &&
        sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs) {
-        sess.err("Profile-guided optimization does not yet work in conjunction \
+        sess.err("profile-guided optimization does not yet work in conjunction \
                   with `-Cpanic=unwind` on Windows when targeting MSVC. \
                   See issue #61002 <https://github.com/rust-lang/rust/issues/61002> for details.");
     }
