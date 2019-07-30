@@ -14,7 +14,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Using `if let` or `match` is more idiomatic.
     ///
-    /// **Known problems:** Limitations of the borrow checker might make unwrap() necessary sometimes?
+    /// **Known problems:** None
     ///
     /// **Example:**
     /// ```rust
