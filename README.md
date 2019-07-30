@@ -12,7 +12,7 @@ for example:
 * Violation of intrinsic preconditions (an [`unreachable_unchecked`] being
   reached, calling [`copy_nonoverlapping`] with overlapping ranges, ...)
 * Not sufficiently aligned memory accesses and references
-* Violation of basic type invariants (a `bool` that is not 0 or 1, for example,
+* Violation of *some* basic type invariants (a `bool` that is not 0 or 1, for example,
   or an invalid enum discriminant)
 * WIP: Violations of the rules governing aliasing for reference types
 
@@ -20,22 +20,24 @@ Miri has already discovered some [real-world bugs](#bugs-found-by-miri).  If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
-Be aware that Miri will not catch all possible errors in your program, and
-cannot run all programs:
+Be aware that Miri will not catch all cases of undefined behavior in your
+program, and cannot run all programs:
 
 * There are still plenty of open questions around the basic invariants for some
   types and when these invariants even have to hold. Miri tries to avoid false
   positives here, so if you program runs fine in Miri right now that is by no
-  means a guarantee that it is UB-free when these questions get answered. In
-  particular, Miri does currently not check that integers are initialized or
-  that references point to valid data.
+  means a guarantee that it is UB-free when these questions get answered.
+
+    In particular, Miri does currently not check that integers are initialized
+  or that references point to valid data.
 * If the program relies on unspecified details of how data is laid out, it will
   still run fine in Miri -- but might break (including causing UB) on different
   compiler versions or different platforms.
-* Miri is fully deterministic and does not actually pick a base address in
-  virtual memory for the program's allocations.  If program behavior depends on
-  the base address of an allocation, Miri will stop execution (with a few
-  exceptions to make some common pointer comparisons work).
+* Program execution is non-deterministic when it depends, for example, on where
+  exactly in memory allocations end up. Miri tests one of many possible
+  executions of your program. If your code is sensitive to allocation base
+  addresses or other non-deterministic data, try running Miri with different
+  values for `-Zmiri-seed` to test different executions.
 * Miri runs the program as a platform-independent interpreter, so the program
   has no access to any platform-specific APIs or FFI. A few APIs have been
   implemented (such as printing to stdout) but most have not: for example, Miri
