@@ -637,7 +637,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .find(|(_, var)| var.val == real_discr),
                     _ => bug!("tagged layout for non-adt non-generator"),
                 }.ok_or_else(
-                    || InterpError::Unsupported(InvalidDiscriminant(raw_discr.erase_tag()))
+                    || unsup!(InvalidDiscriminant(raw_discr.erase_tag()))
                 )?;
                 (real_discr, index.0)
             },

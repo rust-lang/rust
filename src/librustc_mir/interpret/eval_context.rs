@@ -326,7 +326,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env,
             def_id,
             substs,
-        ).ok_or_else(|| InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric).into())
+        ).ok_or_else(|| inval!(TooGeneric).into())
     }
 
     pub fn load_mir(

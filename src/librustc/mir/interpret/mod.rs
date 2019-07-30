@@ -49,6 +49,7 @@ mod error;
 mod value;
 mod allocation;
 mod pointer;
+mod interp_error;
 
 pub use self::error::{
     InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,

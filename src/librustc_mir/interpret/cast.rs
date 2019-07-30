@@ -7,7 +7,7 @@ use syntax::symbol::sym;
 use rustc_apfloat::ieee::{Single, Double};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc::mir::interpret::{
-    Scalar, InterpResult, Pointer, PointerArithmetic, InterpError,
+    Scalar, InterpResult, Pointer, PointerArithmetic,
 };
 use rustc::mir::CastKind;
 
@@ -74,7 +74,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Pointer(PointerCast::ReifyFnPointer) => {
-                use rustc::mir::interpret::InvalidProgramInfo::TooGeneric;
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::FnDef(def_id, substs) => {
@@ -86,7 +85,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             self.param_env,
                             def_id,
                             substs,
-                        ).ok_or_else(|| InterpError::InvalidProgram(TooGeneric).into());
+                        ).ok_or_else(|| inval!(TooGeneric).into());
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance?));
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
