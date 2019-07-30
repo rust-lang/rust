@@ -4,7 +4,6 @@ use syntax::ext::hygiene::{ExpnId, MacroKind};
 use syntax::ptr::P;
 use syntax::source_map::{ExpnInfo, ExpnKind, dummy_spanned, respan};
 use syntax::symbol::{Ident, Symbol, kw, sym};
-use syntax::tokenstream::TokenStream;
 use syntax_pos::DUMMY_SP;
 
 use std::iter;
@@ -62,14 +61,8 @@ pub fn inject(
     ));
 
     krate.module.items.insert(0, P(ast::Item {
-        attrs: vec![ast::Attribute {
-            style: ast::AttrStyle::Outer,
-            path: ast::Path::from_ident(ast::Ident::new(sym::prelude_import, span)),
-            tokens: TokenStream::empty(),
-            id: attr::mk_attr_id(),
-            is_sugared_doc: false,
-            span,
-        }],
+        attrs: vec![attr::mk_attr_outer(
+            attr::mk_word_item(ast::Ident::new(sym::prelude_import, span)))],
         vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
         node: ast::ItemKind::Use(P(ast::UseTree {
             prefix: ast::Path {
