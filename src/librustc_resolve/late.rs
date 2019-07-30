@@ -1934,7 +1934,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut traits = module.traits.borrow_mut();
         if traits.is_none() {
             let mut collected_traits = Vec::new();
-            module.for_each_child(&mut self.r, |_, name, ns, binding| {
+            self.r.for_each_child(module, |_, name, ns, binding| {
                 if ns != TypeNS { return }
                 match binding.res() {
                     Res::Def(DefKind::Trait, _) |

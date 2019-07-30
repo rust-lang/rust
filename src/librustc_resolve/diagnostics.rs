@@ -73,23 +73,23 @@ crate fn add_typo_suggestion(
     false
 }
 
-crate fn add_module_candidates<'a>(
-    resolver: &mut Resolver<'a>,
-    module: Module<'a>,
-    names: &mut Vec<TypoSuggestion>,
-    filter_fn: &impl Fn(Res) -> bool,
-) {
-    for (&(ident, _), resolution) in resolver.resolutions(module).borrow().iter() {
-        if let Some(binding) = resolution.borrow().binding {
-            let res = binding.res();
-            if filter_fn(res) {
-                names.push(TypoSuggestion::from_res(ident.name, res));
+impl<'a> Resolver<'a> {
+    crate fn add_module_candidates(
+        &mut self,
+        module: Module<'a>,
+        names: &mut Vec<TypoSuggestion>,
+        filter_fn: &impl Fn(Res) -> bool,
+    ) {
+        for (&(ident, _), resolution) in self.resolutions(module).borrow().iter() {
+            if let Some(binding) = resolution.borrow().binding {
+                let res = binding.res();
+                if filter_fn(res) {
+                    names.push(TypoSuggestion::from_res(ident.name, res));
+                }
             }
         }
     }
-}
 
-impl<'a> Resolver<'a> {
     /// Combines an error with provided span and emits it.
     ///
     /// This takes the error provided, combines it with the span and any additional spans inside the
@@ -394,10 +394,10 @@ impl<'a> Resolver<'a> {
                 Scope::CrateRoot => {
                     let root_ident = Ident::new(kw::PathRoot, ident.span);
                     let root_module = this.resolve_crate_root(root_ident);
-                    add_module_candidates(this, root_module, &mut suggestions, filter_fn);
+                    this.add_module_candidates(root_module, &mut suggestions, filter_fn);
                 }
                 Scope::Module(module) => {
-                    add_module_candidates(this, module, &mut suggestions, filter_fn);
+                    this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(|(name, binding)| {
@@ -445,7 +445,7 @@ impl<'a> Resolver<'a> {
                 Scope::StdLibPrelude => {
                     if let Some(prelude) = this.prelude {
                         let mut tmp_suggestions = Vec::new();
-                        add_module_candidates(this, prelude, &mut tmp_suggestions, filter_fn);
+                        this.add_module_candidates(prelude, &mut tmp_suggestions, filter_fn);
                         suggestions.extend(tmp_suggestions.into_iter().filter(|s| {
                             use_prelude || this.is_builtin_macro(s.res.opt_def_id())
                         }));
@@ -503,7 +503,7 @@ impl<'a> Resolver<'a> {
                         in_module_is_extern)) = worklist.pop() {
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
-            in_module.for_each_child_stable(self, |this, ident, ns, name_binding| {
+            self.for_each_child_stable(in_module, |this, ident, ns, name_binding| {
                 // avoid imports entirely
                 if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
                 // avoid non-importable candidates as well
