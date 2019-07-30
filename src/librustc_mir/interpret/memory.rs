@@ -894,65 +894,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         assert_eq!(size.bytes() as usize as u64, size.bytes());
 
-        let undef_mask = &self.get(src.alloc_id)?.undef_mask;
-
-        // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
-        // a naive undef mask copying algorithm would repeatedly have to read the undef mask from
-        // the source and write it to the destination. Even if we optimized the memory accesses,
-        // we'd be doing all of this `repeat` times.
-        // Therefor we precompute a compressed version of the undef mask of the source value and
-        // then write it back `repeat` times without computing any more information from the source.
-
-        // a precomputed cache for ranges of defined/undefined bits
-        // 0000010010001110 will become
-        // [5, 1, 2, 1, 3, 3, 1]
-        // where each element toggles the state
-        let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
-        let first = undef_mask.get(src.offset);
-        let mut cur_len = 1;
-        let mut cur = first;
-        for i in 1..size.bytes() {
-            // FIXME: optimize to bitshift the current undef block's bits and read the top bit
-            if undef_mask.get(src.offset + Size::from_bytes(i)) == cur {
-                cur_len += 1;
-            } else {
-                ranges.push(cur_len);
-                cur_len = 1;
-                cur = !cur;
-            }
-        }
+        let src_alloc = self.get(src.alloc_id)?;
+        let compressed = src_alloc.compress_defined_range(src, size);
 
         // now fill in all the data
         let dest_allocation = self.get_mut(dest.alloc_id)?;
-        // an optimization where we can just overwrite an entire range of definedness bits if
-        // they are going to be uniformly `1` or `0`.
-        if ranges.is_empty() {
-            dest_allocation.undef_mask.set_range_inbounds(
-                dest.offset,
-                dest.offset + size * repeat,
-                first,
-            );
-            return Ok(())
-        }
+        dest_allocation.mark_compressed_range(&compressed, dest, size, repeat);
 
-        // remember to fill in the trailing bits
-        ranges.push(cur_len);
-
-        for mut j in 0..repeat {
-            j *= size.bytes();
-            j += dest.offset.bytes();
-            let mut cur = first;
-            for range in &ranges {
-                let old_j = j;
-                j += range;
-                dest_allocation.undef_mask.set_range_inbounds(
-                    Size::from_bytes(old_j),
-                    Size::from_bytes(j),
-                    cur,
-                );
-                cur = !cur;
-            }
-        }
         Ok(())
     }
 

@@ -566,6 +566,91 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     }
 }
 
+/// Run-length encoding of the undef mask.
+/// Used to copy parts of a mask multiple times to another allocation.
+pub struct AllocationDefinedness {
+    ranges: smallvec::SmallVec::<[u64; 1]>,
+    first: bool,
+}
+
+/// Transferring the definedness mask to other allocations.
+impl<Tag, Extra> Allocation<Tag, Extra> {
+    /// Creates a run-length encoding of the undef_mask.
+    pub fn compress_defined_range(
+        &self,
+        src: Pointer<Tag>,
+        size: Size,
+    ) -> AllocationDefinedness {
+        // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
+        // a naive undef mask copying algorithm would repeatedly have to read the undef mask from
+        // the source and write it to the destination. Even if we optimized the memory accesses,
+        // we'd be doing all of this `repeat` times.
+        // Therefor we precompute a compressed version of the undef mask of the source value and
+        // then write it back `repeat` times without computing any more information from the source.
+
+        // a precomputed cache for ranges of defined/undefined bits
+        // 0000010010001110 will become
+        // [5, 1, 2, 1, 3, 3, 1]
+        // where each element toggles the state
+
+        let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
+        let first = self.undef_mask.get(src.offset);
+        let mut cur_len = 1;
+        let mut cur = first;
+
+        for i in 1..size.bytes() {
+            // FIXME: optimize to bitshift the current undef block's bits and read the top bit
+            if self.undef_mask.get(src.offset + Size::from_bytes(i)) == cur {
+                cur_len += 1;
+            } else {
+                ranges.push(cur_len);
+                cur_len = 1;
+                cur = !cur;
+            }
+        }
+
+        ranges.push(cur_len);
+
+        AllocationDefinedness { ranges, first, }
+    }
+
+    /// Apply multiple instances of the run-length encoding to the undef_mask.
+    pub fn mark_compressed_range(
+        &mut self,
+        defined: &AllocationDefinedness,
+        dest: Pointer<Tag>,
+        size: Size,
+        repeat: u64,
+    ) {
+        // an optimization where we can just overwrite an entire range of definedness bits if
+        // they are going to be uniformly `1` or `0`.
+        if defined.ranges.len() <= 1 {
+            self.undef_mask.set_range_inbounds(
+                dest.offset,
+                dest.offset + size * repeat,
+                defined.first,
+            );
+            return;
+        }
+
+        for mut j in 0..repeat {
+            j *= size.bytes();
+            j += dest.offset.bytes();
+            let mut cur = defined.first;
+            for range in &defined.ranges {
+                let old_j = j;
+                j += range;
+                self.undef_mask.set_range_inbounds(
+                    Size::from_bytes(old_j),
+                    Size::from_bytes(j),
+                    cur,
+                );
+                cur = !cur;
+            }
+        }
+    }
+}
+
 /// Relocations
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Relocations<Tag=(), Id=AllocId>(SortedMap<Size, (Tag, Id)>);
