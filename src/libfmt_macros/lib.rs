@@ -59,16 +59,20 @@ pub struct Argument<'a> {
 /// Specification for the formatting of an argument in the format string.
 #[derive(Copy, Clone, PartialEq)]
 pub struct FormatSpec<'a> {
-    /// Optionally specified character to fill alignment with
+    /// Optionally specified character to fill alignment with.
     pub fill: Option<char>,
-    /// Optionally specified alignment
+    /// Optionally specified alignment.
     pub align: Alignment,
-    /// Packed version of various flags provided
+    /// Packed version of various flags provided.
     pub flags: u32,
-    /// The integer precision to use
+    /// The integer precision to use.
     pub precision: Count,
-    /// The string width requested for the resulting format
+    /// The span of the precision formatting flag (for diagnostics).
+    pub precision_span: Option<InnerSpan>,
+    /// The string width requested for the resulting format.
     pub width: Count,
+    /// The span of the width formatting flag (for diagnostics).
+    pub width_span: Option<InnerSpan>,
     /// The descriptor string representing the name of the format desired for
     /// this argument, this can be empty or any number of characters, although
     /// it is required to be one word.
@@ -285,19 +289,24 @@ impl<'a> Parser<'a> {
     }
 
     /// Optionally consumes the specified character. If the character is not at
-    /// the current position, then the current iterator isn't moved and false is
-    /// returned, otherwise the character is consumed and true is returned.
+    /// the current position, then the current iterator isn't moved and `false` is
+    /// returned, otherwise the character is consumed and `true` is returned.
     fn consume(&mut self, c: char) -> bool {
-        if let Some(&(_, maybe)) = self.cur.peek() {
+        self.consume_pos(c).is_some()
+    }
+
+    /// Optionally consumes the specified character. If the character is not at
+    /// the current position, then the current iterator isn't moved and `None` is
+    /// returned, otherwise the character is consumed and the current position is
+    /// returned.
+    fn consume_pos(&mut self, c: char) -> Option<usize> {
+        if let Some(&(pos, maybe)) = self.cur.peek() {
             if c == maybe {
                 self.cur.next();
-                true
-            } else {
-                false
+                return Some(pos);
             }
-        } else {
-            false
         }
+        None
     }
 
     fn to_span_index(&self, pos: usize) -> InnerOffset {
@@ -465,7 +474,9 @@ impl<'a> Parser<'a> {
             align: AlignUnknown,
             flags: 0,
             precision: CountImplied,
+            precision_span: None,
             width: CountImplied,
+            width_span: None,
             ty: &self.input[..0],
         };
         if !self.consume(':') {
@@ -502,6 +513,11 @@ impl<'a> Parser<'a> {
         }
         // Width and precision
         let mut havewidth = false;
+
+        let mut width_span_start = 0;
+        if let Some((pos, '0')) = self.cur.peek() {
+            width_span_start = *pos;
+        }
         if self.consume('0') {
             // small ambiguity with '0$' as a format string. In theory this is a
             // '0' flag and then an ill-formatted format string with just a '$'
@@ -515,17 +531,28 @@ impl<'a> Parser<'a> {
             }
         }
         if !havewidth {
-            spec.width = self.count();
+            if width_span_start == 0 {
+                if let Some((pos, _)) = self.cur.peek() {
+                    width_span_start = *pos;
+                }
+            }
+            let (w, sp) = self.count(width_span_start);
+            spec.width = w;
+            spec.width_span = sp;
         }
-        if self.consume('.') {
-            if self.consume('*') {
+        if let Some(start) = self.consume_pos('.') {
+            if let Some(end) = self.consume_pos('*') {
                 // Resolve `CountIsNextParam`.
                 // We can do this immediately as `position` is resolved later.
                 let i = self.curarg;
                 self.curarg += 1;
                 spec.precision = CountIsParam(i);
+                spec.precision_span =
+                    Some(self.to_span_index(start).to(self.to_span_index(end + 1)));
             } else {
-                spec.precision = self.count();
+                let (p, sp) = self.count(start);
+                spec.precision = p;
+                spec.precision_span = sp;
             }
         }
         // Optional radix followed by the actual format specifier
@@ -554,24 +581,25 @@ impl<'a> Parser<'a> {
     /// Parses a Count parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    fn count(&mut self) -> Count {
+    fn count(&mut self, start: usize) -> (Count, Option<InnerSpan>) {
         if let Some(i) = self.integer() {
-            if self.consume('$') {
-                CountIsParam(i)
+            if let Some(end) = self.consume_pos('$') {
+                let span = self.to_span_index(start).to(self.to_span_index(end + 1));
+                (CountIsParam(i), Some(span))
             } else {
-                CountIs(i)
+                (CountIs(i), None)
             }
         } else {
             let tmp = self.cur.clone();
             let word = self.word();
             if word.is_empty() {
                 self.cur = tmp;
-                CountImplied
+                (CountImplied, None)
             } else if self.consume('$') {
-                CountIsName(Symbol::intern(word))
+                (CountIsName(Symbol::intern(word)), None)
             } else {
                 self.cur = tmp;
-                CountImplied
+                (CountImplied, None)
             }
         }
     }
