@@ -2,20 +2,12 @@
 
 #[macro_export]
 macro_rules! throw_unsup {
-    ($($tt:tt)*) => {
-        return Err($crate::mir::interpret::InterpError::Unsupported(
-            $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
-        ).into())
-    };
+    ($($tt:tt)*) => { return Err(err_unsup!($($tt)*).into()) };
 }
 
 #[macro_export]
 macro_rules! throw_inval {
-    ($($tt:tt)*) => {
-        return Err($crate::mir::interpret::InterpError::InvalidProgram(
-            $crate::mir::interpret::InvalidProgramInfo::$($tt)*
-        ).into())
-    };
+    ($($tt:tt)*) => { return Err(err_inval!($($tt)*).into()) };
 }
 
 #[macro_export]
