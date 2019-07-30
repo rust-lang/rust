@@ -3741,6 +3741,7 @@ impl<'a> Parser<'a> {
         self.token.is_path_start() // e.g. `MY_CONST`;
             || self.token == token::Dot // e.g. `.5` for recovery;
             || self.token.can_begin_literal_or_bool() // e.g. `42`.
+            || self.token.is_whole_expr()
     }
 
     // Helper function to decide whether to parse as ident binding
