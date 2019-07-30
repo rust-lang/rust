@@ -18,7 +18,7 @@ cache:
 
 install:
     # Install Rust
-    - curl -sSf -o rustup-init.exe https://win.rustup.rs/
+    - curl -sSf --retry 3 -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain stable
     - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
     # Install "master" toolchain
