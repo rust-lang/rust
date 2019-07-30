@@ -62,17 +62,6 @@ steps:
 - template: install-sccache.yml
 - template: install-clang.yml
 
-# Install some dependencies needed to build LLDB/Clang, currently only needed
-# during the `dist` target
-- bash: |
-    set -e
-    brew update
-    brew install xz
-    brew install swig@3
-    brew link --force swig@3
-  displayName: Install build dependencies (OSX)
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'), eq(variables['SCRIPT'],'./x.py dist'))
-
 # Switch to XCode 9.3 on OSX since it seems to be the last version that supports
 # i686-apple-darwin. We'll eventually want to upgrade this and it will probably
 # force us to drop i686-apple-darwin, but let's keep the wheels turning for now.
