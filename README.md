@@ -73,9 +73,7 @@ Now you can run your project in Miri:
 3. If you have a binary project, you can run it through Miri using `cargo miri run`.
 
 The first time you run Miri, it will perform some extra setup and install some
-dependencies.  It will ask you for confirmation before installing anything.  If
-you run Miri on CI, run `cargo miri setup` to avoid getting interactive
-questions.
+dependencies.  It will ask you for confirmation before installing anything.
 
 You can pass arguments to Miri after the first `--`, and pass arguments to the
 interpreted program or test suite after the second `--`.  For example, `cargo
@@ -114,6 +112,9 @@ cargo miri setup
 
 cargo miri test -- -- -Zunstable-options --exclude-should-panic
 ```
+
+We use `cargo miri setup` to avoid getting interactive questions about the extra
+setup needed for Miri.
 
 ### Common Problems
 
