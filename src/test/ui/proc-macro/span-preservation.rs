@@ -9,7 +9,7 @@ extern crate test_macros;
 
 #[recollect_attr]
 fn a() {
-    let x: usize = "hello";;;;; //~ ERROR mismatched types
+    let x: usize = "hello"; //~ ERROR mismatched types
 }
 
 #[recollect_attr]
