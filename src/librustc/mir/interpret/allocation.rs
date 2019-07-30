@@ -13,6 +13,8 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::HasDataLayout;
 use std::borrow::Cow;
 
+// NOTE: When adding new fields, make sure to adjust the Snapshot impl in
+// `src/librustc_mir/interpret/snapshot.rs`.
 #[derive(
     Clone,
     Debug,

@@ -210,7 +210,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let new_ptr = self.allocate(new_size, new_align, kind);
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
-            None => Size::from_bytes(self.get(ptr.alloc_id)?.bytes.len() as u64),
+            None => self.get(ptr.alloc_id)?.size,
         };
         self.copy(
             ptr,
@@ -271,20 +271,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             ))
         }
         if let Some((size, align)) = old_size_and_align {
-            if size.bytes() != alloc.bytes.len() as u64 || align != alloc.align {
-                let bytes = Size::from_bytes(alloc.bytes.len() as u64);
+            if size != alloc.size || align != alloc.align {
+                let bytes = alloc.size;
                 throw_unsup!(IncorrectAllocationInformation(size, bytes, align, alloc.align))
             }
         }
 
         // Let the machine take some extra action
-        let size = Size::from_bytes(alloc.bytes.len() as u64);
+        let size = alloc.size;
         AllocationExtra::memory_deallocated(&mut alloc, ptr, size)?;
 
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(
             ptr.alloc_id,
-            (Size::from_bytes(alloc.bytes.len() as u64), alloc.align)
+            (alloc.size, alloc.align)
         );
         if old.is_some() {
             bug!("Nothing can be deallocated twice");
@@ -555,7 +555,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a static's allocation in miri
         if let Some((_, alloc)) = self.alloc_map.get(id) {
-            return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
+            return Ok((alloc.size, alloc.align));
         }
 
         // # Function pointers
@@ -583,7 +583,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Memory(alloc)) =>
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
-                Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align)),
+                Ok((alloc.size, alloc.align)),
             Some(GlobalAlloc::Function(_)) =>
                 bug!("We already checked function pointers above"),
             // The rest must be dead.
@@ -645,7 +645,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let prefix_len = msg.len();
         let mut relocations = vec![];
 
-        for i in 0..(alloc.bytes.len() as u64) {
+        for i in 0..alloc.size.bytes() {
             let i = Size::from_bytes(i);
             if let Some(&(_, target_id)) = alloc.relocations.get(&i) {
                 if allocs_seen.insert(target_id) {
@@ -655,7 +655,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             if alloc.undef_mask.is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
                 // this `as usize` is fine, since `i` came from a `usize`
-                write!(msg, "{:02x} ", alloc.bytes[i.bytes() as usize]).unwrap();
+                let i = i.bytes() as usize;
+
+                // Checked definedness (and thus range) and relocations. This access also doesn't
+                // influence interpreter execution but is only for debugging.
+                let bytes = alloc.inspect_with_undef_and_ptr_outside_interpreter(i..i+1);
+                write!(msg, "{:02x} ", bytes[0]).unwrap();
             } else {
                 msg.push_str("__ ");
             }
@@ -664,7 +669,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         trace!(
             "{}({} bytes, alignment {}){}",
             msg,
-            alloc.bytes.len(),
+            alloc.size.bytes(),
             alloc.align.bytes(),
             extra
         );
