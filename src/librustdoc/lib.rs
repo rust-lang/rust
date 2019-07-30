@@ -286,6 +286,12 @@ fn opts() -> Vec<RustcOptGroup> {
                      "How errors and other messages are produced",
                      "human|json|short")
         }),
+        stable("json", |o| {
+            o.optopt("",
+                     "json",
+                     "Configure the structure of JSON diagnostics",
+                     "CONFIG")
+        }),
         unstable("disable-minification", |o| {
              o.optflag("",
                        "disable-minification",

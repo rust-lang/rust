@@ -271,3 +271,36 @@ current directory out of pathnames emitted into the object files. The
 replacement is purely textual, with no consideration of the current system's
 pathname syntax. For example `--remap-path-prefix foo=bar` will match
 `foo/lib.rs` but not `./foo/lib.rs`.
+
+## `--json`: configure json messages printed by the compiler
+
+When the `--error-format=json` option is passed to rustc then all of the
+compiler's diagnostic output will be emitted in the form of JSON blobs. The
+`--json` argument can be used in conjunction with `--error-format=json` to
+configure what the JSON blobs contain as well as which ones are emitted.
+
+With `--error-format=json` the compiler will always emit any compiler errors as
+a JSON blob, but the following options are also available to the `--json` flag
+to customize the output:
+
+- `diagnostic-short` - json blobs for diagnostic messages should use the "short"
+  rendering instead of the normal "human" default. This means that the output of
+  `--error-format=short` will be embedded into the JSON diagnostics instead of
+  the default `--error-format=human`.
+
+- `diagnostic-rendered-ansi` - by default JSON blobs in their `rendered` field
+  will contain a plain text rendering of the diagnostic. This option instead
+  indicates that the diagnostic should have embedded ANSI color codes intended
+  to be used to colorize the message in the manner rustc typically already does
+  for terminal outputs. Note that this is usefully combined with crates like
+  `fwdansi` to translate these ANSI codes on Windows to console commands or
+  `strip-ansi-escapes` if you'd like to optionally remove the ansi colors
+  afterwards.
+
+- `artifacts` - this instructs rustc to emit a JSON blob for each artifact that
+  is emitted. An artifact corresponds to a request from the `--emit` CLI
+  argument, and as soon as the artifact is available on the filesystem a
+  notification will be emitted.
+
+Note that it is invalid to combine the `--json` argument with the `--color`
+argument, and it is required to combine `--json` with `--error-format=json`.

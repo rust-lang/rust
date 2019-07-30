@@ -438,6 +438,10 @@ top_level_options!(
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
 
         edition: Edition [TRACKED],
+
+        // Whether or not we're emitting JSON blobs about each artifact produced
+        // by the compiler.
+        json_artifact_notifications: bool [TRACKED],
     }
 );
 
@@ -625,6 +629,7 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
+            json_artifact_notifications: false,
         }
     }
 }
@@ -1459,8 +1464,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          the same values as the target option of the same name"),
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (space separated)"),
-    emit_artifact_notifications: bool = (false, parse_bool, [UNTRACKED],
-        "emit notifications after each artifact has been output (only in the JSON format)"),
     symbol_mangling_version: SymbolManglingVersion = (SymbolManglingVersion::Legacy,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names"),
@@ -1818,11 +1821,11 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "How errors and other messages are produced",
             "human|json|short",
         ),
-        opt::opt(
+        opt::multi_s(
             "",
-            "json-rendered",
-            "Choose `rendered` field of json diagnostics render scheme",
-            "plain|termcolor",
+            "json",
+            "Configure the JSON output of the compiler",
+            "CONFIG",
         ),
         opt::opt_s(
             "",
@@ -1918,10 +1921,9 @@ pub fn get_cmd_lint_options(matches: &getopts::Matches,
     (lint_opts, describe_lints, lint_cap)
 }
 
-pub fn build_session_options_and_crate_config(
-    matches: &getopts::Matches,
-) -> (Options, FxHashSet<(String, Option<String>)>) {
-    let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
+/// Parse the `--color` flag
+pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
+    match matches.opt_str("color").as_ref().map(|s| &s[..]) {
         Some("auto") => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
         Some("never") => ColorConfig::Never,
@@ -1936,46 +1938,52 @@ pub fn build_session_options_and_crate_config(
                 arg
             ),
         ),
-    };
+    }
+}
 
-    let edition = match matches.opt_str("edition") {
-        Some(arg) => Edition::from_str(&arg).unwrap_or_else(|_|
+/// Parse the `--json` flag.
+///
+/// The first value returned is how to render JSON diagnostics, and the second
+/// is whether or not artifact notifications are enabled.
+pub fn parse_json(matches: &getopts::Matches) -> (HumanReadableErrorType, bool) {
+    let mut json_rendered: fn(ColorConfig) -> HumanReadableErrorType =
+        HumanReadableErrorType::Default;
+    let mut json_color = ColorConfig::Never;
+    let mut json_artifact_notifications = false;
+    for option in matches.opt_strs("json") {
+        // For now conservatively forbid `--color` with `--json` since `--json`
+        // won't actually be emitting any colors and anything colorized is
+        // embedded in a diagnostic message anyway.
+        if matches.opt_str("color").is_some() {
             early_error(
                 ErrorOutputType::default(),
-                &format!(
-                    "argument for --edition must be one of: \
-                     {}. (instead was `{}`)",
-                    EDITION_NAME_LIST,
-                    arg
-                ),
-            ),
-        ),
-        None => DEFAULT_EDITION,
-    };
+                "cannot specify the `--color` option with `--json`",
+            );
+        }
 
-    if !edition.is_stable() && !nightly_options::is_nightly_build() {
-        early_error(
-                ErrorOutputType::default(),
-                &format!(
-                    "Edition {} is unstable and only \
-                     available for nightly builds of rustc.",
-                    edition,
-                )
-        )
+        for sub_option in option.split(',') {
+            match sub_option {
+                "diagnostic-short" => json_rendered = HumanReadableErrorType::Short,
+                "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
+                "artifacts" => json_artifact_notifications = true,
+                s => {
+                    early_error(
+                        ErrorOutputType::default(),
+                        &format!("unknown `--json` option `{}`", s),
+                    )
+                }
+            }
+        }
     }
+    (json_rendered(json_color), json_artifact_notifications)
+}
 
-    let json_rendered = matches.opt_str("json-rendered").and_then(|s| match s.as_str() {
-        "plain" => None,
-        "termcolor" => Some(HumanReadableErrorType::Default(ColorConfig::Always)),
-        _ => early_error(
-            ErrorOutputType::default(),
-            &format!(
-                "argument for --json-rendered must be `plain` or `termcolor` (instead was `{}`)",
-                s,
-            ),
-        ),
-    }).unwrap_or(HumanReadableErrorType::Default(ColorConfig::Never));
-
+/// Parse the `--error-format` flag
+pub fn parse_error_format(
+    matches: &getopts::Matches,
+    color: ColorConfig,
+    json_rendered: HumanReadableErrorType,
+) -> ErrorOutputType {
     // We need the opts_present check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
     // is unstable, it will not be present. We have to use opts_present not
@@ -2004,6 +2012,60 @@ pub fn build_session_options_and_crate_config(
         ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
     };
 
+    match error_format {
+        ErrorOutputType::Json { .. } => {}
+
+        // Conservatively require that the `--json` argument is coupled with
+        // `--error-format=json`. This means that `--json` is specified we
+        // should actually be emitting JSON blobs.
+        _ if matches.opt_strs("json").len() > 0 => {
+            early_error(
+                ErrorOutputType::default(),
+                "using `--json` requires also using `--error-format=json`",
+            );
+        }
+
+        _ => {}
+    }
+
+    return error_format;
+}
+
+pub fn build_session_options_and_crate_config(
+    matches: &getopts::Matches,
+) -> (Options, FxHashSet<(String, Option<String>)>) {
+    let color = parse_color(matches);
+
+    let edition = match matches.opt_str("edition") {
+        Some(arg) => Edition::from_str(&arg).unwrap_or_else(|_|
+            early_error(
+                ErrorOutputType::default(),
+                &format!(
+                    "argument for --edition must be one of: \
+                     {}. (instead was `{}`)",
+                    EDITION_NAME_LIST,
+                    arg
+                ),
+            ),
+        ),
+        None => DEFAULT_EDITION,
+    };
+
+    if !edition.is_stable() && !nightly_options::is_nightly_build() {
+        early_error(
+                ErrorOutputType::default(),
+                &format!(
+                    "Edition {} is unstable and only \
+                     available for nightly builds of rustc.",
+                    edition,
+                )
+        )
+    }
+
+    let (json_rendered, json_artifact_notifications) = parse_json(matches);
+
+    let error_format = parse_error_format(matches, color, json_rendered);
+
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
@@ -2014,9 +2076,6 @@ pub fn build_session_options_and_crate_config(
     let mut debugging_opts = build_debugging_options(matches, error_format);
 
     if !debugging_opts.unstable_options {
-        if matches.opt_str("json-rendered").is_some() {
-            early_error(error_format, "`--json-rendered=x` is unstable");
-        }
         if let ErrorOutputType::Json { pretty: true, json_rendered } = error_format {
             early_error(
                 ErrorOutputType::Json { pretty: false, json_rendered },
@@ -2441,6 +2500,7 @@ pub fn build_session_options_and_crate_config(
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
             edition,
+            json_artifact_notifications,
         },
         cfg,
     )

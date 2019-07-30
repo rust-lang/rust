@@ -1071,7 +1071,7 @@ impl SaveHandler for DumpHandler<'_> {
             error!("Can't serialize save-analysis: {:?}", e);
         }
 
-        if sess.opts.debugging_opts.emit_artifact_notifications {
+        if sess.opts.json_artifact_notifications {
             sess.parse_sess.span_diagnostic
                 .emit_artifact_notification(&file_name, "save-analysis");
         }

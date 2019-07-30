@@ -696,7 +696,7 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
 
     match result {
         Ok(_) => {
-            if sess.opts.debugging_opts.emit_artifact_notifications {
+            if sess.opts.json_artifact_notifications {
                  sess.parse_sess.span_diagnostic
                     .emit_artifact_notification(&deps_filename, "dep-info");
             }
@@ -1059,7 +1059,7 @@ fn encode_and_write_metadata(
         if let Err(e) = fs::rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }
-        if tcx.sess.opts.debugging_opts.emit_artifact_notifications {
+        if tcx.sess.opts.json_artifact_notifications {
             tcx.sess.parse_sess.span_diagnostic
                 .emit_artifact_notification(&out_filename, "metadata");
         }
