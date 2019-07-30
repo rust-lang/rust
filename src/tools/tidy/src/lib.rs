@@ -34,6 +34,7 @@ pub mod style;
 pub mod errors;
 pub mod features;
 pub mod cargo;
+pub mod edition;
 pub mod pal;
 pub mod deps;
 pub mod extdeps;
