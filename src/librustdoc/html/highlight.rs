@@ -237,7 +237,7 @@ impl<'a> Classifier<'a> {
                 return Ok(());
             },
 
-            token::Whitespace => Class::None,
+            token::Whitespace | token::Unknown(..) => Class::None,
             token::Comment => Class::Comment,
             token::DocComment(..) => Class::DocComment,
 

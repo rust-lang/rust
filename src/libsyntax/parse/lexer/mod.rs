@@ -354,7 +354,7 @@ impl<'a> StringReader<'a> {
                 // tokens like `<<` from `rustc_lexer`, and then add fancier error recovery to it,
                 // as there will be less overall work to do this way.
                 let token = unicode_chars::check_for_substitution(self, start, c, &mut err)
-                    .unwrap_or(token::Whitespace);
+                    .unwrap_or_else(|| token::Unknown(self.symbol_from(start)));
                 err.emit();
                 token
             }
