@@ -981,7 +981,6 @@ impl<'a> Builder<'a> {
                     PathBuf::from("/path/to/nowhere/rustdoc/not/required")
                 },
             )
-            .env("TEST_MIRI", self.config.test_miri.to_string())
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
 
         if let Some(host_linker) = self.linker(compiler.host) {
