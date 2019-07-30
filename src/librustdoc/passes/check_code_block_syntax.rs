@@ -32,24 +32,20 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             dox[code_block.code].to_owned(),
         );
 
-        let errors = {
+        let has_errors = {
+            let mut has_errors = false;
             let mut lexer = Lexer::new(&sess, source_file, None);
-            while let Ok(token::Token { kind, .. }) = lexer.try_next_token() {
-                if kind == token::Eof {
-                    break;
+            loop  {
+                match lexer.next_token().kind {
+                    token::Eof => break,
+                    token::Unknown(..) => has_errors = true,
+                    _ => (),
                 }
             }
-
-            let errors = lexer.buffer_fatal_errors();
-
-            if !errors.is_empty() {
-                Err(errors)
-            } else {
-                Ok(())
-            }
+            has_errors
         };
 
-        if let Err(errors) = errors {
+        if has_errors {
             let mut diag = if let Some(sp) =
                 super::source_span_for_markdown_range(self.cx, &dox, &code_block.range, &item.attrs)
             {
@@ -57,11 +53,6 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
                     .cx
                     .sess()
                     .struct_span_warn(sp, "could not parse code block as Rust code");
-
-                for mut err in errors {
-                    diag.note(&format!("error from rustc: {}", err.message()));
-                    err.cancel();
-                }
 
                 if code_block.syntax.is_none() && code_block.is_fenced {
                     let sp = sp.from_inner(InnerSpan::new(0, 3));
@@ -81,11 +72,6 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
                     super::span_of_attrs(&item.attrs),
                     "doc comment contains an invalid Rust code block",
                 );
-
-                for mut err in errors {
-                    // Don't bother reporting the error, because we can't show where it happened.
-                    err.cancel();
-                }
 
                 if code_block.syntax.is_none() && code_block.is_fenced {
                     diag.help("mark blocks that do not contain Rust code as text: ```text");
