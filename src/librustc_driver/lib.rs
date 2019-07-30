@@ -66,6 +66,7 @@ use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
 
 pub mod pretty;
+mod args;
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -777,11 +778,17 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    println!("{}\nAdditional help:
+    let at_path = if verbose {
+        "    @path               Read newline separated options from `path`\n"
+    } else {
+        ""
+    };
+    println!("{}{}\nAdditional help:
     -C help             Print codegen options
     -W help             \
               Print 'lint' options and default settings{}{}\n",
              options.usage(message),
+             at_path,
              nightly_help,
              verbose_help);
 }
@@ -1186,10 +1193,10 @@ pub fn main() {
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
     let result = report_ices_to_stderr_if_any(|| {
-        let args = env::args_os().enumerate()
-            .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
+        let args = args::ArgsIter::new().enumerate()
+            .map(|(i, arg)| arg.unwrap_or_else(|err| {
                 early_error(ErrorOutputType::default(),
-                            &format!("Argument {} is not valid Unicode: {:?}", i, arg))
+                            &format!("Argument {} is not valid: {}", i, err))
             }))
             .collect::<Vec<_>>();
         run_compiler(&args, &mut callbacks, None, None)
