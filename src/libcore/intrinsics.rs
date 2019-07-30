@@ -935,7 +935,7 @@ extern "rust-intrinsic" {
     /// # Safety
     ///
     /// Both the starting and resulting pointer must be either in bounds or one
-    /// byte past the end of an allocated object. If either pointer is out of
+    /// past the end of an allocated object. If either pointer is out of
     /// bounds or arithmetic overflow occurs then any further use of the
     /// returned value will result in undefined behavior.
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
@@ -948,7 +948,7 @@ extern "rust-intrinsic" {
     /// # Safety
     ///
     /// Unlike the `offset` intrinsic, this intrinsic does not restrict the
-    /// resulting pointer to point into or one byte past the end of an allocated
+    /// resulting pointer to point into or one past the end of an allocated
     /// object, and it wraps with two's complement arithmetic. The resulting
     /// value is not necessarily valid to be used to actually access memory.
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
