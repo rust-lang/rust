@@ -251,6 +251,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64> {
-        throw_err_unsup!(ReadPointerAsBytes)
+        throw_unsup!(ReadPointerAsBytes)
     }
 }

@@ -1,45 +1,45 @@
 //! An interpreter for MIR used in CTFE and by miri
 
 #[macro_export]
-macro_rules! throw_err_unsup {
+macro_rules! throw_unsup {
     ($($tt:tt)*) => {
-        Err($crate::mir::interpret::InterpError::Unsupported(
+        return Err($crate::mir::interpret::InterpError::Unsupported(
             $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
         ).into())
     };
 }
 
 #[macro_export]
-macro_rules! throw_err_inval {
+macro_rules! throw_inval {
     ($($tt:tt)*) => {
-        Err($crate::mir::interpret::InterpError::InvalidProgram(
+        return Err($crate::mir::interpret::InterpError::InvalidProgram(
             $crate::mir::interpret::InvalidProgramInfo::$($tt)*
         ).into())
     };
 }
 
 #[macro_export]
-macro_rules! throw_err_ub {
+macro_rules! throw_ub {
     ($($tt:tt)*) => {
-        Err($crate::mir::interpret::InterpError::UndefinedBehaviour(
+        return Err($crate::mir::interpret::InterpError::UndefinedBehaviour(
             $crate::mir::interpret::UndefinedBehaviourInfo::$($tt)*
         ).into())
     };
 }
 
 #[macro_export]
-macro_rules! throw_err_panic {
+macro_rules! throw_panic {
     ($($tt:tt)*) => {
-        Err($crate::mir::interpret::InterpError::Panic(
+        return Err($crate::mir::interpret::InterpError::Panic(
             $crate::mir::interpret::PanicInfo::$($tt)*
         ).into())
     };
 }
 
 #[macro_export]
-macro_rules! throw_err_exhaust {
+macro_rules! throw_exhaust {
     ($($tt:tt)*) => {
-        Err($crate::mir::interpret::InterpError::ResourceExhaustion(
+        return Err($crate::mir::interpret::InterpError::ResourceExhaustion(
             $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
         ).into())
     };

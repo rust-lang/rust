@@ -135,7 +135,7 @@ pub enum LocalValue<Tag=(), Id=AllocId> {
 impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
-            LocalValue::Dead => throw_err_unsup!(DeadLocal),
+            LocalValue::Dead => throw_unsup!(DeadLocal),
             LocalValue::Uninitialized =>
                 bug!("The type checker should prevent reading from a never-written local"),
             LocalValue::Live(val) => Ok(val),
@@ -148,7 +148,7 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
         &mut self,
     ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
         match self.value {
-            LocalValue::Dead => throw_err_unsup!(DeadLocal),
+            LocalValue::Dead => throw_unsup!(DeadLocal),
             LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
             ref mut local @ LocalValue::Live(Operand::Immediate(_)) |
             ref mut local @ LocalValue::Uninitialized => {
@@ -305,7 +305,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 &substs,
             )),
             None => if substs.needs_subst() {
-                throw_err_inval!(TooGeneric)
+                throw_inval!(TooGeneric)
             } else {
                 Ok(substs)
             },
@@ -339,14 +339,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             && self.tcx.has_typeck_tables(did)
             && self.tcx.typeck_tables_of(did).tainted_by_errors
         {
-            return throw_err_inval!(TypeckError);
+            throw_inval!(TypeckError)
         }
         trace!("load mir {:?}", instance);
         match instance {
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
                 Ok(self.tcx.optimized_mir(did))
             } else {
-                throw_err_unsup!(NoMirFor(self.tcx.def_path_str(def_id)))
+                throw_unsup!(NoMirFor(self.tcx.def_path_str(def_id)))
             },
             _ => Ok(self.tcx.instance_mir(instance)),
         }
@@ -359,7 +359,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match self.stack.last() {
             Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)?),
             None => if t.needs_subst() {
-                throw_err_inval!(TooGeneric).into()
+                throw_inval!(TooGeneric)
             } else {
                 Ok(t)
             },
@@ -376,7 +376,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let substituted = t.subst(*self.tcx, substs);
 
         if substituted.needs_subst() {
-            return throw_err_inval!(TooGeneric);
+            throw_inval!(TooGeneric)
         }
 
         Ok(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted))
@@ -575,7 +575,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
 
         if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
-            throw_err_exhaust!(StackFrameLimitReached)
+            throw_exhaust!(StackFrameLimitReached)
         } else {
             Ok(())
         }
@@ -623,7 +623,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         } else {
             // Uh, that shouldn't happen... the function did not intend to return
-            return throw_err_ub!(Unreachable);
+            throw_ub!(Unreachable)
         }
         // Jump to new block -- *after* validation so that the spans make more sense.
         match frame.return_to_block {

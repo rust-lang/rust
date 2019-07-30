@@ -22,7 +22,7 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        throw_err_unsup!(ValidationFailure(format!(
+        throw_unsup!(ValidationFailure(format!(
             "encountered {}{}, but expected {}",
             $what, where_, $details,
         )))
@@ -34,7 +34,7 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        throw_err_unsup!(ValidationFailure(format!(
+        throw_unsup!(ValidationFailure(format!(
             "encountered {}{}",
             $what, where_,
         )))
@@ -45,14 +45,14 @@ macro_rules! try_validation {
     ($e:expr, $what:expr, $where:expr, $details:expr) => {{
         match $e {
             Ok(x) => x,
-            Err(_) => return validation_failure!($what, $where, $details),
+            Err(_) => validation_failure!($what, $where, $details),
         }
     }};
 
     ($e:expr, $what:expr, $where:expr) => {{
         match $e {
             Ok(x) => x,
-            Err(_) => return validation_failure!($what, $where),
+            Err(_) => validation_failure!($what, $where),
         }
     }}
 }
@@ -408,18 +408,18 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         use super::UnsupportedOpInfo::*;
                         match err.kind {
                             InterpError::Unsupported(InvalidNullPointerUsage) =>
-                                return validation_failure!("NULL reference", self.path),
+                                validation_failure!("NULL reference", self.path),
                             InterpError::Unsupported(AlignmentCheckFailed { required, has }) =>
-                                return validation_failure!(format!("unaligned reference \
+                                validation_failure!(format!("unaligned reference \
                                     (required {} byte alignment but found {})",
                                     required.bytes(), has.bytes()), self.path),
                             InterpError::Unsupported(ReadBytesAsPointer) =>
-                                return validation_failure!(
+                                validation_failure!(
                                     "dangling reference (created from integer)",
                                     self.path
                                 ),
                             _ =>
-                                return validation_failure!(
+                                validation_failure!(
                                     "dangling reference (not entirely in bounds)",
                                     self.path
                                 ),
@@ -512,27 +512,27 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 if lo == 1 && hi == max_hi {
                     // Only NULL is the niche.  So make sure the ptr is NOT NULL.
                     if self.ecx.memory.ptr_may_be_null(ptr) {
-                        return validation_failure!(
+                        validation_failure!(
                             "a potentially NULL pointer",
                             self.path,
                             format!(
                                 "something that cannot possibly fail to be {}",
                                 wrapping_range_format(&layout.valid_range, max_hi)
                             )
-                        );
+                        )
                     }
                     return Ok(());
                 } else {
                     // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
-                    return validation_failure!(
+                    validation_failure!(
                         "a pointer",
                         self.path,
                         format!(
                             "something that cannot possibly fail to be {}",
                             wrapping_range_format(&layout.valid_range, max_hi)
                         )
-                    );
+                    )
                 }
             }
             Ok(data) =>
@@ -616,9 +616,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 let i = (offset.bytes() / ty_size.bytes()) as usize;
                                 self.path.push(PathElem::ArrayElem(i));
 
-                                return validation_failure!(
-                                    "undefined bytes", self.path
-                                )
+                                validation_failure!("undefined bytes", self.path)
                             },
                             // Other errors shouldn't be possible
                             _ => return Err(err),

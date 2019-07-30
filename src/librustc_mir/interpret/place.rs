@@ -356,7 +356,7 @@ where
                     // This can be violated because this runs during promotion on code where the
                     // type system has not yet ensured that such things don't happen.
                     debug!("tried to access element {} of array/slice with length {}", field, len);
-                    return throw_err_panic!(BoundsCheck { len, index: field });
+                    throw_panic!(BoundsCheck { len, index: field });
                 }
                 stride * field
             }
@@ -622,7 +622,7 @@ where
                                 .layout_of(self.monomorphize(self.frame().body.return_ty())?)?,
                         }
                     }
-                    None => return throw_err_unsup!(InvalidNullPointerUsage),
+                    None => throw_unsup!(InvalidNullPointerUsage),
                 },
                 PlaceBase::Local(local) => PlaceTy {
                     // This works even for dead/uninitialized locals; we check further when writing

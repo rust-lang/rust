@@ -19,7 +19,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.frame_mut().stmt = 0;
             Ok(())
         } else {
-            throw_err_ub!(Unreachable)
+            throw_ub!(Unreachable)
         }
     }
 
@@ -89,7 +89,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     },
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func.layout.ty);
-                        return throw_err_unsup!(Unimplemented(msg));
+                        throw_unsup!(Unimplemented(msg))
                     }
                 };
                 let args = self.eval_operands(args)?;
@@ -136,7 +136,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     // Compute error message
                     use rustc::mir::interpret::PanicInfo::*;
-                    return match msg {
+                    match msg {
                         BoundsCheck { ref len, ref index } => {
                             let len = self.read_immediate(self.eval_operand(len, None)?)
                                 .expect("can't eval len").to_scalar()?
@@ -144,20 +144,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let index = self.read_immediate(self.eval_operand(index, None)?)
                                 .expect("can't eval index").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            throw_err_panic!(BoundsCheck { len, index })
+                            throw_panic!(BoundsCheck { len, index })
                         }
                         Overflow(op) =>
-                            throw_err_panic!(Overflow(*op)),
+                            throw_panic!(Overflow(*op)),
                         OverflowNeg =>
-                            throw_err_panic!(OverflowNeg),
+                            throw_panic!(OverflowNeg),
                         DivisionByZero =>
-                            throw_err_panic!(DivisionByZero),
+                            throw_panic!(DivisionByZero),
                         RemainderByZero =>
-                            throw_err_panic!(RemainderByZero),
+                            throw_panic!(RemainderByZero),
                         GeneratorResumedAfterReturn =>
-                            throw_err_panic!(GeneratorResumedAfterReturn),
+                            throw_panic!(GeneratorResumedAfterReturn),
                         GeneratorResumedAfterPanic =>
-                            throw_err_panic!(GeneratorResumedAfterPanic),
+                            throw_panic!(GeneratorResumedAfterPanic),
                         Panic { .. } =>
                             bug!("`Panic` variant cannot occur in MIR"),
                     };
@@ -173,7 +173,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                       `simplify_branches` mir pass"),
             FalseUnwind { .. } => bug!("should have been eliminated by\
                                        `simplify_branches` mir pass"),
-            Unreachable => return throw_err_ub!(Unreachable),
+            Unreachable => throw_ub!(Unreachable),
         }
 
         Ok(())
@@ -226,9 +226,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         // Now, check
         if !Self::check_argument_compat(rust_abi, caller_arg.layout, callee_arg.layout) {
-            return throw_err_unsup!(
-                FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty)
-            );
+            throw_unsup!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty))
         }
         // We allow some transmutes here
         self.copy_op_transmute(caller_arg, callee_arg)
@@ -256,13 +254,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 if caller_abi != Abi::RustIntrinsic {
-                    return throw_err_unsup!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic));
+                    throw_unsup!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic))
                 }
                 // The intrinsic itself cannot diverge, so if we got here without a return
                 // place... (can happen e.g., for transmute returning `!`)
                 let dest = match dest {
                     Some(dest) => dest,
-                    None => return throw_err_ub!(Unreachable)
+                    None => throw_ub!(Unreachable)
                 };
                 M::call_intrinsic(self, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
@@ -297,7 +295,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             abi,
                     };
                     if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                        return throw_err_unsup!(FunctionAbiMismatch(caller_abi, callee_abi));
+                        throw_unsup!(FunctionAbiMismatch(caller_abi, callee_abi))
                     }
                 }
 
@@ -392,7 +390,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Now we should have no more caller args
                     if caller_iter.next().is_some() {
                         trace!("Caller has passed too many args");
-                        return throw_err_unsup!(FunctionArgCountMismatch);
+                        throw_unsup!(FunctionArgCountMismatch)
                     }
                     // Don't forget to check the return type!
                     if let Some(caller_ret) = dest {
@@ -404,15 +402,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             caller_ret.layout,
                             callee_ret.layout,
                         ) {
-                            return throw_err_unsup!(
+                            throw_unsup!(
                                 FunctionRetMismatch(caller_ret.layout.ty, callee_ret.layout.ty)
-                            );
+                            )
                         }
                     } else {
                         let local = mir::RETURN_PLACE;
                         let ty = self.frame().body.local_decls[local].ty;
                         if !self.tcx.is_ty_uninhabited_from_any_module(ty) {
-                            return throw_err_unsup!(FunctionRetMismatch(self.tcx.types.never, ty));
+                            throw_unsup!(FunctionRetMismatch(self.tcx.types.never, ty))
                         }
                     }
                     Ok(())
