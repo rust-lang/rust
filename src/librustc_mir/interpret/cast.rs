@@ -85,7 +85,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             self.param_env,
                             def_id,
                             substs,
-                        ).ok_or_else(|| inval!(TooGeneric).into());
+                        ).ok_or_else(|| err_inval!(TooGeneric).into());
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance?));
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
@@ -199,7 +199,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             },
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
-            _ => err!(Unimplemented(format!("int to {:?} cast", dest_layout.ty))),
+            _ => throw_err!(Unimplemented(format!("int to {:?} cast", dest_layout.ty))),
         }
     }
 

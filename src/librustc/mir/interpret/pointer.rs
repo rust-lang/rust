@@ -74,13 +74,13 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     #[inline]
     fn offset<'tcx>(&self, val: u64, i: u64) -> InterpResult<'tcx, u64> {
         let (res, over) = self.overflowing_offset(val, i);
-        if over { err_panic!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
+        if over { throw_err_panic!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
     }
 
     #[inline]
     fn signed_offset<'tcx>(&self, val: u64, i: i64) -> InterpResult<'tcx, u64> {
         let (res, over) = self.overflowing_signed_offset(val, i128::from(i));
-        if over { err_panic!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
+        if over { throw_err_panic!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
     }
 }
 
@@ -196,7 +196,7 @@ impl<'tcx, Tag> Pointer<Tag> {
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, ()> {
         if self.offset > allocation_size {
-            err!(PointerOutOfBounds { ptr: self.erase_tag(), msg, allocation_size })
+            throw_err!(PointerOutOfBounds { ptr: self.erase_tag(), msg, allocation_size })
         } else {
             Ok(())
         }

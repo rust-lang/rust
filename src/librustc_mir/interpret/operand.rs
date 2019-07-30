@@ -461,7 +461,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         mir_place.iterate(|place_base, place_projection| {
             let mut op = match place_base {
                 PlaceBase::Local(mir::RETURN_PLACE) =>
-                    return err!(ReadFromReturnPointer),
+                    return throw_err!(ReadFromReturnPointer),
                 PlaceBase::Local(local) => {
                     // Do not use the layout passed in as argument if the base we are looking at
                     // here is not the entire place.
@@ -534,7 +534,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match val.val {
             ConstValue::Param(_) =>
                 // FIXME(oli-obk): try to monomorphize
-                return err_inval!(TooGeneric),
+                return throw_err_inval!(TooGeneric),
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId {
@@ -610,7 +610,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits_discr = match raw_discr.to_bits(discr_val.layout.size) {
                     Ok(raw_discr) => raw_discr,
                     Err(_) =>
-                        return err!(InvalidDiscriminant(raw_discr.erase_tag())),
+                        return throw_err!(InvalidDiscriminant(raw_discr.erase_tag())),
                 };
                 let real_discr = if discr_val.layout.ty.is_signed() {
                     // going from layout tag type to typeck discriminant type
@@ -637,7 +637,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .find(|(_, var)| var.val == real_discr),
                     _ => bug!("tagged layout for non-adt non-generator"),
                 }.ok_or_else(
-                    || unsup!(InvalidDiscriminant(raw_discr.erase_tag()))
+                    || err!(InvalidDiscriminant(raw_discr.erase_tag()))
                 )?;
                 (real_discr, index.0)
             },
@@ -657,7 +657,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
                             !self.memory.ptr_may_be_null(ptr);
                         if !ptr_valid {
-                            return err!(InvalidDiscriminant(raw_discr.erase_tag().into()));
+                            return throw_err!(InvalidDiscriminant(raw_discr.erase_tag().into()));
                         }
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },

@@ -104,7 +104,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 let out_val = if intrinsic_name.ends_with("_nonzero") {
                     if bits == 0 {
-                        return err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
+                        return throw_err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
                     }
                     numeric_intrinsic(intrinsic_name.trim_end_matches("_nonzero"), bits, kind)?
                 } else {
@@ -190,7 +190,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
                     let r_val =  r.to_scalar()?.to_bits(layout.size)?;
-                    return err!(Intrinsic(
+                    return throw_err!(Intrinsic(
                         format!("Overflowing shift by {} in {}", r_val, intrinsic_name),
                     ));
                 }

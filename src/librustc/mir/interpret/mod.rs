@@ -1,7 +1,7 @@
 //! An interpreter for MIR used in CTFE and by miri
 
 #[macro_export]
-macro_rules! err {
+macro_rules! throw_err {
     ($($tt:tt)*) => {
         Err($crate::mir::interpret::InterpError::Unsupported(
             $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
@@ -10,7 +10,7 @@ macro_rules! err {
 }
 
 #[macro_export]
-macro_rules! err_inval {
+macro_rules! throw_err_inval {
     ($($tt:tt)*) => {
         Err($crate::mir::interpret::InterpError::InvalidProgram(
             $crate::mir::interpret::InvalidProgramInfo::$($tt)*
@@ -19,7 +19,7 @@ macro_rules! err_inval {
 }
 
 #[macro_export]
-macro_rules! err_ub {
+macro_rules! throw_err_ub {
     ($($tt:tt)*) => {
         Err($crate::mir::interpret::InterpError::UndefinedBehaviour(
             $crate::mir::interpret::UndefinedBehaviourInfo::$($tt)*
@@ -28,7 +28,7 @@ macro_rules! err_ub {
 }
 
 #[macro_export]
-macro_rules! err_panic {
+macro_rules! throw_err_panic {
     ($($tt:tt)*) => {
         Err($crate::mir::interpret::InterpError::Panic(
             $crate::mir::interpret::PanicInfo::$($tt)*
@@ -37,7 +37,7 @@ macro_rules! err_panic {
 }
 
 #[macro_export]
-macro_rules! err_exhaust {
+macro_rules! throw_err_exhaust {
     ($($tt:tt)*) => {
         Err($crate::mir::interpret::InterpError::ResourceExhaustion(
             $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
@@ -45,11 +45,28 @@ macro_rules! err_exhaust {
     };
 }
 
+#[macro_export]
+macro_rules! err_inval {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::InvalidProgram(
+            $crate::mir::interpret::InvalidProgramInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::Unsupported(
+            $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
+        )
+    };
+}
+
 mod error;
 mod value;
 mod allocation;
 mod pointer;
-mod interp_error;
 
 pub use self::error::{
     InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,

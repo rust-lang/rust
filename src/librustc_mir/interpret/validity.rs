@@ -22,7 +22,7 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        err!(ValidationFailure(format!(
+        throw_err!(ValidationFailure(format!(
             "encountered {}{}, but expected {}",
             $what, where_, $details,
         )))
@@ -34,7 +34,7 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        err!(ValidationFailure(format!(
+        throw_err!(ValidationFailure(format!(
             "encountered {}{}",
             $what, where_,
         )))

@@ -244,7 +244,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
                 Ok(&self.get_bytes(cx, ptr, size_with_null)?[..size])
             }
             // This includes the case where `offset` is out-of-bounds to begin with.
-            None => err!(UnterminatedCString(ptr.erase_tag())),
+            None => throw_err!(UnterminatedCString(ptr.erase_tag())),
         }
     }
 
@@ -446,7 +446,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         if self.relocations(cx, ptr, size).is_empty() {
             Ok(())
         } else {
-            err!(ReadPointerAsBytes)
+            throw_err!(ReadPointerAsBytes)
         }
     }
 
@@ -516,7 +516,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         self.undef_mask.is_range_defined(
             ptr.offset,
             ptr.offset + size,
-        ).or_else(|idx| err!(ReadUndefBytes(idx)))
+        ).or_else(|idx| throw_err!(ReadUndefBytes(idx)))
     }
 
     pub fn mark_definedness(

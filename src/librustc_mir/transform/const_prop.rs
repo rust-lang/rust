@@ -441,7 +441,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             // Need to do overflow check here: For actual CTFE, MIR
                             // generation emits code that does this before calling the op.
                             if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
-                                return err_panic!(OverflowNeg);
+                                return throw_err_panic!(OverflowNeg);
                             }
                         }
                         UnOp::Not => {

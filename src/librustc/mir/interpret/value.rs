@@ -360,7 +360,7 @@ impl<'tcx, Tag> Scalar<Tag> {
                 Scalar::check_data(data, size);
                 Ok(data)
             }
-            Scalar::Ptr(_) => err!(ReadPointerAsBytes),
+            Scalar::Ptr(_) => throw_err!(ReadPointerAsBytes),
         }
     }
 
@@ -373,8 +373,8 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
         match self {
-            Scalar::Raw { data: 0, .. } => err!(InvalidNullPointerUsage),
-            Scalar::Raw { .. } => err!(ReadBytesAsPointer),
+            Scalar::Raw { data: 0, .. } => throw_err!(InvalidNullPointerUsage),
+            Scalar::Raw { .. } => throw_err!(ReadBytesAsPointer),
             Scalar::Ptr(p) => Ok(p),
         }
     }
@@ -406,7 +406,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         match self {
             Scalar::Raw { data: 0, size: 1 } => Ok(false),
             Scalar::Raw { data: 1, size: 1 } => Ok(true),
-            _ => err!(InvalidBool),
+            _ => throw_err!(InvalidBool),
         }
     }
 
@@ -414,7 +414,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         let val = self.to_u32()?;
         match ::std::char::from_u32(val) {
             Some(c) => Ok(c),
-            None => err!(InvalidChar(val as u128)),
+            None => throw_err!(InvalidChar(val as u128)),
         }
     }
 
@@ -537,7 +537,7 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     pub fn not_undef(self) -> InterpResult<'static, Scalar<Tag>> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
-            ScalarMaybeUndef::Undef => err!(ReadUndefBytes(Size::from_bytes(0))),
+            ScalarMaybeUndef::Undef => throw_err!(ReadUndefBytes(Size::from_bytes(0))),
         }
     }
 

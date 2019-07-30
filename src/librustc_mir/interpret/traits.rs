@@ -83,7 +83,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.param_env,
                     def_id,
                     substs,
-                ).ok_or_else(|| inval!(TooGeneric))?;
+                ).ok_or_else(|| err_inval!(TooGeneric))?;
                 let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), self)?;
                 self.memory
