@@ -1,0 +1,25 @@
+From 7403e2998345ef0650fd50628d7098d4d1e88e5c Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Sat, 6 Apr 2019 12:16:21 +0200
+Subject: [PATCH] Remove usage of unsized locals
+
+---
+ src/stdarch/crates/core_arch/src/x86/cpuid.rs | 2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/src/stdarch/crates/core_arch/src/x86/cpuid.rs b/src/stdarch/crates/core_arch/src/x86/cpuid.rs
+index f313c42..ff952bc 100644
+--- a/src/stdarch/crates/core_arch/src/x86/cpuid.rs
++++ b/src/stdarch/crates/core_arch/src/x86/cpuid.rs
+@@ -84,6 +84,9 @@ pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
+ /// Does the host support the `cpuid` instruction?
+ #[inline]
+ pub fn has_cpuid() -> bool {
++    // __cpuid intrinsic is not yet implemented
++    return false;
++
+     #[cfg(target_env = "sgx")]
+     {
+         false
+-- 
+2.20.1 (Apple Git-117)

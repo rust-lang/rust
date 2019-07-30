@@ -88,7 +88,7 @@ pub fn trans_constant<'a, 'tcx: 'a>(
 }
 
 pub fn force_eval_const<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    fx: &FunctionCx<'a, 'tcx, impl Backend>,
     const_: &'tcx Const,
 ) -> &'tcx Const<'tcx> {
     match const_.val {
@@ -421,4 +421,33 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
     fn stack_pop(_: &mut InterpCx<'mir, 'tcx, Self>, _: ()) -> InterpResult<'tcx> {
         Ok(())
     }
+}
+
+pub fn mir_operand_get_const_val<'tcx>(
+    fx: &FunctionCx<'_, 'tcx, impl Backend>,
+    operand: &Operand<'tcx>,
+) -> Result<&'tcx Const<'tcx>, String> {
+    let place = match operand {
+        Operand::Copy(place) => place,
+        Operand::Constant(const_) => return Ok(force_eval_const(fx, const_.literal)),
+        _ => return Err(format!("{:?}", operand)),
+    };
+
+    assert!(place.projection.is_none());
+    let static_ = match &place.base {
+        PlaceBase::Static(static_) => {
+            static_
+        }
+        PlaceBase::Local(_) => return Err("local".to_string()),
+    };
+
+    Ok(match &static_.kind {
+        StaticKind::Static(_) => unimplemented!(),
+        StaticKind::Promoted(promoted) => {
+            fx.tcx.const_eval(ParamEnv::reveal_all().and(GlobalId {
+                instance: fx.instance,
+                promoted: Some(*promoted),
+            })).unwrap()
+        }
+    })
 }

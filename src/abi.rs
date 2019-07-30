@@ -113,10 +113,16 @@ fn get_pass_mode<'tcx>(
                 PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone()))
             }
             layout::Abi::ScalarPair(a, b) => {
-                PassMode::ByValPair(
-                    scalar_to_clif_type(tcx, a.clone()),
-                    scalar_to_clif_type(tcx, b.clone()),
-                )
+                let a = scalar_to_clif_type(tcx, a.clone());
+                let b = scalar_to_clif_type(tcx, b.clone());
+                if a == types::I128 && b == types::I128 {
+                    // Returning (i128, i128) by-val-pair would take 4 regs, while only 3 are
+                    // available on x86_64. Cranelift gets confused when too many return params
+                    // are used.
+                    PassMode::ByRef
+                } else {
+                    PassMode::ByValPair(a, b)
+                }
             }
 
             // FIXME implement Vector Abi in a cg_llvm compatible way
@@ -268,7 +274,9 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             .module
             .declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
-        self.add_comment(call_inst, format!("easy_call {}", name));
+        #[cfg(debug_assertions)] {
+            self.add_comment(call_inst, format!("easy_call {}", name));
+        }
         let results = self.bcx.inst_results(call_inst);
         assert!(results.len() <= 2, "{}", results.len());
         results
@@ -613,6 +621,35 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
     let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
     let sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
+    let destination = destination
+        .as_ref()
+        .map(|&(ref place, bb)| (trans_place(fx, place), bb));
+
+    if let ty::FnDef(def_id, substs) = fn_ty.sty {
+        let instance =
+            ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
+
+        if fx.tcx.symbol_name(instance).as_str().starts_with("llvm.") {
+            crate::llvm_intrinsics::codegen_llvm_intrinsic_call(fx, &fx.tcx.symbol_name(instance).as_str(), substs, args, destination);
+            return;
+        }
+
+        match instance.def {
+            InstanceDef::Intrinsic(_) => {
+                crate::intrinsics::codegen_intrinsic_call(fx, def_id, substs, args, destination);
+                return;
+            }
+            InstanceDef::DropGlue(_, None) => {
+                // empty drop glue - a nop.
+                let (_, dest) = destination.expect("Non terminating drop_in_place_real???");
+                let ret_ebb = fx.get_ebb(dest);
+                fx.bcx.ins().jump(ret_ebb, &[]);
+                return;
+            }
+            _ => {}
+        }
+    }
+
     // Unpack arguments tuple for closures
     let args = if sig.abi == Abi::RustCall {
         assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
@@ -634,30 +671,6 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
             .map(|arg| trans_operand(fx, arg))
             .collect::<Vec<_>>()
     };
-
-    let destination = destination
-        .as_ref()
-        .map(|&(ref place, bb)| (trans_place(fx, place), bb));
-
-    if let ty::FnDef(def_id, substs) = fn_ty.sty {
-        let instance =
-            ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
-
-        match instance.def {
-            InstanceDef::Intrinsic(_) => {
-                crate::intrinsics::codegen_intrinsic_call(fx, def_id, substs, args, destination);
-                return;
-            }
-            InstanceDef::DropGlue(_, None) => {
-                // empty drop glue - a nop.
-                let (_, dest) = destination.expect("Non terminating drop_in_place_real???");
-                let ret_ebb = fx.get_ebb(dest);
-                fx.bcx.ins().jump(ret_ebb, &[]);
-                return;
-            }
-            _ => {}
-        }
-    }
 
     codegen_call_inner(
         fx,

@@ -94,5 +94,18 @@ index b2142e7..718bb1c 100644
  }
  
  pub fn min_stack() -> usize {
+diff --git a/src/libstd/sys/unix/thread.rs b/src/libstd/sys/unix/thread.rs
+index f4a1783..362b537 100644
+--- a/src/libstd/sys/unix/thread.rs
++++ b/src/libstd/sys/unix/thread.rs
+@@ -40,6 +40,8 @@ impl Thread {
+     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
+     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>)
+                           -> io::Result<Thread> {
++        panic!("Threads are not yet supported, because cranelift doesn't support atomics.");
++
+         let p = box p;
+         let mut native: libc::pthread_t = mem::zeroed();
+         let mut attr: libc::pthread_attr_t = mem::zeroed();
 -- 
 2.20.1 (Apple Git-117)

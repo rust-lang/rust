@@ -2,47 +2,58 @@ use crate::prelude::*;
 
 use rustc::ty::subst::SubstsRef;
 
-macro_rules! intrinsic_pat {
+macro intrinsic_pat {
     (_) => {
         _
-    };
+    },
     ($name:ident) => {
         stringify!($name)
+    },
+    ($name:literal) => {
+        stringify!($name)
+    },
+    ($x:ident . $($xs:tt).*) => {
+        concat!(stringify!($x), ".", intrinsic_pat!($($xs).*))
     }
 }
 
-macro_rules! intrinsic_arg {
-    (c $fx:expr, $arg:ident) => {
+macro intrinsic_arg {
+    (o $fx:expr, $arg:ident) => {
         $arg
-    };
+    },
+    (c $fx:expr, $arg:ident) => {
+        trans_operand($fx, $arg)
+    },
     (v $fx:expr, $arg:ident) => {
-        $arg.load_scalar($fx)
-    };
+        trans_operand($fx, $arg).load_scalar($fx)
+    }
 }
 
-macro_rules! intrinsic_substs {
-    ($substs:expr, $index:expr,) => {};
+macro intrinsic_substs {
+    ($substs:expr, $index:expr,) => {},
     ($substs:expr, $index:expr, $first:ident $(,$rest:ident)*) => {
         let $first = $substs.type_at($index);
         intrinsic_substs!($substs, $index+1, $($rest),*);
-    };
+    }
 }
 
-macro_rules! intrinsic_match {
-    ($fx:expr, $intrinsic:expr, $substs:expr, $args:expr, $(
-        $($name:tt)|+ $(if $cond:expr)?, $(<$($subst:ident),*>)? ($($a:ident $arg:ident),*) $content:block;
+pub macro intrinsic_match {
+    ($fx:expr, $intrinsic:expr, $substs:expr, $args:expr,
+    _ => $unknown:block;
+    $(
+        $($($name:tt).*)|+ $(if $cond:expr)?, $(<$($subst:ident),*>)? ($($a:ident $arg:ident),*) $content:block;
     )*) => {
         match $intrinsic {
             $(
-                $(intrinsic_pat!($name))|* $(if $cond)? => {
+                $(intrinsic_pat!($($name).*))|* $(if $cond)? => {
                     #[allow(unused_parens, non_snake_case)]
                     {
                         $(
                             intrinsic_substs!($substs, 0, $($subst),*);
                         )?
-                        if let [$($arg),*] = *$args {
-                            let ($($arg),*) = (
-                                $(intrinsic_arg!($a $fx, $arg)),*
+                        if let [$($arg),*] = $args {
+                            let ($($arg,)*) = (
+                                $(intrinsic_arg!($a $fx, $arg),)*
                             );
                             #[warn(unused_parens, non_snake_case)]
                             {
@@ -54,9 +65,9 @@ macro_rules! intrinsic_match {
                     }
                 }
             )*
-            _ => unimpl!("unsupported intrinsic {}", $intrinsic),
+            _ => $unknown,
         }
-    };
+    }
 }
 
 macro_rules! call_intrinsic_match {
@@ -67,7 +78,10 @@ macro_rules! call_intrinsic_match {
             $(
                 stringify!($name) => {
                     assert!($substs.is_noop());
-                    if let [$($arg),*] = *$args {
+                    if let [$(ref $arg),*] = *$args {
+                        let ($($arg,)*) = (
+                            $(trans_operand($fx, $arg),)*
+                        );
                         let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.tcx.types.$ty);
                         $ret.write_cvalue($fx, res);
 
@@ -116,11 +130,156 @@ macro_rules! atomic_minmax {
     };
 }
 
+pub fn lane_type_and_count<'tcx>(
+    fx: &FunctionCx<'_, 'tcx, impl Backend>,
+    layout: TyLayout<'tcx>,
+    intrinsic: &str,
+) -> (TyLayout<'tcx>, u32) {
+    assert!(layout.ty.is_simd());
+    let lane_count = match layout.fields {
+        layout::FieldPlacement::Array { stride: _, count } => u32::try_from(count).unwrap(),
+        _ => panic!("Non vector type {:?} passed to or returned from simd_* intrinsic {}", layout.ty, intrinsic),
+    };
+    let lane_layout = layout.field(fx, 0);
+    (lane_layout, lane_count)
+}
+
+pub fn simd_for_each_lane<'tcx, B: Backend>(
+    fx: &mut FunctionCx<'_, 'tcx, B>,
+    intrinsic: &str,
+    x: CValue<'tcx>,
+    y: CValue<'tcx>,
+    ret: CPlace<'tcx>,
+    f: impl Fn(&mut FunctionCx<'_, 'tcx, B>, TyLayout<'tcx>, TyLayout<'tcx>, Value, Value) -> CValue<'tcx>,
+) {
+    assert_eq!(x.layout(), y.layout());
+    let layout = x.layout();
+
+    let (lane_layout, lane_count) = lane_type_and_count(fx, layout, intrinsic);
+    let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx, ret.layout(), intrinsic);
+    assert_eq!(lane_count, ret_lane_count);
+
+    for lane in 0..lane_count {
+        let lane = mir::Field::new(lane.try_into().unwrap());
+        let x_lane = x.value_field(fx, lane).load_scalar(fx);
+        let y_lane = y.value_field(fx, lane).load_scalar(fx);
+
+        let res_lane = f(fx, lane_layout, ret_lane_layout, x_lane, y_lane);
+
+        ret.place_field(fx, lane).write_cvalue(fx, res_lane);
+    }
+}
+
+pub fn bool_to_zero_or_max_uint<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    layout: TyLayout<'tcx>,
+    val: Value,
+) -> CValue<'tcx> {
+    let ty = fx.clif_type(layout.ty).unwrap();
+
+    let int_ty = match ty {
+        types::F32 => types::I32,
+        types::F64 => types::I64,
+        ty => ty,
+    };
+
+    let zero = fx.bcx.ins().iconst(int_ty, 0);
+    let max = fx.bcx.ins().iconst(int_ty, (u64::max_value() >> (64 - int_ty.bits())) as i64);
+    let mut res = crate::common::codegen_select(&mut fx.bcx, val, max, zero);
+
+    if ty.is_float() {
+        res = fx.bcx.ins().bitcast(ty, res);
+    }
+
+    CValue::by_val(res, layout)
+}
+
+macro_rules! simd_cmp {
+    ($fx:expr, $intrinsic:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
+        });
+    };
+    ($fx:expr, $intrinsic:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
+                ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
+        });
+    };
+
+}
+
+macro_rules! simd_int_binop {
+    ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    };
+    ($fx:expr, $intrinsic:expr, $op_u:ident|$op_s:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
+                ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    };
+}
+
+macro_rules! simd_int_flt_binop {
+    ($fx:expr, $intrinsic:expr, $op:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
+                ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    };
+    ($fx:expr, $intrinsic:expr, $op_u:ident|$op_s:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
+                ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
+                ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    };
+}
+
+macro_rules! simd_flt_binop {
+    ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
+        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.sty {
+                ty::Float(_) => fx.bcx.ins().$op(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        });
+    }
+}
+
 pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     def_id: DefId,
     substs: SubstsRef<'tcx>,
-    args: Vec<CValue<'tcx>>,
+    args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
     let intrinsic = fx.tcx.item_name(def_id).as_str();
@@ -180,16 +339,13 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         cosf64(flt) -> f64 => cos,
         tanf32(flt) -> f32 => tanf,
         tanf64(flt) -> f64 => tan,
-
-        // minmax
-        minnumf32(a, b) -> f32 => fminf,
-        minnumf64(a, b) -> f64 => fmin,
-        maxnumf32(a, b) -> f32 => fmaxf,
-        maxnumf64(a, b) -> f64 => fmax,
     }
 
     intrinsic_match! {
         fx, intrinsic, substs, args,
+        _ => {
+            unimpl!("unsupported intrinsic {}", intrinsic)
+        };
 
         assume, (c _a) {};
         likely | unlikely, (c a) {
@@ -413,7 +569,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
             let base_val = base.load_scalar(fx);
             let res = fx.bcx.ins().iadd(base_val, ptr_diff);
-            ret.write_cvalue(fx, CValue::by_val(res, args[0].layout()));
+            ret.write_cvalue(fx, CValue::by_val(res, base.layout()));
         };
 
         transmute, <src_ty, dst_ty> (c from) {
@@ -674,6 +830,138 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         _ if intrinsic.starts_with("atomic_umin"), <T> (v ptr, v src) {
             atomic_minmax!(fx, IntCC::UnsignedLessThan, <T> (ptr, src) -> ret);
+        };
+
+        minnumf32, (v a, v b) {
+            let val = fx.bcx.ins().fmin(a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
+            ret.write_cvalue(fx, val);
+        };
+        minnumf64, (v a, v b) {
+            let val = fx.bcx.ins().fmin(a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
+            ret.write_cvalue(fx, val);
+        };
+        maxnumf32, (v a, v b) {
+            let val = fx.bcx.ins().fmax(a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
+            ret.write_cvalue(fx, val);
+        };
+        maxnumf64, (v a, v b) {
+            let val = fx.bcx.ins().fmax(a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
+            ret.write_cvalue(fx, val);
+        };
+
+        simd_cast, (c x) {
+            ret.write_cvalue(fx, x.unchecked_cast_to(ret.layout()));
+        };
+
+        simd_eq, (c x, c y) {
+            simd_cmp!(fx, intrinsic, Equal(x, y) -> ret);
+        };
+        simd_ne, (c x, c y) {
+            simd_cmp!(fx, intrinsic, NotEqual(x, y) -> ret);
+        };
+        simd_lt, (c x, c y) {
+            simd_cmp!(fx, intrinsic, UnsignedLessThan|SignedLessThan(x, y) -> ret);
+        };
+        simd_le, (c x, c y) {
+            simd_cmp!(fx, intrinsic, UnsignedLessThanOrEqual|SignedLessThanOrEqual(x, y) -> ret);
+        };
+        simd_gt, (c x, c y) {
+            simd_cmp!(fx, intrinsic, UnsignedGreaterThan|SignedGreaterThan(x, y) -> ret);
+        };
+        simd_ge, (c x, c y) {
+            simd_cmp!(fx, intrinsic, UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual(x, y) -> ret);
+        };
+
+        // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
+        _ if intrinsic.starts_with("simd_shuffle"), (c x, c y, o idx) {
+            let n: u32 = intrinsic["simd_shuffle".len()..].parse().unwrap();
+
+            assert_eq!(x.layout(), y.layout());
+            let layout = x.layout();
+
+            let (lane_type, lane_count) = lane_type_and_count(fx, layout, intrinsic);
+            let (ret_lane_type, ret_lane_count) = lane_type_and_count(fx, ret.layout(), intrinsic);
+
+            assert_eq!(lane_type, ret_lane_type);
+            assert_eq!(n, ret_lane_count);
+
+            let total_len = lane_count * 2;
+
+            let indexes = {
+                use rustc::mir::interpret::*;
+                let idx_const = crate::constant::mir_operand_get_const_val(fx, idx).expect("simd_shuffle* idx not const");
+
+                let idx_bytes = match idx_const.val {
+                    ConstValue::ByRef { align: _, offset, alloc } => {
+                        let ptr = Pointer::new(AllocId(0 /* dummy */), offset);
+                        let size = Size::from_bytes(4 * u64::from(ret_lane_count) /* size_of([u32; ret_lane_count]) */);
+                        alloc.get_bytes(fx, ptr, size).unwrap()
+                    }
+                    _ => unreachable!("{:?}", idx_const),
+                };
+
+                (0..ret_lane_count).map(|i| {
+                    let i = usize::try_from(i).unwrap();
+                    let idx = rustc::mir::interpret::read_target_uint(
+                        fx.tcx.data_layout.endian,
+                        &idx_bytes[4*i.. 4*i + 4],
+                    ).expect("read_target_uint");
+                    u32::try_from(idx).expect("try_from u32")
+                }).collect::<Vec<u32>>()
+            };
+
+            for &idx in &indexes {
+                assert!(idx < total_len, "idx {} out of range 0..{}", idx, total_len);
+            }
+
+            for (out_idx, in_idx) in indexes.into_iter().enumerate() {
+                let in_lane = if in_idx < lane_count {
+                    x.value_field(fx, mir::Field::new(in_idx.try_into().unwrap()))
+                } else {
+                    y.value_field(fx, mir::Field::new((in_idx - lane_count).try_into().unwrap()))
+                };
+                let out_lane = ret.place_field(fx, mir::Field::new(out_idx));
+                out_lane.write_cvalue(fx, in_lane);
+            }
+        };
+
+        simd_add, (c x, c y) {
+            simd_int_flt_binop!(fx, intrinsic, iadd|fadd(x, y) -> ret);
+        };
+        simd_sub, (c x, c y) {
+            simd_int_flt_binop!(fx, intrinsic, isub|fsub(x, y) -> ret);
+        };
+        simd_mul, (c x, c y) {
+            simd_int_flt_binop!(fx, intrinsic, imul|fmul(x, y) -> ret);
+        };
+        simd_div, (c x, c y) {
+            simd_int_flt_binop!(fx, intrinsic, udiv|sdiv|fdiv(x, y) -> ret);
+        };
+        simd_shl, (c x, c y) {
+            simd_int_binop!(fx, intrinsic, ishl(x, y) -> ret);
+        };
+        simd_shr, (c x, c y) {
+            simd_int_binop!(fx, intrinsic, ushr|sshr(x, y) -> ret);
+        };
+        simd_and, (c x, c y) {
+            simd_int_binop!(fx, intrinsic, band(x, y) -> ret);
+        };
+        simd_or, (c x, c y) {
+            simd_int_binop!(fx, intrinsic, bor(x, y) -> ret);
+        };
+        simd_xor, (c x, c y) {
+            simd_int_binop!(fx, intrinsic, bxor(x, y) -> ret);
+        };
+
+        simd_fmin, (c x, c y) {
+            simd_flt_binop!(fx, intrinsic, fmin(x, y) -> ret);
+        };
+        simd_fmax, (c x, c y) {
+            simd_flt_binop!(fx, intrinsic, fmax(x, y) -> ret);
         };
     }
 

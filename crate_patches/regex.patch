@@ -1,0 +1,34 @@
+From febff2a8c639efb5de1e1b4758cdb473847d80ce Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Tue, 30 Jul 2019 12:12:37 +0200
+Subject: [PATCH] Disable threads in shootout-regex-dna example
+
+---
+ examples/shootout-regex-dna.rs | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/examples/shootout-regex-dna.rs b/examples/shootout-regex-dna.rs
+index 2171bb3..37382f8 100644
+--- a/examples/shootout-regex-dna.rs
++++ b/examples/shootout-regex-dna.rs
+@@ -37,7 +37,7 @@ fn main() {
+     for variant in variants {
+         let seq = seq_arc.clone();
+         let restr = variant.to_string();
+-        let future = thread::spawn(move || variant.find_iter(&seq).count());
++        let future = variant.find_iter(&seq).count();
+         counts.push((restr, future));
+     }
+ 
+@@ -60,7 +60,7 @@ fn main() {
+     }
+ 
+     for (variant, count) in counts {
+-        println!("{} {}", variant, count.join().unwrap());
++        println!("{} {}", variant, count);
+     }
+     println!("\n{}\n{}\n{}", ilen, clen, seq.len());
+ }
+-- 
+2.11.0
+
