@@ -1178,7 +1178,7 @@ pub enum ExprKind {
     /// preexisting defs.
     Async(CaptureBy, NodeId, P<Block>),
     /// An await expression (`my_future.await`).
-    Await(AwaitOrigin, P<Expr>),
+    Await(P<Expr>),
 
     /// A try block (`try { ... }`).
     TryBlock(P<Block>),

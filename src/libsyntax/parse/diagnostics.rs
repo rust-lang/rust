@@ -869,13 +869,23 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Consume alternative await syntaxes like `await <expr>`, `await? <expr>`, `await(<expr>)`
-    /// and `await { <expr> }`.
+    /// Consume alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
+    /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
     crate fn parse_incorrect_await_syntax(
         &mut self,
         lo: Span,
         await_sp: Span,
     ) -> PResult<'a, (Span, ExprKind)> {
+        if self.token == token::Not {
+            // Handle `await!(<expr>)`.
+            self.expect(&token::Not)?;
+            self.expect(&token::OpenDelim(token::Paren))?;
+            let expr = self.parse_expr()?;
+            self.expect(&token::CloseDelim(token::Paren))?;
+            let sp = self.error_on_incorrect_await(lo, self.prev_span, &expr, false);
+            return Ok((sp, ExprKind::Await(expr)))
+        }
+
         let is_question = self.eat(&token::Question); // Handle `await? <expr>`.
         let expr = if self.token == token::OpenDelim(token::Brace) {
             // Handle `await { <expr> }`.
@@ -893,10 +903,15 @@ impl<'a> Parser<'a> {
             err.span_label(await_sp, "while parsing this incorrect await expression");
             err
         })?;
+        let sp = self.error_on_incorrect_await(lo, expr.span, &expr, is_question);
+        Ok((sp, ExprKind::Await(expr)))
+    }
+
+    fn error_on_incorrect_await(&self, lo: Span, hi: Span, expr: &Expr, is_question: bool) -> Span {
         let expr_str = self.span_to_snippet(expr.span)
             .unwrap_or_else(|_| pprust::expr_to_string(&expr));
         let suggestion = format!("{}.await{}", expr_str, if is_question { "?" } else { "" });
-        let sp = lo.to(expr.span);
+        let sp = lo.to(hi);
         let app = match expr.node {
             ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
             _ => Applicability::MachineApplicable,
@@ -904,7 +919,7 @@ impl<'a> Parser<'a> {
         self.struct_span_err(sp, "incorrect use of `await`")
             .span_suggestion(sp, "`await` is a postfix operation", suggestion, app)
             .emit();
-        Ok((sp, ExprKind::Await(ast::AwaitOrigin::FieldLike, expr)))
+        sp
     }
 
     /// If encountering `future.await()`, consume and emit error.

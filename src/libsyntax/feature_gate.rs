@@ -468,10 +468,6 @@ declare_features! (
     // Allows async and await syntax.
     (active, async_await, "1.28.0", Some(50547), None),
 
-    // Allows await! macro-like syntax.
-    // This will likely be removed prior to stabilization of async/await.
-    (active, await_macro, "1.28.0", Some(50547), None),
-
     // Allows reinterpretation of the bits of a value of one type as another type during const eval.
     (active, const_transmute, "1.29.0", Some(53605), None),
 
@@ -627,6 +623,8 @@ declare_features! (
     (removed, quote, "1.33.0", Some(29601), None, None),
     // Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None, None),
+    (removed, await_macro, "1.38.0", Some(50547), None,
+     Some("subsumed by `.await` syntax")),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
@@ -2109,19 +2107,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::Async(..) => {
                 gate_feature_post!(&self, async_await, e.span, "async blocks are unstable");
             }
-            ast::ExprKind::Await(origin, _) => {
-                match origin {
-                    ast::AwaitOrigin::FieldLike =>
-                        gate_feature_post!(&self, async_await, e.span, "async/await is unstable"),
-                    ast::AwaitOrigin::MacroLike =>
-                        gate_feature_post!(
-                            &self,
-                            await_macro,
-                            e.span,
-                            "`await!(<expr>)` macro syntax is unstable, and will soon be removed \
-                            in favor of `<expr>.await` syntax."
-                        ),
-                }
+            ast::ExprKind::Await(_) => {
+                gate_feature_post!(&self, async_await, e.span, "async/await is unstable");
             }
             _ => {}
         }
