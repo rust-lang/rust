@@ -1,7 +1,7 @@
 //! An interpreter for MIR used in CTFE and by miri
 
 #[macro_export]
-macro_rules! throw_err {
+macro_rules! throw_err_unsup {
     ($($tt:tt)*) => {
         Err($crate::mir::interpret::InterpError::Unsupported(
             $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
@@ -55,7 +55,7 @@ macro_rules! err_inval {
 }
 
 #[macro_export]
-macro_rules! err {
+macro_rules! err_unsup {
     ($($tt:tt)*) => {
         $crate::mir::interpret::InterpError::Unsupported(
             $crate::mir::interpret::UnsupportedOpInfo::$($tt)*

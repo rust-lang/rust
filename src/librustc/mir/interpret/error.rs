@@ -184,8 +184,8 @@ pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'
 /// Packages the kind of error we got from the const code interpreter
 /// up with a Rust-level backtrace of where the error occured.
 /// Thsese should always be constructed by calling `.into()` on
-/// a `InterpError`. In `librustc_mir::interpret`, we have the `throw_err!`
-/// macro for this.
+/// a `InterpError`. In `librustc_mir::interpret`, we have `throw_err_*`
+/// macros for this.
 #[derive(Debug, Clone)]
 pub struct InterpErrorInfo<'tcx> {
     pub kind: InterpError<'tcx>,

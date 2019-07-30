@@ -135,7 +135,7 @@ pub enum LocalValue<Tag=(), Id=AllocId> {
 impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
-            LocalValue::Dead => throw_err!(DeadLocal),
+            LocalValue::Dead => throw_err_unsup!(DeadLocal),
             LocalValue::Uninitialized =>
                 bug!("The type checker should prevent reading from a never-written local"),
             LocalValue::Live(val) => Ok(val),
@@ -148,7 +148,7 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
         &mut self,
     ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
         match self.value {
-            LocalValue::Dead => throw_err!(DeadLocal),
+            LocalValue::Dead => throw_err_unsup!(DeadLocal),
             LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
             ref mut local @ LocalValue::Live(Operand::Immediate(_)) |
             ref mut local @ LocalValue::Uninitialized => {
@@ -346,7 +346,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
                 Ok(self.tcx.optimized_mir(did))
             } else {
-                throw_err!(NoMirFor(self.tcx.def_path_str(def_id)))
+                throw_err_unsup!(NoMirFor(self.tcx.def_path_str(def_id)))
             },
             _ => Ok(self.tcx.instance_mir(instance)),
         }

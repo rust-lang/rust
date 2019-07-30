@@ -155,7 +155,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 r,
                 right_layout.ty
             );
-            return throw_err!(Unimplemented(msg));
+            return throw_err_unsup!(Unimplemented(msg));
         }
 
         // Operations that need special treatment for signed integers
@@ -250,7 +250,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     r,
                     right_layout.ty,
                 );
-                return throw_err!(Unimplemented(msg));
+                return throw_err_unsup!(Unimplemented(msg));
             }
         };
 

@@ -622,7 +622,7 @@ where
                                 .layout_of(self.monomorphize(self.frame().body.return_ty())?)?,
                         }
                     }
-                    None => return throw_err!(InvalidNullPointerUsage),
+                    None => return throw_err_unsup!(InvalidNullPointerUsage),
                 },
                 PlaceBase::Local(local) => PlaceTy {
                     // This works even for dead/uninitialized locals; we check further when writing

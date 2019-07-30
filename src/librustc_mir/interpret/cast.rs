@@ -199,7 +199,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             },
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
-            _ => throw_err!(Unimplemented(format!("int to {:?} cast", dest_layout.ty))),
+            _ => throw_err_unsup!(Unimplemented(format!("int to {:?} cast", dest_layout.ty))),
         }
     }
 

@@ -196,7 +196,7 @@ impl<'tcx, Tag> Pointer<Tag> {
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, ()> {
         if self.offset > allocation_size {
-            throw_err!(PointerOutOfBounds { ptr: self.erase_tag(), msg, allocation_size })
+            throw_err_unsup!(PointerOutOfBounds { ptr: self.erase_tag(), msg, allocation_size })
         } else {
             Ok(())
         }

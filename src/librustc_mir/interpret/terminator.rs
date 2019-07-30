@@ -89,7 +89,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     },
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func.layout.ty);
-                        return throw_err!(Unimplemented(msg));
+                        return throw_err_unsup!(Unimplemented(msg));
                     }
                 };
                 let args = self.eval_operands(args)?;
@@ -220,13 +220,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(());
         }
         let caller_arg = caller_arg.next()
-            .ok_or_else(|| err!(FunctionArgCountMismatch)) ?;
+            .ok_or_else(|| err_unsup!(FunctionArgCountMismatch)) ?;
         if rust_abi {
             debug_assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
         }
         // Now, check
         if !Self::check_argument_compat(rust_abi, caller_arg.layout, callee_arg.layout) {
-            return throw_err!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty));
+            return throw_err_unsup!(
+                FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty)
+            );
         }
         // We allow some transmutes here
         self.copy_op_transmute(caller_arg, callee_arg)
@@ -254,7 +256,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 if caller_abi != Abi::RustIntrinsic {
-                    return throw_err!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic));
+                    return throw_err_unsup!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic));
                 }
                 // The intrinsic itself cannot diverge, so if we got here without a return
                 // place... (can happen e.g., for transmute returning `!`)
@@ -295,7 +297,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             abi,
                     };
                     if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                        return throw_err!(FunctionAbiMismatch(caller_abi, callee_abi));
+                        return throw_err_unsup!(FunctionAbiMismatch(caller_abi, callee_abi));
                     }
                 }
 
@@ -390,7 +392,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Now we should have no more caller args
                     if caller_iter.next().is_some() {
                         trace!("Caller has passed too many args");
-                        return throw_err!(FunctionArgCountMismatch);
+                        return throw_err_unsup!(FunctionArgCountMismatch);
                     }
                     // Don't forget to check the return type!
                     if let Some(caller_ret) = dest {
@@ -402,7 +404,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             caller_ret.layout,
                             callee_ret.layout,
                         ) {
-                            return throw_err!(
+                            return throw_err_unsup!(
                                 FunctionRetMismatch(caller_ret.layout.ty, callee_ret.layout.ty)
                             );
                         }
@@ -410,7 +412,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let local = mir::RETURN_PLACE;
                         let ty = self.frame().body.local_decls[local].ty;
                         if !self.tcx.is_ty_uninhabited_from_any_module(ty) {
-                            return throw_err!(FunctionRetMismatch(self.tcx.types.never, ty));
+                            return throw_err_unsup!(FunctionRetMismatch(self.tcx.types.never, ty));
                         }
                     }
                     Ok(())

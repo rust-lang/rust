@@ -328,7 +328,7 @@ pub fn intern_const_alloc_recursive(
             }
         } else if ecx.memory().dead_alloc_map.contains_key(&alloc_id) {
             // dangling pointer
-            return throw_err!(
+            return throw_err_unsup!(
                 ValidationFailure("encountered dangling pointer in final constant".into())
             )
         }

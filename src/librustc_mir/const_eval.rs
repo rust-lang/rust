@@ -352,7 +352,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     ecx.goto_block(ret)?; // fully evaluated and done
                     Ok(None)
                 } else {
-                    throw_err!(MachineError(format!("calling non-const function `{}`", instance)))
+                    throw_err_unsup!(
+                        MachineError(format!("calling non-const function `{}`", instance))
+                    )
                 };
             }
         }
@@ -412,7 +414,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _tcx: TyCtxt<'tcx>,
         _def_id: DefId,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
-        throw_err!(ReadForeignStatic)
+        throw_err_unsup!(ReadForeignStatic)
     }
 
     #[inline(always)]
