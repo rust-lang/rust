@@ -41,7 +41,6 @@ pub fn inject(
         };
         krate.module.items.insert(0, P(ast::Item {
             attrs: vec![attr::mk_attr_outer(
-                DUMMY_SP,
                 attr::mk_word_item(ast::Ident::with_empty_ctxt(sym::macro_use))
             )],
             vis: dummy_spanned(ast::VisibilityKind::Inherited),

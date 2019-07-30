@@ -379,26 +379,26 @@ pub fn mk_attr_id() -> AttrId {
 }
 
 /// Returns an inner attribute with the given value and span.
-pub fn mk_attr_inner(span: Span, item: MetaItem) -> Attribute {
+pub fn mk_attr_inner(item: MetaItem) -> Attribute {
     Attribute {
         id: mk_attr_id(),
         style: ast::AttrStyle::Inner,
         path: item.path,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
-        span,
+        span: item.span,
     }
 }
 
 /// Returns an outer attribute with the given value and span.
-pub fn mk_attr_outer(span: Span, item: MetaItem) -> Attribute {
+pub fn mk_attr_outer(item: MetaItem) -> Attribute {
     Attribute {
         id: mk_attr_id(),
         style: ast::AttrStyle::Outer,
         path: item.path,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
-        span,
+        span: item.span,
     }
 }
 
