@@ -376,37 +376,27 @@ pub fn mk_attr_id() -> AttrId {
     AttrId(id)
 }
 
-/// Returns an inner attribute with the given value.
-pub fn mk_attr_inner(span: Span, id: AttrId, item: MetaItem) -> Attribute {
-    mk_spanned_attr_inner(span, id, item)
-}
-
 /// Returns an inner attribute with the given value and span.
-pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
+pub fn mk_attr_inner(span: Span, id: AttrId, item: MetaItem) -> Attribute {
     Attribute {
         id,
         style: ast::AttrStyle::Inner,
         path: item.path,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
-        span: sp,
+        span,
     }
 }
 
-/// Returns an outer attribute with the given value.
-pub fn mk_attr_outer(span: Span, id: AttrId, item: MetaItem) -> Attribute {
-    mk_spanned_attr_outer(span, id, item)
-}
-
 /// Returns an outer attribute with the given value and span.
-pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
+pub fn mk_attr_outer(span: Span, id: AttrId, item: MetaItem) -> Attribute {
     Attribute {
         id,
         style: ast::AttrStyle::Outer,
         path: item.path,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
-        span: sp,
+        span,
     }
 }
 

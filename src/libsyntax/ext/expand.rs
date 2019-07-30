@@ -1341,8 +1341,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
             let meta = attr::mk_list_item(DUMMY_SP, Ident::with_empty_ctxt(sym::doc), items);
             match at.style {
-                ast::AttrStyle::Inner => *at = attr::mk_spanned_attr_inner(at.span, at.id, meta),
-                ast::AttrStyle::Outer => *at = attr::mk_spanned_attr_outer(at.span, at.id, meta),
+                ast::AttrStyle::Inner => *at = attr::mk_attr_inner(at.span, at.id, meta),
+                ast::AttrStyle::Outer => *at = attr::mk_attr_outer(at.span, at.id, meta),
             }
         } else {
             noop_visit_attribute(at, self)
