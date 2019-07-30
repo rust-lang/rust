@@ -438,9 +438,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(fun);
                 self.hash_exprs(args);
             },
-            ExprKind::Cast(ref e, ref _ty) | ExprKind::Type(ref e, ref _ty) => {
+            ExprKind::Cast(ref e, ref ty) | ExprKind::Type(ref e, ref ty) => {
                 self.hash_expr(e);
-                // TODO: _ty
+                self.hash_ty(ty);
             },
             ExprKind::Closure(cap, _, eid, _, _) => {
                 match cap {
@@ -512,7 +512,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
-            ExprKind::Tup(ref v) | ExprKind::Array(ref v) => {
+            ExprKind::Tup(ref tup) => {
+                self.hash_exprs(tup);
+            },
+            ExprKind::Array(ref v) => {
                 self.hash_exprs(v);
             },
             ExprKind::Unary(lop, ref le) => {
@@ -572,6 +575,102 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             Guard::If(ref expr) => {
                 self.hash_expr(expr);
             },
+        }
+    }
+
+    pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
+        std::mem::discriminant(&lifetime.name).hash(&mut self.s);
+        if let LifetimeName::Param(ref name) = lifetime.name {
+            std::mem::discriminant(name).hash(&mut self.s);
+            match name {
+                ParamName::Plain(ref ident) => {
+                    ident.name.hash(&mut self.s);
+                },
+                ParamName::Fresh(ref size) => {
+                    size.hash(&mut self.s);
+                },
+                ParamName::Error => {},
+            }
+        }
+    }
+
+    pub fn hash_ty(&mut self, ty: &Ty) {
+        self.hash_tykind(&ty.node);
+    }
+
+    pub fn hash_tykind(&mut self, ty: &TyKind) {
+        std::mem::discriminant(ty).hash(&mut self.s);
+        match ty {
+            TyKind::Slice(ty) => {
+                self.hash_ty(ty);
+            },
+            TyKind::Array(ty, anon_const) => {
+                self.hash_ty(ty);
+                self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
+            },
+            TyKind::Ptr(mut_ty) => {
+                self.hash_ty(&mut_ty.ty);
+                mut_ty.mutbl.hash(&mut self.s);
+            },
+            TyKind::Rptr(lifetime, mut_ty) => {
+                self.hash_lifetime(lifetime);
+                self.hash_ty(&mut_ty.ty);
+                mut_ty.mutbl.hash(&mut self.s);
+            },
+            TyKind::BareFn(bfn) => {
+                bfn.unsafety.hash(&mut self.s);
+                bfn.abi.hash(&mut self.s);
+                for arg in &bfn.decl.inputs {
+                    self.hash_ty(&arg);
+                }
+                match bfn.decl.output {
+                    FunctionRetTy::DefaultReturn(_) => {
+                        ().hash(&mut self.s);
+                    },
+                    FunctionRetTy::Return(ref ty) => {
+                        self.hash_ty(ty);
+                    },
+                }
+                bfn.decl.c_variadic.hash(&mut self.s);
+            },
+            TyKind::Tup(ty_list) => {
+                for ty in ty_list {
+                    self.hash_ty(ty);
+                }
+            },
+            TyKind::Path(qpath) => match qpath {
+                QPath::Resolved(ref maybe_ty, ref path) => {
+                    if let Some(ref ty) = maybe_ty {
+                        self.hash_ty(ty);
+                    }
+                    for segment in &path.segments {
+                        segment.ident.name.hash(&mut self.s);
+                    }
+                },
+                QPath::TypeRelative(ref ty, ref segment) => {
+                    self.hash_ty(ty);
+                    segment.ident.name.hash(&mut self.s);
+                },
+            },
+            TyKind::Def(_, arg_list) => {
+                for arg in arg_list {
+                    match arg {
+                        GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
+                        GenericArg::Type(ref ty) => self.hash_ty(&ty),
+                        GenericArg::Const(ref ca) => {
+                            self.hash_expr(&self.cx.tcx.hir().body(ca.value.body).value);
+                        },
+                    }
+                }
+            },
+            TyKind::TraitObject(_, lifetime) => {
+                self.hash_lifetime(lifetime);
+            },
+            TyKind::Typeof(anon_const) => {
+                self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
+            },
+            TyKind::CVarArgs(lifetime) => self.hash_lifetime(lifetime),
+            TyKind::Err | TyKind::Infer | TyKind::Never => {},
         }
     }
 }
