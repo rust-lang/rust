@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if [[ "$1" == "--release" ]]; then
     export CHANNEL='release'
     cargo build --release
