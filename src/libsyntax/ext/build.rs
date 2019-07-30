@@ -1135,7 +1135,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn attribute(&self, sp: Span, mi: ast::MetaItem) -> ast::Attribute {
-        attr::mk_attr_outer(sp, attr::mk_attr_id(), mi)
+        attr::mk_attr_outer(sp, mi)
     }
 
     fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem {

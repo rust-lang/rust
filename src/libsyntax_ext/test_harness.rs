@@ -161,7 +161,6 @@ impl MutVisitor for EntryPointCleaner {
                     let allow_dead_code_item = attr::mk_list_item(DUMMY_SP, allow_ident,
                                                                   vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(DUMMY_SP,
-                                                              attr::mk_attr_id(),
                                                               allow_dead_code_item);
 
                     ast::Item {
