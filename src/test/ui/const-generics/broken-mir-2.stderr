@@ -3,6 +3,8 @@ warning: the feature `const_generics` is incomplete and may cause the compiler t
    |
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
   --> $DIR/broken-mir-2.rs:7:36
