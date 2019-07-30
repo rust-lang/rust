@@ -869,8 +869,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         debug!("(resolving function) entering function");
         let rib_kind = match function_kind {
             FnKind::ItemFn(..) => FnItemRibKind,
-            FnKind::Method(..) => AssocItemRibKind,
-            FnKind::Closure(_) => NormalRibKind,
+            FnKind::Method(..) | FnKind::Closure(_) => NormalRibKind,
         };
 
         // Create a value rib for the function.
@@ -2307,21 +2306,32 @@ impl<'a> Resolver<'a> {
         if ident.name == kw::Invalid {
             return Some(LexicalScopeBinding::Res(Res::Err));
         }
-        ident.span = if ident.name == kw::SelfUpper {
+        let (general_span, modern_span) = if ident.name == kw::SelfUpper {
             // FIXME(jseyfried) improve `Self` hygiene
-            ident.span.with_ctxt(SyntaxContext::empty())
+            let empty_span = ident.span.with_ctxt(SyntaxContext::empty());
+            (empty_span, empty_span)
         } else if ns == TypeNS {
-            ident.span.modern()
+            let modern_span = ident.span.modern();
+            (modern_span, modern_span)
         } else {
-            ident.span.modern_and_legacy()
+            (ident.span.modern_and_legacy(), ident.span.modern())
         };
+        ident.span = general_span;
+        let modern_ident = Ident { span: modern_span, ..ident };
 
         // Walk backwards up the ribs in scope.
         let record_used = record_used_id.is_some();
         let mut module = self.graph_root;
         for i in (0 .. self.ribs[ns].len()).rev() {
             debug!("walk rib\n{:?}", self.ribs[ns][i].bindings);
-            if let Some(res) = self.ribs[ns][i].bindings.get(&ident).cloned() {
+            // Use the rib kind to determine whether we are resolving parameters
+            // (modern hygiene) or local variables (legacy hygiene).
+            let rib_ident = if let AssocItemRibKind | ItemRibKind = self.ribs[ns][i].kind {
+                modern_ident
+            } else {
+                ident
+            };
+            if let Some(res) = self.ribs[ns][i].bindings.get(&rib_ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Res(
                     self.validate_res_from_ribs(ns, i, res, record_used, path_span),
@@ -2357,7 +2367,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        ident.span = ident.span.modern();
+        ident = modern_ident;
         let mut poisoned = None;
         loop {
             let opt_module = if let Some(node_id) = record_used_id {

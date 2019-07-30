@@ -2568,7 +2568,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let lifetimes: Vec<_> = params
             .iter()
             .filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => Some((param, param.name)),
+                GenericParamKind::Lifetime { .. } => Some((param, param.name.modern())),
                 _ => None,
             })
             .collect();
