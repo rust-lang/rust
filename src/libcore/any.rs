@@ -468,7 +468,8 @@ impl TypeId {
 /// The current implementation uses the same infrastructure as compiler
 /// diagnostics and debuginfo, but this is not guaranteed.
 #[stable(feature = "type_name", since = "1.38.0")]
-pub fn type_name<T: ?Sized>() -> &'static str {
+#[rustc_const_unstable(feature = "const_type_name")]
+pub const fn type_name<T: ?Sized>() -> &'static str {
     #[cfg(bootstrap)]
     unsafe {
         intrinsics::type_name::<T>()
