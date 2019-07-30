@@ -275,19 +275,18 @@ impl<'a, 'b> Context<'a, 'b> {
         } else {
             MultiSpan::from_span(self.fmtsp)
         };
-        let refs_len = self.invalid_refs.len();
-        let mut refs = self
+        let refs = self
             .invalid_refs
             .iter()
             .map(|(r, pos)| (r.to_string(), self.arg_spans.get(*pos)));
 
         let mut zero_based_note = false;
 
-        if self.names.is_empty() && !numbered_position_args {
-            let count = self.pieces.len() + self.arg_with_formatting
-                .iter()
-                .filter(|fmt| fmt.precision_span.is_some())
-                .count();
+        let count = self.pieces.len() + self.arg_with_formatting
+            .iter()
+            .filter(|fmt| fmt.precision_span.is_some())
+            .count();
+        if self.names.is_empty() && !numbered_position_args && count != self.args.len() {
             e = self.ecx.mut_span_err(
                 sp,
                 &format!(
@@ -298,14 +297,22 @@ impl<'a, 'b> Context<'a, 'b> {
                 ),
             );
         } else {
-            let (arg_list, mut sp) = if refs_len == 1 {
-                let (reg, pos) = refs.next().unwrap();
+            let (mut refs, spans): (Vec<_>, Vec<_>) = refs.unzip();
+            // Avoid `invalid reference to positional arguments 7 and 7 (there is 1 argument)`
+            // for `println!("{7:7$}", 1);`
+            refs.dedup();
+            refs.sort();
+            let (arg_list, mut sp) = if refs.len() == 1 {
+                let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.map(|sp| *sp)).collect();
                 (
-                    format!("argument {}", reg),
-                    MultiSpan::from_span(*pos.unwrap_or(&self.fmtsp)),
+                    format!("argument {}", refs[0]),
+                    if spans.is_empty() {
+                        MultiSpan::from_span(self.fmtsp)
+                    } else {
+                        MultiSpan::from_spans(spans)
+                    },
                 )
             } else {
-                let (mut refs, spans): (Vec<_>, Vec<_>) = refs.unzip();
                 let pos = MultiSpan::from_spans(spans.into_iter().map(|s| *s.unwrap()).collect());
                 let reg = refs.pop().unwrap();
                 (
@@ -754,7 +761,21 @@ impl<'a, 'b> Context<'a, 'b> {
                     "x" => "LowerHex",
                     "X" => "UpperHex",
                     _ => {
-                        ecx.span_err(sp, &format!("unknown format trait `{}`", *tyname));
+                        let mut err = ecx.struct_span_err(
+                            sp,
+                            &format!("unknown format trait `{}`", *tyname),
+                        );
+                        err.note("the only appropriate formatting traits are:\n\
+                                  - ``, which uses the `Display` trait\n\
+                                  - `?`, which uses the `Debug` trait\n\
+                                  - `e`, which uses the `LowerExp` trait\n\
+                                  - `E`, which uses the `UpperExp` trait\n\
+                                  - `o`, which uses the `Octal` trait\n\
+                                  - `p`, which uses the `Pointer` trait\n\
+                                  - `b`, which uses the `Binary` trait\n\
+                                  - `x`, which uses the `LowerHex` trait\n\
+                                  - `X`, which uses the `UpperHex` trait");
+                        err.emit();
                         return DummyResult::raw_expr(sp, true);
                     }
                 }
