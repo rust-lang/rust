@@ -259,7 +259,7 @@ pub trait AstBuilder {
                     generics: Generics) -> P<ast::Item>;
     fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> P<ast::Item>;
 
-    fn attribute(&self, sp: Span, mi: ast::MetaItem) -> ast::Attribute;
+    fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute;
 
     fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem;
 
@@ -1134,8 +1134,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.item_ty_poly(span, name, ty, Generics::default())
     }
 
-    fn attribute(&self, sp: Span, mi: ast::MetaItem) -> ast::Attribute {
-        attr::mk_attr_outer(sp, mi)
+    fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute {
+        attr::mk_attr_outer(mi.span, mi)
     }
 
     fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem {

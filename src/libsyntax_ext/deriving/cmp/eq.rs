@@ -17,7 +17,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt<'_>,
     let inline = cx.meta_word(span, sym::inline);
     let hidden = cx.meta_list_item_word(span, sym::hidden);
     let doc = cx.meta_list(span, sym::doc, vec![hidden]);
-    let attrs = vec![cx.attribute(span, inline), cx.attribute(span, doc)];
+    let attrs = vec![cx.attribute(inline), cx.attribute(doc)];
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),

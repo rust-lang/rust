@@ -929,7 +929,7 @@ pub fn find_transparency(
 pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
     // All the built-in macro attributes are "words" at the moment.
     let template = AttributeTemplate { word: true, list: None, name_value_str: None };
-    let attr = ecx.attribute(meta_item.span, meta_item.clone());
+    let attr = ecx.attribute(meta_item.clone());
     check_builtin_attribute(ecx.parse_sess, &attr, name, template);
 }
 

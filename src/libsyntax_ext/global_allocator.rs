@@ -110,7 +110,7 @@ impl AllocFnFactory<'_, '_> {
     fn attrs(&self) -> Vec<Attribute> {
         let special = sym::rustc_std_internal_symbol;
         let special = self.cx.meta_word(self.span, special);
-        vec![self.cx.attribute(self.span, special)]
+        vec![self.cx.attribute(special)]
     }
 
     fn arg_ty(

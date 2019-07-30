@@ -19,7 +19,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt<'_>,
     macro_rules! md {
         ($name:expr, $op:expr, $equal:expr) => { {
             let inline = cx.meta_word(span, sym::inline);
-            let attrs = vec![cx.attribute(span, inline)];
+            let attrs = vec![cx.attribute(inline)];
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),
@@ -43,7 +43,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt<'_>,
                                     PathKind::Std));
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(span, inline)];
+    let attrs = vec![cx.attribute(inline)];
 
     let partial_cmp_def = MethodDef {
         name: "partial_cmp",

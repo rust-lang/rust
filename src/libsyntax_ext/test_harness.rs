@@ -294,7 +294,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     // #![main]
     let main_meta = ecx.meta_word(sp, sym::main);
-    let main_attr = ecx.attribute(sp, main_meta);
+    let main_attr = ecx.attribute(main_meta);
 
     // extern crate test as test_gensym
     let test_extern_stmt = ecx.stmt_item(sp, ecx.item(sp,

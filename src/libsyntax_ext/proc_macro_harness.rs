@@ -337,7 +337,7 @@ fn mk_decls(
 
     let hidden = cx.meta_list_item_word(span, sym::hidden);
     let doc = cx.meta_list(span, sym::doc, vec![hidden]);
-    let doc_hidden = cx.attribute(span, doc);
+    let doc_hidden = cx.attribute(doc);
 
     let proc_macro = Ident::with_empty_ctxt(sym::proc_macro);
     let krate = cx.item(span,
@@ -394,7 +394,7 @@ fn mk_decls(
         cx.expr_vec_slice(span, decls),
     ).map(|mut i| {
         let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);
-        i.attrs.push(cx.attribute(span, attr));
+        i.attrs.push(cx.attribute(attr));
         i.vis = respan(span, ast::VisibilityKind::Public);
         i
     });

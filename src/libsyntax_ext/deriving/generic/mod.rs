@@ -666,14 +666,13 @@ impl<'a> TraitDef<'a> {
         let path = cx.path_all(self.span, false, vec![type_ident], self_params, vec![]);
         let self_type = cx.ty_path(path);
 
-        let attr = cx.attribute(self.span,
-                                cx.meta_word(self.span, sym::automatically_derived));
+        let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
         // Just mark it now since we know that it'll end up used downstream
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let unused_qual = {
             let word = cx.meta_list_item_word(self.span, Symbol::intern("unused_qualifications"));
-            cx.attribute(self.span, cx.meta_list(self.span, sym::allow, vec![word]))
+            cx.attribute(cx.meta_list(self.span, sym::allow, vec![word]))
         };
 
         let mut a = vec![attr, unused_qual];
