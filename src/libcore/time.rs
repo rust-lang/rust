@@ -689,6 +689,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
+    /// #![feature(div_duration)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
@@ -705,6 +706,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
+    /// #![feature(div_duration)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
