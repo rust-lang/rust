@@ -514,10 +514,6 @@ impl<'a> Parser<'a> {
         // Width and precision
         let mut havewidth = false;
 
-        let mut width_span_start = 0;
-        if let Some((pos, '0')) = self.cur.peek() {
-            width_span_start = *pos;
-        }
         if self.consume('0') {
             // small ambiguity with '0$' as a format string. In theory this is a
             // '0' flag and then an ill-formatted format string with just a '$'
@@ -531,11 +527,11 @@ impl<'a> Parser<'a> {
             }
         }
         if !havewidth {
-            if width_span_start == 0 {
-                if let Some((pos, _)) = self.cur.peek() {
-                    width_span_start = *pos;
-                }
-            }
+            let width_span_start = if let Some((pos, _)) = self.cur.peek() {
+                *pos
+            } else {
+                0
+            };
             let (w, sp) = self.count(width_span_start);
             spec.width = w;
             spec.width_span = sp;

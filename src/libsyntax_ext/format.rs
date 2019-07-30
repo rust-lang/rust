@@ -586,7 +586,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     arg.position.index() == simple_arg.position.index();
 
                 if arg.format.precision_span.is_some() || arg.format.width_span.is_some() {
-                    self.arg_with_formatting.push(arg.format); //'liself.fmtsp.from_inner(span));
+                    self.arg_with_formatting.push(arg.format);
                 }
                 if !pos_simple || arg.format != simple_arg.format || fill != ' ' {
                     self.all_pieces_simple = false;
