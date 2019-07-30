@@ -1664,6 +1664,7 @@ fn find_existential_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             intravisit::NestedVisitorMap::All(&self.tcx.hir())
         }
         fn visit_item(&mut self, it: &'tcx Item) {
+            debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
             // The existential type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
@@ -1672,6 +1673,7 @@ fn find_existential_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
+            debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
             // The existential type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
@@ -1680,6 +1682,7 @@ fn find_existential_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem) {
+            debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
             self.check(def_id);
             intravisit::walk_trait_item(self, it);
@@ -1703,9 +1706,23 @@ fn find_existential_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     } else {
         debug!("find_existential_constraints: scope={:?}", tcx.hir().get(scope));
         match tcx.hir().get(scope) {
-            Node::Item(ref it) => intravisit::walk_item(&mut locator, it),
-            Node::ImplItem(ref it) => intravisit::walk_impl_item(&mut locator, it),
-            Node::TraitItem(ref it) => intravisit::walk_trait_item(&mut locator, it),
+            // We explicitly call `visit_*` methods, instead of using `intravisit::walk_*` methods
+            // This allows our visitor to process the defining item itself, causing
+            // it to pick up any 'sibling' defining uses.
+            //
+            // For example, this code:
+            // ```
+            // fn foo() {
+            //     existential type Blah: Debug;
+            //     let my_closure = || -> Blah { true };
+            // }
+            // ```
+            //
+            // requires us to explicitly process `foo()` in order
+            // to notice the defining usage of `Blah`.
+            Node::Item(ref it) => locator.visit_item(it),
+            Node::ImplItem(ref it) => locator.visit_impl_item(it),
+            Node::TraitItem(ref it) => locator.visit_trait_item(it),
             other => bug!(
                 "{:?} is not a valid scope for an existential type item",
                 other

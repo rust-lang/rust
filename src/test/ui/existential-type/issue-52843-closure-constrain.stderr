@@ -1,0 +1,20 @@
+error: concrete type differs from previous defining existential type use
+  --> $DIR/issue-52843-closure-constrain.rs:8:5
+   |
+LL |     fn _unused() -> Existential { String::new() }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, got `std::string::String`
+   |
+note: previous use here
+  --> $DIR/issue-52843-closure-constrain.rs:6:1
+   |
+LL | / fn main() {
+LL | |     existential type Existential: Debug;
+LL | |     fn _unused() -> Existential { String::new() }
+LL | |
+LL | |     let null = || -> Existential { 0 };
+LL | |     println!("{:?}", null());
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
