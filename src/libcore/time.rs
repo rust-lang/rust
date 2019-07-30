@@ -695,7 +695,7 @@ impl Duration {
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration_f64(dur2), 0.5);
     /// ```
-    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[unstable(feature = "div_duration", issue = "63139")]
     #[inline]
     pub fn div_duration_f64(self, rhs: Duration) -> f64 {
         self.as_secs_f64() / rhs.as_secs_f64()
@@ -711,7 +711,7 @@ impl Duration {
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration_f32(dur2), 0.5);
     /// ```
-    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[unstable(feature = "div_duration", issue = "63139")]
     #[inline]
     pub fn div_duration_f32(self, rhs: Duration) -> f32 {
         self.as_secs_f32() / rhs.as_secs_f32()
