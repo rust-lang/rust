@@ -4,5 +4,5 @@
 use std::io::Write;
 
 pub fn hello() {
-    std::io::stdout().write_all(b"hello world!\n");
+    let _ = std::io::stdout().write_all(b"hello world!\n");
 }

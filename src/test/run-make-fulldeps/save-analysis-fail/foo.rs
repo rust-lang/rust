@@ -1,6 +1,8 @@
-#![ crate_name = "test" ]
+#![crate_name = "test"]
 #![feature(box_syntax)]
 #![feature(rustc_private)]
+
+#![allow(unused_must_use)]
 
 extern crate graphviz;
 // A simple rust project
