@@ -1189,11 +1189,7 @@ pub fn may_define_existential_type(
     opaque_hir_id: hir::HirId,
 ) -> bool {
     let mut hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    trace!(
-        "may_define_existential_type(def={:?}, opaque_node={:?})",
-        tcx.hir().get(hir_id),
-        tcx.hir().get(opaque_hir_id)
-    );
+
 
     // Named existential types can be defined by any siblings or children of siblings.
     let scope = tcx.hir().get_defining_scope(opaque_hir_id).expect("could not get defining scope");
@@ -1202,5 +1198,12 @@ pub fn may_define_existential_type(
         hir_id = tcx.hir().get_parent_item(hir_id);
     }
     // Syntactically, we are allowed to define the concrete type if:
-    hir_id == scope
+    let res = hir_id == scope;
+    trace!(
+        "may_define_existential_type(def={:?}, opaque_node={:?}) = {}",
+        tcx.hir().get(hir_id),
+        tcx.hir().get(opaque_hir_id),
+        res
+    );
+    res
 }
