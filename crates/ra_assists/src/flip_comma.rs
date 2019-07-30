@@ -49,15 +49,20 @@ mod tests {
         // See https://github.com/rust-analyzer/rust-analyzer/issues/1619
         // "Flip comma" assist shouldn't be applicable to the last comma in enum or struct
         // declaration body.
-        check_assist_target(flip_comma, 
-                            "pub enum Test { \
-                                A,<|> \
-                            }", ",");
+        check_assist_target(
+            flip_comma,
+            "pub enum Test { \
+             A,<|> \
+             }",
+            ",",
+        );
 
-        
-        check_assist_target(flip_comma, 
-                            "pub struct Test { \
-                                foo: usize,<|> \
-                            }", ",");
+        check_assist_target(
+            flip_comma,
+            "pub struct Test { \
+             foo: usize,<|> \
+             }",
+            ",",
+        );
     }
 }
