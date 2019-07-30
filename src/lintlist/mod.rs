@@ -1381,7 +1381,7 @@ pub const ALL_LINTS: [Lint; 309] = [
     },
     Lint {
         name: "panicking_unwrap",
-        group: "nursery",
+        group: "correctness",
         desc: "checks for calls of unwrap[_err]() that will always fail",
         deprecation: None,
         module: "unwrap",
@@ -1927,7 +1927,7 @@ pub const ALL_LINTS: [Lint; 309] = [
     },
     Lint {
         name: "unnecessary_unwrap",
-        group: "nursery",
+        group: "complexity",
         desc: "checks for calls of unwrap[_err]() that cannot fail",
         deprecation: None,
         module: "unwrap",
