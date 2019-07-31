@@ -12,13 +12,7 @@ use stdarch_test::assert_instr;
 #[cfg_attr(test, assert_instr(bswap))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _bswap64(x: i64) -> i64 {
-    bswap_i64(x)
-}
-
-#[allow(improper_ctypes)]
-extern "C" {
-    #[link_name = "llvm.bswap.i64"]
-    fn bswap_i64(x: i64) -> i64;
+   x.swap_bytes()
 }
 
 #[cfg(test)]
