@@ -13,7 +13,7 @@ use rustc::mir::{
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
 };
-use rustc::mir::interpret::{Scalar, GlobalId, InterpResult, InterpError, PanicInfo};
+use rustc::mir::interpret::{Scalar, GlobalId, InterpResult, PanicInfo};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
@@ -519,7 +519,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     )
                 } else {
                     if overflow {
-                        let err = InterpError::Panic(PanicInfo::Overflow(op)).into();
+                        let err = err_panic!(Overflow(op)).into();
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
                     }

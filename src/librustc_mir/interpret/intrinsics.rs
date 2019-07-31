@@ -6,9 +6,7 @@ use syntax::symbol::Symbol;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::mir::BinOp;
-use rustc::mir::interpret::{
-    InterpResult, InterpError, Scalar, PanicInfo, UnsupportedOpInfo,
-};
+use rustc::mir::interpret::{InterpResult, Scalar};
 
 use super::{
     Machine, PlaceTy, OpTy, InterpCx, Immediate,
@@ -100,7 +98,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits = self.read_scalar(args[0])?.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-                    _ => Err(InterpError::Unsupported(UnsupportedOpInfo::TypeNotPrimitive(ty)))?,
+                    _ => Err(err_unsup!(TypeNotPrimitive(ty)))?,
                 };
                 let out_val = if intrinsic_name.ends_with("_nonzero") {
                     if bits == 0 {
@@ -250,7 +248,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(InterpError::Panic(PanicInfo::Panic { msg, file, line, col }).into());
+            throw_panic!(Panic { msg, file, line, col })
         } else if Some(def_id) == self.tcx.lang_items().begin_panic_fn() {
             assert!(args.len() == 2);
             // &'static str, &(&'static str, u32, u32)
@@ -268,7 +266,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(InterpError::Panic(PanicInfo::Panic { msg, file, line, col }).into());
+            throw_panic!(Panic { msg, file, line, col })
         } else {
             return Ok(false);
         }

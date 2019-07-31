@@ -18,8 +18,8 @@ use syntax::ast::Mutability;
 
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
-    InterpResult, Scalar, InterpError, GlobalAlloc, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg, InvalidProgramInfo,
+    InterpResult, Scalar, GlobalAlloc, PointerArithmetic,
+    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -250,18 +250,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(alloc) => alloc,
             None => {
                 // Deallocating static memory -- always an error
-                match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
-                    Some(GlobalAlloc::Function(..)) => throw_unsup!(DeallocatedWrongMemoryKind(
+                return Err(match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
+                    Some(GlobalAlloc::Function(..)) => err_unsup!(DeallocatedWrongMemoryKind(
                         "function".to_string(),
                         format!("{:?}", kind),
                     )),
-                    Some(GlobalAlloc::Static(..)) |
-                    Some(GlobalAlloc::Memory(..)) => throw_unsup!(DeallocatedWrongMemoryKind(
-                        "static".to_string(),
-                        format!("{:?}", kind),
-                    )),
-                    None => throw_unsup!(DoubleFree)
+                    Some(GlobalAlloc::Static(..)) | Some(GlobalAlloc::Memory(..)) => err_unsup!(
+                        DeallocatedWrongMemoryKind("static".to_string(), format!("{:?}", kind))
+                    ),
+                    None => err_unsup!(DoubleFree),
                 }
+                .into());
             }
         };
 
@@ -437,11 +436,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                             assert!(tcx.is_static(def_id));
                             match err {
                                 ErrorHandled::Reported =>
-                                    InterpError::InvalidProgram(
-                                        InvalidProgramInfo::ReferencedConstant
-                                    ),
+                                    err_inval!(ReferencedConstant),
                                 ErrorHandled::TooGeneric =>
-                                    InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric),
+                                    err_inval!(TooGeneric),
                             }
                         })?;
                     // Make sure we use the ID of the resolved memory, not the lazy one!

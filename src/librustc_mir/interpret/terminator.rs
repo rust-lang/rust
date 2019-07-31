@@ -136,31 +136,29 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     // Compute error message
                     use rustc::mir::interpret::PanicInfo::*;
-                    match msg {
+                    return Err(match msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.read_immediate(self.eval_operand(len, None)?)
-                                .expect("can't eval len").to_scalar()?
+                            let len = self
+                                .read_immediate(self.eval_operand(len, None)?)
+                                .expect("can't eval len")
+                                .to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            let index = self.read_immediate(self.eval_operand(index, None)?)
-                                .expect("can't eval index").to_scalar()?
+                            let index = self
+                                .read_immediate(self.eval_operand(index, None)?)
+                                .expect("can't eval index")
+                                .to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            throw_panic!(BoundsCheck { len, index })
+                            err_panic!(BoundsCheck { len, index })
                         }
-                        Overflow(op) =>
-                            throw_panic!(Overflow(*op)),
-                        OverflowNeg =>
-                            throw_panic!(OverflowNeg),
-                        DivisionByZero =>
-                            throw_panic!(DivisionByZero),
-                        RemainderByZero =>
-                            throw_panic!(RemainderByZero),
-                        GeneratorResumedAfterReturn =>
-                            throw_panic!(GeneratorResumedAfterReturn),
-                        GeneratorResumedAfterPanic =>
-                            throw_panic!(GeneratorResumedAfterPanic),
-                        Panic { .. } =>
-                            bug!("`Panic` variant cannot occur in MIR"),
-                    };
+                        Overflow(op) => err_panic!(Overflow(*op)),
+                        OverflowNeg => err_panic!(OverflowNeg),
+                        DivisionByZero => err_panic!(DivisionByZero),
+                        RemainderByZero => err_panic!(RemainderByZero),
+                        GeneratorResumedAfterReturn => err_panic!(GeneratorResumedAfterReturn),
+                        GeneratorResumedAfterPanic => err_panic!(GeneratorResumedAfterPanic),
+                        Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
+                    }
+                    .into());
                 }
             }
 

@@ -11,8 +11,7 @@ use rustc::ty::layout::{
 use rustc::mir::interpret::{
     GlobalId, AllocId,
     ConstValue, Pointer, Scalar,
-    InterpResult, InterpError,
-    sign_extend, truncate, UnsupportedOpInfo,
+    InterpResult, sign_extend, truncate,
 };
 use super::{
     InterpCx, Machine,
@@ -332,7 +331,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
         let str = ::std::str::from_utf8(bytes).map_err(|err| {
-            InterpError::Unsupported(UnsupportedOpInfo::ValidationFailure(err.to_string()))
+            err_unsup!(ValidationFailure(err.to_string()))
         })?;
         Ok(str)
     }
@@ -604,7 +603,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);
         // post-process
-        use rustc::mir::interpret::UnsupportedOpInfo::InvalidDiscriminant;
         Ok(match *discr_kind {
             layout::DiscriminantKind::Tag => {
                 let bits_discr = match raw_discr.to_bits(discr_val.layout.size) {
@@ -649,7 +647,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let variants_start = niche_variants.start().as_u32() as u128;
                 let variants_end = niche_variants.end().as_u32() as u128;
                 let raw_discr = raw_discr.not_undef().map_err(|_| {
-                    InterpError::Unsupported(InvalidDiscriminant(ScalarMaybeUndef::Undef))
+                    err_unsup!(InvalidDiscriminant(ScalarMaybeUndef::Undef))
                 })?;
                 match raw_discr.to_bits_or_ptr(discr_val.layout.size, self) {
                     Err(ptr) => {

@@ -137,13 +137,12 @@ impl<'tcx> ConstEvalErr<'tcx> {
         message: &str,
         lint_root: Option<hir::HirId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
-        use InvalidProgramInfo::*;
         match self.error {
-            InterpError::InvalidProgram(Layout(LayoutError::Unknown(_))) |
-            InterpError::InvalidProgram(TooGeneric) =>
+            err_inval!(Layout(LayoutError::Unknown(_))) |
+            err_inval!(TooGeneric) =>
                 return Err(ErrorHandled::TooGeneric),
-            InterpError::InvalidProgram(Layout(LayoutError::SizeOverflow(_))) |
-            InterpError::InvalidProgram(TypeckError) =>
+            err_inval!(Layout(LayoutError::SizeOverflow(_))) |
+            err_inval!(TypeckError) =>
                 return Err(ErrorHandled::Reported),
             _ => {},
         }
@@ -549,7 +548,9 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum ResourceExhaustionInfo {
+    /// The stack grew too big.
     StackFrameLimitReached,
+    /// The program ran into an infinite loop.
     InfiniteLoop,
 }
 

@@ -16,8 +16,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
     ErrorHandled,
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
-    InterpResult, InterpError,
-    truncate, sign_extend, InvalidProgramInfo,
+    InterpResult, truncate, sign_extend,
 };
 use rustc_data_structures::fx::FxHashMap;
 
@@ -193,7 +192,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
         self.tcx
             .layout_of(self.param_env.and(ty))
             .map_err(|layout| {
-                InterpError::InvalidProgram(InvalidProgramInfo::Layout(layout)).into()
+                err_inval!(Layout(layout)).into()
             })
     }
 }
@@ -698,9 +697,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let val = self.tcx.const_eval_raw(param_env.and(gid)).map_err(|err| {
             match err {
                 ErrorHandled::Reported =>
-                    InterpError::InvalidProgram(InvalidProgramInfo::ReferencedConstant),
+                    err_inval!(ReferencedConstant),
                 ErrorHandled::TooGeneric =>
-                    InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric),
+                    err_inval!(TooGeneric),
             }
         })?;
         self.raw_const_to_mplace(val)

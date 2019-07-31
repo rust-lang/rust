@@ -21,20 +21,12 @@ macro_rules! throw_ub {
 
 #[macro_export]
 macro_rules! throw_panic {
-    ($($tt:tt)*) => {
-        return Err($crate::mir::interpret::InterpError::Panic(
-            $crate::mir::interpret::PanicInfo::$($tt)*
-        ).into())
-    };
+    ($($tt:tt)*) => { return Err(err_panic!($($tt)*).into()) };
 }
 
 #[macro_export]
 macro_rules! throw_exhaust {
-    ($($tt:tt)*) => {
-        return Err($crate::mir::interpret::InterpError::ResourceExhaustion(
-            $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
-        ).into())
-    };
+    ($($tt:tt)*) => { return Err(err_exhaust!($($tt)*).into()) };
 }
 
 #[macro_export]
@@ -51,6 +43,24 @@ macro_rules! err_unsup {
     ($($tt:tt)*) => {
         $crate::mir::interpret::InterpError::Unsupported(
             $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_exhaust {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::ResourceExhaustion(
+            $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_panic {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::Panic(
+            $crate::mir::interpret::PanicInfo::$($tt)*
         )
     };
 }
