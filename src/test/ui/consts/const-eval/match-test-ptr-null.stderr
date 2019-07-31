@@ -20,10 +20,10 @@ LL |             0 => 42,
    |             ^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/match-test-ptr-null.rs:10:13
+  --> $DIR/match-test-ptr-null.rs:6:15
    |
-LL |             0 => 42,
-   |             ^ "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
+LL |         match &1 as *const i32 as usize {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
 error: aborting due to 4 previous errors
 
