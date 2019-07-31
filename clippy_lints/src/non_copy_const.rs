@@ -84,6 +84,7 @@ declare_clippy_lint! {
     "referencing const with interior mutability"
 }
 
+#[allow(dead_code)]
 #[derive(Copy, Clone)]
 enum Source {
     Item { item: Span },
@@ -94,12 +95,12 @@ enum Source {
 impl Source {
     fn lint(&self) -> (&'static Lint, &'static str, Span) {
         match self {
-            Source::Item { item } | Source::Assoc { item, .. } => (
+            Self::Item { item } | Self::Assoc { item, .. } => (
                 DECLARE_INTERIOR_MUTABLE_CONST,
                 "a const item should never be interior mutable",
                 *item,
             ),
-            Source::Expr { expr } => (
+            Self::Expr { expr } => (
                 BORROW_INTERIOR_MUTABLE_CONST,
                 "a const item with interior mutability should not be borrowed",
                 *expr,

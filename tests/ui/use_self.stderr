@@ -175,22 +175,40 @@ LL |                     Bar { foo: Foo {} }
    |                     ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:304:13
+  --> $DIR/use_self.rs:279:21
+   |
+LL |             let _ = Enum::B(42);
+   |                     ^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:280:21
+   |
+LL |             let _ = Enum::C { field: true };
+   |                     ^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:281:21
+   |
+LL |             let _ = Enum::A;
+   |                     ^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:312:13
    |
 LL |             nested::A::fun_1();
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:305:13
+  --> $DIR/use_self.rs:313:13
    |
 LL |             nested::A::A;
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:307:13
+  --> $DIR/use_self.rs:315:13
    |
 LL |             nested::A {};
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 31 previous errors
+error: aborting due to 34 previous errors
 

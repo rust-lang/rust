@@ -1725,10 +1725,10 @@ impl PartialEq for FullInt {
 impl PartialOrd for FullInt {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(match (self, other) {
-            (&FullInt::S(s), &FullInt::S(o)) => s.cmp(&o),
-            (&FullInt::U(s), &FullInt::U(o)) => s.cmp(&o),
-            (&FullInt::S(s), &FullInt::U(o)) => Self::cmp_s_u(s, o),
-            (&FullInt::U(s), &FullInt::S(o)) => Self::cmp_s_u(o, s).reverse(),
+            (&Self::S(s), &Self::S(o)) => s.cmp(&o),
+            (&Self::U(s), &Self::U(o)) => s.cmp(&o),
+            (&Self::S(s), &Self::U(o)) => Self::cmp_s_u(s, o),
+            (&Self::U(s), &Self::S(o)) => Self::cmp_s_u(o, s).reverse(),
         })
     }
 }
