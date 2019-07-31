@@ -80,13 +80,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
                             bug!("reifying a fn ptr that requires const arguments");
                         }
-                        let instance: InterpResult<'tcx, _> = ty::Instance::resolve(
+                        let instance = ty::Instance::resolve(
                             *self.tcx,
                             self.param_env,
                             def_id,
                             substs,
-                        ).ok_or_else(|| err_inval!(TooGeneric).into());
-                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance?));
+                        ).ok_or_else(|| err_inval!(TooGeneric))?;
+                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
                     _ => bug!("reify fn pointer on {:?}", src.layout.ty),

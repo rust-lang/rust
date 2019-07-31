@@ -363,7 +363,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     // the "real" alignment.
                     throw_unsup!(AlignmentCheckFailed {
                         has: alloc_align,
-                        required: align
+                        required: align,
                     })
                 }
                 check_offset_align(ptr.offset.bytes(), align)?;
