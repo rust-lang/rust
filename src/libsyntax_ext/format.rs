@@ -300,8 +300,8 @@ impl<'a, 'b> Context<'a, 'b> {
             let (mut refs, spans): (Vec<_>, Vec<_>) = refs.unzip();
             // Avoid `invalid reference to positional arguments 7 and 7 (there is 1 argument)`
             // for `println!("{7:7$}", 1);`
-            refs.dedup();
             refs.sort();
+            refs.dedup();
             let (arg_list, mut sp) = if refs.len() == 1 {
                 let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.map(|sp| *sp)).collect();
                 (
