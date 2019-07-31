@@ -1,7 +1,4 @@
-#![feature(
-    async_await,
-    await_macro,
-)]
+#![feature(async_await)]
 
 use std::{future::Future, pin::Pin, task::Poll, ptr};
 use std::task::{Waker, RawWaker, RawWakerVTable, Context};
@@ -11,7 +8,7 @@ pub async fn foo(x: &u32, y: u32) -> u32 {
     let y = &y;
     let z = 9;
     let z = &z;
-    let y = await!(async { *y + *z });
+    let y = async { *y + *z }.await;
     let a = 10;
     let a = &a;
     *x + y + *a
