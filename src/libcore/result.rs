@@ -835,7 +835,7 @@ impl<T: Copy, E> Result<&T, E> {
     /// assert_eq!(copied, Ok(12));
     /// ```
     #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
-    pub fn copied(self) -> Result<T, E> {
+    pub fn copied_ok(self) -> Result<T, E> {
         self.map(|&t| t)
     }
 }
@@ -855,7 +855,7 @@ impl<T: Copy, E> Result<&mut T, E> {
     /// assert_eq!(copied, Ok(12));
     /// ```
     #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
-    pub fn copied(self) -> Result<T, E> {
+    pub fn copied_ok(self) -> Result<T, E> {
         self.map(|&mut t| t)
     }
 }
@@ -900,6 +900,74 @@ impl<T, E: Copy> Result<T, &mut E> {
     }
 }
 
+impl<T: Copy, E: Copy> Result<&T, &E> {
+    /// Maps a `Result<&T, &E>` to a `Result<T, E>` by copying the
+    /// contents of the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_copied)]
+    /// assert_eq!(Err(&1), Err(1));
+    /// assert_eq!(Ok(&42), Ok(42));
+    /// ```
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
+    pub fn copied(self) -> Result<T, E> {
+        self.copied_ok().copied_err()
+    }
+}
+
+impl<T: Copy, E: Copy> Result<&mut T, &E> {
+    /// Maps a `Result<&mut T, &E>` to a `Result<T, E>` by copying the
+    /// contents of the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_copied)]
+    /// assert_eq!(Err(&1), Err(1));
+    /// assert_eq!(Ok(&mut 42), Ok(42));
+    /// ```
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
+    pub fn copied(self) -> Result<T, E> {
+        self.copied_ok().copied_err()
+    }
+}
+
+impl<T: Copy, E: Copy> Result<&T, &mut E> {
+    /// Maps a `Result<&T, &mut E>` to a `Result<T, E>` by copying the
+    /// contents of the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_copied)]
+    /// assert_eq!(Err(&mut 1), Err(1));
+    /// assert_eq!(Ok(&42), Ok(42));
+    /// ```
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
+    pub fn copied(self) -> Result<T, E> {
+        self.copied_ok().copied_err()
+    }
+}
+
+impl<T: Copy, E: Copy> Result<&mut T, &mut E> {
+    /// Maps a `Result<&mut T, &mut E>` to a `Result<T, E>` by copying
+    /// the contents of the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_copied)]
+    /// assert_eq!(Err(&mut 1), Err(1));
+    /// assert_eq!(Ok(&mut 42), Ok(42));
+    /// ```
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
+    pub fn copied(self) -> Result<T, E> {
+        self.copied_ok().copied_err()
+    }
+}
+
 impl<T: Clone, E> Result<&T, E> {
     /// Maps a `Result<&T, E>` to a `Result<T, E>` by cloning the contents of the
     /// `Ok` part.
@@ -915,7 +983,7 @@ impl<T: Clone, E> Result<&T, E> {
     /// assert_eq!(cloned, Ok(12));
     /// ```
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
-    pub fn cloned(self) -> Result<T, E> {
+    pub fn cloned_ok(self) -> Result<T, E> {
         self.map(|t| t.clone())
     }
 }
@@ -935,7 +1003,7 @@ impl<T: Clone, E> Result<&mut T, E> {
     /// assert_eq!(cloned, Ok(12));
     /// ```
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
-    pub fn cloned(self) -> Result<T, E> {
+    pub fn cloned_ok(self) -> Result<T, E> {
         self.map(|t| t.clone())
     }
 }
@@ -977,6 +1045,74 @@ impl<T, E: Clone> Result<T, &mut E> {
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     pub fn cloned_err(self) -> Result<T, E> {
         self.map_err(|e| e.clone())
+    }
+}
+
+impl<T: Clone, E: Clone> Result<&T, &E> {
+    /// Maps a `Result<&T, &E>` to a `Result<T, E>` by cloning the contents of the
+    /// result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_cloned)]
+    /// assert_eq!(Err(&1).cloned(), Err(1));
+    /// assert_eq!(Ok(&42).cloned(), Ok(42));
+    /// ```
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
+    pub fn cloned(self) -> Result<T, E> {
+        self.cloned_ok().cloned_err()
+    }
+}
+
+impl<T: Clone, E: Clone> Result<&mut T, &E> {
+    /// Maps a `Result<&mut T, &E>` to a `Result<T, E>` by cloning the
+    /// contents of the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_cloned)]
+    /// assert_eq!(Err(&1).cloned(), Err(1));
+    /// assert_eq!(Ok(&mut 42).cloned(), Ok(42));
+    /// ```
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
+    pub fn cloned(self) -> Result<T, E> {
+        self.cloned_ok().cloned_err()
+    }
+}
+
+impl<T: Clone, E: Clone> Result<&T, &mut E> {
+    /// Maps a `Result<&T, &mut E>` to a `Result<T, E>` by cloning the
+    /// contents of the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_cloned)]
+    /// assert_eq!(Err(&mut 1).cloned(), Err(1));
+    /// assert_eq!(Ok(&42).cloned(), Ok(42));
+    /// ```
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
+    pub fn cloned(self) -> Result<T, E> {
+        self.cloned_ok().cloned_err()
+    }
+}
+
+impl<T: Clone, E: Clone> Result<&mut T, &mut E> {
+    /// Maps a `Result<&mut T, &mut E>` to a `Result<T, E>` by cloning
+    /// the contents of the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_cloned)]
+    /// assert_eq!(Err(&mut 1).cloned(), Err(1));
+    /// assert_eq!(Ok(&mut 42).cloned(), Ok(42));
+    /// ```
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
+    pub fn cloned(self) -> Result<T, E> {
+        self.cloned_ok().cloned_err()
     }
 }
 
