@@ -282,8 +282,7 @@ The setup for a local rustc works as follows:
 git clone https://github.com/rust-lang/rust/ rustc
 cd rustc
 cp config.toml.example config.toml
-# Now edit `config.toml` and set `debug-assertions = true` and `test-miri = true`.
-# The latter is important to build libstd with the right flags for miri.
+# Now edit `config.toml` and set `debug-assertions = true`.
 # This step can take 30 minutes and more.
 ./x.py build src/rustc
 # If you change something, you can get a faster rebuild by doing
