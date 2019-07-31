@@ -424,11 +424,19 @@ impl UnusedParens {
                     },
                     _ => false,
                 }
-            }).to_owned();
+            });
+
+        let replace = {
+            let mut replace = String::from(" ");
+            replace.push_str(parens_removed);
+            replace.push(' ');
+            replace
+        };
+
         err.span_suggestion_short(
             span,
             "remove these parentheses",
-            parens_removed,
+            replace,
             Applicability::MachineApplicable,
         );
         err.emit();

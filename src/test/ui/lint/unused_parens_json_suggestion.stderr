@@ -81,7 +81,7 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "1 / (2 + 3)",
+          "suggested_replacement": " 1 / (2 + 3) ",
           "suggestion_applicability": "MachineApplicable",
           "expansion": null
         }
