@@ -3,7 +3,6 @@
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
 use crate::early_buffered_lints::BufferedEarlyLintId;
 use crate::ext::base::ExtCtxt;
-use crate::ext::build::AstBuilder;
 use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
 
@@ -929,7 +928,7 @@ pub fn find_transparency(
 pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
     // All the built-in macro attributes are "words" at the moment.
     let template = AttributeTemplate { word: true, list: None, name_value_str: None };
-    let attr = ecx.attribute(meta_item.span, meta_item.clone());
+    let attr = ecx.attribute(meta_item.clone());
     check_builtin_attribute(ecx.parse_sess, &attr, name, template);
 }
 

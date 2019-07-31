@@ -5,7 +5,6 @@
 
 use syntax::ast::{self, Ident, GenericArg};
 use syntax::ext::base::{self, *};
-use syntax::ext::build::AstBuilder;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
 use syntax::tokenstream;

@@ -2,7 +2,6 @@ use crate::ast::{self, ItemKind, Attribute, Mac};
 use crate::attr::{mark_used, mark_known, HasAttrs};
 use crate::errors::{Applicability, FatalError};
 use crate::ext::base::{self, *};
-use crate::ext::build::AstBuilder;
 use crate::ext::proc_macro_server;
 use crate::parse::{self, token};
 use crate::parse::parser::PathStyle;
@@ -239,11 +238,11 @@ crate fn add_derived_markers<T: HasAttrs>(
     item.visit_attrs(|attrs| {
         if names.contains(&sym::Eq) && names.contains(&sym::PartialEq) {
             let meta = cx.meta_word(span, sym::structural_match);
-            attrs.push(cx.attribute(span, meta));
+            attrs.push(cx.attribute(meta));
         }
         if names.contains(&sym::Copy) {
             let meta = cx.meta_word(span, sym::rustc_copy_clone_marker);
-            attrs.push(cx.attribute(span, meta));
+            attrs.push(cx.attribute(meta));
         }
     });
 }
