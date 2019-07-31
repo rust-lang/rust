@@ -389,6 +389,7 @@ impl Step for Miri {
         });
         if let Some(miri) = miri {
             // # Run `cargo miri setup`.
+            // As a side-effect, this will install xargo.
             let mut cargo = tool::prepare_tool_cargo(
                 builder,
                 compiler,
