@@ -601,7 +601,7 @@ pub unsafe fn _mm_dp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
 #[cfg_attr(test, assert_instr(roundpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_floor_pd(a: __m128d) -> __m128d {
-    roundpd(a, _MM_FROUND_FLOOR)
+    simd_floor(a)
 }
 
 /// Round the packed single-precision (32-bit) floating-point elements in `a`
@@ -614,7 +614,7 @@ pub unsafe fn _mm_floor_pd(a: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(roundps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_floor_ps(a: __m128) -> __m128 {
-    roundps(a, _MM_FROUND_FLOOR)
+    simd_floor(a)
 }
 
 /// Round the lower double-precision (64-bit) floating-point element in `b`
@@ -657,7 +657,7 @@ pub unsafe fn _mm_floor_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(roundpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_ceil_pd(a: __m128d) -> __m128d {
-    roundpd(a, _MM_FROUND_CEIL)
+    simd_ceil(a)
 }
 
 /// Round the packed single-precision (32-bit) floating-point elements in `a`
@@ -670,7 +670,7 @@ pub unsafe fn _mm_ceil_pd(a: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(roundps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_ceil_ps(a: __m128) -> __m128 {
-    roundps(a, _MM_FROUND_CEIL)
+    simd_ceil(a)
 }
 
 /// Round the lower double-precision (64-bit) floating-point element in `b`
