@@ -40,7 +40,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
         "libsyntax_pos",
         "libterm/terminfo",
         "libtest",
-        "tools/compiletest/src",
     ];
 
     let mut skip = |path: &Path| {
