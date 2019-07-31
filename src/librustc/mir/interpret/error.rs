@@ -141,7 +141,6 @@ impl<'tcx> ConstEvalErr<'tcx> {
             err_inval!(Layout(LayoutError::Unknown(_))) |
             err_inval!(TooGeneric) =>
                 return Err(ErrorHandled::TooGeneric),
-            err_inval!(Layout(LayoutError::SizeOverflow(_))) |
             err_inval!(TypeckError) =>
                 return Err(ErrorHandled::Reported),
             _ => {},

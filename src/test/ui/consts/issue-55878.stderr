@@ -1,0 +1,15 @@
+error: reaching this expression at runtime will panic or abort
+  --> $SRC_DIR/libcore/mem/mod.rs:LL:COL
+   |
+LL |     intrinsics::size_of::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ rustc layout computation failed: SizeOverflow([u8; 18446744073709551615])
+   | 
+  ::: $DIR/issue-55878.rs:3:26
+   |
+LL |     println!("Size: {}", std::mem::size_of::<[u8; std::u64::MAX as usize]>());
+   |                          ---------------------------------------------------
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to previous error
+

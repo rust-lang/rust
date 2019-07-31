@@ -17,6 +17,8 @@ impl TooBigArray {
 }
 
 static MY_TOO_BIG_ARRAY_1: TooBigArray = TooBigArray::new();
+//~^ ERROR could not evaluate static initializer
 static MY_TOO_BIG_ARRAY_2: [u8; HUGE_SIZE] = [0x00; HUGE_SIZE];
+//~^ ERROR could not evaluate static initializer
 
 fn main() { }
