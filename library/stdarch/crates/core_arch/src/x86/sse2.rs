@@ -2553,7 +2553,7 @@ pub unsafe fn _mm_load_sd(mem_addr: *const f64) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadh_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(movhpd))]
+#[cfg_attr(test, assert_instr(movhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_loadh_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
     _mm_setr_pd(simd_extract(a, 0), *mem_addr)
@@ -2566,7 +2566,7 @@ pub unsafe fn _mm_loadh_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadl_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(movlpd))]
+#[cfg_attr(test, assert_instr(movlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
     _mm_setr_pd(*mem_addr, simd_extract(a, 1))
@@ -2675,7 +2675,7 @@ pub unsafe fn _mm_storer_pd(mem_addr: *mut f64, a: __m128d) {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeh_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movhpd))]
+#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storeh_pd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract(a, 1);
@@ -2725,7 +2725,7 @@ pub unsafe fn _mm_load_pd1(mem_addr: *const f64) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadr_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(movapd))]
+#[cfg_attr(test, assert_instr(movaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_loadr_pd(mem_addr: *const f64) -> __m128d {
     let a = _mm_load_pd(mem_addr);
@@ -2758,7 +2758,7 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shuffle_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(shufpd, imm8 = 1))]
+#[cfg_attr(test, assert_instr(shufps, imm8 = 1))]
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_shuffle_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {

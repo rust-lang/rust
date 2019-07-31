@@ -1117,7 +1117,7 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
             all(target_arch = "x86", target_feature = "sse2")
         )
     ),
-    assert_instr(movhpd)
+    assert_instr(movhps)
 )]
 // FIXME: 32-bit codegen without SSE2 generates two `shufps` instead of `movhps`
 #[cfg_attr(
@@ -1137,10 +1137,10 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 /// is copied from the upper half of `a`.
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movlpd))]
+#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movlps))]
 #[cfg_attr(
     all(test, target_arch = "x86", target_feature = "sse2"),
-    assert_instr(movlpd)
+    assert_instr(movlps)
 )]
 // FIXME: On 32-bit targets without SSE2, it just generates two `movss`...
 #[cfg_attr(
