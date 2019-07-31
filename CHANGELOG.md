@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.4.2] 2019-07-31
+
+### Changed
+
+- Explicitly require the version of `rustfmt-config_proc_macro` to be 0.1.2 or later.
+
 ## [1.4.1] 2019-07-30
 
 ### Changed
