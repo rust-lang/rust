@@ -194,7 +194,7 @@ pub unsafe fn _mm_min_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(minps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_min_ps(a: __m128, b: __m128) -> __m128 {
-    minps(a, b)
+    simd_fmin(a, b)
 }
 
 /// Compares the first single-precision (32-bit) floating-point element of `a`
@@ -219,7 +219,7 @@ pub unsafe fn _mm_max_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(maxps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_max_ps(a: __m128, b: __m128) -> __m128 {
-    maxps(a, b)
+    simd_fmax(a, b)
 }
 
 /// Bitwise AND of packed single-precision (32-bit) floating-point elements.
@@ -1915,12 +1915,8 @@ extern "C" {
     fn rsqrtps(a: __m128) -> __m128;
     #[link_name = "llvm.x86.sse.min.ss"]
     fn minss(a: __m128, b: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse.min.ps"]
-    fn minps(a: __m128, b: __m128) -> __m128;
     #[link_name = "llvm.x86.sse.max.ss"]
     fn maxss(a: __m128, b: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse.max.ps"]
-    fn maxps(a: __m128, b: __m128) -> __m128;
     #[link_name = "llvm.x86.sse.movmsk.ps"]
     fn movmskps(a: __m128) -> i32;
     #[link_name = "llvm.x86.sse.cmp.ps"]
