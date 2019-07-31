@@ -181,10 +181,7 @@ fn test_doc_comment_multi_line_block_strips_suffix() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!(
-        "        this\n        is\n        mod foo\n       ",
-        module.doc_comment_text().unwrap()
-    );
+    assert_eq!("        this\n        is\n        mod foo", module.doc_comment_text().unwrap());
 }
 
 #[test]
