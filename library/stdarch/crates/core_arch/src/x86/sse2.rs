@@ -1823,7 +1823,7 @@ pub unsafe fn _mm_sqrt_sd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(sqrtpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sqrt_pd(a: __m128d) -> __m128d {
-    sqrtpd(a)
+    simd_fsqrt(a)
 }
 
 /// Returns a new vector with the low element of `a` replaced by subtracting the

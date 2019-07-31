@@ -513,7 +513,7 @@ pub unsafe fn _mm256_sqrt_ps(a: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vsqrtpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
-    sqrtpd256(a)
+    simd_fsqrt(a)
 }
 
 /// Blends packed double-precision (64-bit) floating-point elements from
