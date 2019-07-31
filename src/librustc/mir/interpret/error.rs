@@ -144,7 +144,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 return Err(ErrorHandled::TooGeneric),
             err_inval!(TypeckError) =>
                 return Err(ErrorHandled::Reported),
-            err_inval!(LayoutError::SizeOverflow(_)) => must_error = true,
+            err_inval!(Layout(LayoutError::SizeOverflow(_))) => must_error = true,
             _ => {},
         }
         trace!("reporting const eval failure at {:?}", self.span);
@@ -336,7 +336,7 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
             TypeckError =>
                 write!(f, "encountered constants with type errors, stopping evaluation"),
             Layout(ref err) =>
-                write!(f, "rustc layout computation failed: {:?}", err),
+                write!(f, "{}", err),
         }
     }
 }
