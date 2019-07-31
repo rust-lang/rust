@@ -3,7 +3,6 @@
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
 use crate::early_buffered_lints::BufferedEarlyLintId;
 use crate::ext::base::ExtCtxt;
-use crate::ext::build::AstBuilder;
 use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
 

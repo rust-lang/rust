@@ -4,7 +4,6 @@
 use syntax::ast;
 use syntax::attr::{self, check_builtin_macro_attribute};
 use syntax::ext::base::*;
-use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::print::pprust;
 use syntax::source_map::respan;

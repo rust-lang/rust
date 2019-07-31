@@ -2,7 +2,6 @@ use crate::ast::{self, ItemKind, Attribute, Mac};
 use crate::attr::{mark_used, mark_known, HasAttrs};
 use crate::errors::{Applicability, FatalError};
 use crate::ext::base::{self, *};
-use crate::ext::build::AstBuilder;
 use crate::ext::proc_macro_server;
 use crate::parse::{self, token};
 use crate::parse::parser::PathStyle;

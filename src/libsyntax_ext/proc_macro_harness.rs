@@ -4,7 +4,6 @@ use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::source_map::{ExpnInfo, ExpnKind, respan};
 use syntax::ext::base::{ExtCtxt, MacroKind};
-use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::ext::hygiene::ExpnId;
 use syntax::ext::proc_macro::is_proc_macro_attr;

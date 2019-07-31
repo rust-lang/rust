@@ -1,6 +1,5 @@
 use syntax::ast;
 use syntax::ext::base;
-use syntax::ext::build::AstBuilder;
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
 

@@ -187,7 +187,6 @@ use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
 use syntax::source_map::{self, respan};
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;

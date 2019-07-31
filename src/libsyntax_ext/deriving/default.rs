@@ -4,7 +4,6 @@ use crate::deriving::generic::ty::*;
 
 use syntax::ast::{Expr, MetaItem};
 use syntax::ext::base::{Annotatable, DummyResult, ExtCtxt};
-use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax::span_err;

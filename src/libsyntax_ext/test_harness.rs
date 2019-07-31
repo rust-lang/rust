@@ -6,7 +6,6 @@ use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::entry::{self, EntryPointType};
 use syntax::ext::base::{ExtCtxt, Resolver};
-use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::ext::hygiene::{ExpnId, MacroKind};
 use syntax::feature_gate::Features;
