@@ -834,7 +834,7 @@ impl<T: Copy, E> Result<&T, E> {
     /// let copied = x.copied();
     /// assert_eq!(copied, Ok(12));
     /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "XXXXX")]
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
     fn copied(self) -> Result<T, E> {
         self.map(|&t| t)
     }
@@ -854,7 +854,7 @@ impl<T: Copy, E> Result<&mut T, E> {
     /// let copied = x.copied();
     /// assert_eq!(copied, Ok(12));
     /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "XXXXX")]
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
     fn copied(self) -> Result<T, E> {
         self.map(|&mut t| t)
     }
@@ -874,7 +874,7 @@ impl<T, E: Copy> Result<T, &E> {
     /// let copied = x.copied_err();
     /// assert_eq!(copied, Err(12));
     /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "XXXXX")]
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
     fn copied_err(self) -> Result<T, E> {
         self.map_err(|&e| e)
     }
@@ -894,7 +894,7 @@ impl<T, E: Copy> Result<T, &mut E> {
     /// let copied = x.copied();
     /// assert_eq!(cloned, Err(12));
     /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "XXXXX")]
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
     fn copied_err(self) -> Result<T, E> {
         self.map_err(|&mut e| e)
     }
@@ -914,7 +914,7 @@ impl<T: Clone, E> Result<&T, E> {
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Ok(12));
     /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "XXXXX")]
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     fn cloned(self) -> Result<T, E> {
         self.map(|t| t.clone())
     }
@@ -934,13 +934,13 @@ impl<T: Clone, E> Result<&mut T, E> {
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Ok(12));
     /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "XXXXX")]
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     fn cloned(self) -> Result<T, E> {
         self.map(|t| t.clone())
     }
 }
 
-impl<T, E: Clone> Result<T, &mut E> {
+impl<T, E: Clone> Result<T, &E> {
     /// Maps a `Result<T, &E>` to a `Result<T, E>` by cloning the contents of the
     /// `Err` part.
     ///
@@ -954,7 +954,7 @@ impl<T, E: Clone> Result<T, &mut E> {
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Err(12));
     /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "XXXXX")]
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     fn cloned_err(self) -> Result<T, E> {
         self.map_err(|e| e.clone())
     }
@@ -974,7 +974,7 @@ impl<T, E: Clone> Result<T, &mut E> {
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Err(12));
     /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "XXXXX")]
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     fn cloned_err(self) -> Result<T, E> {
         self.map_err(|e| e.clone())
     }
