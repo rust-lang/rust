@@ -171,7 +171,7 @@ impl Conv for ra_ide_api::Documentation {
     fn conv(self) -> Documentation {
         Documentation::MarkupContent(MarkupContent {
             kind: MarkupKind::Markdown,
-            value: crate::markdown::mark_fenced_blocks_as_rust(self.as_str()),
+            value: crate::markdown::format_docs(self.as_str()),
         })
     }
 }
