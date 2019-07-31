@@ -214,6 +214,60 @@ error: `...X` range patterns are not supported
 LL |     if let ....3 = 0 {}
    |            ^^^^^ help: try using the minimum value for the type: `MIN...0.3`
 
+error: `..X` range patterns are not supported
+  --> $DIR/recover-range-pats.rs:139:17
+   |
+LL |             let ..$e;
+   |                 ^^ help: try using the minimum value for the type: `MIN..0`
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
+
+error: `...X` range patterns are not supported
+  --> $DIR/recover-range-pats.rs:140:17
+   |
+LL |             let ...$e;
+   |                 ^^^ help: try using the minimum value for the type: `MIN...0`
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
+
+error: `..=X` range patterns are not supported
+  --> $DIR/recover-range-pats.rs:142:17
+   |
+LL |             let ..=$e;
+   |                 ^^^ help: try using the minimum value for the type: `MIN..=0`
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
+
+error: `X..` range patterns are not supported
+  --> $DIR/recover-range-pats.rs:143:19
+   |
+LL |             let $e..;
+   |                   ^^ help: try using the maximum value for the type: `0..MAX`
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
+
+error: `X...` range patterns are not supported
+  --> $DIR/recover-range-pats.rs:144:19
+   |
+LL |             let $e...;
+   |                   ^^^ help: try using the maximum value for the type: `0...MAX`
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
+
+error: `X..=` range patterns are not supported
+  --> $DIR/recover-range-pats.rs:146:19
+   |
+LL |             let $e..=;
+   |                   ^^^ help: try using the maximum value for the type: `0..=MAX`
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
+
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:41:13
    |
@@ -315,6 +369,33 @@ error: `...` range patterns are deprecated
    |
 LL |     if let ....3 = 0 {}
    |            ^^^ help: use `..=` for an inclusive range
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:129:20
+   |
+LL |             let $e1...$e2;
+   |                    ^^^ help: use `..=` for an inclusive range
+...
+LL |     mac2!(0, 1);
+   |     ------------ in this macro invocation
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:140:17
+   |
+LL |             let ...$e;
+   |                 ^^^ help: use `..=` for an inclusive range
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:144:19
+   |
+LL |             let $e...;
+   |                   ^^^ help: use `..=` for an inclusive range
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:19:12
@@ -532,7 +613,7 @@ LL |     if let ....3 = 0 {}
    = note: expected type `{integer}`
               found type `{float}`
 
-error: aborting due to 76 previous errors
+error: aborting due to 85 previous errors
 
 Some errors have detailed explanations: E0029, E0308.
 For more information about an error, try `rustc --explain E0029`.

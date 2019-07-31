@@ -121,3 +121,31 @@ fn inclusive2_to() {
     //~| ERROR `...` range patterns are deprecated
     //~| ERROR mismatched types
 }
+
+fn with_macro_expr_var() {
+    macro_rules! mac2 {
+        ($e1:expr, $e2:expr) => {
+            let $e1..$e2;
+            let $e1...$e2;
+            //~^ ERROR `...` range patterns are deprecated
+            let $e1..=$e2;
+        }
+    }
+
+    mac2!(0, 1);
+
+    macro_rules! mac {
+        ($e:expr) => {
+            let ..$e; //~ ERROR `..X` range patterns are not supported
+            let ...$e; //~ ERROR `...X` range patterns are not supported
+            //~^ ERROR `...` range patterns are deprecated
+            let ..=$e; //~ ERROR `..=X` range patterns are not supported
+            let $e..; //~ ERROR `X..` range patterns are not supported
+            let $e...; //~ ERROR `X...` range patterns are not supported
+            //~^ ERROR `...` range patterns are deprecated
+            let $e..=; //~ ERROR `X..=` range patterns are not supported
+        }
+    }
+
+    mac!(0);
+}
