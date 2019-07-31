@@ -143,8 +143,11 @@ fn main() {
 
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
-        // actually downloaded, so we just always pass the `--sysroot` option.
-        cmd.arg("--sysroot").arg(&sysroot);
+        // actually downloaded, so we just always pass the `--sysroot` option,
+        // unless one is already set.
+        if !args.iter().any(|arg| arg == "--sysroot") {
+            cmd.arg("--sysroot").arg(&sysroot);
+        }
 
         cmd.arg("-Zexternal-macro-backtrace");
 

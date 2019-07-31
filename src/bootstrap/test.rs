@@ -389,26 +389,86 @@ impl Step for Miri {
             extra_features: Vec::new(),
         });
         if let Some(miri) = miri {
-            let mut cargo = tool::prepare_tool_cargo(builder,
-                                                 compiler,
-                                                 Mode::ToolRustc,
-                                                 host,
-                                                 "test",
-                                                 "src/tools/miri",
-                                                 SourceType::Submodule,
-                                                 &[]);
+            // # Run `cargo miri setup`.
+            let mut cargo = tool::prepare_tool_cargo(
+                builder,
+                compiler,
+                Mode::ToolRustc,
+                host,
+                "run",
+                "src/tools/miri",
+                SourceType::Submodule,
+                &[],
+            );
+            cargo
+                .arg("--bin")
+                .arg("cargo-miri")
+                .arg("--")
+                .arg("miri")
+                .arg("setup");
+
+            // Tell `cargo miri` not to worry about the sysroot mismatch (we built with
+            // stage1 but run with stage2).
+            cargo.env("MIRI_SKIP_SYSROOT_CHECK", "1");
+            // Tell `cargo miri setup` where to find the sources.
+            cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
+            // Make sure the libstd gets built without debug assertions.
+            cargo.env("RUSTC_DEBUG_ASSERTIONS", "false");
+
+            if !try_run(builder, &mut cargo) {
+                return;
+            }
+
+            // # Determine where Miri put its sysroot.
+            // To this end, we run `cargo miri setup --env` and capture the output.
+            // (We do this separately from the above so that when the setup actually
+            // happens we get some output.)
+            // We re-use the `cargo` from above.
+            cargo.arg("--env");
+
+            // FIXME: Is there a way in which we can re-use the usual `run` helpers?
+            let miri_sysroot = if builder.config.dry_run {
+                String::new()
+            } else {
+                let out = cargo.output()
+                    .expect("We already ran `cargo miri setup` before and that worked");
+                assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
+                // Output is "MIRI_SYSROOT=<str>\n".
+                let stdout = String::from_utf8(out.stdout)
+                    .expect("`cargo miri setup` stdout is not valid UTF-8");
+                let stdout = stdout.trim();
+                builder.verbose(&format!("`cargo miri setup --env` returned: {:?}", stdout));
+                let sysroot = stdout.splitn(2, '=')
+                    .nth(1).expect("`cargo miri setup` stdout did not contain '='");
+                sysroot.to_owned()
+            };
+
+            // # Run `cargo test`.
+            let mut cargo = tool::prepare_tool_cargo(
+                builder,
+                compiler,
+                Mode::ToolRustc,
+                host,
+                "test",
+                "src/tools/miri",
+                SourceType::Submodule,
+                &[],
+            );
 
             // miri tests need to know about the stage sysroot
-            cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
+            cargo.env("MIRI_SYSROOT", miri_sysroot);
             cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             cargo.env("MIRI_PATH", miri);
 
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
-            if try_run(builder, &mut cargo) {
-                builder.save_toolstate("miri", ToolState::TestPass);
+            if !try_run(builder, &mut cargo) {
+                return;
             }
+
+            // # Done!
+            builder.save_toolstate("miri", ToolState::TestPass);
         } else {
             eprintln!("failed to test miri: could not build");
         }
