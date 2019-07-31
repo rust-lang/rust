@@ -61,5 +61,7 @@ extern "platform-intrinsic" {
     pub fn simd_fmax<T>(a: T, b: T) -> T;
 
     pub fn simd_fsqrt<T>(a: T) -> T;
+    pub fn simd_floor<T>(a: T) -> T;
+    pub fn simd_ceil<T>(a: T) -> T;
     pub fn simd_fma<T>(a: T, b: T, c: T) -> T;
 }

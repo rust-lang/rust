@@ -426,7 +426,7 @@ pub unsafe fn _mm256_round_pd(a: __m256d, b: i32) -> __m256d {
 #[cfg_attr(test, assert_instr(vroundpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_ceil_pd(a: __m256d) -> __m256d {
-    roundpd256(a, 0x02)
+    simd_ceil(a)
 }
 
 /// Rounds packed double-precision (64-bit) floating point elements in `a`
@@ -438,7 +438,7 @@ pub unsafe fn _mm256_ceil_pd(a: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vroundpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_floor_pd(a: __m256d) -> __m256d {
-    roundpd256(a, 0x01)
+    simd_floor(a)
 }
 
 /// Rounds packed single-precision (32-bit) floating point elements in `a`
@@ -477,7 +477,7 @@ pub unsafe fn _mm256_round_ps(a: __m256, b: i32) -> __m256 {
 #[cfg_attr(test, assert_instr(vroundps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_ceil_ps(a: __m256) -> __m256 {
-    roundps256(a, 0x02)
+    simd_ceil(a)
 }
 
 /// Rounds packed single-precision (32-bit) floating point elements in `a`
@@ -489,7 +489,7 @@ pub unsafe fn _mm256_ceil_ps(a: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vroundps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_floor_ps(a: __m256) -> __m256 {
-    roundps256(a, 0x01)
+    simd_floor(a)
 }
 
 /// Returns the square root of packed single-precision (32-bit) floating point
