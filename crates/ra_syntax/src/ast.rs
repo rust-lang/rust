@@ -122,6 +122,23 @@ fn test_doc_comment_preserves_indents() {
 }
 
 #[test]
+fn test_doc_comment_preserves_newlines() {
+    let file = SourceFile::parse(
+        r#"
+        /// this
+        /// is
+        /// mod
+        /// foo
+        mod foo {}
+        "#,
+    )
+    .ok()
+    .unwrap();
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert_eq!("this\nis\nmod\nfoo", module.doc_comment_text().unwrap());
+}
+
+#[test]
 fn test_where_predicates() {
     fn assert_bound(text: &str, bound: Option<TypeBound>) {
         assert_eq!(text, bound.unwrap().syntax().text().to_string());

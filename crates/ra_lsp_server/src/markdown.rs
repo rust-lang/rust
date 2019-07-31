@@ -48,4 +48,10 @@ mod tests {
         let comment = " # stay1\n# stay2\n#stay3\nstay4\n#\n #\n   #    \n #\tstay5\n\t#\t";
         assert_eq!(format_docs(comment), comment);
     }
+
+    #[test]
+    fn test_format_docs_preserves_newlines() {
+        let comment = "this\nis\nultiline";
+        assert_eq!(format_docs(comment), comment);
+    }
 }
