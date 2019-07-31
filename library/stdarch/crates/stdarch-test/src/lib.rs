@@ -90,7 +90,7 @@ pub fn assert(_fnptr: usize, fnname: &str, expected: &str) {
 
     // Look for `expected` as the first part of any instruction in this
     // function, e.g., tzcntl in tzcntl %rax,%rax.
-    let found = instrs.iter().any(|s| s.contains(expected));
+    let found = instrs.iter().any(|s| s.starts_with(expected));
 
     // Look for `call` instructions in the disassembly to detect whether
     // inlining failed: all intrinsics are `#[inline(always)]`, so
