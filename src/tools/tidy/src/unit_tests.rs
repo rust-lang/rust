@@ -27,7 +27,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
     };
     let fixme = [
         "liballoc",
-        "libpanic_unwind/dwarf",
         "librustc",
         "librustc_data_structures",
         "librustc_incremental/persist",
