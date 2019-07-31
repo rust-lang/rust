@@ -9,7 +9,7 @@
 //! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 
 use crate::{
-    core_arch::{simd::*, x86::*},
+    core_arch::{simd::*, simd_llvm::*, x86::*},
     mem::transmute,
 };
 
@@ -31,7 +31,7 @@ pub unsafe fn _mm_setzero_si64() -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddb))]
 pub unsafe fn _mm_add_pi8(a: __m64, b: __m64) -> __m64 {
-    paddb(a, b)
+    transmute(simd_add(a.as_i8x8(), b.as_i8x8()))
 }
 
 /// Adds packed 8-bit integers in `a` and `b`.
@@ -47,7 +47,7 @@ pub unsafe fn _m_paddb(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddw))]
 pub unsafe fn _mm_add_pi16(a: __m64, b: __m64) -> __m64 {
-    paddw(a, b)
+    transmute(simd_add(a.as_i16x4(), b.as_i16x4()))
 }
 
 /// Adds packed 16-bit integers in `a` and `b`.
@@ -63,7 +63,7 @@ pub unsafe fn _m_paddw(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddd))]
 pub unsafe fn _mm_add_pi32(a: __m64, b: __m64) -> __m64 {
-    paddd(a, b)
+    transmute(simd_add(a.as_i32x2(), b.as_i32x2()))
 }
 
 /// Adds packed 32-bit integers in `a` and `b`.
@@ -79,7 +79,7 @@ pub unsafe fn _m_paddd(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsb))]
 pub unsafe fn _mm_adds_pi8(a: __m64, b: __m64) -> __m64 {
-    paddsb(a, b)
+    transmute(simd_saturating_add(a.as_i8x8(), b.as_i8x8()))
 }
 
 /// Adds packed 8-bit integers in `a` and `b` using saturation.
@@ -95,7 +95,7 @@ pub unsafe fn _m_paddsb(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsw))]
 pub unsafe fn _mm_adds_pi16(a: __m64, b: __m64) -> __m64 {
-    paddsw(a, b)
+    transmute(simd_saturating_add(a.as_i16x4(), b.as_i16x4()))
 }
 
 /// Adds packed 16-bit integers in `a` and `b` using saturation.
@@ -111,7 +111,7 @@ pub unsafe fn _m_paddsw(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusb))]
 pub unsafe fn _mm_adds_pu8(a: __m64, b: __m64) -> __m64 {
-    paddusb(a, b)
+    transmute(simd_saturating_add(a.as_u8x8(), b.as_u8x8()))
 }
 
 /// Adds packed unsigned 8-bit integers in `a` and `b` using saturation.
@@ -127,7 +127,7 @@ pub unsafe fn _m_paddusb(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusw))]
 pub unsafe fn _mm_adds_pu16(a: __m64, b: __m64) -> __m64 {
-    paddusw(a, b)
+    transmute(simd_saturating_add(a.as_u16x4(), b.as_u16x4()))
 }
 
 /// Adds packed unsigned 16-bit integers in `a` and `b` using saturation.
@@ -143,7 +143,7 @@ pub unsafe fn _m_paddusw(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubb))]
 pub unsafe fn _mm_sub_pi8(a: __m64, b: __m64) -> __m64 {
-    psubb(a, b)
+    transmute(simd_sub(a.as_i8x8(), b.as_i8x8()))
 }
 
 /// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`.
@@ -159,7 +159,7 @@ pub unsafe fn _m_psubb(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubw))]
 pub unsafe fn _mm_sub_pi16(a: __m64, b: __m64) -> __m64 {
-    psubw(a, b)
+    transmute(simd_sub(a.as_i16x4(), b.as_i16x4()))
 }
 
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`.
@@ -175,7 +175,7 @@ pub unsafe fn _m_psubw(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubd))]
 pub unsafe fn _mm_sub_pi32(a: __m64, b: __m64) -> __m64 {
-    psubd(a, b)
+    transmute(simd_sub(a.as_i32x2(), b.as_i32x2()))
 }
 
 /// Subtract packed 32-bit integers in `b` from packed 32-bit integers in `a`.
@@ -192,7 +192,7 @@ pub unsafe fn _m_psubd(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubsb))]
 pub unsafe fn _mm_subs_pi8(a: __m64, b: __m64) -> __m64 {
-    psubsb(a, b)
+    transmute(simd_saturating_sub(a.as_i8x8(), b.as_i8x8()))
 }
 
 /// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`
@@ -210,7 +210,7 @@ pub unsafe fn _m_psubsb(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubsw))]
 pub unsafe fn _mm_subs_pi16(a: __m64, b: __m64) -> __m64 {
-    psubsw(a, b)
+    transmute(simd_saturating_sub(a.as_i16x4(), b.as_i16x4()))
 }
 
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`
@@ -228,7 +228,7 @@ pub unsafe fn _m_psubsw(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubusb))]
 pub unsafe fn _mm_subs_pu8(a: __m64, b: __m64) -> __m64 {
-    psubusb(a, b)
+    transmute(simd_saturating_sub(a.as_u8x8(), b.as_u8x8()))
 }
 
 /// Subtract packed unsigned 8-bit integers in `b` from packed unsigned 8-bit
@@ -246,7 +246,7 @@ pub unsafe fn _m_psubusb(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubusw))]
 pub unsafe fn _mm_subs_pu16(a: __m64, b: __m64) -> __m64 {
-    psubusw(a, b)
+    transmute(simd_saturating_sub(a.as_u16x4(), b.as_u16x4()))
 }
 
 /// Subtract packed unsigned 16-bit integers in `b` from packed unsigned
@@ -475,34 +475,6 @@ pub unsafe fn _mm_cvtsi64_si32(a: __m64) -> i32 {
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.mmx.padd.b"]
-    fn paddb(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.padd.w"]
-    fn paddw(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.padd.d"]
-    fn paddd(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.padds.b"]
-    fn paddsb(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.padds.w"]
-    fn paddsw(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.paddus.b"]
-    fn paddusb(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.paddus.w"]
-    fn paddusw(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.psub.b"]
-    fn psubb(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.psub.w"]
-    fn psubw(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.psub.d"]
-    fn psubd(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.psubs.b"]
-    fn psubsb(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.psubs.w"]
-    fn psubsw(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.psubus.b"]
-    fn psubusb(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.psubus.w"]
-    fn psubusw(a: __m64, b: __m64) -> __m64;
     #[link_name = "llvm.x86.mmx.packsswb"]
     fn packsswb(a: __m64, b: __m64) -> __m64;
     #[link_name = "llvm.x86.mmx.packssdw"]

@@ -353,6 +353,49 @@ pub use self::test::*;
 
 #[allow(non_camel_case_types)]
 #[unstable(feature = "stdimd_internal", issue = "0")]
+pub(crate) trait m64Ext: Sized {
+    fn as_m64(self) -> __m64;
+
+    #[inline]
+    fn as_u8x8(self) -> crate::core_arch::simd::u8x8 {
+        unsafe { transmute(self.as_m64()) }
+    }
+
+    #[inline]
+    fn as_u16x4(self) -> crate::core_arch::simd::u16x4 {
+        unsafe { transmute(self.as_m64()) }
+    }
+
+    #[inline]
+    fn as_u32x2(self) -> crate::core_arch::simd::u32x2 {
+        unsafe { transmute(self.as_m64()) }
+    }
+
+    #[inline]
+    fn as_i8x8(self) -> crate::core_arch::simd::i8x8 {
+        unsafe { transmute(self.as_m64()) }
+    }
+
+    #[inline]
+    fn as_i16x4(self) -> crate::core_arch::simd::i16x4 {
+        unsafe { transmute(self.as_m64()) }
+    }
+
+    #[inline]
+    fn as_i32x2(self) -> crate::core_arch::simd::i32x2 {
+        unsafe { transmute(self.as_m64()) }
+    }
+}
+
+impl m64Ext for __m64 {
+    #[inline]
+    fn as_m64(self) -> Self {
+        self
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdimd_internal", issue = "0")]
 pub(crate) trait m128iExt: Sized {
     fn as_m128i(self) -> __m128i;
 
