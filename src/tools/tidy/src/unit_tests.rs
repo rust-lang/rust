@@ -38,7 +38,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
         "libstd",
         "libsyntax",
         "libsyntax_pos",
-        "libterm/terminfo",
     ];
 
     let mut skip = |path: &Path| {
