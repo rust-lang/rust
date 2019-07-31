@@ -41,7 +41,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
         "libterm/terminfo",
         "libtest",
         "tools/compiletest/src",
-        "tools/tidy/src",
     ];
 
     let mut skip = |path: &Path| {
