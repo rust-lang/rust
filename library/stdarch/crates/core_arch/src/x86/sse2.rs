@@ -121,7 +121,7 @@ pub unsafe fn _mm_add_epi64(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(paddsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_adds_epi8(a: __m128i, b: __m128i) -> __m128i {
-    transmute(paddsb(a.as_i8x16(), b.as_i8x16()))
+    transmute(simd_saturating_add(a.as_i8x16(), b.as_i8x16()))
 }
 
 /// Adds packed 16-bit integers in `a` and `b` using saturation.
@@ -132,7 +132,7 @@ pub unsafe fn _mm_adds_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(paddsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_adds_epi16(a: __m128i, b: __m128i) -> __m128i {
-    transmute(paddsw(a.as_i16x8(), b.as_i16x8()))
+    transmute(simd_saturating_add(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Adds packed unsigned 8-bit integers in `a` and `b` using saturation.
@@ -143,7 +143,7 @@ pub unsafe fn _mm_adds_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(paddusb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_adds_epu8(a: __m128i, b: __m128i) -> __m128i {
-    transmute(paddsub(a.as_u8x16(), b.as_u8x16()))
+    transmute(simd_saturating_add(a.as_u8x16(), b.as_u8x16()))
 }
 
 /// Adds packed unsigned 16-bit integers in `a` and `b` using saturation.
@@ -154,7 +154,7 @@ pub unsafe fn _mm_adds_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(paddusw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_adds_epu16(a: __m128i, b: __m128i) -> __m128i {
-    transmute(paddsuw(a.as_u16x8(), b.as_u16x8()))
+    transmute(simd_saturating_add(a.as_u16x8(), b.as_u16x8()))
 }
 
 /// Averages packed unsigned 8-bit integers in `a` and `b`.
@@ -367,7 +367,7 @@ pub unsafe fn _mm_sub_epi64(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(psubsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_subs_epi8(a: __m128i, b: __m128i) -> __m128i {
-    transmute(psubsb(a.as_i8x16(), b.as_i8x16()))
+    transmute(simd_saturating_sub(a.as_i8x16(), b.as_i8x16()))
 }
 
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`
@@ -379,7 +379,7 @@ pub unsafe fn _mm_subs_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(psubsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_subs_epi16(a: __m128i, b: __m128i) -> __m128i {
-    transmute(psubsw(a.as_i16x8(), b.as_i16x8()))
+    transmute(simd_saturating_sub(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Subtract packed unsigned 8-bit integers in `b` from packed unsigned 8-bit
@@ -391,7 +391,7 @@ pub unsafe fn _mm_subs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(psubusb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_subs_epu8(a: __m128i, b: __m128i) -> __m128i {
-    transmute(psubusb(a.as_u8x16(), b.as_u8x16()))
+    transmute(simd_saturating_sub(a.as_u8x16(), b.as_u8x16()))
 }
 
 /// Subtract packed unsigned 16-bit integers in `b` from packed unsigned 16-bit
@@ -403,7 +403,7 @@ pub unsafe fn _mm_subs_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(psubusw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_subs_epu16(a: __m128i, b: __m128i) -> __m128i {
-    transmute(psubusw(a.as_u16x8(), b.as_u16x8()))
+    transmute(simd_saturating_sub(a.as_u16x8(), b.as_u16x8()))
 }
 
 /// Shifts `a` left by `imm8` bytes while shifting in zeros.
@@ -3021,14 +3021,6 @@ extern "C" {
     fn lfence();
     #[link_name = "llvm.x86.sse2.mfence"]
     fn mfence();
-    #[link_name = "llvm.x86.sse2.padds.b"]
-    fn paddsb(a: i8x16, b: i8x16) -> i8x16;
-    #[link_name = "llvm.x86.sse2.padds.w"]
-    fn paddsw(a: i16x8, b: i16x8) -> i16x8;
-    #[link_name = "llvm.x86.sse2.paddus.b"]
-    fn paddsub(a: u8x16, b: u8x16) -> u8x16;
-    #[link_name = "llvm.x86.sse2.paddus.w"]
-    fn paddsuw(a: u16x8, b: u16x8) -> u16x8;
     #[link_name = "llvm.x86.sse2.pavg.b"]
     fn pavgb(a: u8x16, b: u8x16) -> u8x16;
     #[link_name = "llvm.x86.sse2.pavg.w"]
@@ -3051,14 +3043,6 @@ extern "C" {
     fn pmuludq(a: u32x4, b: u32x4) -> u64x2;
     #[link_name = "llvm.x86.sse2.psad.bw"]
     fn psadbw(a: u8x16, b: u8x16) -> u64x2;
-    #[link_name = "llvm.x86.sse2.psubs.b"]
-    fn psubsb(a: i8x16, b: i8x16) -> i8x16;
-    #[link_name = "llvm.x86.sse2.psubs.w"]
-    fn psubsw(a: i16x8, b: i16x8) -> i16x8;
-    #[link_name = "llvm.x86.sse2.psubus.b"]
-    fn psubusb(a: u8x16, b: u8x16) -> u8x16;
-    #[link_name = "llvm.x86.sse2.psubus.w"]
-    fn psubusw(a: u16x8, b: u16x8) -> u16x8;
     #[link_name = "llvm.x86.sse2.pslli.w"]
     fn pslliw(a: i16x8, imm8: i32) -> i16x8;
     #[link_name = "llvm.x86.sse2.psll.w"]
