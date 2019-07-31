@@ -6,6 +6,7 @@ extern crate rustc_codegen_utils;
 #[macro_use]
 extern crate rustc_data_structures;
 extern crate rustc_target;
+extern crate rustc_driver;
 
 use std::any::Any;
 use std::sync::{Arc, mpsc};
