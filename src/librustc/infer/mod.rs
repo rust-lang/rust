@@ -1351,23 +1351,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_const_var(
-        &self,
-        ct: &'tcx ty::Const<'tcx>
-    ) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ConstValue::Infer(InferConst::Var(v)), .. } = ct {
-            self.const_unification_table
-                .borrow_mut()
-                .probe_value(*v)
-                .val
-                .known()
-                .map(|c| self.resolve_const_var(c))
-                .unwrap_or(ct)
-        } else {
-            ct
-        }
-    }
-
     pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<'tcx, T> {
         /*!
          * Attempts to resolve all type/region/const variables in
@@ -1586,7 +1569,7 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
                 // it can be resolved to an int/float variable, which
                 // can then be recursively resolved, hence the
                 // recursion. Note though that we prevent type
-                // variables from unifyxing to other type variables
+                // variables from unifying to other type variables
                 // directly (though they may be embedded
                 // structurally), and we prevent cycles in any case,
                 // so this recursion should always be of very limited
@@ -1626,17 +1609,15 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        match ct {
-            ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } => {
+        if let ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } = ct {
                 self.infcx.const_unification_table
                     .borrow_mut()
                     .probe_value(*vid)
                     .val
                     .known()
-                    .map(|c| self.fold_const(c))
                     .unwrap_or(ct)
-            }
-            _ => ct,
+        } else {
+            ct
         }
     }
 }
