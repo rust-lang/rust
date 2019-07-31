@@ -553,6 +553,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         // Other cases need layout.
         let layout = from_known_layout(layout, || {
+            // Substituting is not a cached or O(1) operation. Substituting the type happens here,
+            // which may not happen if we already have a layout. Or if we use the early abort above.
+            // Thus we do not substitute and normalize `val` above, but only `val.val` and then
+            // substitute `val.ty` here.
             self.layout_of(self.subst_and_normalize_erasing_regions_in_frame(val.ty))
         })?;
         let op = match value {
