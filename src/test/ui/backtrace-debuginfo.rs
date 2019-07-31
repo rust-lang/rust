@@ -11,7 +11,6 @@
 // ignore-pretty issue #37195
 // ignore-cloudabi spawning processes is not supported
 // ignore-emscripten spawning processes is not supported
-// ignore-msvc issue #62844
 // ignore-sgx no processes
 // normalize-stderr-test ".*\n" -> ""
 
@@ -31,8 +30,23 @@ macro_rules! dump_and_die {
     ($($pos:expr),*) => ({
         // FIXME(#18285): we cannot include the current position because
         // the macro span takes over the last frame's file/line.
+        //
+        // You might also be wondering why a major platform,
+        // i686-pc-windows-msvc, is located in here. Some of the saga can be
+        // found on #62897, but the tl;dr; is that it appears that if the
+        // standard library doesn't have debug information or frame pointers,
+        // which it doesn't by default on the test builders, then the stack
+        // walking routines in dbghelp will randomly terminate the stack trace
+        // in libstd without going further. Presumably the addition of frame
+        // pointers and/or debuginfo fixes this since tests always work with
+        // nightly compilers (which have debuginfo). In general though this test
+        // is replicated in rust-lang/backtrace-rs and has extensive coverage
+        // there, even on i686-pc-windows-msvc. We do the best we can in
+        // rust-lang/rust to test it as well, but sometimes we just gotta keep
+        // landing PRs.
         if cfg!(any(target_os = "android",
                     all(target_os = "linux", target_arch = "arm"),
+                    all(target_env = "msvc", target_arch = "x86"),
                     target_os = "freebsd",
                     target_os = "dragonfly",
                     target_os = "openbsd")) {
