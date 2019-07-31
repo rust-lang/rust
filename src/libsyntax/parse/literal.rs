@@ -373,7 +373,8 @@ crate fn expect_no_suffix(diag: &Handler, sp: Span, kind: &str, suffix: Option<S
                     to tuple field access",
             );
             err.note(
-                "for more context, see https://github.com/rust-lang/rust/issues/60210",
+                "see issue #60210 <https://github.com/rust-lang/rust/issues/60210> \
+                for more information"
             );
             err
         } else {

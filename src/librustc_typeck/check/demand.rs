@@ -727,8 +727,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                         err.warn("if the rounded value cannot be represented by the target \
                                   integer type, including `Inf` and `NaN`, casting will cause \
-                                  undefined behavior \
-                                  (https://github.com/rust-lang/rust/issues/10184)");
+                                  undefined behavior. See issue #10184 \
+                                  <https://github.com/rust-lang/rust/issues/10184>");
                     }
                     true
                 }

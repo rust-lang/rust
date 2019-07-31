@@ -4,7 +4,7 @@ error[E0658]: subslice patterns are unstable
 LL |         [1, 2, ..] => {}
    |                ^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/62254
+   = note: see issue #62254 <https://github.com/rust-lang/rust/issues/62254> for more information
    = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: subslice patterns are unstable
@@ -13,7 +13,7 @@ error[E0658]: subslice patterns are unstable
 LL |         [1, .., 5] => {}
    |             ^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/62254
+   = note: see issue #62254 <https://github.com/rust-lang/rust/issues/62254> for more information
    = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: subslice patterns are unstable
@@ -22,7 +22,7 @@ error[E0658]: subslice patterns are unstable
 LL |         [.., 4, 5] => {}
    |          ^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/62254
+   = note: see issue #62254 <https://github.com/rust-lang/rust/issues/62254> for more information
    = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: subslice patterns are unstable
@@ -31,7 +31,7 @@ error[E0658]: subslice patterns are unstable
 LL |         [ xs @ .., 4, 5 ] => {}
    |           ^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/62254
+   = note: see issue #62254 <https://github.com/rust-lang/rust/issues/62254> for more information
    = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: subslice patterns are unstable
@@ -40,7 +40,7 @@ error[E0658]: subslice patterns are unstable
 LL |         [ 1, xs @ .., 5 ] => {}
    |              ^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/62254
+   = note: see issue #62254 <https://github.com/rust-lang/rust/issues/62254> for more information
    = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0658]: subslice patterns are unstable
@@ -49,7 +49,7 @@ error[E0658]: subslice patterns are unstable
 LL |         [ 1, 2, xs @ .. ] => {}
    |                 ^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/62254
+   = note: see issue #62254 <https://github.com/rust-lang/rust/issues/62254> for more information
    = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error: aborting due to 6 previous errors

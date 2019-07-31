@@ -4528,7 +4528,7 @@ fn fatally_break_rust(sess: &Session) {
     handler.note_without_error("the compiler expectedly panicked. this is a feature.");
     handler.note_without_error(
         "we would appreciate a joke overview: \
-        https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675"
+        see issue #43162 <https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675>"
     );
     handler.note_without_error(&format!("rustc {} running on {}",
         option_env!("CFG_VERSION").unwrap_or("unknown_version"),

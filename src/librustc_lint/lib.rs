@@ -457,27 +457,38 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_removed("transmute_from_fn_item_types",
         "always cast functions before transmuting them");
     store.register_removed("hr_lifetime_in_assoc_type",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/33685");
+        "converted into hard error, \
+        see issue #33685 <https://github.com/rust-lang/rust/issues/33685>");
     store.register_removed("inaccessible_extern_crate",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36886");
+        "converted into hard error, \
+        see issue #36886 <https://github.com/rust-lang/rust/issues/36886>");
     store.register_removed("super_or_self_in_global_path",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36888");
+        "converted into hard error, \
+        see issue #36888 <https://github.com/rust-lang/rust/issues/36888>");
     store.register_removed("overlapping_inherent_impls",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36889");
+        "converted into hard error, \
+        see issue #36889 <https://github.com/rust-lang/rust/issues/36889>");
     store.register_removed("illegal_floating_point_constant_pattern",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36890");
+        "converted into hard error, \
+        see issue #36890 <https://github.com/rust-lang/rust/issues/36890>");
     store.register_removed("illegal_struct_or_enum_constant_pattern",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36891");
+        "converted into hard error, \
+        see issue #36891 <https://github.com/rust-lang/rust/issues/36891>");
     store.register_removed("lifetime_underscore",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36892");
+        "converted into hard error, \
+        see issue #36892 <https://github.com/rust-lang/rust/issues/36892>");
     store.register_removed("extra_requirement_in_impl",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/37166");
+        "converted into hard error, \
+        see issue #37166 <https://github.com/rust-lang/rust/issues/37166>");
     store.register_removed("legacy_imports",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/38260");
+        "converted into hard error, \
+        see issue #38260 <https://github.com/rust-lang/rust/issues/38260>");
     store.register_removed("coerce_never",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950");
+        "converted into hard error, \
+        see issue #48950 <https://github.com/rust-lang/rust/issues/48950>");
     store.register_removed("resolve_trait_on_defaulted_unit",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950");
+        "converted into hard error, \
+        see issue #48950 <https://github.com/rust-lang/rust/issues/48950>");
     store.register_removed("private_no_mangle_fns",
         "no longer a warning, `#[no_mangle]` functions always exported");
     store.register_removed("private_no_mangle_statics",
@@ -485,9 +496,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_removed("bad_repr",
         "replaced with a generic attribute input check");
     store.register_removed("duplicate_matcher_binding_name",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/57742");
+        "converted into hard error, \
+        see issue #57742 <https://github.com/rust-lang/rust/issues/57742>");
     store.register_removed("incoherent_fundamental_impls",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
+        "converted into hard error, \
+        see issue #46205 <https://github.com/rust-lang/rust/issues/46205>");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {

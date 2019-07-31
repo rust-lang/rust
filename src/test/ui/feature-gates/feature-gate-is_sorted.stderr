@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'is_sorted': new API
 LL |     assert!([1, 2, 2, 9].iter().is_sorted());
    |                                 ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/53485
+   = note: see issue #53485 <https://github.com/rust-lang/rust/issues/53485> for more information
    = help: add `#![feature(is_sorted)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'is_sorted': new API
@@ -13,7 +13,7 @@ error[E0658]: use of unstable library feature 'is_sorted': new API
 LL |     assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
    |                                       ^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/53485
+   = note: see issue #53485 <https://github.com/rust-lang/rust/issues/53485> for more information
    = help: add `#![feature(is_sorted)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'is_sorted': new API
@@ -22,7 +22,7 @@ error[E0658]: use of unstable library feature 'is_sorted': new API
 LL |     assert!([1, 2, 2, 9].is_sorted());
    |                          ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/53485
+   = note: see issue #53485 <https://github.com/rust-lang/rust/issues/53485> for more information
    = help: add `#![feature(is_sorted)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'is_sorted': new API
@@ -31,7 +31,7 @@ error[E0658]: use of unstable library feature 'is_sorted': new API
 LL |     assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
    |                                ^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/53485
+   = note: see issue #53485 <https://github.com/rust-lang/rust/issues/53485> for more information
    = help: add `#![feature(is_sorted)]` to the crate attributes to enable
 
 error: aborting due to 4 previous errors

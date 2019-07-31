@@ -16,7 +16,7 @@ note: lint level defined here
 LL | #![deny(patterns_in_fns_without_body)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #35203 <https://github.com/rust-lang/rust/issues/35203>
+   = note: see issue #35203 <https://github.com/rust-lang/rust/issues/35203> for more information
 
 error: aborting due to 2 previous errors
 

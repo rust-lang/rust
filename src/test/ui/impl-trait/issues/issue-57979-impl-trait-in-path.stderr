@@ -10,7 +10,7 @@ note: lint level defined here
 LL |     #![warn(nested_impl_trait)]
    |             ^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #59014 <https://github.com/rust-lang/rust/issues/59014>
+   = note: see issue #59014 <https://github.com/rust-lang/rust/issues/59014> for more information
 
 error: `impl Trait` is not allowed in path parameters
   --> $DIR/issue-57979-impl-trait-in-path.rs:31:52
@@ -24,7 +24,7 @@ note: lint level defined here
 LL |     #![deny(nested_impl_trait)]
    |             ^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #59014 <https://github.com/rust-lang/rust/issues/59014>
+   = note: see issue #59014 <https://github.com/rust-lang/rust/issues/59014> for more information
 
 error: aborting due to previous error
 

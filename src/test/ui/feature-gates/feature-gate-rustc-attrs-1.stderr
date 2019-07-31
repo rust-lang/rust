@@ -4,7 +4,7 @@ error[E0658]: the `#[rustc_variance]` attribute is just used for rustc unit test
 LL | #[rustc_variance]
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = note: see issue #29642 <https://github.com/rust-lang/rust/issues/29642> for more information
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error[E0658]: the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
@@ -13,7 +13,7 @@ error[E0658]: the `#[rustc_error]` attribute is just used for rustc unit tests a
 LL | #[rustc_error]
    | ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = note: see issue #29642 <https://github.com/rust-lang/rust/issues/29642> for more information
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error[E0658]: the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable niche optimizations in libcore and will never be stable
@@ -22,7 +22,7 @@ error[E0658]: the `#[rustc_nonnull_optimization_guaranteed]` attribute is just u
 LL | #[rustc_nonnull_optimization_guaranteed]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = note: see issue #29642 <https://github.com/rust-lang/rust/issues/29642> for more information
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors

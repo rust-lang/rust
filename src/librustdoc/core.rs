@@ -402,7 +402,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
                 let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
                                                          considered deprecated", name));
-                msg.warn("please see https://github.com/rust-lang/rust/issues/44136");
+                msg.warn("see issue \
+                    #44136 <https://github.com/rust-lang/rust/issues/44136>");
 
                 if name == "no_default_passes" {
                     msg.help("you may want to use `#![doc(document_private_items)]`");
