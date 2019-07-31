@@ -543,15 +543,6 @@ impl<'a> Builder<'a> {
             parent: Cell::new(None),
         };
 
-        if kind == Kind::Dist {
-            assert!(
-                !builder.config.test_miri,
-                "Do not distribute with miri enabled.\n\
-                The distributed libraries would include all MIR (increasing binary size).
-                The distributed MIR would include validation statements."
-            );
-        }
-
         builder
     }
 

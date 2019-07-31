@@ -366,8 +366,7 @@ impl Step for Miri {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let test_miri = run.builder.config.test_miri;
-        run.path("src/tools/miri").default_condition(test_miri)
+        run.path("src/tools/miri")
     }
 
     fn make_run(run: RunConfig<'_>) {
