@@ -15,13 +15,13 @@ pub enum CliError {
 
 impl From<io::Error> for CliError {
     fn from(error: io::Error) -> Self {
-        CliError::IoError(error)
+        Self::IoError(error)
     }
 }
 
 impl From<walkdir::Error> for CliError {
     fn from(error: walkdir::Error) -> Self {
-        CliError::WalkDirError(error)
+        Self::WalkDirError(error)
     }
 }
 

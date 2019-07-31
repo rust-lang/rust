@@ -2505,14 +2505,14 @@ impl SelfKind {
         let is_actually_self = |ty| is_self_ty(ty) || SpanlessEq::new(cx).eq_ty(ty, self_ty);
         if is_self(arg) {
             match self {
-                SelfKind::Value => is_actually_self(ty),
-                SelfKind::Ref | SelfKind::RefMut => {
+                Self::Value => is_actually_self(ty),
+                Self::Ref | Self::RefMut => {
                     if allow_value_for_ref && is_actually_self(ty) {
                         return true;
                     }
                     match ty.node {
                         hir::TyKind::Rptr(_, ref mt_ty) => {
-                            let mutability_match = if self == SelfKind::Ref {
+                            let mutability_match = if self == Self::Ref {
                                 mt_ty.mutbl == hir::MutImmutable
                             } else {
                                 mt_ty.mutbl == hir::MutMutable
@@ -2526,20 +2526,20 @@ impl SelfKind {
             }
         } else {
             match self {
-                SelfKind::Value => false,
-                SelfKind::Ref => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASREF_TRAIT),
-                SelfKind::RefMut => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASMUT_TRAIT),
-                SelfKind::No => true,
+                Self::Value => false,
+                Self::Ref => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASREF_TRAIT),
+                Self::RefMut => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASMUT_TRAIT),
+                Self::No => true,
             }
         }
     }
 
     fn description(self) -> &'static str {
         match self {
-            SelfKind::Value => "self by value",
-            SelfKind::Ref => "self by reference",
-            SelfKind::RefMut => "self by mutable reference",
-            SelfKind::No => "no self",
+            Self::Value => "self by value",
+            Self::Ref => "self by reference",
+            Self::RefMut => "self by mutable reference",
+            Self::No => "no self",
         }
     }
 }
@@ -2609,8 +2609,8 @@ fn single_segment_ty(ty: &hir::Ty) -> Option<&hir::PathSegment> {
 impl Convention {
     fn check(&self, other: &str) -> bool {
         match *self {
-            Convention::Eq(this) => this == other,
-            Convention::StartsWith(this) => other.starts_with(this) && this != other,
+            Self::Eq(this) => this == other,
+            Self::StartsWith(this) => other.starts_with(this) && this != other,
         }
     }
 }
@@ -2618,8 +2618,8 @@ impl Convention {
 impl fmt::Display for Convention {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match *self {
-            Convention::Eq(this) => this.fmt(f),
-            Convention::StartsWith(this) => this.fmt(f).and_then(|_| '*'.fmt(f)),
+            Self::Eq(this) => this.fmt(f),
+            Self::StartsWith(this) => this.fmt(f).and_then(|_| '*'.fmt(f)),
         }
     }
 }
@@ -2636,11 +2636,11 @@ impl OutType {
     fn matches(self, cx: &LateContext<'_, '_>, ty: &hir::FunctionRetTy) -> bool {
         let is_unit = |ty: &hir::Ty| SpanlessEq::new(cx).eq_ty_kind(&ty.node, &hir::TyKind::Tup(vec![].into()));
         match (self, ty) {
-            (OutType::Unit, &hir::DefaultReturn(_)) => true,
-            (OutType::Unit, &hir::Return(ref ty)) if is_unit(ty) => true,
-            (OutType::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
-            (OutType::Any, &hir::Return(ref ty)) if !is_unit(ty) => true,
-            (OutType::Ref, &hir::Return(ref ty)) => matches!(ty.node, hir::TyKind::Rptr(_, _)),
+            (Self::Unit, &hir::DefaultReturn(_)) => true,
+            (Self::Unit, &hir::Return(ref ty)) if is_unit(ty) => true,
+            (Self::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
+            (Self::Any, &hir::Return(ref ty)) if !is_unit(ty) => true,
+            (Self::Ref, &hir::Return(ref ty)) => matches!(ty.node, hir::TyKind::Rptr(_, _)),
             _ => false,
         }
     }

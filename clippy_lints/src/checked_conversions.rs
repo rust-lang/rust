@@ -160,12 +160,12 @@ impl ConversionType {
     /// Creates a conversion type if the type is allowed & conversion is valid
     fn try_new(from: &str, to: &str) -> Option<Self> {
         if UINTS.contains(&from) {
-            Some(ConversionType::FromUnsigned)
+            Some(Self::FromUnsigned)
         } else if SINTS.contains(&from) {
             if UINTS.contains(&to) {
-                Some(ConversionType::SignedToUnsigned)
+                Some(Self::SignedToUnsigned)
             } else if SINTS.contains(&to) {
-                Some(ConversionType::SignedToSigned)
+                Some(Self::SignedToSigned)
             } else {
                 None
             }
