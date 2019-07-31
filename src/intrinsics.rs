@@ -1011,6 +1011,20 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         simd_fmax, (c x, c y) {
             simd_flt_binop!(fx, intrinsic, fmax(x, y) -> ret);
         };
+
+        try, (v f, v data, v _local_ptr) {
+            // FIXME once unwinding is supported, change this to actually catch panics
+            let f_sig = fx.bcx.func.import_signature(Signature {
+                call_conv: cranelift::codegen::isa::CallConv::SystemV,
+                params: vec![AbiParam::new(fx.bcx.func.dfg.value_type(data))],
+                returns: vec![],
+            });
+
+            fx.bcx.ins().call_indirect(f_sig, f, &[data]);
+
+            let ret_val = CValue::const_val(fx, ret.layout().ty, 0);
+            ret.write_cvalue(fx, ret_val);
+        };
     }
 
     if let Some((_, dest)) = destination {

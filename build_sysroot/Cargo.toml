@@ -7,7 +7,7 @@ version = "0.0.0"
 core = { path = "./sysroot_src/src/libcore" }
 compiler_builtins = "0.1"
 alloc = { path = "./sysroot_src/src/liballoc" }
-std = { path = "./sysroot_src/src/libstd" }
+std = { path = "./sysroot_src/src/libstd", features = ["panic_unwind"] }
 
 alloc_system = { path = "./alloc_system" }
 

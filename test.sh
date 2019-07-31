@@ -58,7 +58,7 @@ echo "[TEST] rust-lang/regex example shootout-regex-dna"
 cat examples/regexdna-input.txt | ../cargo.sh run --example shootout-regex-dna > res.txt
 diff -u res.txt examples/regexdna-output.txt
 
-# FIXME compile libtest
+# FIXME fix "memory allocation of k bytes failed"
 # echo "[TEST] rust-lang/regex standalone tests"
 # ../cargo.sh test
 popd

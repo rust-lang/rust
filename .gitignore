@@ -7,5 +7,6 @@ perf.data.old
 /build_sysroot/sysroot
 /build_sysroot/sysroot_src
 /build_sysroot/Cargo.lock
+/build_sysroot/test_target/Cargo.lock
 /rust
 /regex
