@@ -7,9 +7,14 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(64);
     base.has_elf_tls = true;
 
-    let lib_root_path = env::var("VCToolsInstallDir").expect("VCToolsInstallDir not found in env");
+    let lib_root_path = env::var("VCToolsInstallDir")
+        .expect("VCToolsInstallDir not found in env");
+
     base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap()
-            .push(format!("{}{}{}", "/LIBPATH:".to_string(), lib_root_path, "lib\\x86\\store".to_string()));
+            .push(format!("{}{}{}",
+            "/LIBPATH:".to_string(),
+            lib_root_path,
+            "lib\\x86\\store".to_string()));
 
     Ok(Target {
         llvm_target: "i686-pc-windows-msvc".to_string(),

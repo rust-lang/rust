@@ -9,9 +9,14 @@ pub fn target() -> TargetResult {
     // FIXME: this shouldn't be panic=abort, it should be panic=unwind
     base.panic_strategy = PanicStrategy::Abort;
 
-    let lib_root_path = env::var("VCToolsInstallDir").expect("VCToolsInstallDir not found in env");
+    let lib_root_path = env::var("VCToolsInstallDir")
+        .expect("VCToolsInstallDir not found in env");
+
     base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap()
-            .push(format!("{}{}{}", "/LIBPATH:".to_string(), lib_root_path, "lib\\arm64\\store".to_string()));
+        .push(format!("{}{}{}",
+            "/LIBPATH:".to_string(),
+            lib_root_path,
+            "lib\\arm64\\store".to_string()));
 
     Ok(Target {
         llvm_target: "aarch64-pc-windows-msvc".to_string(),
