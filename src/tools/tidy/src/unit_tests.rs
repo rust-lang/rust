@@ -34,7 +34,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
         "librustc_lexer/src",
         "librustc_target/spec",
         "librustdoc",
-        "libserialize",
         "libstd",
         "libsyntax",
         "libsyntax_pos",
