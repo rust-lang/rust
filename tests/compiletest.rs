@@ -26,7 +26,11 @@ fn rustc_lib_path() -> PathBuf {
 
 fn run_tests(mode: &str, path: &str, target: &str, mut flags: Vec<String>) {
     // Some flags we always want.
-    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+    if rustc_test_suite().is_none() {
+      // Only `-Dwarnings` on the Miri side to make the rustc toolstate management less painful.
+      // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
+      flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+    }
     flags.push("--edition 2018".to_owned());
     if let Ok(sysroot) = std::env::var("MIRI_SYSROOT") {
         flags.push(format!("--sysroot {}", sysroot));
