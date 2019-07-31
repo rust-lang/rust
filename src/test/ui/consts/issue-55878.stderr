@@ -1,4 +1,4 @@
-error: reaching this expression at runtime will panic or abort
+error[E0080]: reaching this expression at runtime will panic or abort
   --> $SRC_DIR/libcore/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()
@@ -8,8 +8,7 @@ LL |     intrinsics::size_of::<T>()
    |
 LL |     println!("Size: {}", std::mem::size_of::<[u8; std::u64::MAX as usize]>());
    |                          ---------------------------------------------------
-   |
-   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0080`.
