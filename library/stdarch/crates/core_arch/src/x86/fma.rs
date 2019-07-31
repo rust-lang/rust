@@ -440,14 +440,6 @@ pub unsafe fn _mm_fnmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.fma.vfmadd.pd"]
-    fn vfmaddpd(a: __m128d, b: __m128d, c: __m128d) -> __m128d;
-    #[link_name = "llvm.x86.fma.vfmadd.pd.256"]
-    fn vfmaddpd256(a: __m256d, b: __m256d, c: __m256d) -> __m256d;
-    #[link_name = "llvm.x86.fma.vfmadd.ps"]
-    fn vfmaddps(a: __m128, b: __m128, c: __m128) -> __m128;
-    #[link_name = "llvm.x86.fma.vfmadd.ps.256"]
-    fn vfmaddps256(a: __m256, b: __m256, c: __m256) -> __m256;
     #[link_name = "llvm.x86.fma.vfmadd.sd"]
     fn vfmaddsd(a: __m128d, b: __m128d, c: __m128d) -> __m128d;
     #[link_name = "llvm.x86.fma.vfmadd.ss"]
