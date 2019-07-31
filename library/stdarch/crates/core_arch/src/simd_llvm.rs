@@ -3,6 +3,7 @@
 //! TODO: should use `link_llvm_intrinsic` instead: issue #112
 
 extern "platform-intrinsic" {
+    //pub fn simd_select_bitmask
     pub fn simd_eq<T, U>(x: T, y: T) -> U;
     pub fn simd_ne<T, U>(x: T, y: T) -> U;
     pub fn simd_lt<T, U>(x: T, y: T) -> U;
@@ -27,6 +28,8 @@ extern "platform-intrinsic" {
 
     pub fn simd_insert<T, U>(x: T, idx: u32, val: U) -> T;
     pub fn simd_extract<T, U>(x: T, idx: u32) -> U;
+    //pub fn simd_select
+    pub fn simd_bitmask<T, U>(x: T) -> U;
 
     pub fn simd_cast<T, U>(x: T) -> U;
 
@@ -39,6 +42,12 @@ extern "platform-intrinsic" {
     pub fn simd_and<T>(x: T, y: T) -> T;
     pub fn simd_or<T>(x: T, y: T) -> T;
     pub fn simd_xor<T>(x: T, y: T) -> T;
+
+    pub fn simd_saturating_add<T>(x: T, y: T) -> T;
+    pub fn simd_saturating_sub<T>(x: T, y: T) -> T;
+
+    pub fn simd_gather<T, U, V>(values: T, pointers: U, mask: V) -> T;
+    pub fn simd_scatter<T, U, V>(values: T, pointers: U, mask: V);
 
     pub fn simd_reduce_add_unordered<T, U>(x: T) -> U;
     pub fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
@@ -61,7 +70,17 @@ extern "platform-intrinsic" {
     pub fn simd_fmax<T>(a: T, b: T) -> T;
 
     pub fn simd_fsqrt<T>(a: T) -> T;
+    pub fn simd_fsin<T>(a: T) -> T;
+    pub fn simd_fcos<T>(a: T) -> T;
+    pub fn simd_fabs<T>(a: T) -> T;
     pub fn simd_floor<T>(a: T) -> T;
     pub fn simd_ceil<T>(a: T) -> T;
+    pub fn simd_fexp<T>(a: T) -> T;
+    pub fn simd_fexp2<T>(a: T) -> T;
+    pub fn simd_flog10<T>(a: T) -> T;
+    pub fn simd_flog2<T>(a: T) -> T;
+    pub fn simd_flog<T>(a: T) -> T;
+    //pub fn simd_fpowi
+    //pub fn simd_fpow
     pub fn simd_fma<T>(a: T, b: T, c: T) -> T;
 }
