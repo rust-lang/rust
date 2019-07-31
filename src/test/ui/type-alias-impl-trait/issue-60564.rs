@@ -1,11 +1,11 @@
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
 trait IterBits {
     type BitsIter: Iterator<Item = u8>;
     fn iter_bits(self, n: u8) -> Self::BitsIter;
 }
 
-existential type IterBitsIter<T, E, I>: std::iter::Iterator<Item = I>;
+type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
 //~^ ERROR could not find defining uses
 
 impl<T, E> IterBits for T

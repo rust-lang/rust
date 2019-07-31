@@ -1713,7 +1713,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             // For example, this code:
             // ```
             // fn foo() {
-            //     existential type Blah: Debug;
+            //     type Blah = impl Debug;
             //     let my_closure = || -> Blah { true };
             // }
             // ```

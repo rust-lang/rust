@@ -81,9 +81,9 @@ mod impl_trait_in_bindings {
 }
 
 /////////////////////////////////////////////
-// The same applied to `existential type`s
+// The same applied to `type Foo = impl Bar`s
 
-mod existential_types {
+mod opaque_types {
     trait Implemented {
         type Assoc;
     }

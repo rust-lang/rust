@@ -1,4 +1,4 @@
-// Issue 52985: user code provides no use case that allows an existential type
+// Issue 52985: user code provides no use case that allows a type alias `impl Trait`
 // We now emit a 'could not find defining uses' error
 
 #![feature(type_alias_impl_trait)]

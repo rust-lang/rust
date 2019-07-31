@@ -2,7 +2,7 @@ error[E0601]: `main` function not found in crate `issue_60564`
    |
    = note: consider adding a `main` function to `$DIR/issue-60564.rs`
 
-error: type parameter `E` is part of concrete type but not used in parameter list for existential type
+error: type parameter `E` is part of concrete type but not used in parameter list for the `impl Trait` type alias
   --> $DIR/issue-60564.rs:20:49
    |
 LL |       fn iter_bits(self, n: u8) -> Self::BitsIter {
@@ -17,8 +17,8 @@ LL | |     }
 error: could not find defining uses
   --> $DIR/issue-60564.rs:8:1
    |
-LL | existential type IterBitsIter<T, E, I>: std::iter::Iterator<Item = I>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

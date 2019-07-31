@@ -1,8 +1,8 @@
 // check-pass
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
-existential type Debuggable: core::fmt::Debug;
+type Debuggable = impl core::fmt::Debug;
 
 static mut TEST: Option<Debuggable> = None;
 

@@ -1,10 +1,10 @@
 // check-pass
 
-#![feature(const_fn, generators, generator_trait, existential_type)]
+#![feature(const_fn, generators, generator_trait, type_alias_impl_trait)]
 
 use std::ops::Generator;
 
-existential type GenOnce<Y, R>: Generator<Yield = Y, Return = R>;
+type GenOnce<Y, R> = impl Generator<Yield = Y, Return = R>;
 
 const fn const_generator<Y, R>(yielding: Y, returning: R) -> GenOnce<Y, R> {
     move || {

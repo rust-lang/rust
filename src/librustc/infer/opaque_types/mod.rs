@@ -1207,7 +1207,7 @@ pub fn may_define_opaque_type(
     // Syntactically, we are allowed to define the concrete type if:
     let res = hir_id == scope;
     trace!(
-        "may_define_existential_type(def={:?}, opaque_node={:?}) = {}",
+        "may_define_opaque_type(def={:?}, opaque_node={:?}) = {}",
         tcx.hir().get(hir_id),
         tcx.hir().get(opaque_hir_id),
         res

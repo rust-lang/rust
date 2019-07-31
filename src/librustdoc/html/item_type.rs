@@ -144,7 +144,7 @@ impl ItemType {
             ItemType::AssocConst      => "associatedconstant",
             ItemType::ForeignType     => "foreigntype",
             ItemType::Keyword         => "keyword",
-            ItemType::OpaqueTy     => "opaque",
+            ItemType::OpaqueTy        => "opaque",
             ItemType::ProcAttribute   => "attr",
             ItemType::ProcDerive      => "derive",
             ItemType::TraitAlias      => "traitalias",
