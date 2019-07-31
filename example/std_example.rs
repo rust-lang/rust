@@ -68,6 +68,7 @@ unsafe fn test_simd() {
     test_mm256_movemask_epi8();
     test_mm_add_epi8();
     test_mm_add_pd();
+    test_mm_cvtepi8_epi16();
 
     let mask1 = _mm_movemask_epi8(dbg!(_mm_setr_epi8(255u8 as i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
     assert_eq!(mask1, 1);
@@ -168,6 +169,18 @@ pub unsafe fn assert_eq_m128d(a: __m128d, b: __m128d) {
     if _mm_movemask_pd(_mm_cmpeq_pd(a, b)) != 0b11 {
         panic!("{:?} != {:?}", a, b);
     }
+}
+
+#[target_feature(enable = "sse4.1")]
+unsafe fn test_mm_cvtepi8_epi16() {
+    let a = _mm_set1_epi8(10);
+    let r = _mm_cvtepi8_epi16(a);
+    let e = _mm_set1_epi16(10);
+    assert_eq_m128i(r, e);
+    let a = _mm_set1_epi8(-10);
+    let r = _mm_cvtepi8_epi16(a);
+    let e = _mm_set1_epi16(-10);
+    assert_eq_m128i(r, e);
 }
 
 #[derive(PartialEq)]

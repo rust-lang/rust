@@ -853,8 +853,27 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             ret.write_cvalue(fx, val);
         };
 
-        simd_cast, (c x) {
-            ret.write_cvalue(fx, x.unchecked_cast_to(ret.layout()));
+        simd_cast, (c a) {
+            let (lane_layout, lane_count) = lane_type_and_count(fx, a.layout(), intrinsic);
+            let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx, ret.layout(), intrinsic);
+            assert_eq!(lane_count, ret_lane_count);
+
+            let ret_lane_ty = fx.clif_type(ret_lane_layout.ty).unwrap();
+
+            let signed = match lane_layout.ty.sty {
+                ty::Uint(..) => false,
+                ty::Int(..) => true,
+                ty::Float(..) => false, // `signed` is unused for floats
+                _ => panic!("{}", lane_layout.ty),
+            };
+
+            for lane in 0..lane_count {
+                let lane = mir::Field::new(lane.try_into().unwrap());
+
+                let a_lane = a.value_field(fx, lane).load_scalar(fx);
+                let res = clif_int_or_float_cast(fx, a_lane, ret_lane_ty, signed);
+                ret.place_field(fx, lane).write_cvalue(fx, CValue::by_val(res, ret_lane_layout));
+            }
         };
 
         simd_eq, (c x, c y) {

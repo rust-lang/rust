@@ -33,6 +33,7 @@ mod allocator;
 mod analyze;
 mod archive;
 mod base;
+mod cast;
 mod codegen_i128;
 mod common;
 mod constant;
@@ -94,6 +95,7 @@ mod prelude {
 
     pub use crate::abi::*;
     pub use crate::base::{trans_operand, trans_place};
+    pub use crate::cast::*;
     pub use crate::common::*;
     pub use crate::debuginfo::{DebugContext, FunctionDebugContext};
     pub use crate::trap::*;

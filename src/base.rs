@@ -436,7 +436,6 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         let discr = trans_get_discriminant(fx, place, fx.layout_of(to_ty));
                         lval.write_cvalue(fx, discr);
                     } else {
-                        let from_clif_ty = fx.clif_type(from_ty).unwrap();
                         let to_clif_ty = fx.clif_type(to_ty).unwrap();
                         let from = operand.load_scalar(fx);
 
@@ -447,43 +446,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             _ => panic!("{}", from_ty),
                         };
 
-                        let res = if from_clif_ty.is_int() && to_clif_ty.is_int() {
-                            // int-like -> int-like
-                            crate::common::clif_intcast(
-                                fx,
-                                from,
-                                to_clif_ty,
-                                signed,
-                            )
-                        } else if from_clif_ty.is_int() && to_clif_ty.is_float() {
-                            // int-like -> float
-                            if signed {
-                                fx.bcx.ins().fcvt_from_sint(to_clif_ty, from)
-                            } else {
-                                fx.bcx.ins().fcvt_from_uint(to_clif_ty, from)
-                            }
-                        } else if from_clif_ty.is_float() && to_clif_ty.is_int() {
-                            // float -> int-like
-                            let from = operand.load_scalar(fx);
-                            if signed {
-                                fx.bcx.ins().fcvt_to_sint_sat(to_clif_ty, from)
-                            } else {
-                                fx.bcx.ins().fcvt_to_uint_sat(to_clif_ty, from)
-                            }
-                        } else if from_clif_ty.is_float() && to_clif_ty.is_float() {
-                            // float -> float
-                            match (from_clif_ty, to_clif_ty) {
-                                (types::F32, types::F64) => {
-                                    fx.bcx.ins().fpromote(types::F64, from)
-                                }
-                                (types::F64, types::F32) => {
-                                    fx.bcx.ins().fdemote(types::F32, from)
-                                }
-                                _ => from,
-                            }
-                        } else {
-                            unimpl!("rval misc {:?} {:?}", from_ty, to_ty)
-                        };
+                        let res = clif_int_or_float_cast(fx, from, to_clif_ty, signed);
                         lval.write_cvalue(fx, CValue::by_val(res, dest_layout));
                     }
                 }
