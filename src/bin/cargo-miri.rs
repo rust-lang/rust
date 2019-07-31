@@ -141,6 +141,13 @@ fn test_sysroot_consistency() {
             .unwrap_or_else(|_| panic!("Failed to canonicalize sysroot: {}", stdout))
     }
 
+    // We let the user skip this check if they really want to.
+    // (`bootstrap` needs this because Miri gets built by the stage1 compiler
+    // but run with the stage2 sysroot.)
+    if std::env::var("MIRI_SKIP_SYSROOT_CHECK").is_ok() {
+        return;
+    }
+
     let rustc_sysroot = get_sysroot(Command::new("rustc"));
     let miri_sysroot = get_sysroot(Command::new(find_miri()));
 
