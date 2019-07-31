@@ -492,7 +492,6 @@ pub fn handle_hover(
     Ok(Some(res))
 }
 
-/// Test doc comment
 pub fn handle_prepare_rename(
     world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
