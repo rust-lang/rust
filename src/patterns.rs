@@ -133,7 +133,7 @@ impl Rewrite for Pat {
                     .iter()
                     .map(|p| {
                         if let Some(rw) = p.rewrite(context, shape) {
-                            format!("{}", if rw == "_" { "" } else { &rw })
+                            rw
                         } else {
                             format!("{}", context.snippet(p.span))
                         }
