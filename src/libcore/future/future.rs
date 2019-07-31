@@ -111,8 +111,7 @@ impl<F: ?Sized + Future + Unpin> Future for &mut F {
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl<P> Future for Pin<P>
 where
-    P: Unpin + ops::DerefMut,
-    P::Target: Future,
+    P: Unpin + ops::DerefMut<Target: Future>,
 {
     type Output = <<P as ops::Deref>::Target as Future>::Output;
 

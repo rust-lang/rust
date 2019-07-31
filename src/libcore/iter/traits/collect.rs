@@ -195,8 +195,8 @@ pub trait FromIterator<A>: Sized {
 ///
 /// ```rust
 /// fn collect_as_strings<T>(collection: T) -> Vec<String>
-///     where T: IntoIterator,
-///           T::Item: std::fmt::Debug,
+/// where
+///     T: IntoIterator<Item: std::fmt::Debug>,
 /// {
 ///     collection
 ///         .into_iter()
