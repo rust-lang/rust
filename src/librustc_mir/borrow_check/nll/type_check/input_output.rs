@@ -1,7 +1,7 @@
 //! This module contains code to equate the input/output types appearing
 //! in the MIR with the expected input/output types from the function
 //! signature. This requires a bit of processing, as the expected types
-//! are supplied to us before normalization and may contain existential
+//! are supplied to us before normalization and may contain opaque
 //! `impl Trait` instances. In contrast, the input/output types found in
 //! the MIR (specifically, in the special local variables for the
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
@@ -113,8 +113,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty, yield_span);
         }
 
-        // Return types are a bit more complex. They may contain existential `impl Trait`
-        // types.
+        // Return types are a bit more complex. They may contain opaque `impl Trait` types.
         let mir_output_ty = body.local_decls[RETURN_PLACE].ty;
         let output_span = body.local_decls[RETURN_PLACE].source_info.span;
         if let Err(terr) = self.eq_opaque_type_and_type(

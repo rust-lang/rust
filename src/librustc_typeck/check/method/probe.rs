@@ -1489,7 +1489,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         match self.mode {
             Mode::MethodCall => item.method_has_self_argument,
             Mode::Path => match item.kind {
-                ty::AssocKind::Existential |
+                ty::AssocKind::OpaqueTy |
                 ty::AssocKind::Type => false,
                 ty::AssocKind::Method | ty::AssocKind::Const => true
             },

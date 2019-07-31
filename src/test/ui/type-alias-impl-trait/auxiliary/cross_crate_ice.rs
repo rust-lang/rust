@@ -1,4 +1,4 @@
-// Crate that exports an existential type. Used for testing cross-crate.
+// Crate that exports an opaque `impl Trait` type. Used for testing cross-crate.
 
 #![crate_type="rlib"]
 

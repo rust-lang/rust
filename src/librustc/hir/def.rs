@@ -55,15 +55,15 @@ pub enum DefKind {
     /// Refers to the variant itself, `DefKind::Ctor` refers to its constructor if it exists.
     Variant,
     Trait,
-    /// `existential type Foo: Bar;`
-    Existential,
+    /// `type Foo = impl Bar;`
+    OpaqueTy,
     /// `type Foo = Bar;`
     TyAlias,
     ForeignTy,
     TraitAlias,
     AssocTy,
-    /// `existential type Foo: Bar;`
-    AssocExistential,
+    /// `type Foo = impl Bar;`
+    AssocOpaqueTy,
     TyParam,
 
     // Value namespace
@@ -96,11 +96,11 @@ impl DefKind {
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) =>
                 bug!("impossible struct constructor"),
-            DefKind::Existential => "existential type",
+            DefKind::OpaqueTy => "opaque type",
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
             DefKind::AssocTy => "associated type",
-            DefKind::AssocExistential => "associated existential type",
+            DefKind::AssocOpaqueTy => "associated opaque type",
             DefKind::Union => "union",
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
@@ -118,9 +118,9 @@ impl DefKind {
         match *self {
             DefKind::AssocTy
             | DefKind::AssocConst
-            | DefKind::AssocExistential
+            | DefKind::AssocOpaqueTy
             | DefKind::Enum
-            | DefKind::Existential => "an",
+            | DefKind::OpaqueTy => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),
             _ => "a",
         }

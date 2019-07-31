@@ -120,7 +120,7 @@ trait DummyTrait {
 }
 impl DummyTrait for () {
     type Out = impl Debug;
-    //~^ ERROR existential types are unstable
+    //~^ ERROR `impl Trait` in type aliases is unstable
     //~^^ ERROR could not find defining uses
 
     fn in_trait_impl_parameter(_: impl Debug) { }
@@ -156,7 +156,7 @@ extern "C" fn in_extern_fn_return() -> impl Debug {
 }
 
 type InTypeAlias<R> = impl Debug;
-//~^ ERROR existential types are unstable
+//~^ ERROR `impl Trait` in type aliases is unstable
 //~^^ ERROR could not find defining uses
 
 type InReturnInTypeAlias<R> = fn() -> impl Debug;

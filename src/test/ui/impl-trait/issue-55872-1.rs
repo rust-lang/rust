@@ -14,7 +14,7 @@ impl<S: Default> Bar for S {
     //~^^ ERROR the trait bound `T: std::marker::Copy` is not satisfied in `(S, T)` [E0277]
 
     fn foo<T: Default>() -> Self::E {
-    //~^ ERROR type parameter `T` is part of concrete type but not used in parameter list for existential type
+    //~^ ERROR type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
         (S::default(), T::default())
     }
 }

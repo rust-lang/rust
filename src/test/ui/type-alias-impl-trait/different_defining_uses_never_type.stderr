@@ -1,4 +1,4 @@
-error: concrete type differs from previous defining existential type use
+error: concrete type differs from previous defining opaque type use
   --> $DIR/different_defining_uses_never_type.rs:12:1
    |
 LL | / fn bar() -> Foo {
@@ -14,7 +14,7 @@ LL | |     ""
 LL | | }
    | |_^
 
-error: concrete type differs from previous defining existential type use
+error: concrete type differs from previous defining opaque type use
   --> $DIR/different_defining_uses_never_type.rs:16:1
    |
 LL | / fn boo() -> Foo {

@@ -3,7 +3,7 @@
 // edition:2018
 // aux-build:arc_wake.rs
 
-#![feature(async_await)]
+#![feature(async_await, async_closure, await_macro)]
 
 extern crate arc_wake;
 
@@ -48,14 +48,14 @@ impl Future for WakeOnceThenComplete {
 
 fn async_block(x: u8) -> impl Future<Output = u8> {
     async move {
-        wake_and_yield_once().await;
+        await!(wake_and_yield_once());
         x
     }
 }
 
 fn async_block_with_borrow_named_lifetime<'a>(x: &'a u8) -> impl Future<Output = u8> + 'a {
     async move {
-        wake_and_yield_once().await;
+        await!(wake_and_yield_once());
         *x
     }
 }
@@ -63,38 +63,49 @@ fn async_block_with_borrow_named_lifetime<'a>(x: &'a u8) -> impl Future<Output =
 fn async_nonmove_block(x: u8) -> impl Future<Output = u8> {
     async move {
         let future = async {
-            wake_and_yield_once().await;
+            await!(wake_and_yield_once());
             x
         };
-        future.await
+        await!(future)
     }
 }
 
-// see async-closure.rs for async_closure + async_closure_in_unsafe_block
+fn async_closure(x: u8) -> impl Future<Output = u8> {
+    (async move |x: u8| -> u8 {
+        await!(wake_and_yield_once());
+        x
+    })(x)
+}
+
+fn async_closure_in_unsafe_block(x: u8) -> impl Future<Output = u8> {
+    (unsafe {
+        async move |x: u8| unsafe_fn(await!(unsafe_async_fn(x)))
+    })(x)
+}
 
 async fn async_fn(x: u8) -> u8 {
-    wake_and_yield_once().await;
+    await!(wake_and_yield_once());
     x
 }
 
 async fn generic_async_fn<T>(x: T) -> T {
-    wake_and_yield_once().await;
+    await!(wake_and_yield_once());
     x
 }
 
 async fn async_fn_with_borrow(x: &u8) -> u8 {
-    wake_and_yield_once().await;
+    await!(wake_and_yield_once());
     *x
 }
 
 async fn async_fn_with_borrow_named_lifetime<'a>(x: &'a u8) -> u8 {
-    wake_and_yield_once().await;
+    await!(wake_and_yield_once());
     *x
 }
 
 fn async_fn_with_impl_future_named_lifetime<'a>(x: &'a u8) -> impl Future<Output = u8> + 'a {
     async move {
-        wake_and_yield_once().await;
+        await!(wake_and_yield_once());
         *x
     }
 }
@@ -107,18 +118,18 @@ async fn async_fn_multiple_args(x: &u8, _y: &u8) -> u8 {
 */
 
 async fn async_fn_multiple_args_named_lifetime<'a>(x: &'a u8, _y: &'a u8) -> u8 {
-    wake_and_yield_once().await;
+    await!(wake_and_yield_once());
     *x
 }
 
 fn async_fn_with_internal_borrow(y: u8) -> impl Future<Output = u8> {
     async move {
-        async_fn_with_borrow_named_lifetime(&y).await
+        await!(async_fn_with_borrow_named_lifetime(&y))
     }
 }
 
 async unsafe fn unsafe_async_fn(x: u8) -> u8 {
-    wake_and_yield_once().await;
+    await!(wake_and_yield_once());
     x
 }
 
@@ -129,7 +140,7 @@ unsafe fn unsafe_fn(x: u8) -> u8 {
 fn async_block_in_unsafe_block(x: u8) -> impl Future<Output = u8> {
     unsafe {
         async move {
-            unsafe_fn(unsafe_async_fn(x).await)
+            unsafe_fn(await!(unsafe_async_fn(x)))
         }
     }
 }
@@ -143,12 +154,12 @@ trait Bar {
 impl Foo {
     async fn async_assoc_item(x: u8) -> u8 {
         unsafe {
-            unsafe_async_fn(x).await
+            await!(unsafe_async_fn(x))
         }
     }
 
     async unsafe fn async_unsafe_assoc_item(x: u8) -> u8 {
-        unsafe_async_fn(x).await
+        await!(unsafe_async_fn(x))
     }
 }
 
@@ -178,7 +189,7 @@ fn main() {
         ($($fn_name:expr,)*) => { $(
             test_future_yields_once_then_returns(|x| {
                 async move {
-                    $fn_name(&x).await
+                    await!($fn_name(&x))
                 }
             });
         )* }
@@ -187,6 +198,8 @@ fn main() {
     test! {
         async_block,
         async_nonmove_block,
+        async_closure,
+        async_closure_in_unsafe_block,
         async_fn,
         generic_async_fn,
         async_fn_with_internal_borrow,
@@ -194,12 +207,12 @@ fn main() {
         Foo::async_assoc_item,
         |x| {
             async move {
-                unsafe { unsafe_async_fn(x).await }
+                unsafe { await!(unsafe_async_fn(x)) }
             }
         },
         |x| {
             async move {
-                unsafe { Foo::async_unsafe_assoc_item(x).await }
+                unsafe { await!(Foo::async_unsafe_assoc_item(x)) }
             }
         },
     }
@@ -210,7 +223,7 @@ fn main() {
         async_fn_with_impl_future_named_lifetime,
         |x| {
             async move {
-                async_fn_multiple_args_named_lifetime(x, x).await
+                await!(async_fn_multiple_args_named_lifetime(x, x))
             }
         },
     }

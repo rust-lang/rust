@@ -744,9 +744,9 @@ pub enum DesugaringKind {
     QuestionMark,
     TryBlock,
     /// Desugaring of an `impl Trait` in return type position
-    /// to an `existential type Foo: Trait;` and replacing the
+    /// to an `type Foo = impl Trait;` and replacing the
     /// `impl Trait` with `Foo`.
-    ExistentialType,
+    OpaqueTy,
     Async,
     Await,
     ForLoop,
@@ -761,7 +761,7 @@ impl DesugaringKind {
             DesugaringKind::Await => "`await` expression",
             DesugaringKind::QuestionMark => "operator `?`",
             DesugaringKind::TryBlock => "`try` block",
-            DesugaringKind::ExistentialType => "`existential type`",
+            DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
         }
     }

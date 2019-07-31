@@ -480,16 +480,16 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
-            hir::ItemKind::Existential(hir::ExistTy {
+            hir::ItemKind::OpaqueTy(hir::ExistTy {
                 impl_trait_fn: Some(_),
                 ..
             }) => {
-                // currently existential type declarations are just generated from impl Trait
-                // items. doing anything on this node is irrelevant, as we currently don't need
+                // Currently opaque type declarations are just generated from `impl Trait`
+                // items. Doing anything on this node is irrelevant, as we currently don't need
                 // it.
             }
             hir::ItemKind::Ty(_, ref generics)
-            | hir::ItemKind::Existential(hir::ExistTy {
+            | hir::ItemKind::OpaqueTy(hir::ExistTy {
                 impl_trait_fn: None,
                 ref generics,
                 ..
@@ -627,9 +627,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 //                                         the exist_ty generics
                 let (generics, bounds) = match self.tcx.hir().expect_item(item_id.id).node
                 {
-                    // named existential types are reached via TyKind::Path
-                    // this arm is for `impl Trait` in the types of statics, constants and locals
-                    hir::ItemKind::Existential(hir::ExistTy {
+                    // Named opaque `impl Trait` types are reached via `TyKind::Path`.
+                    // This arm is for `impl Trait` in the types of statics, constants and locals.
+                    hir::ItemKind::OpaqueTy(hir::ExistTy {
                         impl_trait_fn: None,
                         ..
                     }) => {
@@ -637,15 +637,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         return;
                     }
                     // RPIT (return position impl trait)
-                    hir::ItemKind::Existential(hir::ExistTy {
+                    hir::ItemKind::OpaqueTy(hir::ExistTy {
                         ref generics,
                         ref bounds,
                         ..
                     }) => (generics, bounds),
-                    ref i => bug!("impl Trait pointed to non-existential type?? {:#?}", i),
+                    ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 };
 
-                // Resolve the lifetimes that are applied to the existential type.
+                // Resolve the lifetimes that are applied to the opaque type.
                 // These are resolved in the current scope.
                 // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
                 // `fn foo<'a>() -> MyAnonTy<'a> { ... }`
@@ -855,7 +855,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     this.visit_ty(ty);
                 });
             }
-            Existential(ref bounds) => {
+            OpaqueTy(ref bounds) => {
                 let generics = &impl_item.generics;
                 let mut index = self.next_early_index();
                 let mut next_early_index = index;
@@ -1254,7 +1254,7 @@ fn compute_object_lifetime_defaults(tcx: TyCtxt<'_>) -> HirIdMap<Vec<ObjectLifet
             hir::ItemKind::Struct(_, ref generics)
             | hir::ItemKind::Union(_, ref generics)
             | hir::ItemKind::Enum(_, ref generics)
-            | hir::ItemKind::Existential(hir::ExistTy {
+            | hir::ItemKind::OpaqueTy(hir::ExistTy {
                 ref generics,
                 impl_trait_fn: None,
                 ..

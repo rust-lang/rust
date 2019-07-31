@@ -1,4 +1,4 @@
-error: type parameter `T` is part of concrete type but not used in parameter list for existential type
+error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
   --> $DIR/issue-55872.rs:13:28
    |
 LL |       fn foo<T>() -> Self::E {

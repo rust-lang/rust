@@ -26,7 +26,7 @@ pub struct Module<'hir> {
     pub mods: Vec<Module<'hir>>,
     pub id: NodeId,
     pub typedefs: Vec<Typedef<'hir>>,
-    pub existentials: Vec<Existential<'hir>>,
+    pub opaque_tys: Vec<OpaqueTy<'hir>>,
     pub statics: Vec<Static<'hir>>,
     pub constants: Vec<Constant<'hir>>,
     pub traits: Vec<Trait<'hir>>,
@@ -64,7 +64,7 @@ impl Module<'hir> {
             fns        :   Vec::new(),
             mods       :   Vec::new(),
             typedefs   :   Vec::new(),
-            existentials:  Vec::new(),
+            opaque_tys :  Vec::new(),
             statics    :   Vec::new(),
             constants  :   Vec::new(),
             traits     :   Vec::new(),
@@ -162,8 +162,8 @@ pub struct Typedef<'hir> {
     pub depr: Option<attr::Deprecation>,
 }
 
-pub struct Existential<'hir> {
-    pub exist_ty: &'hir hir::ExistTy,
+pub struct OpaqueTy<'hir> {
+    pub opaque_ty: &'hir hir::OpaqueTy,
     pub name: Name,
     pub id: hir::HirId,
     pub attrs: &'hir hir::HirVec<ast::Attribute>,

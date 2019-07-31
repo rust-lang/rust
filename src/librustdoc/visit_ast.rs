@@ -472,8 +472,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.typedefs.push(t);
             },
-            hir::ItemKind::Existential(ref exist_ty) => {
-                let t = Existential {
+            hir::ItemKind::OpaqueTy(ref exist_ty) => {
+                let t = OpaqueTy {
                     exist_ty,
                     name: ident.name,
                     id: item.hir_id,
@@ -483,7 +483,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     stab: self.stability(item.hir_id),
                     depr: self.deprecation(item.hir_id),
                 };
-                om.existentials.push(t);
+                om.opaque_tys.push(t);
             },
             hir::ItemKind::Static(ref type_, mutability, expr) => {
                 let s = Static {

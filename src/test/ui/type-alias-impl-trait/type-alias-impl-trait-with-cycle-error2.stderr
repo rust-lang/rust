@@ -1,5 +1,5 @@
 error: could not find defining uses
-  --> $DIR/existential-types-with-cycle-error2.rs:7:1
+  --> $DIR/type-alias-impl-trait-with-cycle-error2.rs:7:1
    |
 LL | type Foo = impl Bar<Foo, Item = Foo>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

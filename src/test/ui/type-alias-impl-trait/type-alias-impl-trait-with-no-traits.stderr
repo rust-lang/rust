@@ -1,11 +1,11 @@
 error: at least one trait must be specified
-  --> $DIR/existential-types-with-no-traits.rs:3:17
+  --> $DIR/type-alias-impl-trait-with-no-traits.rs:3:17
    |
 LL | type Foo = impl 'static;
    |                 ^^^^^^^
 
 error: at least one trait must be specified
-  --> $DIR/existential-types-with-no-traits.rs:10:13
+  --> $DIR/type-alias-impl-trait-with-no-traits.rs:10:13
    |
 LL | fn bar() -> impl 'static {
    |             ^^^^^^^^^^^^

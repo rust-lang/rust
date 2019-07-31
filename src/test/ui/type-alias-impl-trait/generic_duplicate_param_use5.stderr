@@ -1,17 +1,17 @@
-error: concrete type differs from previous defining existential type use
-  --> $DIR/generic_duplicate_param_use6.rs:14:1
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/generic_duplicate_param_use5.rs:14:1
    |
 LL | / fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
 LL | |
 LL | |     (u, t)
 LL | | }
-   | |_^ expected `(T, T)`, got `(U, T)`
+   | |_^ expected `(T, U)`, got `(U, T)`
    |
 note: previous use here
-  --> $DIR/generic_duplicate_param_use6.rs:10:1
+  --> $DIR/generic_duplicate_param_use5.rs:10:1
    |
 LL | / fn two<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
-LL | |     (t, t)
+LL | |     (t, u)
 LL | | }
    | |_^
 

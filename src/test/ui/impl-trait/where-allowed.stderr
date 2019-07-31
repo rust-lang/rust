@@ -16,7 +16,7 @@ LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic
    |                                                 |       nested `impl Trait` here
    |                                                 outer `impl Trait`
 
-error[E0658]: existential types are unstable
+error[E0658]: `impl Trait` in type aliases is unstable
   --> $DIR/where-allowed.rs:122:5
    |
 LL |     type Out = impl Debug;
@@ -25,7 +25,7 @@ LL |     type Out = impl Debug;
    = note: for more information, see https://github.com/rust-lang/rust/issues/63063
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
-error[E0658]: existential types are unstable
+error[E0658]: `impl Trait` in type aliases is unstable
   --> $DIR/where-allowed.rs:158:1
    |
 LL | type InTypeAlias<R> = impl Debug;

@@ -667,7 +667,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                                 "unions cannot have zero fields");
                 }
             }
-            ItemKind::Existential(ref bounds, _) => {
+            ItemKind::OpaqueTy(ref bounds, _) => {
                 if !bounds.iter()
                           .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
                     let msp = MultiSpan::from_spans(bounds.iter()

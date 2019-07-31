@@ -443,10 +443,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // * `fn foo<T: Bound + Other>() -> Foo<T>`
             // from being defining.
 
-            // Also replace all generic params with the ones from the existential type
+            // Also replace all generic params with the ones from the opaque type
             // definition so that
             // ```rust
-            // existential type Foo<T>: 'static;
+            // type Foo<T> = impl Baz + 'static;
             // fn foo<U>() -> Foo<U> { .. }
             // ```
             // figures out the concrete type with `U`, but the stored type is with `T`.
@@ -464,8 +464,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
 
             if !opaque_defn.substs.has_local_value() {
-                // We only want to add an entry into `concrete_existential_types`
-                // if we actually found a defining usage of this existential type.
+                // We only want to add an entry into `concrete_opaque_types`
+                // if we actually found a defining usage of this opaque type.
                 // Otherwise, we do nothing - we'll either find a defining usage
                 // in some other location, or we'll end up emitting an error due
                 // to the lack of defining usage
@@ -476,14 +476,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     };
 
                     let old = self.tables
-                        .concrete_existential_types
+                        .concrete_opaque_types
                         .insert(def_id, new);
                     if let Some(old) = old {
                         if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
                             span_bug!(
                                 span,
                                 "visit_opaque_types tried to write different types for the same \
-                                existential type: {:?}, {:?}, {:?}, {:?}",
+                                opaque type: {:?}, {:?}, {:?}, {:?}",
                                 def_id,
                                 definition_ty,
                                 opaque_defn,

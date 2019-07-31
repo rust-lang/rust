@@ -1,4 +1,4 @@
-error: defining existential type use restricts existential type by using the generic parameter `T` twice
+error: defining opaque type use restricts opaque type by using the generic parameter `T` twice
   --> $DIR/generic_duplicate_param_use3.rs:10:1
    |
 LL | / fn one<T: Debug>(t: T) -> Two<T, T> {

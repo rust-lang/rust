@@ -62,12 +62,12 @@ use std::path::{self, Path, PathBuf};
 use std::slice;
 
 #[derive(Debug)]
-/// Whether the type alias or associated type is a concrete type or an existential type
+/// Whether the type alias or associated type is a concrete type or an opaque type
 pub enum AliasKind {
     /// Just a new name for the same type
     Weak(P<Ty>),
     /// Only trait impls of the type will be usable, not the actual type itself
-    Existential(GenericBounds),
+    OpaqueTy(GenericBounds),
 }
 
 bitflags::bitflags! {
@@ -4265,11 +4265,6 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Crate) && self.look_ahead(1, |t| t != &token::ModSep)
     }
 
-    fn is_existential_type_decl(&self) -> bool {
-        self.token.is_keyword(kw::Existential) &&
-        self.is_keyword_ahead(1, &[kw::Type])
-    }
-
     fn is_auto_trait_item(&self) -> bool {
         // auto trait
         (self.token.is_keyword(kw::Auto) &&
@@ -4367,7 +4362,6 @@ impl<'a> Parser<'a> {
                   !self.token.is_qpath_start() &&
                   !self.is_union_item() &&
                   !self.is_crate_vis() &&
-                  !self.is_existential_type_decl() &&
                   !self.is_auto_trait_item() &&
                   !self.is_async_fn() {
             let path = self.parse_path(PathStyle::Expr)?;
@@ -5686,7 +5680,7 @@ impl<'a> Parser<'a> {
             let (name, alias, generics) = type_?;
             let kind = match alias {
                 AliasKind::Weak(typ) => ast::ImplItemKind::Type(typ),
-                AliasKind::Existential(bounds) => ast::ImplItemKind::Existential(bounds),
+                AliasKind::OpaqueTy(bounds) => ast::ImplItemKind::OpaqueTy(bounds),
             };
             (name, kind, generics)
         } else if self.is_const_item() {
@@ -6817,7 +6811,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses a type alias or existential type.
+    /// Parses a type alias or opaque type.
     fn parse_type_alias(&mut self) -> PResult<'a, (Ident, AliasKind, ast::Generics)> {
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
@@ -6826,7 +6820,7 @@ impl<'a> Parser<'a> {
         let alias = if self.check_keyword(kw::Impl) {
             self.bump();
             let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
-            AliasKind::Existential(bounds)
+            AliasKind::OpaqueTy(bounds)
         } else {
             let ty = self.parse_ty()?;
             AliasKind::Weak(ty)
@@ -7249,7 +7243,7 @@ impl<'a> Parser<'a> {
             // TYPE ITEM
             let item_ = match alias {
                 AliasKind::Weak(ty) => ItemKind::Ty(ty, generics),
-                AliasKind::Existential(bounds) => ItemKind::Existential(bounds, generics),
+                AliasKind::OpaqueTy(bounds) => ItemKind::OpaqueTy(bounds, generics),
             };
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),

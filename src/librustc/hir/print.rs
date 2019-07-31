@@ -565,9 +565,10 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer ibox
             }
-            hir::ItemKind::Existential(ref exist) => {
-                self.head(visibility_qualified(&item.vis, "existential type"));
+            hir::ItemKind::OpaqueTy(ref exist) => {
+                self.head(visibility_qualified(&item.vis, "type"));
                 self.print_ident(item.ident);
+                self.word_space("= impl");
                 self.print_generic_params(&exist.generics.params);
                 self.end(); // end the inner ibox
 
@@ -908,9 +909,11 @@ impl<'a> State<'a> {
             hir::ImplItemKind::Type(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
             }
-            hir::ImplItemKind::Existential(ref bounds) => {
-                self.word_space("existential");
-                self.print_associated_type(ii.ident, Some(bounds), None);
+            hir::ImplItemKind::OpaqueTy(ref bounds) => {
+                self.word_space("type");
+                self.print_ident(ii.ident);
+                self.print_bounds("= impl", bounds);
+                self.s.word(";");
             }
         }
         self.ann.post(self, AnnNode::SubItem(ii.hir_id))

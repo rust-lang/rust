@@ -1,4 +1,4 @@
-error: concrete type differs from previous defining existential type use
+error: concrete type differs from previous defining opaque type use
   --> $DIR/generic_duplicate_param_use9.rs:18:1
    |
 LL | / fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {

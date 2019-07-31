@@ -159,7 +159,7 @@ impl<'a> DocFolder for Stripper<'a> {
                 return ret;
             }
             // These items can all get re-exported
-            clean::ExistentialItem(..)
+            clean::OpaqueTyItem(..)
             | clean::TypedefItem(..)
             | clean::StaticItem(..)
             | clean::StructItem(..)

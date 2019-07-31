@@ -239,7 +239,7 @@ pub enum EntryKind<'tcx> {
     Type,
     TypeParam,
     ConstParam,
-    Existential,
+    OpaqueTy,
     Enum(ReprOptions),
     Field,
     Variant(Lazy<VariantData<'tcx>>),
@@ -255,7 +255,7 @@ pub enum EntryKind<'tcx> {
     Impl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssocType(AssocContainer),
-    AssocExistential(AssocContainer),
+    AssocOpaqueTy(AssocContainer),
     AssocConst(AssocContainer, ConstQualif, Lazy<RenderedConst>),
     TraitAlias(Lazy<TraitAliasData<'tcx>>),
 }

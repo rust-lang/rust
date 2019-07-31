@@ -725,10 +725,10 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Res::Def(HirDefKind::TyAlias, def_id) |
             Res::Def(HirDefKind::ForeignTy, def_id) |
             Res::Def(HirDefKind::TraitAlias, def_id) |
-            Res::Def(HirDefKind::AssocExistential, def_id) |
+            Res::Def(HirDefKind::AssocOpaqueTy, def_id) |
             Res::Def(HirDefKind::AssocTy, def_id) |
             Res::Def(HirDefKind::Trait, def_id) |
-            Res::Def(HirDefKind::Existential, def_id) |
+            Res::Def(HirDefKind::OpaqueTy, def_id) |
             Res::Def(HirDefKind::TyParam, def_id) => {
                 Some(Ref {
                     kind: RefKind::Type,

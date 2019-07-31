@@ -438,12 +438,12 @@ impl Sig for ast::Item {
                     refs: vec![],
                 })
             }
-            ast::ItemKind::Existential(ref bounds, ref generics) => {
-                let text = "existential type ".to_owned();
+            ast::ItemKind::OpaqueTy(ref bounds, ref generics) => {
+                let text = "type ".to_owned();
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
 
                 if !bounds.is_empty() {
-                    sig.text.push_str(": ");
+                    sig.text.push_str(" = impl ");
                     sig.text.push_str(&pprust::bounds_to_string(bounds));
                 }
                 sig.text.push(';');

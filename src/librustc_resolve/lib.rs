@@ -605,7 +605,7 @@ impl<'a> PathSource<'a> {
                 | Res::PrimTy(..)
                 | Res::Def(DefKind::TyParam, _)
                 | Res::SelfTy(..)
-                | Res::Def(DefKind::Existential, _)
+                | Res::Def(DefKind::OpaqueTy, _)
                 | Res::Def(DefKind::ForeignTy, _) => true,
                 _ => false,
             },
@@ -2710,7 +2710,7 @@ impl<'a> Resolver<'a> {
 
         match item.node {
             ItemKind::Ty(_, ref generics) |
-            ItemKind::Existential(_, ref generics) |
+            ItemKind::OpaqueTy(_, ref generics) |
             ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_generic_param_rib(
                     HasGenericParams(generics, ItemRibKind),
@@ -3089,7 +3089,7 @@ impl<'a> Resolver<'a> {
 
                                                 this.visit_ty(ty);
                                             }
-                                            ImplItemKind::Existential(ref bounds) => {
+                                            ImplItemKind::OpaqueTy(ref bounds) => {
                                                 // If this is a trait impl, ensure the type
                                                 // exists in trait
                                                 this.check_trait_item(impl_item.ident,

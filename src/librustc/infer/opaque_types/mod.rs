@@ -40,7 +40,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// for example:
     ///
     /// ```
-    /// existential type Foo;
+    /// type Foo = impl Baz;
     /// fn bar() -> Foo {
     ///             ^^^ This is the span we are looking for!
     /// ```
@@ -87,8 +87,8 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// check.)
     pub has_required_region_bounds: bool,
 
-    /// The origin of the existential type
-    pub origin: hir::ExistTyOrigin,
+    /// The origin of the opaque type.
+    pub origin: hir::OpaqueTyOrigin,
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
@@ -143,8 +143,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         InferOk { value: (value, instantiator.opaque_types), obligations: instantiator.obligations }
     }
 
-    /// Given the map `opaque_types` containing the existential `impl
-    /// Trait` types whose underlying, hidden types are being
+    /// Given the map `opaque_types` containing the opaque
+    /// `impl Trait` types whose underlying, hidden types are being
     /// inferred, this method adds constraints to the regions
     /// appearing in those underlying hidden types to ensure that they
     /// at least do not refer to random scopes within the current
@@ -265,14 +265,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// }
     ///
     /// // Equivalent to:
-    /// existential type FooReturn<'a, T>: Foo<'a>;
+    /// type FooReturn<'a, T> = impl Foo<'a>;
     /// fn foo<'a, T>(..) -> FooReturn<'a, T> { .. }
     /// ```
     ///
     /// then the hidden type `Tc` would be `(&'0 u32, T)` (where `'0`
     /// is an inference variable). If we generated a constraint that
     /// `Tc: 'a`, then this would incorrectly require that `T: 'a` --
-    /// but this is not necessary, because the existential type we
+    /// but this is not necessary, because the opaque type we
     /// create will be allowed to reference `T`. So we only generate a
     /// constraint that `'0: 'a`.
     ///
@@ -492,11 +492,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Without a feature-gate, we only generate member-constraints for async-await.
         let context_name = match opaque_defn.origin {
             // No feature-gate required for `async fn`.
-            hir::ExistTyOrigin::AsyncFn => return false,
+            hir::OpaqueTyOrigin::AsyncFn => return false,
 
             // Otherwise, generate the label we'll use in the error message.
-            hir::ExistTyOrigin::ExistentialType => "existential type",
-            hir::ExistTyOrigin::ReturnImplTrait => "impl Trait",
+            hir::OpaqueTyOrigin::TraitAliasImplTrait => "impl Trait",
+            hir::OpaqueTyOrigin::ReturnImplTrait => "impl Trait",
         };
         let msg = format!("ambiguous lifetime bound in `{}`", context_name);
         let mut err = self.tcx.sess.struct_span_err(span, &msg);
@@ -842,12 +842,12 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 self.tcx.sess
                     .struct_span_err(
                         self.span,
-                        "non-defining existential type use in defining scope"
+                        "non-defining opaque type use in defining scope"
                     )
                     .span_label(
                         self.span,
                         format!("lifetime `{}` is part of concrete type but not used in \
-                                 parameter list of existential type", r),
+                                 parameter list of the `impl Trait` type alias", r),
                     )
                     .emit();
 
@@ -863,7 +863,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 // we encounter a closure here, it is always a closure
                 // from within the function that we are currently
                 // type-checking -- one that is now being encapsulated
-                // in an existential abstract type. Ideally, we would
+                // in an opaque type. Ideally, we would
                 // go through the types/lifetimes that it references
                 // and treat them just like we would any other type,
                 // which means we would error out if we find any
@@ -918,7 +918,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 // Look it up in the substitution list.
                 match self.map.get(&ty.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list; replace with the parameter from the
-                    // existential type.
+                    // opaque type.
                     Some(UnpackedKind::Type(t1)) => t1,
                     Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
                     None => {
@@ -926,7 +926,8 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             .struct_span_err(
                                 self.span,
                                 &format!("type parameter `{}` is part of concrete type but not \
-                                          used in parameter list for existential type", ty),
+                                          used in parameter list for the `impl Trait` type alias",
+                                         ty),
                             )
                             .emit();
 
@@ -947,7 +948,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 // Look it up in the substitution list.
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list, replace with the parameter from the
-                    // existential type.
+                    // opaque type.
                     Some(UnpackedKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
@@ -955,7 +956,8 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             .struct_span_err(
                                 self.span,
                                 &format!("const parameter `{}` is part of concrete type but not \
-                                          used in parameter list for existential type", ct)
+                                          used in parameter list for the `impl Trait` type alias",
+                                         ct)
                             )
                             .emit();
 
@@ -1031,36 +1033,40 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                         let (in_definition_scope, origin) = match tcx.hir().find(opaque_hir_id) {
                             Some(Node::Item(item)) => match item.node {
                                 // Anonymous `impl Trait`
-                                hir::ItemKind::Existential(hir::ExistTy {
+                                hir::ItemKind::OpaqueTy(hir::ExistTy {
                                     impl_trait_fn: Some(parent),
                                     origin,
                                     ..
                                 }) => (parent == self.parent_def_id, origin),
-                                // Named `existential type`
-                                hir::ItemKind::Existential(hir::ExistTy {
+                                // Named `type Foo = impl Bar;`
+                                hir::ItemKind::OpaqueTy(hir::ExistTy {
                                     impl_trait_fn: None,
                                     origin,
                                     ..
                                 }) => (
-                                    may_define_existential_type(
+                                    may_define_opaque_type(
                                         tcx,
                                         self.parent_def_id,
                                         opaque_hir_id,
                                     ),
                                     origin,
                                 ),
-                                _ => (def_scope_default(), hir::ExistTyOrigin::ExistentialType),
+                                _ => {
+                                    (def_scope_default(), hir::OpaqueTyOrigin::TraitAliasImplTrait)
+                                }
                             },
                             Some(Node::ImplItem(item)) => match item.node {
-                                hir::ImplItemKind::Existential(_) => (
-                                    may_define_existential_type(
+                                hir::ImplItemKind::OpaqueTy(_) => (
+                                    may_define_opaque_type(
                                         tcx,
                                         self.parent_def_id,
                                         opaque_hir_id,
                                     ),
-                                    hir::ExistTyOrigin::ExistentialType,
+                                    hir::OpaqueTyOrigin::TraitAliasImplTrait,
                                 ),
-                                _ => (def_scope_default(), hir::ExistTyOrigin::ExistentialType),
+                                _ => {
+                                    (def_scope_default(), hir::OpaqueTyOrigin::TraitAliasImplTrait)
+                                }
                             },
                             _ => bug!(
                                 "expected (impl) item, found {}",
@@ -1092,7 +1098,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         ty: Ty<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-        origin: hir::ExistTyOrigin,
+        origin: hir::OpaqueTyOrigin,
     ) -> Ty<'tcx> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
@@ -1123,7 +1129,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         debug!("instantiate_opaque_types: required_region_bounds={:?}", required_region_bounds);
 
         // Make sure that we are in fact defining the *entire* type
-        // (e.g., `existential type Foo<T: Bound>: Bar;` needs to be
+        // (e.g., `type Foo<T: Bound> = impl Bar;` needs to be
         // defined by a function like `fn foo<T: Bound>() -> Foo<T>`).
         debug!("instantiate_opaque_types: param_env={:#?}", self.param_env,);
         debug!("instantiate_opaque_types: generics={:#?}", tcx.generics_of(def_id),);
@@ -1171,7 +1177,9 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 /// ```rust
 /// pub mod foo {
 ///     pub mod bar {
-///         pub existential type Baz;
+///         pub trait Bar { .. }
+///
+///         pub type Baz = impl Bar;
 ///
 ///         fn f1() -> Baz { .. }
 ///     }
@@ -1180,18 +1188,17 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 /// }
 /// ```
 ///
-/// Here, `def_id` is the `DefId` of the defining use of the existential type (e.g., `f1` or `f2`),
-/// and `opaque_hir_id` is the `HirId` of the definition of the existential type `Baz`.
+/// Here, `def_id` is the `DefId` of the defining use of the opaque type (e.g., `f1` or `f2`),
+/// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
-pub fn may_define_existential_type(
+pub fn may_define_opaque_type(
     tcx: TyCtxt<'_>,
     def_id: DefId,
     opaque_hir_id: hir::HirId,
 ) -> bool {
     let mut hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
-
-    // Named existential types can be defined by any siblings or children of siblings.
+    // Named opaque types can be defined by any siblings or children of siblings.
     let scope = tcx.hir().get_defining_scope(opaque_hir_id).expect("could not get defining scope");
     // We walk up the node tree until we hit the root or the scope of the opaque type.
     while hir_id != scope && hir_id != hir::CRATE_HIR_ID {

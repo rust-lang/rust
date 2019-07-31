@@ -1,4 +1,4 @@
-error: non-defining existential type use in defining scope
+error: non-defining opaque type use in defining scope
   --> $DIR/generic_duplicate_lifetime_param.rs:7:1
    |
 LL | / fn one<'a>(t: &'a ()) -> Two<'a, 'a> {

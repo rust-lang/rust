@@ -1,4 +1,4 @@
-error: concrete type differs from previous defining existential type use
+error: concrete type differs from previous defining opaque type use
   --> $DIR/generic_different_defining_uses.rs:11:1
    |
 LL | / fn my_iter2<T>(t: T) -> MyIter<T> {

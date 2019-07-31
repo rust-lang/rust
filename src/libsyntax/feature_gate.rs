@@ -2017,12 +2017,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::Existential(..) => {
+            ast::ItemKind::OpaqueTy(..) => {
                 gate_feature_post!(
                     &self,
                     type_alias_impl_trait,
                     i.span,
-                    "existential types are unstable"
+                    "`impl Trait` in type aliases is unstable"
                 );
             }
 
@@ -2246,12 +2246,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
         match ii.node {
             ast::ImplItemKind::Method(..) => {}
-            ast::ImplItemKind::Existential(..) => {
+            ast::ImplItemKind::OpaqueTy(..) => {
                 gate_feature_post!(
                     &self,
                     type_alias_impl_trait,
                     ii.span,
-                    "existential types are unstable"
+                    "`impl Trait` in type aliases is unstable"
                 );
             }
             ast::ImplItemKind::Type(_) => {
