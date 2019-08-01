@@ -427,7 +427,7 @@ pub trait TryInto<T>: Sized {
 /// - [`try_from`] is reflexive, which means that `TryFrom<T> for T`
 /// is implemented and cannot fail -- the associated `Error` type for
 /// calling `T::try_from()` on a value of type `T` is [`Infallible`].
-/// When the [`!`] type is stablized [`Infallible`] and [`!`] will be
+/// When the [`!`] type is stabilized [`Infallible`] and [`!`] will be
 /// equivalent.
 ///
 /// `TryFrom<T>` can be implemented as follows:
