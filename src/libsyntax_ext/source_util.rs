@@ -1,6 +1,5 @@
 use syntax::{ast, panictry};
 use syntax::ext::base::{self, *};
-use syntax::ext::build::AstBuilder;
 use syntax::parse::{self, token, DirectoryOwnership};
 use syntax::print::pprust;
 use syntax::ptr::P;

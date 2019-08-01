@@ -2,7 +2,6 @@
 
 use syntax::ast::{self, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt, MultiItemModifier};
-use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;

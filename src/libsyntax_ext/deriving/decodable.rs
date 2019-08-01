@@ -7,7 +7,6 @@ use crate::deriving::generic::ty::*;
 use syntax::ast;
 use syntax::ast::{Expr, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;

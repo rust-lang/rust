@@ -16,14 +16,8 @@ use syntax_pos::hygiene::{ExpnId, ExpnInfo, ExpnKind, MacroKind};
 use std::mem;
 
 fn plugin_macro_def(name: Name, span: Span) -> P<Item> {
-    let rustc_builtin_macro = Attribute {
-        id: attr::mk_attr_id(),
-        style: AttrStyle::Outer,
-        path: Path::from_ident(Ident::new(sym::rustc_builtin_macro, span)),
-        tokens: TokenStream::empty(),
-        is_sugared_doc: false,
-        span,
-    };
+    let rustc_builtin_macro = attr::mk_attr_outer(
+        attr::mk_word_item(Ident::new(sym::rustc_builtin_macro, span)));
 
     let parens: TreeAndJoint = TokenTree::Delimited(
         DelimSpan::from_single(span), token::Paren, TokenStream::empty()

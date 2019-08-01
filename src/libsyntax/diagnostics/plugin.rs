@@ -4,7 +4,6 @@ use std::env;
 use crate::ast::{self, Ident, Name};
 use crate::source_map;
 use crate::ext::base::{ExtCtxt, MacEager, MacResult};
-use crate::ext::build::AstBuilder;
 use crate::parse::token::{self, Token};
 use crate::ptr::P;
 use crate::symbol::kw;
