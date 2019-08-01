@@ -127,11 +127,6 @@ impl<Node: Idx> Dominators<Node> {
         // FIXME -- could be optimized by using post-order-rank
         self.dominators(node).any(|n| n == dom)
     }
-
-    #[cfg(test)]
-    fn all_immediate_dominators(&self) -> &IndexVec<Node, Option<Node>> {
-        &self.immediate_dominators
-    }
 }
 
 pub struct Iter<'dom, Node: Idx> {

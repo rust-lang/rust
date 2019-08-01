@@ -380,28 +380,6 @@ pub struct TestOpts {
     pub options: Options,
 }
 
-impl TestOpts {
-    #[cfg(test)]
-    fn new() -> TestOpts {
-        TestOpts {
-            list: false,
-            filter: None,
-            filter_exact: false,
-            exclude_should_panic: false,
-            run_ignored: RunIgnored::No,
-            run_tests: false,
-            bench_benchmarks: false,
-            logfile: None,
-            nocapture: false,
-            color: AutoColor,
-            format: OutputFormat::Pretty,
-            test_threads: None,
-            skip: vec![],
-            options: Options::new(),
-        }
-    }
-}
-
 /// Result of parsing the options.
 pub type OptRes = Result<TestOpts, String>;
 

@@ -201,7 +201,6 @@ fn test_split_off() {
     }
 }
 
-#[cfg(test)]
 fn fuzz_test(sz: i32) {
     let mut m: LinkedList<_> = LinkedList::new();
     let mut v = vec![];

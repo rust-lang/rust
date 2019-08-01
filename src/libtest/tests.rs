@@ -7,6 +7,27 @@ use crate::test::{
 };
 use std::sync::mpsc::channel;
 
+impl TestOpts {
+    fn new() -> TestOpts {
+        TestOpts {
+            list: false,
+            filter: None,
+            filter_exact: false,
+            exclude_should_panic: false,
+            run_ignored: RunIgnored::No,
+            run_tests: false,
+            bench_benchmarks: false,
+            logfile: None,
+            nocapture: false,
+            color: AutoColor,
+            format: OutputFormat::Pretty,
+            test_threads: None,
+            skip: vec![],
+            options: Options::new(),
+        }
+    }
+}
+
 fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
     vec![
         TestDescAndFn {
