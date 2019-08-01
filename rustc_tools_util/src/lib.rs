@@ -154,5 +154,4 @@ mod test {
             "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 2, patch: 0 }"
         );
     }
-
 }

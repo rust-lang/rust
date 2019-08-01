@@ -78,7 +78,6 @@ fn test_owl_result() -> Result<(), ()> {
     Ok(())
 }
 
-
 #[allow(dead_code)]
 fn test_owl_result_2() -> Result<u8, ()> {
     produce_half_owl_error().map_err(|_| ())?;

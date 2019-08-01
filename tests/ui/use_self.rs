@@ -266,7 +266,7 @@ mod nesting {
     enum Enum {
         A,
         B(u64),
-        C { field: bool }
+        C { field: bool },
     }
     impl Enum {
         fn method() {

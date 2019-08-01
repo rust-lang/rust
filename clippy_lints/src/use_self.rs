@@ -222,13 +222,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
             let last_but_one = &path.segments[path.segments.len() - 2];
             if last_but_one.ident.name != kw::SelfUpper {
                 let enum_def_id = match path.res {
-                    Res::Def(DefKind::Variant, variant_def_id) =>
-                        self.cx.tcx.parent(variant_def_id),
+                    Res::Def(DefKind::Variant, variant_def_id) => self.cx.tcx.parent(variant_def_id),
                     Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), ctor_def_id) => {
                         let variant_def_id = self.cx.tcx.parent(ctor_def_id);
                         variant_def_id.and_then(|def_id| self.cx.tcx.parent(def_id))
-                    }
-                    _ => None
+                    },
+                    _ => None,
                 };
 
                 if self.item_path.res.opt_def_id() == enum_def_id {
