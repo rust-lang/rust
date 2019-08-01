@@ -22,7 +22,7 @@ check out our [experts directory][experts].
 It contains a listing of the various parts of the compiler and a list of people
 who are experts on each one.
 
-[experts]: https://github.com/rust-lang/compiler-team/blob/master/content/docs/experts/map.toml
+[experts]: https://github.com/rust-lang/compiler-team/blob/master/content/experts/map.toml
 
 ## Rust compiler meeting
 
