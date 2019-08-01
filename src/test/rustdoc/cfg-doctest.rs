@@ -1,5 +1,3 @@
-#![feature(cfg_doctest)]
-
 // @!has cfg_doctest/struct.SomeStruct.html
 // @!has cfg_doctest/index.html '//a/@href' 'struct.SomeStruct.html'
 

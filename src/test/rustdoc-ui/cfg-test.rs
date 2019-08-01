@@ -5,8 +5,6 @@
 // Crates like core have doctests gated on `cfg(not(test))` so we need to make
 // sure `cfg(test)` is not active when running `rustdoc --test`.
 
-#![feature(cfg_doctest)]
-
 /// this doctest will be ignored:
 ///
 /// ```
