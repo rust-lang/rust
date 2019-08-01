@@ -268,17 +268,17 @@ enum Scope<'a> {
         track_lifetime_uses: bool,
 
         /// Whether or not this binder would serve as the parent
-        /// binder for abstract types introduced within. For example:
+        /// binder for opaque types introduced within. For example:
         ///
         ///     fn foo<'a>() -> impl for<'b> Trait<Item = impl Trait2<'a>>
         ///
-        /// Here, the abstract types we create for the `impl Trait`
+        /// Here, the opaque types we create for the `impl Trait`
         /// and `impl Trait2` references will both have the `foo` item
         /// as their parent. When we get to `impl Trait2`, we find
         /// that it is nested within the `for<>` binder -- this flag
         /// allows us to skip that when looking for the parent binder
-        /// of the resulting abstract type.
-        abstract_type_parent: bool,
+        /// of the resulting opaque type.
+        opaque_type_parent: bool,
 
         s: ScopeRef<'a>,
     },
@@ -526,7 +526,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let scope = Scope::Binder {
                     lifetimes,
                     next_early_index: index + non_lifetime_count,
-                    abstract_type_parent: true,
+                    opaque_type_parent: true,
                     track_lifetime_uses,
                     s: ROOT_SCOPE,
                 };
@@ -574,7 +574,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     s: self.scope,
                     next_early_index,
                     track_lifetime_uses: true,
-                    abstract_type_parent: false,
+                    opaque_type_parent: false,
                 };
                 self.with(scope, |old_scope, this| {
                     // a bare fn has no bounds, so everything
@@ -622,9 +622,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::TyKind::Def(item_id, ref lifetimes) => {
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
                 // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
-                // `abstract type MyAnonTy<'b>: MyTrait<'b>;`
-                //                          ^            ^ this gets resolved in the scope of
-                //                                         the exist_ty generics
+                // `type MyAnonTy<'b> = impl MyTrait<'b>;`
+                //                 ^                  ^ this gets resolved in the scope of
+                //                                      the opaque_ty generics
                 let (generics, bounds) = match self.tcx.hir().expect_item(item_id.id).node
                 {
                     // Named opaque `impl Trait` types are reached via `TyKind::Path`.
@@ -687,7 +687,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
                 // We want to start our early-bound indices at the end of the parent scope,
                 // not including any parent `impl Trait`s.
-                let mut index = self.next_early_index_for_abstract_type();
+                let mut index = self.next_early_index_for_opaque_type();
                 debug!("visit_ty: index = {}", index);
 
                 let mut elision = None;
@@ -728,7 +728,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             next_early_index,
                             s: this.scope,
                             track_lifetime_uses: true,
-                            abstract_type_parent: false,
+                            opaque_type_parent: false,
                         };
                         this.with(scope, |_old_scope, this| {
                             this.visit_generics(generics);
@@ -743,7 +743,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         next_early_index,
                         s: self.scope,
                         track_lifetime_uses: true,
-                        abstract_type_parent: false,
+                        opaque_type_parent: false,
                     };
                     self.with(scope, |_old_scope, this| {
                         this.visit_generics(generics);
@@ -796,7 +796,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     next_early_index: index + non_lifetime_count,
                     s: self.scope,
                     track_lifetime_uses: true,
-                    abstract_type_parent: true,
+                    opaque_type_parent: true,
                 };
                 self.with(scope, |_old_scope, this| {
                     this.visit_generics(generics);
@@ -848,7 +848,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     next_early_index: index + non_lifetime_count,
                     s: self.scope,
                     track_lifetime_uses: true,
-                    abstract_type_parent: true,
+                    opaque_type_parent: true,
                 };
                 self.with(scope, |_old_scope, this| {
                     this.visit_generics(generics);
@@ -879,7 +879,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     next_early_index,
                     s: self.scope,
                     track_lifetime_uses: true,
-                    abstract_type_parent: true,
+                    opaque_type_parent: true,
                 };
                 self.with(scope, |_old_scope, this| {
                     this.visit_generics(generics);
@@ -967,7 +967,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             s: self.scope,
                             next_early_index,
                             track_lifetime_uses: true,
-                            abstract_type_parent: false,
+                            opaque_type_parent: false,
                         };
                         let result = self.with(scope, |old_scope, this| {
                             this.check_lifetime_params(old_scope, &bound_generic_params);
@@ -1037,7 +1037,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 s: self.scope,
                 next_early_index,
                 track_lifetime_uses: true,
-                abstract_type_parent: false,
+                opaque_type_parent: false,
             };
             self.with(scope, |old_scope, this| {
                 this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params);
@@ -1753,7 +1753,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             lifetimes,
             next_early_index,
             s: self.scope,
-            abstract_type_parent: true,
+            opaque_type_parent: true,
             track_lifetime_uses: false,
         };
         self.with(scope, move |old_scope, this| {
@@ -1762,7 +1762,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         });
     }
 
-    fn next_early_index_helper(&self, only_abstract_type_parent: bool) -> u32 {
+    fn next_early_index_helper(&self, only_opaque_type_parent: bool) -> u32 {
         let mut scope = self.scope;
         loop {
             match *scope {
@@ -1770,9 +1770,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::Binder {
                     next_early_index,
-                    abstract_type_parent,
+                    opaque_type_parent,
                     ..
-                } if (!only_abstract_type_parent || abstract_type_parent) =>
+                } if (!only_opaque_type_parent || opaque_type_parent) =>
                 {
                     return next_early_index
                 }
@@ -1792,10 +1792,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     }
 
     /// Returns the next index one would use for an `impl Trait` that
-    /// is being converted into an `abstract type`. This will be the
+    /// is being converted into an opaque type alias `impl Trait`. This will be the
     /// next early index from the enclosing item, for the most
-    /// part. See the `abstract_type_parent` field for more info.
-    fn next_early_index_for_abstract_type(&self) -> u32 {
+    /// part. See the `opaque_type_parent` field for more info.
+    fn next_early_index_for_opaque_type(&self) -> u32 {
         self.next_early_index_helper(false)
     }
 

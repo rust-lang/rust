@@ -1894,7 +1894,7 @@ impl<'a> LoweringContext<'a> {
                     hir::LifetimeName::Implicit | hir::LifetimeName::Underscore => {
                         if self.collect_elided_lifetimes {
                             // Use `'_` for both implicit and underscore lifetimes in
-                            // `abstract type Foo<'_>: SomeTrait<'_>;`.
+                            // `type Foo<'_> = impl SomeTrait<'_>;`.
                             hir::LifetimeName::Underscore
                         } else {
                             return;

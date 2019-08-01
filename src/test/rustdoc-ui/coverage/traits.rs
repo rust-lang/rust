@@ -31,7 +31,7 @@ pub trait MyAlias = ThisTrait + Send + Sync;
 
 // FIXME(58624): once rustdoc can process opaque `impl Trait` types,
 // we need to make sure they're counted
-// /// woah, getting all abstract in here
+// /// woah, getting all opaque in here
 // pub type ThisExists = impl ThisTrait;
 //
 // /// why don't we get a little more concrete

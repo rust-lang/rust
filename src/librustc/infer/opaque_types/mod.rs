@@ -18,19 +18,19 @@ use syntax_pos::Span;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
-/// Information about the opaque, abstract types whose values we
+/// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
 /// appear in the return type).
 #[derive(Copy, Clone, Debug)]
 pub struct OpaqueTypeDecl<'tcx> {
-    /// The substitutions that we apply to the abstract that this
+    /// The substitutions that we apply to the opaque type that this
     /// `impl Trait` desugars to. e.g., if:
     ///
     ///     fn foo<'a, 'b, T>() -> impl Trait<'a>
     ///
     /// winds up desugared to:
     ///
-    ///     abstract type Foo<'x, X>: Trait<'x>
+    ///     type Foo<'x, X> = impl Trait<'x>
     ///     fn foo<'a, 'b, T>() -> Foo<'a, T>
     ///
     /// then `substs` would be `['a, T]`.
@@ -50,7 +50,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// over-approximated, but better than nothing.
     pub definition_span: Span,
 
-    /// The type variable that represents the value of the abstract type
+    /// The type variable that represents the value of the opaque type
     /// that we require. In other words, after we compile this function,
     /// we will be created a constraint like:
     ///
@@ -164,12 +164,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Here, we have two `impl Trait` types whose values are being
     /// inferred (the `impl Bar<'a>` and the `impl
     /// Bar<'b>`). Conceptually, this is sugar for a setup where we
-    /// define underlying abstract types (`Foo1`, `Foo2`) and then, in
+    /// define underlying opaque types (`Foo1`, `Foo2`) and then, in
     /// the return type of `foo`, we *reference* those definitions:
     ///
     /// ```text
-    /// abstract type Foo1<'x>: Bar<'x>;
-    /// abstract type Foo2<'x>: Bar<'x>;
+    /// type Foo1<'x> = impl Bar<'x>;
+    /// type Foo2<'x> = impl Bar<'x>;
     /// fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
     ///                    //  ^^^^ ^^
     ///                    //  |    |
@@ -228,7 +228,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///
     /// This is actually a bit of a tricky constraint in general. We
     /// want to say that each variable (e.g., `'0`) can only take on
-    /// values that were supplied as arguments to the abstract type
+    /// values that were supplied as arguments to the opaque type
     /// (e.g., `'a` for `Foo1<'a>`) or `'static`, which is always in
     /// scope. We don't have a constraint quite of this kind in the current
     /// region checker.
@@ -279,10 +279,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// # The `free_region_relations` parameter
     ///
     /// The `free_region_relations` argument is used to find the
-    /// "minimum" of the regions supplied to a given abstract type.
+    /// "minimum" of the regions supplied to a given opaque type.
     /// It must be a relation that can answer whether `'a <= 'b`,
     /// where `'a` and `'b` are regions that appear in the "substs"
-    /// for the abstract type references (the `<'a>` in `Foo1<'a>`).
+    /// for the opaque type references (the `<'a>` in `Foo1<'a>`).
     ///
     /// Note that we do not impose the constraints based on the
     /// generic regions from the `Foo1` definition (e.g., `'x`). This
@@ -298,7 +298,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///
     /// Here, the fact that `'b: 'a` is known only because of the
     /// implied bounds from the `&'a &'b u32` parameter, and is not
-    /// "inherent" to the abstract type definition.
+    /// "inherent" to the opaque type definition.
     ///
     /// # Parameters
     ///
@@ -361,7 +361,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // There were no `required_region_bounds`,
         // so we have to search for a `least_region`.
         // Go through all the regions used as arguments to the
-        // abstract type. These are the parameters to the abstract
+        // opaque type. These are the parameters to the opaque
         // type; so in our example above, `substs` would contain
         // `['a]` for the first impl trait and `'b` for the
         // second.
@@ -528,12 +528,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Given the fully resolved, instantiated type for an opaque
     /// type, i.e., the value of an inference variable like C1 or C2
-    /// (*), computes the "definition type" for an abstract type
+    /// (*), computes the "definition type" for an opaque type
     /// definition -- that is, the inferred value of `Foo1<'x>` or
     /// `Foo2<'x>` that we would conceptually use in its definition:
     ///
-    ///     abstract type Foo1<'x>: Bar<'x> = AAA; <-- this type AAA
-    ///     abstract type Foo2<'x>: Bar<'x> = BBB; <-- or this type BBB
+    ///     type Foo1<'x> = impl Bar<'x> = AAA; <-- this type AAA
+    ///     type Foo2<'x> = impl Bar<'x> = BBB; <-- or this type BBB
     ///     fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
     ///
     /// Note that these values are defined in terms of a distinct set of
@@ -994,15 +994,15 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     // value we are inferring.  At present, this is
                     // always true during the first phase of
                     // type-check, but not always true later on during
-                    // NLL. Once we support named abstract types more fully,
+                    // NLL. Once we support named opaque types more fully,
                     // this same scenario will be able to arise during all phases.
                     //
-                    // Here is an example using `abstract type` that indicates
-                    // the distinction we are checking for:
+                    // Here is an example using type alias `impl Trait`
+                    // that indicates the distinction we are checking for:
                     //
                     // ```rust
                     // mod a {
-                    //   pub abstract type Foo: Iterator;
+                    //   pub type Foo = impl Iterator;
                     //   pub fn make_foo() -> Foo { .. }
                     // }
                     //
