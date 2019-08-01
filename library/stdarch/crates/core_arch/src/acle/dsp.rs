@@ -381,5 +381,4 @@ mod tests {
             assert_eq!(super::__smlawt(a, transmute(b), c), r);
         }
     }
-
 }

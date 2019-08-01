@@ -1832,7 +1832,6 @@ mod endian {
     {
         a.vec_mulo(b)
     }
-
 }
 
 pub use self::endian::*;

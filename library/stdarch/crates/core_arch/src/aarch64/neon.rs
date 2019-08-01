@@ -1980,7 +1980,6 @@ mod tests {
     test_vcombine!(test_vcombine_u64 => vcombine_u64([3_u64], [13_u64]));
     test_vcombine!(test_vcombine_p64 => vcombine_p64([3_u64], [13_u64]));
     test_vcombine!(test_vcombine_f64 => vcombine_f64([-3_f64], [13_f64]));
-
 }
 
 #[cfg(test)]
