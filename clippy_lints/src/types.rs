@@ -1932,7 +1932,7 @@ declare_clippy_lint! {
     /// could be rewritten as
     /// ```rust
     /// # use std::collections::HashMap;
-    /// # use std::hash::Hash;
+    /// # use std::hash::{Hash, BuildHasher};
     /// # trait Serialize {};
     /// impl<K: Hash + Eq, V, S: BuildHasher> Serialize for HashMap<K, V, S> { }
     ///
