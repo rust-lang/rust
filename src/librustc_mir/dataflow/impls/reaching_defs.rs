@@ -85,7 +85,21 @@ fn has_side_effects(
     terminator: &mir::Terminator<'tcx>,
 ) -> bool {
     match &terminator.kind {
-        mir::TerminatorKind::Call { .. } => true,
+        mir::TerminatorKind::Call { func, .. } => {
+            // Special-case some intrinsics that do not have side effects.
+            if let mir::Operand::Constant(func) = func {
+                if let ty::FnDef(def_id, _) = func.ty.sty {
+                    if let Abi::RustIntrinsic = tcx.fn_sig(def_id).abi() {
+                        match tcx.item_name(def_id) {
+                            sym::rustc_peek => return false,
+                            _ => (),
+                        }
+                    }
+                }
+            }
+
+            true
+        }
 
         // Types with special drop glue may mutate their environment.
         | mir::TerminatorKind::Drop { location: place, .. }

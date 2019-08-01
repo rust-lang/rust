@@ -4,7 +4,7 @@ error: rustc_peek: [16: "x=2"]
 LL |         unsafe { rustc_peek(&x); }
    |                  ^^^^^^^^^^^^^^
 
-error: rustc_peek: [16: "x=2", 17: "rustc_peek(&x)", 20: "x=3"]
+error: rustc_peek: [16: "x=2", 20: "x=3"]
   --> $DIR/reaching-defs-1.rs:24:14
    |
 LL |     unsafe { rustc_peek(&x); }

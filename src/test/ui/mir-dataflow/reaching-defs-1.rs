@@ -22,7 +22,7 @@ fn foo(test: bool) -> (i32, i32) {
     }
 
     unsafe { rustc_peek(&x); }
-    //~^ ERROR rustc_peek: [16: "x=2", 17: "rustc_peek(&x)", 20: "x=3"]
+    //~^ ERROR rustc_peek: [16: "x=2", 20: "x=3"]
 
     unsafe { rustc_peek(&y); }
     //~^ ERROR rustc_peek: [13: "y=1", 21: "y=4"]
