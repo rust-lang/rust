@@ -259,12 +259,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 use rustc::mir::interpret::InterpError::*;
                 match diagnostic.error {
                     Exit(_) => bug!("the CTFE program cannot exit"),
-                    | Unsupported(_) => {},
-                    | UndefinedBehaviour(_) => {},
-                    | InvalidProgram(_) => {},
-                    | ResourceExhaustion(_) => {},
-                    | Panic(_)
-                    => {
+                    Panic(_) => {
                         diagnostic.report_as_lint(
                             self.ecx.tcx,
                             "this expression will panic at runtime",
@@ -272,6 +267,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             None,
                         );
                     }
+                    _ => {},
                 }
                 None
             },

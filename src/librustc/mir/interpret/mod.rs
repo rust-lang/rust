@@ -1,6 +1,51 @@
 //! An interpreter for MIR used in CTFE and by miri
 
 #[macro_export]
+macro_rules! err_unsup {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::Unsupported(
+            $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_inval {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::InvalidProgram(
+            $crate::mir::interpret::InvalidProgramInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_ub {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::UndefinedBehaviour(
+            $crate::mir::interpret::UndefinedBehaviourInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_panic {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::Panic(
+            $crate::mir::interpret::PanicInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_exhaust {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::ResourceExhaustion(
+            $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
 macro_rules! throw_unsup {
     ($($tt:tt)*) => { return Err(err_unsup!($($tt)*).into()) };
 }
@@ -27,42 +72,6 @@ macro_rules! throw_panic {
 #[macro_export]
 macro_rules! throw_exhaust {
     ($($tt:tt)*) => { return Err(err_exhaust!($($tt)*).into()) };
-}
-
-#[macro_export]
-macro_rules! err_inval {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::InvalidProgram(
-            $crate::mir::interpret::InvalidProgramInfo::$($tt)*
-        )
-    };
-}
-
-#[macro_export]
-macro_rules! err_unsup {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::Unsupported(
-            $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
-        )
-    };
-}
-
-#[macro_export]
-macro_rules! err_exhaust {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::ResourceExhaustion(
-            $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
-        )
-    };
-}
-
-#[macro_export]
-macro_rules! err_panic {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::Panic(
-            $crate::mir::interpret::PanicInfo::$($tt)*
-        )
-    };
 }
 
 mod error;
