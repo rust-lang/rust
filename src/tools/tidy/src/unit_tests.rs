@@ -30,7 +30,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
         "librustc",
         "librustc_data_structures",
         "librustc_incremental/persist",
-        "librustc_target/spec",
         "librustdoc",
         "libstd",
         "libsyntax",
