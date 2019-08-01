@@ -181,7 +181,12 @@ impl<'a, 'tcx: 'a, B: Backend> LayoutOf for FunctionCx<'a, 'tcx, B> {
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyLayout<'tcx> {
         let ty = self.monomorphize(&ty);
-        self.tcx.layout_of(ParamEnv::reveal_all().and(&ty)).unwrap()
+        self.tcx.layout_of(ParamEnv::reveal_all().and(&ty))
+            .unwrap_or_else(|e| if let layout::LayoutError::SizeOverflow(_) = e {
+                self.tcx.sess.fatal(&e.to_string())
+            } else {
+                bug!("failed to get layout for `{}`: {}", ty, e)
+            })
     }
 }
 
