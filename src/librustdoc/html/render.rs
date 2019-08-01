@@ -5007,7 +5007,8 @@ fn sidebar_module(fmt: &mut fmt::Formatter<'_>, _it: &clean::Item,
                    ItemType::Enum, ItemType::Constant, ItemType::Static, ItemType::Trait,
                    ItemType::Function, ItemType::Typedef, ItemType::Union, ItemType::Impl,
                    ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
-                   ItemType::AssocType, ItemType::AssocConst, ItemType::ForeignType] {
+                   ItemType::AssocType, ItemType::AssocConst, ItemType::ForeignType,
+                   ItemType::Keyword] {
         if items.iter().any(|it| !it.is_stripped() && it.type_() == myty) {
             let (short, name) = item_ty_to_strs(&myty);
             sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
