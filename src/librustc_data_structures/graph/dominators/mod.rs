@@ -9,7 +9,7 @@ use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
     let start_node = graph.start_node();

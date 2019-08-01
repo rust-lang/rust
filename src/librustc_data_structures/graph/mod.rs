@@ -8,7 +8,7 @@ pub mod scc;
 pub mod vec_graph;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub trait DirectedGraph {
     type Node: Idx;

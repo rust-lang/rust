@@ -1,4 +1,4 @@
-use super::super::test::TestGraph;
+use super::super::tests::TestGraph;
 
 use super::*;
 
