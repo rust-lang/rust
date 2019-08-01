@@ -172,6 +172,7 @@ docker \
   --env BUILD_SOURCEBRANCHNAME \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env TOOLSTATE_REPO \
+  --env TOOLSTATE_PUBLISH \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
   --init \
   --rm \
