@@ -14,10 +14,12 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Using `if let` or `match` is more idiomatic.
     ///
-    /// **Known problems:** Limitations of the borrow checker might make unwrap() necessary sometimes?
+    /// **Known problems:** None
     ///
     /// **Example:**
     /// ```rust
+    /// # let option = Some(0);
+    /// # fn do_something_with(_x: usize) {}
     /// if option.is_some() {
     ///     do_something_with(option.unwrap())
     /// }
@@ -26,12 +28,14 @@ declare_clippy_lint! {
     /// Could be written:
     ///
     /// ```rust
+    /// # let option = Some(0);
+    /// # fn do_something_with(_x: usize) {}
     /// if let Some(value) = option {
     ///     do_something_with(value)
     /// }
     /// ```
     pub UNNECESSARY_UNWRAP,
-    nursery,
+    complexity,
     "checks for calls of unwrap[_err]() that cannot fail"
 }
 
@@ -45,6 +49,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # let option = Some(0);
+    /// # fn do_something_with(_x: usize) {}
     /// if option.is_none() {
     ///     do_something_with(option.unwrap())
     /// }
@@ -52,7 +58,7 @@ declare_clippy_lint! {
     ///
     /// This code will always panic. The if condition should probably be inverted.
     pub PANICKING_UNWRAP,
-    nursery,
+    correctness,
     "checks for calls of unwrap[_err]() that will always fail"
 }
 

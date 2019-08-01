@@ -894,6 +894,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         unused_io_amount::UNUSED_IO_AMOUNT,
         unused_label::UNUSED_LABEL,
+        unwrap::PANICKING_UNWRAP,
+        unwrap::UNNECESSARY_UNWRAP,
         vec::USELESS_VEC,
         write::PRINTLN_EMPTY_STRING,
         write::PRINT_LITERAL,
@@ -1060,6 +1062,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         types::UNNECESSARY_CAST,
         types::VEC_BOX,
         unused_label::UNUSED_LABEL,
+        unwrap::UNNECESSARY_UNWRAP,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
 
@@ -1121,6 +1124,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
         unused_io_amount::UNUSED_IO_AMOUNT,
+        unwrap::PANICKING_UNWRAP,
     ]);
 
     reg.register_lint_group("clippy::perf", Some("clippy_perf"), vec![
@@ -1157,8 +1161,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         needless_borrow::NEEDLESS_BORROW,
         path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE,
         redundant_clone::REDUNDANT_CLONE,
-        unwrap::PANICKING_UNWRAP,
-        unwrap::UNNECESSARY_UNWRAP,
     ]);
 }
 
