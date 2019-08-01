@@ -1527,7 +1527,12 @@ impl Step for RustcGuide {
     fn run(self, builder: &Builder<'_>) {
         let src = builder.src.join("src/doc/rustc-guide");
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        try_run(builder, rustbook_cmd.arg("linkcheck").arg(&src));
+        let toolstate = if try_run(builder, rustbook_cmd.arg("linkcheck").arg(&src)) {
+            ToolState::TestPass
+        } else {
+            ToolState::TestFail
+        };
+        builder.save_toolstate("rustc-guide", toolstate);
     }
 }
 
