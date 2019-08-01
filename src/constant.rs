@@ -202,7 +202,7 @@ fn data_id_for_static(
     if linkage == Linkage::Preemptible {
         if let ty::RawPtr(_) = tcx.type_of(def_id).sty {
         } else {
-            tcx.sess.span_fatal(tcx.def_span(def_id), "must have type `*const T` or `*mut T`")
+            tcx.sess.span_fatal(tcx.def_span(def_id), "must have type `*const T` or `*mut T` due to `#[linkage]` attribute")
         }
 
         let mut data_ctx = DataContext::new();

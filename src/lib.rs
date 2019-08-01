@@ -195,6 +195,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
         need_metadata_module: bool,
         _rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any> {
+        rustc_codegen_utils::check_for_rustc_errors_attr(tcx);
+
         let res = driver::codegen_crate(tcx, metadata, need_metadata_module);
 
         rustc_incremental::assert_module_sources::assert_module_sources(tcx);
