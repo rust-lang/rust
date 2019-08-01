@@ -30,7 +30,6 @@ Compiler
 - [You can now enable Profile-Guided Optimization with the `-C profile-generate`
   and `-C profile-use` flags.][61268] For more information on how to use profile
   guided optimization, please refer to the [rustc book][rustc-book-pgo].
-- [The `rust-lldb` wrapper script should now work again.][61827]
 
 Libraries
 ---------
