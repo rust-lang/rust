@@ -1,5 +1,5 @@
 // This benchmark suite contains some benchmarks along a set of dimensions:
-//   Hasher: std default (SipHash) and crate default (FxHash).
+//   Hasher: std default (SipHash) and crate default (AHash).
 //   Int key distribution: low bit heavy, top bit heavy, and random.
 //   Task: basic functionality: insert, insert_erase, lookup, lookup_fail, iter
 #![feature(test)]
@@ -15,7 +15,7 @@ use std::collections::hash_map::RandomState;
 const SIZE: usize = 1000;
 
 // The default hashmap when using this crate directly.
-type FxHashMap<K, V> = HashMap<K, V, DefaultHashBuilder>;
+type AHashMap<K, V> = HashMap<K, V, DefaultHashBuilder>;
 // This uses the hashmap from this crate with the default hasher of the stdlib.
 type StdHashMap<K, V> = HashMap<K, V, RandomState>;
 
@@ -41,18 +41,22 @@ impl Iterator for RandomKeys {
 }
 
 macro_rules! bench_suite {
-    ($bench_macro:ident, $bench_fx_serial:ident, $bench_std_serial:ident,
-     $bench_fx_highbits:ident, $bench_std_highbits:ident,
-     $bench_fx_random:ident, $bench_std_random:ident) => {
-        $bench_macro!($bench_fx_serial, FxHashMap, 0..);
+    ($bench_macro:ident, $bench_ahash_serial:ident, $bench_std_serial:ident,
+     $bench_ahash_highbits:ident, $bench_std_highbits:ident,
+     $bench_ahash_random:ident, $bench_std_random:ident) => {
+        $bench_macro!($bench_ahash_serial, AHashMap, 0..);
         $bench_macro!($bench_std_serial, StdHashMap, 0..);
-        $bench_macro!($bench_fx_highbits, FxHashMap, (0..).map(usize::swap_bytes));
+        $bench_macro!(
+            $bench_ahash_highbits,
+            AHashMap,
+            (0..).map(usize::swap_bytes)
+        );
         $bench_macro!(
             $bench_std_highbits,
             StdHashMap,
             (0..).map(usize::swap_bytes)
         );
-        $bench_macro!($bench_fx_random, FxHashMap, RandomKeys::new());
+        $bench_macro!($bench_ahash_random, AHashMap, RandomKeys::new());
         $bench_macro!($bench_std_random, StdHashMap, RandomKeys::new());
     };
 }
@@ -61,10 +65,46 @@ macro_rules! bench_insert {
     ($name:ident, $maptype:ident, $keydist:expr) => {
         #[bench]
         fn $name(b: &mut Bencher) {
+            let mut m = $maptype::with_capacity_and_hasher(SIZE, Default::default());
             b.iter(|| {
-                let mut m = $maptype::default();
+                m.clear();
                 for i in ($keydist).take(SIZE) {
                     m.insert(i, i);
+                }
+                black_box(&mut m);
+            })
+        }
+    };
+}
+
+bench_suite!(
+    bench_insert,
+    insert_ahash_serial,
+    insert_std_serial,
+    insert_ahash_highbits,
+    insert_std_highbits,
+    insert_ahash_random,
+    insert_std_random
+);
+
+macro_rules! bench_insert_erase {
+    ($name:ident, $maptype:ident, $keydist:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            let mut base = $maptype::default();
+            for i in ($keydist).take(SIZE) {
+                base.insert(i, i);
+            }
+            let skip = $keydist.skip(SIZE);
+            b.iter(|| {
+                let mut m = base.clone();
+                let mut add_iter = skip.clone();
+                let mut remove_iter = $keydist;
+                // While keeping the size constant,
+                // replace the first keydist with the second.
+                for (add, remove) in (&mut add_iter).zip(&mut remove_iter).take(SIZE) {
+                    m.insert(add, add);
+                    black_box(m.remove(&remove));
                 }
                 black_box(m);
             })
@@ -73,44 +113,12 @@ macro_rules! bench_insert {
 }
 
 bench_suite!(
-    bench_insert,
-    insert_fx_serial,
-    insert_std_serial,
-    insert_fx_highbits,
-    insert_std_highbits,
-    insert_fx_random,
-    insert_std_random
-);
-
-macro_rules! bench_insert_erase {
-    ($name:ident, $maptype:ident, $keydist:expr) => {
-        #[bench]
-        fn $name(b: &mut Bencher) {
-            let mut m = $maptype::default();
-            let mut add_iter = $keydist;
-            for i in (&mut add_iter).take(SIZE) {
-                m.insert(i, i);
-            }
-            let mut remove_iter = $keydist;
-            b.iter(|| {
-                // While keeping the size constant,
-                // replace the first keydist with the second.
-                for (add, remove) in (&mut add_iter).zip(&mut remove_iter).take(SIZE) {
-                    m.insert(add, add);
-                    black_box(m.remove(&remove));
-                }
-            })
-        }
-    };
-}
-
-bench_suite!(
     bench_insert_erase,
-    insert_erase_fx_serial,
+    insert_erase_ahash_serial,
     insert_erase_std_serial,
-    insert_erase_fx_highbits,
+    insert_erase_ahash_highbits,
     insert_erase_std_highbits,
-    insert_erase_fx_random,
+    insert_erase_ahash_random,
     insert_erase_std_random
 );
 
@@ -134,11 +142,11 @@ macro_rules! bench_lookup {
 
 bench_suite!(
     bench_lookup,
-    lookup_fx_serial,
+    lookup_ahash_serial,
     lookup_std_serial,
-    lookup_fx_highbits,
+    lookup_ahash_highbits,
     lookup_std_highbits,
-    lookup_fx_random,
+    lookup_ahash_random,
     lookup_std_random
 );
 
@@ -163,11 +171,11 @@ macro_rules! bench_lookup_fail {
 
 bench_suite!(
     bench_lookup_fail,
-    lookup_fail_fx_serial,
+    lookup_fail_ahash_serial,
     lookup_fail_std_serial,
-    lookup_fail_fx_highbits,
+    lookup_fail_ahash_highbits,
     lookup_fail_std_highbits,
-    lookup_fail_fx_random,
+    lookup_fail_ahash_random,
     lookup_fail_std_random
 );
 
@@ -191,10 +199,10 @@ macro_rules! bench_iter {
 
 bench_suite!(
     bench_iter,
-    iter_fx_serial,
+    iter_ahash_serial,
     iter_std_serial,
-    iter_fx_highbits,
+    iter_ahash_highbits,
     iter_std_highbits,
-    iter_fx_random,
+    iter_ahash_random,
     iter_std_random
 );
