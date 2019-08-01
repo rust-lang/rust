@@ -539,7 +539,7 @@ Compiler
 --------
 - [You can now set a linker flavor for `rustc` with the `-Clinker-flavor`
   command line argument.][56351]
-- [The mininum required LLVM version has been bumped to 6.0.][56642]
+- [The minimum required LLVM version has been bumped to 6.0.][56642]
 - [Added support for the PowerPC64 architecture on FreeBSD.][57615]
 - [The `x86_64-fortanix-unknown-sgx` target support has been upgraded to
   tier 2 support.][57130] Visit the [platform support][platform-support] page for
@@ -970,7 +970,7 @@ Compiler
 
 Libraries
 ---------
-- [You can now convert `num::NonZero*` types to their raw equivalvents using the
+- [You can now convert `num::NonZero*` types to their raw equivalents using the
   `From` trait.][54240] E.g. `u8` now implements `From<NonZeroU8>`.
 - [You can now convert a `&Option<T>` into `Option<&T>` and `&mut Option<T>`
   into `Option<&mut T>` using the `From` trait.][53218]
@@ -1163,7 +1163,7 @@ Security Notes
   caused by an integer overflow. This has been fixed by deterministically
   panicking when an overflow happens.
 
-  Thank you to Scott McMurray for responsibily disclosing this vulnerability to
+  Thank you to Scott McMurray for responsibly disclosing this vulnerability to
   us.
 
 
@@ -1435,7 +1435,7 @@ Security Notes
   given machine. This release fixes that vulnerability; you can read
   more about this on the [blog][rustdoc-sec]. The associated CVE is [CVE-2018-1000622].
 
-  Thank you to Red Hat for responsibily disclosing this vulnerability to us.
+  Thank you to Red Hat for responsibly disclosing this vulnerability to us.
 
 Compatibility Notes
 -------------------
