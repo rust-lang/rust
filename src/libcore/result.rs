@@ -829,7 +829,7 @@ impl<T: Copy, E> Result<&T, E> {
     /// ```
     /// #![feature(result_copied)]
     /// let val = 12;
-    /// let x = Ok(&val);
+    /// let x: Result<&i32, i32> = Ok(&val);
     /// assert_eq!(x, Ok(&12));
     /// let copied = x.copied();
     /// assert_eq!(copied, Ok(12));
@@ -848,8 +848,8 @@ impl<T: Copy, E> Result<&mut T, E> {
     ///
     /// ```
     /// #![feature(result_copied)]
-    /// let val = 12;
-    /// let x = Ok(&mut val);
+    /// let mut val = 12;
+    /// let x: Result<&mut i32, i32> = Ok(&mut val);
     /// assert_eq!(x, Ok(&mut 12));
     /// let copied = x.copied();
     /// assert_eq!(copied, Ok(12));
@@ -869,7 +869,7 @@ impl<T, E: Copy> Result<T, &E> {
     /// ```
     /// #![feature(result_copied)]
     /// let val = 12;
-    /// let x = Err(&val);
+    /// let x: Result<i32, &i32> = Err(&val);
     /// assert_eq!(x, Err(&12));
     /// let copied = x.copied_err();
     /// assert_eq!(copied, Err(12));
@@ -888,11 +888,11 @@ impl<T, E: Copy> Result<T, &mut E> {
     ///
     /// ```
     /// #![feature(result_copied)]
-    /// let val = 12;
-    /// let x = Err(&mut val);
+    /// let mut val = 12;
+    /// let x: Result<i32, &mut i32> = Err(&mut val);
     /// assert_eq!(x, Err(&mut 12));
-    /// let copied = x.copied();
-    /// assert_eq!(cloned, Err(12));
+    /// let copied = x.copied_err();
+    /// assert_eq!(copied, Err(12));
     /// ```
     #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
     pub fn copied_err(self) -> Result<T, E> {
@@ -909,7 +909,7 @@ impl<T: Clone, E> Result<&T, E> {
     /// ```
     /// #![feature(result_cloned)]
     /// let val = 12;
-    /// let x = Ok(&val);
+    /// let x: Result<&i32, i32> = Ok(&val);
     /// assert_eq!(x, Ok(&12));
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Ok(12));
@@ -928,8 +928,8 @@ impl<T: Clone, E> Result<&mut T, E> {
     ///
     /// ```
     /// #![feature(result_cloned)]
-    /// let val = 12;
-    /// let x = Ok(&mut val);
+    /// let mut val = 12;
+    /// let x: Result<&mut i32, i32> = Ok(&mut val);
     /// assert_eq!(x, Ok(&mut 12));
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Ok(12));
@@ -949,9 +949,9 @@ impl<T, E: Clone> Result<T, &E> {
     /// ```
     /// #![feature(result_cloned)]
     /// let val = 12;
-    /// let x = Err(&mut val);
-    /// assert_eq!(x, Err(&mut 12));
-    /// let cloned = x.cloned();
+    /// let x: Result<i32, &i32> = Err(&val);
+    /// assert_eq!(x, Err(&12));
+    /// let cloned = x.cloned_err();
     /// assert_eq!(cloned, Err(12));
     /// ```
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
@@ -968,10 +968,10 @@ impl<T, E: Clone> Result<T, &mut E> {
     ///
     /// ```
     /// #![feature(result_cloned)]
-    /// let val = 12;
-    /// let x = Err(&mut val);
+    /// let mut val = 12;
+    /// let x: Result<i32, &mut i32> = Err(&mut val);
     /// assert_eq!(x, Err(&mut 12));
-    /// let cloned = x.cloned();
+    /// let cloned = x.cloned_err();
     /// assert_eq!(cloned, Err(12));
     /// ```
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
