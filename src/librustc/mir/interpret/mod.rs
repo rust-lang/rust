@@ -57,11 +57,7 @@ macro_rules! throw_inval {
 
 #[macro_export]
 macro_rules! throw_ub {
-    ($($tt:tt)*) => {
-        return Err($crate::mir::interpret::InterpError::UndefinedBehaviour(
-            $crate::mir::interpret::UndefinedBehaviourInfo::$($tt)*
-        ).into())
-    };
+    ($($tt:tt)*) => { return Err(err_ub!($($tt)*).into()) };
 }
 
 #[macro_export]
