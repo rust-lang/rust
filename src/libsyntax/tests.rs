@@ -1,16 +1,106 @@
+use crate::{ast, panictry};
+use crate::parse::{ParseSess, PResult, source_file_to_stream};
+use crate::parse::new_parser_from_source_str;
+use crate::parse::parser::Parser;
 use crate::source_map::{SourceMap, FilePathMapping};
+use crate::tokenstream::TokenStream;
 use crate::with_default_globals;
 
-use errors::Handler;
 use errors::emitter::EmitterWriter;
+use errors::Handler;
+use rustc_data_structures::sync::Lrc;
+use syntax_pos::{BytePos, NO_EXPANSION, Span, MultiSpan};
 
 use std::io;
 use std::io::prelude::*;
-use rustc_data_structures::sync::Lrc;
+use std::iter::Peekable;
+use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::{Arc, Mutex};
-use std::path::Path;
-use syntax_pos::{BytePos, NO_EXPANSION, Span, MultiSpan};
+
+/// Map string to parser (via tts)
+fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
+    new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
+}
+
+crate fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T where
+    F: FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
+{
+    let mut p = string_to_parser(&ps, s);
+    let x = panictry!(f(&mut p));
+    p.sess.span_diagnostic.abort_if_errors();
+    x
+}
+
+/// Map a string to tts, using a made-up filename:
+crate fn string_to_stream(source_str: String) -> TokenStream {
+    let ps = ParseSess::new(FilePathMapping::empty());
+    source_file_to_stream(
+        &ps,
+        ps.source_map().new_source_file(PathBuf::from("bogofile").into(),
+        source_str,
+    ), None).0
+}
+
+/// Parse a string, return a crate.
+crate fn string_to_crate(source_str : String) -> ast::Crate {
+    let ps = ParseSess::new(FilePathMapping::empty());
+    with_error_checking_parse(source_str, &ps, |p| {
+        p.parse_crate_mod()
+    })
+}
+
+/// Does the given string match the pattern? whitespace in the first string
+/// may be deleted or replaced with other whitespace to match the pattern.
+/// This function is relatively Unicode-ignorant; fortunately, the careful design
+/// of UTF-8 mitigates this ignorance. It doesn't do NKF-normalization(?).
+crate fn matches_codepattern(a : &str, b : &str) -> bool {
+    let mut a_iter = a.chars().peekable();
+    let mut b_iter = b.chars().peekable();
+
+    loop {
+        let (a, b) = match (a_iter.peek(), b_iter.peek()) {
+            (None, None) => return true,
+            (None, _) => return false,
+            (Some(&a), None) => {
+                if is_pattern_whitespace(a) {
+                    break // trailing whitespace check is out of loop for borrowck
+                } else {
+                    return false
+                }
+            }
+            (Some(&a), Some(&b)) => (a, b)
+        };
+
+        if is_pattern_whitespace(a) && is_pattern_whitespace(b) {
+            // skip whitespace for a and b
+            scan_for_non_ws_or_end(&mut a_iter);
+            scan_for_non_ws_or_end(&mut b_iter);
+        } else if is_pattern_whitespace(a) {
+            // skip whitespace for a
+            scan_for_non_ws_or_end(&mut a_iter);
+        } else if a == b {
+            a_iter.next();
+            b_iter.next();
+        } else {
+            return false
+        }
+    }
+
+    // check if a has *only* trailing whitespace
+    a_iter.all(is_pattern_whitespace)
+}
+
+/// Advances the given peekable `Iterator` until it reaches a non-whitespace character
+fn scan_for_non_ws_or_end<I: Iterator<Item = char>>(iter: &mut Peekable<I>) {
+    while iter.peek().copied().map(|c| is_pattern_whitespace(c)) == Some(true) {
+        iter.next();
+    }
+}
+
+fn is_pattern_whitespace(c: char) -> bool {
+    rustc_lexer::character_properties::is_whitespace(c)
+}
 
 /// Identify a position in the text by the Nth occurrence of a string.
 struct Position {

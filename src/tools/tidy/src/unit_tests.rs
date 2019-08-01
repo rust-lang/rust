@@ -28,7 +28,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
     let fixme = [
         "liballoc",
         "libstd",
-        "libsyntax",
     ];
 
     let mut skip = |path: &Path| {

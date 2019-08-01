@@ -19,6 +19,9 @@ use syntax_pos::{DUMMY_SP, FileName, Span};
 
 use std::borrow::Cow;
 
+#[cfg(test)]
+mod tests;
+
 pub enum MacHeader<'a> {
     Path(&'a ast::Path),
     Keyword(&'static str),
@@ -2886,62 +2889,5 @@ impl<'a> State<'a> {
             ast::IsAuto::Yes => self.word_nbsp("auto"),
             ast::IsAuto::No => {}
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::ast;
-    use crate::source_map;
-    use crate::with_default_globals;
-    use syntax_pos;
-
-    #[test]
-    fn test_fun_to_string() {
-        with_default_globals(|| {
-            let abba_ident = ast::Ident::from_str("abba");
-
-            let decl = ast::FnDecl {
-                inputs: Vec::new(),
-                output: ast::FunctionRetTy::Default(syntax_pos::DUMMY_SP),
-                c_variadic: false
-            };
-            let generics = ast::Generics::default();
-            assert_eq!(
-                fun_to_string(
-                    &decl,
-                    ast::FnHeader {
-                        unsafety: ast::Unsafety::Normal,
-                        constness: source_map::dummy_spanned(ast::Constness::NotConst),
-                        asyncness: source_map::dummy_spanned(ast::IsAsync::NotAsync),
-                        abi: Abi::Rust,
-                    },
-                    abba_ident,
-                    &generics
-                ),
-                "fn abba()"
-            );
-        })
-    }
-
-    #[test]
-    fn test_variant_to_string() {
-        with_default_globals(|| {
-            let ident = ast::Ident::from_str("principal_skinner");
-
-            let var = source_map::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
-                ident,
-                attrs: Vec::new(),
-                id: ast::DUMMY_NODE_ID,
-                // making this up as I go.... ?
-                data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
-                disr_expr: None,
-            });
-
-            let varstr = variant_to_string(&var);
-            assert_eq!(varstr, "principal_skinner");
-        })
     }
 }

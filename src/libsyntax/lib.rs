@@ -33,6 +33,9 @@ pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 use syntax_pos::edition::Edition;
 
+#[cfg(test)]
+mod tests;
+
 const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
 // A variant of 'try!' that panics on an Err. This is used as a crutch on the
@@ -132,8 +135,6 @@ pub mod util {
     pub mod lev_distance;
     pub mod node_count;
     pub mod parser;
-    #[cfg(test)]
-    pub mod parser_testing;
     pub mod map_in_place;
 }
 
@@ -182,8 +183,5 @@ pub mod ext {
 }
 
 pub mod early_buffered_lints;
-
-#[cfg(test)]
-mod test_snippet;
 
 __build_diagnostic_array! { libsyntax, DIAGNOSTICS }
