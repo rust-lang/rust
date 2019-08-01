@@ -81,7 +81,8 @@ impl EarlyLintPass for RedundantStaticLifetimes {
         if !in_macro_or_desugar(item.span) {
             if let ItemKind::Const(ref var_type, _) = item.node {
                 self.visit_type(var_type, cx, "Constants have by default a `'static` lifetime");
-                // Don't check associated consts because `'static` cannot be elided on those (issue #2438)
+                // Don't check associated consts because `'static` cannot be elided on those (issue
+                // #2438)
             }
 
             if let ItemKind::Static(ref var_type, _, _) = item.node {

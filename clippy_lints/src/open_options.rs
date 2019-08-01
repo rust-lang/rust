@@ -127,7 +127,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
                 } else {
                     create = true
                 }
-                create_arg = create_arg || (arg == Argument::True);;
+                create_arg = create_arg || (arg == Argument::True);
             },
             (OpenOption::Append, arg) => {
                 if append {
@@ -140,7 +140,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
                 } else {
                     append = true
                 }
-                append_arg = append_arg || (arg == Argument::True);;
+                append_arg = append_arg || (arg == Argument::True);
             },
             (OpenOption::Truncate, arg) => {
                 if truncate {
@@ -166,7 +166,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
                 } else {
                     read = true
                 }
-                read_arg = read_arg || (arg == Argument::True);;
+                read_arg = read_arg || (arg == Argument::True);
             },
             (OpenOption::Write, arg) => {
                 if write {
@@ -179,7 +179,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
                 } else {
                     write = true
                 }
-                write_arg = write_arg || (arg == Argument::True);;
+                write_arg = write_arg || (arg == Argument::True);
             },
         }
     }

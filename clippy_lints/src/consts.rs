@@ -65,9 +65,7 @@ impl PartialEq for Constant {
                 f64::from(l).to_bits() == f64::from(r).to_bits()
             },
             (&Self::Bool(l), &Self::Bool(r)) => l == r,
-            (&Self::Vec(ref l), &Self::Vec(ref r)) | (&Self::Tuple(ref l), &Self::Tuple(ref r)) => {
-                l == r
-            },
+            (&Self::Vec(ref l), &Self::Vec(ref r)) | (&Self::Tuple(ref l), &Self::Tuple(ref r)) => l == r,
             (&Self::Repeat(ref lv, ref ls), &Self::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
             // TODO: are there inter-type equalities?
             _ => false,
