@@ -131,7 +131,7 @@ evaluation of another constant simply calls `tcx.const_eval`, which produces an
 entirely new and independent stack frame.
 
 The frames are just a `Vec<Frame>`, there's no way to actually refer to a
-`Frame`'s memory even if horrible shenigans are done via unsafe code. The only
+`Frame`'s memory even if horrible shenanigans are done via unsafe code. The only
 memory that can be referred to are `Allocation`s.
 
 Miri now calls the `step` method (in

@@ -15,7 +15,7 @@ For example, given a `HashMap<K, V>` with two type parameters, `K` and `V`, an
 instantiation of the parameters, for example `HashMap<i32, u32>`, would be
 represented by the substitution `&'tcx [tcx.types.i32, tcx.types.u32]`.
 
-`Subst` provides various convenience methods to instantiant substitutions
+`Subst` provides various convenience methods to instantiate substitutions
 given item definitions, which should generally be used rather than explicitly
 constructing such substitution slices.
 

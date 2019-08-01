@@ -64,7 +64,7 @@ defining all of the different kinds of types in the compiler.
 > known later.).
 
 To allocate a new type, you can use the various `mk_` methods defined
-on the `tcx`. These have names that correpond mostly to the various kinds
+on the `tcx`. These have names that correspond mostly to the various kinds
 of type variants. For example:
 
 ```rust,ignore

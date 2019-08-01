@@ -34,8 +34,8 @@ Places that may need updated documentation:
     to the language, updating examples is important.
 - [Rust by Example]: As needed.
 
-Prepare PRs to update documentations invovling this new feature
-for  repositories mentioned above. Maintainers of these repositories
+Prepare PRs to update documentation involving this new feature
+for repositories mentioned above. Maintainers of these repositories
 will keep these PRs open until the whole stabilization process
 has completed. Meanwhile, we can proceed to the next step.
 
@@ -44,7 +44,7 @@ has completed. Meanwhile, we can proceed to the next step.
 Find the tracking issue of the feature, and create a short
 stabilization report. Essentially this would be a brief summary
 of the feature plus some links to test cases showing it works
-as expected, along with a list of edge cases that came up and
+as expected, along with a list of edge cases that came up
 and were considered. This is a minimal "due diligence" that
 we do before stabilizing.
 
