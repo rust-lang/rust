@@ -1923,11 +1923,20 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # use std::collections::HashMap;
-    /// # use std::hash::Hash;
+    /// # use std::hash::{Hash, BuildHasher};
     /// # trait Serialize {};
     /// impl<K: Hash + Eq, V> Serialize for HashMap<K, V> { }
     ///
     /// pub fn foo(map: &mut HashMap<i32, i32>) { }
+    /// ```
+    /// could be rewritten as
+    /// ```rust
+    /// # use std::collections::HashMap;
+    /// # use std::hash::{Hash, BuildHasher};
+    /// # trait Serialize {};
+    /// impl<K: Hash + Eq, V, S: BuildHasher> Serialize for HashMap<K, V, S> { }
+    ///
+    /// pub fn foo<S: BuildHasher>(map: &mut HashMap<i32, i32, S>) { }
     /// ```
     pub IMPLICIT_HASHER,
     style,
