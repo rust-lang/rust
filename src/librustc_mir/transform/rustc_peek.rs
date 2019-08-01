@@ -59,7 +59,7 @@ impl MirPass for SanityCheck {
                         |_bd, i| DebugFormatted::new(&i));
         let flow_reaching_defs =
             do_dataflow(tcx, body, def_id, &attributes, &dead_unwinds,
-                        ReachingDefinitions::new(body),
+                        ReachingDefinitions::new(tcx, body, tcx.param_env(def_id)),
                         |bd, i| DebugFormatted::new(&bd.get(i).location));
         let flow_use_def_chain =
             UseDefChain::new(body, &flow_reaching_defs, &flow_borrowed_locals);

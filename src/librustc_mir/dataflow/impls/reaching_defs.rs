@@ -1,10 +1,14 @@
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::visit::{MutatingUseContext, NonMutatingUseContext, NonUseContext};
 use rustc::mir::{self, Local, Location, Place, PlaceBase};
+use rustc::ty::{self, TyCtxt, ParamEnv};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_target::spec::abi::Abi;
+
 use smallvec::SmallVec;
+use syntax::symbol::sym;
 
 use super::{BitDenotation, GenKillSet, BottomValue};
 
@@ -74,16 +78,41 @@ pub struct ReachingDefinitions {
     at_location: FxHashMap<Location, SmallVec<[DefIndex; 4]>>,
 }
 
-fn is_call_with_side_effects(terminator: &mir::Terminator<'tcx>) -> bool {
-    if let mir::TerminatorKind::Call { .. } = terminator.kind {
-        true
-    } else {
-        false
+fn has_side_effects(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    terminator: &mir::Terminator<'tcx>,
+) -> bool {
+    match &terminator.kind {
+        mir::TerminatorKind::Call { .. } => true,
+
+        // Types with special drop glue may mutate their environment.
+        | mir::TerminatorKind::Drop { location: place, .. }
+        | mir::TerminatorKind::DropAndReplace { location: place, .. }
+        => place.ty(body, tcx).ty.needs_drop(tcx, param_env),
+
+        | mir::TerminatorKind::Goto { .. }
+        | mir::TerminatorKind::SwitchInt { .. }
+        | mir::TerminatorKind::Resume
+        | mir::TerminatorKind::Abort
+        | mir::TerminatorKind::Return
+        | mir::TerminatorKind::Unreachable
+        | mir::TerminatorKind::Assert { .. }
+        | mir::TerminatorKind::FalseEdges { .. }
+        | mir::TerminatorKind::FalseUnwind { .. }
+        => false,
+
+        // FIXME: I don't know the semantics around these so assume that they may mutate their
+        // environment.
+        | mir::TerminatorKind::Yield { .. }
+        | mir::TerminatorKind::GeneratorDrop
+        => true,
     }
 }
 
 impl ReachingDefinitions {
-    pub fn new(body: &mir::Body<'_>) -> Self {
+    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
         let mut ret = ReachingDefinitions {
             all: IndexVec::new(),
             for_local_direct: IndexVec::from_elem(Vec::new(), &body.local_decls),
@@ -102,7 +131,7 @@ impl ReachingDefinitions {
         let blocks_with_side_effects = body
             .basic_blocks()
             .iter_enumerated()
-            .filter(|(_, data)| is_call_with_side_effects(data.terminator()));
+            .filter(|(_, data)| has_side_effects(tcx, body, param_env, data.terminator()));
 
         for (block, data) in blocks_with_side_effects {
             let term_loc = Location { block, statement_index: data.statements.len() };

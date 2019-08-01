@@ -1,0 +1,10 @@
+error: rustc_peek: [16: "x=0", 19: ";"]
+  --> $DIR/reaching-defs-drop.rs:22:14
+   |
+LL |     unsafe { rustc_peek(x); }
+   |              ^^^^^^^^^^^^^
+
+error: stop_after_dataflow ended compilation
+
+error: aborting due to 2 previous errors
+
