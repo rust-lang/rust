@@ -3,7 +3,6 @@ use errors::{Applicability, DiagnosticBuilder};
 use syntax::ast::{self, *};
 use syntax::source_map::Spanned;
 use syntax::ext::base::*;
-use syntax::ext::build::AstBuilder;
 use syntax::parse::token::{self, TokenKind};
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;

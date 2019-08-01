@@ -6,7 +6,6 @@ use errors::DiagnosticBuilder;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};
-use syntax::ext::build::AstBuilder;
 use syntax::attr;
 use syntax::tokenstream;
 use syntax::parse::token;

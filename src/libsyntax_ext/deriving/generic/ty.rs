@@ -6,7 +6,6 @@ pub use Ty::*;
 
 use syntax::ast::{self, Expr, GenericParamKind, Generics, Ident, SelfKind, GenericArg};
 use syntax::ext::base::ExtCtxt;
-use syntax::ext::build::AstBuilder;
 use syntax::source_map::{respan, DUMMY_SP};
 use syntax::ptr::P;
 use syntax_pos::Span;

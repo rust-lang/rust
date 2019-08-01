@@ -6,9 +6,10 @@ pub use builtin::*;
 pub use IntType::*;
 pub use ReprAttr::*;
 pub use StabilityLevel::*;
+pub use crate::ast::Attribute;
 
 use crate::ast;
-use crate::ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
+use crate::ast::{AttrId, AttrStyle, Name, Ident, Path, PathSegment};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
@@ -328,13 +329,14 @@ impl Attribute {
             let meta = mk_name_value_item_str(
                 Ident::with_empty_ctxt(sym::doc),
                 dummy_spanned(Symbol::intern(&strip_doc_comment_decoration(&comment.as_str()))));
-            let mut attr = if self.style == ast::AttrStyle::Outer {
-                mk_attr_outer(self.span, self.id, meta)
-            } else {
-                mk_attr_inner(self.span, self.id, meta)
-            };
-            attr.is_sugared_doc = true;
-            f(&attr)
+            f(&Attribute {
+                id: self.id,
+                style: self.style,
+                path: meta.path,
+                tokens: meta.node.tokens(meta.span),
+                is_sugared_doc: true,
+                span: self.span,
+            })
         } else {
             f(self)
         }
@@ -376,46 +378,36 @@ pub fn mk_attr_id() -> AttrId {
     AttrId(id)
 }
 
-/// Returns an inner attribute with the given value.
-pub fn mk_attr_inner(span: Span, id: AttrId, item: MetaItem) -> Attribute {
-    mk_spanned_attr_inner(span, id, item)
-}
-
 /// Returns an inner attribute with the given value and span.
-pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
+pub fn mk_attr_inner(item: MetaItem) -> Attribute {
     Attribute {
-        id,
+        id: mk_attr_id(),
         style: ast::AttrStyle::Inner,
         path: item.path,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
-        span: sp,
+        span: item.span,
     }
 }
 
-/// Returns an outer attribute with the given value.
-pub fn mk_attr_outer(span: Span, id: AttrId, item: MetaItem) -> Attribute {
-    mk_spanned_attr_outer(span, id, item)
-}
-
 /// Returns an outer attribute with the given value and span.
-pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
+pub fn mk_attr_outer(item: MetaItem) -> Attribute {
     Attribute {
-        id,
+        id: mk_attr_id(),
         style: ast::AttrStyle::Outer,
         path: item.path,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
-        span: sp,
+        span: item.span,
     }
 }
 
-pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
+pub fn mk_sugared_doc_attr(text: Symbol, span: Span) -> Attribute {
     let style = doc_comment_style(&text.as_str());
     let lit_kind = LitKind::Str(text, ast::StrStyle::Cooked);
     let lit = Lit::from_lit_kind(lit_kind, span);
     Attribute {
-        id,
+        id: mk_attr_id(),
         style,
         path: Path::from_ident(Ident::with_empty_ctxt(sym::doc).with_span_pos(span)),
         tokens: MetaItemKind::NameValue(lit).tokens(span),
