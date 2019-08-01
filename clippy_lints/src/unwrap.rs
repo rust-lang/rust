@@ -18,6 +18,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # let option = Some(0);
+    /// # fn do_something_with(_x: usize) {}
     /// if option.is_some() {
     ///     do_something_with(option.unwrap())
     /// }
@@ -26,6 +28,8 @@ declare_clippy_lint! {
     /// Could be written:
     ///
     /// ```rust
+    /// # let option = Some(0);
+    /// # fn do_something_with(_x: usize) {}
     /// if let Some(value) = option {
     ///     do_something_with(value)
     /// }
@@ -45,6 +49,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # let option = Some(0);
+    /// # fn do_something_with(_x: usize) {}
     /// if option.is_none() {
     ///     do_something_with(option.unwrap())
     /// }
