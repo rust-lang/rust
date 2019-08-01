@@ -777,13 +777,13 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    println!("{}\nAdditional help:
+    println!("{options}\nAdditional help:
     -C help             Print codegen options
     -W help             \
-              Print 'lint' options and default settings{}{}\n",
-             options.usage(message),
-             nightly_help,
-             verbose_help);
+              Print 'lint' options and default settings{nightly}{verbose}\n",
+             options = options.usage(message),
+             nightly = nightly_help,
+             verbose = verbose_help);
 }
 
 fn print_wall_help() {
