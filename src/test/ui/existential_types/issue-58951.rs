@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 #![feature(existential_type)]
 
 existential type A: Iterator;
