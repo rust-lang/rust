@@ -2,6 +2,7 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-vxworks no 'env'
 
 use std::process::Command;
 use std::env;
