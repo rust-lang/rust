@@ -1251,7 +1251,7 @@ fn lint_fn_to_numeric_cast(
     }
     match cast_from.sty {
         ty::FnDef(..) | ty::FnPtr(_) => {
-            let mut applicability = Applicability::MachineApplicable;
+            let mut applicability = Applicability::MaybeIncorrect;
             let from_snippet = snippet_with_applicability(cx, cast_expr.span, "x", &mut applicability);
 
             let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
