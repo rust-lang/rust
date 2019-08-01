@@ -29,16 +29,15 @@ pub struct UnmatchedBrace {
 }
 
 pub struct StringReader<'a> {
-    crate sess: &'a ParseSess,
-    /// The absolute offset within the source_map of the current character
-    crate pos: BytePos,
-    /// The current character (which has been read from self.pos)
-    crate source_file: Lrc<syntax_pos::SourceFile>,
+    sess: &'a ParseSess,
+    /// Initial position, read-only.
+    start_pos: BytePos,
+    /// The absolute offset within the source_map of the current character.
+    pos: BytePos,
     /// Stop reading src at this index.
-    crate end_src_index: usize,
+    end_src_index: usize,
     fatal_errs: Vec<DiagnosticBuilder<'a>>,
-    // cache a direct reference to the source text, so that we don't have to
-    // retrieve it via `self.source_file.src.as_ref().unwrap()` all the time.
+    /// Source text to tokenize.
     src: Lrc<String>,
     override_span: Option<Span>,
 }
@@ -56,8 +55,8 @@ impl<'a> StringReader<'a> {
 
         StringReader {
             sess,
+            start_pos: source_file.start_pos,
             pos: source_file.start_pos,
-            source_file,
             end_src_index: src.len(),
             src,
             fatal_errs: Vec::new(),
@@ -108,12 +107,12 @@ impl<'a> StringReader<'a> {
         let text: &str = &self.src[start_src_index..self.end_src_index];
 
         if text.is_empty() {
-            let span = self.mk_sp(self.source_file.end_pos, self.source_file.end_pos);
+            let span = self.mk_sp(self.pos, self.pos);
             return Ok(Token::new(token::Eof, span));
         }
 
         {
-            let is_beginning_of_file = self.pos == self.source_file.start_pos;
+            let is_beginning_of_file = self.pos == self.start_pos;
             if is_beginning_of_file {
                 if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
                     let start = self.pos;
@@ -533,7 +532,7 @@ impl<'a> StringReader<'a> {
 
     #[inline]
     fn src_index(&self, pos: BytePos) -> usize {
-        (pos - self.source_file.start_pos).to_usize()
+        (pos - self.start_pos).to_usize()
     }
 
     /// Slice of the source text from `start` up to but excluding `self.pos`,
