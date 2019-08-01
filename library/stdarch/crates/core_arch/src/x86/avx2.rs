@@ -641,16 +641,14 @@ pub unsafe fn _mm256_broadcastd_epi32(a: __m128i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastq_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpbroadcastq))]
+// FIXME: https://github.com/rust-lang/stdarch/issues/791
+#[cfg_attr(test, assert_instr(vmovddup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_broadcastq_epi64(a: __m128i) -> __m128i {
-    let zero = _mm_setzero_si128().as_i64x2();
-    let ret = simd_shuffle2(a.as_i64x2(), zero, [0_u32; 2]);
+    let ret = simd_shuffle2(a.as_i64x2(), a.as_i64x2(), [0_u32; 2]);
     transmute::<i64x2, _>(ret)
 }
 
-// N.B. `simd_shuffle4` with integer data types for `a` and `b` is
-// often compiled to `vbroadcastsd`.
 /// Broadcasts the low packed 64-bit integer from `a` to all elements of
 /// the 256-bit returned value.
 ///
@@ -660,8 +658,7 @@ pub unsafe fn _mm_broadcastq_epi64(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_broadcastq_epi64(a: __m128i) -> __m256i {
-    let zero = _mm_setzero_si128();
-    let ret = simd_shuffle4(a.as_i64x2(), zero.as_i64x2(), [0_u32; 4]);
+    let ret = simd_shuffle4(a.as_i64x2(), a.as_i64x2(), [0_u32; 4]);
     transmute::<i64x4, _>(ret)
 }
 
