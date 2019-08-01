@@ -1763,7 +1763,7 @@ impl<'a> LoweringContext<'a> {
                 },
                 bounds: hir_bounds,
                 impl_trait_fn: fn_def_id,
-                origin: hir::OpaqueTyOrigin::ReturnImplTrait,
+                origin: hir::OpaqueTyOrigin::FnReturn,
             };
 
             trace!("exist ty from impl trait def-index: {:#?}", opaque_ty_def_index);
@@ -3451,7 +3451,7 @@ impl<'a> LoweringContext<'a> {
                     bounds: self.lower_param_bounds(b,
                         ImplTraitContext::OpaqueTy(None)),
                     impl_trait_fn: None,
-                    origin: hir::OpaqueTyOrigin::TraitAliasImplTrait,
+                    origin: hir::OpaqueTyOrigin::TypeAlias,
                 },
             ),
             ItemKind::Enum(ref enum_definition, ref generics) => {

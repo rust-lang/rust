@@ -1933,9 +1933,9 @@ pub struct OpaqueTy {
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum OpaqueTyOrigin {
     /// `type Foo = impl Trait;`
-    TraitAliasImplTrait,
+    TypeAlias,
     /// `-> impl Trait`
-    ReturnImplTrait,
+    FnReturn,
     /// `async fn`
     AsyncFn,
 }

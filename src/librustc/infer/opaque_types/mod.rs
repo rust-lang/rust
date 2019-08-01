@@ -495,8 +495,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             hir::OpaqueTyOrigin::AsyncFn => return false,
 
             // Otherwise, generate the label we'll use in the error message.
-            hir::OpaqueTyOrigin::TraitAliasImplTrait => "impl Trait",
-            hir::OpaqueTyOrigin::ReturnImplTrait => "impl Trait",
+            hir::OpaqueTyOrigin::TypeAlias => "impl Trait",
+            hir::OpaqueTyOrigin::FnReturn => "impl Trait",
         };
         let msg = format!("ambiguous lifetime bound in `{}`", context_name);
         let mut err = self.tcx.sess.struct_span_err(span, &msg);
@@ -1052,7 +1052,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     origin,
                                 ),
                                 _ => {
-                                    (def_scope_default(), hir::OpaqueTyOrigin::TraitAliasImplTrait)
+                                    (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias)
                                 }
                             },
                             Some(Node::ImplItem(item)) => match item.node {
@@ -1062,10 +1062,10 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                         self.parent_def_id,
                                         opaque_hir_id,
                                     ),
-                                    hir::OpaqueTyOrigin::TraitAliasImplTrait,
+                                    hir::OpaqueTyOrigin::TypeAlias,
                                 ),
                                 _ => {
-                                    (def_scope_default(), hir::OpaqueTyOrigin::TraitAliasImplTrait)
+                                    (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias)
                                 }
                             },
                             _ => bug!(
