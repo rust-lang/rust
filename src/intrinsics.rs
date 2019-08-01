@@ -810,7 +810,12 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             atomic_binop_return_old! (fx, band<T>(ptr, src) -> ret);
         };
         _ if intrinsic.starts_with("atomic_nand"), <T> (v ptr, v src) {
-            atomic_binop_return_old! (fx, band_not<T>(ptr, src) -> ret);
+            let clif_ty = fx.clif_type(T).unwrap();
+            let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
+            let and = fx.bcx.ins().band(old, src);
+            let new = fx.bcx.ins().bnot(and);
+            fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
+            ret.write_cvalue(fx, CValue::by_val(old, fx.layout_of(T)));
         };
         _ if intrinsic.starts_with("atomic_or"), <T> (v ptr, v src) {
             atomic_binop_return_old! (fx, bor<T>(ptr, src) -> ret);
