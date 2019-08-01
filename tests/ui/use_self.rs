@@ -265,12 +265,20 @@ mod nesting {
 
     enum Enum {
         A,
+        B(u64),
+        C { field: bool }
     }
     impl Enum {
         fn method() {
             #[allow(unused_imports)]
             use self::Enum::*; // Issue 3425
             static STATIC: Enum = Enum::A; // Can't use Self as type
+        }
+
+        fn method2() {
+            let _ = Enum::B(42);
+            let _ = Enum::C { field: true };
+            let _ = Enum::A;
         }
     }
 }

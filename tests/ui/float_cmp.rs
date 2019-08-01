@@ -8,8 +8,7 @@ const ONE: f32 = ZERO + 1.0;
 
 fn twice<T>(x: T) -> T
 where
-    T: Add<T, Output = T>,
-    T: Copy,
+    T: Add<T, Output = T> + Copy,
 {
     x + x
 }

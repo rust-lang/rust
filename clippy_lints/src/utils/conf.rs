@@ -44,15 +44,15 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match *self {
-            Error::Io(ref err) => err.fmt(f),
-            Error::Toml(ref err) => err.fmt(f),
+            Self::Io(ref err) => err.fmt(f),
+            Self::Toml(ref err) => err.fmt(f),
         }
     }
 }
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        Error::Io(e)
+        Self::Io(e)
     }
 }
 
