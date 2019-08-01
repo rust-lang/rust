@@ -538,7 +538,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Scalar::Ptr(ptr) => Scalar::Ptr(self.tag_static_base_pointer(ptr)),
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         };
-        let value = self.subst_and_normalize_erasing_regions_in_frame(val.val);
+        let value = self.subst_and_normalize_erasing_regions_in_frame(val.val)?;
         // Early-return cases.
         match value {
             ConstValue::Param(_) => throw_inval!(TooGeneric),
@@ -557,7 +557,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // which may not happen if we already have a layout. Or if we use the early abort above.
             // Thus we do not substitute and normalize `val` above, but only `val.val` and then
             // substitute `val.ty` here.
-            self.layout_of(self.subst_and_normalize_erasing_regions_in_frame(val.ty))
+            self.layout_of(self.subst_and_normalize_erasing_regions_in_frame(val.ty)?)
         })?;
         let op = match value {
             ConstValue::ByRef { alloc, offset } => {

@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
 };
-use rustc::ty::subst::SubstsRef;
+use rustc::ty::subst::{SubstsRef, Subst};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -304,7 +304,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn subst_and_normalize_erasing_regions_in_frame<T: TypeFoldable<'tcx>>(
         &self,
         value: T,
-    ) -> T {
+    ) -> InterpResult<'tcx, T> {
         // HACK(oli-obk): see `self.substs` docs
         let substs = self.stack.last().map_or(self.substs, |frame| frame.instance.substs);
         self.subst_and_normalize_erasing_regions(substs, value)
@@ -320,12 +320,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         param_substs: SubstsRef<'tcx>,
         value: T,
-    ) -> T {
-        self.tcx.subst_and_normalize_erasing_regions(
-            param_substs,
-            self.param_env,
-            &value,
-        )
+    ) -> InterpResult<'tcx, T> {
+        let substituted = value.subst(self.tcx.tcx, param_substs);
+        // we duplicate the body of `TyCtxt::subst_and_normalize_erasing_regions` here, because
+        // we can't normalize values with generic parameters. The difference between this function
+        // and the `TyCtxt` version is this early abort
+        if substituted.needs_subst() {
+            // FIXME(oli-obk): This aborts evaluating `fn foo<T>() -> i32 { 42 }` inside an
+            // associated constant of a generic trait, even though that should be doable.
+            return Err(InterpError::TooGeneric.into())
+        }
+        Ok(self.tcx.normalize_erasing_regions(self.param_env, substituted))
     }
 
     pub(super) fn resolve(
@@ -335,7 +340,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("param_env: {:#?}", self.param_env);
-        let substs = self.subst_and_normalize_erasing_regions_in_frame(substs);
+        let substs = self.subst_and_normalize_erasing_regions_in_frame(substs)?;
         trace!("substs: {:#?}", substs);
         ty::Instance::resolve(
             *self.tcx,
@@ -382,7 +387,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty = self.subst_and_normalize_erasing_regions(
                         frame.instance.substs, local_ty,
-                    );
+                    )?;
                     self.layout_of(local_ty)
                 })?;
                 if let Some(state) = frame.locals.get(local) {
