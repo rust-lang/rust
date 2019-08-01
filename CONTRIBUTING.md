@@ -5,14 +5,19 @@ Thank you for your interest in contributing to Rust! There are many ways to
 contribute, and we appreciate all of them. This document is a bit long, so here's
 links to the major sections:
 
-* [Feature Requests](#feature-requests)
-* [Bug Reports](#bug-reports)
-* [The Build System](#the-build-system)
-* [Pull Requests](#pull-requests)
-* [Writing Documentation](#writing-documentation)
-* [Issue Triage](#issue-triage)
-* [Out-of-tree Contributions](#out-of-tree-contributions)
-* [Helpful Links and Information](#helpful-links-and-information)
+- [Contributing to Rust](#contributing-to-rust)
+  - [Feature Requests](#feature-requests)
+  - [Bug Reports](#bug-reports)
+  - [The Build System](#the-build-system)
+  - [Pull Requests](#pull-requests)
+    - [External Dependencies](#external-dependencies)
+      - [Breaking Tools Built With The Compiler](#breaking-tools-built-with-the-compiler)
+      - [Updating submodules](#updating-submodules)
+  - [Writing Documentation](#writing-documentation)
+  - [Issue Triage](#issue-triage)
+  - [Out-of-tree Contributions](#out-of-tree-contributions)
+  - [Contribution Licensing](#contribution-licensing)
+  - [Helpful Links and Information](#helpful-links-and-information)
 
 If you have questions, please make a post on [internals.rust-lang.org][internals] or
 hop on the [Rust Discord server][rust-discord], [Rust Zulip server][rust-zulip] or [#rust-internals][pound-rust-internals].
@@ -417,6 +422,14 @@ valuable!
 [users]: https://users.rust-lang.org/
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
+
+## Contribution Licensing
+
+We love your contributions! When making contributions, in whatever form, you
+are granting everyone who receives them a license under both the terms of the
+[MIT License](https://opensource.org/licenses/MIT) and
+[Apache 2.0 License](https://opensource.org/licenses/Apache-2.0) to your
+contribution.
 
 ## Helpful Links and Information
 
