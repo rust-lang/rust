@@ -25,10 +25,13 @@ mod m {
 
     #[link_name = "m"]
     extern {
-        #[cfg(any(unix, target_os = "cloudabi"))]
+        #[cfg(any(all(unix, not(target_os = "vxworks")), target_os = "cloudabi"))]
         #[link_name="lgamma_r"]
         pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
         #[cfg(windows)]
+        #[link_name="lgamma"]
+        pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
+        #[cfg(target_os = "vxworks")]
         #[link_name="lgamma"]
         pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
     }
