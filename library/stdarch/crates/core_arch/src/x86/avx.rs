@@ -2741,8 +2741,8 @@ pub unsafe fn _mm256_set1_epi32(a: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_epi64x)
 #[inline]
 #[target_feature(enable = "avx")]
-//#[cfg_attr(test, assert_instr(vmovddup))]
-#[cfg_attr(test, assert_instr(vinsertf128))]
+#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(vinsertf128))]
+#[cfg_attr(all(test, target_arch = "x86"), assert_instr(vbroadcastsd))]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_set1_epi64x(a: i64) -> __m256i {
