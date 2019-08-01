@@ -125,7 +125,7 @@ use std::os::unix::fs::symlink as symlink_file;
 use std::os::windows::fs::symlink_file;
 
 use build_helper::{
-    mtime, output, run_silent, run_suppressed, t, try_run_silent, try_run_suppressed,
+    mtime, output, run, run_suppressed, t, try_run, try_run_suppressed,
 };
 use filetime::FileTime;
 
@@ -682,7 +682,7 @@ impl Build {
     fn run(&self, cmd: &mut Command) {
         if self.config.dry_run { return; }
         self.verbose(&format!("running: {:?}", cmd));
-        run_silent(cmd)
+        run(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -698,7 +698,7 @@ impl Build {
     fn try_run(&self, cmd: &mut Command) -> bool {
         if self.config.dry_run { return true; }
         self.verbose(&format!("running: {:?}", cmd));
-        try_run_silent(cmd)
+        try_run(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
