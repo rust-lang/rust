@@ -1033,13 +1033,13 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                         let (in_definition_scope, origin) = match tcx.hir().find(opaque_hir_id) {
                             Some(Node::Item(item)) => match item.node {
                                 // Anonymous `impl Trait`
-                                hir::ItemKind::OpaqueTy(hir::ExistTy {
+                                hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                                     impl_trait_fn: Some(parent),
                                     origin,
                                     ..
                                 }) => (parent == self.parent_def_id, origin),
                                 // Named `type Foo = impl Bar;`
-                                hir::ItemKind::OpaqueTy(hir::ExistTy {
+                                hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                                     impl_trait_fn: None,
                                     origin,
                                     ..

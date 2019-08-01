@@ -3214,8 +3214,8 @@ fn trait_of_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
         if let Node::Item(item) = tcx.hir().get(hir_id) {
-            if let hir::ItemKind::OpaqueTy(ref exist_ty) = item.node {
-                return exist_ty.impl_trait_fn;
+            if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.node {
+                return opaque_ty.impl_trait_fn;
             }
         }
     }

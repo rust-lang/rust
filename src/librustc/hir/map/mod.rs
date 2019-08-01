@@ -827,7 +827,7 @@ impl<'hir> Map<'hir> {
             match self.get(scope) {
                 Node::Item(i) => {
                     match i.node {
-                        ItemKind::OpaqueTy(ExistTy { impl_trait_fn: None, .. }) => {}
+                        ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {}
                         _ => break,
                     }
                 }

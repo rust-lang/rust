@@ -294,7 +294,7 @@ fn type_param_predicates(
                 ItemKind::Fn(.., ref generics, _)
                 | ItemKind::Impl(_, _, _, ref generics, ..)
                 | ItemKind::Ty(_, ref generics)
-                | ItemKind::OpaqueTy(ExistTy {
+                | ItemKind::OpaqueTy(OpaqueTy {
                     ref generics,
                     impl_trait_fn: None,
                     ..
@@ -456,7 +456,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
         }
 
         // Desugared from `impl Trait`, so visited by the function's return type.
-        hir::ItemKind::OpaqueTy(hir::ExistTy {
+        hir::ItemKind::OpaqueTy(hir::OpaqueTy {
             impl_trait_fn: Some(_),
             ..
         }) => {}
@@ -896,7 +896,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             ..
         }) => Some(tcx.closure_base_def_id(def_id)),
         Node::Item(item) => match item.node {
-            ItemKind::OpaqueTy(hir::ExistTy { impl_trait_fn, .. }) => impl_trait_fn,
+            ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => impl_trait_fn,
             _ => None,
         },
         _ => None,
@@ -920,7 +920,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                 ItemKind::Ty(_, ref generics)
                 | ItemKind::Enum(_, ref generics)
                 | ItemKind::Struct(_, ref generics)
-                | ItemKind::OpaqueTy(hir::ExistTy { ref generics, .. })
+                | ItemKind::OpaqueTy(hir::OpaqueTy { ref generics, .. })
                 | ItemKind::Union(_, ref generics) => {
                     allow_defaults = true;
                     generics
@@ -1253,12 +1253,12 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
-                ItemKind::OpaqueTy(hir::ExistTy {
+                ItemKind::OpaqueTy(hir::OpaqueTy {
                     impl_trait_fn: None,
                     ..
                 }) => find_opaque_ty_constraints(tcx, def_id),
                 // Opaque types desugared from `impl Trait`.
-                ItemKind::OpaqueTy(hir::ExistTy {
+                ItemKind::OpaqueTy(hir::OpaqueTy {
                     impl_trait_fn: Some(owner),
                     ..
                 }) => {
@@ -2051,7 +2051,7 @@ fn explicit_predicates_of(
                     is_trait = Some((ty::TraitRef::identity(tcx, def_id), &empty_trait_items));
                     generics
                 }
-                ItemKind::OpaqueTy(ExistTy {
+                ItemKind::OpaqueTy(OpaqueTy {
                     ref bounds,
                     impl_trait_fn,
                     ref generics,

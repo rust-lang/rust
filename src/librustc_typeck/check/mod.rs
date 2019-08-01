@@ -1403,7 +1403,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
         hir::ItemKind::Union(..) => {
             check_union(tcx, it.hir_id, it.span);
         }
-        hir::ItemKind::OpaqueTy(hir::ExistTy{origin, ..}) => {
+        hir::ItemKind::OpaqueTy(hir::OpaqueTy{origin, ..}) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
 
             let substs = InternalSubsts::identity_for_item(tcx, def_id);

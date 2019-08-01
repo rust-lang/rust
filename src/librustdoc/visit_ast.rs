@@ -472,9 +472,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.typedefs.push(t);
             },
-            hir::ItemKind::OpaqueTy(ref exist_ty) => {
+            hir::ItemKind::OpaqueTy(ref opaque_ty) => {
                 let t = OpaqueTy {
-                    exist_ty,
+                    opaque_ty,
                     name: ident.name,
                     id: item.hir_id,
                     attrs: &item.attrs,

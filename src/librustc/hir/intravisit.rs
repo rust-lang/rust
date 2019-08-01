@@ -505,7 +505,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(ty);
             visitor.visit_generics(generics)
         }
-        ItemKind::OpaqueTy(ExistTy {
+        ItemKind::OpaqueTy(OpaqueTy {
             ref generics,
             ref bounds,
             ..

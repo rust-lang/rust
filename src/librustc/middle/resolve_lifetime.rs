@@ -480,7 +480,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
-            hir::ItemKind::OpaqueTy(hir::ExistTy {
+            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                 impl_trait_fn: Some(_),
                 ..
             }) => {
@@ -489,7 +489,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // it.
             }
             hir::ItemKind::Ty(_, ref generics)
-            | hir::ItemKind::OpaqueTy(hir::ExistTy {
+            | hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                 impl_trait_fn: None,
                 ref generics,
                 ..
@@ -629,7 +629,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 {
                     // Named opaque `impl Trait` types are reached via `TyKind::Path`.
                     // This arm is for `impl Trait` in the types of statics, constants and locals.
-                    hir::ItemKind::OpaqueTy(hir::ExistTy {
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                         impl_trait_fn: None,
                         ..
                     }) => {
@@ -637,7 +637,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         return;
                     }
                     // RPIT (return position impl trait)
-                    hir::ItemKind::OpaqueTy(hir::ExistTy {
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                         ref generics,
                         ref bounds,
                         ..
@@ -1254,7 +1254,7 @@ fn compute_object_lifetime_defaults(tcx: TyCtxt<'_>) -> HirIdMap<Vec<ObjectLifet
             hir::ItemKind::Struct(_, ref generics)
             | hir::ItemKind::Union(_, ref generics)
             | hir::ItemKind::Enum(_, ref generics)
-            | hir::ItemKind::OpaqueTy(hir::ExistTy {
+            | hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                 ref generics,
                 impl_trait_fn: None,
                 ..

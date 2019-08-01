@@ -1922,7 +1922,7 @@ pub struct BareFnTy {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct ExistTy {
+pub struct OpaqueTy {
     pub generics: Generics,
     pub bounds: GenericBounds,
     pub impl_trait_fn: Option<DefId>,
@@ -2422,7 +2422,7 @@ pub enum ItemKind {
     /// A type alias, e.g., `type Foo = Bar<u8>`
     Ty(P<Ty>, Generics),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`
-    OpaqueTy(ExistTy),
+    OpaqueTy(OpaqueTy),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`
     Enum(EnumDef, Generics),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`
@@ -2479,7 +2479,7 @@ impl ItemKind {
         Some(match *self {
             ItemKind::Fn(_, _, ref generics, _) |
             ItemKind::Ty(_, ref generics) |
-            ItemKind::OpaqueTy(ExistTy { ref generics, impl_trait_fn: None, .. }) |
+            ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. }) |
             ItemKind::Enum(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
             ItemKind::Union(_, ref generics) |

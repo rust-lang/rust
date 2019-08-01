@@ -3664,8 +3664,8 @@ impl Clean<Item> for doctree::OpaqueTy<'_> {
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
             inner: OpaqueTyItem(OpaqueTy {
-                bounds: self.exist_ty.bounds.clean(cx),
-                generics: self.exist_ty.generics.clean(cx),
+                bounds: self.opaque_ty.bounds.clean(cx),
+                generics: self.opaque_ty.generics.clean(cx),
             }, false),
         }
     }
