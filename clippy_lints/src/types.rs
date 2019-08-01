@@ -690,7 +690,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for on casts between numerical types that may
+    /// **What it does:** Checks for casts between numerical types that may
     /// truncate large values. This is expected behavior, so the cast is `Allow` by
     /// default.
     ///
@@ -735,7 +735,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for on casts between numerical types that may
+    /// **What it does:** Checks for casts between numerical types that may
     /// be replaced by safe conversion functions.
     ///
     /// **Why is this bad?** Rust's `as` keyword will perform many kinds of
