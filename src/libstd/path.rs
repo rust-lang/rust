@@ -1819,7 +1819,7 @@ impl Path {
     /// Yields a [`&str`] slice if the `Path` is valid unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
-    /// Also it it worthwhile noting that validation is performed because Non-UTF-8 strings are
+    /// Note that validation is performed because non-UTF-8 strings are
     /// perfectly valid for some OS.
     ///
     /// [`&str`]: ../primitive.str.html
