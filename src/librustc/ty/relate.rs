@@ -594,13 +594,11 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                 ty: a.ty,
             }))
         }
-        (ConstValue::ByRef { .. }, _) => {
-            bug!(
-                "non-Scalar ConstValue encountered in super_relate_consts {:?} {:?}",
-                a,
-                b,
-            );
-        }
+
+        // FIXME(const_generics): we should either handle `Scalar::Ptr` or add a comment
+        // saying that we're not handling it intentionally.
+
+        // FIXME(const_generics): handle `ConstValue::ByRef` and `ConstValue::Slice`.
 
         // FIXME(const_generics): this is wrong, as it is a projection
         (ConstValue::Unevaluated(a_def_id, a_substs),
