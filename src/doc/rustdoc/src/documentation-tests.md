@@ -379,3 +379,34 @@ However, it's preferable to use fenced code blocks over indented code blocks.
 Not only are fenced code blocks considered more idiomatic for Rust code,
 but there is no way to use directives such as `ignore` or `should_panic` with
 indented code blocks.
+
+### Include items only when collecting doctests
+
+Rustdoc's [documentation tests] can do some things that regular unit tests can't, so it can
+sometimes be useful to extend your doctests with samples that wouldn't otherwise need to be in
+documentation. To this end, Rustdoc allows you to have certain items only appear when it's
+collecting doctests, so you can utilize doctest functionality without forcing the test to appear in
+docs, or to find an arbitrary private item to include it on.
+
+When compiling a crate for use in doctests (with `--test` option), rustdoc will set `cfg(doctest)`.
+Note that they will still link against only the public items of your crate; if you need to
+test private items, either make items conditionally public via `cfg(doctest)` or write a unit test.
+
+In this example, we're adding doctests that we know won't compile, to verify that our struct can
+only take in valid data:
+
+```rust
+/// We have a struct here. Remember it doesn't accept negative numbers!
+pub struct MyStruct(usize);
+
+/// ```compile_fail
+/// let x = my_crate::MyStruct(-5);
+/// ```
+#[cfg(doctest)]
+pub struct MyStructOnlyTakesUsize;
+```
+
+Please note that the struct `MyStructOnlyTakesUsize` will not appear in documentation or in the
+public API considering it only exists when running rustdoc with the `--test` option.
+
+[documentation tests]: documentation-tests.html

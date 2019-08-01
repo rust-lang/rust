@@ -506,9 +506,6 @@ declare_features! (
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
 
-    /// Allows the use of `#[cfg(doctest)]`; set when rustdoc is collecting doctests.
-    (active, cfg_doctest, "1.37.0", Some(62210), None),
-
     /// Allows `[x; N]` where `x` is a constant (RFC 2203).
     (active, const_in_array_repeat_expressions, "1.37.0", Some(49147), None),
 

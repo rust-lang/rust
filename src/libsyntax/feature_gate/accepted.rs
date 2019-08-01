@@ -251,6 +251,8 @@ declare_features! (
     (accepted, non_exhaustive, "1.40.0", Some(44109), None),
     /// Allows calling constructor functions in `const fn`.
     (accepted, const_constructor, "1.40.0", Some(61456), None),
+    /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
+    (accepted, cfg_doctest, "1.40.0", Some(62210), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
