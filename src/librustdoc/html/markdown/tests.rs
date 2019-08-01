@@ -4,6 +4,26 @@ use std::cell::RefCell;
 use syntax::edition::{Edition, DEFAULT_EDITION};
 
 #[test]
+fn test_unique_id() {
+    let input = ["foo", "examples", "examples", "method.into_iter","examples",
+                 "method.into_iter", "foo", "main", "search", "methods",
+                 "examples", "method.into_iter", "assoc_type.Item", "assoc_type.Item"];
+    let expected = ["foo", "examples", "examples-1", "method.into_iter", "examples-2",
+                    "method.into_iter-1", "foo-1", "main", "search", "methods",
+                    "examples-3", "method.into_iter-2", "assoc_type.Item", "assoc_type.Item-1"];
+
+    let map = RefCell::new(IdMap::new());
+    let test = || {
+        let mut map = map.borrow_mut();
+        let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
+        assert_eq!(&actual[..], expected);
+    };
+    test();
+    map.borrow_mut().reset();
+    test();
+}
+
+#[test]
 fn test_lang_string_parse() {
     fn t(s: &str,
         should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
