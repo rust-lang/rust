@@ -45,7 +45,8 @@ pub fn restore_library_path() {
     }
 }
 
-pub fn run(cmd: &mut Command) {
+/// Run the command, printing what we are running.
+pub fn run_verbose(cmd: &mut Command) {
     println!("running: {:?}", cmd);
     run_silent(cmd);
 }
