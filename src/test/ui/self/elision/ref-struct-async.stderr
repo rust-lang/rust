@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:15:52
+  --> $DIR/ref-struct-async.rs:13:52
    |
 LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |                               -------              ^^^^
@@ -8,7 +8,7 @@ LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |                               this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:19:61
+  --> $DIR/ref-struct-async.rs:17:61
    |
 LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
    |                                       -------               ^^^^
@@ -17,7 +17,7 @@ LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
    |                                       this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:23:61
+  --> $DIR/ref-struct-async.rs:21:61
    |
 LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
    |                                       -------               ^^^^
@@ -26,7 +26,7 @@ LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
    |                                       this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:27:70
+  --> $DIR/ref-struct-async.rs:25:70
    |
 LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
    |                                               -------                ^^^^
@@ -35,7 +35,7 @@ LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
    |                                               this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:31:66
+  --> $DIR/ref-struct-async.rs:29:66
    |
 LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
    |                                           -------                ^^^^

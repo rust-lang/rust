@@ -1,5 +1,5 @@
 error[E0726]: implicit elided lifetime not allowed here
-  --> $DIR/async-fn-path-elision.rs:8:20
+  --> $DIR/async-fn-path-elision.rs:5:20
    |
 LL | async fn error(lt: HasLifetime) {
    |                    ^^^^^^^^^^^- help: indicate the anonymous lifetime: `<'_>`

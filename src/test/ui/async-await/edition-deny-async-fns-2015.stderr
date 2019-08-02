@@ -1,59 +1,59 @@
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:5:1
+  --> $DIR/edition-deny-async-fns-2015.rs:3:1
    |
 LL | async fn foo() {}
    | ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:7:12
+  --> $DIR/edition-deny-async-fns-2015.rs:5:12
    |
 LL | fn baz() { async fn foo() {} }
    |            ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:10:5
+  --> $DIR/edition-deny-async-fns-2015.rs:8:5
    |
 LL |     async fn bar() {}
    |     ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:9:1
+  --> $DIR/edition-deny-async-fns-2015.rs:7:1
    |
 LL | async fn async_baz() {
    | ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:16:5
+  --> $DIR/edition-deny-async-fns-2015.rs:14:5
    |
 LL |     async fn foo() {}
    |     ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:20:5
+  --> $DIR/edition-deny-async-fns-2015.rs:18:5
    |
 LL |     async fn foo() {}
    |     ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:38:9
+  --> $DIR/edition-deny-async-fns-2015.rs:36:9
    |
 LL |         async fn bar() {}
    |         ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:28:9
+  --> $DIR/edition-deny-async-fns-2015.rs:26:9
    |
 LL |         async fn foo() {}
    |         ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:33:13
+  --> $DIR/edition-deny-async-fns-2015.rs:31:13
    |
 LL |             async fn bar() {}
    |             ^^^^^
 
 error[E0706]: trait fns cannot be declared `async`
-  --> $DIR/edition-deny-async-fns-2015.rs:20:5
+  --> $DIR/edition-deny-async-fns-2015.rs:18:5
    |
 LL |     async fn foo() {}
    |     ^^^^^^^^^^^^^^^^^
