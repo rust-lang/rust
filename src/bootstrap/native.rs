@@ -125,7 +125,7 @@ impl Step for Llvm {
         } else {
             match builder.config.llvm_targets {
                 Some(ref s) => s,
-                None => "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;Sparc;SystemZ;X86",
+                None => "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;Sparc;SystemZ;WebAssembly;X86",
             }
         };
 
@@ -134,7 +134,7 @@ impl Step for Llvm {
         } else {
             match builder.config.llvm_experimental_targets {
                 Some(ref s) => s,
-                None => "WebAssembly",
+                None => "",
             }
         };
 
