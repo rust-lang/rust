@@ -417,7 +417,7 @@ pub const fn needs_drop<T>() -> bool {
 /// Returns the value of type `T` represented by the all-zeros bit-pattern.
 ///
 /// This means that, for example, the padding byte in `(u8, u16)` is not
-/// necessarily zeroed. 
+/// necessarily zeroed.
 ///
 /// There is no guarantee that an all-zero byte-pattern represents a valid value of
 /// some type `T`. For example, the all-zero byte-pattern is not a valid value
