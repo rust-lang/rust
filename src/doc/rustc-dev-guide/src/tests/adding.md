@@ -43,14 +43,14 @@ rough heuristics:
 We have not traditionally had a lot of structure in the names of
 tests.  Moreover, for a long time, the rustc test runner did not
 support subdirectories (it now does), so test suites like
-[`src/test/run-pass`] have a huge mess of files in them. This is not
+[`src/test/ui`] have a huge mess of files in them.  This is not
 considered an ideal setup.
 
-[`src/test/run-pass`]: https://github.com/rust-lang/rust/tree/master/src/test/run-pass/
+[`src/test/ui`]: https://github.com/rust-lang/rust/tree/master/src/test/ui/
 
 For regression tests – basically, some random snippet of code that
 came in from the internet – we often just name the test after the
-issue. For example, `src/test/run-pass/issue-12345.rs`. If possible,
+issue. For example, `src/test/ui/issue-12345.rs`. If possible,
 though, it is better if you can put the test into a directory that
 helps identify what piece of code is being tested here (e.g.,
 `borrowck/issue-12345.rs` is much better), or perhaps give it a more
@@ -58,11 +58,8 @@ meaningful name. Still, **do include the issue number somewhere**.
 
 When writing a new feature, **create a subdirectory to store your
 tests**. For example, if you are implementing RFC 1234 ("Widgets"),
-then it might make sense to put the tests in directories like:
-
-- `src/test/ui/rfc1234-widgets/`
-- `src/test/run-pass/rfc1234-widgets/`
-- etc
+then it might make sense to put the tests in a directory like
+`src/test/ui/rfc1234-widgets/`.
 
 In other cases, there may already be a suitable directory. (The proper
 directory structure to use is actually an area of active debate.)
@@ -216,7 +213,7 @@ The error levels that you can have are:
 ## Revisions
 
 Certain classes of tests support "revisions" (as of the time of this
-writing, this includes run-pass, compile-fail, run-fail, and
+writing, this includes compile-fail, run-fail, and
 incremental, though incremental tests are somewhat
 different). Revisions allow a single test file to be used for multiple
 tests. This is done by adding a special header at the top of the file:
