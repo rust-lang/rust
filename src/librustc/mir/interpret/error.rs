@@ -341,16 +341,16 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum UndefinedBehaviourInfo {
+pub enum UndefinedBehaviorInfo {
     /// Handle cases which for which we do not have a fixed variant.
     Ub(String),
     /// Unreachable code was executed.
     Unreachable,
 }
 
-impl fmt::Debug for UndefinedBehaviourInfo {
+impl fmt::Debug for UndefinedBehaviorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use UndefinedBehaviourInfo::*;
+        use UndefinedBehaviorInfo::*;
         match self {
             Ub(ref msg) =>
                 write!(f, "{}", msg),
@@ -572,7 +572,7 @@ pub enum InterpError<'tcx> {
     /// The program panicked.
     Panic(PanicInfo<u64>),
     /// The program caused undefined behavior.
-    UndefinedBehaviour(UndefinedBehaviourInfo),
+    UndefinedBehavior(UndefinedBehaviorInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
     Unsupported(UnsupportedOpInfo<'tcx>),
@@ -603,7 +603,7 @@ impl fmt::Debug for InterpError<'_> {
                 write!(f, "{:?}", msg),
             InvalidProgram(ref msg) =>
                 write!(f, "{:?}", msg),
-            UndefinedBehaviour(ref msg) =>
+            UndefinedBehavior(ref msg) =>
                 write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) =>
                 write!(f, "{:?}", msg),

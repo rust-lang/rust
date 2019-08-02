@@ -21,8 +21,8 @@ macro_rules! err_inval {
 #[macro_export]
 macro_rules! err_ub {
     ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::UndefinedBehaviour(
-            $crate::mir::interpret::UndefinedBehaviourInfo::$($tt)*
+        $crate::mir::interpret::InterpError::UndefinedBehavior(
+            $crate::mir::interpret::UndefinedBehaviorInfo::$($tt)*
         )
     };
 }
@@ -78,7 +78,7 @@ mod pointer;
 pub use self::error::{
     InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
     FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicInfo, UnsupportedOpInfo,
-    InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviourInfo,
+    InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviorInfo,
 };
 
 pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};
