@@ -282,7 +282,10 @@ pub fn compile(
         quoted::TokenTree::Sequence(
             DelimSpan::dummy(),
             Lrc::new(quoted::SequenceRepetition {
-                tts: vec![quoted::TokenTree::token(token::Semi, def.span)],
+                tts: vec![quoted::TokenTree::token(
+                    if body.legacy { token::Semi } else { token::Comma },
+                    def.span,
+                )],
                 separator: None,
                 kleene: quoted::KleeneToken::new(quoted::KleeneOp::ZeroOrMore, def.span),
                 num_captures: 0,
