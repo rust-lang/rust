@@ -266,13 +266,7 @@ pub(crate) fn implements_trait(
     let goal = generic_implements_goal(db, env.clone(), trait_, ty.clone());
     let solution = db.trait_solve(krate, goal);
 
-    if let Some(solution) = solution {
-        if let Solution::Unique(_) = solution {
-            return true;
-        }
-    }
-
-    false
+    solution.is_some()
 }
 
 impl Ty {
