@@ -122,8 +122,21 @@ impl Thread {
                                      name.as_ptr() as *mut libc::c_void);
         }
     }
+
+    #[cfg(target_os = "solaris")]
+    pub fn set_name(name: &CStr) {
+        weak! {
+            fn pthread_setname_np(
+                libc::pthread_t, *const libc::c_char
+            ) -> libc::c_int
+        }
+
+        if let Some(f) = pthread_setname_np.get() {
+            unsafe { f(libc::pthread_self(), name.as_ptr()); }
+        }
+    }
+
     #[cfg(any(target_env = "newlib",
-              target_os = "solaris",
               target_os = "haiku",
               target_os = "l4re",
               target_os = "emscripten",
