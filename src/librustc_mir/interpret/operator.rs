@@ -147,15 +147,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // For the remaining ops, the types must be the same on both sides
         if left_layout.ty != right_layout.ty {
-            let msg = format!(
-                "unimplemented asymmetric binary op {:?}: {:?} ({:?}), {:?} ({:?})",
+            bug!(
+                "invalid asymmetric binary op {:?}: {:?} ({:?}), {:?} ({:?})",
                 bin_op,
-                l,
-                left_layout.ty,
-                r,
-                right_layout.ty
-            );
-            throw_unsup!(Unimplemented(msg))
+                l, left_layout.ty,
+                r, right_layout.ty,
+            )
         }
 
         // Operations that need special treatment for signed integers
@@ -243,14 +240,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             _ => {
-                let msg = format!(
-                    "unimplemented binary op {:?}: {:?}, {:?} (both {:?})",
+                bug!(
+                    "invalid binary op {:?}: {:?}, {:?} (both {:?})",
                     bin_op,
                     l,
                     r,
                     right_layout.ty,
-                );
-                throw_unsup!(Unimplemented(msg))
+                )
             }
         };
 

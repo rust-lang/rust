@@ -88,8 +88,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (FnVal::Instance(self.resolve(def_id, substs)?), sig.abi())
                     },
                     _ => {
-                        let msg = format!("can't handle callee of type {:?}", func.layout.ty);
-                        throw_unsup!(Unimplemented(msg))
+                        bug!("invalid callee of type {:?}", func.layout.ty)
                     }
                 };
                 let args = self.eval_operands(args)?;

@@ -363,7 +363,7 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsupportedOpInfo<'tcx> {
     /// Handle cases which for which we do not have a fixed variant.
-    Unimplemented(String),
+    Unsupported(String),
 
     // -- Everything below is not classified yet --
     FunctionAbiMismatch(Abi, Abi),
@@ -390,20 +390,14 @@ pub enum UnsupportedOpInfo<'tcx> {
     ReadUndefBytes(Size),
     DeadLocal,
     InvalidBoolOp(mir::BinOp),
-    InlineAsm,
     UnimplementedTraitSelection,
     CalledClosureAsFunction,
     NoMirFor(String),
-    /// This variant is used by machines to signal their own errors that do not
-    /// match an existing variant.
-    MachineError(String),
     DerefFunctionPointer,
     ExecuteMemory,
-    Intrinsic(String),
     InvalidChar(u128),
     OutOfTls,
     TlsOutOfBounds,
-    AbiViolation(String),
     AlignmentCheckFailed {
         required: Align,
         has: Align,
@@ -513,8 +507,6 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                     initializer"),
             AssumptionNotHeld =>
                 write!(f, "`assume` argument was false"),
-            InlineAsm =>
-                write!(f, "miri does not support inline assembly"),
             ReallocateNonBasePtr =>
                 write!(f, "tried to reallocate with a pointer not to the beginning of an \
                     existing object"),
@@ -537,10 +529,7 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             HeapAllocNonPowerOfTwoAlignment(_) =>
                 write!(f, "tried to re-, de-, or allocate heap memory with alignment that is \
                     not a power of two"),
-            MachineError(ref msg) |
-            Unimplemented(ref msg) |
-            AbiViolation(ref msg) |
-            Intrinsic(ref msg) =>
+            Unsupported(ref msg) =>
                 write!(f, "{}", msg),
         }
     }

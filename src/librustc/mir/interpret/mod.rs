@@ -51,6 +51,11 @@ macro_rules! throw_unsup {
 }
 
 #[macro_export]
+macro_rules! throw_unsup_format {
+    ($($tt:tt)*) => { throw_unsup!(Unsupported(format!($($tt)*))) };
+}
+
+#[macro_export]
 macro_rules! throw_inval {
     ($($tt:tt)*) => { return Err(err_inval!($($tt)*).into()) };
 }
@@ -58,6 +63,11 @@ macro_rules! throw_inval {
 #[macro_export]
 macro_rules! throw_ub {
     ($($tt:tt)*) => { return Err(err_ub!($($tt)*).into()) };
+}
+
+#[macro_export]
+macro_rules! throw_ub_format {
+    ($($tt:tt)*) => { throw_ub!(Ub(format!($($tt)*))) };
 }
 
 #[macro_export]

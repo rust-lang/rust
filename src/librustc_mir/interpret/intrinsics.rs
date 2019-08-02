@@ -98,11 +98,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits = self.read_scalar(args[0])?.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-                    _ => Err(err_unsup!(TypeNotPrimitive(ty)))?,
+                    _ => throw_unsup!(TypeNotPrimitive(ty)),
                 };
                 let out_val = if intrinsic_name.ends_with("_nonzero") {
                     if bits == 0 {
-                        throw_unsup!(Intrinsic(format!("{} called on 0", intrinsic_name)))
+                        throw_ub_format!("`{}` called on 0", intrinsic_name);
                     }
                     numeric_intrinsic(intrinsic_name.trim_end_matches("_nonzero"), bits, kind)?
                 } else {
@@ -187,10 +187,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (val, overflowed) = self.binary_op(bin_op, l, r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
-                    let r_val =  r.to_scalar()?.to_bits(layout.size)?;
-                    throw_unsup!(
-                        Intrinsic(format!("Overflowing shift by {} in {}", r_val, intrinsic_name))
-                    )
+                    let r_val = r.to_scalar()?.to_bits(layout.size)?;
+                    throw_ub_format!("Overflowing shift by {} in `{}`", r_val, intrinsic_name);
                 }
                 self.write_scalar(val, dest)?;
             }
