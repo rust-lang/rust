@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | const SHL_U8: u8 = unsafe { intrinsics::unchecked_shl(5_u8, 8) };
    | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                             |
-   |                             Overflowing shift by 8 in unchecked_shl
+   |                             Overflowing shift by 8 in `unchecked_shl`
    |
    = note: `#[deny(const_err)]` on by default
 
@@ -14,7 +14,7 @@ error: any use of this value will cause an error
 LL | const SHL_U16: u16 = unsafe { intrinsics::unchecked_shl(5_u16, 16) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 16 in unchecked_shl
+   |                               Overflowing shift by 16 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:18:31
@@ -22,7 +22,7 @@ error: any use of this value will cause an error
 LL | const SHL_U32: u32 = unsafe { intrinsics::unchecked_shl(5_u32, 32) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 32 in unchecked_shl
+   |                               Overflowing shift by 32 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:20:31
@@ -30,7 +30,7 @@ error: any use of this value will cause an error
 LL | const SHL_U64: u64 = unsafe { intrinsics::unchecked_shl(5_u64, 64) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 64 in unchecked_shl
+   |                               Overflowing shift by 64 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:22:33
@@ -38,7 +38,7 @@ error: any use of this value will cause an error
 LL | const SHL_U128: u128 = unsafe { intrinsics::unchecked_shl(5_u128, 128) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
-   |                                 Overflowing shift by 128 in unchecked_shl
+   |                                 Overflowing shift by 128 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:27:29
@@ -46,7 +46,7 @@ error: any use of this value will cause an error
 LL | const SHL_I8: i8 = unsafe { intrinsics::unchecked_shl(5_i8, 8) };
    | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                             |
-   |                             Overflowing shift by 8 in unchecked_shl
+   |                             Overflowing shift by 8 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:29:31
@@ -54,7 +54,7 @@ error: any use of this value will cause an error
 LL | const SHL_I16: i16 = unsafe { intrinsics::unchecked_shl(5_16, 16) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 16 in unchecked_shl
+   |                               Overflowing shift by 16 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:31:31
@@ -62,7 +62,7 @@ error: any use of this value will cause an error
 LL | const SHL_I32: i32 = unsafe { intrinsics::unchecked_shl(5_i32, 32) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 32 in unchecked_shl
+   |                               Overflowing shift by 32 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:33:31
@@ -70,7 +70,7 @@ error: any use of this value will cause an error
 LL | const SHL_I64: i64 = unsafe { intrinsics::unchecked_shl(5_i64, 64) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 64 in unchecked_shl
+   |                               Overflowing shift by 64 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:35:33
@@ -78,7 +78,7 @@ error: any use of this value will cause an error
 LL | const SHL_I128: i128 = unsafe { intrinsics::unchecked_shl(5_i128, 128) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
-   |                                 Overflowing shift by 128 in unchecked_shl
+   |                                 Overflowing shift by 128 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:40:33
@@ -86,7 +86,7 @@ error: any use of this value will cause an error
 LL | const SHL_I8_NEG: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -1) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
-   |                                 Overflowing shift by 255 in unchecked_shl
+   |                                 Overflowing shift by 255 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:42:35
@@ -94,7 +94,7 @@ error: any use of this value will cause an error
 LL | const SHL_I16_NEG: i16 = unsafe { intrinsics::unchecked_shl(5_16, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
-   |                                   Overflowing shift by 65535 in unchecked_shl
+   |                                   Overflowing shift by 65535 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:44:35
@@ -102,7 +102,7 @@ error: any use of this value will cause an error
 LL | const SHL_I32_NEG: i32 = unsafe { intrinsics::unchecked_shl(5_i32, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
-   |                                   Overflowing shift by 4294967295 in unchecked_shl
+   |                                   Overflowing shift by 4294967295 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:46:35
@@ -110,7 +110,7 @@ error: any use of this value will cause an error
 LL | const SHL_I64_NEG: i64 = unsafe { intrinsics::unchecked_shl(5_i64, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
-   |                                   Overflowing shift by 18446744073709551615 in unchecked_shl
+   |                                   Overflowing shift by 18446744073709551615 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:48:37
@@ -118,7 +118,7 @@ error: any use of this value will cause an error
 LL | const SHL_I128_NEG: i128 = unsafe { intrinsics::unchecked_shl(5_i128, -1) };
    | ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                     |
-   |                                     Overflowing shift by 340282366920938463463374607431768211455 in unchecked_shl
+   |                                     Overflowing shift by 340282366920938463463374607431768211455 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:54:40
@@ -126,7 +126,7 @@ error: any use of this value will cause an error
 LL | const SHL_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -6) };
    | ---------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                        |
-   |                                        Overflowing shift by 250 in unchecked_shl
+   |                                        Overflowing shift by 250 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:56:42
@@ -134,7 +134,7 @@ error: any use of this value will cause an error
 LL | const SHL_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shl(5_16, -13) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
-   |                                          Overflowing shift by 65523 in unchecked_shl
+   |                                          Overflowing shift by 65523 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:58:42
@@ -142,7 +142,7 @@ error: any use of this value will cause an error
 LL | const SHL_I32_NEG_RANDOM: i32 = unsafe { intrinsics::unchecked_shl(5_i32, -25) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
-   |                                          Overflowing shift by 4294967271 in unchecked_shl
+   |                                          Overflowing shift by 4294967271 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:60:42
@@ -150,7 +150,7 @@ error: any use of this value will cause an error
 LL | const SHL_I64_NEG_RANDOM: i64 = unsafe { intrinsics::unchecked_shl(5_i64, -30) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
-   |                                          Overflowing shift by 18446744073709551586 in unchecked_shl
+   |                                          Overflowing shift by 18446744073709551586 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:62:44
@@ -158,7 +158,7 @@ error: any use of this value will cause an error
 LL | const SHL_I128_NEG_RANDOM: i128 = unsafe { intrinsics::unchecked_shl(5_i128, -93) };
    | -------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                            |
-   |                                            Overflowing shift by 340282366920938463463374607431768211363 in unchecked_shl
+   |                                            Overflowing shift by 340282366920938463463374607431768211363 in `unchecked_shl`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:69:29
@@ -166,7 +166,7 @@ error: any use of this value will cause an error
 LL | const SHR_U8: u8 = unsafe { intrinsics::unchecked_shr(5_u8, 8) };
    | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                             |
-   |                             Overflowing shift by 8 in unchecked_shr
+   |                             Overflowing shift by 8 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:71:31
@@ -174,7 +174,7 @@ error: any use of this value will cause an error
 LL | const SHR_U16: u16 = unsafe { intrinsics::unchecked_shr(5_u16, 16) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 16 in unchecked_shr
+   |                               Overflowing shift by 16 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:73:31
@@ -182,7 +182,7 @@ error: any use of this value will cause an error
 LL | const SHR_U32: u32 = unsafe { intrinsics::unchecked_shr(5_u32, 32) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 32 in unchecked_shr
+   |                               Overflowing shift by 32 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:75:31
@@ -190,7 +190,7 @@ error: any use of this value will cause an error
 LL | const SHR_U64: u64 = unsafe { intrinsics::unchecked_shr(5_u64, 64) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 64 in unchecked_shr
+   |                               Overflowing shift by 64 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:77:33
@@ -198,7 +198,7 @@ error: any use of this value will cause an error
 LL | const SHR_U128: u128 = unsafe { intrinsics::unchecked_shr(5_u128, 128) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
-   |                                 Overflowing shift by 128 in unchecked_shr
+   |                                 Overflowing shift by 128 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:82:29
@@ -206,7 +206,7 @@ error: any use of this value will cause an error
 LL | const SHR_I8: i8 = unsafe { intrinsics::unchecked_shr(5_i8, 8) };
    | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                             |
-   |                             Overflowing shift by 8 in unchecked_shr
+   |                             Overflowing shift by 8 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:84:31
@@ -214,7 +214,7 @@ error: any use of this value will cause an error
 LL | const SHR_I16: i16 = unsafe { intrinsics::unchecked_shr(5_16, 16) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 16 in unchecked_shr
+   |                               Overflowing shift by 16 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:86:31
@@ -222,7 +222,7 @@ error: any use of this value will cause an error
 LL | const SHR_I32: i32 = unsafe { intrinsics::unchecked_shr(5_i32, 32) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 32 in unchecked_shr
+   |                               Overflowing shift by 32 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:88:31
@@ -230,7 +230,7 @@ error: any use of this value will cause an error
 LL | const SHR_I64: i64 = unsafe { intrinsics::unchecked_shr(5_i64, 64) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
-   |                               Overflowing shift by 64 in unchecked_shr
+   |                               Overflowing shift by 64 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:90:33
@@ -238,7 +238,7 @@ error: any use of this value will cause an error
 LL | const SHR_I128: i128 = unsafe { intrinsics::unchecked_shr(5_i128, 128) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
-   |                                 Overflowing shift by 128 in unchecked_shr
+   |                                 Overflowing shift by 128 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:95:33
@@ -246,7 +246,7 @@ error: any use of this value will cause an error
 LL | const SHR_I8_NEG: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -1) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
-   |                                 Overflowing shift by 255 in unchecked_shr
+   |                                 Overflowing shift by 255 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:97:35
@@ -254,7 +254,7 @@ error: any use of this value will cause an error
 LL | const SHR_I16_NEG: i16 = unsafe { intrinsics::unchecked_shr(5_16, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
-   |                                   Overflowing shift by 65535 in unchecked_shr
+   |                                   Overflowing shift by 65535 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:99:35
@@ -262,7 +262,7 @@ error: any use of this value will cause an error
 LL | const SHR_I32_NEG: i32 = unsafe { intrinsics::unchecked_shr(5_i32, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
-   |                                   Overflowing shift by 4294967295 in unchecked_shr
+   |                                   Overflowing shift by 4294967295 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:101:35
@@ -270,7 +270,7 @@ error: any use of this value will cause an error
 LL | const SHR_I64_NEG: i64 = unsafe { intrinsics::unchecked_shr(5_i64, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
-   |                                   Overflowing shift by 18446744073709551615 in unchecked_shr
+   |                                   Overflowing shift by 18446744073709551615 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:103:37
@@ -278,7 +278,7 @@ error: any use of this value will cause an error
 LL | const SHR_I128_NEG: i128 = unsafe { intrinsics::unchecked_shr(5_i128, -1) };
    | ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                     |
-   |                                     Overflowing shift by 340282366920938463463374607431768211455 in unchecked_shr
+   |                                     Overflowing shift by 340282366920938463463374607431768211455 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:109:40
@@ -286,7 +286,7 @@ error: any use of this value will cause an error
 LL | const SHR_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -6) };
    | ---------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                        |
-   |                                        Overflowing shift by 250 in unchecked_shr
+   |                                        Overflowing shift by 250 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:111:42
@@ -294,7 +294,7 @@ error: any use of this value will cause an error
 LL | const SHR_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shr(5_16, -13) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
-   |                                          Overflowing shift by 65523 in unchecked_shr
+   |                                          Overflowing shift by 65523 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:113:42
@@ -302,7 +302,7 @@ error: any use of this value will cause an error
 LL | const SHR_I32_NEG_RANDOM: i32 = unsafe { intrinsics::unchecked_shr(5_i32, -25) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
-   |                                          Overflowing shift by 4294967271 in unchecked_shr
+   |                                          Overflowing shift by 4294967271 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:115:42
@@ -310,7 +310,7 @@ error: any use of this value will cause an error
 LL | const SHR_I64_NEG_RANDOM: i64 = unsafe { intrinsics::unchecked_shr(5_i64, -30) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
-   |                                          Overflowing shift by 18446744073709551586 in unchecked_shr
+   |                                          Overflowing shift by 18446744073709551586 in `unchecked_shr`
 
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:117:44
@@ -318,7 +318,7 @@ error: any use of this value will cause an error
 LL | const SHR_I128_NEG_RANDOM: i128 = unsafe { intrinsics::unchecked_shr(5_i128, -93) };
    | -------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                            |
-   |                                            Overflowing shift by 340282366920938463463374607431768211363 in unchecked_shr
+   |                                            Overflowing shift by 340282366920938463463374607431768211363 in `unchecked_shr`
 
 error: aborting due to 40 previous errors
 
