@@ -860,46 +860,6 @@ impl<T: Copy, E> Result<&mut T, E> {
     }
 }
 
-impl<T, E: Copy> Result<T, &E> {
-    /// Maps a `Result<T, &E>` to a `Result<T, E>` by copying the contents of the
-    /// `Err` part.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_copied)]
-    /// let val = 12;
-    /// let x: Result<i32, &i32> = Err(&val);
-    /// assert_eq!(x, Err(&12));
-    /// let copied = x.copied_err();
-    /// assert_eq!(copied, Err(12));
-    /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
-    pub fn copied_err(self) -> Result<T, E> {
-        self.map_err(|&e| e)
-    }
-}
-
-impl<T, E: Copy> Result<T, &mut E> {
-    /// Maps a `Result<T, &mut E>` to a `Result<T, E>` by copying the contents of the
-    /// `Err` part.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_copied)]
-    /// let mut val = 12;
-    /// let x: Result<i32, &mut i32> = Err(&mut val);
-    /// assert_eq!(x, Err(&mut 12));
-    /// let copied = x.copied_err();
-    /// assert_eq!(copied, Err(12));
-    /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
-    pub fn copied_err(self) -> Result<T, E> {
-        self.map_err(|&mut e| e)
-    }
-}
-
 impl<T: Clone, E> Result<&T, E> {
     /// Maps a `Result<&T, E>` to a `Result<T, E>` by cloning the contents of the
     /// `Ok` part.
@@ -940,45 +900,6 @@ impl<T: Clone, E> Result<&mut T, E> {
     }
 }
 
-impl<T, E: Clone> Result<T, &E> {
-    /// Maps a `Result<T, &E>` to a `Result<T, E>` by cloning the contents of the
-    /// `Err` part.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_cloned)]
-    /// let val = 12;
-    /// let x: Result<i32, &i32> = Err(&val);
-    /// assert_eq!(x, Err(&12));
-    /// let cloned = x.cloned_err();
-    /// assert_eq!(cloned, Err(12));
-    /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
-    pub fn cloned_err(self) -> Result<T, E> {
-        self.map_err(|e| e.clone())
-    }
-}
-
-impl<T, E: Clone> Result<T, &mut E> {
-    /// Maps a `Result<T, &mut E>` to a `Result<T, E>` by cloning the contents of the
-    /// `Err` part.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_cloned)]
-    /// let mut val = 12;
-    /// let x: Result<i32, &mut i32> = Err(&mut val);
-    /// assert_eq!(x, Err(&mut 12));
-    /// let cloned = x.cloned_err();
-    /// assert_eq!(cloned, Err(12));
-    /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
-    pub fn cloned_err(self) -> Result<T, E> {
-        self.map_err(|e| e.clone())
-    }
-}
 
 impl<T, E: fmt::Debug> Result<T, E> {
     /// Unwraps a result, yielding the content of an [`Ok`].
