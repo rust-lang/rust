@@ -10,25 +10,9 @@ use ra_syntax::TextRange;
 use ra_text_edit::TextEditBuilder;
 use rustc_hash::FxHashSet;
 
-/// Applies postfix edition but with CompletionKind::Reference
-fn postfix_reference(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
-    let edit = {
-        let receiver_range =
-            ctx.dot_receiver.as_ref().expect("no receiver available").syntax().text_range();
-        let delete_range = TextRange::from_to(receiver_range.start(), ctx.source_range().end());
-        let mut builder = TextEditBuilder::default();
-        builder.replace(delete_range, snippet.to_string());
-        builder.finish()
-    };
-    CompletionItem::new(CompletionKind::Reference, ctx.source_range(), label)
-        .detail(detail)
-        .snippet_edit(edit)
-}
-
 /// Complete dot accesses, i.e. fields or methods (and .await syntax).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some(dot_receiver) = &ctx.dot_receiver {
-        let receiver_text = dot_receiver.syntax().text().to_string();
         let receiver_ty = ctx.analyzer.type_of(ctx.db, &dot_receiver);
 
         if let Some(receiver_ty) = receiver_ty {
@@ -39,7 +23,9 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 
             // Suggest .await syntax for types that implement Future trait
             if ctx.analyzer.impls_future(ctx.db, receiver_ty) {
-                postfix_reference(ctx, ".await", "expr.await", &format!("{}.await", receiver_text))
+                CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
+                    .detail("expr.await")
+                    .insert_text("await")
                     .add_to(acc);
             }
         }
@@ -440,7 +426,7 @@ mod tests {
     #[test]
     fn test_completion_await_impls_future() {
         assert_debug_snapshot_matches!(
-        do_ref_completion(
+        do_completion(
             r###"
             // Mock Future trait from stdlib
             pub mod std {
@@ -457,14 +443,14 @@ mod tests {
             fn foo(a: A) {
                 a.<|>
             }
-            "###),
+            "###, CompletionKind::Keyword),
         @r###"
        ⋮[
        ⋮    CompletionItem {
-       ⋮        label: ".await",
+       ⋮        label: "await",
        ⋮        source_range: [358; 358),
-       ⋮        delete: [356; 358),
-       ⋮        insert: "a.await",
+       ⋮        delete: [358; 358),
+       ⋮        insert: "await",
        ⋮        detail: "expr.await",
        ⋮    },
        ⋮]
