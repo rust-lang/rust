@@ -12,7 +12,7 @@ use rustc::hir::{MutMutable, MutImmutable};
 use rustc::mir::RetagKind;
 
 use crate::{
-    InterpResult, InterpError, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
+    InterpResult, InterpError, HelpersEvalContextExt,
     MemoryKind, MiriMemoryKind, RangeMap, AllocId, Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -632,54 +632,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
 
-        // We need a visitor to visit all references. However, that requires
-        // a `MemPlace`, so we have a fast path for reference types that
-        // avoids allocating.
+        // We only reborrow "bare" references/boxes.
         if let Some((mutbl, protector)) = qualify(place.layout.ty, kind) {
             // Fast path.
             let val = this.read_immediate(this.place_to_op(place)?)?;
             let val = this.retag_reference(val, mutbl, protector)?;
             this.write_immediate(val, place)?;
-            return Ok(());
-        }
-        let place = this.force_allocation(place)?;
-
-        let mut visitor = RetagVisitor { ecx: this, kind };
-        visitor.visit_value(place)?;
-
-        // The actual visitor.
-        struct RetagVisitor<'ecx, 'mir, 'tcx> {
-            ecx: &'ecx mut MiriEvalContext<'mir, 'tcx>,
-            kind: RetagKind,
-        }
-        impl<'ecx, 'mir, 'tcx>
-            MutValueVisitor<'mir, 'tcx, Evaluator<'tcx>>
-        for
-            RetagVisitor<'ecx, 'mir, 'tcx>
-        {
-            type V = MPlaceTy<'tcx, Tag>;
-
-            #[inline(always)]
-            fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
-                &mut self.ecx
-            }
-
-            // Primitives of reference type, that is the one thing we are interested in.
-            fn visit_primitive(&mut self, place: MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
-            {
-                // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
-                // making it useless.
-                if let Some((mutbl, protector)) = qualify(place.layout.ty, self.kind) {
-                    let val = self.ecx.read_immediate(place.into())?;
-                    let val = self.ecx.retag_reference(
-                        val,
-                        mutbl,
-                        protector
-                    )?;
-                    self.ecx.write_immediate(val, place.into())?;
-                }
-                Ok(())
-            }
         }
 
         Ok(())
