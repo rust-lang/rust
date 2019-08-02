@@ -64,7 +64,7 @@ RUN env \
     env \
     CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a" \
     CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a" \
-    bash musl.sh armv7 && \
+    bash musl.sh armv7hf && \
     env \
     CC=aarch64-linux-gnu-gcc \
     CXX=aarch64-linux-gnu-g++ \
@@ -137,7 +137,7 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \
-      --musl-root-armv7=/musl-armv7 \
+      --musl-root-armv7hf=/musl-armv7hf \
       --musl-root-aarch64=/musl-aarch64 \
       --musl-root-mips=/musl-mips \
       --musl-root-mipsel=/musl-mipsel \
