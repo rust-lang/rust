@@ -4197,8 +4197,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// A possible error is to forget to add `.await` when using futures:
     ///
     /// ```
-    /// #![feature(async_await)]
-    ///
     /// async fn make_u32() -> u32 {
     ///     22
     /// }

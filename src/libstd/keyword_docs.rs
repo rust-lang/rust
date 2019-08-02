@@ -984,7 +984,6 @@ mod where_keyword { }
 
 // 2018 Edition keywords
 
-#[unstable(feature = "async_await", issue = "50547")]
 #[doc(keyword = "async")]
 //
 /// Return a [`Future`] instead of blocking the current thread.
@@ -995,7 +994,6 @@ mod where_keyword { }
 /// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod async_keyword { }
 
-#[unstable(feature = "async_await", issue = "50547")]
 #[doc(keyword = "await")]
 //
 /// Suspend execution until the result of a [`Future`] is ready.
