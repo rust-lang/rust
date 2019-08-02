@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(async_await)]
-
 struct S;
 
 impl S {

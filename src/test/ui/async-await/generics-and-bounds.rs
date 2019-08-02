@@ -2,8 +2,6 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
-#![feature(async_await)]
-
 use std::future::Future;
 
 pub async fn simple_generic<T>() {}

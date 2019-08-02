@@ -1,7 +1,6 @@
 // edition:2018
-#![feature(async_await)]
 
-// Regression test for issue #62382
+// Regression test for issue #62382.
 
 use std::future::Future;
 

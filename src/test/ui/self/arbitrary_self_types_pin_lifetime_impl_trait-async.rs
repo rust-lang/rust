@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(async_await)]
-
 use std::pin::Pin;
 
 struct Foo;

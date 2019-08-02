@@ -6,8 +6,6 @@
 // check-pass
 // edition:2018
 
-#![feature(async_await)]
-
 struct Foo<'a>(&'a u8);
 
 impl Foo<'_> {

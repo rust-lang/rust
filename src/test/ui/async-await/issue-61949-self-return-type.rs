@@ -1,6 +1,5 @@
 // ignore-tidy-linelength
 // edition:2018
-#![feature(async_await)]
 
 // This test checks that `Self` is prohibited as a return type. See #61949 for context.
 
