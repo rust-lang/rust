@@ -1,8 +1,9 @@
-use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering::*};
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering::*};
 
 fn main() {
     atomic_bool();
     atomic_isize();
+    atomic_u64();
 }
 
 fn atomic_bool() {
@@ -49,4 +50,13 @@ fn atomic_isize() {
     ATOMIC.compare_exchange_weak(0, 1, AcqRel, Acquire).ok();
     ATOMIC.compare_exchange_weak(0, 1, SeqCst, Acquire).ok();
     ATOMIC.compare_exchange_weak(0, 1, SeqCst, SeqCst).ok();
+}
+
+fn atomic_u64() {
+    static ATOMIC: AtomicU64 = AtomicU64::new(0);
+
+    ATOMIC.store(1, SeqCst);
+    assert_eq!(ATOMIC.compare_exchange(0, 0x100, AcqRel, Acquire), Err(1));
+    assert_eq!(ATOMIC.compare_exchange_weak(1, 0x100, AcqRel, Acquire), Ok(1));
+    assert_eq!(ATOMIC.load(Relaxed), 0x100);
 }
