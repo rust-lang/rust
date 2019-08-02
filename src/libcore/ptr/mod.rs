@@ -1611,7 +1611,7 @@ impl<T: ?Sized> *const T {
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
     /// used with the `add` method.
     ///
-    /// There are no guarantees whatsover that offsetting the pointer will not overflow or go
+    /// There are no guarantees whatsoever that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
     /// the returned offset is correct in all terms other than alignment.
     ///
@@ -2412,7 +2412,7 @@ impl<T: ?Sized> *mut T {
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
     /// used with the `add` method.
     ///
-    /// There are no guarantees whatsover that offsetting the pointer will not overflow or go
+    /// There are no guarantees whatsoever that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
     /// the returned offset is correct in all terms other than alignment.
     ///

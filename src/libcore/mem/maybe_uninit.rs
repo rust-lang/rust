@@ -434,7 +434,7 @@ impl<T> MaybeUninit<T> {
     /// Reads the value from the `MaybeUninit<T>` container. The resulting `T` is subject
     /// to the usual drop handling.
     ///
-    /// Whenever possible, it is preferrable to use [`assume_init`] instead, which
+    /// Whenever possible, it is preferable to use [`assume_init`] instead, which
     /// prevents duplicating the content of the `MaybeUninit<T>`.
     ///
     /// # Safety

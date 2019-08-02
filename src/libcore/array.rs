@@ -24,9 +24,12 @@ use crate::slice::{Iter, IterMut};
 /// layout in memory of a fixed size array (for example, for unsafe
 /// initialization).
 ///
-/// Note that the traits AsRef and AsMut provide similar methods for types that
+/// Note that the traits [`AsRef`] and [`AsMut`] provide similar methods for types that
 /// may not be fixed-size arrays. Implementors should prefer those traits
 /// instead.
+///
+/// [`AsRef`]: ../convert/trait.AsRef.html
+/// [`AsMut`]: ../convert/trait.AsMut.html
 #[unstable(feature = "fixed_size_array", issue = "27778")]
 pub unsafe trait FixedSizeArray<T> {
     /// Converts the array to immutable slice
