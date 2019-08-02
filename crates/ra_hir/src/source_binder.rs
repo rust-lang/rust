@@ -23,8 +23,8 @@ use crate::{
         scope::{ExprScopes, ScopeId},
         BodySourceMap,
     },
-    ty::method_resolution::implements_trait,
     ids::LocationCtx,
+    ty::method_resolution::implements_trait,
     AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HirDatabase, HirFileId,
     MacroDef, Module, Name, Path, PerNs, Resolver, Static, Struct, Trait, Ty,
 };
@@ -414,22 +414,25 @@ impl SourceAnalyzer {
     /// This function is used in `.await` syntax completion.
     pub fn impls_future(&self, db: &impl HirDatabase, ty: Ty) -> bool {
         // Search for std::future::Future trait in scope
-        let future_trait = self.resolver.traits_in_scope(db)
+        let future_trait = self
+            .resolver
+            .traits_in_scope(db)
             .into_iter()
             .filter(|t| {
-                let std = t.module(db).parent(db)
-                    .and_then(|m| m
-                        .name(db)
-                        .and_then(|n| Some(n.to_string() == "std")))
+                let std = t
+                    .module(db)
+                    .parent(db)
+                    .and_then(|m| m.name(db).and_then(|n| Some(n.to_string() == "std")))
                     .unwrap_or(false);
 
-                let future = t.module(db).name(db)
+                let future = t
+                    .module(db)
+                    .name(db)
                     .and_then(|n| Some(n.to_string() == "future"))
                     .unwrap_or(false);
 
-                let future_trait = t.name(db)
-                    .and_then(|n| Some(n.to_string() == "Future"))
-                    .unwrap_or(false);
+                let future_trait =
+                    t.name(db).and_then(|n| Some(n.to_string() == "Future")).unwrap_or(false);
 
                 std && future && future_trait
             })

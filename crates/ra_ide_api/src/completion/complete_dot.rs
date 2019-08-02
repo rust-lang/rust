@@ -1,14 +1,14 @@
 use hir::{AdtDef, Ty, TypeCtor};
 
-use crate::{completion::{
-    completion_context::CompletionContext,
-    completion_item::Completions,
-}, CompletionItem};
+use crate::completion::completion_item::{Builder, CompletionKind};
+use crate::{
+    completion::{completion_context::CompletionContext, completion_item::Completions},
+    CompletionItem,
+};
 use ra_syntax::ast::AstNode;
+use ra_syntax::TextRange;
 use ra_text_edit::TextEditBuilder;
 use rustc_hash::FxHashSet;
-use crate::completion::completion_item::{Builder, CompletionKind};
-use ra_syntax::TextRange;
 
 /// Applies postfix edition but with CompletionKind::Reference
 fn postfix_reference(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
