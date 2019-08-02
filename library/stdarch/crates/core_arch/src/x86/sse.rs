@@ -1098,7 +1098,10 @@ pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movemask_ps)
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(test, assert_instr(movmskps))]
+// FIXME: LLVM9 trunk has the following bug:
+// https://github.com/rust-lang/stdarch/issues/794
+// so we only temporarily test this on i686 and x86_64 but not on i586:
+#[cfg_attr(all(test, target_feature = "sse2"), assert_instr(movmskps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
     movmskps(a)
@@ -1109,21 +1112,7 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 /// from `a`.
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(
-    all(
-        test,
-        any(
-            target_arch = "x86_64",
-            all(target_arch = "x86", target_feature = "sse2")
-        )
-    ),
-    assert_instr(movhps)
-)]
-// FIXME: 32-bit codegen without SSE2 generates two `shufps` instead of `movhps`
-#[cfg_attr(
-    all(test, target_arch = "x86", not(target_feature = "sse2")),
-    assert_instr(shufps)
-)]
+#[cfg_attr(test, assert_instr(movhps))]
 // TODO: this function is actually not limited to floats, but that's what
 // what matches the C type most closely: `(__m128, *const __m64) -> __m128`.
 pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
@@ -1137,16 +1126,7 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 /// is copied from the upper half of `a`.
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movlps))]
-#[cfg_attr(
-    all(test, target_arch = "x86", target_feature = "sse2"),
-    assert_instr(movlps)
-)]
-// FIXME: On 32-bit targets without SSE2, it just generates two `movss`...
-#[cfg_attr(
-    all(test, target_arch = "x86", not(target_feature = "sse2")),
-    assert_instr(movss)
-)]
+#[cfg_attr(test, assert_instr(movlps))]
 pub unsafe fn _mm_loadl_pi(a: __m128, p: *const __m64) -> __m128 {
     let q = p as *const f32x2;
     let b: f32x2 = *q;
