@@ -1,8 +1,31 @@
-use std::sync::atomic::{AtomicIsize, Ordering::*};
-
-static ATOMIC: AtomicIsize = AtomicIsize::new(0);
+use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering::*};
 
 fn main() {
+    atomic_bool();
+    atomic_isize();
+}
+
+fn atomic_bool() {
+    static mut ATOMIC: AtomicBool = AtomicBool::new(false);
+
+    unsafe {
+        assert_eq!(*ATOMIC.get_mut(), false);
+        ATOMIC.store(true, SeqCst);
+        assert_eq!(*ATOMIC.get_mut(), true);
+        ATOMIC.fetch_or(false, SeqCst);
+        assert_eq!(*ATOMIC.get_mut(), true);
+        ATOMIC.fetch_and(false, SeqCst);
+        assert_eq!(*ATOMIC.get_mut(), false);
+        ATOMIC.fetch_nand(true, SeqCst);
+        assert_eq!(*ATOMIC.get_mut(), true);
+        ATOMIC.fetch_xor(true, SeqCst);
+        assert_eq!(*ATOMIC.get_mut(), false);
+    }
+}
+
+fn atomic_isize() {
+    static ATOMIC: AtomicIsize = AtomicIsize::new(0);
+
     // Make sure trans can emit all the intrinsics correctly
     assert_eq!(ATOMIC.compare_exchange(0, 1, Relaxed, Relaxed), Ok(0));
     assert_eq!(ATOMIC.compare_exchange(0, 2, Acquire, Relaxed), Err(1));
