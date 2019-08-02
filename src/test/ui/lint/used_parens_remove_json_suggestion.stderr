@@ -1,0 +1,666 @@
+{
+  "message": "unnecessary parentheses around `if` condition",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+      "byte_start": 478,
+      "byte_end": 482,
+      "line_start": 16,
+      "line_end": 16,
+      "column_start": 8,
+      "column_end": 12,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    if (_b) {",
+          "highlight_start": 8,
+          "highlight_end": 12
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "lint level defined here",
+      "code": null,
+      "level": "note",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 420,
+          "byte_end": 433,
+          "line_start": 10,
+          "line_end": 10,
+          "column_start": 9,
+          "column_end": 22,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "#![warn(unused_parens)]",
+              "highlight_start": 9,
+              "highlight_end": 22
+            }
+          ],
+          "label": null,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 478,
+          "byte_end": 482,
+          "line_start": 16,
+          "line_end": 16,
+          "column_start": 8,
+          "column_end": 12,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    if (_b) {",
+              "highlight_start": 8,
+              "highlight_end": 12
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "_b",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around `if` condition
+  --> $DIR/used_parens_remove_json_suggestion.rs:16:8
+   |
+LL |     if (_b) {
+   |        ^^^^ help: remove these parentheses
+   |
+note: lint level defined here
+  --> $DIR/used_parens_remove_json_suggestion.rs:10:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
+
+"
+}
+{
+  "message": "unnecessary parentheses around `if` condition",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+      "byte_start": 575,
+      "byte_end": 578,
+      "line_start": 27,
+      "line_end": 27,
+      "column_start": 7,
+      "column_end": 10,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    if(c) {",
+          "highlight_start": 7,
+          "highlight_end": 10
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 575,
+          "byte_end": 578,
+          "line_start": 27,
+          "line_end": 27,
+          "column_start": 7,
+          "column_end": 10,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    if(c) {",
+              "highlight_start": 7,
+              "highlight_end": 10
+            }
+          ],
+          "label": null,
+          "suggested_replacement": " c",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around `if` condition
+  --> $DIR/used_parens_remove_json_suggestion.rs:27:7
+   |
+LL |     if(c) {
+   |       ^^^ help: remove these parentheses
+
+"
+}
+{
+  "message": "unnecessary parentheses around `if` condition",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+      "byte_start": 621,
+      "byte_end": 624,
+      "line_start": 31,
+      "line_end": 31,
+      "column_start": 8,
+      "column_end": 11,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    if (c){",
+          "highlight_start": 8,
+          "highlight_end": 11
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 621,
+          "byte_end": 624,
+          "line_start": 31,
+          "line_end": 31,
+          "column_start": 8,
+          "column_end": 11,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    if (c){",
+              "highlight_start": 8,
+              "highlight_end": 11
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "c ",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around `if` condition
+  --> $DIR/used_parens_remove_json_suggestion.rs:31:8
+   |
+LL |     if (c){
+   |        ^^^ help: remove these parentheses
+
+"
+}
+{
+  "message": "unnecessary parentheses around `while` condition",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+      "byte_start": 669,
+      "byte_end": 684,
+      "line_start": 35,
+      "line_end": 35,
+      "column_start": 11,
+      "column_end": 26,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    while (false && true){",
+          "highlight_start": 11,
+          "highlight_end": 26
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 669,
+          "byte_end": 684,
+          "line_start": 35,
+          "line_end": 35,
+          "column_start": 11,
+          "column_end": 26,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    while (false && true){",
+              "highlight_start": 11,
+              "highlight_end": 26
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "false && true ",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around `while` condition
+  --> $DIR/used_parens_remove_json_suggestion.rs:35:11
+   |
+LL |     while (false && true){
+   |           ^^^^^^^^^^^^^^^ help: remove these parentheses
+
+"
+}
+{
+  "message": "unnecessary parentheses around `if` condition",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+      "byte_start": 697,
+      "byte_end": 700,
+      "line_start": 36,
+      "line_end": 36,
+      "column_start": 12,
+      "column_end": 15,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "        if (c) {",
+          "highlight_start": 12,
+          "highlight_end": 15
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 697,
+          "byte_end": 700,
+          "line_start": 36,
+          "line_end": 36,
+          "column_start": 12,
+          "column_end": 15,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "        if (c) {",
+              "highlight_start": 12,
+              "highlight_end": 15
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "c",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around `if` condition
+  --> $DIR/used_parens_remove_json_suggestion.rs:36:12
+   |
+LL |         if (c) {
+   |            ^^^ help: remove these parentheses
+
+"
+}
+{
+  "message": "unnecessary parentheses around `while` condition",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+      "byte_start": 760,
+      "byte_end": 775,
+      "line_start": 42,
+      "line_end": 42,
+      "column_start": 10,
+      "column_end": 25,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    while(true && false) {",
+          "highlight_start": 10,
+          "highlight_end": 25
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 760,
+          "byte_end": 775,
+          "line_start": 42,
+          "line_end": 42,
+          "column_start": 10,
+          "column_end": 25,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    while(true && false) {",
+              "highlight_start": 10,
+              "highlight_end": 25
+            }
+          ],
+          "label": null,
+          "suggested_replacement": " true && false",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around `while` condition
+  --> $DIR/used_parens_remove_json_suggestion.rs:42:10
+   |
+LL |     while(true && false) {
+   |          ^^^^^^^^^^^^^^^ help: remove these parentheses
+
+"
+}
+{
+  "message": "unnecessary parentheses around `for` head expression",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+      "byte_start": 795,
+      "byte_end": 803,
+      "line_start": 43,
+      "line_end": 43,
+      "column_start": 18,
+      "column_end": 26,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "        for i in (0 .. 3){",
+          "highlight_start": 18,
+          "highlight_end": 26
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 795,
+          "byte_end": 803,
+          "line_start": 43,
+          "line_end": 43,
+          "column_start": 18,
+          "column_end": 26,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "        for i in (0 .. 3){",
+              "highlight_start": 18,
+              "highlight_end": 26
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "0 .. 3 ",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around `for` head expression
+  --> $DIR/used_parens_remove_json_suggestion.rs:43:18
+   |
+LL |         for i in (0 .. 3){
+   |                  ^^^^^^^^ help: remove these parentheses
+
+"
+}
+{
+  "message": "unnecessary parentheses around `for` head expression",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+      "byte_start": 862,
+      "byte_end": 870,
+      "line_start": 48,
+      "line_end": 48,
+      "column_start": 14,
+      "column_end": 22,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    for i in (0 .. 3) {",
+          "highlight_start": 14,
+          "highlight_end": 22
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 862,
+          "byte_end": 870,
+          "line_start": 48,
+          "line_end": 48,
+          "column_start": 14,
+          "column_end": 22,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    for i in (0 .. 3) {",
+              "highlight_start": 14,
+              "highlight_end": 22
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "0 .. 3",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around `for` head expression
+  --> $DIR/used_parens_remove_json_suggestion.rs:48:14
+   |
+LL |     for i in (0 .. 3) {
+   |              ^^^^^^^^ help: remove these parentheses
+
+"
+}
+{
+  "message": "unnecessary parentheses around `while` condition",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+      "byte_start": 887,
+      "byte_end": 902,
+      "line_start": 49,
+      "line_end": 49,
+      "column_start": 15,
+      "column_end": 30,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "        while (true && false) {",
+          "highlight_start": 15,
+          "highlight_end": 30
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/used_parens_remove_json_suggestion.rs",
+          "byte_start": 887,
+          "byte_end": 902,
+          "line_start": 49,
+          "line_end": 49,
+          "column_start": 15,
+          "column_end": 30,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "        while (true && false) {",
+              "highlight_start": 15,
+              "highlight_end": 30
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "true && false",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around `while` condition
+  --> $DIR/used_parens_remove_json_suggestion.rs:49:15
+   |
+LL |         while (true && false) {
+   |               ^^^^^^^^^^^^^^^ help: remove these parentheses
+
+"
+}
