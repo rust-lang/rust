@@ -219,7 +219,7 @@ fn check_associated_item(
                 }
             }
             ty::AssocKind::OpaqueTy => {
-                // do nothing, opaque types check themselves
+                // Do nothing: opaque types check themselves.
             }
         }
 

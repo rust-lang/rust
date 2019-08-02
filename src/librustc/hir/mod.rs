@@ -1929,7 +1929,7 @@ pub struct OpaqueTy {
     pub origin: OpaqueTyOrigin,
 }
 
-/// Where the opaque type came from
+/// From whence the opaque type came.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum OpaqueTyOrigin {
     /// `type Foo = impl Trait;`

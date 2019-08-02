@@ -393,7 +393,7 @@ pub struct TypeckTables<'tcx> {
     pub free_region_map: FreeRegionMap<'tcx>,
 
     /// All the opaque types that are restricted to concrete types
-    /// by this function
+    /// by this function.
     pub concrete_opaque_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
 
     /// Given the closure ID this map provides the list of UpvarIDs used by it.

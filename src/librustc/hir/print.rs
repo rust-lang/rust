@@ -565,17 +565,12 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer ibox
             }
-            hir::ItemKind::OpaqueTy(ref exist) => {
+            hir::ItemKind::OpaqueTy(ref opaque_ty) => {
                 self.head(visibility_qualified(&item.vis, "type"));
                 self.print_ident(item.ident);
-                self.word_space("= impl");
-                self.print_generic_params(&exist.generics.params);
-                self.end(); // end the inner ibox
-
-                self.print_where_clause(&exist.generics.where_clause);
-                self.s.space();
-                let mut real_bounds = Vec::with_capacity(exist.bounds.len());
-                for b in exist.bounds.iter() {
+                self.print_generic_params(&opaque_ty.generics.params);
+                let mut real_bounds = Vec::with_capacity(opaque_ty.bounds.len());
+                for b in opaque_ty.bounds.iter() {
                     if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
                         self.s.space();
                         self.word_space("for ?");
@@ -584,7 +579,11 @@ impl<'a> State<'a> {
                         real_bounds.push(b);
                     }
                 }
-                self.print_bounds(":", real_bounds);
+                self.print_bounds(" = impl", real_bounds);
+
+                self.end(); // end the inner ibox
+
+                self.print_where_clause(&opaque_ty.generics.where_clause);
                 self.s.word(";");
                 self.end(); // end the outer ibox
             }

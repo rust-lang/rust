@@ -296,7 +296,7 @@ pub fn check_explicit_predicates<'tcx>(
         // struct MyStruct<'x, X> { field: Box<dyn Trait<'x, X>> }
         // ```
         //
-        // The `where Self: 'a` predicate refers to the *opaque, hidden type*
+        // The `where Self: 'a` predicate refers to the *existential, hidden type*
         // that is represented by the `dyn Trait`, not to the `X` type parameter
         // (or any other generic parameter) declared on `MyStruct`.
         //
