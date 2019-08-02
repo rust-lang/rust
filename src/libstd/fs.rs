@@ -1957,6 +1957,8 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// This function currently corresponds to the `opendir` function on Unix
 /// and the `FindFirstFile` function on Windows.
+/// The order in which this iterator returns entries is platform and filesystem 
+/// dependent and is not guaranteed.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
