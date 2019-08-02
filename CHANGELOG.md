@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.4.3] 2019-08-02
+
+### Changed
+
+- Update `rustc-ap-*` crates to 546.0.0.
+
+### Fixed
+
+- Fix an underscore pattern getting removed.
+
 ## [1.4.2] 2019-07-31
 
 ### Changed
