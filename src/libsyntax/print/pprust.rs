@@ -2756,6 +2756,9 @@ impl<'a> State<'a> {
 
     crate fn print_arg(&mut self, input: &ast::Arg, is_closure: bool) {
         self.ibox(INDENT_UNIT);
+
+        self.print_outer_attributes_inline(&input.attrs);
+
         match input.ty.node {
             ast::TyKind::Infer if is_closure => self.print_pat(&input.pat),
             _ => {
