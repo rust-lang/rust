@@ -138,10 +138,12 @@ impl<'tcx> ConstEvalErr<'tcx> {
         lint_root: Option<hir::HirId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         match self.error {
-            InterpError::Layout(LayoutError::Unknown(_)) |
-            InterpError::TooGeneric => return Err(ErrorHandled::TooGeneric),
-            InterpError::Layout(LayoutError::SizeOverflow(_)) |
-            InterpError::TypeckError => return Err(ErrorHandled::Reported),
+            err_inval!(Layout(LayoutError::Unknown(_))) |
+            err_inval!(TooGeneric) =>
+                return Err(ErrorHandled::TooGeneric),
+            err_inval!(Layout(LayoutError::SizeOverflow(_))) |
+            err_inval!(TypeckError) =>
+                return Err(ErrorHandled::Reported),
             _ => {},
         }
         trace!("reporting const eval failure at {:?}", self.span);
@@ -181,8 +183,8 @@ pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'
 /// Packages the kind of error we got from the const code interpreter
 /// up with a Rust-level backtrace of where the error occured.
 /// Thsese should always be constructed by calling `.into()` on
-/// a `InterpError`. In `librustc_mir::interpret`, we have the `err!`
-/// macro for this.
+/// a `InterpError`. In `librustc_mir::interpret`, we have `throw_err_*`
+/// macros for this.
 #[derive(Debug, Clone)]
 pub struct InterpErrorInfo<'tcx> {
     pub kind: InterpError<'tcx>,
@@ -234,7 +236,7 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum PanicMessage<O> {
+pub enum PanicInfo<O> {
     Panic {
         msg: Symbol,
         line: u32,
@@ -254,14 +256,14 @@ pub enum PanicMessage<O> {
 }
 
 /// Type for MIR `Assert` terminator error messages.
-pub type AssertMessage<'tcx> = PanicMessage<mir::Operand<'tcx>>;
+pub type AssertMessage<'tcx> = PanicInfo<mir::Operand<'tcx>>;
 
-impl<O> PanicMessage<O> {
+impl<O> PanicInfo<O> {
     /// Getting a description does not require `O` to be printable, and does not
     /// require allocation.
     /// The caller is expected to handle `Panic` and `BoundsCheck` separately.
     pub fn description(&self) -> &'static str {
-        use PanicMessage::*;
+        use PanicInfo::*;
         match self {
             Overflow(mir::BinOp::Add) =>
                 "attempt to add with overflow",
@@ -290,14 +292,14 @@ impl<O> PanicMessage<O> {
             GeneratorResumedAfterPanic =>
                 "generator resumed after panicking",
             Panic { .. } | BoundsCheck { .. } =>
-                bug!("Unexpected PanicMessage"),
+                bug!("Unexpected PanicInfo"),
         }
     }
 }
 
-impl<O: fmt::Debug> fmt::Debug for PanicMessage<O> {
+impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use PanicMessage::*;
+        use PanicInfo::*;
         match self {
             Panic { ref msg, line, col, ref file } =>
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
@@ -310,20 +312,64 @@ impl<O: fmt::Debug> fmt::Debug for PanicMessage<O> {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum InterpError<'tcx> {
-    /// This variant is used by machines to signal their own errors that do not
-    /// match an existing variant.
-    MachineError(String),
+pub enum InvalidProgramInfo<'tcx> {
+    /// Resolution can fail if we are in a too generic context.
+    TooGeneric,
+    /// Cannot compute this constant because it depends on another one
+    /// which already produced an error.
+    ReferencedConstant,
+    /// Abort in case type errors are reached.
+    TypeckError,
+    /// An error occurred during layout computation.
+    Layout(layout::LayoutError<'tcx>),
+}
 
-    /// Not actually an interpreter error -- used to signal that execution has exited
-    /// with the given status code.  Used by Miri, but not by CTFE.
-    Exit(i32),
+impl fmt::Debug for InvalidProgramInfo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use InvalidProgramInfo::*;
+        match self {
+            TooGeneric =>
+                write!(f, "encountered overly generic constant"),
+            ReferencedConstant =>
+                write!(f, "referenced constant has errors"),
+            TypeckError =>
+                write!(f, "encountered constants with type errors, stopping evaluation"),
+            Layout(ref err) =>
+                write!(f, "rustc layout computation failed: {:?}", err),
+        }
+    }
+}
 
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum UndefinedBehaviourInfo {
+    /// Handle cases which for which we do not have a fixed variant.
+    Ub(String),
+    /// Unreachable code was executed.
+    Unreachable,
+}
+
+impl fmt::Debug for UndefinedBehaviourInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use UndefinedBehaviourInfo::*;
+        match self {
+            Ub(ref msg) =>
+                write!(f, "{}", msg),
+            Unreachable =>
+                write!(f, "entered unreachable code"),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum UnsupportedOpInfo<'tcx> {
+    /// Handle cases which for which we do not have a fixed variant.
+    Unimplemented(String),
+
+    // -- Everything below is not classified yet --
     FunctionAbiMismatch(Abi, Abi),
     FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
     FunctionRetMismatch(Ty<'tcx>, Ty<'tcx>),
     FunctionArgCountMismatch,
-    NoMirFor(String),
     UnterminatedCString(Pointer),
     DanglingPointerDeref,
     DoubleFree,
@@ -344,12 +390,17 @@ pub enum InterpError<'tcx> {
     ReadUndefBytes(Size),
     DeadLocal,
     InvalidBoolOp(mir::BinOp),
-    Unimplemented(String),
+    InlineAsm,
+    UnimplementedTraitSelection,
+    CalledClosureAsFunction,
+    NoMirFor(String),
+    /// This variant is used by machines to signal their own errors that do not
+    /// match an existing variant.
+    MachineError(String),
     DerefFunctionPointer,
     ExecuteMemory,
     Intrinsic(String),
     InvalidChar(u128),
-    StackFrameLimitReached,
     OutOfTls,
     TlsOutOfBounds,
     AbiViolation(String),
@@ -358,49 +409,26 @@ pub enum InterpError<'tcx> {
         has: Align,
     },
     ValidationFailure(String),
-    CalledClosureAsFunction,
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
     ModifiedStatic,
     AssumptionNotHeld,
-    InlineAsm,
     TypeNotPrimitive(Ty<'tcx>),
     ReallocatedWrongMemoryKind(String, String),
     DeallocatedWrongMemoryKind(String, String),
     ReallocateNonBasePtr,
     DeallocateNonBasePtr,
     IncorrectAllocationInformation(Size, Size, Align, Align),
-    Layout(layout::LayoutError<'tcx>),
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
-    Unreachable,
-    Panic(PanicMessage<u64>),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
-    UnimplementedTraitSelection,
-    /// Abort in case type errors are reached
-    TypeckError,
-    /// Resolution can fail if we are in a too generic context
-    TooGeneric,
-    /// Cannot compute this constant because it depends on another one
-    /// which already produced an error
-    ReferencedConstant,
-    InfiniteLoop,
 }
 
-pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
-
-impl fmt::Display for InterpError<'_> {
+impl fmt::Debug for UnsupportedOpInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Forward `Display` to `Debug`
-        write!(f, "{:?}", self)
-    }
-}
-
-impl fmt::Debug for InterpError<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use InterpError::*;
-        match *self {
+        use UnsupportedOpInfo::*;
+        match self {
             PointerOutOfBounds { ptr, msg, allocation_size } => {
                 write!(f, "{} failed: pointer must be in-bounds at offset {}, \
                           but is outside bounds of allocation {} which has size {}",
@@ -434,8 +462,6 @@ impl fmt::Debug for InterpError<'_> {
                       has.bytes(), required.bytes()),
             TypeNotPrimitive(ty) =>
                 write!(f, "expected primitive type, got {}", ty),
-            Layout(ref err) =>
-                write!(f, "rustc layout computation failed: {:?}", err),
             PathNotFound(ref path) =>
                 write!(f, "Cannot find path {:?}", path),
             IncorrectAllocationInformation(size, size2, align, align2) =>
@@ -444,8 +470,6 @@ impl fmt::Debug for InterpError<'_> {
                     size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
             InvalidDiscriminant(val) =>
                 write!(f, "encountered invalid enum discriminant {}", val),
-            Exit(code) =>
-                write!(f, "exited with status code {}", code),
             InvalidMemoryAccess =>
                 write!(f, "tried to access memory through an invalid pointer"),
             DanglingPointerDeref =>
@@ -474,8 +498,6 @@ impl fmt::Debug for InterpError<'_> {
                 write!(f, "tried to dereference a function pointer"),
             ExecuteMemory =>
                 write!(f, "tried to treat a memory pointer as a function pointer"),
-            StackFrameLimitReached =>
-                write!(f, "reached the configured maximum number of stack frames"),
             OutOfTls =>
                 write!(f, "reached the maximum number of representable TLS keys"),
             TlsOutOfBounds =>
@@ -501,21 +523,10 @@ impl fmt::Debug for InterpError<'_> {
                     existing object"),
             HeapAllocZeroBytes =>
                 write!(f, "tried to re-, de- or allocate zero bytes on the heap"),
-            Unreachable =>
-                write!(f, "entered unreachable code"),
             ReadFromReturnPointer =>
                 write!(f, "tried to read from the return pointer"),
             UnimplementedTraitSelection =>
                 write!(f, "there were unresolved type arguments during trait selection"),
-            TypeckError =>
-                write!(f, "encountered constants with type errors, stopping evaluation"),
-            TooGeneric =>
-                write!(f, "encountered overly generic constant"),
-            ReferencedConstant =>
-                write!(f, "referenced constant has errors"),
-            InfiniteLoop =>
-                write!(f, "duplicate interpreter state observed here, const evaluation will never \
-                    terminate"),
             InvalidBoolOp(_) =>
                 write!(f, "invalid boolean operation"),
             UnterminatedCString(_) =>
@@ -531,8 +542,75 @@ impl fmt::Debug for InterpError<'_> {
             AbiViolation(ref msg) |
             Intrinsic(ref msg) =>
                 write!(f, "{}", msg),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum ResourceExhaustionInfo {
+    /// The stack grew too big.
+    StackFrameLimitReached,
+    /// The program ran into an infinite loop.
+    InfiniteLoop,
+}
+
+impl fmt::Debug for ResourceExhaustionInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use ResourceExhaustionInfo::*;
+        match self {
+            StackFrameLimitReached =>
+                write!(f, "reached the configured maximum number of stack frames"),
+            InfiniteLoop =>
+                write!(f, "duplicate interpreter state observed here, const evaluation will never \
+                    terminate"),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum InterpError<'tcx> {
+    /// The program panicked.
+    Panic(PanicInfo<u64>),
+    /// The program caused undefined behavior.
+    UndefinedBehaviour(UndefinedBehaviourInfo),
+    /// The program did something the interpreter does not support (some of these *might* be UB
+    /// but the interpreter is not sure).
+    Unsupported(UnsupportedOpInfo<'tcx>),
+    /// The program was invalid (ill-typed, not sufficiently monomorphized, ...).
+    InvalidProgram(InvalidProgramInfo<'tcx>),
+    /// The program exhausted the interpreter's resources (stack/heap too big,
+    /// execution takes too long, ..).
+    ResourceExhaustion(ResourceExhaustionInfo),
+    /// Not actually an interpreter error -- used to signal that execution has exited
+    /// with the given status code.  Used by Miri, but not by CTFE.
+    Exit(i32),
+}
+
+pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
+
+impl fmt::Display for InterpError<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Forward `Display` to `Debug`
+        write!(f, "{:?}", self)
+    }
+}
+
+impl fmt::Debug for InterpError<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use InterpError::*;
+        match *self {
+            Unsupported(ref msg) =>
+                write!(f, "{:?}", msg),
+            InvalidProgram(ref msg) =>
+                write!(f, "{:?}", msg),
+            UndefinedBehaviour(ref msg) =>
+                write!(f, "{:?}", msg),
+            ResourceExhaustion(ref msg) =>
+                write!(f, "{:?}", msg),
             Panic(ref msg) =>
                 write!(f, "{:?}", msg),
+            Exit(code) =>
+                write!(f, "exited with status code {}", code),
         }
     }
 }

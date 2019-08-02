@@ -121,7 +121,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // size of MIR constantly.
             Nop => {}
 
-            InlineAsm { .. } => return err!(InlineAsm),
+            InlineAsm { .. } => throw_unsup!(InlineAsm),
         }
 
         self.stack[frame_idx].stmt += 1;

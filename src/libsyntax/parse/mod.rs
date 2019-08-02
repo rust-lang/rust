@@ -368,7 +368,7 @@ pub fn stream_to_parser_with_base_dir<'a>(
 
 /// A sequence separator.
 pub struct SeqSep {
-    /// The seperator token.
+    /// The separator token.
     pub sep: Option<TokenKind>,
     /// `true` if a trailing separator is allowed.
     pub trailing_sep_allowed: bool,

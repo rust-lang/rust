@@ -10,11 +10,11 @@ use rustc_data_structures::fx::FxHashSet;
 use std::hash::Hash;
 
 use super::{
-    GlobalAlloc, InterpResult, InterpError,
+    GlobalAlloc, InterpResult,
     OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
 };
 
-macro_rules! validation_failure {
+macro_rules! throw_validation_failure {
     ($what:expr, $where:expr, $details:expr) => {{
         let where_ = path_format(&$where);
         let where_ = if where_.is_empty() {
@@ -22,7 +22,7 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        err!(ValidationFailure(format!(
+        throw_unsup!(ValidationFailure(format!(
             "encountered {}{}, but expected {}",
             $what, where_, $details,
         )))
@@ -34,7 +34,7 @@ macro_rules! validation_failure {
         } else {
             format!(" at {}", where_)
         };
-        err!(ValidationFailure(format!(
+        throw_unsup!(ValidationFailure(format!(
             "encountered {}{}",
             $what, where_,
         )))
@@ -45,14 +45,14 @@ macro_rules! try_validation {
     ($e:expr, $what:expr, $where:expr, $details:expr) => {{
         match $e {
             Ok(x) => x,
-            Err(_) => return validation_failure!($what, $where, $details),
+            Err(_) => throw_validation_failure!($what, $where, $details),
         }
     }};
 
     ($e:expr, $what:expr, $where:expr) => {{
         match $e {
             Ok(x) => x,
-            Err(_) => return validation_failure!($what, $where),
+            Err(_) => throw_validation_failure!($what, $where),
         }
     }}
 }
@@ -297,12 +297,12 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         match self.walk_value(op) {
             Ok(()) => Ok(()),
             Err(err) => match err.kind {
-                InterpError::InvalidDiscriminant(val) =>
-                    validation_failure!(
+                err_unsup!(InvalidDiscriminant(val)) =>
+                    throw_validation_failure!(
                         val, self.path, "a valid enum discriminant"
                     ),
-                InterpError::ReadPointerAsBytes =>
-                    validation_failure!(
+                err_unsup!(ReadPointerAsBytes) =>
+                    throw_validation_failure!(
                         "a pointer", self.path, "plain (non-pointer) bytes"
                     ),
                 _ => Err(err),
@@ -406,19 +406,19 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             ptr, size, align
                         );
                         match err.kind {
-                            InterpError::InvalidNullPointerUsage =>
-                                return validation_failure!("NULL reference", self.path),
-                            InterpError::AlignmentCheckFailed { required, has } =>
-                                return validation_failure!(format!("unaligned reference \
+                            err_unsup!(InvalidNullPointerUsage) =>
+                                throw_validation_failure!("NULL reference", self.path),
+                            err_unsup!(AlignmentCheckFailed { required, has }) =>
+                                throw_validation_failure!(format!("unaligned reference \
                                     (required {} byte alignment but found {})",
                                     required.bytes(), has.bytes()), self.path),
-                            InterpError::ReadBytesAsPointer =>
-                                return validation_failure!(
+                            err_unsup!(ReadBytesAsPointer) =>
+                                throw_validation_failure!(
                                     "dangling reference (created from integer)",
                                     self.path
                                 ),
                             _ =>
-                                return validation_failure!(
+                                throw_validation_failure!(
                                     "dangling reference (not entirely in bounds)",
                                     self.path
                                 ),
@@ -478,7 +478,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
     fn visit_uninhabited(&mut self) -> InterpResult<'tcx>
     {
-        validation_failure!("a value of an uninhabited type", self.path)
+        throw_validation_failure!("a value of an uninhabited type", self.path)
     }
 
     fn visit_scalar(
@@ -511,27 +511,27 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 if lo == 1 && hi == max_hi {
                     // Only NULL is the niche.  So make sure the ptr is NOT NULL.
                     if self.ecx.memory.ptr_may_be_null(ptr) {
-                        return validation_failure!(
+                        throw_validation_failure!(
                             "a potentially NULL pointer",
                             self.path,
                             format!(
                                 "something that cannot possibly fail to be {}",
                                 wrapping_range_format(&layout.valid_range, max_hi)
                             )
-                        );
+                        )
                     }
                     return Ok(());
                 } else {
                     // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
-                    return validation_failure!(
+                    throw_validation_failure!(
                         "a pointer",
                         self.path,
                         format!(
                             "something that cannot possibly fail to be {}",
                             wrapping_range_format(&layout.valid_range, max_hi)
                         )
-                    );
+                    )
                 }
             }
             Ok(data) =>
@@ -541,7 +541,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         if wrapping_range_contains(&layout.valid_range, bits) {
             Ok(())
         } else {
-            validation_failure!(
+            throw_validation_failure!(
                 bits,
                 self.path,
                 format!("something {}", wrapping_range_format(&layout.valid_range, max_hi))
@@ -608,16 +608,14 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Err(err) => {
                         // For some errors we might be able to provide extra information
                         match err.kind {
-                            InterpError::ReadUndefBytes(offset) => {
+                            err_unsup!(ReadUndefBytes(offset)) => {
                                 // Some byte was undefined, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.
                                 let i = (offset.bytes() / ty_size.bytes()) as usize;
                                 self.path.push(PathElem::ArrayElem(i));
 
-                                return validation_failure!(
-                                    "undefined bytes", self.path
-                                )
+                                throw_validation_failure!("undefined bytes", self.path)
                             },
                             // Other errors shouldn't be possible
                             _ => return Err(err),

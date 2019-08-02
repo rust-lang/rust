@@ -7,7 +7,7 @@
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir::{self, InlineAsm as HirInlineAsm};
-use crate::mir::interpret::{ConstValue, PanicMessage, Scalar};
+use crate::mir::interpret::{ConstValue, PanicInfo, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -3152,7 +3152,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 }
             }
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                use PanicMessage::*;
+                use PanicInfo::*;
                 let msg = match msg {
                     BoundsCheck { ref len, ref index } =>
                         BoundsCheck {
@@ -3200,7 +3200,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             }
             Assert { ref cond, ref msg, .. } => {
                 if cond.visit_with(visitor) {
-                    use PanicMessage::*;
+                    use PanicInfo::*;
                     match msg {
                         BoundsCheck { ref len, ref index } =>
                             len.visit_with(visitor) || index.visit_with(visitor),

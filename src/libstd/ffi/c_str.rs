@@ -1055,7 +1055,7 @@ impl CStr {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::ffi::{CString};
+    /// use std::ffi::CString;
     ///
     /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();
     /// unsafe {
@@ -1071,7 +1071,7 @@ impl CStr {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::ffi::{CString};
+    /// use std::ffi::CString;
     ///
     /// let hello = CString::new("Hello").expect("CString::new failed");
     /// let ptr = hello.as_ptr();

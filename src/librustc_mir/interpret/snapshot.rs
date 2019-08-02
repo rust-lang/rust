@@ -11,8 +11,7 @@ use rustc::ich::StableHashingContextProvider;
 use rustc::mir;
 use rustc::mir::interpret::{
     AllocId, Pointer, Scalar,
-    Relocations, Allocation, UndefMask,
-    InterpResult, InterpError,
+    Relocations, Allocation, UndefMask, InterpResult,
 };
 
 use rustc::ty::{self, TyCtxt};
@@ -77,7 +76,7 @@ impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
         }
 
         // Second cycle
-        Err(InterpError::InfiniteLoop.into())
+        throw_exhaust!(InfiniteLoop)
     }
 }
 

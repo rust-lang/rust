@@ -167,7 +167,7 @@ struct TraitObligationStack<'prev, 'tcx> {
     /// ok on the premise that if `A: AutoTrait` held, but we indeed
     /// encountered a problem (later on) with `A: AutoTrait. So we
     /// currently set a flag on the stack node for `B: AutoTrait` (as
-    /// well as the second instance of `A: AutoTrait`) to supress
+    /// well as the second instance of `A: AutoTrait`) to suppress
     /// caching.
     ///
     /// This is a simple, targeted fix. A more-performant fix requires
@@ -1105,7 +1105,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///
     /// - is a defaulted trait,
     /// - it also appears in the backtrace at some position `X`,
-    /// - all the predicates at positions `X..` between `X` an the top are
+    /// - all the predicates at positions `X..` between `X` and the top are
     ///   also defaulted traits.
     pub fn coinductive_match<I>(&mut self, cycle: I) -> bool
     where

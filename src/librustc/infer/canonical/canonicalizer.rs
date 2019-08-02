@@ -693,7 +693,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         const_var: &'tcx ty::Const<'tcx>
     ) -> &'tcx ty::Const<'tcx> {
         let infcx = self.infcx.expect("encountered const-var without infcx");
-        let bound_to = infcx.resolve_const_var(const_var);
+        let bound_to = infcx.shallow_resolve(const_var);
         if bound_to != const_var {
             self.fold_const(bound_to)
         } else {

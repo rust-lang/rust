@@ -3592,7 +3592,15 @@ impl<'a> Parser<'a> {
         let mut etc_span = None;
 
         while self.token != token::CloseDelim(token::Brace) {
-            let attrs = self.parse_outer_attributes()?;
+            let attrs = match self.parse_outer_attributes() {
+                Ok(attrs) => attrs,
+                Err(err) => {
+                    if let Some(mut delayed) = delayed_err {
+                        delayed.emit();
+                    }
+                    return Err(err);
+                },
+            };
             let lo = self.token.span;
 
             // check that a comma comes after every field

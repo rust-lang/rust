@@ -1,8 +1,8 @@
 use rustc::ty::{self, Ty, Instance};
 use rustc::ty::layout::{Size, Align, LayoutOf};
-use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic};
+use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic,};
 
-use super::{InterpCx, InterpError, Machine, MemoryKind, FnVal};
+use super::{InterpCx, Machine, MemoryKind, FnVal};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -83,7 +83,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.param_env,
                     def_id,
                     substs,
-                ).ok_or_else(|| InterpError::TooGeneric)?;
+                ).ok_or_else(|| err_inval!(TooGeneric))?;
                 let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), self)?;
                 self.memory

@@ -2,7 +2,7 @@ use rustc::mir;
 use rustc::ty::{self, layout::TyLayout};
 use syntax::ast::FloatTy;
 use rustc_apfloat::Float;
-use rustc::mir::interpret::{InterpResult, PanicMessage, Scalar};
+use rustc::mir::interpret::{InterpResult, Scalar};
 
 use super::{InterpCx, PlaceTy, Immediate, Machine, ImmTy};
 
@@ -155,7 +155,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 r,
                 right_layout.ty
             );
-            return err!(Unimplemented(msg));
+            throw_unsup!(Unimplemented(msg))
         }
 
         // Operations that need special treatment for signed integers
@@ -173,8 +173,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return Ok((Scalar::from_bool(op(&l, &r)), false));
             }
             let op: Option<fn(i128, i128) -> (i128, bool)> = match bin_op {
-                Div if r == 0 => return err!(Panic(PanicMessage::DivisionByZero)),
-                Rem if r == 0 => return err!(Panic(PanicMessage::RemainderByZero)),
+                Div if r == 0 => throw_panic!(DivisionByZero),
+                Rem if r == 0 => throw_panic!(RemainderByZero),
                 Div => Some(i128::overflowing_div),
                 Rem => Some(i128::overflowing_rem),
                 Add => Some(i128::overflowing_add),
@@ -231,8 +231,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Add => u128::overflowing_add,
                     Sub => u128::overflowing_sub,
                     Mul => u128::overflowing_mul,
-                    Div if r == 0 => return err!(Panic(PanicMessage::DivisionByZero)),
-                    Rem if r == 0 => return err!(Panic(PanicMessage::RemainderByZero)),
+                    Div if r == 0 => throw_panic!(DivisionByZero),
+                    Rem if r == 0 => throw_panic!(RemainderByZero),
                     Div => u128::overflowing_div,
                     Rem => u128::overflowing_rem,
                     _ => bug!(),
@@ -250,7 +250,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     r,
                     right_layout.ty,
                 );
-                return err!(Unimplemented(msg));
+                throw_unsup!(Unimplemented(msg))
             }
         };
 
