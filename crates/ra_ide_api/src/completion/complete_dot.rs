@@ -37,7 +37,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
             }
             complete_methods(acc, ctx, receiver_ty.clone());
 
-            // Suggest .await syntax for types that implement std::future::Future
+            // Suggest .await syntax for types that implement Future trait
             if ctx.analyzer.impls_future(ctx.db, receiver_ty) {
                 postfix_reference(ctx, ".await", "expr.await", &format!("{}.await", receiver_text))
                     .add_to(acc);
@@ -441,9 +441,14 @@ mod tests {
     fn test_completion_await_impls_future() {
         assert_debug_snapshot_matches!(
         do_ref_completion(
-            r"
+            r###"
             // Mock Future trait from stdlib
-            pub mod std { pub mod future { pub trait Future {} } }
+            pub mod std {
+                pub mod future {
+                    #[lang = "future_trait"]
+                    pub trait Future {}
+                }
+            }
 
             use std::future::*;
             struct A {}
@@ -452,13 +457,13 @@ mod tests {
             fn foo(a: A) {
                 a.<|>
             }
-            "),
+            "###),
         @r###"
        ⋮[
        ⋮    CompletionItem {
        ⋮        label: ".await",
-       ⋮        source_range: [249; 249),
-       ⋮        delete: [247; 249),
+       ⋮        source_range: [358; 358),
+       ⋮        delete: [356; 358),
        ⋮        insert: "a.await",
        ⋮        detail: "expr.await",
        ⋮    },
