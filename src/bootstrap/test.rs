@@ -363,7 +363,6 @@ pub struct Miri {
 impl Step for Miri {
     type Output = ();
     const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/miri")
@@ -430,6 +429,7 @@ impl Step for Miri {
             let miri_sysroot = if builder.config.dry_run {
                 String::new()
             } else {
+                builder.verbose(&format!("running: {:?}", cargo));
                 let out = cargo.output()
                     .expect("We already ran `cargo miri setup` before and that worked");
                 assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
