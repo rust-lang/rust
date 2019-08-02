@@ -231,7 +231,14 @@ fn setup(ask_user: bool) {
         } else {
             println!("Installing xargo: `cargo install xargo -f`");
         }
-        if !Command::new("cargo").args(&["install", "xargo", "-f"]).status().unwrap().success() {
+
+        let mut cargo = if let Ok(val) = std::env::var("CARGO") {
+            // In rustc bootstrap, an env var tells us where to find cargo.
+            Command::new(val)
+        } else {
+            Command::new("cargo")
+        };
+        if !cargo.args(&["install", "xargo", "-f"]).status().unwrap().success() {
             show_error(format!("Failed to install xargo"));
         }
     }
