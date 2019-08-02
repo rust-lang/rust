@@ -450,6 +450,24 @@ impl<'a> State<'a> {
         self.s.word(";")
     }
 
+    fn print_item_type(
+        &mut self,
+        item: &hir::Item,
+        generics: &hir::Generics,
+        inner: impl Fn(&mut Self),
+    ) {
+        self.head(visibility_qualified(&item.vis, "type"));
+        self.print_ident(item.ident);
+        self.print_generic_params(&generics.params);
+        self.end(); // end the inner ibox
+
+        self.print_where_clause(&generics.where_clause);
+        self.s.space();
+        inner(self);
+        self.s.word(";");
+        self.end(); // end the outer ibox
+    }
+
     /// Pretty-print an item
     pub fn print_item(&mut self, item: &hir::Item) {
         self.hardbreak_if_not_bol();
@@ -553,43 +571,28 @@ impl<'a> State<'a> {
                 self.end()
             }
             hir::ItemKind::Ty(ref ty, ref generics) => {
-                self.head(visibility_qualified(&item.vis, "type"));
-                self.print_ident(item.ident);
-                self.print_generic_params(&generics.params);
-                self.end(); // end the inner ibox
-
-                self.print_where_clause(&generics.where_clause);
-                self.s.space();
-                self.word_space("=");
-                self.print_type(&ty);
-                self.s.word(";");
-                self.end(); // end the outer ibox
+                self.print_item_type(item, &generics, |state| {
+                    state.word_space("=");
+                    state.print_type(&ty);
+                });
             }
             hir::ItemKind::OpaqueTy(ref opaque_ty) => {
-                self.head(visibility_qualified(&item.vis, "type"));
-                self.print_ident(item.ident);
-                self.print_generic_params(&opaque_ty.generics.params);
-                let mut real_bounds = Vec::with_capacity(opaque_ty.bounds.len());
-                for b in opaque_ty.bounds.iter() {
-                    if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
-                        self.s.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(b);
+                self.print_item_type(item, &opaque_ty.generics, |state| {
+                    let mut real_bounds = Vec::with_capacity(opaque_ty.bounds.len());
+                    for b in opaque_ty.bounds.iter() {
+                        if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                            state.s.space();
+                            state.word_space("for ?");
+                            state.print_trait_ref(&ptr.trait_ref);
+                        } else {
+                            real_bounds.push(b);
+                        }
                     }
-                }
-                self.print_bounds(" = impl", real_bounds);
-
-                self.end(); // end the inner ibox
-
-                self.print_where_clause(&opaque_ty.generics.where_clause);
-                self.s.word(";");
-                self.end(); // end the outer ibox
+                    state.print_bounds("= impl", real_bounds);
+                });
             }
             hir::ItemKind::Enum(ref enum_definition, ref params) => {
-                self.print_enum_def(enum_definition, params, item.ident.name, item.span,
-                                    &item.vis);
+                self.print_enum_def(enum_definition, params, item.ident.name, item.span, &item.vis);
             }
             hir::ItemKind::Struct(ref struct_def, ref generics) => {
                 self.head(visibility_qualified(&item.vis, "struct"));
