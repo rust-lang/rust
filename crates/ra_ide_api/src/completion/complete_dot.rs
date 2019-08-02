@@ -1,19 +1,49 @@
 use hir::{AdtDef, Ty, TypeCtor};
 
-use crate::completion::{CompletionContext, Completions};
+use crate::{completion::{
+    completion_context::CompletionContext,
+    completion_item::Completions,
+}, CompletionItem};
+use ra_syntax::ast::AstNode;
+use ra_text_edit::TextEditBuilder;
 use rustc_hash::FxHashSet;
+use crate::completion::completion_item::{Builder, CompletionKind};
+use ra_syntax::TextRange;
 
-/// Complete dot accesses, i.e. fields or methods (currently only fields).
+/// Applies postfix edition but with CompletionKind::Reference
+fn postfix_reference(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
+    let edit = {
+        let receiver_range =
+            ctx.dot_receiver.as_ref().expect("no receiver available").syntax().text_range();
+        let delete_range = TextRange::from_to(receiver_range.start(), ctx.source_range().end());
+        let mut builder = TextEditBuilder::default();
+        builder.replace(delete_range, snippet.to_string());
+        builder.finish()
+    };
+    CompletionItem::new(CompletionKind::Reference, ctx.source_range(), label)
+        .detail(detail)
+        .snippet_edit(edit)
+}
+
+/// Complete dot accesses, i.e. fields or methods (and .await syntax).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    let receiver_ty =
-        match ctx.dot_receiver.as_ref().and_then(|it| ctx.analyzer.type_of(ctx.db, it)) {
-            Some(it) => it,
-            None => return,
-        };
-    if !ctx.is_call {
-        complete_fields(acc, ctx, receiver_ty.clone());
+    if let Some(dot_receiver) = &ctx.dot_receiver {
+        let receiver_text = dot_receiver.syntax().text().to_string();
+        let receiver_ty = ctx.analyzer.type_of(ctx.db, &dot_receiver);
+
+        if let Some(receiver_ty) = receiver_ty {
+            if !ctx.is_call {
+                complete_fields(acc, ctx, receiver_ty.clone());
+            }
+            complete_methods(acc, ctx, receiver_ty.clone());
+
+            // Suggest .await syntax for types that implement std::future::Future
+            if ctx.analyzer.impls_future(ctx.db, receiver_ty) {
+                postfix_reference(ctx, ".await", "expr.await", &format!("{}.await", receiver_text))
+                    .add_to(acc);
+            }
+        }
     }
-    complete_methods(acc, ctx, receiver_ty);
 }
 
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
@@ -405,5 +435,35 @@ mod tests {
        ⋮]
         "###
         );
+    }
+
+    #[test]
+    fn test_completion_await_impls_future() {
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
+            r"
+            // Mock Future trait from stdlib
+            pub mod std { pub mod future { pub trait Future {} } }
+
+            use std::future::*;
+            struct A {}
+            impl Future for A {}
+
+            fn foo(a: A) {
+                a.<|>
+            }
+            "),
+        @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: ".await",
+       ⋮        source_range: [249; 249),
+       ⋮        delete: [247; 249),
+       ⋮        insert: "a.await",
+       ⋮        detail: "expr.await",
+       ⋮    },
+       ⋮]
+        "###
+        )
     }
 }

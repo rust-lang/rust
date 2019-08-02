@@ -15,7 +15,7 @@ use crate::{
     resolve::Resolver,
     traits::TraitItem,
     ty::primitive::{FloatBitness, UncertainFloatTy, UncertainIntTy},
-    ty::{Ty, TypeCtor},
+    ty::{Ty, TypeCtor, traits::Solution},
     Crate, Function, HirDatabase, Module, Name, Trait,
 };
 
@@ -253,6 +253,20 @@ fn iterate_inherent_methods<T>(
         }
     }
     None
+}
+
+pub(crate) fn implements_trait(ty: &Canonical<Ty>, db: &impl HirDatabase, resolver: &Resolver, krate: Crate, trait_: Trait) -> bool {
+    let env = lower::trait_env(db, resolver);
+    let goal = generic_implements_goal(db, env.clone(), trait_, ty.clone());
+    let solution = db.trait_solve(krate, goal);
+
+    if let Some(solution) = solution {
+        if let Solution::Unique(_) = solution {
+            return true
+        }
+    }
+
+    false
 }
 
 impl Ty {

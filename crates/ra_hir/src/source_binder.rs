@@ -23,6 +23,7 @@ use crate::{
         scope::{ExprScopes, ScopeId},
         BodySourceMap,
     },
+    ty::method_resolution::implements_trait,
     ids::LocationCtx,
     AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HirDatabase, HirFileId,
     MacroDef, Module, Name, Path, PerNs, Resolver, Static, Struct, Trait, Ty,
@@ -407,6 +408,42 @@ impl SourceAnalyzer {
         // FIXME check that?
         let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
         crate::ty::autoderef(db, &self.resolver, canonical).map(|canonical| canonical.value)
+    }
+
+    /// Checks that particular type `ty` implements `std::future::Future` trait.
+    /// This function is used in `.await` syntax completion.
+    pub fn impls_future(&self, db: &impl HirDatabase, ty: Ty) -> bool {
+        // Search for std::future::Future trait in scope
+        let future_trait = self.resolver.traits_in_scope(db)
+            .into_iter()
+            .filter(|t| {
+                let std = t.module(db).parent(db)
+                    .and_then(|m| m
+                        .name(db)
+                        .and_then(|n| Some(n.to_string() == "std")))
+                    .unwrap_or(false);
+
+                let future = t.module(db).name(db)
+                    .and_then(|n| Some(n.to_string() == "future"))
+                    .unwrap_or(false);
+
+                let future_trait = t.name(db)
+                    .and_then(|n| Some(n.to_string() == "Future"))
+                    .unwrap_or(false);
+
+                std && future && future_trait
+            })
+            .nth(0);
+
+        if let Some(trait_) = future_trait {
+            let krate = self.resolver.krate();
+            if let Some(krate) = krate {
+                let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
+                return implements_trait(&canonical_ty, db, &self.resolver, krate, trait_);
+            }
+        }
+
+        false
     }
 
     #[cfg(test)]
