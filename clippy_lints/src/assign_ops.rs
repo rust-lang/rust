@@ -45,7 +45,8 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let mut a = 5;
-    /// ...
+    /// let b = 2;
+    /// // ...
     /// a += a + b;
     /// ```
     pub MISREFACTORED_ASSIGN_OP,

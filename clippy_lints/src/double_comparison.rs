@@ -18,13 +18,17 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x == y || x < y
+    /// # let x = 1;
+    /// # let y = 2;
+    /// if x == y || x < y {}
     /// ```
     ///
     /// Could be written as:
     ///
     /// ```rust
-    /// x <= y
+    /// # let x = 1;
+    /// # let y = 2;
+    /// if x <= y {}
     /// ```
     pub DOUBLE_COMPARISONS,
     complexity,

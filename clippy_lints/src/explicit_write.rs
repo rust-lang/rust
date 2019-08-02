@@ -16,8 +16,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # use std::io::Write;
+    /// # let bar = "furchtbar";
     /// // this would be clearer as `eprintln!("foo: {:?}", bar);`
-    /// writeln!(&mut io::stderr(), "foo: {:?}", bar).unwrap();
+    /// writeln!(&mut std::io::stderr(), "foo: {:?}", bar).unwrap();
     /// ```
     pub EXPLICIT_WRITE,
     complexity,

@@ -13,14 +13,14 @@ declare_clippy_lint! {
     /// attribute
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// #[clippy::dump]
     /// extern crate foo;
     /// ```
     ///
     /// prints
     ///
-    /// ```
+    /// ```text
     /// item `foo`
     /// visibility inherited from outer item
     /// extern crate dylib source: "/path/to/foo.so"

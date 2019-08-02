@@ -217,18 +217,19 @@ declare_clippy_lint! {
     /// **Known problems:** Sometimes the wrong binding is displayed (#383).
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,no_run
+    /// # let y = Some(1);
     /// loop {
     ///     let x = match y {
     ///         Some(x) => x,
     ///         None => break,
-    ///     }
+    ///     };
     ///     // .. do something with x
     /// }
     /// // is easier written as
     /// while let Some(x) = y {
     ///     // .. do something with x
-    /// }
+    /// };
     /// ```
     pub WHILE_LET_LOOP,
     complexity,
@@ -309,8 +310,11 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
-    /// for i in 0..v.len() { foo(v[i]);
+    /// ```rust
+    /// # let v = vec![1];
+    /// # fn foo(bar: usize) {}
+    /// # fn bar(bar: usize, baz: usize) {}
+    /// for i in 0..v.len() { foo(v[i]); }
     /// for i in 0..v.len() { bar(i, v[i]); }
     /// ```
     pub EXPLICIT_COUNTER_LOOP,

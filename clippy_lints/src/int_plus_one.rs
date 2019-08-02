@@ -17,13 +17,17 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x >= y + 1
+    /// # let x = 1;
+    /// # let y = 1;
+    /// if x >= y + 1 {}
     /// ```
     ///
-    /// Could be written:
+    /// Could be written as:
     ///
     /// ```rust
-    /// x > y
+    /// # let x = 1;
+    /// # let y = 1;
+    /// if x > y {}
     /// ```
     pub INT_PLUS_ONE,
     complexity,

@@ -100,7 +100,7 @@ macro_rules! declare_clippy_lint {
     };
     { $(#[$attr:meta])* pub $name:tt, complexity, $description:tt } => {
         declare_tool_lint! {
-            pub clippy::$name, Warn, $description, report_in_external_macro: true
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
         }
     };
     { $(#[$attr:meta])* pub $name:tt, perf, $description:tt } => {

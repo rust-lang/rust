@@ -557,7 +557,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// foo({
     ///     let a = bar();
     ///     baz(a);
@@ -775,7 +775,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let _ = 2i32 as i32
+    /// let _ = 2i32 as i32;
     /// ```
     pub UNNECESSARY_CAST,
     complexity,
@@ -1295,6 +1295,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # use std::rc::Rc;
     /// struct Foo {
     ///     inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>>,
     /// }
@@ -1458,13 +1459,13 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// 'x' as u8
     /// ```
     ///
     /// A better version, using the byte literal:
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// b'x'
     /// ```
     pub CHAR_LIT_AS_U8,

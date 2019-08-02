@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// fn unused_lifetime<'a>(x: u8) {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     pub EXTRA_UNUSED_LIFETIMES,

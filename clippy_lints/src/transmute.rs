@@ -36,8 +36,8 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
-    /// core::intrinsics::transmute(t) // where the result type is the same as `t`'s
+    /// ```rust,ignore
+    /// core::intrinsics::transmute(t); // where the result type is the same as `t`'s
     /// ```
     pub USELESS_TRANSMUTE,
     complexity,
@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// core::intrinsics::transmute(t) // where the result type is the same as
     ///                                // `*t` or `&t`'s
     /// ```
@@ -70,8 +70,10 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
-    /// let _: &T = std::mem::transmute(p); // where p: *const T
+    /// ```rust,ignore
+    /// unsafe {
+    ///     let _: &T = std::mem::transmute(p); // where p: *const T
+    /// }
     ///
     /// // can be written:
     /// let _: &T = &*p;
@@ -99,7 +101,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let _: char = std::mem::transmute(x); // where x: u32
+    /// let x = 1_u32;
+    /// unsafe {
+    ///     let _: char = std::mem::transmute(x); // where x: u32
+    /// }
     ///
     /// // should be:
     /// let _ = std::char::from_u32(x).unwrap();
@@ -127,7 +132,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let _: &str = std::mem::transmute(b); // where b: &[u8]
+    /// let b: &[u8] = &[1_u8, 2_u8];
+    /// unsafe {
+    ///     let _: &str = std::mem::transmute(b); // where b: &[u8]
+    /// }
     ///
     /// // should be:
     /// let _ = std::str::from_utf8(b).unwrap();
@@ -146,7 +154,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let _: bool = std::mem::transmute(x); // where x: u8
+    /// let x = 1_u8;
+    /// unsafe {
+    ///     let _: bool = std::mem::transmute(x); // where x: u8
+    /// }
     ///
     /// // should be:
     /// let _: bool = x != 0;
@@ -166,10 +177,12 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let _: f32 = std::mem::transmute(x); // where x: u32
+    /// unsafe {
+    ///     let _: f32 = std::mem::transmute(1_u32); // where x: u32
+    /// }
     ///
     /// // should be:
-    /// let _: f32 = f32::from_bits(x);
+    /// let _: f32 = f32::from_bits(1_u32);
     /// ```
     pub TRANSMUTE_INT_TO_FLOAT,
     complexity,
@@ -195,7 +208,7 @@ declare_clippy_lint! {
     ///     let _: &f32 = std::mem::transmute(&1u32);
     /// }
     /// // These can be respectively written:
-    /// let _ = ptr as *const f32
+    /// let _ = ptr as *const f32;
     /// let _ = unsafe{ &*(&1u32 as *const u32 as *const f32) };
     /// ```
     pub TRANSMUTE_PTR_TO_PTR,
