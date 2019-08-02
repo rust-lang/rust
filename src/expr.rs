@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::cmp::min;
-use std::iter;
 
 use itertools::Itertools;
 use syntax::parse::token::DelimToken;
@@ -367,18 +366,7 @@ pub(crate) fn format_expr(
                 ))
             }
         }
-        ast::ExprKind::Await(ast::AwaitOrigin::FieldLike, _) => rewrite_chain(expr, context, shape),
-        ast::ExprKind::Await(ast::AwaitOrigin::MacroLike, ref nested) => {
-            overflow::rewrite_with_parens(
-                context,
-                "await!",
-                iter::once(nested),
-                shape,
-                expr.span,
-                context.config.max_width(),
-                None,
-            )
-        }
+        ast::ExprKind::Await(_) => rewrite_chain(expr, context, shape),
         ast::ExprKind::Err => None,
     };
 

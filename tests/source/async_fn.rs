@@ -20,7 +20,9 @@ async unsafe fn rust() {
     }
 }
 
-async fn await_macro() {
-    await ! (
-        something)?;
+async fn await_try() {
+    something
+     .await
+      ?
+     ;
 }
