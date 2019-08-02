@@ -414,7 +414,7 @@ pub const fn needs_drop<T>() -> bool {
     intrinsics::needs_drop::<T>()
 }
 
-/// Returns the value of type `T` represented by the all-zeros bit-pattern.
+/// Returns the value of type `T` represented by the all-zero byte-pattern.
 ///
 /// This means that, for example, the padding byte in `(u8, u16)` is not
 /// necessarily zeroed.
