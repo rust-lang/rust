@@ -269,8 +269,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
         match pat.node {
-            PatKind::Struct(hir::QPath::Resolved(_, ref path), ref fields, _) => {
-                self.handle_field_pattern_match(pat, path.res, fields);
+            PatKind::Struct(ref path, ref fields, _) => {
+                let res = self.tables.qpath_res(path, pat.hir_id);
+                self.handle_field_pattern_match(pat, res, fields);
             }
             PatKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
