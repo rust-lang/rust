@@ -27,6 +27,9 @@ use std::fmt;
 
 pub use rustc_target::abi::FloatTy;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Label {
     pub ident: Ident,
@@ -2430,17 +2433,5 @@ impl ForeignItemKind {
             ForeignItemKind::Ty => "foreign type",
             ForeignItemKind::Macro(..) => "macro in foreign module",
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Are ASTs encodable?
-    #[test]
-    fn check_asts_encodable() {
-        fn assert_encodable<T: rustc_serialize::Encodable>() {}
-        assert_encodable::<Crate>();
     }
 }

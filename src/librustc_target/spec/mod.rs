@@ -312,7 +312,7 @@ macro_rules! supported_targets {
             $(use super::$module;)+
 
             $(
-                #[test]
+                #[test] // `#[test]` - this is hard to put into a separate file, make an exception
                 fn $module() {
                     // Grab the TargetResult struct. If we successfully retrieved
                     // a Target, then the test JSON encoding/decoding can run for this

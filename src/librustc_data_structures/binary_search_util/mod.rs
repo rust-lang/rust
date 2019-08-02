@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod test;
+mod tests;
 
 /// Uses a sorted slice `data: &[E]` as a kind of "multi-map". The
 /// `key_fn` extracts a key of type `K` from the data, and this

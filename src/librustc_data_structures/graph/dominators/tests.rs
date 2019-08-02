@@ -1,13 +1,13 @@
-use super::super::test::TestGraph;
-
 use super::*;
+
+use super::super::tests::TestGraph;
 
 #[test]
 fn diamond() {
     let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (2, 3)]);
 
     let dominators = dominators(&graph);
-    let immediate_dominators = dominators.all_immediate_dominators();
+    let immediate_dominators = &dominators.immediate_dominators;
     assert_eq!(immediate_dominators[0], Some(0));
     assert_eq!(immediate_dominators[1], Some(0));
     assert_eq!(immediate_dominators[2], Some(0));
@@ -22,7 +22,7 @@ fn paper() {
                                  (2, 1)]);
 
     let dominators = dominators(&graph);
-    let immediate_dominators = dominators.all_immediate_dominators();
+    let immediate_dominators = &dominators.immediate_dominators;
     assert_eq!(immediate_dominators[0], None); // <-- note that 0 is not in graph
     assert_eq!(immediate_dominators[1], Some(6));
     assert_eq!(immediate_dominators[2], Some(6));

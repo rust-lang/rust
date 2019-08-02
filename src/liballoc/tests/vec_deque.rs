@@ -44,7 +44,6 @@ fn test_simple() {
     assert_eq!(d[3], 4);
 }
 
-#[cfg(test)]
 fn test_parameterized<T: Clone + PartialEq + Debug>(a: T, b: T, c: T, d: T) {
     let mut deq = VecDeque::new();
     assert_eq!(deq.len(), 0);

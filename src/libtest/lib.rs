@@ -70,6 +70,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+#[cfg(test)]
+mod tests;
+
 const TEST_WARN_TIMEOUT_S: u64 = 60;
 const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
 
@@ -377,28 +380,6 @@ pub struct TestOpts {
     pub options: Options,
 }
 
-impl TestOpts {
-    #[cfg(test)]
-    fn new() -> TestOpts {
-        TestOpts {
-            list: false,
-            filter: None,
-            filter_exact: false,
-            exclude_should_panic: false,
-            run_ignored: RunIgnored::No,
-            run_tests: false,
-            bench_benchmarks: false,
-            logfile: None,
-            nocapture: false,
-            color: AutoColor,
-            format: OutputFormat::Pretty,
-            test_threads: None,
-            skip: vec![],
-            options: Options::new(),
-        }
-    }
-}
-
 /// Result of parsing the options.
 pub type OptRes = Result<TestOpts, String>;
 
@@ -495,18 +476,18 @@ environment variable to a value other than "0". Logging is not captured by defau
 
 Test Attributes:
 
-    #[test]        - Indicates a function is a test to be run. This function
-                     takes no arguments.
-    #[bench]       - Indicates a function is a benchmark to be run. This
-                     function takes one argument (test::Bencher).
-    #[should_panic] - This function (also labeled with #[test]) will only pass if
-                     the code causes a panic (an assertion failure or panic!)
-                     A message may be provided, which the failure string must
-                     contain: #[should_panic(expected = "foo")].
-    #[ignore]      - When applied to a function which is already attributed as a
-                     test, then the test runner will ignore these tests during
-                     normal test runs. Running with --ignored or --include-ignored will run
-                     these tests."#,
+    `#[test]`        - Indicates a function is a test to be run. This function
+                       takes no arguments.
+    `#[bench]`       - Indicates a function is a benchmark to be run. This
+                       function takes one argument (test::Bencher).
+    `#[should_panic]` - This function (also labeled with `#[test]`) will only pass if
+                        the code causes a panic (an assertion failure or panic!)
+                        A message may be provided, which the failure string must
+                        contain: #[should_panic(expected = "foo")].
+    `#[ignore]`       - When applied to a function which is already attributed as a
+                        test, then the test runner will ignore these tests during
+                        normal test runs. Running with --ignored or --include-ignored will run
+                        these tests."#,
         usage = options.usage(&message)
     );
 }
@@ -972,50 +953,6 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     assert!(st.current_test_count() == st.total);
 
     return out.write_run_finish(&st);
-}
-
-#[test]
-fn should_sort_failures_before_printing_them() {
-    let test_a = TestDesc {
-        name: StaticTestName("a"),
-        ignore: false,
-        should_panic: ShouldPanic::No,
-        allow_fail: false,
-    };
-
-    let test_b = TestDesc {
-        name: StaticTestName("b"),
-        ignore: false,
-        should_panic: ShouldPanic::No,
-        allow_fail: false,
-    };
-
-    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false);
-
-    let st = ConsoleTestState {
-        log_out: None,
-        total: 0,
-        passed: 0,
-        failed: 0,
-        ignored: 0,
-        allowed_fail: 0,
-        filtered_out: 0,
-        measured: 0,
-        metrics: MetricMap::new(),
-        failures: vec![(test_b, Vec::new()), (test_a, Vec::new())],
-        options: Options::new(),
-        not_failures: Vec::new(),
-    };
-
-    out.write_failures(&st).unwrap();
-    let s = match out.output_location() {
-        &Raw(ref m) => String::from_utf8_lossy(&m[..]),
-        &Pretty(_) => unreachable!(),
-    };
-
-    let apos = s.find("a").unwrap();
-    let bpos = s.find("b").unwrap();
-    assert!(apos < bpos);
 }
 
 fn use_color(opts: &TestOpts) -> bool {
@@ -1775,6 +1712,3 @@ pub mod bench {
         bs.bench(f);
     }
 }
-
-#[cfg(test)]
-mod tests;

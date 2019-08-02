@@ -1,11 +1,9 @@
-//! Tidy check to ensure `#[test]` and `#[bench]` are not used directly inside
-//! `libcore` or `liballoc`.
+//! Tidy check to ensure `#[test]` and `#[bench]` are not used directly inside `libcore`.
 //!
-//! `#![no_std]` libraries cannot be tested directly due to duplicating lang
-//! items. All tests and benchmarks must be written externally in `libcore/{tests,benches}`
-//! or `liballoc/{tests,benches}`.
+//! `#![no_core]` libraries cannot be tested directly due to duplicating lang
+//! items. All tests and benchmarks must be written externally in `libcore/{tests,benches}`.
 //!
-//! Outside of libcore and liballoc tests and benchmarks should be outlined into separate files
+//! Outside of libcore tests and benchmarks should be outlined into separate files
 //! named `tests.rs` or `benches.rs`, or directories named `tests` or `benches` unconfigured
 //! during normal build.
 
@@ -13,36 +11,12 @@ use std::path::Path;
 
 pub fn check(root_path: &Path, bad: &mut bool) {
     let libcore = &root_path.join("libcore");
-    let liballoc = &root_path.join("liballoc");
     let libcore_tests = &root_path.join("libcore/tests");
-    let liballoc_tests = &root_path.join("liballoc/tests");
     let libcore_benches = &root_path.join("libcore/benches");
-    let liballoc_benches = &root_path.join("liballoc/benches");
-    let is_core_or_alloc = |path: &Path| {
-        let is_core = path.starts_with(libcore) &&
-                      !(path.starts_with(libcore_tests) || path.starts_with(libcore_benches));
-        let is_alloc = path.starts_with(liballoc) &&
-                       !(path.starts_with(liballoc_tests) || path.starts_with(liballoc_benches));
-        is_core || is_alloc
+    let is_core = |path: &Path| {
+        path.starts_with(libcore) &&
+        !(path.starts_with(libcore_tests) || path.starts_with(libcore_benches))
     };
-    let fixme = [
-        "liballoc",
-        "libpanic_unwind/dwarf",
-        "librustc",
-        "librustc_data_structures",
-        "librustc_incremental/persist",
-        "librustc_lexer/src",
-        "librustc_target/spec",
-        "librustdoc",
-        "libserialize",
-        "libstd",
-        "libsyntax",
-        "libsyntax_pos",
-        "libterm/terminfo",
-        "libtest",
-        "tools/compiletest/src",
-        "tools/tidy/src",
-    ];
 
     let mut skip = |path: &Path| {
         let file_name = path.file_name().unwrap_or_default();
@@ -50,12 +24,12 @@ pub fn check(root_path: &Path, bad: &mut bool) {
             super::filter_dirs(path) ||
             path.ends_with("src/test") ||
             path.ends_with("src/doc") ||
-            (file_name == "tests" || file_name == "benches") && !is_core_or_alloc(path) ||
-            fixme.iter().any(|p| path.ends_with(p))
+            path.ends_with("src/libstd") || // FIXME?
+            (file_name == "tests" || file_name == "benches") && !is_core(path)
         } else {
             let extension = path.extension().unwrap_or_default();
             extension != "rs" ||
-            (file_name == "tests.rs" || file_name == "benches.rs") && !is_core_or_alloc(path)
+            (file_name == "tests.rs" || file_name == "benches.rs") && !is_core(path)
         }
     };
 
@@ -65,7 +39,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
         &mut |entry, contents| {
             let path = entry.path();
             let is_libcore = path.starts_with(libcore);
-            let is_liballoc = path.starts_with(liballoc);
             for (i, line) in contents.lines().enumerate() {
                 let line = line.trim();
                 let is_test = || line.contains("#[test]") && !line.contains("`#[test]");
@@ -74,9 +47,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
                     let explanation = if is_libcore {
                         "libcore unit tests and benchmarks must be placed into \
                          `libcore/tests` or `libcore/benches`"
-                    } else if is_liballoc {
-                        "liballoc unit tests and benchmarks must be placed into \
-                         `liballoc/tests` or `liballoc/benches`"
                     } else {
                         "unit tests and benchmarks must be placed into \
                          separate files or directories named \

@@ -3,7 +3,7 @@ use super::{DirectedGraph, WithNumNodes, WithSuccessors};
 use crate::bit_set::BitSet;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub fn post_order_from<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     graph: &G,

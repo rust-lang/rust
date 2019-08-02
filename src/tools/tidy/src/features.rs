@@ -16,6 +16,9 @@ use std::path::Path;
 
 use regex::Regex;
 
+#[cfg(test)]
+mod tests;
+
 mod version;
 use version::Version;
 
@@ -201,14 +204,6 @@ fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
     r.captures(line)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str())
-}
-
-#[test]
-fn test_find_attr_val() {
-    let s = r#"#[unstable(feature = "checked_duration_since", issue = "58402")]"#;
-    assert_eq!(find_attr_val(s, "feature"), Some("checked_duration_since"));
-    assert_eq!(find_attr_val(s, "issue"), Some("58402"));
-    assert_eq!(find_attr_val(s, "since"), None);
 }
 
 fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {

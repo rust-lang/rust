@@ -2,7 +2,7 @@ use crate::indexed_vec::{Idx, IndexVec};
 use crate::graph::{DirectedGraph, WithNumNodes, WithNumEdges, WithSuccessors, GraphSuccessors};
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub struct VecGraph<N: Idx> {
     /// Maps from a given node to an index where the set of successors

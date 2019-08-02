@@ -39,6 +39,9 @@ use crate::test;
 
 use pulldown_cmark::{html, CowStr, Event, Options, Parser, Tag};
 
+#[cfg(test)]
+mod tests;
+
 fn opts() -> Options {
     Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES
 }
@@ -1032,27 +1035,3 @@ impl IdMap {
         id
     }
 }
-
-#[cfg(test)]
-#[test]
-fn test_unique_id() {
-    let input = ["foo", "examples", "examples", "method.into_iter","examples",
-                 "method.into_iter", "foo", "main", "search", "methods",
-                 "examples", "method.into_iter", "assoc_type.Item", "assoc_type.Item"];
-    let expected = ["foo", "examples", "examples-1", "method.into_iter", "examples-2",
-                    "method.into_iter-1", "foo-1", "main", "search", "methods",
-                    "examples-3", "method.into_iter-2", "assoc_type.Item", "assoc_type.Item-1"];
-
-    let map = RefCell::new(IdMap::new());
-    let test = || {
-        let mut map = map.borrow_mut();
-        let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
-        assert_eq!(&actual[..], expected);
-    };
-    test();
-    map.borrow_mut().reset();
-    test();
-}
-
-#[cfg(test)]
-mod tests;
