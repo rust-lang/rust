@@ -2622,27 +2622,23 @@ impl<'a> State<'a> {
         self.s.word("<");
 
         self.commasep(Inconsistent, &generic_params, |s, param| {
+            s.print_outer_attributes_inline(&param.attrs);
+
             match param.kind {
                 ast::GenericParamKind::Lifetime => {
-                    s.print_outer_attributes_inline(&param.attrs);
                     let lt = ast::Lifetime { id: param.id, ident: param.ident };
                     s.print_lifetime_bounds(lt, &param.bounds)
                 }
                 ast::GenericParamKind::Type { ref default } => {
-                    s.print_outer_attributes_inline(&param.attrs);
                     s.print_ident(param.ident);
                     s.print_type_bounds(":", &param.bounds);
-                    match default {
-                        Some(ref default) => {
-                            s.s.space();
-                            s.word_space("=");
-                            s.print_type(default)
-                        }
-                        _ => {}
+                    if let Some(ref default) = default {
+                        s.s.space();
+                        s.word_space("=");
+                        s.print_type(default)
                     }
                 }
                 ast::GenericParamKind::Const { ref ty } => {
-                    s.print_outer_attributes_inline(&param.attrs);
                     s.word_space("const");
                     s.print_ident(param.ident);
                     s.s.space();
@@ -2743,6 +2739,9 @@ impl<'a> State<'a> {
 
     crate fn print_arg(&mut self, input: &ast::Arg, is_closure: bool) {
         self.ibox(INDENT_UNIT);
+
+        self.print_outer_attributes_inline(&input.attrs);
+
         match input.ty.node {
             ast::TyKind::Infer if is_closure => self.print_pat(&input.pat),
             _ => {
