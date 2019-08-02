@@ -22,7 +22,7 @@ use syntax::source_map::{Span, DUMMY_SP};
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar,
     RawConst, ConstValue,
-    InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpCx, StackPopCleanup,
+    InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking, intern_const_alloc_recursive,
 };
@@ -183,7 +183,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
     fn into(self) -> InterpErrorInfo<'tcx> {
-        InterpError::MachineError(self.to_string()).into()
+        err_unsup!(MachineError(self.to_string())).into()
     }
 }
 
@@ -352,7 +352,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     ecx.goto_block(ret)?; // fully evaluated and done
                     Ok(None)
                 } else {
-                    err!(MachineError(format!("calling non-const function `{}`", instance)))
+                    throw_unsup!(MachineError(format!("calling non-const function `{}`", instance)))
                 };
             }
         }
@@ -360,7 +360,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Ok(Some(match ecx.load_mir(instance.def) {
             Ok(body) => body,
             Err(err) => {
-                if let InterpError::NoMirFor(ref path) = err.kind {
+                if let err_unsup!(NoMirFor(ref path)) = err.kind {
                     return Err(
                         ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
                             .into(),
@@ -412,7 +412,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _tcx: TyCtxt<'tcx>,
         _def_id: DefId,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
-        err!(ReadForeignStatic)
+        throw_unsup!(ReadForeignStatic)
     }
 
     #[inline(always)]
@@ -698,7 +698,7 @@ pub fn const_eval_raw_provider<'tcx>(
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
                     let span = tcx.promoted_mir(def_id)[p].span;
-                    if let InterpError::ReferencedConstant = err.error {
+                    if let err_inval!(ReferencedConstant) = err.error {
                         err.report_as_error(
                             tcx.at(span),
                             "evaluation of constant expression failed",

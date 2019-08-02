@@ -7,7 +7,7 @@ use syntax::symbol::sym;
 use rustc_apfloat::ieee::{Single, Double};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc::mir::interpret::{
-    Scalar, InterpResult, Pointer, PointerArithmetic, InterpError,
+    Scalar, InterpResult, Pointer, PointerArithmetic,
 };
 use rustc::mir::CastKind;
 
@@ -80,13 +80,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
                             bug!("reifying a fn ptr that requires const arguments");
                         }
-                        let instance: InterpResult<'tcx, _> = ty::Instance::resolve(
+                        let instance = ty::Instance::resolve(
                             *self.tcx,
                             self.param_env,
                             def_id,
                             substs,
-                        ).ok_or_else(|| InterpError::TooGeneric.into());
-                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance?));
+                        ).ok_or_else(|| err_inval!(TooGeneric))?;
+                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
                     _ => bug!("reify fn pointer on {:?}", src.layout.ty),
@@ -199,7 +199,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             },
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
-            _ => err!(Unimplemented(format!("int to {:?} cast", dest_layout.ty))),
+            _ => throw_unsup!(Unimplemented(format!("int to {:?} cast", dest_layout.ty))),
         }
     }
 

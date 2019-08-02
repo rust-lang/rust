@@ -7,7 +7,7 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    InterpResult, PointerArithmetic, InterpError, Scalar,
+    InterpResult, PointerArithmetic, Scalar,
     InterpCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
@@ -19,7 +19,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.frame_mut().stmt = 0;
             Ok(())
         } else {
-            err!(Unreachable)
+            throw_ub!(Unreachable)
         }
     }
 
@@ -89,7 +89,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     },
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func.layout.ty);
-                        return err!(Unimplemented(msg));
+                        throw_unsup!(Unimplemented(msg))
                     }
                 };
                 let args = self.eval_operands(args)?;
@@ -135,32 +135,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.goto_block(Some(target))?;
                 } else {
                     // Compute error message
-                    use rustc::mir::interpret::PanicMessage::*;
-                    return match msg {
+                    use rustc::mir::interpret::PanicInfo::*;
+                    return Err(match msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.read_immediate(self.eval_operand(len, None)?)
-                                .expect("can't eval len").to_scalar()?
+                            let len = self
+                                .read_immediate(self.eval_operand(len, None)?)
+                                .expect("can't eval len")
+                                .to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            let index = self.read_immediate(self.eval_operand(index, None)?)
-                                .expect("can't eval index").to_scalar()?
+                            let index = self
+                                .read_immediate(self.eval_operand(index, None)?)
+                                .expect("can't eval index")
+                                .to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            err!(Panic(BoundsCheck { len, index }))
+                            err_panic!(BoundsCheck { len, index })
                         }
-                        Overflow(op) =>
-                            err!(Panic(Overflow(*op))),
-                        OverflowNeg =>
-                            err!(Panic(OverflowNeg)),
-                        DivisionByZero =>
-                            err!(Panic(DivisionByZero)),
-                        RemainderByZero =>
-                            err!(Panic(RemainderByZero)),
-                        GeneratorResumedAfterReturn =>
-                            err!(Panic(GeneratorResumedAfterReturn)),
-                        GeneratorResumedAfterPanic =>
-                            err!(Panic(GeneratorResumedAfterPanic)),
-                        Panic { .. } =>
-                            bug!("`Panic` variant cannot occur in MIR"),
-                    };
+                        Overflow(op) => err_panic!(Overflow(*op)),
+                        OverflowNeg => err_panic!(OverflowNeg),
+                        DivisionByZero => err_panic!(DivisionByZero),
+                        RemainderByZero => err_panic!(RemainderByZero),
+                        GeneratorResumedAfterReturn => err_panic!(GeneratorResumedAfterReturn),
+                        GeneratorResumedAfterPanic => err_panic!(GeneratorResumedAfterPanic),
+                        Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
+                    }
+                    .into());
                 }
             }
 
@@ -173,7 +171,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                       `simplify_branches` mir pass"),
             FalseUnwind { .. } => bug!("should have been eliminated by\
                                        `simplify_branches` mir pass"),
-            Unreachable => return err!(Unreachable),
+            Unreachable => throw_ub!(Unreachable),
         }
 
         Ok(())
@@ -220,13 +218,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(());
         }
         let caller_arg = caller_arg.next()
-            .ok_or_else(|| InterpError::FunctionArgCountMismatch)?;
+            .ok_or_else(|| err_unsup!(FunctionArgCountMismatch)) ?;
         if rust_abi {
             debug_assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
         }
         // Now, check
         if !Self::check_argument_compat(rust_abi, caller_arg.layout, callee_arg.layout) {
-            return err!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty));
+            throw_unsup!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty))
         }
         // We allow some transmutes here
         self.copy_op_transmute(caller_arg, callee_arg)
@@ -254,13 +252,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 if caller_abi != Abi::RustIntrinsic {
-                    return err!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic));
+                    throw_unsup!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic))
                 }
                 // The intrinsic itself cannot diverge, so if we got here without a return
                 // place... (can happen e.g., for transmute returning `!`)
                 let dest = match dest {
                     Some(dest) => dest,
-                    None => return err!(Unreachable)
+                    None => throw_ub!(Unreachable)
                 };
                 M::call_intrinsic(self, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
@@ -295,7 +293,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             abi,
                     };
                     if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                        return err!(FunctionAbiMismatch(caller_abi, callee_abi));
+                        throw_unsup!(FunctionAbiMismatch(caller_abi, callee_abi))
                     }
                 }
 
@@ -390,7 +388,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Now we should have no more caller args
                     if caller_iter.next().is_some() {
                         trace!("Caller has passed too many args");
-                        return err!(FunctionArgCountMismatch);
+                        throw_unsup!(FunctionArgCountMismatch)
                     }
                     // Don't forget to check the return type!
                     if let Some(caller_ret) = dest {
@@ -402,15 +400,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             caller_ret.layout,
                             callee_ret.layout,
                         ) {
-                            return err!(FunctionRetMismatch(
-                                caller_ret.layout.ty, callee_ret.layout.ty
-                            ));
+                            throw_unsup!(
+                                FunctionRetMismatch(caller_ret.layout.ty, callee_ret.layout.ty)
+                            )
                         }
                     } else {
                         let local = mir::RETURN_PLACE;
                         let ty = self.frame().body.local_decls[local].ty;
                         if !self.tcx.is_ty_uninhabited_from_any_module(ty) {
-                            return err!(FunctionRetMismatch(self.tcx.types.never, ty));
+                            throw_unsup!(FunctionRetMismatch(self.tcx.types.never, ty))
                         }
                     }
                     Ok(())

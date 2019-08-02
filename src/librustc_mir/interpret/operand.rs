@@ -11,8 +11,7 @@ use rustc::ty::layout::{
 use rustc::mir::interpret::{
     GlobalId, AllocId,
     ConstValue, Pointer, Scalar,
-    InterpResult, InterpError,
-    sign_extend, truncate,
+    InterpResult, sign_extend, truncate,
 };
 use super::{
     InterpCx, Machine,
@@ -331,8 +330,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
-        let str = ::std::str::from_utf8(bytes)
-            .map_err(|err| InterpError::ValidationFailure(err.to_string()))?;
+        let str = ::std::str::from_utf8(bytes).map_err(|err| {
+            err_unsup!(ValidationFailure(err.to_string()))
+        })?;
         Ok(str)
     }
 
@@ -459,7 +459,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         mir_place.iterate(|place_base, place_projection| {
             let mut op = match place_base {
-                PlaceBase::Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
+                PlaceBase::Local(mir::RETURN_PLACE) =>
+                    throw_unsup!(ReadFromReturnPointer),
                 PlaceBase::Local(local) => {
                     // Do not use the layout passed in as argument if the base we are looking at
                     // here is not the entire place.
@@ -530,7 +531,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         // Early-return cases.
         match val.val {
-            ConstValue::Param(_) => return err!(TooGeneric), // FIXME(oli-obk): try to monomorphize
+            ConstValue::Param(_) =>
+                // FIXME(oli-obk): try to monomorphize
+                throw_inval!(TooGeneric),
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId {
@@ -604,7 +607,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             layout::DiscriminantKind::Tag => {
                 let bits_discr = match raw_discr.to_bits(discr_val.layout.size) {
                     Ok(raw_discr) => raw_discr,
-                    Err(_) => return err!(InvalidDiscriminant(raw_discr.erase_tag())),
+                    Err(_) =>
+                        throw_unsup!(InvalidDiscriminant(raw_discr.erase_tag())),
                 };
                 let real_discr = if discr_val.layout.ty.is_signed() {
                     // going from layout tag type to typeck discriminant type
@@ -630,7 +634,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .discriminants(*def_id, self.tcx.tcx)
                         .find(|(_, var)| var.val == real_discr),
                     _ => bug!("tagged layout for non-adt non-generator"),
-                }.ok_or_else(|| InterpError::InvalidDiscriminant(raw_discr.erase_tag()))?;
+                }.ok_or_else(
+                    || err_unsup!(InvalidDiscriminant(raw_discr.erase_tag()))
+                )?;
                 (real_discr, index.0)
             },
             layout::DiscriminantKind::Niche {
@@ -640,15 +646,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             } => {
                 let variants_start = niche_variants.start().as_u32() as u128;
                 let variants_end = niche_variants.end().as_u32() as u128;
-                let raw_discr = raw_discr.not_undef()
-                    .map_err(|_| InterpError::InvalidDiscriminant(ScalarMaybeUndef::Undef))?;
+                let raw_discr = raw_discr.not_undef().map_err(|_| {
+                    err_unsup!(InvalidDiscriminant(ScalarMaybeUndef::Undef))
+                })?;
                 match raw_discr.to_bits_or_ptr(discr_val.layout.size, self) {
                     Err(ptr) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
                             !self.memory.ptr_may_be_null(ptr);
                         if !ptr_valid {
-                            return err!(InvalidDiscriminant(raw_discr.erase_tag().into()));
+                            throw_unsup!(InvalidDiscriminant(raw_discr.erase_tag().into()))
                         }
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },

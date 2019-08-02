@@ -10,7 +10,7 @@ use rustc::mir;
 use rustc::ty::{self, TyCtxt};
 
 use super::{
-    Allocation, AllocId, InterpResult, InterpError, Scalar, AllocationExtra,
+    Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
     InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
 };
 
@@ -240,9 +240,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
         int: u64,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         Err((if int == 0 {
-            InterpError::InvalidNullPointerUsage
+            err_unsup!(InvalidNullPointerUsage)
         } else {
-            InterpError::ReadBytesAsPointer
+            err_unsup!(ReadBytesAsPointer)
         }).into())
     }
 
@@ -251,6 +251,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64> {
-        err!(ReadPointerAsBytes)
+        throw_unsup!(ReadPointerAsBytes)
     }
 }
