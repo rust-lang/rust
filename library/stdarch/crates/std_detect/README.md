@@ -1,7 +1,7 @@
 `std::detect` - Rust's standard library run-time CPU feature detection
 =======
 
-[![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] [![std_detect_crate_badge]][std_detect_crate_link] [![std_detect_docs_badge]][std_detect_docs_link]
+[![Azure Pipelines Status]][azure] [![std_detect_crate_badge]][std_detect_crate_link] [![std_detect_docs_badge]][std_detect_docs_link]
 
 
 The private `std::detect` module implements run-time feature detection in Rust's
@@ -75,10 +75,8 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `std_detect` by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
 
-[travis]: https://travis-ci.com/rust-lang/stdarch
-[Travis-CI Status]: https://travis-ci.com/rust-lang/stdarch.svg?branch=master
-[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdarch/branch/master
-[Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
+[azure]: https://dev.azure.com/rust-lang2/stdarch/_apis/build/status/rust-lang.stdarch?branchName=auto)](https://dev.azure.com/rust-lang2/stdarch/_build/latest?definitionId=2&branchName=auto
+[Azure Pipelines Status]: https://dev.azure.com/rust-lang2/stdarch/_apis/build/status/rust-lang.stdarch?branchName=auto
 [std_detect_crate_badge]: https://img.shields.io/crates/v/std_detect.svg
 [std_detect_crate_link]: https://crates.io/crates/std_detect
 [std_detect_docs_badge]: https://docs.rs/std_detect/badge.svg

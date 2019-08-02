@@ -1,7 +1,7 @@
 `core::arch` - Rust's core library architecture-specific intrinsics
 =======
 
-[![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] [![core_arch_crate_badge]][core_arch_crate_link] [![core_arch_docs_badge]][core_arch_docs_link]
+[![Azure Pipelines Status]][azure] [![core_arch_crate_badge]][core_arch_crate_link] [![core_arch_docs_badge]][core_arch_docs_link]
 
 
 The `core::arch` module implements architecture-dependent intrinsics (e.g. SIMD).
@@ -62,10 +62,8 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `core_arch` by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
 
-[travis]: https://travis-ci.com/rust-lang/stdarch
-[Travis-CI Status]: https://travis-ci.com/rust-lang/stdarch.svg?branch=master
-[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdarch/branch/master
-[Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
+[azure]: https://dev.azure.com/rust-lang2/stdarch/_apis/build/status/rust-lang.stdarch?branchName=auto@)](https://dev.azure.com/rust-lang2/stdarch/_build/latest?definitionId=2&branchName=auto
+[Azure Pipelines Status]: https://dev.azure.com/rust-lang2/stdarch/_apis/build/status/rust-lang.stdarch?branchName=auto
 [core_arch_crate_badge]: https://img.shields.io/crates/v/core_arch.svg
 [core_arch_crate_link]: https://crates.io/crates/core_arch
 [core_arch_docs_badge]: https://docs.rs/core_arch/badge.svg
