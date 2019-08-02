@@ -1220,7 +1220,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
 
                 find_opaque_ty_constraints(tcx, def_id)
             }
-            ImplItemKind::Type(ref ty) => {
+            ImplItemKind::TyAlias(ref ty) => {
                 if tcx
                     .impl_trait_ref(tcx.hir().get_parent_did(hir_id))
                     .is_none()

@@ -270,7 +270,7 @@ impl<'tcx> TyCtxt<'tcx> {
             hir::ImplItemKind::Method(..) => "method body",
             hir::ImplItemKind::Const(..)
             | hir::ImplItemKind::OpaqueTy(..)
-            | hir::ImplItemKind::Type(..) => "associated item",
+            | hir::ImplItemKind::TyAlias(..) => "associated item",
         }
     }
 

@@ -1371,7 +1371,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                                 impl_item_ref.id.hir_id)
                                          }
                                          hir::ImplItemKind::OpaqueTy(..) |
-                                         hir::ImplItemKind::Type(_) => false,
+                                         hir::ImplItemKind::TyAlias(_) => false,
                                      }
                                  });
 
@@ -1397,7 +1397,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                     {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
-                                    hir::ImplItemKind::Type(..) => {
+                                    hir::ImplItemKind::TyAlias(..) => {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
                                     _ => {}
@@ -1423,7 +1423,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             // Those in 3. are warned with this call.
                             for impl_item_ref in impl_item_refs {
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                                if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
+                                if let hir::ImplItemKind::TyAlias(ref ty) = impl_item.node {
                                     self.visit_ty(ty);
                                 }
                             }

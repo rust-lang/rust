@@ -616,7 +616,7 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
             visitor.visit_fn(FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), body),
                              &sig.decl, impl_item.span, impl_item.id);
         }
-        ImplItemKind::Type(ref ty) => {
+        ImplItemKind::TyAlias(ref ty) => {
             visitor.visit_ty(ty);
         }
         ImplItemKind::OpaqueTy(ref bounds) => {

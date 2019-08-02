@@ -189,7 +189,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         }
                     }
                     hir::ImplItemKind::OpaqueTy(..) |
-                    hir::ImplItemKind::Type(_) => false,
+                    hir::ImplItemKind::TyAlias(_) => false,
                 }
             }
             Some(_) => false,
@@ -302,7 +302,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         }
                     }
                     hir::ImplItemKind::OpaqueTy(..) |
-                    hir::ImplItemKind::Type(_) => {}
+                    hir::ImplItemKind::TyAlias(_) => {}
                 }
             }
             Node::Expr(&hir::Expr { node: hir::ExprKind::Closure(.., body, _, _), .. }) => {

@@ -1837,7 +1837,7 @@ pub enum ImplItemKind {
     /// A method implementation with the given signature and body.
     Method(MethodSig, BodyId),
     /// An associated type.
-    Type(P<Ty>),
+    TyAlias(P<Ty>),
     /// An associated `type = impl Trait`.
     OpaqueTy(GenericBounds),
 }

@@ -2253,7 +2253,7 @@ impl Clean<Item> for hir::ImplItem {
             hir::ImplItemKind::Method(ref sig, body) => {
                 MethodItem((sig, &self.generics, body, Some(self.defaultness)).clean(cx))
             }
-            hir::ImplItemKind::Type(ref ty) => TypedefItem(Typedef {
+            hir::ImplItemKind::TyAlias(ref ty) => TypedefItem(Typedef {
                 type_: ty.clean(cx),
                 generics: Generics::default(),
             }, true),

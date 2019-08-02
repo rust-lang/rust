@@ -333,7 +333,7 @@ impl<'hir> Map<'hir> {
                 match item.node {
                     ImplItemKind::Const(..) => DefKind::AssocConst,
                     ImplItemKind::Method(..) => DefKind::Method,
-                    ImplItemKind::Type(..) => DefKind::AssocTy,
+                    ImplItemKind::TyAlias(..) => DefKind::AssocTy,
                     ImplItemKind::OpaqueTy(..) => DefKind::AssocOpaqueTy,
                 }
             }
@@ -1291,7 +1291,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
                 ImplItemKind::Method(..) => {
                     format!("method {} in {}{}", ii.ident, path_str(), id_str)
                 }
-                ImplItemKind::Type(_) => {
+                ImplItemKind::TyAlias(_) => {
                     format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
                 }
                 ImplItemKind::OpaqueTy(_) => {

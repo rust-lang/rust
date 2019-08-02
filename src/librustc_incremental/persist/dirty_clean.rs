@@ -405,7 +405,7 @@ impl DirtyCleanVisitor<'tcx> {
                 match item.node {
                     ImplItemKind::Method(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                     ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
-                    ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
+                    ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
                     ImplItemKind::OpaqueTy(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
                 }
             },

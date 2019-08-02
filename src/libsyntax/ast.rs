@@ -1508,7 +1508,7 @@ pub struct ImplItem {
 pub enum ImplItemKind {
     Const(P<Ty>, P<Expr>),
     Method(MethodSig, P<Block>),
-    Type(P<Ty>),
+    TyAlias(P<Ty>),
     OpaqueTy(GenericBounds),
     Macro(Mac),
 }

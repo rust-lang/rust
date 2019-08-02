@@ -926,7 +926,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
                              impl_item.span,
                              impl_item.hir_id);
         }
-        ImplItemKind::Type(ref ty) => {
+        ImplItemKind::TyAlias(ref ty) => {
             visitor.visit_id(impl_item.hir_id);
             visitor.visit_ty(ty);
         }

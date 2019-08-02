@@ -5687,7 +5687,7 @@ impl<'a> Parser<'a> {
         let (name, node, generics) = if let Some(type_) = self.eat_type() {
             let (name, alias, generics) = type_?;
             let kind = match alias {
-                AliasKind::Weak(typ) => ast::ImplItemKind::Type(typ),
+                AliasKind::Weak(typ) => ast::ImplItemKind::TyAlias(typ),
                 AliasKind::OpaqueTy(bounds) => ast::ImplItemKind::OpaqueTy(bounds),
             };
             (name, kind, generics)

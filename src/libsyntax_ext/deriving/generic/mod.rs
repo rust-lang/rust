@@ -529,7 +529,8 @@ impl<'a> TraitDef<'a> {
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 generics: Generics::default(),
-                node: ast::ImplItemKind::Type(type_def.to_ty(cx, self.span, type_ident, generics)),
+                node: ast::ImplItemKind::TyAlias(
+                    type_def.to_ty(cx, self.span, type_ident, generics)),
                 tokens: None,
             }
         });

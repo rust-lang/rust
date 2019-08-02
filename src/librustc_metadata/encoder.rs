@@ -980,7 +980,7 @@ impl EncodeContext<'tcx> {
                     needs_inline || is_const_fn || always_encode_mir
                 },
                 hir::ImplItemKind::OpaqueTy(..) |
-                hir::ImplItemKind::Type(..) => false,
+                hir::ImplItemKind::TyAlias(..) => false,
             };
 
         Entry {

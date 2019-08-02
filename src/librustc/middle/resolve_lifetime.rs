@@ -828,7 +828,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     |this| intravisit::walk_impl_item(this, impl_item),
                 )
             }
-            Type(ref ty) => {
+            TyAlias(ref ty) => {
                 let generics = &impl_item.generics;
                 let mut index = self.next_early_index();
                 let mut non_lifetime_count = 0;

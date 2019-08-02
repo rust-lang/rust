@@ -222,7 +222,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             }
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
                 DefPathData::ValueNs(ii.ident.as_interned_str()),
-            ImplItemKind::Type(..) |
+            ImplItemKind::TyAlias(..) |
             ImplItemKind::OpaqueTy(..) => {
                 DefPathData::TypeNs(ii.ident.as_interned_str())
             },

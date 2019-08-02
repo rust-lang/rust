@@ -1579,7 +1579,7 @@ impl<'a> State<'a> {
                 self.nbsp();
                 self.print_block_with_attrs(body, &ii.attrs);
             }
-            ast::ImplItemKind::Type(ref ty) => {
+            ast::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
             }
             ast::ImplItemKind::OpaqueTy(ref bounds) => {

@@ -2254,7 +2254,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     "`impl Trait` in type aliases is unstable"
                 );
             }
-            ast::ImplItemKind::Type(_) => {
+            ast::ImplItemKind::TyAlias(_) => {
                 if !ii.generics.params.is_empty() {
                     gate_feature_post!(&self, generic_associated_types, ii.span,
                                        "generic associated types are unstable");

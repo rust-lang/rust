@@ -1543,7 +1543,7 @@ fn check_specialization_validity<'tcx>(
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
         hir::ImplItemKind::Method(..) => ty::AssocKind::Method,
         hir::ImplItemKind::OpaqueTy(..) => ty::AssocKind::OpaqueTy,
-        hir::ImplItemKind::Type(_) => ty::AssocKind::Type
+        hir::ImplItemKind::TyAlias(_) => ty::AssocKind::Type,
     };
 
     let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).nth(1)
@@ -1640,7 +1640,7 @@ fn check_impl_items_against_trait<'tcx>(
                     }
                 }
                 hir::ImplItemKind::OpaqueTy(..) |
-                hir::ImplItemKind::Type(_) => {
+                hir::ImplItemKind::TyAlias(_) => {
                     if ty_trait_item.kind == ty::AssocKind::Type {
                         if ty_trait_item.defaultness.has_value() {
                             overridden_associated_type = Some(impl_item);

@@ -908,7 +908,7 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
-            hir::ImplItemKind::Type(ref ty) => {
+            hir::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
             }
             hir::ImplItemKind::OpaqueTy(ref bounds) => {

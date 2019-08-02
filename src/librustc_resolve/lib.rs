@@ -3079,7 +3079,7 @@ impl<'a> Resolver<'a> {
 
                                                 visit::walk_impl_item(this, impl_item);
                                             }
-                                            ImplItemKind::Type(ref ty) => {
+                                            ImplItemKind::TyAlias(ref ty) => {
                                                 // If this is a trait impl, ensure the type
                                                 // exists in trait
                                                 this.check_trait_item(impl_item.ident,

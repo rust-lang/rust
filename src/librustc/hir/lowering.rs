@@ -3914,9 +3914,9 @@ impl<'a> LoweringContext<'a> {
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
-            ImplItemKind::Type(ref ty) => (
+            ImplItemKind::TyAlias(ref ty) => (
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                hir::ImplItemKind::Type(self.lower_ty(ty, ImplTraitContext::disallowed())),
+                hir::ImplItemKind::TyAlias(self.lower_ty(ty, ImplTraitContext::disallowed())),
             ),
             ImplItemKind::OpaqueTy(ref bounds) => (
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
@@ -3950,7 +3950,7 @@ impl<'a> LoweringContext<'a> {
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
             kind: match i.node {
                 ImplItemKind::Const(..) => hir::AssocItemKind::Const,
-                ImplItemKind::Type(..) => hir::AssocItemKind::Type,
+                ImplItemKind::TyAlias(..) => hir::AssocItemKind::Type,
                 ImplItemKind::OpaqueTy(..) => hir::AssocItemKind::OpaqueTy,
                 ImplItemKind::Method(ref sig, _) => hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
