@@ -113,6 +113,8 @@ pub struct Metadata(fs_imp::FileAttr);
 /// will yield instances of [`io::Result`]`<`[`DirEntry`]`>`. Through a [`DirEntry`]
 /// information like the entry's path and possibly other metadata can be
 /// learned.
+/// The order in which this iterator returns entries is platform and filesystem 
+/// dependent and is not guaranteed.
 ///
 /// # Errors
 ///
