@@ -1,13 +1,10 @@
 use hir::{AdtDef, Ty, TypeCtor};
 
-use crate::completion::completion_item::{Builder, CompletionKind};
+use crate::completion::completion_item::CompletionKind;
 use crate::{
     completion::{completion_context::CompletionContext, completion_item::Completions},
     CompletionItem,
 };
-use ra_syntax::ast::AstNode;
-use ra_syntax::TextRange;
-use ra_text_edit::TextEditBuilder;
 use rustc_hash::FxHashSet;
 
 /// Complete dot accesses, i.e. fields or methods (and .await syntax).
