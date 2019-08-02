@@ -847,7 +847,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         ItemKind::Mod(m) => vis.visit_mod(m),
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
         ItemKind::GlobalAsm(_ga) => {}
-        ItemKind::Ty(ty, generics) => {
+        ItemKind::TyAlias(ty, generics) => {
             vis.visit_ty(ty);
             vis.visit_generics(generics);
         }

@@ -570,7 +570,7 @@ impl<'a> State<'a> {
                 self.s.word(ga.asm.as_str().to_string());
                 self.end()
             }
-            hir::ItemKind::Ty(ref ty, ref generics) => {
+            hir::ItemKind::TyAlias(ref ty, ref generics) => {
                 self.print_item_type(item, &generics, |state| {
                     state.word_space("=");
                     state.print_type(&ty);

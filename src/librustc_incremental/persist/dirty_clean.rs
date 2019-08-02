@@ -354,7 +354,7 @@ impl DirtyCleanVisitor<'tcx> {
                     HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
                     // A type alias, e.g., `type Foo = Bar<u8>`
-                    HirItem::Ty(..) => ("ItemTy", LABELS_HIR_ONLY),
+                    HirItem::TyAlias(..) => ("ItemTy", LABELS_HIR_ONLY),
 
                     // An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`
                     HirItem::Enum(..) => ("ItemEnum", LABELS_ADT),

@@ -458,7 +458,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.unions.push(self.visit_union_data(item, ident.name, sd, gen)),
             hir::ItemKind::Fn(ref fd, header, ref gen, body) =>
                 self.visit_fn(om, item, ident.name, &**fd, header, gen, body),
-            hir::ItemKind::Ty(ref ty, ref gen) => {
+            hir::ItemKind::TyAlias(ref ty, ref gen) => {
                 let t = Typedef {
                     ty,
                     gen,

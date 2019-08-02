@@ -264,7 +264,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ItemKind::ExternCrate(_) |
                     hir::ItemKind::Use(..) |
                     hir::ItemKind::OpaqueTy(..) |
-                    hir::ItemKind::Ty(..) |
+                    hir::ItemKind::TyAlias(..) |
                     hir::ItemKind::Static(..) |
                     hir::ItemKind::Mod(..) |
                     hir::ItemKind::ForeignMod(..) |

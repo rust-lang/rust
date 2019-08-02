@@ -2709,7 +2709,7 @@ impl<'a> Resolver<'a> {
         debug!("(resolving item) resolving {} ({:?})", name, item.node);
 
         match item.node {
-            ItemKind::Ty(_, ref generics) |
+            ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(_, ref generics) |
             ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_generic_param_rib(

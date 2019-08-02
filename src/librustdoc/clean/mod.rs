@@ -2802,7 +2802,7 @@ impl Clean<Type> for hir::Ty {
                     }
                 };
 
-                if let Some(&hir::ItemKind::Ty(ref ty, ref generics)) = alias {
+                if let Some(&hir::ItemKind::TyAlias(ref ty, ref generics)) = alias {
                     let provided_params = &path.segments.last().expect("segments were empty");
                     let mut ty_substs = FxHashMap::default();
                     let mut lt_substs = FxHashMap::default();

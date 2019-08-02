@@ -1409,7 +1409,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
             check_opaque(tcx, def_id, substs, it.span, &origin);
         }
-        hir::ItemKind::Ty(..) => {
+        hir::ItemKind::TyAlias(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
             let pty_ty = tcx.type_of(def_id);
             let generics = tcx.generics_of(def_id);

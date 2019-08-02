@@ -1397,7 +1397,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 self.process_mod(item);
                 visit::walk_mod(self, m);
             }
-            Ty(ref ty, ref ty_params) => {
+            TyAlias(ref ty, ref ty_params) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
                 let value = ty_to_string(&ty);

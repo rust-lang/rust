@@ -75,7 +75,7 @@ impl Target {
             hir::ItemKind::Mod(..) => Target::Mod,
             hir::ItemKind::ForeignMod(..) => Target::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => Target::GlobalAsm,
-            hir::ItemKind::Ty(..) => Target::Ty,
+            hir::ItemKind::TyAlias(..) => Target::TyAlias,
             hir::ItemKind::OpaqueTy(..) => Target::OpaqueTy,
             hir::ItemKind::Enum(..) => Target::Enum,
             hir::ItemKind::Struct(..) => Target::Struct,

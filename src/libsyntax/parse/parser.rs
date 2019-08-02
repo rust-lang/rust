@@ -7243,7 +7243,7 @@ impl<'a> Parser<'a> {
             let (ident, alias, generics) = type_?;
             // TYPE ITEM
             let item_ = match alias {
-                AliasKind::Weak(ty) => ItemKind::Ty(ty, generics),
+                AliasKind::Weak(ty) => ItemKind::TyAlias(ty, generics),
                 AliasKind::OpaqueTy(bounds) => ItemKind::OpaqueTy(bounds, generics),
             };
             let prev_span = self.prev_span;

@@ -459,7 +459,7 @@ impl<'a> Resolver<'a> {
             }
 
             // These items live in the type namespace.
-            ItemKind::Ty(..) => {
+            ItemKind::TyAlias(..) => {
                 let res = Res::Def(DefKind::TyAlias, self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
