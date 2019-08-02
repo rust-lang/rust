@@ -45,18 +45,19 @@ pub fn restore_library_path() {
     }
 }
 
-pub fn run(cmd: &mut Command) {
+/// Run the command, printing what we are running.
+pub fn run_verbose(cmd: &mut Command) {
     println!("running: {:?}", cmd);
-    run_silent(cmd);
+    run(cmd);
 }
 
-pub fn run_silent(cmd: &mut Command) {
-    if !try_run_silent(cmd) {
+pub fn run(cmd: &mut Command) {
+    if !try_run(cmd) {
         std::process::exit(1);
     }
 }
 
-pub fn try_run_silent(cmd: &mut Command) -> bool {
+pub fn try_run(cmd: &mut Command) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => fail(&format!(
