@@ -7,7 +7,7 @@ language. It is a part of a larger rls-2.0 effort to create excellent IDE
 support for Rust. If you want to get involved, check the rls-2.0 working group
 in the compiler-team repository:
 
-https://github.com/rust-lang/compiler-team/tree/master/content/docs/working-groups/rls-2.0
+https://github.com/rust-lang/compiler-team/tree/master/content/working-groups/rls-2.0
 
 Work on the Rust Analyzer is sponsored by
 
