@@ -6,7 +6,7 @@ resources:
       type: github
       name: rust-lang/simpleinfra
       endpoint: gnzlbg
-trigger: ["auto-stdarch", "try"]
+trigger: ["auto", "try"]
 pr: ["master"]
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
     pool:
       vmImage: ubuntu-16.04
     steps:
-      - template: ci/azure-install-rust.yml
+      - template: azure-install-rust.yml
       - bash: |
           if [ "${NO_DOCKER}" = "1" ]; then
               ci/run.sh $TARGET
@@ -62,7 +62,7 @@ jobs:
     pool:
       vmImage: ubuntu-16.04
     steps:
-      - template: ci/azure-install-rust.yml
+      - template: azure-install-rust.yml
       - bash: |
           if [ "${NO_DOCKER}" = "1" ]; then
               ci/run.sh $TARGET
@@ -121,7 +121,7 @@ jobs:
     pool:
       vmImage: macos-10.14
     steps:
-      - template: ci/azure-install-rust.yml
+      - template: azure-install-rust.yml
       - bash: sh ./ci/run.sh $TARGET
         displayName: Execute run.sh
     strategy:
@@ -134,7 +134,7 @@ jobs:
     pool:
       vmImage: macos-10.13
     steps:
-      - template: ci/azure-install-rust.yml
+      - template: azure-install-rust.yml
       - bash: sh ./ci/run.sh $TARGET
         displayName: Execute run.sh
     strategy:
@@ -147,7 +147,7 @@ jobs:
     pool:
       vmImage: vs2017-win2016
     steps:
-      - template: ci/azure-install-rust.yml
+      - template: azure-install-rust.yml
       - bash: sh ./ci/run.sh $TARGET
         displayName: Execute run.sh
     strategy:
@@ -168,7 +168,7 @@ jobs:
     pool:
       vmImage: ubuntu-16.04
     steps:
-      - template: ci/azure-install-rust.yml
+      - template: azure-install-rust.yml
       - script: sh ci/style.sh
         displayName: Check style
       - script: sh ci/dox.sh
@@ -184,7 +184,7 @@ jobs:
     pool:
       vmImage: ubuntu-16.04
     steps:
-      - template: ci/azure-install-rust.yml
+      - template: azure-install-rust.yml
       - script: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
         displayName: Automatic verification  
 
@@ -193,7 +193,7 @@ jobs:
 #    pool:
 #      vmImage: ubuntu-16.04
 #    steps:
-#      - template: ci/azure-install-rust.yml
+#      - template: azure-install-rust.yml
 #      - script: rustup component add rust-src
 #        displayName: Add rust-src
 #      - script: (test -x $HOME/.cargo/bin/cargo-xbuild || cargo install cargo-xbuild)
