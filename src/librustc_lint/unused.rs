@@ -387,7 +387,12 @@ impl UnusedParens {
             ast::ExprKind::Let(_, ref expr) => {
                 // FIXME(#60336): Properly handle `let true = (false && true)`
                 // actually needing the parenthesis.
-                self.check_unused_parens_expr(cx, expr, "`let` head expression", followed_by_block, None, None);
+                self.check_unused_parens_expr(
+                    cx, expr,
+                    "`let` head expression",
+                    followed_by_block,
+                    None, None
+                );
             }
             _ => {}
         }
@@ -408,7 +413,11 @@ impl UnusedParens {
         }
     }
 
-    fn remove_outer_parens(cx: &EarlyContext<'_>, span: Span, pattern: &str, msg: &str, keep_space: (bool, bool)) {
+    fn remove_outer_parens(cx: &EarlyContext<'_>,
+                           span: Span,
+                           pattern: &str,
+                           msg: &str,
+                           keep_space: (bool, bool)) {
         let span_msg = format!("unnecessary parentheses around {}", msg);
         let mut err = cx.struct_span_lint(UNUSED_PARENS, span, &span_msg);
         let mut ate_left_paren = false;
