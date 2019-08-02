@@ -15,7 +15,7 @@ use crate::{
     resolve::Resolver,
     traits::TraitItem,
     ty::primitive::{FloatBitness, UncertainFloatTy, UncertainIntTy},
-    ty::{traits::Solution, Ty, TypeCtor},
+    ty::{Ty, TypeCtor},
     Crate, Function, HirDatabase, Module, Name, Trait,
 };
 
