@@ -413,6 +413,8 @@ impl Step for Miri {
             cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
             // Make sure the libstd gets built without debug assertions.
             cargo.env("RUSTC_DEBUG_ASSERTIONS", "false");
+            // Debug things.
+            cargo.env("RUST_BACKTRACE", "1");
 
             if !try_run(builder, &mut cargo) {
                 return;
