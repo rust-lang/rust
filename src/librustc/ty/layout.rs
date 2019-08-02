@@ -1540,6 +1540,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             Ok(variant)
         }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
+        size = size.align_to(align.abi);
+
         let abi = if prefix.abi.is_uninhabited() ||
                      variants.iter().all(|v| v.abi.is_uninhabited()) {
             Abi::Uninhabited
