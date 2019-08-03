@@ -4,8 +4,8 @@ error[E0659]: `core` is ambiguous (name vs any other name during import resoluti
 LL |     use core;
    |         ^^^^ ambiguous name
    |
-   = note: `core` could refer to a built-in extern crate
-   = help: use `::core` to refer to this extern crate unambiguously
+   = note: `core` could refer to a built-in crate
+   = help: use `::core` to refer to this crate unambiguously
 note: `core` could also refer to the module imported here
   --> $DIR/issue-57539.rs:5:9
    |
