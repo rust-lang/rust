@@ -249,7 +249,10 @@ fn setup(ask_user: bool) {
             println!("Installing xargo: `cargo install xargo -f`");
         }
 
-        if !cargo().args(&["install", "xargo", "-f"]).status().unwrap().success() {
+        if !cargo().args(&["install", "xargo", "-f"]).status()
+            .expect("failed to install xargo")
+            .success()
+        {
             show_error(format!("Failed to install xargo"));
         }
     }
@@ -257,7 +260,9 @@ fn setup(ask_user: bool) {
     // Then, unless `XARGO_RUST_SRC` is set, we also need rust-src.
     // Let's see if it is already installed.
     if std::env::var("XARGO_RUST_SRC").is_err() {
-        let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output().unwrap().stdout;
+        let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output()
+            .expect("failed to get rustc sysroot")
+            .stdout;
         let sysroot = std::str::from_utf8(&sysroot).unwrap();
         let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
         if !src.exists() {
@@ -266,7 +271,10 @@ fn setup(ask_user: bool) {
             } else {
                 println!("Installing rust-src component: `rustup component add rust-src`");
             }
-            if !Command::new("rustup").args(&["component", "add", "rust-src"]).status().unwrap().success() {
+            if !Command::new("rustup").args(&["component", "add", "rust-src"]).status()
+                .expect("failed to install rust-src component")
+                .success()
+            {
                 show_error(format!("Failed to install rust-src component"));
             }
         }
@@ -313,7 +321,9 @@ path = "lib.rs"
     if let Some(ref target) = target {
         command.arg("--target").arg(&target);
     }
-    if !command.status().unwrap().success()
+    if !command.status()
+        .expect("failed to run xargo")
+        .success()
     {
         show_error(format!("Failed to run xargo"));
     }
