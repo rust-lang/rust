@@ -177,16 +177,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !align.is_power_of_two() {
                     throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                /*
-                FIXME: This check is disabled because rustc violates it.
-                See <https://github.com/rust-lang/rust/issues/62251>.
                 if align < this.pointer_size().bytes() {
                     throw_ub_format!(
                         "posix_memalign: alignment must be at least the size of a pointer, but is {}",
                         align,
                     );
                 }
-                */
+
                 if size == 0 {
                     this.write_null(ret.into())?;
                 } else {
