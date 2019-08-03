@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// `declare_lint_pass!`, `impl_lint_pass!`, and `lint_array!` macros.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// declare_lint! { pub LINT_1, ... }
     /// declare_lint! { pub LINT_2, ... }
     /// declare_lint! { pub FORGOTTEN_LINT, ... }
@@ -62,12 +62,12 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// Bad:
-    /// ```rust
+    /// ```rust,ignore
     /// cx.span_lint(LINT_NAME, "message");
     /// ```
     ///
     /// Good:
-    /// ```rust
+    /// ```rust,ignore
     /// utils::span_lint(cx, LINT_NAME, "message");
     /// ```
     pub COMPILER_LINT_FUNCTIONS,
@@ -85,12 +85,12 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// Bad:
-    /// ```rust
+    /// ```rust,ignore
     /// expr.span.ctxt().outer().expn_info()
     /// ```
     ///
     /// Good:
-    /// ```rust
+    /// ```rust,ignore
     /// expr.span.ctxt().outer_expn_info()
     /// ```
     pub OUTER_EXPN_EXPN_INFO,

@@ -184,7 +184,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// f() && g(); // We should write `if f() { g(); }`.
     /// ```
     pub SHORT_CIRCUIT_STATEMENT,

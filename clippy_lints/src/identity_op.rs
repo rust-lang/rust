@@ -17,7 +17,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x / 1 + 0 * 1 - 0 | 0
+    /// # let x = 1;
+    /// x / 1 + 0 * 1 - 0 | 0;
     /// ```
     pub IDENTITY_OP,
     complexity,

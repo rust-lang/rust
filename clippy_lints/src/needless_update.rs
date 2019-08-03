@@ -15,11 +15,17 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # struct Point {
+    /// #     x: i32,
+    /// #     y: i32,
+    /// #     z: i32,
+    /// # }
+    /// # let zero_point = Point { x: 0, y: 0, z: 0 };
     /// Point {
     ///     x: 1,
-    ///     y: 0,
+    ///     y: 1,
     ///     ..zero_point
-    /// }
+    /// };
     /// ```
     pub NEEDLESS_UPDATE,
     complexity,

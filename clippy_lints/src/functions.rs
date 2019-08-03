@@ -23,8 +23,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # struct Color;
     /// fn foo(x: u32, y: u32, name: &str, c: Color, w: f32, h: f32, a: f32, b: f32) {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     pub TOO_MANY_ARGUMENTS,

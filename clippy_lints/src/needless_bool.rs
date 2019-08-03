@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// shorter code.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// if x {
     ///     false
     /// } else {
@@ -46,7 +46,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// if x == true {} // could be `if x { }`
     /// ```
     pub BOOL_COMPARISON,

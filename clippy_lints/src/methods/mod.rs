@@ -247,7 +247,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.filter(|x| x == 0).next()
+    /// # let vec = vec![1];
+    /// vec.iter().filter(|x| **x == 0).next();
     /// ```
     pub FILTER_NEXT,
     complexity,
@@ -345,7 +346,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.find(|x| x == 0).is_some()
+    /// # let vec = vec![1];
+    /// vec.iter().find(|x| **x == 0).is_some();
     /// ```
     pub SEARCH_IS_SOME,
     complexity,
@@ -363,7 +365,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// name.chars().next() == Some('_')
+    /// let name = "foo";
+    /// name.chars().next() == Some('_');
     /// ```
     pub CHARS_NEXT_CMP,
     complexity,
@@ -434,7 +437,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// 42u64.clone()
+    /// 42u64.clone();
     /// ```
     pub CLONE_ON_COPY,
     complexity,
@@ -708,11 +711,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # fn do_stuff(x: &[i32]) {}
     /// let x: &[i32] = &[1, 2, 3, 4, 5];
     /// do_stuff(x.as_ref());
     /// ```
     /// The correct use would be:
     /// ```rust
+    /// # fn do_stuff(x: &[i32]) {}
     /// let x: &[i32] = &[1, 2, 3, 4, 5];
     /// do_stuff(x);
     /// ```

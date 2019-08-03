@@ -18,7 +18,7 @@ declare_clippy_lint! {
     ///
     /// **Known problems:** It seems that the `&ref` pattern is sometimes useful.
     /// For instance in the following snippet:
-    /// ```rust
+    /// ```rust,ignore
     /// enum Animal {
     ///     Cat(u64),
     ///     Dog(u64),
@@ -26,8 +26,7 @@ declare_clippy_lint! {
     ///
     /// fn foo(a: &Animal, b: &Animal) {
     ///     match (a, b) {
-    /// (&Animal::Cat(v), k) | (k, &Animal::Cat(v)) => (), // lifetime
-    /// mismatch error
+    ///         (&Animal::Cat(v), k) | (k, &Animal::Cat(v)) => (), // lifetime mismatch error
     ///         (&Animal::Dog(ref c), &Animal::Dog(_)) => ()
     ///     }
     /// }

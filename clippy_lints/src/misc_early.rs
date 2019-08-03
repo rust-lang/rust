@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// (|| 42)()
     /// ```
     pub REDUNDANT_CLOSURE_CALL,

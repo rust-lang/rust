@@ -26,8 +26,9 @@ declare_clippy_lint! {
     ///
     /// **Examples:**
     /// ```rust
-    /// format!("foo")
-    /// format!("{}", foo)
+    /// # let foo = "foo";
+    /// format!("foo");
+    /// format!("{}", foo);
     /// ```
     pub USELESS_FORMAT,
     complexity,

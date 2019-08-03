@@ -15,7 +15,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// 0.0f32 / 0.0
+    /// 0.0f32 / 0.0;
     /// ```
     pub ZERO_DIVIDED_BY_ZERO,
     complexity,

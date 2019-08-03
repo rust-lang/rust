@@ -14,7 +14,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// a + b < a
+    /// # let a = 1;
+    /// # let b = 2;
+    /// a + b < a;
     /// ```
     pub OVERFLOW_CHECK_CONDITIONAL,
     complexity,

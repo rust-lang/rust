@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// the suggested fix for `x = **&&y` is `x = *&y`, which is still incorrect.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// let a = f(*&mut b);
     /// let c = *&d;
     /// ```
@@ -64,8 +64,8 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// struct Point(u32, u32);
-    /// let point = Foo(30, 20);
-    /// let x = (&point).x;
+    /// let point = Point(30, 20);
+    /// let x = (&point).0;
     /// ```
     pub REF_IN_DEREF,
     complexity,

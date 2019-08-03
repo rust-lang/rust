@@ -13,9 +13,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// ((0))
-    /// foo((0))
-    /// ((1, 2))
+    /// # fn foo(bar: usize) {}
+    /// ((0));
+    /// foo((0));
+    /// ((1, 2));
     /// ```
     pub DOUBLE_PARENS,
     complexity,

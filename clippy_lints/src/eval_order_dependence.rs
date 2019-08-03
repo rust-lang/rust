@@ -42,7 +42,9 @@ declare_clippy_lint! {
     /// shorthand.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,no_run
+    /// # fn b() -> bool { true }
+    /// # fn c() -> bool { true }
     /// let a = b() || panic!() || c();
     /// // `c()` is dead, `panic!()` is only called if `b()` returns `false`
     /// let x = (a, b, c, panic!());

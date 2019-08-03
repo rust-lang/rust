@@ -20,20 +20,29 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// let x: Option<&str> = do_stuff();
+    /// # fn do_stuff() -> Option<String> { Some(String::new()) }
+    /// # fn log_err_msg(foo: String) -> Option<String> { Some(foo) }
+    /// # fn format_msg(foo: String) -> String { String::new() }
+    /// let x: Option<String> = do_stuff();
     /// x.map(log_err_msg);
-    /// x.map(|msg| log_err_msg(format_msg(msg)))
+    /// # let x: Option<String> = do_stuff();
+    /// x.map(|msg| log_err_msg(format_msg(msg)));
     /// ```
     ///
     /// The correct use would be:
     ///
     /// ```rust
-    /// let x: Option<&str> = do_stuff();
+    /// # fn do_stuff() -> Option<String> { Some(String::new()) }
+    /// # fn log_err_msg(foo: String) -> Option<String> { Some(foo) }
+    /// # fn format_msg(foo: String) -> String { String::new() }
+    /// let x: Option<String> = do_stuff();
     /// if let Some(msg) = x {
-    ///     log_err_msg(msg)
+    ///     log_err_msg(msg);
     /// }
+    ///
+    /// # let x: Option<String> = do_stuff();
     /// if let Some(msg) = x {
-    ///     log_err_msg(format_msg(msg))
+    ///     log_err_msg(format_msg(msg));
     /// }
     /// ```
     pub OPTION_MAP_UNIT_FN,
@@ -53,21 +62,29 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// let x: Result<&str, &str> = do_stuff();
+    /// # fn do_stuff() -> Result<String, String> { Ok(String::new()) }
+    /// # fn log_err_msg(foo: String) -> Result<String, String> { Ok(foo) }
+    /// # fn format_msg(foo: String) -> String { String::new() }
+    /// let x: Result<String, String> = do_stuff();
     /// x.map(log_err_msg);
-    /// x.map(|msg| log_err_msg(format_msg(msg)))
+    /// # let x: Result<String, String> = do_stuff();
+    /// x.map(|msg| log_err_msg(format_msg(msg)));
     /// ```
     ///
     /// The correct use would be:
     ///
     /// ```rust
-    /// let x: Result<&str, &str> = do_stuff();
+    /// # fn do_stuff() -> Result<String, String> { Ok(String::new()) }
+    /// # fn log_err_msg(foo: String) -> Result<String, String> { Ok(foo) }
+    /// # fn format_msg(foo: String) -> String { String::new() }
+    /// let x: Result<String, String> = do_stuff();
     /// if let Ok(msg) = x {
-    ///     log_err_msg(msg)
-    /// }
+    ///     log_err_msg(msg);
+    /// };
+    /// # let x: Result<String, String> = do_stuff();
     /// if let Ok(msg) = x {
-    ///     log_err_msg(format_msg(msg))
-    /// }
+    ///     log_err_msg(format_msg(msg));
+    /// };
     /// ```
     pub RESULT_MAP_UNIT_FN,
     complexity,
