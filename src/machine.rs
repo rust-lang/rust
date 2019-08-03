@@ -179,13 +179,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn ptr_op(
+    fn binary_ptr_op(
         ecx: &rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, (Scalar<Tag>, bool)> {
-        ecx.ptr_op(bin_op, left, right)
+        ecx.binary_ptr_op(bin_op, left, right)
     }
 
     fn box_alloc(
