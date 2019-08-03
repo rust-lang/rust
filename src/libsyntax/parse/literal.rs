@@ -354,31 +354,19 @@ impl<'a> Parser<'a> {
 
 crate fn expect_no_suffix(diag: &Handler, sp: Span, kind: &str, suffix: Option<Symbol>) {
     if let Some(suf) = suffix {
-        let mut err = if kind == "a tuple index" &&
-                         [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suf) {
-            // #59553: warn instead of reject out of hand to allow the fix to percolate
-            // through the ecosystem when people fix their macros
-            let mut err = diag.struct_span_warn(
-                sp,
-                &format!("suffixes on {} are invalid", kind),
-            );
-            err.note(&format!(
-                "`{}` is *temporarily* accepted on tuple index fields as it was \
-                    incorrectly accepted on stable for a few releases",
-                suf,
-            ));
+        let mut err = diag.struct_span_err(sp, &format!("suffixes on {} are invalid", kind));
+
+        if kind == "a tuple index"
+            && [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suf)
+        {
             err.help(
                 "on proc macros, you'll want to use `syn::Index::from` or \
-                    `proc_macro::Literal::*_unsuffixed` for code that will desugar \
-                    to tuple field access",
+                `proc_macro::Literal::*_unsuffixed` for code that will desugar \
+                to tuple field access",
             );
-            err.note(
-                "for more context, see https://github.com/rust-lang/rust/issues/60210",
-            );
-            err
-        } else {
-            diag.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
-        };
+            err.note("for more context, see https://github.com/rust-lang/rust/issues/60210");
+        }
+
         err.span_label(sp, format!("invalid suffix `{}`", suf));
         err.emit();
     }
