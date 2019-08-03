@@ -256,12 +256,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub DUPLICATE_MACRO_EXPORTS,
-    Deny,
-    "detects duplicate macro exports"
-}
-
-declare_lint! {
     pub INTRA_DOC_LINK_RESOLUTION_FAILURE,
     Warn,
     "failures in resolving intra-doc link targets"
@@ -402,7 +396,6 @@ declare_lint_pass! {
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
-        DUPLICATE_MACRO_EXPORTS,
         INTRA_DOC_LINK_RESOLUTION_FAILURE,
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS,
@@ -427,7 +420,6 @@ pub enum BuiltinLintDiagnostics {
     Normal,
     BareTraitObject(Span, /* is_global */ bool),
     AbsPathWithModule(Span),
-    DuplicatedMacroExports(ast::Ident, Span, Span),
     ProcMacroDeriveResolutionFallback(Span),
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
@@ -509,10 +501,6 @@ impl BuiltinLintDiagnostics {
                     Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders)
                 };
                 db.span_suggestion(span, "use `crate`", sugg, app);
-            }
-            BuiltinLintDiagnostics::DuplicatedMacroExports(ident, earlier_span, later_span) => {
-                db.span_label(later_span, format!("`{}` already exported", ident));
-                db.span_note(earlier_span, "previous macro export is now shadowed");
             }
             BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
                 db.span_label(span, "names from parent modules are not \

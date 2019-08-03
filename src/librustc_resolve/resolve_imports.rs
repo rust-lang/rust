@@ -16,18 +16,14 @@ use errors::Applicability;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc::ty;
 use rustc::lint::builtin::BuiltinLintDiagnostics;
-use rustc::lint::builtin::{
-    DUPLICATE_MACRO_EXPORTS,
-    PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-    UNUSED_IMPORTS,
-};
+use rustc::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::{self, PartialRes, Export};
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
 
-use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
+use syntax::ast::{self, Ident, Name, NodeId};
 use syntax::ext::hygiene::ExpnId;
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -537,13 +533,13 @@ impl<'a> Resolver<'a> {
                         if let (&NameBindingKind::Res(_, true), &NameBindingKind::Res(_, true)) =
                                (&old_binding.kind, &binding.kind) {
 
-                            this.session.buffer_lint_with_diagnostic(
-                                DUPLICATE_MACRO_EXPORTS,
-                                CRATE_NODE_ID,
+                            this.session.struct_span_err(
                                 binding.span,
                                 &format!("a macro named `{}` has already been exported", ident),
-                                BuiltinLintDiagnostics::DuplicatedMacroExports(
-                                    ident, old_binding.span, binding.span));
+                            )
+                            .span_label(binding.span, format!("`{}` already exported", ident))
+                            .span_note(old_binding.span, "previous macro export is now shadowed")
+                            .emit();
 
                             resolution.binding = Some(binding);
                         } else {

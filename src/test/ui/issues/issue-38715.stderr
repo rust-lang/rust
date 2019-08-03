@@ -4,9 +4,6 @@ error: a macro named `foo` has already been exported
 LL | macro_rules! foo { () => {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `foo` already exported
    |
-   = note: `#[deny(duplicate_macro_exports)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
-   = note: for more information, see issue #35896 <https://github.com/rust-lang/rust/issues/35896>
 note: previous macro export is now shadowed
   --> $DIR/issue-38715.rs:2:1
    |

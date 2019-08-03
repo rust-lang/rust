@@ -312,11 +312,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(DUPLICATE_MACRO_EXPORTS),
-            reference: "issue #35896 <https://github.com/rust-lang/rust/issues/35896>",
-            edition: Some(Edition::Edition2018),
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(KEYWORD_IDENTS),
             reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
             edition: Some(Edition::Edition2018),
@@ -470,6 +465,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36247");
     store.register_removed("parenthesized_params_in_types_and_modules",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/42238");
+    store.register_removed("duplicate_macro_exports",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/35896");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
