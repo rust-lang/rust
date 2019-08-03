@@ -17,7 +17,6 @@
 use crate::astconv::{AstConv, Bounds, SizedByDefault};
 use crate::constrained_generic_params as cgp;
 use crate::check::intrinsic::intrisic_operation_unsafety;
-use crate::lint;
 use crate::middle::resolve_lifetime as rl;
 use crate::middle::weak_lang_items;
 use rustc::mir::mono::Linkage;
@@ -1014,9 +1013,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
 
                         if !allow_defaults && default.is_some() {
                             if !tcx.features().default_type_parameter_fallback {
-                                tcx.lint_hir(
-                                    lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                                    param.hir_id,
+                                tcx.sess.span_err(
                                     param.span,
                                     &format!(
                                         "defaults for type parameters are only allowed in \
