@@ -383,15 +383,18 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// foo.unwrap_or(String::new())
+    /// # let foo = Some(String::new());
+    /// foo.unwrap_or(String::new());
     /// ```
     /// this can instead be written:
     /// ```rust
-    /// foo.unwrap_or_else(String::new)
+    /// # let foo = Some(String::new());
+    /// foo.unwrap_or_else(String::new);
     /// ```
     /// or
     /// ```rust
-    /// foo.unwrap_or_default()
+    /// # let foo = Some(String::new());
+    /// foo.unwrap_or_default();
     /// ```
     pub OR_FUN_CALL,
     perf,
@@ -409,15 +412,24 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// foo.expect(&format!("Err {}: {}", err_code, err_msg))
+    /// # let foo = Some(String::new());
+    /// # let err_code = "418";
+    /// # let err_msg = "I'm a teapot";
+    /// foo.expect(&format!("Err {}: {}", err_code, err_msg));
     /// ```
     /// or
     /// ```rust
-    /// foo.expect(format!("Err {}: {}", err_code, err_msg).as_str())
+    /// # let foo = Some(String::new());
+    /// # let err_code = "418";
+    /// # let err_msg = "I'm a teapot";
+    /// foo.expect(format!("Err {}: {}", err_code, err_msg).as_str());
     /// ```
     /// this can instead be written:
     /// ```rust
-    /// foo.unwrap_or_else(|_| panic!("Err {}: {}", err_code, err_msg))
+    /// # let foo = Some(String::new());
+    /// # let err_code = "418";
+    /// # let err_msg = "I'm a teapot";
+    /// foo.unwrap_or_else(|| panic!("Err {}: {}", err_code, err_msg));
     /// ```
     pub EXPECT_FUN_CALL,
     perf,

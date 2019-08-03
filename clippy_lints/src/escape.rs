@@ -28,11 +28,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// fn main() {
-    ///     let x = Box::new(1);
-    ///     foo(*x);
-    ///     println!("{}", *x);
-    /// }
+    /// # fn foo(bar: usize) {}
+    /// let x = Box::new(1);
+    /// foo(*x);
+    /// println!("{}", *x);
     /// ```
     pub BOXED_LOCAL,
     perf,

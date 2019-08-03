@@ -24,7 +24,8 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// &my_data.filter(|&x| x == 0u8).count() // use bytecount::count instead
+    /// # let vec = vec![1_u8];
+    /// &vec.iter().filter(|x| **x == 0u8).count(); // use bytecount::count instead
     /// ```
     pub NAIVE_BYTECOUNT,
     perf,

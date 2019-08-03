@@ -41,7 +41,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # let src = vec![1];
+    /// # let mut dst = vec![0; 65];
     /// for i in 0..src.len() {
     ///     dst[i + 64] = src[i];
     /// }
@@ -264,8 +266,9 @@ declare_clippy_lint! {
     /// None
     ///
     /// **Example:**
-    /// ```ignore
-    /// let len = iterator.collect::<Vec<_>>().len();
+    /// ```rust
+    /// # let iterator = vec![1].into_iter();
+    /// let len = iterator.clone().collect::<Vec<_>>().len();
     /// // should be
     /// let len = iterator.count();
     /// ```
