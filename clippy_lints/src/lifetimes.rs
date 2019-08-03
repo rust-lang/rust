@@ -348,7 +348,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             },
             TyKind::Def(item, _) => {
                 let map = self.cx.tcx.hir();
-                if let ItemKind::Existential(ref exist_ty) = map.expect_item(item.id).node {
+                if let ItemKind::OpaqueTy(ref exist_ty) = map.expect_item(item.id).node {
                     for bound in &exist_ty.bounds {
                         if let GenericBound::Outlives(_) = *bound {
                             self.record(&None);

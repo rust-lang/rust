@@ -121,7 +121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::Ty(..)
             | hir::ItemKind::Union(..)
-            | hir::ItemKind::Existential(..)
+            | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod(..)
             | hir::ItemKind::Impl(..)
@@ -142,7 +142,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
 
         let desc = match impl_item.node {
             hir::ImplItemKind::Method(..) => "a method",
-            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) | hir::ImplItemKind::Existential(_) => return,
+            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) | hir::ImplItemKind::OpaqueTy(_) => return,
         };
 
         let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);

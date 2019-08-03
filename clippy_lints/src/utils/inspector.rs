@@ -64,7 +64,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
             },
             hir::ImplItemKind::Method(..) => println!("method"),
             hir::ImplItemKind::Type(_) => println!("associated type"),
-            hir::ImplItemKind::Existential(_) => println!("existential type"),
+            hir::ImplItemKind::OpaqueTy(_) => println!("existential type"),
         }
     }
     // fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx
@@ -363,7 +363,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
         hir::ItemKind::Ty(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));
         },
-        hir::ItemKind::Existential(..) => {
+        hir::ItemKind::OpaqueTy(..) => {
             println!("existential type with real type {:?}", cx.tcx.type_of(did));
         },
         hir::ItemKind::Enum(..) => {
