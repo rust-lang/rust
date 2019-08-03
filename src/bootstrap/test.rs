@@ -415,6 +415,10 @@ impl Step for Miri {
             cargo.env("RUSTC_DEBUG_ASSERTIONS", "false");
             // Debug things.
             cargo.env("RUST_BACKTRACE", "1");
+            // Configure `cargo install` path, and let cargo-miri know that that's where
+            // xargo ends up.
+            cargo.env("CARGO_INSTALL_ROOT", &builder.out); // cargo adds a `bin/`
+            cargo.env("XARGO", builder.out.join("bin").join("xargo"));
 
             if !try_run(builder, &mut cargo) {
                 return;
