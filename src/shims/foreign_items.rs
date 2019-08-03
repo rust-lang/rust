@@ -128,7 +128,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::interpret::InterpError::Panic;
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
@@ -142,15 +141,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // First: functions that diverge.
         match link_name {
             "__rust_start_panic" | "panic_impl" => {
-                return err!(MachineError("the evaluated program panicked".to_string()));
+                throw_unsup!(MachineError("the evaluated program panicked".to_string()));
             }
             "exit" | "ExitProcess" => {
                 // it's really u32 for ExitProcess, but we have to put it into the `Exit` error variant anyway
                 let code = this.read_scalar(args[0])?.to_i32()?;
-                return err!(Exit(code));
+                return Err(InterpError::Exit(code).into());
             }
             _ => if dest.is_none() {
-                return err!(Unimplemented(
+                throw_unsup!(Unimplemented(
                     format!("can't call diverging foreign function: {}", link_name),
                 ));
             }
@@ -168,7 +167,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "calloc" => {
                 let items = this.read_scalar(args[0])?.to_usize(this)?;
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
-                let size = items.checked_mul(len).ok_or_else(|| Panic(PanicMessage::Overflow(mir::BinOp::Mul)))?;
+                let size = items.checked_mul(len).ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
                 let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }
@@ -178,13 +177,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let size = this.read_scalar(args[2])?.to_usize(this)?;
                 // Align must be power of 2, and also at least ptr-sized (POSIX rules).
                 if !align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 /*
                 FIXME: This check is disabled because rustc violates it.
                 See <https://github.com/rust-lang/rust/issues/62251>.
                 if align < this.pointer_size().bytes() {
-                    return err!(MachineError(format!(
+                    throw_unsup!(MachineError(format!(
                         "posix_memalign: alignment must be at least the size of a pointer, but is {}",
                         align,
                     )));
@@ -217,10 +216,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let size = this.read_scalar(args[0])?.to_usize(this)?;
                 let align = this.read_scalar(args[1])?.to_usize(this)?;
                 if size == 0 {
-                    return err!(HeapAllocZeroBytes);
+                    throw_unsup!(HeapAllocZeroBytes);
                 }
                 if !align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let ptr = this.memory_mut()
                     .allocate(
@@ -234,10 +233,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let size = this.read_scalar(args[0])?.to_usize(this)?;
                 let align = this.read_scalar(args[1])?.to_usize(this)?;
                 if size == 0 {
-                    return err!(HeapAllocZeroBytes);
+                    throw_unsup!(HeapAllocZeroBytes);
                 }
                 if !align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let ptr = this.memory_mut()
                     .allocate(
@@ -256,10 +255,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let old_size = this.read_scalar(args[1])?.to_usize(this)?;
                 let align = this.read_scalar(args[2])?.to_usize(this)?;
                 if old_size == 0 {
-                    return err!(HeapAllocZeroBytes);
+                    throw_unsup!(HeapAllocZeroBytes);
                 }
                 if !align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let ptr = this.force_ptr(ptr)?;
                 this.memory_mut().deallocate(
@@ -274,10 +273,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let align = this.read_scalar(args[2])?.to_usize(this)?;
                 let new_size = this.read_scalar(args[3])?.to_usize(this)?;
                 if old_size == 0 || new_size == 0 {
-                    return err!(HeapAllocZeroBytes);
+                    throw_unsup!(HeapAllocZeroBytes);
                 }
                 if !align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let align = Align::from_bytes(align).unwrap();
                 let new_ptr = this.memory_mut().reallocate(
@@ -310,7 +309,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
                     id => {
-                        return err!(Unimplemented(
+                        throw_unsup!(Unimplemented(
                             format!("miri does not support syscall ID {}", id),
                         ))
                     }
@@ -361,10 +360,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let mut args = this.frame().body.args_iter();
 
                 let arg_local = args.next().ok_or_else(||
-                    InterpError::AbiViolation(
+                    err_unsup!(AbiViolation(
                         "Argument to __rust_maybe_catch_panic does not take enough arguments."
                             .to_owned(),
-                    ),
+                    )),
                 )?;
                 let arg_dest = this.local_place(arg_local)?;
                 this.write_scalar(data, arg_dest)?;
@@ -633,7 +632,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if let Some(result) = result {
                     this.write_scalar(result, dest)?;
                 } else {
-                    return err!(Unimplemented(
+                    throw_unsup!(Unimplemented(
                         format!("Unimplemented sysconf name: {}", name),
                     ));
                 }
@@ -662,14 +661,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // This is `libc::pthread_key_t`.
                 let key_type = args[0].layout.ty
                     .builtin_deref(true)
-                    .ok_or_else(|| InterpError::AbiViolation("wrong signature used for `pthread_key_create`: first argument must be a raw pointer.".to_owned()))?
+                    .ok_or_else(|| err_unsup!(
+                        AbiViolation("wrong signature used for `pthread_key_create`: first argument must be a raw pointer.".to_owned())
+                    ))?
                     .ty;
                 let key_layout = this.layout_of(key_type)?;
 
                 // Create key and write it into the memory where `key_ptr` wants it.
                 let key = this.machine.tls.create_tls_key(dtor) as u128;
                 if key_layout.size.bits() < 128 && key >= (1u128 << key_layout.size.bits() as u128) {
-                    return err!(OutOfTls);
+                    throw_unsup!(OutOfTls);
                 }
 
                 let key_ptr = this.memory().check_ptr_access(key_ptr, key_layout.size, key_layout.align.abi)?
@@ -728,7 +729,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // We don't support threading. (Also for Windows.)
             "pthread_create" | "CreateThread" => {
-                return err!(Unimplemented(format!("Miri does not support threading")));
+                throw_unsup!(Unimplemented(format!("Miri does not support threading")));
             }
 
             // Stub out calls for condvar, mutex and rwlock, to just return `0`.
@@ -869,7 +870,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Figure out how large a TLS key actually is. This is `c::DWORD`.
                 if dest.layout.size.bits() < 128
                         && key >= (1u128 << dest.layout.size.bits() as u128) {
-                    return err!(OutOfTls);
+                    throw_unsup!(OutOfTls);
                 }
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
@@ -947,7 +948,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // We can't execute anything else.
             _ => {
-                return err!(Unimplemented(
+                throw_unsup!(Unimplemented(
                     format!("can't call foreign function: {}", link_name),
                 ));
             }

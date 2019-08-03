@@ -42,7 +42,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             })
             .ok_or_else(|| {
                 let path = path.iter().map(|&s| s.to_owned()).collect();
-                InterpError::PathNotFound(path).into()
+                err_unsup!(PathNotFound(path)).into()
             })
     }
 

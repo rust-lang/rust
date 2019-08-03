@@ -12,7 +12,7 @@ use rustc::hir::{MutMutable, MutImmutable};
 use rustc::mir::RetagKind;
 
 use crate::{
-    InterpResult, InterpError, HelpersEvalContextExt,
+    InterpResult, HelpersEvalContextExt,
     MemoryKind, MiriMemoryKind, RangeMap, AllocId, Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -273,12 +273,12 @@ impl<'tcx> Stack {
         if let Some(call) = item.protector {
             if global.is_active(call) {
                 if let Some(tag) = tag {
-                    return err!(MachineError(format!(
+                    throw_unsup!(MachineError(format!(
                         "not granting access to tag {:?} because incompatible item is protected: {:?}",
                         tag, item
                     )));
                 } else {
-                    return err!(MachineError(format!(
+                    throw_unsup!(MachineError(format!(
                         "deallocating while item is protected: {:?}", item
                     )));
                 }
@@ -299,10 +299,10 @@ impl<'tcx> Stack {
 
         // Step 1: Find granting item.
         let granting_idx = self.find_granting(access, tag)
-            .ok_or_else(|| InterpError::MachineError(format!(
+            .ok_or_else(|| err_unsup!(MachineError(format!(
                 "no item granting {} to tag {:?} found in borrow stack",
                 access, tag,
-            )))?;
+            ))))?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
@@ -346,10 +346,10 @@ impl<'tcx> Stack {
     ) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
         self.find_granting(AccessKind::Write, tag)
-            .ok_or_else(|| InterpError::MachineError(format!(
+            .ok_or_else(|| err_unsup!(MachineError(format!(
                 "no item granting write access for deallocation to tag {:?} found in borrow stack",
                 tag,
-            )))?;
+            ))))?;
 
         // Step 2: Remove all items.  Also checks for protectors.
         for item in self.borrows.drain(..).rev() {
@@ -378,9 +378,9 @@ impl<'tcx> Stack {
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
         let granting_idx = self.find_granting(access, derived_from)
-            .ok_or_else(|| InterpError::MachineError(format!(
+            .ok_or_else(|| err_unsup!(MachineError(format!(
                 "trying to reborrow for {:?}, but parent tag {:?} does not have an appropriate item in the borrow stack", new.perm, derived_from,
-            )))?;
+            ))))?;
 
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between

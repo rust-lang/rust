@@ -43,19 +43,19 @@ impl<'mir, 'tcx> GlobalState {
         memory: &Memory<'mir, 'tcx, Evaluator<'tcx>>,
     ) -> InterpResult<'tcx, Pointer<Tag>> {
         if int == 0 {
-            return err!(InvalidNullPointerUsage);
+            throw_unsup!(InvalidNullPointerUsage);
         }
 
         let global_state = memory.extra.intptrcast.borrow();
         
-        match global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr) {
+        Ok(match global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr) {
             Ok(pos) => {
                 let (_, alloc_id) = global_state.int_to_ptr_map[pos];
                 // `int` is equal to the starting address for an allocation, the offset should be
                 // zero. The pointer is untagged because it was created from a cast
-                Ok(Pointer::new_with_tag(alloc_id, Size::from_bytes(0), Tag::Untagged))
+                Pointer::new_with_tag(alloc_id, Size::from_bytes(0), Tag::Untagged)
             },
-            Err(0) => err!(DanglingPointerDeref), 
+            Err(0) => throw_unsup!(DanglingPointerDeref), 
             Err(pos) => {
                 // This is the largest of the adresses smaller than `int`,
                 // i.e. the greatest lower bound (glb)
@@ -65,12 +65,12 @@ impl<'mir, 'tcx> GlobalState {
                 // If the offset exceeds the size of the allocation, this access is illegal
                 if offset <= memory.get(alloc_id)?.bytes.len() as u64 {
                     // This pointer is untagged because it was created from a cast
-                    Ok(Pointer::new_with_tag(alloc_id, Size::from_bytes(offset), Tag::Untagged))
+                    Pointer::new_with_tag(alloc_id, Size::from_bytes(offset), Tag::Untagged)
                 } else {
-                    err!(DanglingPointerDeref)
+                    throw_unsup!(DanglingPointerDeref)
                 } 
             }
-        }
+        })
     }
 
     pub fn ptr_to_int(

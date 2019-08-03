@@ -16,7 +16,7 @@ impl Dlsym {
             "getentropy" => Some(GetEntropy),
             "__pthread_get_minstack" => None,
             _ =>
-                return err!(Unimplemented(format!(
+                throw_unsup!(Unimplemented(format!(
                     "Unsupported dlsym: {}", name
                 ))),
         })

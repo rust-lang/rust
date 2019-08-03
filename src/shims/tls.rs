@@ -6,7 +6,7 @@ use rustc_target::abi::LayoutOf;
 use rustc::{ty, ty::layout::HasDataLayout};
 
 use crate::{
-    InterpResult, InterpError, StackPopCleanup,
+    InterpResult, StackPopCleanup,
     MPlaceTy, Scalar, Tag,
     HelpersEvalContextExt,
 };
@@ -64,7 +64,7 @@ impl<'tcx> TlsData<'tcx> {
                 trace!("TLS key {} removed", key);
                 Ok(())
             }
-            None => err!(TlsOutOfBounds),
+            None => throw_unsup!(TlsOutOfBounds),
         }
     }
 
@@ -78,7 +78,7 @@ impl<'tcx> TlsData<'tcx> {
                 trace!("TLS key {} loaded: {:?}", key, data);
                 Ok(data.unwrap_or_else(|| Scalar::ptr_null(cx).into()))
             }
-            None => err!(TlsOutOfBounds),
+            None => throw_unsup!(TlsOutOfBounds),
         }
     }
 
@@ -89,7 +89,7 @@ impl<'tcx> TlsData<'tcx> {
                 *data = new_data;
                 Ok(())
             }
-            None => err!(TlsOutOfBounds),
+            None => throw_unsup!(TlsOutOfBounds),
         }
     }
 
@@ -158,7 +158,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 StackPopCleanup::None { cleanup: true },
             )?;
             let arg_local = this.frame().body.args_iter().next().ok_or_else(
-                || InterpError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
+                || err_unsup!(AbiViolation("TLS dtor does not take enough arguments.".to_owned())),
             )?;
             let dest = this.local_place(arg_local)?;
             this.write_scalar(ptr, dest)?;
