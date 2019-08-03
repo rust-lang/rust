@@ -195,22 +195,6 @@ issue][issue-include].
 [unstable-include]: ../unstable-book/language-features/external-doc.html
 [issue-include]: https://github.com/rust-lang/rust/issues/44732
 
-### Add aliases for an item in documentation search
-
-This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
-`doc(alias)` attribute. Example:
-
-```rust,no_run
-#![feature(doc_alias)]
-
-#[doc(alias = "x")]
-#[doc(alias = "big")]
-pub struct BigX;
-```
-
-Then, when looking for it through the `rustdoc` search, if you enter "x" or
-"big", search will show the `BigX` struct first.
-
 ### Include items only when collecting doctests
 
 Rustdoc's [documentation tests] can do some things that regular unit tests can't, so it can

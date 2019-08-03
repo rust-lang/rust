@@ -450,9 +450,6 @@ declare_features! (
     // Allows comparing raw pointers during const eval.
     (active, const_compare_raw_pointers, "1.27.0", Some(53020), None),
 
-    // Allows `#[doc(alias = "...")]`.
-    (active, doc_alias, "1.27.0", Some(50146), None),
-
     // Allows inconsistent bounds in where clauses.
     (active, trivial_bounds, "1.28.0", Some(48214), None),
 
@@ -854,6 +851,8 @@ declare_features! (
     (accepted, repr_align_enum, "1.37.0", Some(57996), None),
     // Allows `const _: TYPE = VALUE`.
     (accepted, underscore_const_names, "1.37.0", Some(54912), None),
+    // Allows `#[doc(alias = "...")]`.
+    (accepted, doc_alias, "1.27.0", Some(50146), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
@@ -1886,10 +1885,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 } else if content.iter().any(|c| c.check_name(sym::spotlight)) {
                     gate_feature_post!(&self, doc_spotlight, attr.span,
                         "`#[doc(spotlight)]` is experimental"
-                    );
-                } else if content.iter().any(|c| c.check_name(sym::alias)) {
-                    gate_feature_post!(&self, doc_alias, attr.span,
-                        "`#[doc(alias = \"...\")]` is experimental"
                     );
                 } else if content.iter().any(|c| c.check_name(sym::keyword)) {
                     gate_feature_post!(&self, doc_keyword, attr.span,

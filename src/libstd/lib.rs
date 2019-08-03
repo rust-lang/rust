@@ -252,7 +252,6 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
-#![feature(doc_alias)]
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]

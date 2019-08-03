@@ -214,3 +214,17 @@ the `strip-hidden` pass is removed.
 Since primitive types are defined in the compiler, there's no place to attach documentation
 attributes. This attribute is used by the standard library to provide a way to generate
 documentation for primitive types.
+
+## `#[doc(alias)]`: Add aliases for an item in documentation search
+
+This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
+`doc(alias)` attribute. Example:
+
+```rust,no_run
+#[doc(alias = "x")]
+#[doc(alias = "big")]
+pub struct BigX;
+```
+
+Then, when looking for it through the `rustdoc` search, if you enter "x" or
+"big", search will show the `BigX` struct first.
