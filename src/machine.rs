@@ -247,7 +247,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 let data = vec![0; size.bytes() as usize];
                 Allocation::from_bytes(&data, tcx.data_layout.pointer_align.abi)
             }
-            _ => return err!(Unimplemented(
+            _ => throw_unsup!(Unimplemented(
                     format!("can't access foreign static: {}", link_name),
                 )),
         };

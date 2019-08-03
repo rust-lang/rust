@@ -41,7 +41,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let main_mir = ecx.load_mir(main_instance.def)?;
 
     if !main_mir.return_ty().is_unit() || main_mir.arg_count != 0 {
-        return err!(Unimplemented(
+        throw_unsup!(Unimplemented(
             "miri does not support main functions without `fn()` type signatures"
                 .to_owned(),
         ));
@@ -60,7 +60,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let start_mir = ecx.load_mir(start_instance.def)?;
 
     if start_mir.arg_count != 3 {
-        return err!(AbiViolation(format!(
+        throw_unsup!(AbiViolation(format!(
             "'start' lang item should have three arguments, but has {}",
             start_mir.arg_count
         )));
@@ -200,7 +200,7 @@ pub fn eval_main<'tcx>(
             // Special treatment for some error kinds
             let msg = match e.kind {
                 InterpError::Exit(code) => std::process::exit(code),
-                InterpError::NoMirFor(..) =>
+                err_unsup!(NoMirFor(..)) =>
                     format!("{}. Did you set `MIRI_SYSROOT` to a Miri-enabled sysroot? You can prepare one with `cargo miri setup`.", e),
                 _ => e.to_string()
             };

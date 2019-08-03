@@ -94,7 +94,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         let right = right.to_scalar()?;
         debug_assert!(left.is_ptr() || right.is_ptr() || bin_op == Offset);
 
-        match bin_op {
+        Ok(match bin_op {
             Offset => {
                 let pointee_ty = left_layout.ty
                     .builtin_deref(true)
@@ -105,7 +105,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     pointee_ty,
                     right.to_isize(self)?,
                 )?;
-                Ok((ptr, false))
+                (ptr, false)
             }
             // These need both to be pointer, and fail if they are not in the same location
             Lt | Le | Gt | Ge | Sub if left.is_ptr() && right.is_ptr() => {
@@ -130,10 +130,10 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                         }
                         _ => bug!("We already established it has to be one of these operators."),
                     };
-                    Ok((Scalar::from_bool(res), false))
+                    (Scalar::from_bool(res), false)
                 } else {
                     // Both are pointers, but from different allocations.
-                    err!(InvalidPointerMath)
+                    throw_unsup!(InvalidPointerMath)
                 }
             }
             Gt | Ge if left.is_ptr() && right.is_bits() => {
@@ -151,10 +151,10 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 };
                 if result {
                     // Definitely true!
-                    Ok((Scalar::from_bool(true), false))
+                    (Scalar::from_bool(true), false)
                 } else {
                     // Sorry, can't tell.
-                    err!(InvalidPointerMath)
+                    throw_unsup!(InvalidPointerMath)
                 }
             }
             // These work if the left operand is a pointer, and the right an integer
@@ -165,7 +165,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     left.to_ptr().expect("we checked is_ptr"),
                     right.to_bits(self.memory().pointer_size()).expect("we checked is_bits"),
                     right_layout.abi.is_signed(),
-                )
+                )?
             }
             // Commutative operators also work if the integer is on the left
             Add | BitAnd if left.is_bits() && right.is_ptr() => {
@@ -175,11 +175,11 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     right.to_ptr().expect("we checked is_ptr"),
                     left.to_bits(self.memory().pointer_size()).expect("we checked is_bits"),
                     left_layout.abi.is_signed(),
-                )
+                )?
             }
             // Nothing else works
-            _ => err!(InvalidPointerMath),
-        }
+            _ => throw_unsup!(InvalidPointerMath),
+        })
     }
 
     fn ptr_eq(
@@ -248,7 +248,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     let v = Scalar::from_uint((left.offset.bytes() as u128) & right, ptr_size);
                     (v, false)
                 } else {
-                    return err!(ReadPointerAsBytes);
+                    throw_unsup!(ReadPointerAsBytes);
                 }
             }
 
@@ -271,7 +271,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                         false,
                     )
                 } else {
-                    return err!(ReadPointerAsBytes);
+                    throw_unsup!(ReadPointerAsBytes);
                 }
             }
 
@@ -283,7 +283,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     right,
                     if signed { "signed" } else { "unsigned" }
                 );
-                return err!(Unimplemented(msg));
+                throw_unsup!(Unimplemented(msg));
             }
         })
     }
@@ -298,12 +298,11 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         pointee_ty: Ty<'tcx>,
         offset: i64,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
-        use rustc::mir::interpret::InterpError::Panic;
         // FIXME: assuming here that type size is less than `i64::max_value()`.
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         let offset = offset
             .checked_mul(pointee_size)
-            .ok_or_else(|| Panic(PanicMessage::Overflow(mir::BinOp::Mul)))?;
+            .ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
         // Now let's see what kind of pointer this is.
         let ptr = if offset == 0 {
             match ptr {
