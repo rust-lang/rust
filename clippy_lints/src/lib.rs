@@ -130,12 +130,12 @@ macro_rules! declare_clippy_lint {
     };
     { $(#[$attr:meta])* pub $name:tt, internal, $description:tt } => {
         declare_tool_lint! {
-            pub clippy::$name, Allow, $description, report_in_external_macro: true
+            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
         }
     };
     { $(#[$attr:meta])* pub $name:tt, internal_warn, $description:tt } => {
         declare_tool_lint! {
-            pub clippy::$name, Warn, $description, report_in_external_macro: true
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
         }
     };
 }
