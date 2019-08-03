@@ -1,6 +1,6 @@
 use ra_parser::{Token, TokenSource};
 use ra_syntax::{classify_literal, SmolStr, SyntaxKind, SyntaxKind::*, T};
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, Ref, RefCell};
 use tt::buffer::{Cursor, TokenBuffer};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -20,9 +20,7 @@ impl<'a> SubtreeTokenSource<'a> {
     // Helper function used in test
     #[cfg(test)]
     pub fn text(&self) -> SmolStr {
-        let idx = self.get(self.curr.1);
-        let cached = self.cached.borrow();
-        match cached[idx] {
+        match *self.get(self.curr.1) {
             Some(ref tt) => tt.text.clone(),
             _ => SmolStr::new(""),
         }
@@ -43,46 +41,46 @@ impl<'a> SubtreeTokenSource<'a> {
     }
 
     fn mk_token(&self, pos: usize) -> Token {
-        let idx = self.get(pos);
-        let cached = self.cached.borrow();
-        match cached[idx] {
+        match *self.get(pos) {
             Some(ref tt) => Token { kind: tt.kind, is_jointed_to_next: tt.is_joint_to_next },
             None => Token { kind: EOF, is_jointed_to_next: false },
         }
     }
 
-    fn get(&self, pos: usize) -> usize {
-        let mut cached = self.cached.borrow_mut();
-        if pos < cached.len() {
-            return pos;
+    fn get(&self, pos: usize) -> Ref<Option<TtToken>> {
+        if pos < self.cached.borrow().len() {
+            return Ref::map(self.cached.borrow(), |c| &c[pos]);
         }
 
-        while pos >= cached.len() {
-            let cursor = self.cached_cursor.get();
-            if cursor.eof() {
-                cached.push(None);
-                continue;
-            }
+        {
+            let mut cached = self.cached.borrow_mut();
+            while pos >= cached.len() {
+                let cursor = self.cached_cursor.get();
+                if cursor.eof() {
+                    cached.push(None);
+                    continue;
+                }
 
-            match cursor.token_tree() {
-                Some(tt::TokenTree::Leaf(leaf)) => {
-                    cached.push(Some(convert_leaf(&leaf)));
-                    self.cached_cursor.set(cursor.bump());
-                }
-                Some(tt::TokenTree::Subtree(subtree)) => {
-                    self.cached_cursor.set(cursor.subtree().unwrap());
-                    cached.push(Some(convert_delim(subtree.delimiter, false)));
-                }
-                None => {
-                    if let Some(subtree) = cursor.end() {
-                        cached.push(Some(convert_delim(subtree.delimiter, true)));
+                match cursor.token_tree() {
+                    Some(tt::TokenTree::Leaf(leaf)) => {
+                        cached.push(Some(convert_leaf(&leaf)));
                         self.cached_cursor.set(cursor.bump());
+                    }
+                    Some(tt::TokenTree::Subtree(subtree)) => {
+                        self.cached_cursor.set(cursor.subtree().unwrap());
+                        cached.push(Some(convert_delim(subtree.delimiter, false)));
+                    }
+                    None => {
+                        if let Some(subtree) = cursor.end() {
+                            cached.push(Some(convert_delim(subtree.delimiter, true)));
+                            self.cached_cursor.set(cursor.bump());
+                        }
                     }
                 }
             }
         }
 
-        pos
+        Ref::map(self.cached.borrow(), |c| &c[pos])
     }
 }
 
@@ -107,9 +105,7 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
 
     /// Is the current token a specified keyword?
     fn is_keyword(&self, kw: &str) -> bool {
-        let idx = self.get(self.curr.1);
-        let cached = self.cached.borrow();
-        match cached[idx] {
+        match *self.get(self.curr.1) {
             Some(ref t) => t.text == *kw,
             _ => false,
         }
