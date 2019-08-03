@@ -602,6 +602,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
             }
+            // underscore case for windows
+            "_ldexp" | "ldexp" => {
+                // FIXME: Using host floats.
+                let x = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let exp = this.read_scalar(args[1])?.to_i32()?;
+                // FIXME: We should use cmath if there are any imprecisions.
+                let n = x * 2.0f64.powi(exp);
+                this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
+            }
 
             // Some things needed for `sys::thread` initialization to go through.
             "signal" | "sigaction" | "sigaltstack" => {
