@@ -260,7 +260,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 match diagnostic.error {
                     Exit(_) => bug!("the CTFE program cannot exit"),
                     Unsupported(_)
-                    | UndefinedBehaviour(_)
+                    | UndefinedBehavior(_)
                     | InvalidProgram(_)
                     | ResourceExhaustion(_) => {
                         // Ignore these errors.

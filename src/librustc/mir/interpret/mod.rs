@@ -21,8 +21,8 @@ macro_rules! err_inval {
 #[macro_export]
 macro_rules! err_ub {
     ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::UndefinedBehaviour(
-            $crate::mir::interpret::UndefinedBehaviourInfo::$($tt)*
+        $crate::mir::interpret::InterpError::UndefinedBehavior(
+            $crate::mir::interpret::UndefinedBehaviorInfo::$($tt)*
         )
     };
 }
@@ -51,6 +51,11 @@ macro_rules! throw_unsup {
 }
 
 #[macro_export]
+macro_rules! throw_unsup_format {
+    ($($tt:tt)*) => { throw_unsup!(Unsupported(format!($($tt)*))) };
+}
+
+#[macro_export]
 macro_rules! throw_inval {
     ($($tt:tt)*) => { return Err(err_inval!($($tt)*).into()) };
 }
@@ -58,6 +63,11 @@ macro_rules! throw_inval {
 #[macro_export]
 macro_rules! throw_ub {
     ($($tt:tt)*) => { return Err(err_ub!($($tt)*).into()) };
+}
+
+#[macro_export]
+macro_rules! throw_ub_format {
+    ($($tt:tt)*) => { throw_ub!(Ub(format!($($tt)*))) };
 }
 
 #[macro_export]
@@ -78,7 +88,7 @@ mod pointer;
 pub use self::error::{
     InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
     FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicInfo, UnsupportedOpInfo,
-    InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviourInfo,
+    InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviorInfo,
 };
 
 pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};
