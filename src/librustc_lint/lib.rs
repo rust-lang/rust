@@ -337,11 +337,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(LEGACY_CONSTRUCTOR_VISIBILITY),
-            reference: "issue #39207 <https://github.com/rust-lang/rust/issues/39207>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN),
             reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
             edition: None,
@@ -485,6 +480,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
     store.register_removed("missing_fragment_specifier",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/40107");
+    store.register_removed("legacy_constructor_visibility",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/39207");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
