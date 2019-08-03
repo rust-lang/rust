@@ -162,8 +162,26 @@ fn test_sysroot_consistency() {
     }
 }
 
+fn cargo() -> Command {
+    if let Ok(val) = std::env::var("CARGO") {
+        // Bootstrap tells us where to find cargo
+        Command::new(val)
+    } else {
+        Command::new("cargo")
+    }
+}
+
+fn xargo() -> Command {
+    if let Ok(val) = std::env::var("XARGO") {
+        // Bootstrap tells us where to find xargo
+        Command::new(val)
+    } else {
+        Command::new("xargo")
+    }
+}
+
 fn xargo_version() -> Option<(u32, u32, u32)> {
-    let out = Command::new("xargo").arg("--version").output().ok()?;
+    let out = xargo().arg("--version").output().ok()?;
     if !out.status.success() {
         return None;
     }
@@ -224,21 +242,14 @@ fn setup(ask_user: bool) {
     }
 
     // First, we need xargo.
-    let xargo = xargo_version();
-    if xargo.map_or(true, |v| v < (0, 3, 14)) {
+    if xargo_version().map_or(true, |v| v < (0, 3, 14)) {
         if ask_user {
             ask("It seems you do not have a recent enough xargo installed. I will run `cargo install xargo -f`. Proceed?");
         } else {
             println!("Installing xargo: `cargo install xargo -f`");
         }
 
-        let mut cargo = if let Ok(val) = std::env::var("CARGO") {
-            // In rustc bootstrap, an env var tells us where to find cargo.
-            Command::new(val)
-        } else {
-            Command::new("cargo")
-        };
-        if !cargo.args(&["install", "xargo", "-f"]).status().unwrap().success() {
+        if !cargo().args(&["install", "xargo", "-f"]).status().unwrap().success() {
             show_error(format!("Failed to install xargo"));
         }
     }
@@ -294,7 +305,7 @@ path = "lib.rs"
     // Run xargo.
     let target = get_arg_flag_value("--target");
     let print_env = !ask_user && has_arg_flag("--env"); // whether we just print the necessary environment variable
-    let mut command = Command::new("xargo");
+    let mut command = xargo();
     command.arg("build").arg("-q")
         .current_dir(&dir)
         .env("RUSTFLAGS", miri::miri_default_args().join(" "))
@@ -383,7 +394,7 @@ fn in_cargo_miri() {
         // Now we run `cargo rustc $FLAGS $ARGS`, giving the user the
         // change to add additional arguments. `FLAGS` is set to identify
         // this target.  The user gets to control what gets actually passed to Miri.
-        let mut cmd = Command::new("cargo");
+        let mut cmd = cargo();
         cmd.arg("rustc");
         match (subcommand, kind.as_str()) {
             (MiriCommand::Run, "bin") => {
