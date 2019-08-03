@@ -483,7 +483,7 @@ struct ModCollector<'a, D> {
     module_id: CrateModuleId,
     file_id: HirFileId,
     raw_items: &'a raw::RawItems,
-    parent_module: Option<&'a Name>,
+    parent_module: Option<ParentModule<'a>>,
 }
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
@@ -508,15 +508,16 @@ where
     fn collect_module(&mut self, module: &raw::ModuleData) {
         match module {
             // inline module, just recurse
-            raw::ModuleData::Definition { name, items, ast_id } => {
+            raw::ModuleData::Definition { name, items, ast_id, attr_path } => {
                 let module_id =
                     self.push_child_module(name.clone(), ast_id.with_file_id(self.file_id), None);
+                let parent_module = ParentModule { name, attr_path: attr_path.as_ref() };
                 ModCollector {
                     def_collector: &mut *self.def_collector,
                     module_id,
                     file_id: self.file_id,
                     raw_items: self.raw_items,
-                    parent_module: Some(name),
+                    parent_module: Some(parent_module),
                 }
                 .collect(&*items);
             }
@@ -530,7 +531,7 @@ where
                     name,
                     is_root,
                     attr_path.as_ref(),
-                    self.parent_module,
+                    self.parent_module.as_ref(),
                 ) {
                     Ok(file_id) => {
                         let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
@@ -647,7 +648,7 @@ fn resolve_submodule(
     name: &Name,
     is_root: bool,
     attr_path: Option<&SmolStr>,
-    parent_module: Option<&Name>,
+    parent_module: Option<&ParentModule>,
 ) -> Result<FileId, RelativePathBuf> {
     let file_id = file_id.original_file(db);
     let source_root_id = db.file_source_root(file_id);
@@ -657,19 +658,48 @@ fn resolve_submodule(
     let mod_name = path.file_stem().unwrap_or("unknown");
 
     let resolve_mode = match (attr_path.filter(|p| !p.is_empty()), parent_module) {
-        (Some(file_path), Some(parent_name)) => {
+        (Some(file_path), Some(parent_module)) => {
             let file_path = normalize_attribute_path(file_path);
-            let path = dir_path.join(format!("{}/{}", parent_name, file_path)).normalize();
-            ResolutionMode::InsideInlineModule(InsideInlineModuleMode::WithAttributePath(path))
+            match parent_module.attribute_path() {
+                Some(parent_module_attr_path) => {
+                    let path = dir_path
+                        .join(format!(
+                            "{}/{}",
+                            normalize_attribute_path(parent_module_attr_path),
+                            file_path
+                        ))
+                        .normalize();
+                    ResolutionMode::InlineModuleWithAttributePath(
+                        InsideInlineModuleMode::WithAttributePath(path),
+                    )
+                }
+                None => {
+                    let path =
+                        dir_path.join(format!("{}/{}", parent_module.name, file_path)).normalize();
+                    ResolutionMode::InsideInlineModule(InsideInlineModuleMode::WithAttributePath(
+                        path,
+                    ))
+                }
+            }
         }
+        (None, Some(parent_module)) => match parent_module.attribute_path() {
+            Some(parent_module_attr_path) => {
+                let path = dir_path.join(format!(
+                    "{}/{}.rs",
+                    normalize_attribute_path(parent_module_attr_path),
+                    name
+                ));
+                ResolutionMode::InlineModuleWithAttributePath(InsideInlineModuleMode::File(path))
+            }
+            None => {
+                let path = dir_path.join(format!("{}/{}.rs", parent_module.name, name));
+                ResolutionMode::InsideInlineModule(InsideInlineModuleMode::File(path))
+            }
+        },
         (Some(file_path), None) => {
             let file_path = normalize_attribute_path(file_path);
             let path = dir_path.join(file_path.as_ref()).normalize();
             ResolutionMode::OutOfLine(OutOfLineMode::WithAttributePath(path))
-        }
-        (None, Some(parent_name)) => {
-            let path = dir_path.join(format!("{}/{}.rs", parent_name, name));
-            ResolutionMode::InsideInlineModule(InsideInlineModuleMode::File(path))
         }
         _ => {
             let is_dir_owner = is_root || mod_name == "mod";
@@ -743,6 +773,7 @@ impl InsideInlineModuleMode {
 enum ResolutionMode {
     OutOfLine(OutOfLineMode),
     InsideInlineModule(InsideInlineModuleMode),
+    InlineModuleWithAttributePath(InsideInlineModuleMode),
 }
 
 impl ResolutionMode {
@@ -752,6 +783,7 @@ impl ResolutionMode {
         match self {
             OutOfLine(mode) => mode.resolve(source_root),
             InsideInlineModule(mode) => mode.resolve(source_root),
+            InlineModuleWithAttributePath(mode) => mode.resolve(source_root),
         }
     }
 }
@@ -770,6 +802,17 @@ fn resolve_find_result(
     match file_id {
         Some(file_id) => Ok(file_id.clone()),
         None => Err(path.clone()),
+    }
+}
+
+struct ParentModule<'a> {
+    name: &'a Name,
+    attr_path: Option<&'a SmolStr>,
+}
+
+impl<'a> ParentModule<'a> {
+    pub fn attribute_path(&self) -> Option<&SmolStr> {
+        self.attr_path.filter(|p| !p.is_empty())
     }
 }
 
