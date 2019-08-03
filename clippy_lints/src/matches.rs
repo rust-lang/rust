@@ -205,6 +205,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # enum Foo { A(usize), B(usize) }
+    /// # let x = Foo::B(1);
     /// match x {
     ///     A => {},
     ///     _ => {},

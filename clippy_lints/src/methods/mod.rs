@@ -40,8 +40,19 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
+    ///
+    /// Using unwrap on an `Option`:
+    ///
     /// ```rust
-    /// x.unwrap()
+    /// let opt = Some(1);
+    /// opt.unwrap();
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// let opt = Some(1);
+    /// opt.expect("more helpful message");
     /// ```
     pub OPTION_UNWRAP_USED,
     restriction,
@@ -62,8 +73,18 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
+    /// Using unwrap on an `Option`:
+    ///
     /// ```rust
-    /// x.unwrap()
+    /// let res: Result<usize, ()> = Ok(1);
+    /// res.unwrap();
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// let res: Result<usize, ()> = Ok(1);
+    /// res.expect("more helpful message");
     /// ```
     pub RESULT_UNWRAP_USED,
     restriction,
@@ -141,9 +162,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// impl X {
-    ///     pub fn as_str(self) -> &str {
-    ///         ..
+    /// # struct X;
+    /// impl<'a> X {
+    ///     pub fn as_str(self) -> &'a str {
+    ///         "foo"
     ///     }
     /// }
     /// ```
@@ -467,7 +489,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.clone()
+    /// # use std::rc::Rc;
+    /// let x = Rc::new(1);
+    /// x.clone();
     /// ```
     pub CLONE_ON_REF_PTR,
     restriction,

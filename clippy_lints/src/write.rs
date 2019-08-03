@@ -77,6 +77,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # let foo = "bar";
     /// println!("{:?}", foo);
     /// ```
     pub USE_DEBUG,

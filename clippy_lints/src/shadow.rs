@@ -20,6 +20,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # let x = 1;
     /// let x = &x;
     /// ```
     pub SHADOW_SAME,
@@ -41,10 +42,12 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// let x = 2;
     /// let x = x + 1;
     /// ```
     /// use different variable name:
     /// ```rust
+    /// let x = 2;
     /// let y = x + 1;
     /// ```
     pub SHADOW_REUSE,
