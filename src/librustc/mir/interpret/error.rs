@@ -137,16 +137,15 @@ impl<'tcx> ConstEvalErr<'tcx> {
         message: &str,
         lint_root: Option<hir::HirId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
-        let mut must_error = false;
-        match self.error {
+        let must_error = match self.error {
             err_inval!(Layout(LayoutError::Unknown(_))) |
             err_inval!(TooGeneric) =>
                 return Err(ErrorHandled::TooGeneric),
             err_inval!(TypeckError) =>
                 return Err(ErrorHandled::Reported),
-            err_inval!(Layout(LayoutError::SizeOverflow(_))) => must_error = true,
-            _ => {},
-        }
+            err_inval!(Layout(LayoutError::SizeOverflow(_))) => true,
+            _ => false,
+        };
         trace!("reporting const eval failure at {:?}", self.span);
         let mut err = if let (Some(lint_root), false) = (lint_root, must_error) {
             let hir_id = self.stacktrace
@@ -161,6 +160,8 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 tcx.span,
                 message,
             )
+        } else if must_error {
+            struct_error(tcx, &self.error.to_string())
         } else {
             struct_error(tcx, message)
         };
