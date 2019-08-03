@@ -612,6 +612,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let n = x * 2.0f64.powi(exp);
                 this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
             }
+
             // Some things needed for `sys::thread` initialization to go through.
             "signal" | "sigaction" | "sigaltstack" => {
                 this.write_scalar(Scalar::from_int(0, dest.layout.size), dest)?;
