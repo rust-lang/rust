@@ -208,17 +208,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub LEGACY_DIRECTORY_OWNERSHIP,
-    Deny,
-    "non-inline, non-`#[path]` modules (e.g., `mod foo;`) were erroneously allowed in some files \
-     not named `mod.rs`",
-     @future_incompatible = FutureIncompatibleInfo {
-         reference: "issue #37872 <https://github.com/rust-lang/rust/issues/37872>",
-         edition: None,
-     };
-}
-
-declare_lint! {
     pub MISSING_FRAGMENT_SPECIFIER,
     Deny,
     "detects missing fragment specifiers in unused `macro_rules!` patterns",
@@ -549,7 +538,6 @@ declare_lint_pass! {
         SAFE_EXTERN_STATICS,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
-        LEGACY_DIRECTORY_OWNERSHIP,
         MISSING_FRAGMENT_SPECIFIER,
         PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
         LATE_BOUND_LIFETIME_ARGUMENTS,

@@ -45,18 +45,6 @@ error: defaults for type parameters are only allowed in `struct`, `enum`, `type`
   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 ```
 
-## legacy-directory-ownership
-
-The legacy_directory_ownership warning is issued when
-
-* There is a non-inline module with a `#[path]` attribute (e.g. `#[path = "foo.rs"] mod bar;`),
-* The module's file ("foo.rs" in the above example) is not named "mod.rs", and
-* The module's file contains a non-inline child module without a `#[path]` attribute.
-
-The warning can be fixed by renaming the parent module to "mod.rs" and moving
-it into its own directory if appropriate.
-
-
 ## missing-fragment-specifier
 
 The missing_fragment_specifier warning is issued when an unused pattern in a

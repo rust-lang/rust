@@ -51,7 +51,7 @@ pub enum DirectoryOwnership {
         relative: Option<ast::Ident>,
     },
     UnownedViaBlock,
-    UnownedViaMod(bool /* legacy warnings? */),
+    UnownedViaMod,
 }
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
