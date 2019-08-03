@@ -281,14 +281,14 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
     }
 }
 
-/// All information necessary to validate and reveal an `impl Trait` or `existential Type`
+/// All information necessary to validate and reveal an `impl Trait`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct ResolvedOpaqueTy<'tcx> {
     /// The revealed type as seen by this function.
     pub concrete_type: Ty<'tcx>,
     /// Generic parameters on the opaque type as passed by this function.
-    /// For `existential type Foo<A, B>; fn foo<T, U>() -> Foo<T, U> { .. }` this is `[T, U]`, not
-    /// `[A, B]`
+    /// For `type Foo<A, B> = impl Bar<A, B>; fn foo<T, U>() -> Foo<T, U> { .. }`
+    /// this is `[T, U]`, not `[A, B]`.
     pub substs: SubstsRef<'tcx>,
 }
 
@@ -392,9 +392,9 @@ pub struct TypeckTables<'tcx> {
     /// read-again by borrowck.
     pub free_region_map: FreeRegionMap<'tcx>,
 
-    /// All the existential types that are restricted to concrete types
-    /// by this function
-    pub concrete_existential_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
+    /// All the opaque types that are restricted to concrete types
+    /// by this function.
+    pub concrete_opaque_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
 
     /// Given the closure ID this map provides the list of UpvarIDs used by it.
     /// The upvarID contains the HIR node ID and it also contains the full path
@@ -424,7 +424,7 @@ impl<'tcx> TypeckTables<'tcx> {
             used_trait_imports: Lrc::new(Default::default()),
             tainted_by_errors: false,
             free_region_map: Default::default(),
-            concrete_existential_types: Default::default(),
+            concrete_opaque_types: Default::default(),
             upvar_list: Default::default(),
         }
     }
@@ -733,7 +733,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             ref used_trait_imports,
             tainted_by_errors,
             ref free_region_map,
-            ref concrete_existential_types,
+            ref concrete_opaque_types,
             ref upvar_list,
 
         } = *self;
@@ -777,7 +777,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
-            concrete_existential_types.hash_stable(hcx, hasher);
+            concrete_opaque_types.hash_stable(hcx, hasher);
             upvar_list.hash_stable(hcx, hasher);
         })
     }

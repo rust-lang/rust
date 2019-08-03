@@ -1492,7 +1492,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         };
     }
     let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
-    let ty = if let ty::AssocKind::Existential = assoc_ty.item.kind {
+    let ty = if let ty::AssocKind::OpaqueTy = assoc_ty.item.kind {
         let item_substs = InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         tcx.mk_opaque(assoc_ty.item.def_id, item_substs)
     } else {

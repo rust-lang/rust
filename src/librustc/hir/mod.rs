@@ -1815,7 +1815,7 @@ pub struct ImplItemId {
     pub hir_id: HirId,
 }
 
-/// Represents anything within an `impl` block
+/// Represents anything within an `impl` block.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct ImplItem {
     pub ident: Ident,
@@ -1832,14 +1832,14 @@ pub struct ImplItem {
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum ImplItemKind {
     /// An associated constant of the given type, set to the constant result
-    /// of the expression
+    /// of the expression.
     Const(P<Ty>, BodyId),
-    /// A method implementation with the given signature and body
+    /// A method implementation with the given signature and body.
     Method(MethodSig, BodyId),
-    /// An associated type
+    /// An associated type.
     Type(P<Ty>),
-    /// An associated existential type
-    Existential(GenericBounds),
+    /// An associated `type = impl Trait`.
+    OpaqueTy(GenericBounds),
 }
 
 /// Bind a type to an associated type (i.e., `A = Foo`).
@@ -1922,20 +1922,20 @@ pub struct BareFnTy {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct ExistTy {
+pub struct OpaqueTy {
     pub generics: Generics,
     pub bounds: GenericBounds,
     pub impl_trait_fn: Option<DefId>,
-    pub origin: ExistTyOrigin,
+    pub origin: OpaqueTyOrigin,
 }
 
-/// Where the existential type came from
+/// From whence the opaque type came.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum ExistTyOrigin {
-    /// `existential type Foo: Trait;`
-    ExistentialType,
+pub enum OpaqueTyOrigin {
+    /// `type Foo = impl Trait;`
+    TypeAlias,
     /// `-> impl Trait`
-    ReturnImplTrait,
+    FnReturn,
     /// `async fn`
     AsyncFn,
 }
@@ -1962,7 +1962,7 @@ pub enum TyKind {
     ///
     /// Type parameters may be stored in each `PathSegment`.
     Path(QPath),
-    /// A type definition itself. This is currently only used for the `existential type`
+    /// A type definition itself. This is currently only used for the `type Foo = impl Trait`
     /// item that `impl Trait` in return position desugars to.
     ///
     /// The generic argument list contains the lifetimes (and in the future possibly parameters)
@@ -2421,17 +2421,17 @@ pub enum ItemKind {
     GlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g., `type Foo = Bar<u8>`
     Ty(P<Ty>, Generics),
-    /// An existential type definition, e.g., `existential type Foo: Bar;`
-    Existential(ExistTy),
+    /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`
+    OpaqueTy(OpaqueTy),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`
     Enum(EnumDef, Generics),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`
     Struct(VariantData, Generics),
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`
     Union(VariantData, Generics),
-    /// Represents a Trait Declaration
+    /// A trait definition
     Trait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
-    /// Represents a Trait Alias Declaration
+    /// A trait alias
     TraitAlias(Generics, GenericBounds),
 
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
@@ -2456,7 +2456,7 @@ impl ItemKind {
             ItemKind::ForeignMod(..) => "foreign module",
             ItemKind::GlobalAsm(..) => "global asm",
             ItemKind::Ty(..) => "type alias",
-            ItemKind::Existential(..) => "existential type",
+            ItemKind::OpaqueTy(..) => "opaque type",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",
@@ -2479,7 +2479,7 @@ impl ItemKind {
         Some(match *self {
             ItemKind::Fn(_, _, ref generics, _) |
             ItemKind::Ty(_, ref generics) |
-            ItemKind::Existential(ExistTy { ref generics, impl_trait_fn: None, .. }) |
+            ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. }) |
             ItemKind::Enum(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
             ItemKind::Union(_, ref generics) |
@@ -2528,7 +2528,7 @@ pub enum AssocItemKind {
     Const,
     Method { has_self: bool },
     Type,
-    Existential,
+    OpaqueTy,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]

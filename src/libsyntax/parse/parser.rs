@@ -62,12 +62,12 @@ use std::path::{self, Path, PathBuf};
 use std::slice;
 
 #[derive(Debug)]
-/// Whether the type alias or associated type is a concrete type or an existential type
+/// Whether the type alias or associated type is a concrete type or an opaque type
 pub enum AliasKind {
     /// Just a new name for the same type
     Weak(P<Ty>),
     /// Only trait impls of the type will be usable, not the actual type itself
-    Existential(GenericBounds),
+    OpaqueTy(GenericBounds),
 }
 
 bitflags::bitflags! {
@@ -4273,11 +4273,6 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Crate) && self.look_ahead(1, |t| t != &token::ModSep)
     }
 
-    fn is_existential_type_decl(&self) -> bool {
-        self.token.is_keyword(kw::Existential) &&
-        self.is_keyword_ahead(1, &[kw::Type])
-    }
-
     fn is_auto_trait_item(&self) -> bool {
         // auto trait
         (self.token.is_keyword(kw::Auto) &&
@@ -4375,7 +4370,6 @@ impl<'a> Parser<'a> {
                   !self.token.is_qpath_start() &&
                   !self.is_union_item() &&
                   !self.is_crate_vis() &&
-                  !self.is_existential_type_decl() &&
                   !self.is_auto_trait_item() &&
                   !self.is_async_fn() {
             let path = self.parse_path(PathStyle::Expr)?;
@@ -5694,7 +5688,7 @@ impl<'a> Parser<'a> {
             let (name, alias, generics) = type_?;
             let kind = match alias {
                 AliasKind::Weak(typ) => ast::ImplItemKind::Type(typ),
-                AliasKind::Existential(bounds) => ast::ImplItemKind::Existential(bounds),
+                AliasKind::OpaqueTy(bounds) => ast::ImplItemKind::OpaqueTy(bounds),
             };
             (name, kind, generics)
         } else if self.is_const_item() {
@@ -6813,40 +6807,29 @@ impl<'a> Parser<'a> {
         Ok(self.mk_item(lo.to(prev_span), invalid, ItemKind::ForeignMod(m), visibility, attrs))
     }
 
-    /// Parses `type Foo = Bar;`
-    /// or
-    /// `existential type Foo: Bar;`
-    /// or
-    /// `return `None``
+    /// Parses `type Foo = Bar;` or returns `None`
     /// without modifying the parser state.
     fn eat_type(&mut self) -> Option<PResult<'a, (Ident, AliasKind, ast::Generics)>> {
         // This parses the grammar:
         //     Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"
-        if self.check_keyword(kw::Type) ||
-           self.check_keyword(kw::Existential) &&
-                self.is_keyword_ahead(1, &[kw::Type]) {
-            let existential = self.eat_keyword(kw::Existential);
-            assert!(self.eat_keyword(kw::Type));
-            Some(self.parse_existential_or_alias(existential))
+        if self.eat_keyword(kw::Type) {
+            Some(self.parse_type_alias())
         } else {
             None
         }
     }
 
-    /// Parses a type alias or existential type.
-    fn parse_existential_or_alias(
-        &mut self,
-        existential: bool,
-    ) -> PResult<'a, (Ident, AliasKind, ast::Generics)> {
+    /// Parses a type alias or opaque type.
+    fn parse_type_alias(&mut self) -> PResult<'a, (Ident, AliasKind, ast::Generics)> {
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
         tps.where_clause = self.parse_where_clause()?;
-        let alias = if existential {
-            self.expect(&token::Colon)?;
+        self.expect(&token::Eq)?;
+        let alias = if self.check_keyword(kw::Impl) {
+            self.bump();
             let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
-            AliasKind::Existential(bounds)
+            AliasKind::OpaqueTy(bounds)
         } else {
-            self.expect(&token::Eq)?;
             let ty = self.parse_ty()?;
             AliasKind::Weak(ty)
         };
@@ -7268,7 +7251,7 @@ impl<'a> Parser<'a> {
             // TYPE ITEM
             let item_ = match alias {
                 AliasKind::Weak(ty) => ItemKind::Ty(ty, generics),
-                AliasKind::Existential(bounds) => ItemKind::Existential(bounds, generics),
+                AliasKind::OpaqueTy(bounds) => ItemKind::OpaqueTy(bounds, generics),
             };
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),

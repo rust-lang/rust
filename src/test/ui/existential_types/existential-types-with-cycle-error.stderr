@@ -1,8 +1,0 @@
-error: could not find defining uses
-  --> $DIR/existential-types-with-cycle-error.rs:3:1
-   |
-LL | existential type Foo: Fn() -> Foo;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-

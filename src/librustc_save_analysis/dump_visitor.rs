@@ -1173,7 +1173,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 // trait.
                 self.visit_ty(ty)
             }
-            ast::ImplItemKind::Existential(ref bounds) => {
+            ast::ImplItemKind::OpaqueTy(ref bounds) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
@@ -1428,7 +1428,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 self.visit_ty(&ty);
                 self.process_generic_params(ty_params, &qualname, item.id);
             }
-            Existential(ref _bounds, ref ty_params) => {
+            OpaqueTy(ref _bounds, ref ty_params) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
                 // FIXME do something with _bounds

@@ -453,9 +453,6 @@ declare_features! (
     // Allows `#[doc(alias = "...")]`.
     (active, doc_alias, "1.27.0", Some(50146), None),
 
-    // Allows defining `existential type`s.
-    (active, existential_type, "1.28.0", Some(63063), None),
-
     // Allows inconsistent bounds in where clauses.
     (active, trivial_bounds, "1.28.0", Some(48214), None),
 
@@ -560,6 +557,9 @@ declare_features! (
     // Allows `[x; N]` where `x` is a constant (RFC 2203).
     (active, const_in_array_repeat_expressions, "1.37.0", Some(49147), None),
 
+    // Allows `impl Trait` to be used inside type aliases (RFC 2515).
+    (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -625,6 +625,9 @@ declare_features! (
     (removed, dropck_parametricity, "1.38.0", Some(28498), None, None),
     (removed, await_macro, "1.38.0", Some(50547), None,
      Some("subsumed by `.await` syntax")),
+    // Allows defining `existential type`s.
+    (removed, existential_type, "1.38.0", Some(63063), None,
+     Some("removed in favor of `#![feature(type_alias_impl_trait)]`")),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
@@ -2014,12 +2017,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::Existential(..) => {
+            ast::ItemKind::OpaqueTy(..) => {
                 gate_feature_post!(
                     &self,
-                    existential_type,
+                    type_alias_impl_trait,
                     i.span,
-                    "existential types are unstable"
+                    "`impl Trait` in type aliases is unstable"
                 );
             }
 
@@ -2243,12 +2246,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
         match ii.node {
             ast::ImplItemKind::Method(..) => {}
-            ast::ImplItemKind::Existential(..) => {
+            ast::ImplItemKind::OpaqueTy(..) => {
                 gate_feature_post!(
                     &self,
-                    existential_type,
+                    type_alias_impl_trait,
                     ii.span,
-                    "existential types are unstable"
+                    "`impl Trait` in type aliases is unstable"
                 );
             }
             ast::ImplItemKind::Type(_) => {

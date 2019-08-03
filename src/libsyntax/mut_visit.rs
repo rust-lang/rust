@@ -851,7 +851,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_ty(ty);
             vis.visit_generics(generics);
         }
-        ItemKind::Existential(bounds, generics) => {
+        ItemKind::OpaqueTy(bounds, generics) => {
             visit_bounds(bounds, vis);
             vis.visit_generics(generics);
         }
@@ -934,7 +934,7 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
             visitor.visit_block(body);
         }
         ImplItemKind::Type(ty) => visitor.visit_ty(ty),
-        ImplItemKind::Existential(bounds) => visit_bounds(bounds, visitor),
+        ImplItemKind::OpaqueTy(bounds) => visit_bounds(bounds, visitor),
         ImplItemKind::Macro(mac) => visitor.visit_mac(mac),
     }
     visitor.visit_span(span);

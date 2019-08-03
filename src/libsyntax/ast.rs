@@ -1488,6 +1488,7 @@ pub enum TraitItemKind {
     Macro(Mac),
 }
 
+/// Represents anything within an `impl` block.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImplItem {
     pub id: NodeId,
@@ -1502,12 +1503,13 @@ pub struct ImplItem {
     pub tokens: Option<TokenStream>,
 }
 
+/// Represents various kinds of content within an `impl`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ImplItemKind {
     Const(P<Ty>, P<Expr>),
     Method(MethodSig, P<Block>),
     Type(P<Ty>),
-    Existential(GenericBounds),
+    OpaqueTy(GenericBounds),
     Macro(Mac),
 }
 
@@ -1710,7 +1712,7 @@ pub enum TyKind {
     ///
     /// The `NodeId` exists to prevent lowering from having to
     /// generate `NodeId`s on the fly, which would complicate
-    /// the generation of `existential type` items significantly.
+    /// the generation of opaque `type Foo = impl Trait` items significantly.
     ImplTrait(NodeId, GenericBounds),
     /// No-op; kept solely so that we can pretty-print faithfully.
     Paren(P<Ty>),
@@ -2334,10 +2336,10 @@ pub enum ItemKind {
     ///
     /// E.g., `type Foo = Bar<u8>;`.
     Ty(P<Ty>, Generics),
-    /// An existential type declaration (`existential type`).
+    /// An opaque `impl Trait` type alias.
     ///
-    /// E.g., `existential type Foo: Bar + Boo;`.
-    Existential(GenericBounds, Generics),
+    /// E.g., `type Foo = impl Bar + Boo;`.
+    OpaqueTy(GenericBounds, Generics),
     /// An enum definition (`enum` or `pub enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
@@ -2391,7 +2393,7 @@ impl ItemKind {
             ItemKind::ForeignMod(..) => "foreign module",
             ItemKind::GlobalAsm(..) => "global asm",
             ItemKind::Ty(..) => "type alias",
-            ItemKind::Existential(..) => "existential type",
+            ItemKind::OpaqueTy(..) => "opaque type",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",

@@ -1,0 +1,22 @@
+error: at least one trait must be specified
+  --> $DIR/generic_nondefining_use.rs:5:20
+   |
+LL | type Cmp<T> = impl 'static;
+   |                    ^^^^^^^
+
+error: defining opaque type use does not fully define opaque type
+  --> $DIR/generic_nondefining_use.rs:11:1
+   |
+LL | / fn cmp() -> Cmp<u32> {
+LL | |     5u32
+LL | | }
+   | |_^
+
+error: could not find defining uses
+  --> $DIR/generic_nondefining_use.rs:5:1
+   |
+LL | type Cmp<T> = impl 'static;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

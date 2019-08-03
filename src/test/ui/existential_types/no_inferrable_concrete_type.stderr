@@ -1,8 +1,0 @@
-error: could not find defining uses
-  --> $DIR/no_inferrable_concrete_type.rs:6:1
-   |
-LL | existential type Foo: Copy;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-

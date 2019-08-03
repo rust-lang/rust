@@ -16,6 +16,24 @@ LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic
    |                                                 |       nested `impl Trait` here
    |                                                 outer `impl Trait`
 
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/where-allowed.rs:122:5
+   |
+LL |     type Out = impl Debug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/where-allowed.rs:158:1
+   |
+LL | type InTypeAlias<R> = impl Debug;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/where-allowed.rs:18:40
    |
@@ -137,97 +155,85 @@ LL |     fn in_return() -> impl Debug;
    |                       ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:122:16
-   |
-LL |     type Out = impl Debug;
-   |                ^^^^^^^^^^
-
-error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:128:34
+  --> $DIR/where-allowed.rs:129:34
    |
 LL |     fn in_trait_impl_return() -> impl Debug { () }
    |                                  ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:141:33
+  --> $DIR/where-allowed.rs:142:33
    |
 LL |     fn in_foreign_parameters(_: impl Debug);
    |                                 ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:144:31
+  --> $DIR/where-allowed.rs:145:31
    |
 LL |     fn in_foreign_return() -> impl Debug;
    |                               ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:157:23
-   |
-LL | type InTypeAlias<R> = impl Debug;
-   |                       ^^^^^^^^^^
-
-error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:160:39
+  --> $DIR/where-allowed.rs:162:39
    |
 LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
    |                                       ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:164:16
+  --> $DIR/where-allowed.rs:166:16
    |
 LL | impl PartialEq<impl Debug> for () {
    |                ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:169:24
+  --> $DIR/where-allowed.rs:171:24
    |
 LL | impl PartialEq<()> for impl Debug {
    |                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:174:6
+  --> $DIR/where-allowed.rs:176:6
    |
 LL | impl impl Debug {
    |      ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:180:24
+  --> $DIR/where-allowed.rs:182:24
    |
 LL | impl InInherentImplAdt<impl Debug> {
    |                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:186:11
+  --> $DIR/where-allowed.rs:188:11
    |
 LL |     where impl Debug: Debug
    |           ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:193:15
+  --> $DIR/where-allowed.rs:195:15
    |
 LL |     where Vec<impl Debug>: Debug
    |               ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:200:24
+  --> $DIR/where-allowed.rs:202:24
    |
 LL |     where T: PartialEq<impl Debug>
    |                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:207:17
+  --> $DIR/where-allowed.rs:209:17
    |
 LL |     where T: Fn(impl Debug)
    |                 ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:214:22
+  --> $DIR/where-allowed.rs:216:22
    |
 LL |     where T: Fn() -> impl Debug
    |                      ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:220:29
+  --> $DIR/where-allowed.rs:222:29
    |
 LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
@@ -235,11 +241,24 @@ LL |     let _in_local_variable: impl Fn() = || {};
    = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:222:46
+  --> $DIR/where-allowed.rs:224:46
    |
 LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |                                              ^^^^^^^^^
 
-error: aborting due to 39 previous errors
+error: could not find defining uses
+  --> $DIR/where-allowed.rs:158:1
+   |
+LL | type InTypeAlias<R> = impl Debug;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0562`.
+error: could not find defining uses
+  --> $DIR/where-allowed.rs:122:5
+   |
+LL |     type Out = impl Debug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 41 previous errors
+
+Some errors have detailed explanations: E0562, E0658.
+For more information about an error, try `rustc --explain E0562`.

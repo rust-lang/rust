@@ -98,7 +98,6 @@ symbols! {
         Auto:               "auto",
         Catch:              "catch",
         Default:            "default",
-        Existential:        "existential",
         Union:              "union",
     }
 
@@ -680,6 +679,7 @@ symbols! {
         tuple_indexing,
         Ty,
         ty,
+        type_alias_impl_trait,
         TyCtxt,
         TyKind,
         type_alias_enum_variants,

@@ -1,0 +1,21 @@
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:1:1
+   |
+LL | type Foo = impl std::fmt::Debug;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:9:5
+   |
+LL |     type Baa = impl std::fmt::Debug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

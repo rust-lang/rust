@@ -3,7 +3,7 @@
 // error-pattern:could not find defining uses
 
 #![feature(associated_type_bounds)]
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_bindings)]
 #![feature(untagged_unions)]
 
@@ -107,17 +107,17 @@ type TAW2<T> where T: Iterator<Item: Copy, Item: Copy> = T;
 type TAW3<T> where T: Iterator<Item: 'static, Item: 'static> = T;
 //~^ the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified [E0719]
 
-existential type ETAI1<T: Iterator<Item: Copy, Item: Send>>: Copy;
+type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
 //~^ the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified [E0719]
-existential type ETAI2<T: Iterator<Item: Copy, Item: Copy>>: Copy;
+type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
 //~^ the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified [E0719]
-existential type ETAI3<T: Iterator<Item: 'static, Item: 'static>>: Copy;
+type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
 //~^ the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified [E0719]
-existential type ETAI4: Iterator<Item: Copy, Item: Send>;
+type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
 //~^ the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified [E0719]
-existential type ETAI5: Iterator<Item: Copy, Item: Copy>;
+type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
 //~^ the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified [E0719]
-existential type ETAI6: Iterator<Item: 'static, Item: 'static>;
+type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
 //~^ the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified [E0719]
 
 trait TRI1<T: Iterator<Item: Copy, Item: Send>> {}

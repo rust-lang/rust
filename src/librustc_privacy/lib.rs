@@ -533,7 +533,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             hir::ItemKind::GlobalAsm(..) | hir::ItemKind::Fn(..) | hir::ItemKind::Mod(..) |
             hir::ItemKind::Static(..) | hir::ItemKind::Struct(..) |
             hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) |
-            hir::ItemKind::Existential(..) |
+            hir::ItemKind::OpaqueTy(..) |
             hir::ItemKind::Ty(..) | hir::ItemKind::Union(..) | hir::ItemKind::Use(..) => {
                 if item.vis.node.is_pub() { self.prev_level } else { None }
             }
@@ -584,7 +584,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Existential(..) |
+            hir::ItemKind::OpaqueTy(..) |
             hir::ItemKind::Use(..) |
             hir::ItemKind::Static(..) |
             hir::ItemKind::Const(..) |
@@ -612,7 +612,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             // The interface is empty.
             hir::ItemKind::GlobalAsm(..) => {}
-            hir::ItemKind::Existential(..) => {
+            hir::ItemKind::OpaqueTy(..) => {
                 // FIXME: This is some serious pessimization intended to workaround deficiencies
                 // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
                 // reachable if they are returned via `impl Trait`, even from private functions.
@@ -1113,7 +1113,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                 DefKind::Method
                 | DefKind::AssocConst
                 | DefKind::AssocTy
-                | DefKind::AssocExistential
+                | DefKind::AssocOpaqueTy
                 | DefKind::Static => true,
                 _ => false,
             }
@@ -1370,7 +1370,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                              self.access_levels.is_reachable(
                                                 impl_item_ref.id.hir_id)
                                          }
-                                         hir::ImplItemKind::Existential(..) |
+                                         hir::ImplItemKind::OpaqueTy(..) |
                                          hir::ImplItemKind::Type(_) => false,
                                      }
                                  });
@@ -1707,9 +1707,9 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
         let (check_ty, is_assoc_ty) = match assoc_item_kind {
             AssocItemKind::Const | AssocItemKind::Method { .. } => (true, false),
             AssocItemKind::Type => (defaultness.has_value(), true),
-            // `ty()` for existential types is the underlying type,
+            // `ty()` for opaque types is the underlying type,
             // it's not a part of interface, so we skip it.
-            AssocItemKind::Existential => (false, true),
+            AssocItemKind::OpaqueTy => (false, true),
         };
         check.in_assoc_ty = is_assoc_ty;
         check.generics().predicates();
@@ -1742,8 +1742,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             hir::ItemKind::Fn(..) | hir::ItemKind::Ty(..) => {
                 self.check(item.hir_id, item_visibility).generics().predicates().ty();
             }
-            hir::ItemKind::Existential(..) => {
-                // `ty()` for existential types is the underlying type,
+            hir::ItemKind::OpaqueTy(..) => {
+                // `ty()` for opaque types is the underlying type,
                 // it's not a part of interface, so we skip it.
                 self.check(item.hir_id, item_visibility).generics().predicates();
             }

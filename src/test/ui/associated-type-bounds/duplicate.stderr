@@ -369,86 +369,86 @@ LL | type TAW3<T> where T: Iterator<Item: 'static, Item: 'static> = T;
 error: could not find defining uses
   --> $DIR/duplicate.rs:110:1
    |
-LL | existential type ETAI1<T: Iterator<Item: Copy, Item: Send>>: Copy;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
-  --> $DIR/duplicate.rs:110:48
+  --> $DIR/duplicate.rs:110:36
    |
-LL | existential type ETAI1<T: Iterator<Item: Copy, Item: Send>>: Copy;
-   |                                    ----------  ^^^^^^^^^^ re-bound here
-   |                                    |
-   |                                    `Item` bound here first
+LL | type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
+   |                        ----------  ^^^^^^^^^^ re-bound here
+   |                        |
+   |                        `Item` bound here first
 
 error: could not find defining uses
   --> $DIR/duplicate.rs:112:1
    |
-LL | existential type ETAI2<T: Iterator<Item: Copy, Item: Copy>>: Copy;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
-  --> $DIR/duplicate.rs:112:48
+  --> $DIR/duplicate.rs:112:36
    |
-LL | existential type ETAI2<T: Iterator<Item: Copy, Item: Copy>>: Copy;
-   |                                    ----------  ^^^^^^^^^^ re-bound here
-   |                                    |
-   |                                    `Item` bound here first
+LL | type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
+   |                        ----------  ^^^^^^^^^^ re-bound here
+   |                        |
+   |                        `Item` bound here first
 
 error: could not find defining uses
   --> $DIR/duplicate.rs:114:1
    |
-LL | existential type ETAI3<T: Iterator<Item: 'static, Item: 'static>>: Copy;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
-  --> $DIR/duplicate.rs:114:51
+  --> $DIR/duplicate.rs:114:39
    |
-LL | existential type ETAI3<T: Iterator<Item: 'static, Item: 'static>>: Copy;
-   |                                    -------------  ^^^^^^^^^^^^^ re-bound here
-   |                                    |
-   |                                    `Item` bound here first
+LL | type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
+   |                        -------------  ^^^^^^^^^^^^^ re-bound here
+   |                        |
+   |                        `Item` bound here first
 
 error: could not find defining uses
   --> $DIR/duplicate.rs:116:1
    |
-LL | existential type ETAI4: Iterator<Item: Copy, Item: Send>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
-  --> $DIR/duplicate.rs:116:46
+  --> $DIR/duplicate.rs:116:40
    |
-LL | existential type ETAI4: Iterator<Item: Copy, Item: Send>;
-   |                                  ----------  ^^^^^^^^^^ re-bound here
-   |                                  |
-   |                                  `Item` bound here first
+LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
+   |                            ----------  ^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
 
 error: could not find defining uses
   --> $DIR/duplicate.rs:118:1
    |
-LL | existential type ETAI5: Iterator<Item: Copy, Item: Copy>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
-  --> $DIR/duplicate.rs:118:46
+  --> $DIR/duplicate.rs:118:40
    |
-LL | existential type ETAI5: Iterator<Item: Copy, Item: Copy>;
-   |                                  ----------  ^^^^^^^^^^ re-bound here
-   |                                  |
-   |                                  `Item` bound here first
+LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
+   |                            ----------  ^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
 
 error: could not find defining uses
   --> $DIR/duplicate.rs:120:1
    |
-LL | existential type ETAI6: Iterator<Item: 'static, Item: 'static>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
-  --> $DIR/duplicate.rs:120:49
+  --> $DIR/duplicate.rs:120:43
    |
-LL | existential type ETAI6: Iterator<Item: 'static, Item: 'static>;
-   |                                  -------------  ^^^^^^^^^^^^^ re-bound here
-   |                                  |
-   |                                  `Item` bound here first
+LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
+   |                            -------------  ^^^^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
   --> $DIR/duplicate.rs:123:36

@@ -173,7 +173,7 @@ crate fn program_clauses_for(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
             | Some(DefKind::Enum)
             | Some(DefKind::TyAlias)
             | Some(DefKind::Union)
-            | Some(DefKind::Existential) => program_clauses_for_type_def(tcx, def_id),
+            | Some(DefKind::OpaqueTy) => program_clauses_for_type_def(tcx, def_id),
             _ => List::empty(),
         },
         DefPathData::Impl => program_clauses_for_impl(tcx, def_id),

@@ -413,9 +413,9 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Type => DefKind::TyAlias,
             EntryKind::TypeParam => DefKind::TyParam,
             EntryKind::ConstParam => DefKind::ConstParam,
-            EntryKind::Existential => DefKind::Existential,
+            EntryKind::OpaqueTy => DefKind::OpaqueTy,
             EntryKind::AssocType(_) => DefKind::AssocTy,
-            EntryKind::AssocExistential(_) => DefKind::AssocExistential,
+            EntryKind::AssocOpaqueTy(_) => DefKind::AssocOpaqueTy,
             EntryKind::Mod(_) => DefKind::Mod,
             EntryKind::Variant(_) => DefKind::Variant,
             EntryKind::Trait(_) => DefKind::Trait,
@@ -910,8 +910,8 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::AssocType(container) => {
                 (ty::AssocKind::Type, container, false)
             }
-            EntryKind::AssocExistential(container) => {
-                (ty::AssocKind::Existential, container, false)
+            EntryKind::AssocOpaqueTy(container) => {
+                (ty::AssocKind::OpaqueTy, container, false)
             }
             _ => bug!("cannot get associated-item of `{:?}`", def_key)
         };

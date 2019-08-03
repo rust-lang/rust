@@ -1886,7 +1886,7 @@ struct AllTypes {
     macros: FxHashSet<ItemEntry>,
     functions: FxHashSet<ItemEntry>,
     typedefs: FxHashSet<ItemEntry>,
-    existentials: FxHashSet<ItemEntry>,
+    opaque_tys: FxHashSet<ItemEntry>,
     statics: FxHashSet<ItemEntry>,
     constants: FxHashSet<ItemEntry>,
     keywords: FxHashSet<ItemEntry>,
@@ -1907,7 +1907,7 @@ impl AllTypes {
             macros: new_set(100),
             functions: new_set(100),
             typedefs: new_set(100),
-            existentials: new_set(100),
+            opaque_tys: new_set(100),
             statics: new_set(100),
             constants: new_set(100),
             keywords: new_set(100),
@@ -1932,7 +1932,7 @@ impl AllTypes {
                 ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
                 ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
                 ItemType::Typedef => self.typedefs.insert(ItemEntry::new(new_url, name)),
-                ItemType::Existential => self.existentials.insert(ItemEntry::new(new_url, name)),
+                ItemType::OpaqueTy => self.opaque_tys.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
                 ItemType::ProcAttribute => self.attributes.insert(ItemEntry::new(new_url, name)),
@@ -1982,7 +1982,7 @@ impl fmt::Display for AllTypes {
         print_entries(f, &self.functions, "Functions", "functions")?;
         print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
         print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-aliases")?;
-        print_entries(f, &self.existentials, "Existentials", "existentials")?;
+        print_entries(f, &self.opaque_tys, "Opaque Types", "opaque-types")?;
         print_entries(f, &self.statics, "Statics", "statics")?;
         print_entries(f, &self.constants, "Constants", "constants")
     }
@@ -2480,7 +2480,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ConstantItem(..) => write!(fmt, "Constant ")?,
             clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
             clean::KeywordItem(..) => write!(fmt, "Keyword ")?,
-            clean::ExistentialItem(..) => write!(fmt, "Existential Type ")?,
+            clean::OpaqueTyItem(..) => write!(fmt, "Opaque Type ")?,
             clean::TraitAliasItem(..) => write!(fmt, "Trait Alias ")?,
             _ => {
                 // We don't generate pages for any other type.
@@ -2519,7 +2519,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
             clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
             clean::KeywordItem(ref k) => item_keyword(fmt, self.cx, self.item, k),
-            clean::ExistentialItem(ref e, _) => item_existential(fmt, self.cx, self.item, e),
+            clean::OpaqueTyItem(ref e, _) => item_opaque_ty(fmt, self.cx, self.item, e),
             clean::TraitAliasItem(ref ta) => item_trait_alias(fmt, self.cx, self.item, ta),
             _ => {
                 // We don't generate pages for any other type.
@@ -4390,15 +4390,15 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
     Ok(())
 }
 
-fn item_existential(
+fn item_opaque_ty(
     w: &mut fmt::Formatter<'_>,
     cx: &Context,
     it: &clean::Item,
-    t: &clean::Existential,
+    t: &clean::OpaqueTy,
 ) -> fmt::Result {
-    write!(w, "<pre class='rust existential'>")?;
+    write!(w, "<pre class='rust opaque'>")?;
     render_attributes(w, it, false)?;
-    write!(w, "existential type {}{}{where_clause}: {bounds};</pre>",
+    write!(w, "type {}{}{where_clause} = impl {bounds};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
            where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
@@ -4986,7 +4986,7 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
         ItemType::AssocConst      => ("associated-consts", "Associated Constants"),
         ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
         ItemType::Keyword         => ("keywords", "Keywords"),
-        ItemType::Existential     => ("existentials", "Existentials"),
+        ItemType::OpaqueTy        => ("opaque-types", "Opaque Types"),
         ItemType::ProcAttribute   => ("attributes", "Attribute Macros"),
         ItemType::ProcDerive      => ("derives", "Derive Macros"),
         ItemType::TraitAlias      => ("trait-aliases", "Trait aliases"),

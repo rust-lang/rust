@@ -406,7 +406,7 @@ impl DirtyCleanVisitor<'tcx> {
                     ImplItemKind::Method(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                     ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                     ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
-                    ImplItemKind::Existential(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
+                    ImplItemKind::OpaqueTy(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
                 }
             },
             _ => self.tcx.sess.span_fatal(

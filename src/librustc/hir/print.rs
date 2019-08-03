@@ -450,6 +450,24 @@ impl<'a> State<'a> {
         self.s.word(";")
     }
 
+    fn print_item_type(
+        &mut self,
+        item: &hir::Item,
+        generics: &hir::Generics,
+        inner: impl Fn(&mut Self),
+    ) {
+        self.head(visibility_qualified(&item.vis, "type"));
+        self.print_ident(item.ident);
+        self.print_generic_params(&generics.params);
+        self.end(); // end the inner ibox
+
+        self.print_where_clause(&generics.where_clause);
+        self.s.space();
+        inner(self);
+        self.s.word(";");
+        self.end(); // end the outer ibox
+    }
+
     /// Pretty-print an item
     pub fn print_item(&mut self, item: &hir::Item) {
         self.hardbreak_if_not_bol();
@@ -553,43 +571,28 @@ impl<'a> State<'a> {
                 self.end()
             }
             hir::ItemKind::Ty(ref ty, ref generics) => {
-                self.head(visibility_qualified(&item.vis, "type"));
-                self.print_ident(item.ident);
-                self.print_generic_params(&generics.params);
-                self.end(); // end the inner ibox
-
-                self.print_where_clause(&generics.where_clause);
-                self.s.space();
-                self.word_space("=");
-                self.print_type(&ty);
-                self.s.word(";");
-                self.end(); // end the outer ibox
+                self.print_item_type(item, &generics, |state| {
+                    state.word_space("=");
+                    state.print_type(&ty);
+                });
             }
-            hir::ItemKind::Existential(ref exist) => {
-                self.head(visibility_qualified(&item.vis, "existential type"));
-                self.print_ident(item.ident);
-                self.print_generic_params(&exist.generics.params);
-                self.end(); // end the inner ibox
-
-                self.print_where_clause(&exist.generics.where_clause);
-                self.s.space();
-                let mut real_bounds = Vec::with_capacity(exist.bounds.len());
-                for b in exist.bounds.iter() {
-                    if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
-                        self.s.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(b);
+            hir::ItemKind::OpaqueTy(ref opaque_ty) => {
+                self.print_item_type(item, &opaque_ty.generics, |state| {
+                    let mut real_bounds = Vec::with_capacity(opaque_ty.bounds.len());
+                    for b in opaque_ty.bounds.iter() {
+                        if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                            state.s.space();
+                            state.word_space("for ?");
+                            state.print_trait_ref(&ptr.trait_ref);
+                        } else {
+                            real_bounds.push(b);
+                        }
                     }
-                }
-                self.print_bounds(":", real_bounds);
-                self.s.word(";");
-                self.end(); // end the outer ibox
+                    state.print_bounds("= impl", real_bounds);
+                });
             }
             hir::ItemKind::Enum(ref enum_definition, ref params) => {
-                self.print_enum_def(enum_definition, params, item.ident.name, item.span,
-                                    &item.vis);
+                self.print_enum_def(enum_definition, params, item.ident.name, item.span, &item.vis);
             }
             hir::ItemKind::Struct(ref struct_def, ref generics) => {
                 self.head(visibility_qualified(&item.vis, "struct"));
@@ -908,9 +911,11 @@ impl<'a> State<'a> {
             hir::ImplItemKind::Type(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
             }
-            hir::ImplItemKind::Existential(ref bounds) => {
-                self.word_space("existential");
-                self.print_associated_type(ii.ident, Some(bounds), None);
+            hir::ImplItemKind::OpaqueTy(ref bounds) => {
+                self.word_space("type");
+                self.print_ident(ii.ident);
+                self.print_bounds("= impl", bounds);
+                self.s.word(";");
             }
         }
         self.ann.post(self, AnnNode::SubItem(ii.hir_id))

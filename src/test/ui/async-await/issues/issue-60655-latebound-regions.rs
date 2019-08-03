@@ -1,13 +1,14 @@
-// Test that existential types are allowed to contain late-bound regions.
+// Test that opaque `impl Trait` types are allowed to contain late-bound regions.
 
 // build-pass (FIXME(62277): could be check-pass?)
 // edition:2018
 
-#![feature(async_await, existential_type)]
+#![feature(async_await)]
+#![feature(type_alias_impl_trait)]
 
 use std::future::Future;
 
-pub existential type Func: Sized;
+pub type Func = impl Sized;
 
 // Late bound region should be allowed to escape the function, since it's bound
 // in the type.
@@ -17,7 +18,7 @@ fn null_function_ptr() -> Func {
 
 async fn async_nop(_: &u8) {}
 
-pub existential type ServeFut: Future<Output=()>;
+pub type ServeFut = impl Future<Output=()>;
 
 // Late bound regions occur in the generator witness type here.
 fn serve() -> ServeFut {

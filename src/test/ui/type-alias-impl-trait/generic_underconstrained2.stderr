@@ -1,0 +1,35 @@
+error: at least one trait must be specified
+  --> $DIR/generic_underconstrained2.rs:5:50
+   |
+LL | type Underconstrained<T: std::fmt::Debug> = impl 'static;
+   |                                                  ^^^^^^^
+
+error: at least one trait must be specified
+  --> $DIR/generic_underconstrained2.rs:14:51
+   |
+LL | type Underconstrained2<T: std::fmt::Debug> = impl 'static;
+   |                                                   ^^^^^^^
+
+error[E0277]: `U` doesn't implement `std::fmt::Debug`
+  --> $DIR/generic_underconstrained2.rs:5:1
+   |
+LL | type Underconstrained<T: std::fmt::Debug> = impl 'static;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `U`
+   = help: consider adding a `where U: std::fmt::Debug` bound
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: `V` doesn't implement `std::fmt::Debug`
+  --> $DIR/generic_underconstrained2.rs:14:1
+   |
+LL | type Underconstrained2<T: std::fmt::Debug> = impl 'static;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `V` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `V`
+   = help: consider adding a `where V: std::fmt::Debug` bound
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

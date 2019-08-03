@@ -188,7 +188,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             }
                         }
                     }
-                    hir::ImplItemKind::Existential(..) |
+                    hir::ImplItemKind::OpaqueTy(..) |
                     hir::ImplItemKind::Type(_) => false,
                 }
             }
@@ -263,7 +263,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // worklist, as determined by the privacy pass
                     hir::ItemKind::ExternCrate(_) |
                     hir::ItemKind::Use(..) |
-                    hir::ItemKind::Existential(..) |
+                    hir::ItemKind::OpaqueTy(..) |
                     hir::ItemKind::Ty(..) |
                     hir::ItemKind::Static(..) |
                     hir::ItemKind::Mod(..) |
@@ -301,7 +301,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             self.visit_nested_body(body)
                         }
                     }
-                    hir::ImplItemKind::Existential(..) |
+                    hir::ImplItemKind::OpaqueTy(..) |
                     hir::ImplItemKind::Type(_) => {}
                 }
             }

@@ -538,7 +538,7 @@ pub enum ItemEnum {
     FunctionItem(Function),
     ModuleItem(Module),
     TypedefItem(Typedef, bool /* is associated type */),
-    ExistentialItem(Existential, bool /* is associated type */),
+    OpaqueTyItem(OpaqueTy, bool /* is associated type */),
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
@@ -574,7 +574,7 @@ impl ItemEnum {
             ItemEnum::EnumItem(ref e) => &e.generics,
             ItemEnum::FunctionItem(ref f) => &f.generics,
             ItemEnum::TypedefItem(ref t, _) => &t.generics,
-            ItemEnum::ExistentialItem(ref t, _) => &t.generics,
+            ItemEnum::OpaqueTyItem(ref t, _) => &t.generics,
             ItemEnum::TraitItem(ref t) => &t.generics,
             ItemEnum::ImplItem(ref i) => &i.generics,
             ItemEnum::TyMethodItem(ref i) => &i.generics,
@@ -623,7 +623,7 @@ impl Clean<Item> for doctree::Module<'_> {
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
         items.extend(self.typedefs.iter().map(|x| x.clean(cx)));
-        items.extend(self.existentials.iter().map(|x| x.clean(cx)));
+        items.extend(self.opaque_tys.iter().map(|x| x.clean(cx)));
         items.extend(self.statics.iter().map(|x| x.clean(cx)));
         items.extend(self.constants.iter().map(|x| x.clean(cx)));
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
@@ -2257,7 +2257,7 @@ impl Clean<Item> for hir::ImplItem {
                 type_: ty.clean(cx),
                 generics: Generics::default(),
             }, true),
-            hir::ImplItemKind::Existential(ref bounds) => ExistentialItem(Existential {
+            hir::ImplItemKind::OpaqueTy(ref bounds) => OpaqueTyItem(OpaqueTy {
                 bounds: bounds.clean(cx),
                 generics: Generics::default(),
             }, true),
@@ -2415,7 +2415,7 @@ impl Clean<Item> for ty::AssocItem {
                     }, true)
                 }
             }
-            ty::AssocKind::Existential => unimplemented!(),
+            ty::AssocKind::OpaqueTy => unimplemented!(),
         };
 
         let visibility = match self.container {
@@ -2776,7 +2776,7 @@ impl Clean<Type> for hir::Ty {
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
             TyKind::Def(item_id, _) => {
                 let item = cx.tcx.hir().expect_item(item_id.id);
-                if let hir::ItemKind::Existential(ref ty) = item.node {
+                if let hir::ItemKind::OpaqueTy(ref ty) = item.node {
                     ImplTrait(ty.bounds.clean(cx))
                 } else {
                     unreachable!()
@@ -3648,12 +3648,12 @@ impl Clean<Item> for doctree::Typedef<'_> {
 }
 
 #[derive(Clone, Debug)]
-pub struct Existential {
+pub struct OpaqueTy {
     pub bounds: Vec<GenericBound>,
     pub generics: Generics,
 }
 
-impl Clean<Item> for doctree::Existential<'_> {
+impl Clean<Item> for doctree::OpaqueTy<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.name.clean(cx)),
@@ -3663,9 +3663,9 @@ impl Clean<Item> for doctree::Existential<'_> {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
-            inner: ExistentialItem(Existential {
-                bounds: self.exist_ty.bounds.clean(cx),
-                generics: self.exist_ty.generics.clean(cx),
+            inner: OpaqueTyItem(OpaqueTy {
+                bounds: self.opaque_ty.bounds.clean(cx),
+                generics: self.opaque_ty.generics.clean(cx),
             }, false),
         }
     }

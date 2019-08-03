@@ -185,7 +185,7 @@ pub struct AssocItem {
 pub enum AssocKind {
     Const,
     Method,
-    Existential,
+    OpaqueTy,
     Type
 }
 
@@ -195,7 +195,7 @@ impl AssocItem {
             AssocKind::Const => DefKind::AssocConst,
             AssocKind::Method => DefKind::Method,
             AssocKind::Type => DefKind::AssocTy,
-            AssocKind::Existential => DefKind::AssocExistential,
+            AssocKind::OpaqueTy => DefKind::AssocOpaqueTy,
         }
     }
 
@@ -203,7 +203,7 @@ impl AssocItem {
     /// for !
     pub fn relevant_for_never(&self) -> bool {
         match self.kind {
-            AssocKind::Existential |
+            AssocKind::OpaqueTy |
             AssocKind::Const |
             AssocKind::Type => true,
             // FIXME(canndrew): Be more thorough here, check if any argument is uninhabited.
@@ -221,7 +221,8 @@ impl AssocItem {
                 tcx.fn_sig(self.def_id).skip_binder().to_string()
             }
             ty::AssocKind::Type => format!("type {};", self.ident),
-            ty::AssocKind::Existential => format!("existential type {};", self.ident),
+            // FIXME(type_alias_impl_trait): we should print bounds here too.
+            ty::AssocKind::OpaqueTy => format!("type {};", self.ident),
             ty::AssocKind::Const => {
                 format!("const {}: {:?};", self.ident, tcx.type_of(self.def_id))
             }
@@ -2822,7 +2823,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 (ty::AssocKind::Method, has_self)
             }
             hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
-            hir::AssocItemKind::Existential => bug!("only impls can have existentials"),
+            hir::AssocItemKind::OpaqueTy => bug!("only impls can have opaque types"),
         };
 
         AssocItem {
@@ -2848,7 +2849,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 (ty::AssocKind::Method, has_self)
             }
             hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
-            hir::AssocItemKind::Existential => (ty::AssocKind::Existential, false),
+            hir::AssocItemKind::OpaqueTy => (ty::AssocKind::OpaqueTy, false),
         };
 
         AssocItem {
@@ -3213,8 +3214,8 @@ fn trait_of_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
         if let Node::Item(item) = tcx.hir().get(hir_id) {
-            if let hir::ItemKind::Existential(ref exist_ty) = item.node {
-                return exist_ty.impl_trait_fn;
+            if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.node {
+                return opaque_ty.impl_trait_fn;
             }
         }
     }

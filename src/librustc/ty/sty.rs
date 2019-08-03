@@ -185,7 +185,7 @@ pub enum TyKind<'tcx> {
     /// Opaque (`impl Trait`) type found in a return type.
     /// The `DefId` comes either from
     /// * the `impl Trait` ast::Ty node,
-    /// * or the `existential type` declaration
+    /// * or the `type Foo = impl Trait` declaration
     /// The substitutions are for the generics of the function in question.
     /// After typeck, the concrete type can be found in the `types` map.
     Opaque(DefId, SubstsRef<'tcx>),

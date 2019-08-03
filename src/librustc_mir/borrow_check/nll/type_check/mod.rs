@@ -1291,10 +1291,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             concrete_is_opaque
                         );
 
-                        // concrete_is_opaque is `true` when we're using an existential
+                        // concrete_is_opaque is `true` when we're using an opaque `impl Trait`
                         // type without 'revealing' it. For example, code like this:
                         //
-                        // existential type Foo: Debug;
+                        // type Foo = impl Debug;
                         // fn foo1() -> Foo { ... }
                         // fn foo2() -> Foo { foo1() }
                         //
@@ -1303,8 +1303,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         //
                         // When this occurs, we do *not* want to try to equate
                         // the concrete type with the underlying defining type
-                        // of the existential type - this will always fail, since
-                        // the defining type of an existential type is always
+                        // of the opaque type - this will always fail, since
+                        // the defining type of an opaque type is always
                         // some other type (e.g. not itself)
                         // Essentially, none of the normal obligations apply here -
                         // we're just passing around some unknown opaque type,

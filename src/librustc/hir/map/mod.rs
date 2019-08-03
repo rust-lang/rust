@@ -301,7 +301,7 @@ impl<'hir> Map<'hir> {
                     ItemKind::Const(..) => DefKind::Const,
                     ItemKind::Fn(..) => DefKind::Fn,
                     ItemKind::Mod(..) => DefKind::Mod,
-                    ItemKind::Existential(..) => DefKind::Existential,
+                    ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
                     ItemKind::Ty(..) => DefKind::TyAlias,
                     ItemKind::Enum(..) => DefKind::Enum,
                     ItemKind::Struct(..) => DefKind::Struct,
@@ -334,7 +334,7 @@ impl<'hir> Map<'hir> {
                     ImplItemKind::Const(..) => DefKind::AssocConst,
                     ImplItemKind::Method(..) => DefKind::Method,
                     ImplItemKind::Type(..) => DefKind::AssocTy,
-                    ImplItemKind::Existential(..) => DefKind::AssocExistential,
+                    ImplItemKind::OpaqueTy(..) => DefKind::AssocOpaqueTy,
                 }
             }
             Node::Variant(_) => DefKind::Variant,
@@ -816,7 +816,7 @@ impl<'hir> Map<'hir> {
         }, |_| false).ok()
     }
 
-    /// Returns the defining scope for an existential type definition.
+    /// Returns the defining scope for an opaque type definition.
     pub fn get_defining_scope(&self, id: HirId) -> Option<HirId> {
         let mut scope = id;
         loop {
@@ -827,7 +827,7 @@ impl<'hir> Map<'hir> {
             match self.get(scope) {
                 Node::Item(i) => {
                     match i.node {
-                        ItemKind::Existential(ExistTy { impl_trait_fn: None, .. }) => {}
+                        ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {}
                         _ => break,
                     }
                 }
@@ -1270,7 +1270,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
                 ItemKind::ForeignMod(..) => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
                 ItemKind::Ty(..) => "ty",
-                ItemKind::Existential(..) => "existential type",
+                ItemKind::OpaqueTy(..) => "opaque type",
                 ItemKind::Enum(..) => "enum",
                 ItemKind::Struct(..) => "struct",
                 ItemKind::Union(..) => "union",
@@ -1294,8 +1294,8 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
                 ImplItemKind::Type(_) => {
                     format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
                 }
-                ImplItemKind::Existential(_) => {
-                    format!("assoc existential type {} in {}{}", ii.ident, path_str(), id_str)
+                ImplItemKind::OpaqueTy(_) => {
+                    format!("assoc opaque type {} in {}{}", ii.ident, path_str(), id_str)
                 }
             }
         }

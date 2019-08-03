@@ -362,7 +362,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // should've been checked by the instantiation
                     // of whatever returned this exact `impl Trait`.
 
-                    // for named existential types we still need to check them
+                    // for named opaque `impl Trait` types we still need to check them
                     if super::is_impl_trait_defn(self.infcx.tcx, did).is_none() {
                         let obligations = self.nominal_obligations(did, substs);
                         self.out.extend(obligations);

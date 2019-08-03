@@ -418,7 +418,7 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::DesugaringKind {
     Async,
     Await,
     QuestionMark,
-    ExistentialType,
+    OpaqueTy,
     ForLoop,
     TryBlock
 });

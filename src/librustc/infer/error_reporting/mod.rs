@@ -269,7 +269,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match item.node {
             hir::ImplItemKind::Method(..) => "method body",
             hir::ImplItemKind::Const(..)
-            | hir::ImplItemKind::Existential(..)
+            | hir::ImplItemKind::OpaqueTy(..)
             | hir::ImplItemKind::Type(..) => "associated item",
         }
     }

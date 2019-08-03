@@ -505,7 +505,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(ty);
             visitor.visit_generics(generics)
         }
-        ItemKind::Existential(ExistTy {
+        ItemKind::OpaqueTy(OpaqueTy {
             ref generics,
             ref bounds,
             ..
@@ -930,7 +930,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_id(impl_item.hir_id);
             visitor.visit_ty(ty);
         }
-        ImplItemKind::Existential(ref bounds) => {
+        ImplItemKind::OpaqueTy(ref bounds) => {
             visitor.visit_id(impl_item.hir_id);
             walk_list!(visitor, visit_param_bound, bounds);
         }

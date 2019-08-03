@@ -77,19 +77,19 @@ fn impl_trait_in_band(x: &impl MyTrait<'a>) {}
 
 trait FunkyTrait<'a> { }
 impl<'a, T> FunkyTrait<'a> for T { }
-fn existential_impl_trait_in_band_outlives(x: &'a u32) -> impl ::std::fmt::Debug + 'a {
+fn ret_pos_impl_trait_in_band_outlives(x: &'a u32) -> impl ::std::fmt::Debug + 'a {
     x
 }
-fn existential_impl_trait_in_band_param(x: &'a u32) -> impl FunkyTrait<'a> {
+fn ret_pos_impl_trait_in_band_param(x: &'a u32) -> impl FunkyTrait<'a> {
     x
 }
-fn existential_impl_trait_in_band_param_static(x: &'a u32) -> impl FunkyTrait<'static> + 'a {
+fn ret_pos_impl_trait_in_band_param_static(x: &'a u32) -> impl FunkyTrait<'static> + 'a {
     x
 }
-fn existential_impl_trait_in_band_param_outlives(x: &'a u32) -> impl FunkyTrait<'a> + 'a {
+fn ret_pos_impl_trait_in_band_param_outlives(x: &'a u32) -> impl FunkyTrait<'a> + 'a {
     x
 }
-fn existential_impl_trait_in_band_higher_ranked(x: &'a u32) -> impl for<'b> FunkyTrait<'b> + 'a {
+fn ret_pos_impl_trait_in_band_higher_ranked(x: &'a u32) -> impl for<'b> FunkyTrait<'b> + 'a {
     x
 }
 

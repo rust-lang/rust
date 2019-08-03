@@ -1330,10 +1330,10 @@ fn check_opaque<'tcx>(
     def_id: DefId,
     substs: SubstsRef<'tcx>,
     span: Span,
-    origin: &hir::ExistTyOrigin
+    origin: &hir::OpaqueTyOrigin
 ) {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
-        if let hir::ExistTyOrigin::AsyncFn = origin {
+        if let hir::OpaqueTyOrigin::AsyncFn = origin {
             struct_span_err!(
                 tcx.sess, span, E0733,
                 "recursion in an `async fn` requires boxing",
@@ -1403,7 +1403,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
         hir::ItemKind::Union(..) => {
             check_union(tcx, it.hir_id, it.span);
         }
-        hir::ItemKind::Existential(hir::ExistTy{origin, ..}) => {
+        hir::ItemKind::OpaqueTy(hir::OpaqueTy{origin, ..}) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
 
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -1542,7 +1542,7 @@ fn check_specialization_validity<'tcx>(
     let kind = match impl_item.node {
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
         hir::ImplItemKind::Method(..) => ty::AssocKind::Method,
-        hir::ImplItemKind::Existential(..) => ty::AssocKind::Existential,
+        hir::ImplItemKind::OpaqueTy(..) => ty::AssocKind::OpaqueTy,
         hir::ImplItemKind::Type(_) => ty::AssocKind::Type
     };
 
@@ -1639,7 +1639,7 @@ fn check_impl_items_against_trait<'tcx>(
                          err.emit()
                     }
                 }
-                hir::ImplItemKind::Existential(..) |
+                hir::ImplItemKind::OpaqueTy(..) |
                 hir::ImplItemKind::Type(_) => {
                     if ty_trait_item.kind == ty::AssocKind::Type {
                         if ty_trait_item.defaultness.has_value() {

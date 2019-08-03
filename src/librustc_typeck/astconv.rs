@@ -1956,7 +1956,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let span = path.span;
         match path.res {
-            Res::Def(DefKind::Existential, did) => {
+            Res::Def(DefKind::OpaqueTy, did) => {
                 // Check for desugared `impl Trait`.
                 assert!(ty::is_impl_trait_defn(tcx, did).is_none());
                 let item_segment = path.segments.split_last().unwrap();

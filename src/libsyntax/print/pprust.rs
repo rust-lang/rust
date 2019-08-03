@@ -1221,9 +1221,10 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer ibox
             }
-            ast::ItemKind::Existential(ref bounds, ref generics) => {
-                self.head(visibility_qualified(&item.vis, "existential type"));
+            ast::ItemKind::OpaqueTy(ref bounds, ref generics) => {
+                self.head(visibility_qualified(&item.vis, "type"));
                 self.print_ident(item.ident);
+                self.word_space("= impl");
                 self.print_generic_params(&generics.params);
                 self.end(); // end the inner ibox
 
@@ -1581,9 +1582,12 @@ impl<'a> State<'a> {
             ast::ImplItemKind::Type(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
             }
-            ast::ImplItemKind::Existential(ref bounds) => {
-                self.word_space("existential");
-                self.print_associated_type(ii.ident, Some(bounds), None);
+            ast::ImplItemKind::OpaqueTy(ref bounds) => {
+                self.word_space("type");
+                self.print_ident(ii.ident);
+                self.word_space("= impl");
+                self.print_type_bounds(":", bounds);
+                self.s.word(";");
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac);

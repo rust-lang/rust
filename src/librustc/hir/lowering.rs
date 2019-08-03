@@ -189,14 +189,14 @@ enum ImplTraitContext<'a> {
     /// Newly generated parameters should be inserted into the given `Vec`.
     Universal(&'a mut Vec<hir::GenericParam>),
 
-    /// Treat `impl Trait` as shorthand for a new existential parameter.
+    /// Treat `impl Trait` as shorthand for a new opaque type.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
-    /// equivalent to a fresh existential parameter like `existential type T; fn foo() -> T`.
+    /// equivalent to a new opaque type like `type T = impl Debug; fn foo() -> T`.
     ///
     /// We optionally store a `DefId` for the parent item here so we can look up necessary
     /// information later. It is `None` when no information about the context should be stored
     /// (e.g., for consts and statics).
-    Existential(Option<DefId> /* fn def-ID */),
+    OpaqueTy(Option<DefId> /* fn def-ID */),
 
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
@@ -222,7 +222,7 @@ impl<'a> ImplTraitContext<'a> {
         use self::ImplTraitContext::*;
         match self {
             Universal(params) => Universal(params),
-            Existential(fn_def_id) => Existential(*fn_def_id),
+            OpaqueTy(fn_def_id) => OpaqueTy(*fn_def_id),
             Disallowed(pos) => Disallowed(*pos),
         }
     }
@@ -487,7 +487,7 @@ impl<'a> LoweringContext<'a> {
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
                     | ItemKind::Ty(_, ref generics)
-                    | ItemKind::Existential(_, ref generics)
+                    | ItemKind::OpaqueTy(_, ref generics)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics
@@ -1422,7 +1422,7 @@ impl<'a> LoweringContext<'a> {
                     // so desugar to
                     //
                     //     fn foo() -> impl Iterator<Item = impl Debug>
-                    ImplTraitContext::Existential(_) => (true, itctx),
+                    ImplTraitContext::OpaqueTy(_) => (true, itctx),
 
                     // We are in the argument position, but within a dyn type:
                     //
@@ -1436,11 +1436,11 @@ impl<'a> LoweringContext<'a> {
                     // In `type Foo = dyn Iterator<Item: Debug>` we desugar to
                     // `type Foo = dyn Iterator<Item = impl Debug>` but we have to override the
                     // "impl trait context" to permit `impl Debug` in this position (it desugars
-                    // then to an existential type).
+                    // then to an opaque type).
                     //
                     // FIXME: this is only needed until `impl Trait` is allowed in type aliases.
                     ImplTraitContext::Disallowed(_) if self.is_in_dyn_type =>
-                        (true, ImplTraitContext::Existential(None)),
+                        (true, ImplTraitContext::OpaqueTy(None)),
 
                     // We are in the argument position, but not within a dyn type:
                     //
@@ -1634,8 +1634,8 @@ impl<'a> LoweringContext<'a> {
             TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::Existential(fn_def_id) => {
-                        self.lower_existential_impl_trait(
+                    ImplTraitContext::OpaqueTy(fn_def_id) => {
+                        self.lower_opaque_impl_trait(
                             span, fn_def_id, def_node_id,
                             |this| this.lower_param_bounds(bounds, itctx),
                         )
@@ -1717,11 +1717,11 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_existential_impl_trait(
+    fn lower_opaque_impl_trait(
         &mut self,
         span: Span,
         fn_def_id: Option<DefId>,
-        exist_ty_node_id: NodeId,
+        opaque_ty_node_id: NodeId,
         lower_bounds: impl FnOnce(&mut LoweringContext<'_>) -> hir::GenericBounds,
     ) -> hir::TyKind {
         // Make sure we know that some funky desugaring has been going on here.
@@ -1729,30 +1729,30 @@ impl<'a> LoweringContext<'a> {
         // desugaring that explicitly states that we don't want to track that.
         // Not tracking it makes lints in rustc and clippy very fragile, as
         // frequently opened issues show.
-        let exist_ty_span = self.mark_span_with_reason(
-            DesugaringKind::ExistentialType,
+        let opaque_ty_span = self.mark_span_with_reason(
+            DesugaringKind::OpaqueTy,
             span,
             None,
         );
 
-        let exist_ty_def_index = self
+        let opaque_ty_def_index = self
             .resolver
             .definitions()
-            .opt_def_index(exist_ty_node_id)
+            .opt_def_index(opaque_ty_node_id)
             .unwrap();
 
-        self.allocate_hir_id_counter(exist_ty_node_id);
+        self.allocate_hir_id_counter(opaque_ty_node_id);
 
-        let hir_bounds = self.with_hir_id_owner(exist_ty_node_id, lower_bounds);
+        let hir_bounds = self.with_hir_id_owner(opaque_ty_node_id, lower_bounds);
 
         let (lifetimes, lifetime_defs) = self.lifetimes_from_impl_trait_bounds(
-            exist_ty_node_id,
-            exist_ty_def_index,
+            opaque_ty_node_id,
+            opaque_ty_def_index,
             &hir_bounds,
         );
 
-        self.with_hir_id_owner(exist_ty_node_id, |lctx| {
-            let exist_ty_item = hir::ExistTy {
+        self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
+            let opaque_ty_item = hir::OpaqueTy {
                 generics: hir::Generics {
                     params: lifetime_defs,
                     where_clause: hir::WhereClause {
@@ -1763,54 +1763,54 @@ impl<'a> LoweringContext<'a> {
                 },
                 bounds: hir_bounds,
                 impl_trait_fn: fn_def_id,
-                origin: hir::ExistTyOrigin::ReturnImplTrait,
+                origin: hir::OpaqueTyOrigin::FnReturn,
             };
 
-            trace!("exist ty from impl trait def-index: {:#?}", exist_ty_def_index);
-            let exist_ty_id = lctx.generate_existential_type(
-                exist_ty_node_id,
-                exist_ty_item,
+            trace!("exist ty from impl trait def-index: {:#?}", opaque_ty_def_index);
+            let opaque_ty_id = lctx.generate_opaque_type(
+                opaque_ty_node_id,
+                opaque_ty_item,
                 span,
-                exist_ty_span,
+                opaque_ty_span,
             );
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-            hir::TyKind::Def(hir::ItemId { id: exist_ty_id }, lifetimes)
+            hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, lifetimes)
         })
     }
 
-    /// Registers a new existential type with the proper `NodeId`s and
-    /// returns the lowered node-ID for the existential type.
-    fn generate_existential_type(
+    /// Registers a new opaque type with the proper `NodeId`s and
+    /// returns the lowered node-ID for the opaque type.
+    fn generate_opaque_type(
         &mut self,
-        exist_ty_node_id: NodeId,
-        exist_ty_item: hir::ExistTy,
+        opaque_ty_node_id: NodeId,
+        opaque_ty_item: hir::OpaqueTy,
         span: Span,
-        exist_ty_span: Span,
+        opaque_ty_span: Span,
     ) -> hir::HirId {
-        let exist_ty_item_kind = hir::ItemKind::Existential(exist_ty_item);
-        let exist_ty_id = self.lower_node_id(exist_ty_node_id);
-        // Generate an `existential type Foo: Trait;` declaration.
-        trace!("registering existential type with id {:#?}", exist_ty_id);
-        let exist_ty_item = hir::Item {
-            hir_id: exist_ty_id,
+        let opaque_ty_item_kind = hir::ItemKind::OpaqueTy(opaque_ty_item);
+        let opaque_ty_id = self.lower_node_id(opaque_ty_node_id);
+        // Generate an `type Foo = impl Trait;` declaration.
+        trace!("registering opaque type with id {:#?}", opaque_ty_id);
+        let opaque_ty_item = hir::Item {
+            hir_id: opaque_ty_id,
             ident: Ident::invalid(),
             attrs: Default::default(),
-            node: exist_ty_item_kind,
+            node: opaque_ty_item_kind,
             vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
-            span: exist_ty_span,
+            span: opaque_ty_span,
         };
 
         // Insert the item into the global item list. This usually happens
-        // automatically for all AST items. But this existential type item
+        // automatically for all AST items. But this opaque type item
         // does not actually exist in the AST.
-        self.insert_item(exist_ty_item);
-        exist_ty_id
+        self.insert_item(opaque_ty_item);
+        opaque_ty_id
     }
 
     fn lifetimes_from_impl_trait_bounds(
         &mut self,
-        exist_ty_id: NodeId,
+        opaque_ty_id: NodeId,
         parent_index: DefIndex,
         bounds: &hir::GenericBounds,
     ) -> (HirVec<hir::GenericArg>, HirVec<hir::GenericParam>) {
@@ -1820,7 +1820,7 @@ impl<'a> LoweringContext<'a> {
         struct ImplTraitLifetimeCollector<'r, 'a> {
             context: &'r mut LoweringContext<'a>,
             parent: DefIndex,
-            exist_ty_id: NodeId,
+            opaque_ty_id: NodeId,
             collect_elided_lifetimes: bool,
             currently_bound_lifetimes: Vec<hir::LifetimeName>,
             already_defined_lifetimes: FxHashSet<hir::LifetimeName>,
@@ -1894,7 +1894,7 @@ impl<'a> LoweringContext<'a> {
                     hir::LifetimeName::Implicit | hir::LifetimeName::Underscore => {
                         if self.collect_elided_lifetimes {
                             // Use `'_` for both implicit and underscore lifetimes in
-                            // `abstract type Foo<'_>: SomeTrait<'_>;`.
+                            // `type Foo<'_> = impl SomeTrait<'_>;`.
                             hir::LifetimeName::Underscore
                         } else {
                             return;
@@ -1916,7 +1916,7 @@ impl<'a> LoweringContext<'a> {
 
                     let def_node_id = self.context.sess.next_node_id();
                     let hir_id =
-                        self.context.lower_node_id_with_owner(def_node_id, self.exist_ty_id);
+                        self.context.lower_node_id_with_owner(def_node_id, self.opaque_ty_id);
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
                         def_node_id,
@@ -1952,7 +1952,7 @@ impl<'a> LoweringContext<'a> {
         let mut lifetime_collector = ImplTraitLifetimeCollector {
             context: self,
             parent: parent_index,
-            exist_ty_id,
+            opaque_ty_id,
             collect_elided_lifetimes: true,
             currently_bound_lifetimes: Vec::new(),
             already_defined_lifetimes: FxHashSet::default(),
@@ -2439,7 +2439,7 @@ impl<'a> LoweringContext<'a> {
                 .as_ref()
                 .map(|t| self.lower_ty(t,
                     if self.sess.features_untracked().impl_trait_in_bindings {
-                        ImplTraitContext::Existential(Some(parent_def_id))
+                        ImplTraitContext::OpaqueTy(Some(parent_def_id))
                     } else {
                         ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                     }
@@ -2500,7 +2500,7 @@ impl<'a> LoweringContext<'a> {
         let lt_mode = if make_ret_async.is_some() {
             // In `async fn`, argument-position elided lifetimes
             // must be transformed into fresh generic parameters so that
-            // they can be applied to the existential return type.
+            // they can be applied to the opaque `impl Trait` return type.
             AnonymousLifetimeMode::CreateParameter
         } else {
             self.anonymous_lifetime_mode
@@ -2539,7 +2539,7 @@ impl<'a> LoweringContext<'a> {
                 FunctionRetTy::Ty(ref ty) => match in_band_ty_params {
                     Some((def_id, _)) if impl_trait_return_allow => {
                         hir::Return(self.lower_ty(ty,
-                            ImplTraitContext::Existential(Some(def_id))
+                            ImplTraitContext::OpaqueTy(Some(def_id))
                         ))
                     }
                     _ => {
@@ -2582,40 +2582,40 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    // Transforms `-> T` for `async fn` into `-> ExistTy { .. }`
-    // combined with the following definition of `ExistTy`:
+    // Transforms `-> T` for `async fn` into `-> OpaqueTy { .. }`
+    // combined with the following definition of `OpaqueTy`:
     //
-    //     existential type ExistTy<generics_from_parent_fn>: Future<Output = T>;
+    //     type OpaqueTy<generics_from_parent_fn> = impl Future<Output = T>;
     //
     // `inputs`: lowered types of arguments to the function (used to collect lifetimes)
     // `output`: unlowered output type (`T` in `-> T`)
     // `fn_def_id`: `DefId` of the parent function (used to create child impl trait definition)
-    // `exist_ty_node_id`: `NodeId` of the existential type that should be created
+    // `opaque_ty_node_id`: `NodeId` of the opaque `impl Trait` type that should be created
     // `elided_lt_replacement`: replacement for elided lifetimes in the return type
     fn lower_async_fn_ret_ty(
         &mut self,
         output: &FunctionRetTy,
         fn_def_id: DefId,
-        exist_ty_node_id: NodeId,
+        opaque_ty_node_id: NodeId,
         elided_lt_replacement: LtReplacement,
     ) -> hir::FunctionRetTy {
         let span = output.span();
 
-        let exist_ty_span = self.mark_span_with_reason(
+        let opaque_ty_span = self.mark_span_with_reason(
             DesugaringKind::Async,
             span,
             None,
         );
 
-        let exist_ty_def_index = self
+        let opaque_ty_def_index = self
             .resolver
             .definitions()
-            .opt_def_index(exist_ty_node_id)
+            .opt_def_index(opaque_ty_node_id)
             .unwrap();
 
-        self.allocate_hir_id_counter(exist_ty_node_id);
+        self.allocate_hir_id_counter(opaque_ty_node_id);
 
-        let (exist_ty_id, lifetime_params) = self.with_hir_id_owner(exist_ty_node_id, |this| {
+        let (opaque_ty_id, lifetime_params) = self.with_hir_id_owner(opaque_ty_node_id, |this| {
             let future_bound = this.with_anonymous_lifetime_mode(
                 AnonymousLifetimeMode::Replace(elided_lt_replacement),
                 |this| this.lower_async_fn_output_type_to_future_bound(
@@ -2626,7 +2626,7 @@ impl<'a> LoweringContext<'a> {
             );
 
             // Calculate all the lifetimes that should be captured
-            // by the existential type. This should include all in-scope
+            // by the opaque type. This should include all in-scope
             // lifetime parameters, including those defined in-band.
             //
             // Note: this must be done after lowering the output type,
@@ -2642,11 +2642,11 @@ impl<'a> LoweringContext<'a> {
                 lifetime_params
                     .iter().cloned()
                     .map(|(span, hir_name)| {
-                        this.lifetime_to_generic_param(span, hir_name, exist_ty_def_index)
+                        this.lifetime_to_generic_param(span, hir_name, opaque_ty_def_index)
                     })
                     .collect();
 
-            let exist_ty_item = hir::ExistTy {
+            let opaque_ty_item = hir::OpaqueTy {
                 generics: hir::Generics {
                     params: generic_params,
                     where_clause: hir::WhereClause {
@@ -2657,18 +2657,18 @@ impl<'a> LoweringContext<'a> {
                 },
                 bounds: hir_vec![future_bound],
                 impl_trait_fn: Some(fn_def_id),
-                origin: hir::ExistTyOrigin::AsyncFn,
+                origin: hir::OpaqueTyOrigin::AsyncFn,
             };
 
-            trace!("exist ty from async fn def index: {:#?}", exist_ty_def_index);
-            let exist_ty_id = this.generate_existential_type(
-                exist_ty_node_id,
-                exist_ty_item,
+            trace!("exist ty from async fn def index: {:#?}", opaque_ty_def_index);
+            let opaque_ty_id = this.generate_opaque_type(
+                opaque_ty_node_id,
+                opaque_ty_item,
                 span,
-                exist_ty_span,
+                opaque_ty_span,
             );
 
-            (exist_ty_id, lifetime_params)
+            (opaque_ty_id, lifetime_params)
         });
 
         let generic_args =
@@ -2683,10 +2683,10 @@ impl<'a> LoweringContext<'a> {
                 })
                 .collect();
 
-        let exist_ty_ref = hir::TyKind::Def(hir::ItemId { id: exist_ty_id }, generic_args);
+        let opaque_ty_ref = hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, generic_args);
 
         hir::FunctionRetTy::Return(P(hir::Ty {
-            node: exist_ty_ref,
+            node: opaque_ty_ref,
             span,
             hir_id: self.next_id(),
         }))
@@ -2702,7 +2702,7 @@ impl<'a> LoweringContext<'a> {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
             FunctionRetTy::Ty(ty) => {
-                self.lower_ty(ty, ImplTraitContext::Existential(Some(fn_def_id)))
+                self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(fn_def_id)))
             }
             FunctionRetTy::Default(ret_ty_span) => {
                 P(hir::Ty {
@@ -2905,7 +2905,7 @@ impl<'a> LoweringContext<'a> {
 
                 let kind = hir::GenericParamKind::Type {
                     default: default.as_ref().map(|x| {
-                        self.lower_ty(x, ImplTraitContext::Existential(None))
+                        self.lower_ty(x, ImplTraitContext::OpaqueTy(None))
                     }),
                     synthetic: param.attrs.iter()
                                           .filter(|attr| attr.check_name(sym::rustc_synthetic))
@@ -3384,7 +3384,7 @@ impl<'a> LoweringContext<'a> {
                     self.lower_ty(
                         t,
                         if self.sess.features_untracked().impl_trait_in_bindings {
-                            ImplTraitContext::Existential(None)
+                            ImplTraitContext::OpaqueTy(None)
                         } else {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                         }
@@ -3398,7 +3398,7 @@ impl<'a> LoweringContext<'a> {
                     self.lower_ty(
                         t,
                         if self.sess.features_untracked().impl_trait_in_bindings {
-                            ImplTraitContext::Existential(None)
+                            ImplTraitContext::OpaqueTy(None)
                         } else {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                         }
@@ -3444,14 +3444,14 @@ impl<'a> LoweringContext<'a> {
                 self.lower_ty(t, ImplTraitContext::disallowed()),
                 self.lower_generics(generics, ImplTraitContext::disallowed()),
             ),
-            ItemKind::Existential(ref b, ref generics) => hir::ItemKind::Existential(
-                hir::ExistTy {
+            ItemKind::OpaqueTy(ref b, ref generics) => hir::ItemKind::OpaqueTy(
+                hir::OpaqueTy {
                     generics: self.lower_generics(generics,
-                        ImplTraitContext::Existential(None)),
+                        ImplTraitContext::OpaqueTy(None)),
                     bounds: self.lower_param_bounds(b,
-                        ImplTraitContext::Existential(None)),
+                        ImplTraitContext::OpaqueTy(None)),
                     impl_trait_fn: None,
-                    origin: hir::ExistTyOrigin::ExistentialType,
+                    origin: hir::OpaqueTyOrigin::TypeAlias,
                 },
             ),
             ItemKind::Enum(ref enum_definition, ref generics) => {
@@ -3918,9 +3918,9 @@ impl<'a> LoweringContext<'a> {
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
                 hir::ImplItemKind::Type(self.lower_ty(ty, ImplTraitContext::disallowed())),
             ),
-            ImplItemKind::Existential(ref bounds) => (
+            ImplItemKind::OpaqueTy(ref bounds) => (
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                hir::ImplItemKind::Existential(
+                hir::ImplItemKind::OpaqueTy(
                     self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
                 ),
             ),
@@ -3951,7 +3951,7 @@ impl<'a> LoweringContext<'a> {
             kind: match i.node {
                 ImplItemKind::Const(..) => hir::AssocItemKind::Const,
                 ImplItemKind::Type(..) => hir::AssocItemKind::Type,
-                ImplItemKind::Existential(..) => hir::AssocItemKind::Existential,
+                ImplItemKind::OpaqueTy(..) => hir::AssocItemKind::OpaqueTy,
                 ImplItemKind::Method(ref sig, _) => hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },

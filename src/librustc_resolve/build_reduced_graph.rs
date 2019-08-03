@@ -464,8 +464,8 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
-            ItemKind::Existential(_, _) => {
-                let res = Res::Def(DefKind::Existential, self.definitions.local_def_id(item.id));
+            ItemKind::OpaqueTy(_, _) => {
+                let res = Res::Def(DefKind::OpaqueTy, self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
@@ -656,7 +656,7 @@ impl<'a> Resolver<'a> {
             Res::Def(DefKind::Variant, _)
             | Res::Def(DefKind::TyAlias, _)
             | Res::Def(DefKind::ForeignTy, _)
-            | Res::Def(DefKind::Existential, _)
+            | Res::Def(DefKind::OpaqueTy, _)
             | Res::Def(DefKind::TraitAlias, _)
             | Res::PrimTy(..)
             | Res::ToolMod => {
