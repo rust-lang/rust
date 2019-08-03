@@ -151,11 +151,6 @@ To fix it, remove the `()`s.
 
 This lint detects a specific situation of re-exporting a private `extern crate`;
 
-## safe-extern-statics
-
-In older versions of Rust, there was a soundness issue where `extern static`s were allowed
-to be accessed in safe code. This lint now catches and denies this kind of code.
-
 ## unknown-crate-types
 
 This lint detects an unknown crate type found in a `#[crate_type]` directive. Some
