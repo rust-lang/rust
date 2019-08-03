@@ -342,11 +342,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(MISSING_FRAGMENT_SPECIFIER),
-            reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN),
             reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
             edition: None,
@@ -488,6 +483,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/57742");
     store.register_removed("incoherent_fundamental_impls",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
+    store.register_removed("missing_fragment_specifier",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/40107");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {

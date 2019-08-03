@@ -91,16 +91,6 @@ The legacy_directory_ownership warning is issued when
 The warning can be fixed by renaming the parent module to "mod.rs" and moving
 it into its own directory if appropriate.
 
-
-## missing-fragment-specifier
-
-The missing_fragment_specifier warning is issued when an unused pattern in a
-`macro_rules!` macro definition has a meta-variable (e.g. `$e`) that is not
-followed by a fragment specifier (e.g. `:expr`).
-
-This warning can always be fixed by removing the unused pattern in the
-`macro_rules!` macro definition.
-
 ## mutable-transmutes
 
 This lint catches transmuting from `&T` to `&mut T` because it is undefined

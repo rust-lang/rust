@@ -10,7 +10,7 @@ use crate::with_default_globals;
 use std::io;
 use std::path::PathBuf;
 use syntax_pos::{BytePos, Span, NO_EXPANSION, edition::Edition};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lock, Once};
 
 fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
@@ -25,7 +25,6 @@ fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
         config: CrateConfig::default(),
         included_mod_stack: Lock::new(Vec::new()),
         source_map: sm,
-        missing_fragment_specifiers: Lock::new(FxHashSet::default()),
         raw_identifier_spans: Lock::new(Vec::new()),
         registered_diagnostics: Lock::new(ErrorMap::new()),
         buffered_lints: Lock::new(vec![]),
