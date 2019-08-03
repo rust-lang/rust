@@ -130,8 +130,17 @@ impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ModuleData {
-    Declaration { name: Name, ast_id: FileAstId<ast::Module>, attr_path: Option<SmolStr> },
-    Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
+    Declaration {
+        name: Name,
+        ast_id: FileAstId<ast::Module>,
+        attr_path: Option<SmolStr>,
+    },
+    Definition {
+        name: Name,
+        ast_id: FileAstId<ast::Module>,
+        items: Vec<RawItem>,
+        attr_path: Option<SmolStr>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -256,9 +265,9 @@ impl RawItemsCollector {
             None => return,
         };
 
-        let attr_path = extract_mod_path_attribute(&module);
         let ast_id = self.source_ast_id_map.ast_id(&module);
         if module.has_semi() {
+            let attr_path = extract_mod_path_attribute(&module);
             let item =
                 self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id, attr_path });
             self.push_item(current_module, RawItem::Module(item));
@@ -266,10 +275,12 @@ impl RawItemsCollector {
         }
 
         if let Some(item_list) = module.item_list() {
+            let attr_path = extract_mod_path_attribute(&module);
             let item = self.raw_items.modules.alloc(ModuleData::Definition {
                 name,
                 ast_id,
                 items: Vec::new(),
+                attr_path,
             });
             self.process_module(Some(item), item_list);
             self.push_item(current_module, RawItem::Module(item));

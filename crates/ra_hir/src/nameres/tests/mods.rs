@@ -336,9 +336,7 @@ fn module_resolution_explicit_path_mod_rs_with_win_separator() {
     "###);
 }
 
-// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
-#[ignore]
 fn module_resolution_decl_inside_inline_module_with_path_attribute() {
     let map = def_map_with_crate_graph(
         r###"
@@ -397,9 +395,7 @@ fn module_resolution_decl_inside_inline_module() {
     "###);
 }
 
-// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
-#[ignore]
 fn module_resolution_decl_inside_inline_module_2_with_path_attribute() {
     let map = def_map_with_crate_graph(
         r###"
@@ -429,9 +425,7 @@ fn module_resolution_decl_inside_inline_module_2_with_path_attribute() {
     "###);
 }
 
-// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
-#[ignore]
 fn module_resolution_decl_inside_inline_module_3() {
     let map = def_map_with_crate_graph(
         r###"
@@ -462,9 +456,7 @@ fn module_resolution_decl_inside_inline_module_3() {
     "###);
 }
 
-// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
-#[ignore]
 fn module_resolution_decl_inside_inline_module_empty_path() {
     let map = def_map_with_crate_graph(
         r###"
@@ -475,7 +467,7 @@ fn module_resolution_decl_inside_inline_module_empty_path() {
             mod bar;
         }
 
-        //- /users.rs
+        //- /foo/users.rs
         pub struct Baz;
         "###,
         crate_graph! {
@@ -520,9 +512,7 @@ fn module_resolution_decl_empty_path() {
     "###);
 }
 
-// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
-#[ignore]
 fn module_resolution_decl_inside_inline_module_relative_path() {
     let map = def_map_with_crate_graph(
         r###"
@@ -660,9 +650,7 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root() {
     "###);
 }
 
-// FIXME: issue #1529. not support out-of-line modules inside inline.
 #[test]
-#[ignore]
 fn module_resolution_decl_inside_inline_module_in_non_crate_root_2() {
     let map = def_map_with_crate_graph(
         r###"
