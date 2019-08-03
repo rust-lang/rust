@@ -20,8 +20,10 @@ impl<'a> SubtreeTokenSource<'a> {
     // Helper function used in test
     #[cfg(test)]
     pub fn text(&self) -> SmolStr {
-        match self.get(self.curr.1) {
-            Some(tt) => tt.text,
+        let idx = self.get(self.curr.1);
+        let cached = self.cached.borrow();
+        match cached[idx] {
+            Some(ref tt) => tt.text.clone(),
             _ => SmolStr::new(""),
         }
     }
@@ -41,16 +43,18 @@ impl<'a> SubtreeTokenSource<'a> {
     }
 
     fn mk_token(&self, pos: usize) -> Token {
-        match self.get(pos) {
-            Some(tt) => Token { kind: tt.kind, is_jointed_to_next: tt.is_joint_to_next },
+        let idx = self.get(pos);
+        let cached = self.cached.borrow();
+        match cached[idx] {
+            Some(ref tt) => Token { kind: tt.kind, is_jointed_to_next: tt.is_joint_to_next },
             None => Token { kind: EOF, is_jointed_to_next: false },
         }
     }
 
-    fn get(&self, pos: usize) -> Option<TtToken> {
+    fn get(&self, pos: usize) -> usize {
         let mut cached = self.cached.borrow_mut();
         if pos < cached.len() {
-            return cached[pos].clone();
+            return pos;
         }
 
         while pos >= cached.len() {
@@ -78,7 +82,7 @@ impl<'a> SubtreeTokenSource<'a> {
             }
         }
 
-        cached[pos].clone()
+        pos
     }
 }
 
@@ -103,8 +107,10 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
 
     /// Is the current token a specified keyword?
     fn is_keyword(&self, kw: &str) -> bool {
-        match self.get(self.curr.1) {
-            Some(t) => t.text == *kw,
+        let idx = self.get(self.curr.1);
+        let cached = self.cached.borrow();
+        match cached[idx] {
+            Some(ref t) => t.text == *kw,
             _ => false,
         }
     }
