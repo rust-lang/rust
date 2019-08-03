@@ -45,41 +45,6 @@ error: defaults for type parameters are only allowed in `struct`, `enum`, `type`
   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 ```
 
-## legacy-constructor-visibility
-
-[RFC 1506](https://github.com/rust-lang/rfcs/blob/master/text/1506-adt-kinds.md) modified some
-visibility rules, and changed the visibility of struct constructors. Some
-example code that triggers this lint:
-
-```rust,ignore
-mod m {
-    pub struct S(u8);
-    
-    fn f() {
-        // this is trying to use S from the 'use' line, but because the `u8` is
-        // not pub, it is private
-        ::S;
-    }
-}
-
-use m::S;
-```
-
-This will produce:
-
-```text
-error: private struct constructors are not usable through re-exports in outer modules
- --> src/main.rs:5:9
-  |
-5 |         ::S;
-  |         ^^^
-  |
-  = note: `#[deny(legacy_constructor_visibility)]` on by default
-  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-  = note: for more information, see issue #39207 <https://github.com/rust-lang/rust/issues/39207>
-```
-
-
 ## legacy-directory-ownership
 
 The legacy_directory_ownership warning is issued when

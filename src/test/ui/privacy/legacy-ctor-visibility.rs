@@ -1,7 +1,3 @@
-// ignore-tidy-linelength
-
-#![allow(unused)]
-
 use m::S;
 
 mod m {
@@ -11,8 +7,7 @@ mod m {
         use S;
         fn f() {
             S(10);
-            //~^ ERROR private struct constructors are not usable through re-exports in outer modules
-            //~| WARN this was previously accepted
+            //~^ ERROR expected function, tuple struct or tuple variant, found struct `S`
         }
     }
 }
