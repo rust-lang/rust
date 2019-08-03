@@ -4746,14 +4746,13 @@ impl<'a> Resolver<'a> {
         self.report_with_use_injections(krate);
 
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
-            let msg = "macro-expanded `macro_export` macros from the current crate \
-                       cannot be referred to by absolute paths";
-            self.session.buffer_lint_with_diagnostic(
-                lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-                CRATE_NODE_ID, span_use, msg,
-                lint::builtin::BuiltinLintDiagnostics::
-                    MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
-            );
+            self.session.struct_span_err(
+                span_use,
+                "macro-expanded `macro_export` macros from the current crate \
+                 cannot be referred to by absolute paths",
+            )
+            .span_note(span_def, "the macro is defined here")
+            .emit();
         }
 
         for ambiguity_error in &self.ambiguity_errors {

@@ -293,13 +293,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-    Deny,
-    "macro-expanded `macro_export` macros from the current crate \
-     cannot be referred to by absolute paths"
-}
-
-declare_lint! {
     pub EXPLICIT_OUTLIVES_REQUIREMENTS,
     Allow,
     "outlives requirements can be inferred"
@@ -402,7 +395,6 @@ declare_lint_pass! {
         WHERE_CLAUSES_OBJECT_SAFETY,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
-        MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         parser::ILL_FORMED_ATTRIBUTE_INPUT,
         parser::META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
@@ -421,7 +413,6 @@ pub enum BuiltinLintDiagnostics {
     BareTraitObject(Span, /* is_global */ bool),
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback(Span),
-    MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
     UnknownCrateTypes(Span, String, String),
     UnusedImports(String, Vec<(Span, String)>),
@@ -505,9 +496,6 @@ impl BuiltinLintDiagnostics {
             BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
                 db.span_label(span, "names from parent modules are not \
                                      accessible without an explicit import");
-            }
-            BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
-                db.span_note(span_def, "the macro is defined here");
             }
             BuiltinLintDiagnostics::ElidedLifetimesInPaths(
                 n, path_span, incl_angl_brckt, insertion_span, anon_lts

@@ -369,11 +369,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS),
-            reference: "issue #52234 <https://github.com/rust-lang/rust/issues/52234>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(ILL_FORMED_ATTRIBUTE_INPUT),
             reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
             edition: None,
@@ -467,6 +462,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/42238");
     store.register_removed("duplicate_macro_exports",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/35896");
+    store.register_removed("macro_expanded_macro_exports_accessed_by_absolute_paths",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/52234");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
