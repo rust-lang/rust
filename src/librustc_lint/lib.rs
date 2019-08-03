@@ -332,11 +332,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(LEGACY_DIRECTORY_OWNERSHIP),
-            reference: "issue #37872 <https://github.com/rust-lang/rust/issues/37872>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(LEGACY_CONSTRUCTOR_VISIBILITY),
             reference: "issue #39207 <https://github.com/rust-lang/rust/issues/39207>",
             edition: None,
@@ -488,6 +483,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/57742");
     store.register_removed("incoherent_fundamental_impls",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
+    store.register_removed("legacy_disrectory_ownership",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/37872");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
