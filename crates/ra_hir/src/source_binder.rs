@@ -7,6 +7,20 @@
 /// purely for "IDE needs".
 use std::sync::Arc;
 
+use crate::{
+    expr::{
+        self,
+        scope::{ExprScopes, ScopeId},
+        BodySourceMap,
+    },
+    ids::LocationCtx,
+    name,
+    path::{PathKind, PathSegment},
+    ty::method_resolution::implements_trait,
+    AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HirDatabase, HirFileId,
+    MacroDef, Module, ModuleDef, Name, Path, PerNs, Resolution, Resolver, Static, Struct, Trait,
+    Ty,
+};
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
     algo::find_node_at_offset,
@@ -16,19 +30,6 @@ use ra_syntax::{
     SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-
-use crate::{
-    expr,
-    expr::{
-        scope::{ExprScopes, ScopeId},
-        BodySourceMap,
-    },
-    ids::LocationCtx,
-    lang_item::LangItemTarget,
-    ty::method_resolution::implements_trait,
-    AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HirDatabase, HirFileId,
-    MacroDef, Module, Name, Path, PerNs, Resolver, Static, Struct, Trait, Ty,
-};
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
 pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Option<Module> {
@@ -411,18 +412,32 @@ impl SourceAnalyzer {
         crate::ty::autoderef(db, &self.resolver, canonical).map(|canonical| canonical.value)
     }
 
-    /// Checks that particular type `ty` implements `Future` trait (`future_trait` lang item).
+    /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
     pub fn impls_future(&self, db: &impl HirDatabase, ty: Ty) -> bool {
-        let krate = self.resolver.krate();
-        if let Some(krate) = krate {
-            let future_trait = match db.lang_item(krate, "future_trait".into()) {
-                Some(LangItemTarget::Trait(t)) => t,
-                _ => return false,
+        let std_future_path = Path {
+            kind: PathKind::Abs,
+            segments: vec![
+                PathSegment { name: name::STD, args_and_bindings: None },
+                PathSegment { name: name::FUTURE_MOD, args_and_bindings: None },
+                PathSegment { name: name::FUTURE_TYPE, args_and_bindings: None },
+            ],
+        };
+
+        let std_future_trait =
+            match self.resolver.resolve_path_segments(db, &std_future_path).into_fully_resolved() {
+                PerNs { types: Some(Resolution::Def(ModuleDef::Trait(trait_))), .. } => {
+                    Some(trait_)
+                }
+                _ => None,
             };
 
-            let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
-            return implements_trait(&canonical_ty, db, &self.resolver, krate, future_trait);
+        let krate = self.resolver.krate();
+        if let Some(krate) = krate {
+            if let Some(trait_) = std_future_trait {
+                let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
+                return implements_trait(&canonical_ty, db, &self.resolver, krate, trait_);
+            }
         }
 
         false

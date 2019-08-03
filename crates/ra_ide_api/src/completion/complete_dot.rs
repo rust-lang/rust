@@ -425,28 +425,25 @@ mod tests {
         assert_debug_snapshot_matches!(
         do_completion(
             r###"
-            // Mock Future trait from stdlib
-            pub mod std {
-                pub mod future {
-                    #[lang = "future_trait"]
-                    pub trait Future {}
-                }
-            }
-
+            //- /main.rs
             use std::future::*;
             struct A {}
             impl Future for A {}
-
             fn foo(a: A) {
                 a.<|>
+            }
+
+            //- /std/lib.rs
+            pub mod future {
+                pub trait Future {}
             }
             "###, CompletionKind::Keyword),
         @r###"
        ⋮[
        ⋮    CompletionItem {
        ⋮        label: "await",
-       ⋮        source_range: [358; 358),
-       ⋮        delete: [358; 358),
+       ⋮        source_range: [74; 74),
+       ⋮        delete: [74; 74),
        ⋮        insert: "await",
        ⋮        detail: "expr.await",
        ⋮    },
