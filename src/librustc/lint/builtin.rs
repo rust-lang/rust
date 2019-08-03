@@ -447,16 +447,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub NESTED_IMPL_TRAIT,
-    Warn,
-    "nested occurrence of `impl Trait` type",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #59014 <https://github.com/rust-lang/rust/issues/59014>",
-        edition: None,
-    };
-}
-
-declare_lint! {
     pub MUTABLE_BORROW_RESERVATION_CONFLICT,
     Warn,
     "reservation of a two-phased borrow conflicts with other shared borrows",
@@ -534,7 +524,6 @@ declare_lint_pass! {
         parser::META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
-        NESTED_IMPL_TRAIT,
         MUTABLE_BORROW_RESERVATION_CONFLICT,
         INDIRECT_STRUCTURAL_MATCH,
         SOFT_UNSTABLE,
@@ -553,7 +542,6 @@ pub enum BuiltinLintDiagnostics {
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
     UnknownCrateTypes(Span, String, String),
     UnusedImports(String, Vec<(Span, String)>),
-    NestedImplTrait { outer_impl_trait_span: Span, inner_impl_trait_span: Span },
     RedundantImport(Vec<(Span, bool)>, ast::Ident),
     DeprecatedMacro(Option<Symbol>, Span),
 }
@@ -661,12 +649,6 @@ impl BuiltinLintDiagnostics {
                         Applicability::MachineApplicable,
                     );
                 }
-            }
-            BuiltinLintDiagnostics::NestedImplTrait {
-                outer_impl_trait_span, inner_impl_trait_span
-            } => {
-                db.span_label(outer_impl_trait_span, "outer `impl Trait`");
-                db.span_label(inner_impl_trait_span, "nested `impl Trait` here");
             }
             BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
                 for (span, is_imported) in spans {
