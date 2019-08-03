@@ -22,7 +22,7 @@ install:
     - del rust-toolchain
     - cargo install rustup-toolchain-install-master --debug || echo "rustup-toolchain-install-master already installed"
     - rustup-toolchain-install-master %RUSTC_HASH% -f -n master
-    - rustup component add rustfmt --toolchain nightly || echo "rustfmt nightly is unavailable"
+    - rustup component add rustfmt --toolchain nightly & exit 0 # Format test handles missing rustfmt
     - rustup default master
     - set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
     - rustc -V
