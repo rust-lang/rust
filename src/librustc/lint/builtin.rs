@@ -309,7 +309,7 @@ declare_lint! {
 pub mod parser {
     declare_lint! {
         pub ILL_FORMED_ATTRIBUTE_INPUT,
-        Warn,
+        Deny,
         "ill-formed attribute inputs that were previously accepted and used in practice"
     }
 
