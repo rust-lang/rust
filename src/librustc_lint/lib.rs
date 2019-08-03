@@ -332,11 +332,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {
-            id: LintId::of(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES),
-            reference: "issue #42238 <https://github.com/rust-lang/rust/issues/42238>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(LATE_BOUND_LIFETIME_ARGUMENTS),
             reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
             edition: None,
@@ -473,6 +468,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36887");
     store.register_removed("safe_extern_statics",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36247");
+    store.register_removed("parenthesized_params_in_types_and_modules",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/42238");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {

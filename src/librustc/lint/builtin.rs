@@ -158,12 +158,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-    Deny,
-    "detects parenthesized generic parameters in type and module names"
-}
-
-declare_lint! {
     pub LATE_BOUND_LIFETIME_ARGUMENTS,
     Warn,
     "detects generic lifetime arguments in path segments with late bound lifetime parameters"
@@ -393,7 +387,6 @@ declare_lint_pass! {
         RENAMED_AND_REMOVED_LINTS,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
-        PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         DEPRECATED,
