@@ -5,7 +5,8 @@
 #
 # The function relies on a GitHub bot user, which should have a Personal access
 # token defined in the environment variable $TOOLSTATE_REPO_ACCESS_TOKEN. If for
-# some reason you need to change the token, please update `.azure-pipelines/*`.
+# some reason you need to change the token, please update the Azure Pipelines
+# variable group.
 #
 #   1. Generate a new Personal access token:
 #
