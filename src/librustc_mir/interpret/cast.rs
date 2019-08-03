@@ -7,22 +7,13 @@ use syntax::symbol::sym;
 use rustc_apfloat::ieee::{Single, Double};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc::mir::interpret::{
-    Scalar, InterpResult, Pointer, PointerArithmetic,
+    Scalar, InterpResult, PointerArithmetic,
 };
 use rustc::mir::CastKind;
 
-use super::{InterpCx, Machine, PlaceTy, OpTy, Immediate, FnVal};
+use super::{InterpCx, Machine, PlaceTy, OpTy, ImmTy, Immediate, FnVal};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
-        match ty.sty {
-            ty::RawPtr(ty::TypeAndMut { ty, .. }) |
-            ty::Ref(_, ty, _) => !self.type_is_sized(ty),
-            ty::Adt(def, _) if def.is_box() => !self.type_is_sized(ty.boxed_ty()),
-            _ => false,
-        }
-    }
-
     pub fn cast(
         &mut self,
         src: OpTy<'tcx, M::PointerTag>,
@@ -37,40 +28,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Misc | Pointer(PointerCast::MutToConstPointer) => {
                 let src = self.read_immediate(src)?;
-
-                if self.type_is_fat_ptr(src.layout.ty) {
-                    match (*src, self.type_is_fat_ptr(dest.layout.ty)) {
-                        // pointers to extern types
-                        (Immediate::Scalar(_),_) |
-                        // slices and trait objects to other slices/trait objects
-                        (Immediate::ScalarPair(..), true) => {
-                            // No change to immediate
-                            self.write_immediate(*src, dest)?;
-                        }
-                        // slices and trait objects to thin pointers (dropping the metadata)
-                        (Immediate::ScalarPair(data, _), false) => {
-                            self.write_scalar(data, dest)?;
-                        }
-                    }
-                } else {
-                    match src.layout.variants {
-                        layout::Variants::Single { index } => {
-                            if let Some(discr) =
-                                src.layout.ty.discriminant_for_variant(*self.tcx, index)
-                            {
-                                // Cast from a univariant enum
-                                assert!(src.layout.is_zst());
-                                return self.write_scalar(
-                                    Scalar::from_uint(discr.val, dest.layout.size),
-                                    dest);
-                            }
-                        }
-                        layout::Variants::Multiple { .. } => {},
-                    }
-
-                    let dest_val = self.cast_scalar(src.to_scalar()?, src.layout, dest.layout)?;
-                    self.write_scalar(dest_val, dest)?;
-                }
+                let res = self.cast_immediate(src, dest.layout)?;
+                self.write_immediate(res, dest)?;
             }
 
             Pointer(PointerCast::ReifyFnPointer) => {
@@ -126,36 +85,76 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    fn cast_scalar(
+    fn cast_immediate(
         &self,
-        val: Scalar<M::PointerTag>,
-        src_layout: TyLayout<'tcx>,
+        src: ImmTy<'tcx, M::PointerTag>,
         dest_layout: TyLayout<'tcx>,
-    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
         use rustc::ty::TyKind::*;
-        trace!("Casting {:?}: {:?} to {:?}", val, src_layout.ty, dest_layout.ty);
+        trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, dest_layout.ty);
 
-        match src_layout.ty.sty {
+        match src.layout.ty.sty {
             // Floating point
-            Float(FloatTy::F32) => self.cast_from_float(val.to_f32()?, dest_layout.ty),
-            Float(FloatTy::F64) => self.cast_from_float(val.to_f64()?, dest_layout.ty),
-            // Integer(-like), including fn ptr casts and casts from enums that
-            // are represented as integers (this excludes univariant enums, which
-            // are handled in `cast` directly).
-            _ => {
+            Float(FloatTy::F32) =>
+                return Ok(self.cast_from_float(src.to_scalar()?.to_f32()?, dest_layout.ty)?.into()),
+            Float(FloatTy::F64) =>
+                return Ok(self.cast_from_float(src.to_scalar()?.to_f64()?, dest_layout.ty)?.into()),
+            // The rest is integer/pointer-"like", including fn ptr casts and casts from enums that
+            // are represented as integers.
+            _ =>
                 assert!(
-                    src_layout.ty.is_bool()       || src_layout.ty.is_char()     ||
-                    src_layout.ty.is_enum()       || src_layout.ty.is_integral() ||
-                    src_layout.ty.is_unsafe_ptr() || src_layout.ty.is_fn_ptr()   ||
-                    src_layout.ty.is_region_ptr(),
-                    "Unexpected cast from type {:?}", src_layout.ty
-                );
-                match val.to_bits_or_ptr(src_layout.size, self) {
-                    Err(ptr) => self.cast_from_ptr(ptr, src_layout, dest_layout),
-                    Ok(data) => self.cast_from_int(data, src_layout, dest_layout),
+                    src.layout.ty.is_bool()       || src.layout.ty.is_char()     ||
+                    src.layout.ty.is_enum()       || src.layout.ty.is_integral() ||
+                    src.layout.ty.is_any_ptr(),
+                    "Unexpected cast from type {:?}", src.layout.ty
+                )
+        }
+
+        // Handle cast from a univariant (ZST) enum.
+        match src.layout.variants {
+            layout::Variants::Single { index } => {
+                if let Some(discr) =
+                    src.layout.ty.discriminant_for_variant(*self.tcx, index)
+                {
+                    assert!(src.layout.is_zst());
+                    return Ok(Scalar::from_uint(discr.val, dest_layout.size).into());
                 }
             }
+            layout::Variants::Multiple { .. } => {},
         }
+
+        // Handle casting the metadata away from a fat pointer.
+        if src.layout.ty.is_unsafe_ptr() && dest_layout.ty.is_unsafe_ptr() &&
+            dest_layout.size != src.layout.size
+        {
+            assert_eq!(src.layout.size, 2*self.memory.pointer_size());
+            assert_eq!(dest_layout.size, self.memory.pointer_size());
+            assert!(dest_layout.ty.is_unsafe_ptr());
+            match *src {
+                Immediate::ScalarPair(data, _) =>
+                    return Ok(data.into()),
+                Immediate::Scalar(..) =>
+                    bug!(
+                        "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
+                        *src, src.layout.ty, dest_layout.ty
+                    ),
+            };
+        }
+
+        // Handle casting any ptr to raw ptr (might be a fat ptr).
+        if src.layout.ty.is_any_ptr() && dest_layout.ty.is_unsafe_ptr()
+        {
+            // The only possible size-unequal case was handled above.
+            assert_eq!(src.layout.size, dest_layout.size);
+            return Ok(*src);
+        }
+
+        // For all remaining casts, we either
+        // (a) cast a raw ptr to usize, or
+        // (b) cast from an integer-like (including bool, char, enums).
+        // In both cases we want the bits.
+        let bits = self.force_bits(src.to_scalar()?, src.layout.size)?;
+        Ok(self.cast_from_int(bits, src.layout, dest_layout)?.into())
     }
 
     fn cast_from_int(
@@ -233,31 +232,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(Scalar::from_f64(f.convert(&mut false).value)),
             // That's it.
             _ => bug!("invalid float to {:?} cast", dest_ty),
-        }
-    }
-
-    fn cast_from_ptr(
-        &self,
-        ptr: Pointer<M::PointerTag>,
-        src_layout: TyLayout<'tcx>,
-        dest_layout: TyLayout<'tcx>,
-    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
-        use rustc::ty::TyKind::*;
-
-        match dest_layout.ty.sty {
-            // Casting to a reference or fn pointer is not permitted by rustc,
-            // no need to support it here.
-            RawPtr(_) => Ok(ptr.into()),
-            Int(_) | Uint(_) => {
-                let size = self.memory.pointer_size();
-
-                match self.force_bits(Scalar::Ptr(ptr), size) {
-                    Ok(bits) => self.cast_from_int(bits, src_layout, dest_layout),
-                    Err(_) if dest_layout.size == size => Ok(ptr.into()),
-                    Err(e) => Err(e),
-                }
-            }
-            _ => bug!("invalid MIR: ptr to {:?} cast", dest_layout.ty)
         }
     }
 

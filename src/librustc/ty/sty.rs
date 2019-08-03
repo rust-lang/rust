@@ -1863,6 +1863,12 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
+    /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
+    #[inline]
+    pub fn is_any_ptr(&self) -> bool {
+        self.is_region_ptr() || self.is_unsafe_ptr() || self.is_fn_ptr()
+    }
+
     /// Returns `true` if this type is an `Arc<T>`.
     #[inline]
     pub fn is_arc(&self) -> bool {

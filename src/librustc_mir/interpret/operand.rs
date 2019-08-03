@@ -32,12 +32,21 @@ pub enum Immediate<Tag=(), Id=AllocId> {
     ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
 }
 
-impl<'tcx, Tag> Immediate<Tag> {
-    #[inline]
-    pub fn from_scalar(val: Scalar<Tag>) -> Self {
-        Immediate::Scalar(ScalarMaybeUndef::Scalar(val))
+impl<Tag> From<ScalarMaybeUndef<Tag>> for Immediate<Tag> {
+    #[inline(always)]
+    fn from(val: ScalarMaybeUndef<Tag>) -> Self {
+        Immediate::Scalar(val)
     }
+}
 
+impl<Tag> From<Scalar<Tag>> for Immediate<Tag> {
+    #[inline(always)]
+    fn from(val: Scalar<Tag>) -> Self {
+        Immediate::Scalar(val.into())
+    }
+}
+
+impl<'tcx, Tag> Immediate<Tag> {
     pub fn new_slice(
         val: Scalar<Tag>,
         len: u64,
@@ -182,7 +191,7 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag>
 {
     #[inline]
     pub fn from_scalar(val: Scalar<Tag>, layout: TyLayout<'tcx>) -> Self {
-        ImmTy { imm: Immediate::from_scalar(val), layout }
+        ImmTy { imm: val.into(), layout }
     }
 
     #[inline]
@@ -240,7 +249,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let ptr = match self.check_mplace_access(mplace, None)? {
             Some(ptr) => ptr,
             None => return Ok(Some(ImmTy { // zero-sized type
-                imm: Immediate::Scalar(Scalar::zst().into()),
+                imm: Scalar::zst().into(),
                 layout: mplace.layout,
             })),
         };
@@ -251,7 +260,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .get(ptr.alloc_id)?
                     .read_scalar(self, ptr, mplace.layout.size)?;
                 Ok(Some(ImmTy {
-                    imm: Immediate::Scalar(scalar),
+                    imm: scalar.into(),
                     layout: mplace.layout,
                 }))
             }
@@ -354,7 +363,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let field = field.try_into().unwrap();
         let field_layout = op.layout.field(self, field)?;
         if field_layout.is_zst() {
-            let immediate = Immediate::Scalar(Scalar::zst().into());
+            let immediate = Scalar::zst().into();
             return Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout });
         }
         let offset = op.layout.fields.offset(field);
@@ -364,7 +373,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // extract fields from types with `ScalarPair` ABI
             Immediate::ScalarPair(a, b) => {
                 let val = if offset.bytes() == 0 { a } else { b };
-                Immediate::Scalar(val)
+                Immediate::from(val)
             },
             Immediate::Scalar(val) =>
                 bug!("field access on non aggregate {:#?}, {:#?}", val, op.layout),
@@ -401,7 +410,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Deref => self.deref_operand(base)?.into(),
             Subslice { .. } | ConstantIndex { .. } | Index(_) => if base.layout.is_zst() {
                 OpTy {
-                    op: Operand::Immediate(Immediate::Scalar(Scalar::zst().into())),
+                    op: Operand::Immediate(Scalar::zst().into()),
                     // the actual index doesn't matter, so we just pick a convenient one like 0
                     layout: base.layout.field(self, 0)?,
                 }
@@ -425,7 +434,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = if layout.is_zst() {
             // Do not read from ZST, they might not be initialized
-            Operand::Immediate(Immediate::Scalar(Scalar::zst().into()))
+            Operand::Immediate(Scalar::zst().into())
         } else {
             frame.locals[local].access()?
         };
@@ -556,7 +565,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Operand::Indirect(MemPlace::from_ptr(ptr, align))
             },
             ConstValue::Scalar(x) =>
-                Operand::Immediate(Immediate::Scalar(tag_scalar(x).into())),
+                Operand::Immediate(tag_scalar(x).into()),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.

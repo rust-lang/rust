@@ -290,30 +290,29 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     FloatTy::F64 => self.binary_float_op(bin_op, left.to_f64()?, right.to_f64()?),
                 })
             }
-            _ => {
-                // Must be integer(-like) types.  Don't forget about == on fn pointers.
+            _ if left.layout.ty.is_integral() => {
+                // the RHS type can be different, e.g. for shifts -- but it has to be integral, too
                 assert!(
-                    left.layout.ty.is_integral()   ||
-                    left.layout.ty.is_unsafe_ptr() || left.layout.ty.is_fn_ptr(),
-                    "Unexpected LHS type {:?} for BinOp {:?}", left.layout.ty, bin_op);
-                assert!(
-                    right.layout.ty.is_integral()   ||
-                    right.layout.ty.is_unsafe_ptr() || right.layout.ty.is_fn_ptr(),
-                    "Unexpected RHS type {:?} for BinOp {:?}", right.layout.ty, bin_op);
+                    right.layout.ty.is_integral(),
+                    "Unexpected types for BinOp: {:?} {:?} {:?}",
+                    left.layout.ty, bin_op, right.layout.ty
+                );
 
-                // Handle operations that support pointer values
-                if left.to_scalar_ptr()?.is_ptr() ||
-                    right.to_scalar_ptr()?.is_ptr() ||
-                    bin_op == mir::BinOp::Offset
-                {
-                    return M::ptr_op(self, bin_op, left, right);
-                }
-
-                // Everything else only works with "proper" bits
-                let l = left.to_bits().expect("we checked is_ptr");
-                let r = right.to_bits().expect("we checked is_ptr");
+                let l = self.force_bits(left.to_scalar()?, left.layout.size)?;
+                let r = self.force_bits(right.to_scalar()?, right.layout.size)?;
                 self.binary_int_op(bin_op, l, left.layout, r, right.layout)
             }
+            _ if left.layout.ty.is_any_ptr() => {
+                // The RHS type must be the same *or an integer type* (for `Offset`).
+                assert!(
+                    right.layout.ty == left.layout.ty || right.layout.ty.is_integral(),
+                    "Unexpected types for BinOp: {:?} {:?} {:?}",
+                    left.layout.ty, bin_op, right.layout.ty
+                );
+
+                M::binary_ptr_op(self, bin_op, left, right)
+            }
+            _ => bug!("Invalid MIR: bad LHS type for binop: {:?}", left.layout.ty),
         }
     }
 
