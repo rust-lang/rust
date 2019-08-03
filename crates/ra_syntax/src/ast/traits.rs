@@ -115,8 +115,8 @@ pub trait DocCommentsOwner: AstNode {
     }
 
     /// Returns the textual content of a doc comment block as a single string.
-    /// That is, strips leading `///` (+ optional 1 character of whitespace)
-    /// and joins lines.
+    /// That is, strips leading `///` (+ optional 1 character of whitespace),
+    /// trailing `*/`, trailing whitespace and then joins the lines.
     fn doc_comment_text(&self) -> Option<String> {
         let mut has_comments = false;
         let docs = self
@@ -136,7 +136,13 @@ pub trait DocCommentsOwner: AstNode {
                         prefix_len
                     };
 
-                line[pos..].to_owned()
+                let end = if comment.kind().shape.is_block() && line.ends_with("*/") {
+                    line.len() - 2
+                } else {
+                    line.len()
+                };
+
+                line[pos..end].trim_end().to_owned()
             })
             .join("\n");
 

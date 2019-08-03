@@ -139,6 +139,52 @@ fn test_doc_comment_preserves_newlines() {
 }
 
 #[test]
+fn test_doc_comment_single_line_block_strips_suffix() {
+    let file = SourceFile::parse(
+        r#"
+        /** this is mod foo*/
+        mod foo {}
+        "#,
+    )
+    .ok()
+    .unwrap();
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert_eq!("this is mod foo", module.doc_comment_text().unwrap());
+}
+
+#[test]
+fn test_doc_comment_single_line_block_strips_suffix_whitespace() {
+    let file = SourceFile::parse(
+        r#"
+        /** this is mod foo */
+        mod foo {}
+        "#,
+    )
+    .ok()
+    .unwrap();
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert_eq!("this is mod foo", module.doc_comment_text().unwrap());
+}
+
+#[test]
+fn test_doc_comment_multi_line_block_strips_suffix() {
+    let file = SourceFile::parse(
+        r#"
+        /**
+        this
+        is
+        mod foo
+        */
+        mod foo {}
+        "#,
+    )
+    .ok()
+    .unwrap();
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert_eq!("        this\n        is\n        mod foo", module.doc_comment_text().unwrap());
+}
+
+#[test]
 fn test_where_predicates() {
     fn assert_bound(text: &str, bound: Option<TypeBound>) {
         assert_eq!(text, bound.unwrap().syntax().text().to_string());
