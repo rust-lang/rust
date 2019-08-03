@@ -435,7 +435,6 @@ pub struct ModulePath {
 pub struct ModulePathSuccess {
     pub path: PathBuf,
     pub directory_ownership: DirectoryOwnership,
-    warn: bool,
 }
 
 #[derive(Debug)]
@@ -6389,17 +6388,10 @@ impl<'a> Parser<'a> {
         if self.eat(&token::Semi) {
             if in_cfg && self.recurse_into_file_modules {
                 // This mod is in an external file. Let's go get it!
-                let ModulePathSuccess { path, directory_ownership, warn } =
+                let ModulePathSuccess { path, directory_ownership } =
                     self.submod_path(id, &outer_attrs, id_span)?;
-                let (module, mut attrs) =
+                let (module, attrs) =
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
-                // Record that we fetched the mod from an external file
-                if warn {
-                    let attr = attr::mk_attr_outer(
-                        attr::mk_word_item(Ident::with_empty_ctxt(sym::warn_directory_ownership)));
-                    attr::mark_known(&attr);
-                    attrs.push(attr);
-                }
                 Ok((id, ItemKind::Mod(module), Some(attrs)))
             } else {
                 let placeholder = ast::Mod {
@@ -6493,14 +6485,12 @@ impl<'a> Parser<'a> {
                 directory_ownership: DirectoryOwnership::Owned {
                     relative: Some(id),
                 },
-                warn: false,
             }),
             (false, true) => Ok(ModulePathSuccess {
                 path: secondary_path,
                 directory_ownership: DirectoryOwnership::Owned {
                     relative: None,
                 },
-                warn: false,
             }),
             (false, false) => Err(Error::FileNotFoundForModule {
                 mod_name: mod_name.clone(),
@@ -6522,11 +6512,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn submod_path(&mut self,
-                   id: ast::Ident,
-                   outer_attrs: &[Attribute],
-                   id_sp: Span)
-                   -> PResult<'a, ModulePathSuccess> {
+    fn submod_path(
+        &mut self,
+        id: ast::Ident,
+        outer_attrs: &[Attribute],
+        id_sp: Span
+    ) -> PResult<'a, ModulePathSuccess> {
         if let Some(path) = Parser::submod_path_from_attr(outer_attrs, &self.directory.path) {
             return Ok(ModulePathSuccess {
                 directory_ownership: match path.file_name().and_then(|s| s.to_str()) {
@@ -6538,20 +6529,23 @@ impl<'a> Parser<'a> {
                     // `#[path]` included and contains a `mod foo;` declaration.
                     // If you encounter this, it's your own darn fault :P
                     Some(_) => DirectoryOwnership::Owned { relative: None },
-                    _ => DirectoryOwnership::UnownedViaMod(true),
+                    _ => DirectoryOwnership::UnownedViaMod,
                 },
                 path,
-                warn: false,
             });
         }
 
         let relative = match self.directory.ownership {
             DirectoryOwnership::Owned { relative } => relative,
             DirectoryOwnership::UnownedViaBlock |
-            DirectoryOwnership::UnownedViaMod(_) => None,
+            DirectoryOwnership::UnownedViaMod => None,
         };
         let paths = Parser::default_submod_path(
-                        id, relative, &self.directory.path, self.sess.source_map());
+            id,
+            relative,
+            &self.directory.path,
+            self.sess.source_map()
+        );
 
         match self.directory.ownership {
             DirectoryOwnership::Owned { .. } => {
@@ -6569,14 +6563,11 @@ impl<'a> Parser<'a> {
                 }
                 Err(err)
             }
-            DirectoryOwnership::UnownedViaMod(warn) => {
-                if warn {
-                    if let Ok(result) = paths.result {
-                        return Ok(ModulePathSuccess { warn: true, ..result });
-                    }
-                }
-                let mut err = self.diagnostic().struct_span_err(id_sp,
-                    "cannot declare a new module at this location");
+            DirectoryOwnership::UnownedViaMod => {
+                let mut err = self.struct_span_err(
+                    id_sp,
+                    "cannot declare a new module at this location"
+                );
                 if !id_sp.is_dummy() {
                     let src_path = self.sess.source_map().span_to_filename(id_sp);
                     if let FileName::Real(src_path) = src_path {
@@ -6584,18 +6575,25 @@ impl<'a> Parser<'a> {
                             let mut dest_path = src_path.clone();
                             dest_path.set_file_name(stem);
                             dest_path.push("mod.rs");
-                            err.span_note(id_sp,
-                                    &format!("maybe move this module `{}` to its own \
-                                                directory via `{}`", src_path.display(),
-                                            dest_path.display()));
+                            err.span_note(
+                                id_sp,
+                                &format!(
+                                    "maybe move this module `{}` to its own \
+                                    directory via `{}`", src_path.display(),
+                                    dest_path.display(),
+                                )
+                            );
                         }
                     }
                 }
                 if paths.path_exists {
-                    err.span_note(id_sp,
-                                  &format!("... or maybe `use` the module `{}` instead \
-                                            of possibly redeclaring it",
-                                           paths.name));
+                    err.span_note(
+                        id_sp,
+                        &format!(
+                            "... or maybe `use` the module `{}` instead of possibly redeclaring it",
+                            paths.name,
+                        )
+                    );
                 }
                 Err(err)
             }

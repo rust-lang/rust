@@ -170,13 +170,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub LEGACY_DIRECTORY_OWNERSHIP,
-    Deny,
-    "non-inline, non-`#[path]` modules (e.g., `mod foo;`) were erroneously allowed in some files \
-     not named `mod.rs`"
-}
-
-declare_lint! {
     pub PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
     Deny,
     "detects parenthesized generic parameters in type and module names"
@@ -414,7 +407,6 @@ declare_lint_pass! {
         SAFE_EXTERN_STATICS,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
-        LEGACY_DIRECTORY_OWNERSHIP,
         PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,

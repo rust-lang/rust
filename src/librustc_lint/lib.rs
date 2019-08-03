@@ -332,21 +332,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(LEGACY_DIRECTORY_OWNERSHIP),
-            reference: "issue #37872 <https://github.com/rust-lang/rust/issues/37872>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN),
-            reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(ANONYMOUS_PARAMETERS),
-            reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
-            edition: Some(Edition::Edition2018),
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES),
             reference: "issue #42238 <https://github.com/rust-lang/rust/issues/42238>",
             edition: None,
@@ -482,6 +467,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/40107");
     store.register_removed("legacy_constructor_visibility",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/39207");
+    store.register_removed("legacy_disrectory_ownership",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/37872");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
