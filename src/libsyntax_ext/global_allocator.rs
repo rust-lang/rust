@@ -3,7 +3,6 @@ use syntax::ast::{self, Arg, Attribute, Expr, FnHeader, Generics, Ident};
 use syntax::attr::check_builtin_macro_attribute;
 use syntax::ext::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
@@ -110,7 +109,7 @@ impl AllocFnFactory<'_, '_> {
     fn attrs(&self) -> Vec<Attribute> {
         let special = sym::rustc_std_internal_symbol;
         let special = self.cx.meta_word(self.span, special);
-        vec![self.cx.attribute(self.span, special)]
+        vec![self.cx.attribute(special)]
     }
 
     fn arg_ty(

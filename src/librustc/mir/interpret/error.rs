@@ -341,16 +341,16 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum UndefinedBehaviourInfo {
+pub enum UndefinedBehaviorInfo {
     /// Handle cases which for which we do not have a fixed variant.
     Ub(String),
     /// Unreachable code was executed.
     Unreachable,
 }
 
-impl fmt::Debug for UndefinedBehaviourInfo {
+impl fmt::Debug for UndefinedBehaviorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use UndefinedBehaviourInfo::*;
+        use UndefinedBehaviorInfo::*;
         match self {
             Ub(ref msg) =>
                 write!(f, "{}", msg),
@@ -363,7 +363,7 @@ impl fmt::Debug for UndefinedBehaviourInfo {
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsupportedOpInfo<'tcx> {
     /// Handle cases which for which we do not have a fixed variant.
-    Unimplemented(String),
+    Unsupported(String),
 
     // -- Everything below is not classified yet --
     FunctionAbiMismatch(Abi, Abi),
@@ -390,20 +390,14 @@ pub enum UnsupportedOpInfo<'tcx> {
     ReadUndefBytes(Size),
     DeadLocal,
     InvalidBoolOp(mir::BinOp),
-    InlineAsm,
     UnimplementedTraitSelection,
     CalledClosureAsFunction,
     NoMirFor(String),
-    /// This variant is used by machines to signal their own errors that do not
-    /// match an existing variant.
-    MachineError(String),
     DerefFunctionPointer,
     ExecuteMemory,
-    Intrinsic(String),
     InvalidChar(u128),
     OutOfTls,
     TlsOutOfBounds,
-    AbiViolation(String),
     AlignmentCheckFailed {
         required: Align,
         has: Align,
@@ -513,8 +507,6 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                     initializer"),
             AssumptionNotHeld =>
                 write!(f, "`assume` argument was false"),
-            InlineAsm =>
-                write!(f, "miri does not support inline assembly"),
             ReallocateNonBasePtr =>
                 write!(f, "tried to reallocate with a pointer not to the beginning of an \
                     existing object"),
@@ -537,10 +529,7 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             HeapAllocNonPowerOfTwoAlignment(_) =>
                 write!(f, "tried to re-, de-, or allocate heap memory with alignment that is \
                     not a power of two"),
-            MachineError(ref msg) |
-            Unimplemented(ref msg) |
-            AbiViolation(ref msg) |
-            Intrinsic(ref msg) =>
+            Unsupported(ref msg) =>
                 write!(f, "{}", msg),
         }
     }
@@ -572,7 +561,7 @@ pub enum InterpError<'tcx> {
     /// The program panicked.
     Panic(PanicInfo<u64>),
     /// The program caused undefined behavior.
-    UndefinedBehaviour(UndefinedBehaviourInfo),
+    UndefinedBehavior(UndefinedBehaviorInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
     Unsupported(UnsupportedOpInfo<'tcx>),
@@ -603,7 +592,7 @@ impl fmt::Debug for InterpError<'_> {
                 write!(f, "{:?}", msg),
             InvalidProgram(ref msg) =>
                 write!(f, "{:?}", msg),
-            UndefinedBehaviour(ref msg) =>
+            UndefinedBehavior(ref msg) =>
                 write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) =>
                 write!(f, "{:?}", msg),

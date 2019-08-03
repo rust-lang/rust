@@ -18,7 +18,6 @@ extern crate rustc_driver;
 use syntax::parse::token::{self, Token};
 use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
-use syntax::ext::build::AstBuilder;  // A trait for expr_usize.
 use syntax_pos::Span;
 use rustc_plugin::Registry;
 

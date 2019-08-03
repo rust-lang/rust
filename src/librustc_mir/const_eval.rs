@@ -181,15 +181,15 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     Ok(ret)
 }
 
-impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
-    fn into(self) -> InterpErrorInfo<'tcx> {
-        err_unsup!(MachineError(self.to_string())).into()
-    }
-}
-
 #[derive(Clone, Debug)]
 enum ConstEvalError {
     NeedsRfc(String),
+}
+
+impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
+    fn into(self) -> InterpErrorInfo<'tcx> {
+        err_unsup!(Unsupported(self.to_string())).into()
+    }
 }
 
 impl fmt::Display for ConstEvalError {
@@ -341,7 +341,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         debug!("eval_fn_call: {:?}", instance);
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def_id) = instance.def {
-            // Execution might have wandered off into other crates, so we cannot to a stability-
+            // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
             if !ecx.tcx.is_const_fn_raw(def_id) {
@@ -352,7 +352,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     ecx.goto_block(ret)?; // fully evaluated and done
                     Ok(None)
                 } else {
-                    throw_unsup!(MachineError(format!("calling non-const function `{}`", instance)))
+                    throw_unsup_format!("calling non-const function `{}`", instance)
                 };
             }
         }

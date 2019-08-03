@@ -11,7 +11,6 @@ extern crate rustc_driver;
 
 use std::borrow::ToOwned;
 use syntax::ast;
-use syntax::ext::build::AstBuilder;
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use syntax::ext::base::{TTMacroExpander, ExtCtxt, MacResult, MacEager};
 use syntax::print::pprust;

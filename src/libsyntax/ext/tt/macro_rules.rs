@@ -751,7 +751,7 @@ impl TokenSet {
 }
 
 // Checks that `matcher` is internally consistent and that it
-// can legally by followed by a token N, for all N in `follow`.
+// can legally be followed by a token `N`, for all `N` in `follow`.
 // (If `follow` is empty, then it imposes no constraint on
 // the `matcher`.)
 //

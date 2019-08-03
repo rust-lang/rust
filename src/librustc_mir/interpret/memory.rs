@@ -66,9 +66,9 @@ impl<'tcx, Other> FnVal<'tcx, Other> {
         match self {
             FnVal::Instance(instance) =>
                 Ok(instance),
-            FnVal::Other(_) => throw_unsup!(MachineError(format!(
-                "Expected instance function pointer, got 'other' pointer"
-            ))),
+            FnVal::Other(_) => throw_unsup_format!(
+                "'foreign' function pointers are not supported in this context"
+            ),
         }
     }
 }
@@ -834,9 +834,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     if (src.offset <= dest.offset && src.offset + size > dest.offset) ||
                         (dest.offset <= src.offset && dest.offset + size > src.offset)
                     {
-                        throw_unsup!(Intrinsic(
-                            "copy_nonoverlapping called on overlapping ranges".to_string(),
-                        ))
+                        throw_ub_format!(
+                            "copy_nonoverlapping called on overlapping ranges"
+                        )
                     }
                 }
 
