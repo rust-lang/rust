@@ -61,6 +61,7 @@ use syntax::ast;
 use syntax::ptr::P as AstP;
 use syntax::ast::*;
 use syntax::errors;
+use syntax::ext::base::SpecialDerives;
 use syntax::ext::hygiene::ExpnId;
 use syntax::print::pprust;
 use syntax::source_map::{respan, ExpnInfo, ExpnKind, DesugaringKind, Spanned};
@@ -176,6 +177,8 @@ pub trait Resolver {
         components: &[Symbol],
         is_value: bool,
     ) -> (ast::Path, Res<NodeId>);
+
+    fn has_derives(&self, node_id: NodeId, derives: SpecialDerives) -> bool;
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
@@ -1329,11 +1332,15 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_attrs(&mut self, attrs: &[Attribute]) -> hir::HirVec<Attribute> {
+    fn lower_attrs_extendable(&mut self, attrs: &[Attribute]) -> Vec<Attribute> {
         attrs
             .iter()
             .map(|a| self.lower_attr(a))
             .collect()
+    }
+
+    fn lower_attrs(&mut self, attrs: &[Attribute]) -> hir::HirVec<Attribute> {
+        self.lower_attrs_extendable(attrs).into()
     }
 
     fn lower_attr(&mut self, attr: &Attribute) -> Attribute {
@@ -4028,7 +4035,14 @@ impl<'a> LoweringContext<'a> {
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {
         let mut ident = i.ident;
         let mut vis = self.lower_visibility(&i.vis, None);
-        let attrs = self.lower_attrs(&i.attrs);
+        let mut attrs = self.lower_attrs_extendable(&i.attrs);
+        if self.resolver.has_derives(i.id, SpecialDerives::PARTIAL_EQ | SpecialDerives::EQ) {
+            // Add `#[structural_match]` if the item derived both `PartialEq` and `Eq`.
+            let ident = Ident::new(sym::structural_match, i.span);
+            attrs.push(attr::mk_attr_outer(attr::mk_word_item(ident)));
+        }
+        let attrs = attrs.into();
+
         if let ItemKind::MacroDef(ref def) = i.node {
             if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) {
                 let body = self.lower_token_stream(def.stream());

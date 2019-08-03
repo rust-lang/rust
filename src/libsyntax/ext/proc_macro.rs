@@ -1,17 +1,15 @@
 use crate::ast::{self, ItemKind, Attribute, Mac};
-use crate::attr::{mark_used, mark_known, HasAttrs};
+use crate::attr::{mark_used, mark_known};
 use crate::errors::{Applicability, FatalError};
 use crate::ext::base::{self, *};
 use crate::ext::proc_macro_server;
 use crate::parse::{self, token};
 use crate::parse::parser::PathStyle;
-use crate::symbol::{sym, Symbol};
+use crate::symbol::sym;
 use crate::tokenstream::{self, TokenStream};
 use crate::visit::Visitor;
 
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
 use syntax_pos::{Span, DUMMY_SP};
 
 const EXEC_STRATEGY: proc_macro::bridge::server::SameThread =
@@ -216,33 +214,4 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
         }
     });
     result
-}
-
-crate fn add_derived_markers<T: HasAttrs>(
-    cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::Path], item: &mut T
-) {
-    let (mut names, mut pretty_name) = (FxHashSet::default(), String::new());
-    for (i, path) in traits.iter().enumerate() {
-        if i > 0 {
-            pretty_name.push_str(", ");
-        }
-        pretty_name.push_str(&path.to_string());
-        names.insert(unwrap_or!(path.segments.get(0), continue).ident.name);
-    }
-
-    let span = span.fresh_expansion(cx.current_expansion.id, ExpnInfo::allow_unstable(
-        ExpnKind::Macro(MacroKind::Derive, Symbol::intern(&pretty_name)), span,
-        cx.parse_sess.edition, cx.allow_derive_markers.clone(),
-    ));
-
-    item.visit_attrs(|attrs| {
-        if names.contains(&sym::Eq) && names.contains(&sym::PartialEq) {
-            let meta = cx.meta_word(span, sym::structural_match);
-            attrs.push(cx.attribute(meta));
-        }
-        if names.contains(&sym::Copy) {
-            let meta = cx.meta_word(span, sym::rustc_copy_clone_marker);
-            attrs.push(cx.attribute(meta));
-        }
-    });
 }

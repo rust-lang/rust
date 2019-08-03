@@ -38,8 +38,7 @@ use rustc_metadata::cstore::CStore;
 use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::{ExpnId, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
-use syntax::ext::base::SyntaxExtension;
-use syntax::ext::base::MacroKind;
+use syntax::ext::base::{SyntaxExtension, MacroKind, SpecialDerives};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -1685,6 +1684,12 @@ pub struct Resolver<'a> {
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
     unused_macros: NodeMap<Span>,
     proc_macro_stubs: NodeSet,
+    /// Some built-in derives mark items they are applied to so they are treated specially later.
+    /// Derive macros cannot modify the item themselves and have to store the markers in the global
+    /// context, so they attach the markers to derive container IDs using this resolver table.
+    /// FIXME: Find a way for `PartialEq` and `Eq` to emulate `#[structural_match]`
+    /// by marking the produced impls rather than the original items.
+    special_derives: FxHashMap<ExpnId, SpecialDerives>,
 
     /// Maps the `ExpnId` of an expansion to its containing module or block.
     invocations: FxHashMap<ExpnId, &'a InvocationData<'a>>,
@@ -1812,6 +1817,12 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
     fn definitions(&mut self) -> &mut Definitions {
         &mut self.definitions
+    }
+
+    fn has_derives(&self, node_id: NodeId, derives: SpecialDerives) -> bool {
+        let def_id = self.definitions.local_def_id(node_id);
+        let expn_id = self.definitions.expansion_that_defined(def_id.index);
+        self.has_derives(expn_id, derives)
     }
 }
 
@@ -2031,6 +2042,7 @@ impl<'a> Resolver<'a> {
             struct_constructors: Default::default(),
             unused_macros: Default::default(),
             proc_macro_stubs: Default::default(),
+            special_derives: Default::default(),
             current_type_ascription: Vec::new(),
             injected_crate: None,
             active_features:
@@ -2075,6 +2087,10 @@ impl<'a> Resolver<'a> {
                 None => ctxt.remove_mark(),
             };
         }
+    }
+
+    fn has_derives(&self, expn_id: ExpnId, markers: SpecialDerives) -> bool {
+        self.special_derives.get(&expn_id).map_or(false, |m| m.contains(markers))
     }
 
     /// Entry point to crate resolution.

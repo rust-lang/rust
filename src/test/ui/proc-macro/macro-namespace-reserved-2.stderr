@@ -47,18 +47,6 @@ LL | #[MyTrait]
    |   ^^^^^^^ not an attribute
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:49:10
-   |
-LL | #[derive(crate::my_macro)]
-   |          ^^^^^^^^^^^^^^^
-
-error: expected derive macro, found macro `crate::my_macro`
-  --> $DIR/macro-namespace-reserved-2.rs:49:10
-   |
-LL | #[derive(crate::my_macro)]
-   |          ^^^^^^^^^^^^^^^ not a derive macro
-
-error: can't use a procedural macro from the same crate that defines it
   --> $DIR/macro-namespace-reserved-2.rs:52:10
    |
 LL | #[derive(my_macro_attr)]
@@ -87,6 +75,18 @@ error: expected attribute, found macro `crate::my_macro`
    |
 LL | #[crate::my_macro]
    |   ^^^^^^^^^^^^^^^ not an attribute
+
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:49:10
+   |
+LL | #[derive(crate::my_macro)]
+   |          ^^^^^^^^^^^^^^^
+
+error: expected derive macro, found macro `crate::my_macro`
+  --> $DIR/macro-namespace-reserved-2.rs:49:10
+   |
+LL | #[derive(crate::my_macro)]
+   |          ^^^^^^^^^^^^^^^ not a derive macro
 
 error: cannot find attribute macro `my_macro` in this scope
   --> $DIR/macro-namespace-reserved-2.rs:38:3
