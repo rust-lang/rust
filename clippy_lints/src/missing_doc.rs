@@ -148,7 +148,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::TraitAlias(..) => "a trait alias",
             hir::ItemKind::Ty(..) => "a type alias",
             hir::ItemKind::Union(..) => "a union",
-            hir::ItemKind::Existential(..) => "an existential type",
+            hir::ItemKind::OpaqueTy(..) => "an existential type",
             hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod(..)
             | hir::ItemKind::GlobalAsm(..)
@@ -185,7 +185,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ImplItemKind::Const(..) => "an associated constant",
             hir::ImplItemKind::Method(..) => "a method",
             hir::ImplItemKind::Type(_) => "an associated type",
-            hir::ImplItemKind::Existential(_) => "an existential type",
+            hir::ImplItemKind::OpaqueTy(_) => "an existential type",
         };
         self.check_missing_docs_attrs(cx, &impl_item.attrs, impl_item.span, desc);
     }
