@@ -335,7 +335,7 @@ declare_lint! {
 
 declare_lint! {
     pub NESTED_IMPL_TRAIT,
-    Warn,
+    Deny,
     "nested occurrence of `impl Trait` type"
 }
 
