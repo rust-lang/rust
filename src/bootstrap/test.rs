@@ -411,8 +411,6 @@ impl Step for Miri {
             cargo.env("MIRI_SKIP_SYSROOT_CHECK", "1");
             // Tell `cargo miri setup` where to find the sources.
             cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
-            // Make sure the libstd gets built without debug assertions.
-            cargo.env("RUSTC_DEBUG_ASSERTIONS", "false");
             // Debug things.
             cargo.env("RUST_BACKTRACE", "1");
             // Configure `cargo install` path, and let cargo-miri know that that's where
