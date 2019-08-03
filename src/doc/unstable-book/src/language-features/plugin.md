@@ -59,7 +59,6 @@ extern crate rustc_plugin;
 use syntax::parse::token::{self, Token};
 use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
-use syntax::ext::build::AstBuilder;  // A trait for expr_usize.
 use syntax_pos::Span;
 use rustc_plugin::Registry;
 
@@ -163,13 +162,6 @@ can continue and find further errors.
 
 To print syntax fragments for debugging, you can use `span_note` together with
 `syntax::print::pprust::*_to_string`.
-
-The example above produced an integer literal using `AstBuilder::expr_usize`.
-As an alternative to the `AstBuilder` trait, `libsyntax` provides a set of
-quasiquote macros. They are undocumented and very rough around the edges.
-However, the implementation may be a good starting point for an improved
-quasiquote as an ordinary plugin library.
-
 
 # Lint plugins
 

@@ -8,7 +8,6 @@ use errors::Applicability;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};
-use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};

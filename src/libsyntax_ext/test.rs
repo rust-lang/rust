@@ -4,7 +4,6 @@
 use syntax::ast;
 use syntax::attr::{self, check_builtin_macro_attribute};
 use syntax::ext::base::*;
-use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::print::pprust;
 use syntax::source_map::respan;
@@ -36,8 +35,7 @@ pub fn expand_test_case(
         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
         item.ident = item.ident.gensym();
         item.attrs.push(
-            ecx.attribute(sp,
-                ecx.meta_word(sp, sym::rustc_test_marker))
+            ecx.attribute(ecx.meta_word(sp, sym::rustc_test_marker))
         );
         item
     });
@@ -150,11 +148,11 @@ pub fn expand_test_or_bench(
     let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name, sp).gensym(),
         vec![
             // #[cfg(test)]
-            cx.attribute(attr_sp, cx.meta_list(attr_sp, sym::cfg, vec![
+            cx.attribute(cx.meta_list(attr_sp, sym::cfg, vec![
                 cx.meta_list_item_word(attr_sp, sym::test)
             ])),
             // #[rustc_test_marker]
-            cx.attribute(attr_sp, cx.meta_word(attr_sp, sym::rustc_test_marker)),
+            cx.attribute(cx.meta_word(attr_sp, sym::rustc_test_marker)),
         ],
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),

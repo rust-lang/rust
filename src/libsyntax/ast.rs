@@ -2109,9 +2109,7 @@ pub enum AttrStyle {
     Inner,
 }
 
-#[derive(
-    Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, PartialOrd, Ord, Copy,
-)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Copy)]
 pub struct AttrId(pub usize);
 
 impl Idx for AttrId {
@@ -2120,6 +2118,18 @@ impl Idx for AttrId {
     }
     fn index(self) -> usize {
         self.0
+    }
+}
+
+impl rustc_serialize::Encodable for AttrId {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_unit()
+    }
+}
+
+impl rustc_serialize::Decodable for AttrId {
+    fn decode<D: Decoder>(d: &mut D) -> Result<AttrId, D::Error> {
+        d.read_nil().map(|_| crate::attr::mk_attr_id())
     }
 }
 

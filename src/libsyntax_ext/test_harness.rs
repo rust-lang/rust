@@ -6,7 +6,6 @@ use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::entry::{self, EntryPointType};
 use syntax::ext::base::{ExtCtxt, Resolver};
-use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::ext::hygiene::{ExpnId, MacroKind};
 use syntax::feature_gate::Features;
@@ -160,9 +159,7 @@ impl MutVisitor for EntryPointCleaner {
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
                     let allow_dead_code_item = attr::mk_list_item(DUMMY_SP, allow_ident,
                                                                   vec![dc_nested]);
-                    let allow_dead_code = attr::mk_attr_outer(DUMMY_SP,
-                                                              attr::mk_attr_id(),
-                                                              allow_dead_code_item);
+                    let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
 
                     ast::Item {
                         id,
@@ -295,7 +292,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     // #![main]
     let main_meta = ecx.meta_word(sp, sym::main);
-    let main_attr = ecx.attribute(sp, main_meta);
+    let main_attr = ecx.attribute(main_meta);
 
     // extern crate test as test_gensym
     let test_extern_stmt = ecx.stmt_item(sp, ecx.item(sp,

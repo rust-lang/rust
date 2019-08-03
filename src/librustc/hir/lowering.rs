@@ -5168,7 +5168,7 @@ impl<'a> LoweringContext<'a> {
                         let uc_nested = attr::mk_nested_word_item(uc_ident);
                         attr::mk_list_item(e.span, allow_ident, vec![uc_nested])
                     };
-                    attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
+                    attr::mk_attr_outer(allow)
                 };
                 let attrs = vec![attr];
 

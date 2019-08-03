@@ -6395,15 +6395,8 @@ impl<'a> Parser<'a> {
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
                 // Record that we fetched the mod from an external file
                 if warn {
-                    let attr = Attribute {
-                        id: attr::mk_attr_id(),
-                        style: ast::AttrStyle::Outer,
-                        path: ast::Path::from_ident(
-                            Ident::with_empty_ctxt(sym::warn_directory_ownership)),
-                        tokens: TokenStream::empty(),
-                        is_sugared_doc: false,
-                        span: DUMMY_SP,
-                    };
+                    let attr = attr::mk_attr_outer(
+                        attr::mk_word_item(Ident::with_empty_ctxt(sym::warn_directory_ownership)));
                     attr::mark_known(&attr);
                     attrs.push(attr);
                 }
