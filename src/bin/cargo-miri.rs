@@ -310,17 +310,21 @@ version = "0.0.0"
 path = "lib.rs"
         "#).unwrap();
     File::create(dir.join("lib.rs")).unwrap();
-    // Run xargo.
+    // Prepare xargo invocation.
     let target = get_arg_flag_value("--target");
     let print_env = !ask_user && has_arg_flag("--env"); // whether we just print the necessary environment variable
     let mut command = xargo();
-    command.arg("build").arg("-q")
-        .current_dir(&dir)
-        .env("RUSTFLAGS", miri::miri_default_args().join(" "))
-        .env("XARGO_HOME", dir.to_str().unwrap());
+    command.arg("build").arg("-q");
+    command.current_dir(&dir);
+    command.env("RUSTFLAGS", miri::miri_default_args().join(" "));
+    command.env("XARGO_HOME", dir.to_str().unwrap());
+    // In bootstrap, make sure we don't get debug assertons into our libstd.
+    command.env("RUSTC_DEBUG_ASSERTIONS", "false");
+    // Handle target flag.
     if let Some(ref target) = target {
         command.arg("--target").arg(&target);
     }
+    // Finally run it!
     if !command.status()
         .expect("failed to run xargo")
         .success()
