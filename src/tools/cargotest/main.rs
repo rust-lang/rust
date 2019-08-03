@@ -50,7 +50,7 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "servo",
         repo: "https://github.com/servo/servo",
-        sha: "9043f247d9b031ed285e880e4b90aa523d4a63ae",
+        sha: "caac107ae8145ef2fd20365e2b8fadaf09c2eb3b",
         lock: None,
         // Only test Stylo a.k.a. Quantum CSS, the parts of Servo going into Firefox.
         // This takes much less time to build than all of Servo and supports stable Rust.
