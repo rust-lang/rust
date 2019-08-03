@@ -10,6 +10,11 @@ macro_rules! err_unsup {
 }
 
 #[macro_export]
+macro_rules! err_unsup_format {
+    ($($tt:tt)*) => { err_unsup!(Unsupported(format!($($tt)*))) };
+}
+
+#[macro_export]
 macro_rules! err_inval {
     ($($tt:tt)*) => {
         $crate::mir::interpret::InterpError::InvalidProgram(
@@ -25,6 +30,11 @@ macro_rules! err_ub {
             $crate::mir::interpret::UndefinedBehaviorInfo::$($tt)*
         )
     };
+}
+
+#[macro_export]
+macro_rules! err_ub_format {
+    ($($tt:tt)*) => { err_ub!(Ub(format!($($tt)*))) };
 }
 
 #[macro_export]
