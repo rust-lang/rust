@@ -141,7 +141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // First: functions that diverge.
         match link_name {
             "__rust_start_panic" | "panic_impl" => {
-                throw_unsup!(MachineError("the evaluated program panicked".to_string()));
+                throw_unsup_format!("the evaluated program panicked");
             }
             "exit" | "ExitProcess" => {
                 // it's really u32 for ExitProcess, but we have to put it into the `Exit` error variant anyway
@@ -149,9 +149,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return Err(InterpError::Exit(code).into());
             }
             _ => if dest.is_none() {
-                throw_unsup!(Unimplemented(
-                    format!("can't call diverging foreign function: {}", link_name),
-                ));
+                throw_unsup_format!("can't call (diverging) foreign function: {}", link_name);
             }
         }
 
@@ -183,10 +181,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 FIXME: This check is disabled because rustc violates it.
                 See <https://github.com/rust-lang/rust/issues/62251>.
                 if align < this.pointer_size().bytes() {
-                    throw_unsup!(MachineError(format!(
+                    throw_ub_format!(
                         "posix_memalign: alignment must be at least the size of a pointer, but is {}",
                         align,
-                    )));
+                    );
                 }
                 */
                 if size == 0 {
@@ -309,9 +307,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
                     id => {
-                        throw_unsup!(Unimplemented(
-                            format!("miri does not support syscall ID {}", id),
-                        ))
+                        throw_unsup_format!("miri does not support syscall ID {}", id)
                     }
                 }
             }
@@ -359,12 +355,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
                 let mut args = this.frame().body.args_iter();
 
-                let arg_local = args.next().ok_or_else(||
-                    err_unsup!(AbiViolation(
-                        "Argument to __rust_maybe_catch_panic does not take enough arguments."
-                            .to_owned(),
-                    )),
-                )?;
+                let arg_local = args.next()
+                    .expect("Argument to __rust_maybe_catch_panic does not take enough arguments.");
                 let arg_dest = this.local_place(arg_local)?;
                 this.write_scalar(data, arg_dest)?;
 
@@ -632,9 +624,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if let Some(result) = result {
                     this.write_scalar(result, dest)?;
                 } else {
-                    throw_unsup!(Unimplemented(
-                        format!("Unimplemented sysconf name: {}", name),
-                    ));
+                    throw_unsup_format!("Unimplemented sysconf name: {}", name)
                 }
             }
 
@@ -661,9 +651,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // This is `libc::pthread_key_t`.
                 let key_type = args[0].layout.ty
                     .builtin_deref(true)
-                    .ok_or_else(|| err_unsup!(
-                        AbiViolation("wrong signature used for `pthread_key_create`: first argument must be a raw pointer.".to_owned())
-                    ))?
+                    .ok_or_else(|| err_ub!(Ub(format!(
+                        "wrong signature used for `pthread_key_create`: first argument must be a raw pointer."
+                    ))))?
                     .ty;
                 let key_layout = this.layout_of(key_type)?;
 
@@ -729,7 +719,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // We don't support threading. (Also for Windows.)
             "pthread_create" | "CreateThread" => {
-                throw_unsup!(Unimplemented(format!("Miri does not support threading")));
+                throw_unsup_format!("Miri does not support threading");
             }
 
             // Stub out calls for condvar, mutex and rwlock, to just return `0`.
@@ -948,9 +938,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // We can't execute anything else.
             _ => {
-                throw_unsup!(Unimplemented(
-                    format!("can't call foreign function: {}", link_name),
-                ));
+                throw_unsup_format!("can't call foreign function: {}", link_name)
             }
         }
 
