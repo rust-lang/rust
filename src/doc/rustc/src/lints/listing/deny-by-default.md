@@ -22,29 +22,6 @@ error: bitshift exceeds the type's number of bits
   |
 ```
 
-## invalid-type-param-default
-
-This lint detects type parameter default erroneously allowed in invalid location. Some
-example code that triggers this lint:
-
-```rust,ignore
-fn foo<T=i32>(t: T) {}
-```
-
-This will produce:
-
-```text
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions.
- --> src/main.rs:4:8
-  |
-4 | fn foo<T=i32>(t: T) {}
-  |        ^
-  |
-  = note: `#[deny(invalid_type_param_default)]` on by default
-  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-  = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-```
-
 ## mutable-transmutes
 
 This lint catches transmuting from `&T` to `&mut T` because it is undefined
@@ -66,7 +43,6 @@ error: mutating transmuted &mut T from &T may cause undefined behavior, consider
   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
 ```
-
 
 ## no-mangle-const-items
 
