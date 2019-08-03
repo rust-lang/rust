@@ -494,13 +494,6 @@ impl<'a> ModuleData<'a> {
         }
     }
 
-    fn def_kind(&self) -> Option<DefKind> {
-        match self.kind {
-            ModuleKind::Def(kind, ..) => Some(kind),
-            _ => None,
-        }
-    }
-
     fn def_id(&self) -> Option<DefId> {
         match self.kind {
             ModuleKind::Def(_, def_id, _) => Some(def_id),
@@ -743,14 +736,6 @@ impl<'a> NameBinding<'a> {
 
     fn macro_kind(&self) -> Option<MacroKind> {
         self.res().macro_kind()
-    }
-
-    fn descr(&self) -> &'static str {
-        if self.is_extern_crate() { "extern crate" } else { self.res().descr() }
-    }
-
-    fn article(&self) -> &'static str {
-        if self.is_extern_crate() { "an" } else { self.res().article() }
     }
 
     // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
@@ -2200,6 +2185,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
+        let res = b.res();
         if b.span.is_dummy() {
             let add_built_in = match b.res() {
                 // These already contain the "built-in" prefix or look bad with it.
@@ -2217,13 +2203,13 @@ impl<'a> Resolver<'a> {
                 ("", "")
             };
 
-            let article = if built_in.is_empty() { b.article() } else { "a" };
+            let article = if built_in.is_empty() { res.article() } else { "a" };
             format!("{a}{built_in} {thing}{from}",
-                    a = article, thing = b.descr(), built_in = built_in, from = from)
+                    a = article, thing = res.descr(), built_in = built_in, from = from)
         } else {
             let introduced = if b.is_import() { "imported" } else { "defined" };
             format!("the {thing} {introduced} here",
-                    thing = b.descr(), introduced = introduced)
+                    thing = res.descr(), introduced = introduced)
         }
     }
 
@@ -2246,6 +2232,7 @@ impl<'a> Resolver<'a> {
             let note_msg = format!("`{ident}` could{also} refer to {what}",
                                    ident = ident, also = also, what = what);
 
+            let thing = b.res().descr();
             let mut help_msgs = Vec::new();
             if b.is_glob_import() && (kind == AmbiguityKind::GlobVsGlob ||
                                       kind == AmbiguityKind::GlobVsExpanded ||
@@ -2257,18 +2244,18 @@ impl<'a> Resolver<'a> {
             if b.is_extern_crate() && ident.span.rust_2018() {
                 help_msgs.push(format!(
                     "use `::{ident}` to refer to this {thing} unambiguously",
-                    ident = ident, thing = b.descr(),
+                    ident = ident, thing = thing,
                 ))
             }
             if misc == AmbiguityErrorMisc::SuggestCrate {
                 help_msgs.push(format!(
                     "use `crate::{ident}` to refer to this {thing} unambiguously",
-                    ident = ident, thing = b.descr(),
+                    ident = ident, thing = thing,
                 ))
             } else if misc == AmbiguityErrorMisc::SuggestSelf {
                 help_msgs.push(format!(
                     "use `self::{ident}` to refer to this {thing} unambiguously",
-                    ident = ident, thing = b.descr(),
+                    ident = ident, thing = thing,
                 ))
             }
 
@@ -2310,7 +2297,7 @@ impl<'a> Resolver<'a> {
                     ident.span,
                     E0603,
                     "{} `{}` is private",
-                    binding.descr(),
+                    binding.res().descr(),
                     ident.name,
                 );
                 // FIXME: use the ctor's `def_id` to check wether any of the fields is not visible

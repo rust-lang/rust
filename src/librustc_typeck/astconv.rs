@@ -1707,7 +1707,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let kind = DefKind::AssocTy;
         if !item.vis.is_accessible_from(def_scope, tcx) {
-            let msg = format!("{} `{}` is private", kind.descr(), assoc_ident);
+            let msg = format!("{} `{}` is private", kind.descr(item.def_id), assoc_ident);
             tcx.sess.span_err(span, &msg);
         }
         tcx.check_stability(item.def_id, Some(hir_ref_id), span);
@@ -1722,7 +1722,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let mut could_refer_to = |kind: DefKind, def_id, also| {
                 let note_msg = format!("`{}` could{} refer to {} defined here",
-                                       assoc_ident, also, kind.descr());
+                                       assoc_ident, also, kind.descr(def_id));
                 err.span_note(tcx.def_span(def_id), &note_msg);
             };
             could_refer_to(DefKind::Variant, variant_def_id, "");
