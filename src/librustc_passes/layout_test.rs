@@ -13,6 +13,7 @@ use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
 use syntax::ast::Attribute;
 use syntax::symbol::sym;
+use syntax::source_map::Span;
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
@@ -115,6 +116,9 @@ impl LayoutOf for UnwrapLayoutCx<'tcx> {
 
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty)).unwrap()
+    }
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, _: Option<Span>) -> Self::TyLayout {
+        self.layout_of(ty)
     }
 }
 

@@ -134,6 +134,9 @@ impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, _: Option<Span>) -> Self::TyLayout {
+        self.layout_of(ty)
+    }
 }
 
 impl<'mir, 'tcx> HasDataLayout for ConstPropagator<'mir, 'tcx> {

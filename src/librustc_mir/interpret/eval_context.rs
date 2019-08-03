@@ -193,6 +193,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
             .layout_of(self.param_env.and(ty))
             .map_err(|layout| err_inval!(Layout(layout)).into())
     }
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, _: Option<Span>) -> Self::TyLayout {
+        self.layout_of(ty)
+    }
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
