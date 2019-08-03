@@ -54,4 +54,21 @@ mod tests {
         let comment = "this\nis\nultiline";
         assert_eq!(format_docs(comment), comment);
     }
+
+    #[test]
+    fn test_code_blocks_in_comments_marked_as_rust() {
+        let comment = r#"```rust
+fn main(){}
+```
+Some comment.
+```
+let a = 1;
+```"#;
+
+        assert_eq!(
+            format_docs(comment),
+            "```rust\nfn main(){}\n```\nSome comment.\n```rust\nlet a = 1;\n```"
+        );
+    }
+
 }
