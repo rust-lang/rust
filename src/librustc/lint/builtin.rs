@@ -177,12 +177,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub LEGACY_CONSTRUCTOR_VISIBILITY,
-    Deny,
-    "detects use of struct constructors that would be invisible with new visibility rules"
-}
-
-declare_lint! {
     pub MISSING_FRAGMENT_SPECIFIER,
     Deny,
     "detects missing fragment specifiers in unused `macro_rules!` patterns"
@@ -427,7 +421,6 @@ declare_lint_pass! {
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         LEGACY_DIRECTORY_OWNERSHIP,
-        LEGACY_CONSTRUCTOR_VISIBILITY,
         MISSING_FRAGMENT_SPECIFIER,
         PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
         LATE_BOUND_LIFETIME_ARGUMENTS,
