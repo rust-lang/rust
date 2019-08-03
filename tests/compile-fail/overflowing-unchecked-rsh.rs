@@ -2,7 +2,7 @@
 
 use std::intrinsics::*;
 
-//error-pattern: Overflowing shift by 64 in unchecked_shr
+//error-pattern: Overflowing shift by 64 in `unchecked_shr`
 
 fn main() {
     unsafe {

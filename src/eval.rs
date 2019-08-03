@@ -41,10 +41,9 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let main_mir = ecx.load_mir(main_instance.def)?;
 
     if !main_mir.return_ty().is_unit() || main_mir.arg_count != 0 {
-        throw_unsup!(Unimplemented(
+        throw_unsup_format!(
             "miri does not support main functions without `fn()` type signatures"
-                .to_owned(),
-        ));
+        );
     }
 
     let start_id = tcx.lang_items().start_fn().unwrap();
@@ -60,10 +59,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let start_mir = ecx.load_mir(start_instance.def)?;
 
     if start_mir.arg_count != 3 {
-        throw_unsup!(AbiViolation(format!(
+        bug!(
             "'start' lang item should have three arguments, but has {}",
             start_mir.arg_count
-        )));
+        );
     }
 
     // Return value (in static memory so that it does not count as leak).

@@ -133,7 +133,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "atomic_xsub_relaxed" => {
                 let ptr = this.deref_operand(args[0])?;
                 if !ptr.layout.ty.is_integral() {
-                    throw_unsup!(Unimplemented(format!("Atomic arithmetic operations only work on integer types")));
+                    bug!("Atomic arithmetic operations only work on integer types");
                 }
                 let rhs = this.read_immediate(args[1])?;
                 let old = this.read_immediate(ptr.into())?;
@@ -279,9 +279,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // Check if `b` is -1, which is the "min_value / -1" case.
                     let minus1 = Scalar::from_int(-1, dest.layout.size);
                     return Err(if b.to_scalar().unwrap() == minus1 {
-                        err_unsup!(Intrinsic(format!("exact_div: result of dividing MIN by -1 cannot be represented")))
+                        err_ub!(Ub(format!("exact_div: result of dividing MIN by -1 cannot be represented")))
                     } else {
-                        err_unsup!(Intrinsic(format!("exact_div: {:?} cannot be divided by {:?} without remainder", *a, *b)))
+                        err_ub!(Ub(format!("exact_div: {:?} cannot be divided by {:?} without remainder", *a, *b)))
                     }.into());
                 }
                 this.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;
@@ -350,7 +350,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ty = substs.type_at(0);
                 let layout = this.layout_of(ty)?;
                 if layout.abi.is_uninhabited() {
-                    throw_unsup!(Intrinsic(format!("Trying to instantiate uninhabited type {}", ty)))
+                    throw_ub_format!("Trying to instantiate uninhabited type {}", ty)
                 }
             }
 
@@ -444,7 +444,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let r = this.read_immediate(args[1])?;
                 let rval = r.to_scalar()?.to_bits(args[1].layout.size)?;
                 if rval == 0 {
-                    throw_unsup!(Intrinsic(format!("Division by 0 in unchecked_div")));
+                    throw_ub_format!("Division by 0 in unchecked_div");
                 }
                 this.binop_ignore_overflow(
                     mir::BinOp::Div,
@@ -459,7 +459,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let r = this.read_immediate(args[1])?;
                 let rval = r.to_scalar()?.to_bits(args[1].layout.size)?;
                 if rval == 0 {
-                    throw_unsup!(Intrinsic(format!("Division by 0 in unchecked_rem")));
+                    throw_ub_format!("Division by 0 in unchecked_rem");
                 }
                 this.binop_ignore_overflow(
                     mir::BinOp::Rem,
@@ -480,7 +480,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 let (res, overflowed) = this.binary_op(op, l, r)?;
                 if overflowed {
-                    throw_unsup!(Intrinsic(format!("Overflowing arithmetic in {}", intrinsic_name.get())));
+                    throw_ub_format!("Overflowing arithmetic in {}", intrinsic_name.get());
                 }
                 this.write_scalar(res, dest)?;
             }
@@ -504,7 +504,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            name => throw_unsup!(Unimplemented(format!("unimplemented intrinsic: {}", name))),
+            name => throw_unsup_format!("unimplemented intrinsic: {}", name),
         }
 
         Ok(())
