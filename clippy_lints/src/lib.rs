@@ -105,7 +105,7 @@ macro_rules! declare_clippy_lint {
     };
     { $(#[$attr:meta])* pub $name:tt, perf, $description:tt } => {
         declare_tool_lint! {
-            pub clippy::$name, Warn, $description, report_in_external_macro: true
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
         }
     };
     { $(#[$attr:meta])* pub $name:tt, pedantic, $description:tt } => {
@@ -120,7 +120,7 @@ macro_rules! declare_clippy_lint {
     };
     { $(#[$attr:meta])* pub $name:tt, cargo, $description:tt } => {
         declare_tool_lint! {
-            pub clippy::$name, Allow, $description, report_in_external_macro: true
+            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
         }
     };
     { $(#[$attr:meta])* pub $name:tt, nursery, $description:tt } => {

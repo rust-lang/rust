@@ -22,6 +22,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # use std::sync::Mutex;
+    /// # let y = 1;
     /// let x = Mutex::new(&y);
     /// ```
     pub MUTEX_ATOMIC,

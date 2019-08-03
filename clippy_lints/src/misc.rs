@@ -101,7 +101,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.to_owned() == y
+    /// # let x = "foo";
+    /// # let y = String::from("foo");
+    /// if x.to_owned() == y {}
     /// ```
     pub CMP_OWNED,
     perf,
