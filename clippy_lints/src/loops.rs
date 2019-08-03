@@ -91,16 +91,18 @@ declare_clippy_lint! {
     /// types.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
     /// // with `y` a `Vec` or slice:
+    /// # let y = vec![1];
     /// for x in y.iter() {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     /// can be rewritten to
     /// ```rust
+    /// # let y = vec![1];
     /// for x in &y {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     pub EXPLICIT_ITER_LOOP,
@@ -117,16 +119,18 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # let y = vec![1];
     /// // with `y` a `Vec` or slice:
     /// for x in y.into_iter() {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     /// can be rewritten to
-    /// ```ignore
+    /// ```rust
+    /// # let y = vec![1];
     /// for x in y {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     pub EXPLICIT_INTO_ITER_LOOP,

@@ -17,6 +17,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # let v: Vec<usize> = vec![];
+    /// # fn a() {}
+    /// # fn b() {}
     /// if !v.is_empty() {
     ///     a()
     /// } else {
@@ -27,6 +30,9 @@ declare_clippy_lint! {
     /// Could be written:
     ///
     /// ```rust
+    /// # let v: Vec<usize> = vec![];
+    /// # fn a() {}
+    /// # fn b() {}
     /// if v.is_empty() {
     ///     b()
     /// } else {

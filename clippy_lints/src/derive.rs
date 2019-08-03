@@ -49,12 +49,12 @@ declare_clippy_lint! {
     /// **Known problems:** Bounds of generic types are sometimes wrong: https://github.com/rust-lang/rust/issues/26925
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// #[derive(Copy)]
     /// struct Foo;
     ///
     /// impl Clone for Foo {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     pub EXPL_IMPL_CLONE_ON_COPY,

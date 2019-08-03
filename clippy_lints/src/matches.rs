@@ -53,19 +53,25 @@ declare_clippy_lint! {
     /// Using `match`:
     ///
     /// ```rust
+    /// # fn bar(foo: &usize) {}
+    /// # let other_ref: usize = 1;
+    /// # let x: Option<&usize> = Some(&1);
     /// match x {
     ///     Some(ref foo) => bar(foo),
-    ///     _ => bar(other_ref),
+    ///     _ => bar(&other_ref),
     /// }
     /// ```
     ///
     /// Using `if let` with `else`:
     ///
     /// ```rust
+    /// # fn bar(foo: &usize) {}
+    /// # let other_ref: usize = 1;
+    /// # let x: Option<&usize> = Some(&1);
     /// if let Some(ref foo) = x {
     ///     bar(foo);
     /// } else {
-    ///     bar(other_ref);
+    ///     bar(&other_ref);
     /// }
     /// ```
     pub SINGLE_MATCH_ELSE,
