@@ -340,6 +340,8 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/37872");
     store.register_removed("safe_extern_statics",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36247");
+    store.register_removed("parenthesized_params_in_types_and_modules",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/42238");
 }
 
 fn register_internals(store: &mut lint::LintStore) {

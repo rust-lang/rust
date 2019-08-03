@@ -122,31 +122,6 @@ error: literal out of range for u8
   |
 ```
 
-## parenthesized-params-in-types-and-modules
-
-This lint detects incorrect parentheses. Some example code that triggers this
-lint:
-
-```rust,ignore
-let x = 5 as usize();
-```
-
-This will produce:
-
-```text
-error: parenthesized parameters may only be used with a trait
- --> src/main.rs:2:21
-  |
-2 |   let x = 5 as usize();
-  |                     ^^
-  |
-  = note: `#[deny(parenthesized_params_in_types_and_modules)]` on by default
-  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-  = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
-```
-
-To fix it, remove the `()`s.
-
 ## pub-use-of-private-extern-crate
 
 This lint detects a specific situation of re-exporting a private `extern crate`;
