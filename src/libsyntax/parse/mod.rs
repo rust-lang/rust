@@ -44,7 +44,6 @@ pub struct ParseSess {
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     pub edition: Edition,
-    pub missing_fragment_specifiers: Lock<FxHashSet<Span>>,
     /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
     pub raw_identifier_spans: Lock<Vec<Span>>,
     /// The registered diagnostics codes.
@@ -80,7 +79,6 @@ impl ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
             config: FxHashSet::default(),
-            missing_fragment_specifiers: Lock::new(FxHashSet::default()),
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: Lock::new(vec![]),

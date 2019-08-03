@@ -382,9 +382,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                 n_rec(sess, next_m, res.by_ref(), ret_val)?;
             },
             TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
-                if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
-                    return Err((span, "missing fragment specifier".to_string()));
-                }
+                return Err((span, "missing fragment specifier".to_string()));
             }
             TokenTree::MetaVarDecl(sp, bind_name, _) => {
                 match ret_val.entry(bind_name) {
@@ -444,7 +442,6 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 ///
 /// # Parameters
 ///
-/// - `sess`: the parsing session into which errors are emitted.
 /// - `cur_items`: the set of current items to be processed. This should be empty by the end of a
 ///   successful execution of this function.
 /// - `next_items`: the set of newly generated items. These are used to replenish `cur_items` in
@@ -459,7 +456,6 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 ///
 /// A `ParseResult`. Note that matches are kept track of through the items generated.
 fn inner_parse_loop<'root, 'tt>(
-    sess: &ParseSess,
     cur_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     next_items: &mut Vec<MatcherPosHandle<'root, 'tt>>,
     eof_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
@@ -585,9 +581,7 @@ fn inner_parse_loop<'root, 'tt>(
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
                 TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
-                    if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
-                        return Error(span, "missing fragment specifier".to_string());
-                    }
+                    return Error(span, "missing fragment specifier".to_string());
                 }
 
                 // We need to match a metavar with a valid ident... call out to the black-box
@@ -689,7 +683,6 @@ pub fn parse(
         // parsing from the black-box parser done. The result is that `next_items` will contain a
         // bunch of possible next matcher positions in `next_items`.
         match inner_parse_loop(
-            sess,
             &mut cur_items,
             &mut next_items,
             &mut eof_items,

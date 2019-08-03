@@ -432,19 +432,6 @@ fn configure_and_expand_inner<'a>(
             ecx.check_unused_macros();
         });
 
-        let mut missing_fragment_specifiers: Vec<_> = ecx.parse_sess
-            .missing_fragment_specifiers
-            .borrow()
-            .iter()
-            .cloned()
-            .collect();
-        missing_fragment_specifiers.sort();
-
-        for span in missing_fragment_specifiers {
-            let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
-            let msg = "missing fragment specifier";
-            sess.buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
-        }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }

@@ -4,5 +4,11 @@ error: missing fragment specifier
 LL |     ( $( any_token $field_rust_type )* ) => {};
    |                    ^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment.rs:2:20
+   |
+LL |     ( $( any_token $field_rust_type )* ) => {};
+   |                    ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

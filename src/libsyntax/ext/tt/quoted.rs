@@ -241,7 +241,9 @@ pub fn parse(
                     }
                     tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
-                sess.missing_fragment_specifiers.borrow_mut().insert(span);
+
+                sess.span_diagnostic.span_err(span, "missing fragment specifier");
+
                 result.push(TokenTree::MetaVarDecl(span, ident, ast::Ident::invalid()));
             }
 
