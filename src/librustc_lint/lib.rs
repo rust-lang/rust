@@ -322,11 +322,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {
-            id: LintId::of(SAFE_EXTERN_STATICS),
-            reference: "issue #36247 <https://github.com/rust-lang/rust/issues/36247>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN),
             reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
             edition: None,
@@ -476,6 +471,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/37872");
     store.register_removed("invalid_type_param_default",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36887");
+    store.register_removed("safe_extern_statics",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/36247");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {

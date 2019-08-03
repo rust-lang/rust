@@ -146,12 +146,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub SAFE_EXTERN_STATICS,
-    Deny,
-    "safe access to extern statics was erroneously allowed"
-}
-
-declare_lint! {
     pub SAFE_PACKED_BORROWS,
     Warn,
     "safe borrows of fields of packed structs were was erroneously allowed"
@@ -397,7 +391,6 @@ declare_lint_pass! {
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         CONST_ERR,
         RENAMED_AND_REMOVED_LINTS,
-        SAFE_EXTERN_STATICS,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
