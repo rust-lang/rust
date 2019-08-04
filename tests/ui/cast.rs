@@ -42,32 +42,4 @@ fn main() {
     i32::max_value() as u32;
     i64::max_value() as u64;
     i128::max_value() as u128;
-    // Extra checks for *size
-    // Test cast_unnecessary
-    1i32 as i32;
-    1f32 as f32;
-    false as bool;
-    &1i32 as &i32;
-    // macro version
-    macro_rules! foo {
-        ($a:ident, $b:ident) => {
-            pub fn $a() -> $b {
-                1 as $b
-            }
-        };
-    }
-    foo!(a, i32);
-    foo!(b, f32);
-    foo!(c, f64);
-
-    // casting integer literal to float is unnecessary
-    100 as f32;
-    100 as f64;
-    100_i32 as f64;
-    // Should not trigger
-    #[rustfmt::skip]
-    let v = vec!(1);
-    &v as &[i32];
-    1.0 as f64;
-    1 as u64;
 }
