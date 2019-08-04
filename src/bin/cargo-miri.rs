@@ -4,6 +4,7 @@ use std::fs::{self, File};
 use std::io::{self, Write, BufRead};
 use std::path::{PathBuf, Path};
 use std::process::Command;
+use std::ops::Not;
 
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
 
@@ -249,9 +250,10 @@ fn setup(ask_user: bool) {
             println!("Installing xargo: `cargo install xargo -f`");
         }
 
-        if !cargo().args(&["install", "xargo", "-f"]).status()
+        // FIXME: Install from crates.io again once a new xargo got released.
+        if cargo().args(&["install", "xargo", "-f", "--git", "https://github.com/japaric/xargo"]).status()
             .expect("failed to install xargo")
-            .success()
+            .success().not()
         {
             show_error(format!("Failed to install xargo"));
         }
@@ -325,9 +327,9 @@ path = "lib.rs"
         command.arg("--target").arg(&target);
     }
     // Finally run it!
-    if !command.status()
+    if command.status()
         .expect("failed to run xargo")
-        .success()
+        .success().not()
     {
         show_error(format!("Failed to run xargo"));
     }
