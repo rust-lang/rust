@@ -901,9 +901,6 @@ impl<'a, 'tcx> LayoutOf for LateContext<'a, 'tcx> {
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, _: Option<Span>) -> Self::TyLayout {
-        self.layout_of(ty)
-    }
 }
 
 impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {

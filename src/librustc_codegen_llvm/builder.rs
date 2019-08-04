@@ -6,7 +6,6 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use syntax::symbol::LocalInternedString;
-use syntax::source_map::Span;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind, RealPredicate};
 use rustc_codegen_ssa::MemFlags;
 use libc::{c_uint, c_char};
@@ -89,9 +88,6 @@ impl ty::layout::LayoutOf for Builder<'_, '_, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
-        self.cx.layout_of(ty)
-    }
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, _: Option<Span>) -> Self::TyLayout {
         self.cx.layout_of(ty)
     }
 }

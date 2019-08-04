@@ -3,7 +3,7 @@ use crate::ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
 
 use syntax::ast::{self, Ident, IntTy, UintTy};
 use syntax::attr;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::DUMMY_SP;
 
 use std::cmp;
 use std::fmt;
@@ -1943,9 +1943,6 @@ impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         Ok(layout)
     }
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, _: Option<Span>) -> Self::TyLayout {
-        self.layout_of(ty)
-    }
 }
 
 impl LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
@@ -1976,9 +1973,6 @@ impl LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
         cx.record_layout_for_printing(layout);
 
         Ok(layout)
-    }
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, _: Option<Span>) -> Self::TyLayout {
-        self.layout_of(ty)
     }
 }
 
