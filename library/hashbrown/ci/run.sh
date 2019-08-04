@@ -21,6 +21,9 @@ fi
 
 export RUSTFLAGS="$RUSTFLAGS --cfg hashbrown_deny_warnings"
 
+# Make sure we can compile without the default hasher
+"${CARGO}" -vv check --target="${TARGET}" --no-default-features
+
 "${CARGO}" -vv test --target="${TARGET}"
 "${CARGO}" -vv test --target="${TARGET}" --features "${FEATURES}"
 

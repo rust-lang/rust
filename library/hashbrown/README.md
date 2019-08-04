@@ -25,39 +25,57 @@ table implementation in the Rust standard library.
 ## Features
 
 - Drop-in replacement for the standard library `HashMap` and `HashSet` types.
-- Uses `FxHash` as the default hasher, which is much faster than SipHash.
-- Around 2x faster than `FxHashMap` and 8x faster than the standard `HashMap`.
+- Uses `AHash` as the default hasher, which is much faster than SipHash.
+- Around 2x faster than the previous standard library `HashMap`.
 - Lower memory usage: only 1 byte of overhead per entry instead of 8.
-- Compatible with `#[no_std]` (currently requires nightly for the `alloc` crate).
+- Compatible with `#[no_std]` (but requires a global allocator with the `alloc` crate).
 - Empty hash maps do not allocate any memory.
 - SIMD lookups to scan multiple hash entries in parallel.
 
 ## Performance
 
-Compared to the previous implementation of `std::collections::HashMap`:
+Compared to the previous implementation of `std::collections::HashMap` (Rust 1.35).
+
+With the hashbrown default AHash hasher:
 
 ```text
- name               stdhash ns/iter  hashbrown ns/iter  diff ns/iter    diff %  speedup
- find_existing      23,831           2,935                   -20,896   -87.68%   x 8.12
- find_nonexisting   25,326           2,283                   -23,043   -90.99%  x 11.09
- get_remove_insert  124              25                          -99   -79.84%   x 4.96
- grow_by_insertion  197              177                         -20   -10.15%   x 1.11
- hashmap_as_queue   72               18                          -54   -75.00%   x 4.00
- new_drop           14               0                           -14  -100.00%    x inf
- new_insert_drop    78               55                          -23   -29.49%   x 1.42
+ name                       oldstdhash ns/iter  hashbrown ns/iter  diff ns/iter   diff %  speedup 
+ insert_ahash_highbits        20,846              7,397                   -13,449  -64.52%   x 2.82 
+ insert_ahash_random          20,515              7,796                   -12,719  -62.00%   x 2.63 
+ insert_ahash_serial          21,668              7,264                   -14,404  -66.48%   x 2.98 
+ insert_erase_ahash_highbits  29,570              17,498                  -12,072  -40.83%   x 1.69 
+ insert_erase_ahash_random    39,569              17,474                  -22,095  -55.84%   x 2.26 
+ insert_erase_ahash_serial    32,073              17,332                  -14,741  -45.96%   x 1.85 
+ iter_ahash_highbits          1,572               2,087                       515   32.76%   x 0.75 
+ iter_ahash_random            1,609               2,074                       465   28.90%   x 0.78 
+ iter_ahash_serial            2,293               2,120                      -173   -7.54%   x 1.08 
+ lookup_ahash_highbits        3,460               4,403                       943   27.25%   x 0.79 
+ lookup_ahash_random          6,377               3,911                    -2,466  -38.67%   x 1.63 
+ lookup_ahash_serial          3,629               3,586                       -43   -1.18%   x 1.01 
+ lookup_fail_ahash_highbits   5,286               3,411                    -1,875  -35.47%   x 1.55 
+ lookup_fail_ahash_random     12,365              4,171                    -8,194  -66.27%   x 2.96 
+ lookup_fail_ahash_serial     4,902               3,240                    -1,662  -33.90%   x 1.51 
 ```
 
-Compared to `rustc_hash::FxHashMap` (standard `HashMap` using `FxHash` instead of `SipHash`):
+With the libstd default SipHash hasher:
 
 ```text
- name               fxhash ns/iter  hashbrown ns/iter  diff ns/iter    diff %  speedup
- find_existing      5,951           2,935                    -3,016   -50.68%   x 2.03
- find_nonexisting   4,637           2,283                    -2,354   -50.77%   x 2.03
- get_remove_insert  29              25                           -4   -13.79%   x 1.16
- grow_by_insertion  160             177                          17    10.62%   x 0.90
- hashmap_as_queue   22              18                           -4   -18.18%   x 1.22
- new_drop           9               0                            -9  -100.00%    x inf
- new_insert_drop    64              55                           -9   -14.06%   x 1.16
+ name                       oldstdhash ns/iter  hashbrown ns/iter  diff ns/iter   diff %  speedup 
+ insert_std_highbits        32,598              20,199                  -12,399  -38.04%   x 1.61 
+ insert_std_random          29,824              20,760                   -9,064  -30.39%   x 1.44 
+ insert_std_serial          33,151              17,256                  -15,895  -47.95%   x 1.92 
+ insert_erase_std_highbits  74,731              48,735                  -25,996  -34.79%   x 1.53 
+ insert_erase_std_random    73,828              47,649                  -26,179  -35.46%   x 1.55 
+ insert_erase_std_serial    73,864              40,147                  -33,717  -45.65%   x 1.84 
+ iter_std_highbits          1,518               2,264                       746   49.14%   x 0.67 
+ iter_std_random            1,502               2,414                       912   60.72%   x 0.62 
+ iter_std_serial            6,361               2,118                    -4,243  -66.70%   x 3.00 
+ lookup_std_highbits        21,705              16,962                   -4,743  -21.85%   x 1.28 
+ lookup_std_random          21,654              17,158                   -4,496  -20.76%   x 1.26 
+ lookup_std_serial          18,726              14,509                   -4,217  -22.52%   x 1.29 
+ lookup_fail_std_highbits   25,852              17,323                   -8,529  -32.99%   x 1.49 
+ lookup_fail_std_random     25,913              17,760                   -8,153  -31.46%   x 1.46 
+ lookup_fail_std_serial     22,648              14,839                   -7,809  -34.48%   x 1.53 
 ```
 
 ## Usage
@@ -80,7 +98,7 @@ map.insert(1, "one");
 
 This crate has the following Cargo features:
 
-- `nightly`: Enables nightly-only features: `no_std` support and `#[may_dangle]`.
+- `nightly`: Enables nightly-only features: `#[may_dangle]`.
 - `serde`: Enables serde serialization support.
 - `rayon`: Enables rayon parallel iterator support.
 

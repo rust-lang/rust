@@ -8,11 +8,17 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ops::Index;
 
-pub use crate::fx::FxHashBuilder as DefaultHashBuilder;
+/// Default hasher for `HashMap`.
+#[cfg(feature = "ahash")]
+pub type DefaultHashBuilder = ahash::ABuildHasher;
+
+/// Dummy default hasher for `HashMap`.
+#[cfg(not(feature = "ahash"))]
+pub enum DefaultHashBuilder {}
 
 /// A hash map implemented with quadratic probing and SIMD lookup.
 ///
-/// The default hashing algorithm is currently `fx`, though this is
+/// The default hashing algorithm is currently [AHash], though this is
 /// subject to change at any point in the future. This hash function is very
 /// fast for all types of keys, but this algorithm will typically *not* protect
 /// against attacks such as HashDoS.
@@ -139,6 +145,7 @@ pub use crate::fx::FxHashBuilder as DefaultHashBuilder;
 /// [`with_hasher`]: #method.with_hasher
 /// [`with_capacity_and_hasher`]: #method.with_capacity_and_hasher
 /// [`fnv`]: https://crates.io/crates/fnv
+/// [AHash]: https://crates.io/crates/ahash
 ///
 /// ```
 /// use hashbrown::HashMap;
@@ -183,7 +190,6 @@ pub use crate::fx::FxHashBuilder as DefaultHashBuilder;
 ///     // use the values stored in map
 /// }
 /// ```
-
 #[derive(Clone)]
 pub struct HashMap<K, V, S = DefaultHashBuilder> {
     pub(crate) hash_builder: S,
@@ -197,6 +203,7 @@ pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: 
     state.finish()
 }
 
+#[cfg(feature = "ahash")]
 impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// Creates an empty `HashMap`.
     ///

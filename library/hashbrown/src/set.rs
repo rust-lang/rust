@@ -116,6 +116,7 @@ pub struct HashSet<T, S = DefaultHashBuilder> {
     pub(crate) map: HashMap<T, (), S>,
 }
 
+#[cfg(feature = "ahash")]
 impl<T: Hash + Eq> HashSet<T, DefaultHashBuilder> {
     /// Creates an empty `HashSet`.
     ///
