@@ -279,7 +279,7 @@ pub fn is_separator(c: char) -> bool {
 
 /// The primary separator of path components for the current platform.
 ///
-/// For example, `/` on Unix and `\` on Windows.
+/// For example, `/` on Unix and `\\` on Windows.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAIN_SEPARATOR: char = crate::sys::path::MAIN_SEP;
 
