@@ -1,19 +1,36 @@
 use hir::{AdtDef, Ty, TypeCtor};
 
-use crate::completion::{CompletionContext, Completions};
+use crate::completion::completion_item::CompletionKind;
+use crate::{
+    completion::{completion_context::CompletionContext, completion_item::Completions},
+    CompletionItem,
+};
 use rustc_hash::FxHashSet;
 
-/// Complete dot accesses, i.e. fields or methods (currently only fields).
+/// Complete dot accesses, i.e. fields or methods (and .await syntax).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    let receiver_ty =
-        match ctx.dot_receiver.as_ref().and_then(|it| ctx.analyzer.type_of(ctx.db, it)) {
-            Some(it) => it,
-            None => return,
-        };
+    let dot_receiver = match &ctx.dot_receiver {
+        Some(expr) => expr,
+        _ => return,
+    };
+
+    let receiver_ty = match ctx.analyzer.type_of(ctx.db, &dot_receiver) {
+        Some(ty) => ty,
+        _ => return,
+    };
+
     if !ctx.is_call {
         complete_fields(acc, ctx, receiver_ty.clone());
     }
-    complete_methods(acc, ctx, receiver_ty);
+    complete_methods(acc, ctx, receiver_ty.clone());
+
+    // Suggest .await syntax for types that implement Future trait
+    if ctx.analyzer.impls_future(ctx.db, receiver_ty) {
+        CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
+            .detail("expr.await")
+            .insert_text("await")
+            .add_to(acc);
+    }
 }
 
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
@@ -405,5 +422,37 @@ mod tests {
        ⋮]
         "###
         );
+    }
+
+    #[test]
+    fn test_completion_await_impls_future() {
+        assert_debug_snapshot_matches!(
+        do_completion(
+            r###"
+            //- /main.rs
+            use std::future::*;
+            struct A {}
+            impl Future for A {}
+            fn foo(a: A) {
+                a.<|>
+            }
+
+            //- /std/lib.rs
+            pub mod future {
+                pub trait Future {}
+            }
+            "###, CompletionKind::Keyword),
+        @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "await",
+       ⋮        source_range: [74; 74),
+       ⋮        delete: [74; 74),
+       ⋮        insert: "await",
+       ⋮        detail: "expr.await",
+       ⋮    },
+       ⋮]
+        "###
+        )
     }
 }

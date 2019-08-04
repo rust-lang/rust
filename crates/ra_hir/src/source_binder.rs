@@ -18,14 +18,18 @@ use ra_syntax::{
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    expr,
     expr::{
+        self,
         scope::{ExprScopes, ScopeId},
         BodySourceMap,
     },
     ids::LocationCtx,
+    name,
+    path::{PathKind, PathSegment},
+    ty::method_resolution::implements_trait,
     AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HirDatabase, HirFileId,
-    MacroDef, Module, Name, Path, PerNs, Resolver, Static, Struct, Trait, Ty,
+    MacroDef, Module, ModuleDef, Name, Path, PerNs, Resolution, Resolver, Static, Struct, Trait,
+    Ty,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
@@ -407,6 +411,33 @@ impl SourceAnalyzer {
         // FIXME check that?
         let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
         crate::ty::autoderef(db, &self.resolver, canonical).map(|canonical| canonical.value)
+    }
+
+    /// Checks that particular type `ty` implements `std::future::Future`.
+    /// This function is used in `.await` syntax completion.
+    pub fn impls_future(&self, db: &impl HirDatabase, ty: Ty) -> bool {
+        let std_future_path = Path {
+            kind: PathKind::Abs,
+            segments: vec![
+                PathSegment { name: name::STD, args_and_bindings: None },
+                PathSegment { name: name::FUTURE_MOD, args_and_bindings: None },
+                PathSegment { name: name::FUTURE_TYPE, args_and_bindings: None },
+            ],
+        };
+
+        let std_future_trait =
+            match self.resolver.resolve_path_segments(db, &std_future_path).into_fully_resolved() {
+                PerNs { types: Some(Resolution::Def(ModuleDef::Trait(trait_))), .. } => trait_,
+                _ => return false,
+            };
+
+        let krate = match self.resolver.krate() {
+            Some(krate) => krate,
+            _ => return false,
+        };
+
+        let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
+        implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
     }
 
     #[cfg(test)]

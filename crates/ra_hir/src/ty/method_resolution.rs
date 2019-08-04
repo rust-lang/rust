@@ -255,6 +255,20 @@ fn iterate_inherent_methods<T>(
     None
 }
 
+pub(crate) fn implements_trait(
+    ty: &Canonical<Ty>,
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    krate: Crate,
+    trait_: Trait,
+) -> bool {
+    let env = lower::trait_env(db, resolver);
+    let goal = generic_implements_goal(db, env.clone(), trait_, ty.clone());
+    let solution = db.trait_solve(krate, goal);
+
+    solution.is_some()
+}
+
 impl Ty {
     // This would be nicer if it just returned an iterator, but that runs into
     // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
