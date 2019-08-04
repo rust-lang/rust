@@ -427,9 +427,7 @@ impl SourceAnalyzer {
 
         let std_future_trait =
             match self.resolver.resolve_path_segments(db, &std_future_path).into_fully_resolved() {
-                PerNs { types: Some(Resolution::Def(ModuleDef::Trait(trait_))), .. } => {
-                    trait_
-                }
+                PerNs { types: Some(Resolution::Def(ModuleDef::Trait(trait_))), .. } => trait_,
                 _ => return false,
             };
 
