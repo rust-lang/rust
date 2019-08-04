@@ -348,8 +348,6 @@ pub enum UndefinedBehaviorInfo {
     UbExperimental(String),
     /// Unreachable code was executed.
     Unreachable,
-    /// An `assume` was run on a `false` condition,
-    AssumptionNotHeld,
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -360,8 +358,6 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 write!(f, "{}", msg),
             Unreachable =>
                 write!(f, "entered unreachable code"),
-            AssumptionNotHeld =>
-                write!(f, "`assume` argument was false"),
         }
     }
 }
