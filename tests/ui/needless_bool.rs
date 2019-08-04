@@ -1,4 +1,5 @@
 #![warn(clippy::needless_bool)]
+#![allow(unused, dead_code, clippy::no_effect)]
 
 use std::cell::Cell;
 

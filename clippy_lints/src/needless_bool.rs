@@ -118,13 +118,15 @@ fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> bool
     let parent_id = cx.tcx.hir().get_parent_node(expr.hir_id);
     let parent_node = cx.tcx.hir().get(parent_id);
 
-    if let rustc::hir::Node::Expr(e) = parent_node {
-        if higher::if_block(&e).is_some() {
-            return true;
-        }
+    match parent_node {
+        rustc::hir::Node::Expr(e) => {
+            higher::if_block(&e).is_some()
+        },
+        rustc::hir::Node::Arm(e) => {
+            higher::if_block(&e.body).is_some()
+        },
+        _ => false
     }
-
-    false
 }
 
 declare_lint_pass!(BoolComparison => [BOOL_COMPARISON]);
