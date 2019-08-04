@@ -867,10 +867,7 @@ impl LayoutOf for CodegenCx<'ll, 'tcx> {
     fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
             .unwrap_or_else(|e| if let LayoutError::SizeOverflow(_) = e {
-                match span {
-                    Some(span) => self.sess().span_fatal(span, &e.to_string()),
-                    None => self.sess().fatal(&e.to_string()),
-                }
+                self.sess().span_fatal(span, &e.to_string())
             } else {
                 bug!("failed to get layout for `{}`: {}", ty, e)
             })

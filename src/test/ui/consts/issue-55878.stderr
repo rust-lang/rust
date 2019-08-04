@@ -2,7 +2,7 @@ error[E0080]: the type `[u8; 18446744073709551615]` is too big for the current a
   --> $SRC_DIR/libcore/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[u8; 18446744073709551615]` is too big for the current architecture
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    | 
   ::: $DIR/issue-55878.rs:3:26
    |
