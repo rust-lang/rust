@@ -21,32 +21,36 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
 
 export class HintsUpdater {
     private displayHints = true;
+    private drawnDecorations = new Map<string, vscode.DecorationOptions[]>();
 
-    public async loadHints(
-        editor: vscode.TextEditor | undefined
-    ): Promise<void> {
-        if (
-            this.displayHints &&
-            editor !== undefined &&
-            this.isRustDocument(editor.document)
-        ) {
-            await this.updateDecorationsFromServer(
-                editor.document.uri.toString(),
-                editor
-            );
+    public async loadHints(editor?: vscode.TextEditor): Promise<void> {
+        if (this.displayHints) {
+            const documentUri = this.getEditorDocumentUri(editor);
+            if (documentUri !== null) {
+                const latestDecorations = this.drawnDecorations.get(documentUri);
+                if (latestDecorations === undefined) {
+                    await this.updateDecorationsFromServer(
+                        documentUri,
+                        editor!
+                    );
+                } else {
+                    await editor!.setDecorations(typeHintDecorationType, latestDecorations);
+                }
+            }
         }
     }
 
     public async toggleHintsDisplay(displayHints: boolean): Promise<void> {
         if (this.displayHints !== displayHints) {
             this.displayHints = displayHints;
+            this.drawnDecorations.clear();
 
             if (displayHints) {
                 return this.updateHints();
             } else {
                 const editor = vscode.window.activeTextEditor;
-                if (editor != null) {
-                    return editor.setDecorations(typeHintDecorationType, []);
+                if (this.getEditorDocumentUri(editor) !== null) {
+                    return editor!.setDecorations(typeHintDecorationType, []);
                 }
             }
         }
@@ -85,10 +89,15 @@ export class HintsUpdater {
                 range: hint.range,
                 renderOptions: { after: { contentText: `: ${hint.label}` } }
             }));
-            return editor.setDecorations(
-                typeHintDecorationType,
-                newDecorations
-            );
+
+            this.drawnDecorations.set(documentUri, newDecorations);
+
+            if (this.getEditorDocumentUri(vscode.window.activeTextEditor) === documentUri) {
+                return editor.setDecorations(
+                    typeHintDecorationType,
+                    newDecorations
+                );
+            }
         }
     }
 
@@ -105,5 +114,12 @@ export class HintsUpdater {
                     request
                 )
             );
+    }
+
+    private getEditorDocumentUri(editor?: vscode.TextEditor): string | null {
+        if (editor && this.isRustDocument(editor.document)) {
+            return editor.document.uri.toString();
+        }
+        return null;
     }
 }
