@@ -27,14 +27,19 @@ export class HintsUpdater {
         if (this.displayHints) {
             const documentUri = this.getEditorDocumentUri(editor);
             if (documentUri !== null) {
-                const latestDecorations = this.drawnDecorations.get(documentUri);
+                const latestDecorations = this.drawnDecorations.get(
+                    documentUri
+                );
                 if (latestDecorations === undefined) {
                     await this.updateDecorationsFromServer(
                         documentUri,
                         editor!
                     );
                 } else {
-                    await editor!.setDecorations(typeHintDecorationType, latestDecorations);
+                    await editor!.setDecorations(
+                        typeHintDecorationType,
+                        latestDecorations
+                    );
                 }
             }
         }
@@ -48,9 +53,12 @@ export class HintsUpdater {
             if (displayHints) {
                 return this.updateHints();
             } else {
-                const editor = vscode.window.activeTextEditor;
-                if (this.getEditorDocumentUri(editor) !== null) {
-                    return editor!.setDecorations(typeHintDecorationType, []);
+                const currentEditor = vscode.window.activeTextEditor;
+                if (this.getEditorDocumentUri(currentEditor) !== null) {
+                    return currentEditor!.setDecorations(
+                        typeHintDecorationType,
+                        []
+                    );
                 }
             }
         }
@@ -92,7 +100,10 @@ export class HintsUpdater {
 
             this.drawnDecorations.set(documentUri, newDecorations);
 
-            if (this.getEditorDocumentUri(vscode.window.activeTextEditor) === documentUri) {
+            if (
+                this.getEditorDocumentUri(vscode.window.activeTextEditor) ===
+                documentUri
+            ) {
                 return editor.setDecorations(
                     typeHintDecorationType,
                     newDecorations

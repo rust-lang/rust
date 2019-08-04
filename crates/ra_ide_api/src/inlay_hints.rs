@@ -216,52 +216,52 @@ fn main() {
         assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [193; 197),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "i32",
     },
     InlayHint {
         range: [236; 244),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "i32",
     },
     InlayHint {
         range: [275; 279),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "&str",
     },
     InlayHint {
         range: [539; 543),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "(i32, char)",
     },
     InlayHint {
         range: [566; 567),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "i32",
     },
     InlayHint {
         range: [570; 571),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "i32",
     },
     InlayHint {
         range: [573; 574),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "i32",
     },
     InlayHint {
         range: [584; 585),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "i32",
     },
     InlayHint {
         range: [577; 578),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "f64",
     },
     InlayHint {
         range: [580; 581),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "f64",
     },
 ]"#
@@ -283,12 +283,12 @@ fn main() {
         assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [21; 30),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "i32",
     },
     InlayHint {
         range: [57; 66),
-        kind: ClosureParameterType,
+        kind: TypeHint,
         label: "i32",
     },
 ]"#
@@ -310,12 +310,12 @@ fn main() {
         assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [21; 30),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "i32",
     },
     InlayHint {
         range: [44; 53),
-        kind: ForExpressionBindingType,
+        kind: TypeHint,
         label: "i32",
     },
 ]"#
@@ -356,27 +356,27 @@ fn main() {
         assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [166; 170),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "CustomOption<Test>",
     },
     InlayHint {
         range: [334; 338),
-        kind: IfExpressionType,
+        kind: TypeHint,
         label: "&Test",
     },
     InlayHint {
         range: [389; 390),
-        kind: IfExpressionType,
+        kind: TypeHint,
         label: "&CustomOption<u32>",
     },
     InlayHint {
         range: [392; 393),
-        kind: IfExpressionType,
+        kind: TypeHint,
         label: "&u8",
     },
     InlayHint {
         range: [531; 532),
-        kind: IfExpressionType,
+        kind: TypeHint,
         label: "&u32",
     },
 ]"#
@@ -417,7 +417,7 @@ fn main() {
         assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [166; 170),
-        kind: LetBindingType,
+        kind: TypeHint,
         label: "CustomOption<Test>",
     },
 ]"#
@@ -457,23 +457,23 @@ fn main() {
 
         assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
-        range: [312; 316),
-        kind: MatchArmType,
+        range: [311; 315),
+        kind: TypeHint,
         label: "Test",
     },
     InlayHint {
-        range: [359; 360),
-        kind: MatchArmType,
+        range: [358; 359),
+        kind: TypeHint,
         label: "CustomOption<u32>",
     },
     InlayHint {
-        range: [362; 363),
-        kind: MatchArmType,
+        range: [361; 362),
+        kind: TypeHint,
         label: "u8",
     },
     InlayHint {
-        range: [485; 486),
-        kind: MatchArmType,
+        range: [484; 485),
+        kind: TypeHint,
         label: "u32",
     },
 ]"#
