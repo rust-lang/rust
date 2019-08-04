@@ -49,26 +49,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "volatile_load" => {
-                let ptr = this.deref_operand(args[0])?;
-                this.copy_op(ptr.into(), dest)?;
+                let place = this.deref_operand(args[0])?;
+                this.copy_op(place.into(), dest)?;
             }
 
             "volatile_store" => {
-                let ptr = this.deref_operand(args[0])?;
-                this.copy_op(args[1], ptr.into())?;
+                let place = this.deref_operand(args[0])?;
+                this.copy_op(args[1], place.into())?;
             }
 
             "atomic_load" |
             "atomic_load_relaxed" |
             "atomic_load_acq" => {
-                let ptr = this.deref_operand(args[0])?;
-                let val = this.read_scalar(ptr.into())?; // make sure it fits into a scalar; otherwise it cannot be atomic
+                let place = this.deref_operand(args[0])?;
+                let val = this.read_scalar(place.into())?; // make sure it fits into a scalar; otherwise it cannot be atomic
 
                 // Check alignment requirements. Atomics must always be aligned to their size,
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
-                let align = Align::from_bytes(ptr.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(ptr.ptr, ptr.layout.size, align)?;
+                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 this.write_scalar(val, dest)?;
             }
@@ -76,16 +76,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "atomic_store" |
             "atomic_store_relaxed" |
             "atomic_store_rel" => {
-                let ptr = this.deref_operand(args[0])?;
+                let place = this.deref_operand(args[0])?;
                 let val = this.read_scalar(args[1])?; // make sure it fits into a scalar; otherwise it cannot be atomic
 
                 // Check alignment requirements. Atomics must always be aligned to their size,
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
-                let align = Align::from_bytes(ptr.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(ptr.ptr, ptr.layout.size, align)?;
+                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
 
-                this.write_scalar(val, ptr.into())?;
+                this.write_scalar(val, place.into())?;
             }
 
             "atomic_fence_acq" => {
@@ -93,31 +93,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             _ if intrinsic_name.starts_with("atomic_xchg") => {
-                let ptr = this.deref_operand(args[0])?;
+                let place = this.deref_operand(args[0])?;
                 let new = this.read_scalar(args[1])?;
-                let old = this.read_scalar(ptr.into())?;
+                let old = this.read_scalar(place.into())?;
 
                 // Check alignment requirements. Atomics must always be aligned to their size,
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
-                let align = Align::from_bytes(ptr.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(ptr.ptr, ptr.layout.size, align)?;
+                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 this.write_scalar(old, dest)?; // old value is returned
-                this.write_scalar(new, ptr.into())?;
+                this.write_scalar(new, place.into())?;
             }
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
-                let ptr = this.deref_operand(args[0])?;
+                let place = this.deref_operand(args[0])?;
                 let expect_old = this.read_immediate(args[1])?; // read as immediate for the sake of `binary_op()`
                 let new = this.read_scalar(args[2])?;
-                let old = this.read_immediate(ptr.into())?; // read as immediate for the sake of `binary_op()`
+                let old = this.read_immediate(place.into())?; // read as immediate for the sake of `binary_op()`
 
                 // Check alignment requirements. Atomics must always be aligned to their size,
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
-                let align = Align::from_bytes(ptr.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(ptr.ptr, ptr.layout.size, align)?;
+                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 // binary_op will bail if either of them is not a scalar
                 let (eq, _) = this.binary_op(mir::BinOp::Eq, old, expect_old)?;
@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_immediate(res, dest)?; // old value is returned
                 // update ptr depending on comparison
                 if eq.to_bool()? {
-                    this.write_scalar(new, ptr.into())?;
+                    this.write_scalar(new, place.into())?;
                 }
             }
 
@@ -159,18 +159,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "atomic_xsub_rel" |
             "atomic_xsub_acqrel" |
             "atomic_xsub_relaxed" => {
-                let ptr = this.deref_operand(args[0])?;
-                if !ptr.layout.ty.is_integral() {
+                let place = this.deref_operand(args[0])?;
+                if !place.layout.ty.is_integral() {
                     bug!("Atomic arithmetic operations only work on integer types");
                 }
                 let rhs = this.read_immediate(args[1])?;
-                let old = this.read_immediate(ptr.into())?;
+                let old = this.read_immediate(place.into())?;
 
                 // Check alignment requirements. Atomics must always be aligned to their size,
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
-                let align = Align::from_bytes(ptr.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(ptr.ptr, ptr.layout.size, align)?;
+                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 this.write_immediate(*old, dest)?; // old value is returned
                 let (op, neg) = match intrinsic_name.split('_').nth(1).unwrap() {
@@ -189,7 +189,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 } else {
                     val
                 };
-                this.write_scalar(val, ptr.into())?;
+                this.write_scalar(val, place.into())?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
