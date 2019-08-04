@@ -28,6 +28,9 @@ pub use crate::cstore_impl::{provide, provide_extern};
 pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
 pub use rustc_data_structures::sync::MetadataRef;
+use crate::creader::Library;
+use syntax_pos::Span;
+use proc_macro::bridge::client::ProcMacro;
 
 pub struct MetadataBlob(pub MetadataRef);
 
@@ -82,11 +85,19 @@ pub struct CrateMetadata {
     pub dep_kind: Lock<DepKind>,
     pub source: CrateSource,
 
-    pub proc_macros: Option<Vec<(ast::Name, Lrc<SyntaxExtension>)>>,
-
     /// Whether or not this crate should be consider a private dependency
     /// for purposes of the 'exported_private_dependencies' lint
-    pub private_dep: bool
+    pub private_dep: bool,
+
+    pub host_lib: Option<Library>,
+    pub span: Span,
+
+    pub raw_proc_macros: Option<&'static [ProcMacro]>,
+}
+
+pub struct FullProcMacro {
+    pub name: ast::Name,
+    pub ext: Lrc<SyntaxExtension>
 }
 
 pub struct CStore {
