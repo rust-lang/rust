@@ -91,10 +91,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let this = self.eval_context_mut();
 
-        let ptr = match this.memory().check_ptr_access(ptr, Size::from_bytes(len as u64), Align::from_bytes(1).unwrap())? {
-            Some(ptr) => ptr,
-            None => return Ok(()), // zero-sized access
-        };
+        let ptr = this.memory().check_ptr_access(
+            ptr,
+            Size::from_bytes(len as u64),
+            Align::from_bytes(1).unwrap()
+        )?.expect("we already checked for size 0");
 
         let rng = this.memory_mut().extra.rng.get_mut();
         let mut data = vec![0; len];
