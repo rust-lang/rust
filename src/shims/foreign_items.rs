@@ -293,20 +293,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                 match this.read_scalar(args[0])?.to_usize(this)? {
                     id if id == sys_getrandom => {
-                        let ptr = this.read_scalar(args[1])?.not_undef()?;
-                        let len = this.read_scalar(args[2])?.to_usize(this)?;
-
-                        // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
-                        // neither of which have any effect on our current PRNG
-                        let _flags = this.read_scalar(args[3])?.to_i32()?;
-
-                        this.gen_random(ptr, len as usize)?;
-                        this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
+                        // The first argument is the syscall id,
+                        // so skip over it.
+                        linux_getrandom(this, &args[1..], dest)?;
                     }
                     id => {
                         throw_unsup_format!("miri does not support syscall ID {}", id)
                     }
                 }
+            }
+
+            "getrandom" => {
+                linux_getrandom(this, args, dest)?;
             }
 
             "dlsym" => {
@@ -968,4 +966,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         return Ok(None);
     }
+}
+
+// Shims the linux 'getrandom()' syscall.
+fn linux_getrandom<'tcx>(
+    this: &mut MiriEvalContext<'_, 'tcx>,
+    args: &[OpTy<'tcx, Tag>],
+    dest: PlaceTy<'tcx, Tag>,
+) -> InterpResult<'tcx> {
+    let ptr = this.read_scalar(args[0])?.not_undef()?;
+    let len = this.read_scalar(args[1])?.to_usize(this)?;
+
+    // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
+    // neither of which have any effect on our current PRNG.
+    let _flags = this.read_scalar(args[2])?.to_i32()?;
+
+    this.gen_random(ptr, len as usize)?;
+    this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
+    Ok(())
 }
