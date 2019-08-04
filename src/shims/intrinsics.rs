@@ -225,7 +225,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
-            "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" => {
+            "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" | "roundf32" => {
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let f = match intrinsic_name.get() {
@@ -241,13 +241,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "floorf32" => f.floor(),
                     "ceilf32" => f.ceil(),
                     "truncf32" => f.trunc(),
+                    "roundf32" => f.round(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
             }
 
             "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
-            "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" => {
+            "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" | "roundf64" => {
                 // FIXME: Using host floats.
                 let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
                 let f = match intrinsic_name.get() {
@@ -263,6 +264,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "floorf64" => f.floor(),
                     "ceilf64" => f.ceil(),
                     "truncf64" => f.trunc(),
+                    "roundf64" => f.round(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
