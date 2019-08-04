@@ -209,6 +209,7 @@ impl fmt::Display for AccessError {
     }
 }
 
+#[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl Error for AccessError {}
 
 impl<T: 'static> LocalKey<T> {
