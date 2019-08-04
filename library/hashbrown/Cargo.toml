@@ -39,3 +39,6 @@ nightly = []
 rustc-internal-api = []
 rustc-dep-of-std = ["nightly", "core", "compiler_builtins", "alloc", "rustc-internal-api"]
 raw = []
+
+[package.metadata.docs.rs]
+features = ["nightly", "rayon", "serde", "raw"]

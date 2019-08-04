@@ -43,10 +43,12 @@ doc_comment::doctest!("../README.md");
 #[macro_use]
 mod macros;
 
-// The RawTable API is still experimental and is not properly documented yet.
 #[cfg(feature = "raw")]
-#[allow(missing_docs)]
+/// Experimental and unsafe `RawTable` API. This module is only available if the
+/// `raw` feature is enabled.
 pub mod raw {
+    // The RawTable API is still experimental and is not properly documented yet.
+    #[allow(missing_docs)]
     #[path = "mod.rs"]
     mod inner;
     pub use inner::*;
