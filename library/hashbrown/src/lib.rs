@@ -43,10 +43,25 @@ doc_comment::doctest!("../README.md");
 #[macro_use]
 mod macros;
 
+// The RawTable API is still experimental and is not properly documented yet.
+#[cfg(feature = "raw")]
+#[allow(missing_docs)]
+pub mod raw {
+    #[path = "mod.rs"]
+    mod inner;
+    pub use inner::*;
+
+    #[cfg(feature = "rayon")]
+    pub mod rayon {
+        pub use crate::external_trait_impls::rayon::raw::*;
+    }
+}
+#[cfg(not(feature = "raw"))]
+mod raw;
+
 mod external_trait_impls;
 mod fx;
 mod map;
-mod raw;
 #[cfg(feature = "rustc-internal-api")]
 mod rustc_entry;
 mod scopeguard;

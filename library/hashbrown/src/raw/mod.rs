@@ -959,7 +959,7 @@ impl<T> RawTable<T> {
     /// Converts the table into a raw allocation. The contents of the table
     /// should be dropped using a `RawIter` before freeing the allocation.
     #[inline]
-    pub fn into_alloc(self) -> Option<(NonNull<u8>, Layout)> {
+    pub(crate) fn into_alloc(self) -> Option<(NonNull<u8>, Layout)> {
         let alloc = if self.is_empty_singleton() {
             None
         } else {
@@ -1080,7 +1080,7 @@ impl<T> IntoIterator for RawTable<T> {
 
 /// Iterator over a sub-range of a table. Unlike `RawIter` this iterator does
 /// not track an item count.
-pub struct RawIterRange<T> {
+pub(crate) struct RawIterRange<T> {
     // Mask of full buckets in the current group. Bits are cleared from this
     // mask as each element is processed.
     current_group: BitMask,
@@ -1124,7 +1124,7 @@ impl<T> RawIterRange<T> {
     /// group width.
     #[inline]
     #[cfg(feature = "rayon")]
-    pub fn split(mut self) -> (Self, Option<RawIterRange<T>>) {
+    pub(crate) fn split(mut self) -> (Self, Option<RawIterRange<T>>) {
         unsafe {
             if self.end <= self.next_ctrl {
                 // Nothing to split if the group that we are current processing
@@ -1219,7 +1219,7 @@ impl<T> FusedIterator for RawIterRange<T> {}
 
 /// Iterator which returns a raw pointer to every full bucket in the table.
 pub struct RawIter<T> {
-    pub iter: RawIterRange<T>,
+    pub(crate) iter: RawIterRange<T>,
     items: usize,
 }
 
