@@ -439,7 +439,7 @@ impl SourceAnalyzer {
         };
 
         let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
-        return implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait);
+        implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
     }
 
     #[cfg(test)]
