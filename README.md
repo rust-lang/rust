@@ -342,6 +342,7 @@ Definite bugs found:
 * [`str` turning a shared reference into a mutable one](https://github.com/rust-lang/rust/pull/58200)
 * [`rand` performing unaligned reads](https://github.com/rust-random/rand/issues/779)
 * [The Unix allocator calling `posix_memalign` in an invalid way](https://github.com/rust-lang/rust/issues/62251)
+* [`getrandom` calling the `getrandom` syscall in an invalid way](https://github.com/rust-random/getrandom/pull/73)
 
 Violations of Stacked Borrows found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
