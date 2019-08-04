@@ -5,7 +5,7 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::{Const, layout::Align};
 use rustc_mir::interpret::{
-    InterpCx, ImmTy, Machine, Memory, MemoryKind, OpTy, PlaceTy,
+    InterpCx, ImmTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
     StackPopCleanup,
 };
 
@@ -378,12 +378,19 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn ptr_op(
+    fn binary_ptr_op(
         _: &InterpCx<'mir, 'tcx, Self>,
         _: mir::BinOp,
         _: ImmTy<'tcx>,
         _: ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool)> {
+        panic!();
+    }
+
+    fn ptr_to_int(
+        _: &Memory<'mir, 'tcx, Self>,
+        _: Pointer<()>,
+    ) -> InterpResult<'tcx, u64> {
         panic!();
     }
 
