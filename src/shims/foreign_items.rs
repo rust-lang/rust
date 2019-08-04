@@ -972,7 +972,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 fn linux_getrandom<'tcx>(
     this: &mut MiriEvalContext<'_, 'tcx>,
     args: &[OpTy<'tcx, Tag>],
-    dest: PlaceTy<'tcx, Tag>
+    dest: PlaceTy<'tcx, Tag>,
 ) -> InterpResult<'tcx> {
     let ptr = this.read_scalar(args[0])?.not_undef()?;
     let len = this.read_scalar(args[1])?.to_usize(this)?;
