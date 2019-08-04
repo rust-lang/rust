@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.5.1] - 2019-08-04
+
+### Added
+- The experimental and unsafe `RawTable` API is available under the "raw" feature. (#108)
+- Added entry-like methods for `HashSet`. (#98)
+
+### Changed
+- Changed the default hasher from FxHash to AHash. (#97)
+- `hashbrown` is now fully `no_std` on recent Rust versions (1.36+). (#96)
+
+### Fixed
+- We now avoid growing the table during insertions when it wasn't necessary. (#106)
+- `RawOccupiedEntryMut` now properly implements `Send` and `Sync`. (#100)
+- Relaxed `lazy_static` version. (#92)
+
 ## [v0.5.0] - 2019-06-12
 
 ### Fixed
@@ -119,7 +134,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.5.1...HEAD
+[v0.5.1]: https://github.com/rust-lang/hashbrown/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/rust-lang/hashbrown/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/rust-lang/hashbrown/compare/v0.3.1...v0.4.0
 [v0.3.1]: https://github.com/rust-lang/hashbrown/compare/v0.3.0...v0.3.1
