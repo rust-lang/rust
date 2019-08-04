@@ -9,14 +9,9 @@ use ra_syntax::{
     SmolStr, SyntaxKind, SyntaxNode, TextRange,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum InlayKind {
-    LetBindingType,
-    ClosureParameterType,
-    ForExpressionBindingType,
-    IfExpressionType,
-    WhileLetExpressionType,
-    MatchArmType,
+    TypeHint,
 }
 
 #[derive(Debug)]
@@ -46,7 +41,7 @@ fn get_inlay_hints(
             }
             let pat = let_statement.pat()?;
             let analyzer = SourceAnalyzer::new(db, file_id, let_statement.syntax(), None);
-            Some(get_pat_hints(db, &analyzer, pat, InlayKind::LetBindingType, false))
+            Some(get_pat_type_hints(db, &analyzer, pat, false))
         })
         .visit(|closure_parameter: LambdaExpr| {
             let analyzer = SourceAnalyzer::new(db, file_id, closure_parameter.syntax(), None);
@@ -55,15 +50,7 @@ fn get_inlay_hints(
                     .params()
                     .filter(|closure_param| closure_param.ascribed_type().is_none())
                     .filter_map(|closure_param| closure_param.pat())
-                    .map(|root_pat| {
-                        get_pat_hints(
-                            db,
-                            &analyzer,
-                            root_pat,
-                            InlayKind::ClosureParameterType,
-                            false,
-                        )
-                    })
+                    .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false))
                     .flatten()
                     .collect()
             })
@@ -71,17 +58,17 @@ fn get_inlay_hints(
         .visit(|for_expression: ForExpr| {
             let pat = for_expression.pat()?;
             let analyzer = SourceAnalyzer::new(db, file_id, for_expression.syntax(), None);
-            Some(get_pat_hints(db, &analyzer, pat, InlayKind::ForExpressionBindingType, false))
+            Some(get_pat_type_hints(db, &analyzer, pat, false))
         })
         .visit(|if_expr: IfExpr| {
             let pat = if_expr.condition()?.pat()?;
             let analyzer = SourceAnalyzer::new(db, file_id, if_expr.syntax(), None);
-            Some(get_pat_hints(db, &analyzer, pat, InlayKind::IfExpressionType, true))
+            Some(get_pat_type_hints(db, &analyzer, pat, true))
         })
         .visit(|while_expr: WhileExpr| {
             let pat = while_expr.condition()?.pat()?;
             let analyzer = SourceAnalyzer::new(db, file_id, while_expr.syntax(), None);
-            Some(get_pat_hints(db, &analyzer, pat, InlayKind::WhileLetExpressionType, true))
+            Some(get_pat_type_hints(db, &analyzer, pat, true))
         })
         .visit(|match_arm_list: MatchArmList| {
             let analyzer = SourceAnalyzer::new(db, file_id, match_arm_list.syntax(), None);
@@ -90,9 +77,7 @@ fn get_inlay_hints(
                     .arms()
                     .map(|match_arm| match_arm.pats())
                     .flatten()
-                    .map(|root_pat| {
-                        get_pat_hints(db, &analyzer, root_pat, InlayKind::MatchArmType, true)
-                    })
+                    .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true))
                     .flatten()
                     .collect(),
             )
@@ -100,11 +85,10 @@ fn get_inlay_hints(
         .accept(&node)?
 }
 
-fn get_pat_hints(
+fn get_pat_type_hints(
     db: &RootDatabase,
     analyzer: &SourceAnalyzer,
     root_pat: Pat,
-    kind: InlayKind,
     skip_root_pat_hint: bool,
 ) -> Vec<InlayHint> {
     let original_pat = &root_pat.clone();
@@ -118,7 +102,7 @@ fn get_pat_hints(
         })
         .map(|(range, pat_type)| InlayHint {
             range,
-            kind: kind.clone(),
+            kind: InlayKind::TypeHint,
             label: pat_type.display(db).to_string().into(),
         })
         .collect()
@@ -364,7 +348,7 @@ fn main() {
     if let CustomOption::Some(Test { a: CustomOption::Some(x), b: y }) = &test {};
     if let CustomOption::Some(Test { a: CustomOption::None, b: y }) = &test {};
     if let CustomOption::Some(Test { b: y, .. }) = &test {};
-    
+
     if test == CustomOption::None {}
 }"#,
         );
@@ -425,7 +409,7 @@ fn main() {
     while let CustomOption::Some(Test { a: CustomOption::Some(x), b: y }) = &test {};
     while let CustomOption::Some(Test { a: CustomOption::None, b: y }) = &test {};
     while let CustomOption::Some(Test { b: y, .. }) = &test {};
-    
+
     while test == CustomOption::None {}
 }"#,
         );
@@ -445,7 +429,7 @@ fn main() {
         let (analysis, file_id) = single_file(
             r#"
 #[derive(PartialEq)]
-enum CustomOption<T> { 
+enum CustomOption<T> {
     None,
     Some(T),
 }
