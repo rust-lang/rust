@@ -249,7 +249,8 @@ fn setup(ask_user: bool) {
             println!("Installing xargo: `cargo install xargo -f`");
         }
 
-        if !cargo().args(&["install", "xargo", "-f"]).status()
+        // FIXME: Install from crates.io again once a new xargo got released.
+        if !cargo().args(&["install", "xargo", "-f", "--git", "https://github.com/japaric/xargo"]).status()
             .expect("failed to install xargo")
             .success()
         {
