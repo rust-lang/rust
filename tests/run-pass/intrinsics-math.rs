@@ -85,6 +85,9 @@ pub fn main() {
     assert_approx_eq!(1.0f32.tan(), 1.557408f32);
     assert_approx_eq!(1.0f64.tan(), 1.557408f64);
 
+    assert_eq!(3.3_f32.round(), 3.0);
+    assert_eq!(3.3_f64.round(), 3.0);
+
     extern {
         fn ldexp(x: f64, n: i32) -> f64;
     }
