@@ -370,8 +370,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "move_val_init" => {
-                let ptr = this.deref_operand(args[0])?;
-                this.copy_op(args[1], ptr.into())?;
+                let place = this.deref_operand(args[0])?;
+                this.copy_op(args[1], place.into())?;
             }
 
             "offset" => {
