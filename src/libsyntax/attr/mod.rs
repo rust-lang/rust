@@ -347,11 +347,12 @@ impl Attribute {
 
 pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem {
     let lit_kind = LitKind::Str(value.node, ast::StrStyle::Cooked);
-    mk_name_value_item(ident.span.to(value.span), ident, lit_kind, value.span)
+    mk_name_value_item(ident, lit_kind, value.span)
 }
 
-pub fn mk_name_value_item(span: Span, ident: Ident, lit_kind: LitKind, lit_span: Span) -> MetaItem {
+pub fn mk_name_value_item(ident: Ident, lit_kind: LitKind, lit_span: Span) -> MetaItem {
     let lit = Lit::from_lit_kind(lit_kind, lit_span);
+    let span = ident.span.to(lit_span);
     MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::NameValue(lit) }
 }
 
