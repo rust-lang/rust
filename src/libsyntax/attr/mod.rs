@@ -368,7 +368,7 @@ pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
     NestedMetaItem::MetaItem(mk_word_item(ident))
 }
 
-pub fn mk_attr_id() -> AttrId {
+crate fn mk_attr_id() -> AttrId {
     use std::sync::atomic::AtomicUsize;
     use std::sync::atomic::Ordering;
 
