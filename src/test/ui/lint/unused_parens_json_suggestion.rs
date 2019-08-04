@@ -8,8 +8,8 @@
 // stripping away any starting or ending parenthesis characters—hence this
 // test of the JSON error format.
 
-#![allow(unreachable_code)]
 #![deny(unused_parens)]
+#![allow(unreachable_code)]
 
 fn main() {
     // We want to suggest the properly-balanced expression `1 / (2 + 3)`, not
