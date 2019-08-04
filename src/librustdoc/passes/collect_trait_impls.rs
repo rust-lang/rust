@@ -30,7 +30,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
     for &cnum in cx.tcx.crates().iter() {
         for &did in cx.tcx.all_trait_implementations(cnum).iter() {
-            inline::build_impl(cx, did, &mut new_items);
+            inline::build_impl(cx, did, None, &mut new_items);
         }
     }
 
@@ -66,7 +66,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
     for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
         if !def_id.is_local() {
-            inline::build_impl(cx, def_id, &mut new_items);
+            inline::build_impl(cx, def_id, None, &mut new_items);
 
             // FIXME(eddyb) is this `doc(hidden)` check needed?
             if !cx.tcx.get_attrs(def_id).lists(sym::doc).has_word(sym::hidden) {
@@ -119,7 +119,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     for &trait_did in cx.all_traits.iter() {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = cx.tcx.hir().local_def_id(impl_node);
-            inline::build_impl(cx, impl_did, &mut new_items);
+            inline::build_impl(cx, impl_did, None, &mut new_items);
         }
     }
 
