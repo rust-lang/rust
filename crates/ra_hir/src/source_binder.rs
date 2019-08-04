@@ -428,20 +428,18 @@ impl SourceAnalyzer {
         let std_future_trait =
             match self.resolver.resolve_path_segments(db, &std_future_path).into_fully_resolved() {
                 PerNs { types: Some(Resolution::Def(ModuleDef::Trait(trait_))), .. } => {
-                    Some(trait_)
+                    trait_
                 }
-                _ => None,
+                _ => return false,
             };
 
-        let krate = self.resolver.krate();
-        if let Some(krate) = krate {
-            if let Some(trait_) = std_future_trait {
-                let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
-                return implements_trait(&canonical_ty, db, &self.resolver, krate, trait_);
-            }
-        }
+        let krate = match self.resolver.krate() {
+            Some(krate) => krate,
+            _ => return false,
+        };
 
-        false
+        let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
+        return implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait);
     }
 
     #[cfg(test)]

@@ -9,23 +9,27 @@ use rustc_hash::FxHashSet;
 
 /// Complete dot accesses, i.e. fields or methods (and .await syntax).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    if let Some(dot_receiver) = &ctx.dot_receiver {
-        let receiver_ty = ctx.analyzer.type_of(ctx.db, &dot_receiver);
+    let dot_receiver = match &ctx.dot_receiver {
+        Some(expr) => expr,
+        _ => return,
+    };
 
-        if let Some(receiver_ty) = receiver_ty {
-            if !ctx.is_call {
-                complete_fields(acc, ctx, receiver_ty.clone());
-            }
-            complete_methods(acc, ctx, receiver_ty.clone());
+    let receiver_ty = match ctx.analyzer.type_of(ctx.db, &dot_receiver) {
+        Some(ty) => ty,
+        _ => return,
+    };
 
-            // Suggest .await syntax for types that implement Future trait
-            if ctx.analyzer.impls_future(ctx.db, receiver_ty) {
-                CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
-                    .detail("expr.await")
-                    .insert_text("await")
-                    .add_to(acc);
-            }
-        }
+    if !ctx.is_call {
+        complete_fields(acc, ctx, receiver_ty.clone());
+    }
+    complete_methods(acc, ctx, receiver_ty.clone());
+
+    // Suggest .await syntax for types that implement Future trait
+    if ctx.analyzer.impls_future(ctx.db, receiver_ty) {
+        CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
+            .detail("expr.await")
+            .insert_text("await")
+            .add_to(acc);
     }
 }
 
