@@ -514,7 +514,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "core"
 version = "0.0.0"
 dependencies = [
- "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
