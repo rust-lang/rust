@@ -298,7 +298,7 @@ impl<T> [T] {
     /// For a safe alternative see [`get`].
     ///
     /// [`get`]: #method.get
-    /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
     ///
@@ -326,7 +326,7 @@ impl<T> [T] {
     /// For a safe alternative see [`get_mut`].
     ///
     /// [`get_mut`]: #method.get_mut
-    /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
     ///
