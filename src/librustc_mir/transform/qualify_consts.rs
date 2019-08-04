@@ -1572,8 +1572,8 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
 
 pub struct QualifyAndPromoteConstants;
 
-impl MirPass for QualifyAndPromoteConstants {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if body.return_ty().references_error() {
             tcx.sess.delay_span_bug(body.span, "QualifyAndPromoteConstants: MIR had errors");

@@ -137,12 +137,12 @@ pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
 /// A streamlined trait that you can implement to create a pass; the
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
-pub trait MirPass {
+pub trait MirPass<'tcx> {
     fn name(&self) -> Cow<'_, str> {
         default_name::<Self>()
     }
 
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>);
 }
 
 pub fn run_passes(
@@ -150,7 +150,7 @@ pub fn run_passes(
     body: &mut Body<'tcx>,
     instance: InstanceDef<'tcx>,
     mir_phase: MirPhase,
-    passes: &[&dyn MirPass],
+    passes: &[&dyn MirPass<'tcx>],
 ) {
     let phase_index = mir_phase.phase_index();
 
@@ -164,7 +164,7 @@ pub fn run_passes(
             promoted,
         };
         let mut index = 0;
-        let mut run_pass = |pass: &dyn MirPass| {
+        let mut run_pass = |pass: &dyn MirPass<'tcx>| {
             let run_hooks = |body: &_, index, is_after| {
                 dump_mir::on_mir_pass(tcx, &format_args!("{:03}-{:03}", phase_index, index),
                                       &pass.name(), source, body, is_after);

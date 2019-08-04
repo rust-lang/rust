@@ -65,8 +65,8 @@ fn may_be_reference<'tcx>(ty: Ty<'tcx>) -> bool {
     }
 }
 
-impl MirPass for AddRetag {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for AddRetag {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;
         }
