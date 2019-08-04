@@ -198,6 +198,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let res = driver::codegen_crate(tcx, metadata, need_metadata_module);
 
         rustc_incremental::assert_module_sources::assert_module_sources(tcx);
+        rustc_codegen_utils::symbol_names_test::report_symbol_names(tcx);
 
         res
     }
