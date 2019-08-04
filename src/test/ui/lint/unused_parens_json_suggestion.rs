@@ -1,5 +1,4 @@
-// compile-flags: --error-format -Zunstable-options
-// build-pass (FIXME(62277): could be check-pass?)
+// compile-flags: --error-format json -Zunstable-options
 // run-rustfix
 
 // The output for humans should just highlight the whole span without showing
