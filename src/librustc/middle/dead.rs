@@ -480,7 +480,7 @@ impl DeadVisitor<'tcx> {
             hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
             | hir::ItemKind::Fn(..)
-            | hir::ItemKind::Ty(..)
+            | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..) => true,
@@ -640,7 +640,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 self.visit_nested_body(body_id)
             }
             hir::ImplItemKind::OpaqueTy(..) |
-            hir::ImplItemKind::Type(..) => {}
+            hir::ImplItemKind::TyAlias(..) => {}
         }
     }
 

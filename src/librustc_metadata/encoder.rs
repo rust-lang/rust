@@ -980,7 +980,7 @@ impl EncodeContext<'tcx> {
                     needs_inline || is_const_fn || always_encode_mir
                 },
                 hir::ImplItemKind::OpaqueTy(..) |
-                hir::ImplItemKind::Type(..) => false,
+                hir::ImplItemKind::TyAlias(..) => false,
             };
 
         Entry {
@@ -1094,7 +1094,7 @@ impl EncodeContext<'tcx> {
             }
             hir::ItemKind::ForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
-            hir::ItemKind::Ty(..) => EntryKind::Type,
+            hir::ItemKind::TyAlias(..) => EntryKind::Type,
             hir::ItemKind::OpaqueTy(..) => EntryKind::OpaqueTy,
             hir::ItemKind::Enum(..) => EntryKind::Enum(get_repr_options(tcx, def_id)),
             hir::ItemKind::Struct(ref struct_def, _) => {
@@ -1227,7 +1227,7 @@ impl EncodeContext<'tcx> {
                 hir::ItemKind::Static(..) |
                 hir::ItemKind::Const(..) |
                 hir::ItemKind::Fn(..) |
-                hir::ItemKind::Ty(..) |
+                hir::ItemKind::TyAlias(..) |
                 hir::ItemKind::OpaqueTy(..) |
                 hir::ItemKind::Enum(..) |
                 hir::ItemKind::Struct(..) |
@@ -1247,7 +1247,7 @@ impl EncodeContext<'tcx> {
                 hir::ItemKind::Static(..) |
                 hir::ItemKind::Const(..) |
                 hir::ItemKind::Fn(..) |
-                hir::ItemKind::Ty(..) |
+                hir::ItemKind::TyAlias(..) |
                 hir::ItemKind::Enum(..) |
                 hir::ItemKind::Struct(..) |
                 hir::ItemKind::Union(..) |
@@ -1261,7 +1261,7 @@ impl EncodeContext<'tcx> {
                 hir::ItemKind::Static(..) |
                 hir::ItemKind::Const(..) |
                 hir::ItemKind::Fn(..) |
-                hir::ItemKind::Ty(..) |
+                hir::ItemKind::TyAlias(..) |
                 hir::ItemKind::Enum(..) |
                 hir::ItemKind::Struct(..) |
                 hir::ItemKind::Union(..) |
@@ -1761,7 +1761,7 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::GlobalAsm(..) |
             hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::Use(..) |
-            hir::ItemKind::Ty(..) |
+            hir::ItemKind::TyAlias(..) |
             hir::ItemKind::OpaqueTy(..) |
             hir::ItemKind::TraitAlias(..) => {
                 // no sub-item recording needed in these cases

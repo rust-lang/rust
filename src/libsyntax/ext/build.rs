@@ -858,7 +858,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn item_ty_poly(&self, span: Span, name: Ident, ty: P<ast::Ty>,
                     generics: Generics) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Ty(ty, generics))
+        self.item(span, name, Vec::new(), ast::ItemKind::TyAlias(ty, generics))
     }
 
     pub fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> P<ast::Item> {

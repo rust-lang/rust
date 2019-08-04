@@ -1837,7 +1837,7 @@ pub enum ImplItemKind {
     /// A method implementation with the given signature and body.
     Method(MethodSig, BodyId),
     /// An associated type.
-    Type(P<Ty>),
+    TyAlias(P<Ty>),
     /// An associated `type = impl Trait`.
     OpaqueTy(GenericBounds),
 }
@@ -2420,7 +2420,7 @@ pub enum ItemKind {
     /// Module-level inline assembly (from global_asm!)
     GlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g., `type Foo = Bar<u8>`
-    Ty(P<Ty>, Generics),
+    TyAlias(P<Ty>, Generics),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`
     OpaqueTy(OpaqueTy),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`
@@ -2455,7 +2455,7 @@ impl ItemKind {
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod(..) => "foreign module",
             ItemKind::GlobalAsm(..) => "global asm",
-            ItemKind::Ty(..) => "type alias",
+            ItemKind::TyAlias(..) => "type alias",
             ItemKind::OpaqueTy(..) => "opaque type",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
@@ -2478,7 +2478,7 @@ impl ItemKind {
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
             ItemKind::Fn(_, _, ref generics, _) |
-            ItemKind::Ty(_, ref generics) |
+            ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. }) |
             ItemKind::Enum(_, ref generics) |
             ItemKind::Struct(_, ref generics) |

@@ -293,7 +293,7 @@ fn type_param_predicates(
             match item.node {
                 ItemKind::Fn(.., ref generics, _)
                 | ItemKind::Impl(_, _, _, ref generics, ..)
-                | ItemKind::Ty(_, ref generics)
+                | ItemKind::TyAlias(_, ref generics)
                 | ItemKind::OpaqueTy(OpaqueTy {
                     ref generics,
                     impl_trait_fn: None,
@@ -462,7 +462,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
         }) => {}
 
         hir::ItemKind::OpaqueTy(..)
-        | hir::ItemKind::Ty(..)
+        | hir::ItemKind::TyAlias(..)
         | hir::ItemKind::Static(..)
         | hir::ItemKind::Const(..)
         | hir::ItemKind::Fn(..) => {
@@ -917,7 +917,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                     generics
                 }
 
-                ItemKind::Ty(_, ref generics)
+                ItemKind::TyAlias(_, ref generics)
                 | ItemKind::Enum(_, ref generics)
                 | ItemKind::Struct(_, ref generics)
                 | ItemKind::OpaqueTy(hir::OpaqueTy { ref generics, .. })
@@ -1220,7 +1220,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
 
                 find_opaque_ty_constraints(tcx, def_id)
             }
-            ImplItemKind::Type(ref ty) => {
+            ImplItemKind::TyAlias(ref ty) => {
                 if tcx
                     .impl_trait_ref(tcx.hir().get_parent_did(hir_id))
                     .is_none()
@@ -1242,7 +1242,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                         icx.to_ty(ty)
                     }
                 },
-                ItemKind::Ty(ref ty, _)
+                ItemKind::TyAlias(ref ty, _)
                 | ItemKind::Impl(.., ref ty, _) => icx.to_ty(ty),
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -2038,7 +2038,7 @@ fn explicit_predicates_of(
                     generics
                 }
                 ItemKind::Fn(.., ref generics, _)
-                | ItemKind::Ty(_, ref generics)
+                | ItemKind::TyAlias(_, ref generics)
                 | ItemKind::Enum(_, ref generics)
                 | ItemKind::Struct(_, ref generics)
                 | ItemKind::Union(_, ref generics) => generics,

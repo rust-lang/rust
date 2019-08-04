@@ -2709,7 +2709,7 @@ impl<'a> Resolver<'a> {
         debug!("(resolving item) resolving {} ({:?})", name, item.node);
 
         match item.node {
-            ItemKind::Ty(_, ref generics) |
+            ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(_, ref generics) |
             ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_generic_param_rib(
@@ -3079,7 +3079,7 @@ impl<'a> Resolver<'a> {
 
                                                 visit::walk_impl_item(this, impl_item);
                                             }
-                                            ImplItemKind::Type(ref ty) => {
+                                            ImplItemKind::TyAlias(ref ty) => {
                                                 // If this is a trait impl, ensure the type
                                                 // exists in trait
                                                 this.check_trait_item(impl_item.ident,

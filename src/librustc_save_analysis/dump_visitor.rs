@@ -1167,7 +1167,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     impl_item.span,
                 );
             }
-            ast::ImplItemKind::Type(ref ty) => {
+            ast::ImplItemKind::TyAlias(ref ty) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
@@ -1397,7 +1397,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 self.process_mod(item);
                 visit::walk_mod(self, m);
             }
-            Ty(ref ty, ref ty_params) => {
+            TyAlias(ref ty, ref ty_params) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
                 let value = ty_to_string(&ty);

@@ -1509,7 +1509,7 @@ pub struct ImplItem {
 pub enum ImplItemKind {
     Const(P<Ty>, P<Expr>),
     Method(MethodSig, P<Block>),
-    Type(P<Ty>),
+    TyAlias(P<Ty>),
     OpaqueTy(GenericBounds),
     Macro(Mac),
 }
@@ -2346,7 +2346,7 @@ pub enum ItemKind {
     /// A type alias (`type` or `pub type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
-    Ty(P<Ty>, Generics),
+    TyAlias(P<Ty>, Generics),
     /// An opaque `impl Trait` type alias.
     ///
     /// E.g., `type Foo = impl Bar + Boo;`.
@@ -2403,7 +2403,7 @@ impl ItemKind {
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod(..) => "foreign module",
             ItemKind::GlobalAsm(..) => "global asm",
-            ItemKind::Ty(..) => "type alias",
+            ItemKind::TyAlias(..) => "type alias",
             ItemKind::OpaqueTy(..) => "opaque type",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",

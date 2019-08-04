@@ -969,7 +969,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::Use(..)         |
             hir::ItemKind::ForeignMod(..)  |
-            hir::ItemKind::Ty(..)          |
+            hir::ItemKind::TyAlias(..)          |
             hir::ItemKind::Trait(..)       |
             hir::ItemKind::TraitAlias(..)  |
             hir::ItemKind::OpaqueTy(..) |

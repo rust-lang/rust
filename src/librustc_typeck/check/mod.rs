@@ -1409,7 +1409,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
             check_opaque(tcx, def_id, substs, it.span, &origin);
         }
-        hir::ItemKind::Ty(..) => {
+        hir::ItemKind::TyAlias(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
             let pty_ty = tcx.type_of(def_id);
             let generics = tcx.generics_of(def_id);
@@ -1543,7 +1543,7 @@ fn check_specialization_validity<'tcx>(
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
         hir::ImplItemKind::Method(..) => ty::AssocKind::Method,
         hir::ImplItemKind::OpaqueTy(..) => ty::AssocKind::OpaqueTy,
-        hir::ImplItemKind::Type(_) => ty::AssocKind::Type
+        hir::ImplItemKind::TyAlias(_) => ty::AssocKind::Type,
     };
 
     let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).nth(1)
@@ -1640,7 +1640,7 @@ fn check_impl_items_against_trait<'tcx>(
                     }
                 }
                 hir::ImplItemKind::OpaqueTy(..) |
-                hir::ImplItemKind::Type(_) => {
+                hir::ImplItemKind::TyAlias(_) => {
                     if ty_trait_item.kind == ty::AssocKind::Type {
                         if ty_trait_item.defaultness.has_value() {
                             overridden_associated_type = Some(impl_item);

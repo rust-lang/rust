@@ -93,7 +93,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ItemKind::Mod(..) | ItemKind::Trait(..) | ItemKind::TraitAlias(..) |
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
             ItemKind::OpaqueTy(..) | ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) |
-            ItemKind::Ty(..) => DefPathData::TypeNs(i.ident.as_interned_str()),
+            ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.as_interned_str()),
             ItemKind::Fn(
                 ref decl,
                 ref header,
@@ -222,7 +222,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             }
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
                 DefPathData::ValueNs(ii.ident.as_interned_str()),
-            ImplItemKind::Type(..) |
+            ImplItemKind::TyAlias(..) |
             ImplItemKind::OpaqueTy(..) => {
                 DefPathData::TypeNs(ii.ident.as_interned_str())
             },

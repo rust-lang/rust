@@ -570,7 +570,7 @@ impl<'a> State<'a> {
                 self.s.word(ga.asm.as_str().to_string());
                 self.end()
             }
-            hir::ItemKind::Ty(ref ty, ref generics) => {
+            hir::ItemKind::TyAlias(ref ty, ref generics) => {
                 self.print_item_type(item, &generics, |state| {
                     state.word_space("=");
                     state.print_type(&ty);
@@ -908,7 +908,7 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
-            hir::ImplItemKind::Type(ref ty) => {
+            hir::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
             }
             hir::ImplItemKind::OpaqueTy(ref bounds) => {

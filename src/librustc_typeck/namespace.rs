@@ -23,7 +23,7 @@ impl<'a> From <&'a hir::ImplItemKind> for Namespace {
     fn from(impl_kind: &'a hir::ImplItemKind) -> Self {
         match *impl_kind {
             hir::ImplItemKind::OpaqueTy(..) |
-            hir::ImplItemKind::Type(..) => Namespace::Type,
+            hir::ImplItemKind::TyAlias(..) => Namespace::Type,
             hir::ImplItemKind::Const(..) |
             hir::ImplItemKind::Method(..) => Namespace::Value,
         }

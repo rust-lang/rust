@@ -534,7 +534,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             hir::ItemKind::Static(..) | hir::ItemKind::Struct(..) |
             hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) |
             hir::ItemKind::OpaqueTy(..) |
-            hir::ItemKind::Ty(..) | hir::ItemKind::Union(..) | hir::ItemKind::Use(..) => {
+            hir::ItemKind::TyAlias(..) | hir::ItemKind::Union(..) | hir::ItemKind::Use(..) => {
                 if item.vis.node.is_pub() { self.prev_level } else { None }
             }
         };
@@ -589,7 +589,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             hir::ItemKind::Static(..) |
             hir::ItemKind::Const(..) |
             hir::ItemKind::GlobalAsm(..) |
-            hir::ItemKind::Ty(..) |
+            hir::ItemKind::TyAlias(..) |
             hir::ItemKind::Mod(..) |
             hir::ItemKind::TraitAlias(..) |
             hir::ItemKind::Fn(..) |
@@ -621,7 +621,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             // Visit everything.
             hir::ItemKind::Const(..) | hir::ItemKind::Static(..) |
-            hir::ItemKind::Fn(..) | hir::ItemKind::Ty(..) => {
+            hir::ItemKind::Fn(..) | hir::ItemKind::TyAlias(..) => {
                 if item_level.is_some() {
                     self.reach(item.hir_id, item_level).generics().predicates().ty();
                 }
@@ -1371,7 +1371,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                                 impl_item_ref.id.hir_id)
                                          }
                                          hir::ImplItemKind::OpaqueTy(..) |
-                                         hir::ImplItemKind::Type(_) => false,
+                                         hir::ImplItemKind::TyAlias(_) => false,
                                      }
                                  });
 
@@ -1397,7 +1397,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                     {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
-                                    hir::ImplItemKind::Type(..) => {
+                                    hir::ImplItemKind::TyAlias(..) => {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
                                     _ => {}
@@ -1423,7 +1423,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             // Those in 3. are warned with this call.
                             for impl_item_ref in impl_item_refs {
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                                if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
+                                if let hir::ImplItemKind::TyAlias(ref ty) = impl_item.node {
                                     self.visit_ty(ty);
                                 }
                             }
@@ -1458,7 +1458,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
             // `type ... = ...;` can contain private types, because
             // we're introducing a new name.
-            hir::ItemKind::Ty(..) => return,
+            hir::ItemKind::TyAlias(..) => return,
 
             // Not at all public, so we don't care.
             _ if !self.item_is_public(&item.hir_id, &item.vis) => {
@@ -1739,7 +1739,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             hir::ItemKind::GlobalAsm(..) => {}
             // Subitems of these items have inherited publicity.
             hir::ItemKind::Const(..) | hir::ItemKind::Static(..) |
-            hir::ItemKind::Fn(..) | hir::ItemKind::Ty(..) => {
+            hir::ItemKind::Fn(..) | hir::ItemKind::TyAlias(..) => {
                 self.check(item.hir_id, item_visibility).generics().predicates().ty();
             }
             hir::ItemKind::OpaqueTy(..) => {

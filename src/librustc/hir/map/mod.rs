@@ -302,7 +302,7 @@ impl<'hir> Map<'hir> {
                     ItemKind::Fn(..) => DefKind::Fn,
                     ItemKind::Mod(..) => DefKind::Mod,
                     ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
-                    ItemKind::Ty(..) => DefKind::TyAlias,
+                    ItemKind::TyAlias(..) => DefKind::TyAlias,
                     ItemKind::Enum(..) => DefKind::Enum,
                     ItemKind::Struct(..) => DefKind::Struct,
                     ItemKind::Union(..) => DefKind::Union,
@@ -333,7 +333,7 @@ impl<'hir> Map<'hir> {
                 match item.node {
                     ImplItemKind::Const(..) => DefKind::AssocConst,
                     ImplItemKind::Method(..) => DefKind::Method,
-                    ImplItemKind::Type(..) => DefKind::AssocTy,
+                    ImplItemKind::TyAlias(..) => DefKind::AssocTy,
                     ImplItemKind::OpaqueTy(..) => DefKind::AssocOpaqueTy,
                 }
             }
@@ -576,7 +576,7 @@ impl<'hir> Map<'hir> {
                 Node::Item(ref item) => {
                     match item.node {
                         ItemKind::Fn(_, _, ref generics, _) |
-                        ItemKind::Ty(_, ref generics) |
+                        ItemKind::TyAlias(_, ref generics) |
                         ItemKind::Enum(_, ref generics) |
                         ItemKind::Struct(_, ref generics) |
                         ItemKind::Union(_, ref generics) |
@@ -1269,7 +1269,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
                 ItemKind::Mod(..) => "mod",
                 ItemKind::ForeignMod(..) => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
-                ItemKind::Ty(..) => "ty",
+                ItemKind::TyAlias(..) => "ty",
                 ItemKind::OpaqueTy(..) => "opaque type",
                 ItemKind::Enum(..) => "enum",
                 ItemKind::Struct(..) => "struct",
@@ -1291,7 +1291,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
                 ImplItemKind::Method(..) => {
                     format!("method {} in {}{}", ii.ident, path_str(), id_str)
                 }
-                ImplItemKind::Type(_) => {
+                ImplItemKind::TyAlias(_) => {
                     format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
                 }
                 ImplItemKind::OpaqueTy(_) => {
