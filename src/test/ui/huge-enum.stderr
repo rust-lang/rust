@@ -1,5 +1,5 @@
-error: the type `std::option::Option<[u32; 35184372088831]>` is too big for the current architecture
-  --> $DIR/huge-enum.rs:12:9
+error: the type `TYPE` is too big for the current architecture
+  --> $DIR/huge-enum.rs:15:9
    |
 LL |     let big: BIG = None;
    |         ^^^
