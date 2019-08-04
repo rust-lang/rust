@@ -2,7 +2,7 @@ error: found 2 equal signs, need exactly 3
   --> $DIR/three-equals.rs:15:5
    |
 LL |     three_equals!(==);
-   |     ^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^ in this macro invocation
    |
    = help: input must be: `===`
 

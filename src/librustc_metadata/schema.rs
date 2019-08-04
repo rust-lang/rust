@@ -182,6 +182,10 @@ pub struct CrateRoot<'tcx> {
 
     pub entries_index: LazySeq<index::Index<'tcx>>,
 
+    /// The DefIndex's of any proc macros delcared by
+    /// this crate
+    pub proc_macro_data: Option<LazySeq<DefIndex>>,
+
     pub compiler_builtins: bool,
     pub needs_allocator: bool,
     pub needs_panic_runtime: bool,
