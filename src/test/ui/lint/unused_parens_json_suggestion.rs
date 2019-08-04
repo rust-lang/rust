@@ -1,4 +1,4 @@
-// compile-flags: --error-format pretty-json -Zunstable-options
+// compile-flags: --error-format -Zunstable-options
 // build-pass (FIXME(62277): could be check-pass?)
 // run-rustfix
 
@@ -8,13 +8,13 @@
 // stripping away any starting or ending parenthesis characters—hence this
 // test of the JSON error format.
 
-#![warn(unused_parens)]
 #![allow(unreachable_code)]
+#![deny(unused_parens)]
 
 fn main() {
     // We want to suggest the properly-balanced expression `1 / (2 + 3)`, not
     // the malformed `1 / (2 + 3`
-    let _a = (1 / (2 + 3));
+    let _a = (1 / (2 + 3)); //~ ERROR: unused parentheses wrap expression
     f();
 }
 
