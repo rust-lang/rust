@@ -348,6 +348,8 @@ pub enum UndefinedBehaviorInfo {
     UbExperimental(String),
     /// Unreachable code was executed.
     Unreachable,
+    /// An `assume` was run on a `false` condition,
+    AssumptionNotHeld,
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -358,6 +360,8 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 write!(f, "{}", msg),
             Unreachable =>
                 write!(f, "entered unreachable code"),
+            AssumptionNotHeld =>
+                write!(f, "`assume` argument was false"),
         }
     }
 }
@@ -408,7 +412,6 @@ pub enum UnsupportedOpInfo<'tcx> {
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
     ModifiedStatic,
-    AssumptionNotHeld,
     TypeNotPrimitive(Ty<'tcx>),
     ReallocatedWrongMemoryKind(String, String),
     DeallocatedWrongMemoryKind(String, String),
@@ -507,8 +510,6 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             ModifiedStatic =>
                 write!(f, "tried to modify a static's initial value from another static's \
                     initializer"),
-            AssumptionNotHeld =>
-                write!(f, "`assume` argument was false"),
             ReallocateNonBasePtr =>
                 write!(f, "tried to reallocate with a pointer not to the beginning of an \
                     existing object"),
