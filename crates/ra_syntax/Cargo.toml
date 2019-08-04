@@ -8,7 +8,6 @@ description = "Comment and whitespace preserving parser for the Rust langauge"
 repository = "https://github.com/rust-analyzer/rust-analyzer"
 
 [dependencies]
-unicode-xid = "0.1.0"
 itertools = "0.8.0"
 rowan = "0.6.1"
 ra_rustc_lexer = { version = "0.1.0-pre.2" }
