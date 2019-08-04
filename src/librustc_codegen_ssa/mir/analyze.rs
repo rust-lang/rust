@@ -182,18 +182,13 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                     rvalue: &mir::Rvalue<'tcx>,
                     location: Location) {
         debug!("visit_assign(place={:?}, rvalue={:?})", place, rvalue);
-        let mut decl_span = None;
-        if let mir::PlaceBase::Local(local) = &place.base {
-            if let Some(decl) = self.fx.mir.local_decls.get(*local) {
-                decl_span = Some(decl.source_info.span);
-            }
-        }
 
         if let mir::Place {
             base: mir::PlaceBase::Local(index),
             projection: None,
         } = *place {
             self.assign(index, location);
+            let decl_span = self.fx.mir.local_decls[index].source_info.span;
             if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
                 self.not_ssa(index);
             }

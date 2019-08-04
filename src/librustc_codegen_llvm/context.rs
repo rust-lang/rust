@@ -30,7 +30,7 @@ use std::iter;
 use std::str;
 use std::sync::Arc;
 use syntax::symbol::LocalInternedString;
-use syntax::source_map::Span;
+use syntax::source_map::{DUMMY_SP, Span};
 use crate::abi::Abi;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
@@ -861,10 +861,10 @@ impl LayoutOf for CodegenCx<'ll, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
-        self.spanned_layout_of(ty, None)
+        self.spanned_layout_of(ty, DUMMY_SP)
     }
 
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Option<Span>) -> Self::TyLayout {
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
             .unwrap_or_else(|e| if let LayoutError::SizeOverflow(_) = e {
                 match span {

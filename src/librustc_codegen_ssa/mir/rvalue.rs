@@ -6,7 +6,7 @@ use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
 use std::{u128, i128};
 use syntax::symbol::sym;
-use syntax::source_map::Span;
+use syntax::source_map::{DUMMY_SP, Span};
 
 use crate::base;
 use crate::MemFlags;
@@ -137,7 +137,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue, None));
+                assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP));
                 let (mut bx, temp) = self.codegen_rvalue_operand(bx, rvalue);
                 temp.val.store(&mut bx, dest);
                 bx
@@ -171,7 +171,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rvalue: &mir::Rvalue<'tcx>
     ) -> (Bx, OperandRef<'tcx, Bx::Value>) {
         assert!(
-            self.rvalue_creates_operand(rvalue, None),
+            self.rvalue_creates_operand(rvalue, DUMMY_SP),
             "cannot codegen {:?} to operand",
             rvalue,
         );
@@ -696,7 +696,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Option<Span>) -> bool {
+    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Ref(..) |
             mir::Rvalue::Len(..) |
