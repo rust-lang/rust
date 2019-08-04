@@ -78,8 +78,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Generate some random bytes, and write them to `dest`.
     fn gen_random(
         &mut self,
-        len: usize,
         ptr: Scalar<Tag>,
+        len: usize,
     ) -> InterpResult<'tcx>  {
         let this = self.eval_context_mut();
 
