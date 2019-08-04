@@ -969,12 +969,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 }
 
 // Shims the linux 'getrandom()' syscall
-fn linux_getrandom<'mir, 'tcx>(this: &mut MiriEvalContext<'mir, 'tcx>,
-                               args: &[OpTy<'tcx, Tag>],
-                               dest: PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+fn linux_getrandom<'tcx>(
+    this: &mut MiriEvalContext<'_, 'tcx>,
+    args: &[OpTy<'tcx, Tag>],
+    dest: PlaceTy<'tcx, Tag>
+) -> InterpResult<'tcx> {
     let ptr = this.read_scalar(args[0])?.not_undef()?;
     let len = this.read_scalar(args[1])?.to_usize(this)?;
-
 
     // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
     // neither of which have any effect on our current PRNG
