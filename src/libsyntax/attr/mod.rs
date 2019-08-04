@@ -355,8 +355,8 @@ pub fn mk_name_value_item(span: Span, ident: Ident, lit_kind: LitKind, lit_span:
     MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::NameValue(lit) }
 }
 
-pub fn mk_list_item(span: Span, ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
-    MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::List(items) }
+pub fn mk_list_item(ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
+    MetaItem { path: Path::from_ident(ident), span: ident.span, node: MetaItemKind::List(items) }
 }
 
 pub fn mk_word_item(ident: Ident) -> MetaItem {
