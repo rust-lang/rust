@@ -43,9 +43,26 @@ doc_comment::doctest!("../README.md");
 #[macro_use]
 mod macros;
 
+#[cfg(feature = "raw")]
+/// Experimental and unsafe `RawTable` API. This module is only available if the
+/// `raw` feature is enabled.
+pub mod raw {
+    // The RawTable API is still experimental and is not properly documented yet.
+    #[allow(missing_docs)]
+    #[path = "mod.rs"]
+    mod inner;
+    pub use inner::*;
+
+    #[cfg(feature = "rayon")]
+    pub mod rayon {
+        pub use crate::external_trait_impls::rayon::raw::*;
+    }
+}
+#[cfg(not(feature = "raw"))]
+mod raw;
+
 mod external_trait_impls;
 mod map;
-mod raw;
 #[cfg(feature = "rustc-internal-api")]
 mod rustc_entry;
 mod scopeguard;

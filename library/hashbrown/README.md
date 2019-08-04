@@ -101,6 +101,7 @@ This crate has the following Cargo features:
 - `nightly`: Enables nightly-only features: `#[may_dangle]`.
 - `serde`: Enables serde serialization support.
 - `rayon`: Enables rayon parallel iterator support.
+- `raw`: Enables access to the experimental and unsafe `RawTable` API.
 
 ## License
 

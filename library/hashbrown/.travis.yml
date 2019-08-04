@@ -13,7 +13,7 @@ matrix:
     - name: "docs"
       env: TARGET=x86_64-unknown-linux-gnu
       script:
-        - cargo -vv doc --features nightly,serde,rayon
+        - cargo -vv doc --features nightly,serde,rayon,raw
         - echo '<meta http-equiv=refresh content=0;url=hashbrown/index.html>' > target/doc/index.html
       deploy:
         provider: pages
