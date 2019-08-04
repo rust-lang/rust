@@ -296,6 +296,9 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "unreachable" => {
                     trap_unreachable(fx, "[corruption] Called intrinsic::unreachable.");
                 }
+                "transmute" => {
+                    trap_unreachable(fx, "[corruption] Called intrinsic::transmute with uninhabited argument.");
+                }
                 _ => unimplemented!("unsupported instrinsic {}", intrinsic),
             }
             return;
