@@ -300,7 +300,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         // neither of which have any effect on our current PRNG
                         let _flags = this.read_scalar(args[3])?.to_i32()?;
 
-                        this.gen_random(len as usize, ptr)?;
+                        this.gen_random(ptr, len as usize)?;
                         this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
                     id => {
@@ -776,7 +776,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SecRandomCopyBytes" => {
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
                 let ptr = this.read_scalar(args[2])?.not_undef()?;
-                this.gen_random(len as usize, ptr)?;
+                this.gen_random(ptr, len as usize)?;
                 this.write_null(dest)?;
             }
 
@@ -938,7 +938,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SystemFunction036" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let len = this.read_scalar(args[1])?.to_u32()?;
-                this.gen_random(len as usize, ptr)?;
+                this.gen_random(ptr, len as usize)?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
 

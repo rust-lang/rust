@@ -41,7 +41,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             GetEntropy => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
-                this.gen_random(len as usize, ptr)?;
+                this.gen_random(ptr, len as usize)?;
                 this.write_null(dest)?;
             }
         }
