@@ -1,5 +1,5 @@
 // Unfortunately, compiletest_rs does not support 'only-linux',
-// so we need to ignore Windows and OS X instead
+// so we need to ignore Windows and macOS instead.
 // ignore-macos: Uses Linux-only APIs
 // ignore-windows: Uses Linux-only APIs
 #![feature(rustc_private)]
