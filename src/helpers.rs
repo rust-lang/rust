@@ -81,6 +81,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         ptr: Scalar<Tag>,
         len: usize,
     ) -> InterpResult<'tcx>  {
+        // Some programs pass in a null pointer and a length of 0
+        // to their platform's random-generation function (e.g. getrandom())
+        // on Linux. For compatibility with these programs, we don't perform
+        // any additional checks - it's okay if the pointer is invalid,
+        // since we wouldn't actually be writing to it.
+        if len == 0 {
+            return Ok(())
+        }
         let this = self.eval_context_mut();
 
         let ptr = match this.memory().check_ptr_access(ptr, Size::from_bytes(len as u64), Align::from_bytes(1).unwrap())? {
