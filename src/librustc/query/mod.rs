@@ -110,7 +110,7 @@ rustc_queries! {
             no_hash
         }
 
-        query mir_validated(_: DefId) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_validated(_: DefId) -> (&'tcx Steal<mir::Body<'tcx>>, &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>) {
             no_hash
         }
 
@@ -125,7 +125,17 @@ rustc_queries! {
             }
         }
 
-        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> { }
+        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
+            cache_on_disk_if { key.is_local() }
+            load_cached(tcx, id) {
+                let promoted: Option<
+                    rustc_data_structures::indexed_vec::IndexVec<
+                        crate::mir::Promoted,
+                        crate::mir::Body<'tcx>
+                    >> = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);
+                promoted.map(|p| &*tcx.arena.alloc(p))
+            }
+        }
     }
 
     TypeChecking {

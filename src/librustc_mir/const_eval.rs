@@ -667,7 +667,7 @@ pub fn const_eval_raw_provider<'tcx>(
     let res = ecx.load_mir(cid.instance.def);
     res.map(|body| {
         if let Some(index) = cid.promoted {
-            &body.promoted[index]
+           &tcx.promoted_mir(def_id)[index]
         } else {
             body
         }

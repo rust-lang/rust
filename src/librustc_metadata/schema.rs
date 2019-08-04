@@ -11,6 +11,7 @@ use rustc::session::CrateDisambiguator;
 use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::svh::Svh;
 
 use syntax::{ast, attr};
@@ -231,6 +232,7 @@ pub struct Entry<'tcx> {
     pub predicates_defined_on: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
     pub mir: Option<Lazy<mir::Body<'tcx>>>,
+    pub promoted_mir: Option<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]

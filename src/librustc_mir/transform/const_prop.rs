@@ -8,7 +8,7 @@ use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
     Local, NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
     TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp, ProjectionElem,
-    SourceScope, SourceScopeLocalData, LocalDecl, Promoted,
+    SourceScope, SourceScopeLocalData, LocalDecl,
 };
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
@@ -64,17 +64,12 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             &mut body.source_scope_local_data,
             ClearCrossCrate::Clear
         );
-        let promoted = std::mem::replace(
-            &mut body.promoted,
-            IndexVec::new()
-        );
 
         let dummy_body =
             &Body::new(
                 body.basic_blocks().clone(),
                 Default::default(),
                 ClearCrossCrate::Clear,
-                Default::default(),
                 None,
                 body.local_decls.clone(),
                 Default::default(),
@@ -92,21 +87,16 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             body,
             dummy_body,
             source_scope_local_data,
-            promoted,
             tcx,
             source
         );
         optimization_finder.visit_body(body);
 
         // put back the data we stole from `mir`
-        let (source_scope_local_data, promoted) = optimization_finder.release_stolen_data();
+        let source_scope_local_data = optimization_finder.release_stolen_data();
         std::mem::replace(
             &mut body.source_scope_local_data,
             source_scope_local_data
-        );
-        std::mem::replace(
-            &mut body.promoted,
-            promoted
         );
 
         trace!("ConstProp done for {:?}", source.def_id());
@@ -124,7 +114,6 @@ struct ConstPropagator<'mir, 'tcx> {
     param_env: ParamEnv<'tcx>,
     source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
-    promoted: IndexVec<Promoted, Body<'tcx>>,
 }
 
 impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
@@ -155,7 +144,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         body: &Body<'tcx>,
         dummy_body: &'mir Body<'tcx>,
         source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
-        promoted: IndexVec<Promoted, Body<'tcx>>,
         tcx: TyCtxt<'tcx>,
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'mir, 'tcx> {
@@ -184,17 +172,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             source_scope_local_data,
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: body.local_decls.clone(),
-            promoted,
         }
     }
 
-    fn release_stolen_data(
-        self,
-    ) -> (
-        ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
-        IndexVec<Promoted, Body<'tcx>>,
-    ) {
-        (self.source_scope_local_data, self.promoted)
+    fn release_stolen_data(self) -> ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>> {
+        self.source_scope_local_data
     }
 
     fn get_const(&self, local: Local) -> Option<Const<'tcx>> {
@@ -318,7 +300,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // cannot use `const_eval` here, because that would require having the MIR
                     // for the current function available, but we're producing said MIR right now
                     let res = self.use_ecx(source_info, |this| {
-                        let body = &this.promoted[*promoted];
+                        let body = &this.tcx.promoted_mir(this.source.def_id())[*promoted];
                         eval_promoted(this.tcx, cid, body, this.param_env)
                     })?;
                     trace!("evaluated promoted {:?} to {:?}", promoted, res);

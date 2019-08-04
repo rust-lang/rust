@@ -108,11 +108,6 @@ pub struct Body<'tcx> {
     /// needn't) be tracked across crates.
     pub source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
 
-    /// Rvalues promoted from this function, such as borrows of constants.
-    /// Each of them is the Body of a constant with the fn's type parameters
-    /// in scope, but a separate set of locals.
-    pub promoted: IndexVec<Promoted, Body<'tcx>>,
-
     /// Yields type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
 
@@ -174,7 +169,6 @@ impl<'tcx> Body<'tcx> {
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
         source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
-        promoted: IndexVec<Promoted, Body<'tcx>>,
         yield_ty: Option<Ty<'tcx>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
@@ -196,7 +190,6 @@ impl<'tcx> Body<'tcx> {
             basic_blocks,
             source_scopes,
             source_scope_local_data,
-            promoted,
             yield_ty,
             generator_drop: None,
             generator_layout: None,
@@ -418,7 +411,6 @@ impl_stable_hash_for!(struct Body<'tcx> {
     basic_blocks,
     source_scopes,
     source_scope_local_data,
-    promoted,
     yield_ty,
     generator_drop,
     generator_layout,
@@ -3032,7 +3024,6 @@ BraceStructTypeFoldableImpl! {
         basic_blocks,
         source_scopes,
         source_scope_local_data,
-        promoted,
         yield_ty,
         generator_drop,
         generator_layout,

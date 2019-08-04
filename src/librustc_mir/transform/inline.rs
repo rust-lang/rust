@@ -394,7 +394,7 @@ impl Inliner<'tcx> {
 
                 let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
-                let mut promoted_map = IndexVec::with_capacity(callee_body.promoted.len());
+                let promoted_map = IndexVec::with_capacity(self.tcx.promoted_mir(callsite.callee).len());
 
                 for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
@@ -420,9 +420,10 @@ impl Inliner<'tcx> {
                     local_map.push(idx);
                 }
 
-                promoted_map.extend(
-                    callee_body.promoted.iter().cloned().map(|p| caller_body.promoted.push(p))
-                );
+                //TODO fixme
+                //promoted_map.extend(
+                //    self.tcx.promoted_mir(callsite.callee).iter().cloned().map(|p| caller_body.promoted.push(p))
+                //);
 
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`

@@ -1,16 +1,18 @@
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
-use rustc::mir::{Location, Body};
+use rustc::mir::{Location, Body, Promoted};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc_data_structures::indexed_vec::IndexVec;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
-pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, 'tcx>, body: &mut Body<'tcx>) {
+pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, 'tcx>, body: &mut Body<'tcx>, promoted: &mut IndexVec<Promoted, Body<'tcx>>) {
     debug!("renumber_mir()");
     debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
 
     let mut visitor = NLLVisitor { infcx };
+    visitor.visit_promoted(promoted);
     visitor.visit_body(body);
 }
 
@@ -41,17 +43,16 @@ impl<'a, 'tcx> NLLVisitor<'a, 'tcx> {
     {
         renumber_regions(self.infcx, value)
     }
+
+    fn visit_promoted(&mut self, promoted: &mut IndexVec<Promoted, Body<'tcx>>) {
+        debug!("visiting promoted mir");
+        for body in promoted.iter_mut() {
+            self.visit_body(body);
+        }
+    }
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
-    fn visit_body(&mut self, body: &mut Body<'tcx>) {
-        for promoted in body.promoted.iter_mut() {
-            self.visit_body(promoted);
-        }
-
-        self.super_body(body);
-    }
-
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
         debug!("visit_ty(ty={:?}, ty_context={:?})", ty, ty_context);
 

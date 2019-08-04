@@ -184,13 +184,6 @@ pub fn run_passes(
     };
 
     run_passes(body, None);
-
-    for (index, promoted_body) in body.promoted.iter_enumerated_mut() {
-        run_passes(promoted_body, Some(index));
-
-        //Let's make sure we don't miss any nested instances
-        assert!(promoted_body.promoted.is_empty())
-    }
 }
 
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
@@ -207,7 +200,7 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
     tcx.alloc_steal_mir(body)
 }
 
-fn mir_validated(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
+fn mir_validated(tcx: TyCtxt<'tcx>, def_id: DefId) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(hir_id) {
         // Ensure that we compute the `mir_const_qualif` for constants at
@@ -216,12 +209,14 @@ fn mir_validated(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
     }
 
     let mut body = tcx.mir_const(def_id).steal();
+    let qualify_and_promote_pass = qualify_consts::QualifyAndPromoteConstants::default();
     run_passes(tcx, &mut body, InstanceDef::Item(def_id), MirPhase::Validated, &[
         // What we need to run borrowck etc.
-        &qualify_consts::QualifyAndPromoteConstants,
+        &qualify_and_promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);
-    tcx.alloc_steal_mir(body)
+    let promoted = qualify_and_promote_pass.promoted.into_inner();
+    (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted.unwrap_or_else(|| IndexVec::new())))
 }
 
 fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
@@ -241,7 +236,8 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
         tcx.ensure().borrowck(def_id);
     }
 
-    let mut body = tcx.mir_validated(def_id).steal();
+    let (body, _) = tcx.mir_validated(def_id);
+    let mut body = body.steal();
     run_passes(tcx, &mut body, InstanceDef::Item(def_id), MirPhase::Optimized, &[
         // Remove all things only needed by analysis
         &no_landing_pads::NoLandingPads,
@@ -297,6 +293,66 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
 }
 
 fn promoted_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
-    let body = tcx.optimized_mir(def_id);
-    &body.promoted
+    if tcx.is_constructor(def_id) {
+        return tcx.intern_promoted(IndexVec::new());
+    }
+
+    tcx.ensure().mir_borrowck(def_id);
+    let (_, promoted) = tcx.mir_validated(def_id);
+    let mut promoted = promoted.steal();
+
+    for mut body in promoted.iter_mut() {
+        run_passes(tcx, &mut body, InstanceDef::Item(def_id), MirPhase::Optimized, &[
+            // Remove all things only needed by analysis
+            &no_landing_pads::NoLandingPads,
+            &simplify_branches::SimplifyBranches::new("initial"),
+            &remove_noop_landing_pads::RemoveNoopLandingPads,
+            &cleanup_post_borrowck::CleanupNonCodegenStatements,
+
+            &simplify::SimplifyCfg::new("early-opt"),
+
+            // These next passes must be executed together
+            &add_call_guards::CriticalCallEdges,
+            &elaborate_drops::ElaborateDrops,
+            &no_landing_pads::NoLandingPads,
+            // AddMovesForPackedDrops needs to run after drop
+            // elaboration.
+            &add_moves_for_packed_drops::AddMovesForPackedDrops,
+            // AddRetag needs to run after ElaborateDrops, and it needs
+            // an AllCallEdges pass right before it.  Otherwise it should
+            // run fairly late, but before optimizations begin.
+            &add_call_guards::AllCallEdges,
+            &add_retag::AddRetag,
+
+            &simplify::SimplifyCfg::new("elaborate-drops"),
+
+            // No lifetime analysis based on borrowing can be done from here on out.
+
+            // From here on out, regions are gone.
+            &erase_regions::EraseRegions,
+
+            // Optimizations begin.
+            &uniform_array_move_out::RestoreSubsliceArrayMoveOut,
+            &inline::Inline,
+
+            // Lowering generator control-flow and variables
+            // has to happen before we do anything else to them.
+            &generator::StateTransform,
+
+            &instcombine::InstCombine,
+            &const_prop::ConstProp,
+            &simplify_branches::SimplifyBranches::new("after-const-prop"),
+            &deaggregator::Deaggregator,
+            &copy_prop::CopyPropagation,
+            &simplify_branches::SimplifyBranches::new("after-copy-prop"),
+            &remove_noop_landing_pads::RemoveNoopLandingPads,
+            &simplify::SimplifyCfg::new("final"),
+            &simplify::SimplifyLocals,
+
+            &add_call_guards::CriticalCallEdges,
+            &dump_mir::Marker("PreCodegen"),
+        ]);
+    }
+
+    tcx.intern_promoted(promoted)
 }

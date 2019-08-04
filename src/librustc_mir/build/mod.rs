@@ -763,7 +763,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.cfg.basic_blocks,
             self.source_scopes,
             ClearCrossCrate::Set(self.source_scope_local_data),
-            IndexVec::new(),
             yield_ty,
             self.local_decls,
             self.canonical_user_type_annotations,

@@ -185,7 +185,7 @@ use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind, Instance};
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::session::config::EntryFnType;
-use rustc::mir::{self, Location, PlaceBase, Promoted, Static, StaticKind};
+use rustc::mir::{self, Location, PlaceBase, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::{MonoItem, InstantiationMode};
 use rustc::mir::interpret::{Scalar, GlobalId, GlobalAlloc, ErrorHandled};
@@ -1222,6 +1222,7 @@ fn collect_neighbours<'tcx>(
     instance: Instance<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
+    debug!("collect_neighbours: {:?}", instance.def_id());
     let body = tcx.instance_mir(instance.def);
 
     MirNeighborCollector {
@@ -1230,20 +1231,22 @@ fn collect_neighbours<'tcx>(
         output,
         param_substs: instance.substs,
     }.visit_body(&body);
-    let param_env = ty::ParamEnv::reveal_all();
-    for i in 0..body.promoted.len() {
-        use rustc_data_structures::indexed_vec::Idx;
-        let i = Promoted::new(i);
-        let cid = GlobalId {
-            instance,
-            promoted: Some(i),
-        };
-        match tcx.const_eval(param_env.and(cid)) {
-            Ok(val) => collect_const(tcx, val, instance.substs, output),
-            Err(ErrorHandled::Reported) => {},
-            Err(ErrorHandled::TooGeneric) => span_bug!(
-                body.promoted[i].span, "collection encountered polymorphic constant",
-            ),
+
+    if let ty::InstanceDef::Item(def_id) = instance.def {
+        let param_env = ty::ParamEnv::reveal_all();
+        let promoted = tcx.promoted_mir(def_id);
+        for (promoted, promoted_body) in promoted.iter_enumerated() {
+            let cid = GlobalId {
+                instance,
+                promoted: Some(promoted),
+            };
+            match tcx.const_eval(param_env.and(cid)) {
+                Ok(val) => collect_const(tcx, val, instance.substs, output),
+                Err(ErrorHandled::Reported) => {},
+                Err(ErrorHandled::TooGeneric) => span_bug!(
+                    promoted_body.span, "collection encountered polymorphic constant",
+                ),
+            }
         }
     }
 }

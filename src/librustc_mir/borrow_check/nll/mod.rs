@@ -11,8 +11,9 @@ use crate::transform::MirSource;
 use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Local, Body};
+use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Local, Body, Promoted};
 use rustc::ty::{self, RegionKind, RegionVid};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::Diagnostic;
 use std::fmt::Debug;
 use std::env;
@@ -52,6 +53,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
+    promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
@@ -59,7 +61,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
 
     // Replace all remaining regions with fresh inference variables.
-    renumber::renumber_mir(infcx, body);
+    renumber::renumber_mir(infcx, body, promoted);
 
     let source = MirSource::item(def_id);
     mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body, |_, _| Ok(()));
@@ -75,6 +77,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
+    promoted: &IndexVec<Promoted, Body<'tcx>>,
     upvars: &[Upvar],
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
@@ -105,6 +108,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         infcx,
         param_env,
         body,
+        promoted,
         def_id,
         &universal_regions,
         location_table,
