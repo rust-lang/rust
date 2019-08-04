@@ -375,6 +375,25 @@ fn test_chunks_exact_mut_nth() {
 }
 
 #[test]
+fn test_chunks_exact_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks_exact_mut(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c2 = v2.chunks_exact_mut(3);
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks_exact_mut(10);
+    assert_eq!(c3.nth_back(0), None);
+}
+
+#[test]
 fn test_chunks_exact_mut_last() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
     let c = v.chunks_exact_mut(2);
