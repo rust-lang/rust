@@ -18,6 +18,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
             tts: TokenStream::empty().into(),
             delim: ast::MacDelimiter::Brace,
+            prior_type_ascription: None,
         })
     }
 

@@ -1306,6 +1306,7 @@ pub struct Mac_ {
     pub path: Path,
     pub delim: MacDelimiter,
     pub tts: TokenStream,
+    pub prior_type_ascription: Option<(Span, bool)>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]

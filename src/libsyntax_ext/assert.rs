@@ -37,6 +37,7 @@ pub fn expand_assert<'cx>(
             ))
         }).into(),
         delim: MacDelimiter::Parenthesis,
+        prior_type_ascription: None,
     };
     let if_expr = cx.expr_if(
         sp,

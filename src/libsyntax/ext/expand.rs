@@ -517,8 +517,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     result
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
+                    let prev = self.cx.current_expansion.prior_type_ascription;
+                    self.cx.current_expansion.prior_type_ascription =
+                        mac.node.prior_type_ascription;
                     let tok_result = expander.expand(self.cx, span, mac.node.stream());
-                    if let Some(result) = fragment_kind.make_from(tok_result) {
+                    let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
                         let msg = format!("non-{kind} macro in {kind} position: {path}",
@@ -526,7 +529,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx.span_err(span, &msg);
                         self.cx.trace_macros_diag();
                         fragment_kind.dummy(span)
-                    }
+                    };
+                    self.cx.current_expansion.prior_type_ascription = prev;
+                    result
                 }
                 _ => unreachable!()
             }
