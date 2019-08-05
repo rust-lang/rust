@@ -21,8 +21,8 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
 
 export class HintsUpdater {
     private displayHints = true;
-    private drawnDecorations = new WeakMap<
-        vscode.Uri,
+    private decorationsSinceLastChange = new Map<
+        string,
         vscode.DecorationOptions[]
     >();
 
@@ -30,8 +30,8 @@ export class HintsUpdater {
         if (this.displayHints) {
             const documentUri = this.getEditorDocumentUri(editor);
             if (documentUri !== null) {
-                const latestDecorations = this.drawnDecorations.get(
-                    documentUri
+                const latestDecorations = this.decorationsSinceLastChange.get(
+                    documentUri.toString()
                 );
                 if (latestDecorations === undefined) {
                     await this.updateDecorationsFromServer(
@@ -51,7 +51,7 @@ export class HintsUpdater {
     public async toggleHintsDisplay(displayHints: boolean): Promise<void> {
         if (this.displayHints !== displayHints) {
             this.displayHints = displayHints;
-            this.drawnDecorations = new WeakMap();
+            this.decorationsSinceLastChange.clear();
 
             if (displayHints) {
                 return this.updateHints();
@@ -72,14 +72,15 @@ export class HintsUpdater {
             return;
         }
         const editor = vscode.window.activeTextEditor;
-        if (editor == null) {
+        if (editor === undefined) {
             return;
         }
-        const document = cause == null ? editor.document : cause.document;
+        const document = cause === undefined ? editor.document : cause.document;
         if (!this.isRustDocument(document)) {
             return;
         }
 
+        this.decorationsSinceLastChange.clear();
         return await this.updateDecorationsFromServer(document.uri, editor);
     }
 
@@ -92,23 +93,23 @@ export class HintsUpdater {
         editor: TextEditor
     ): Promise<void> {
         const newHints = await this.queryHints(documentUri.toString());
-        if (newHints != null) {
+        if (
+            newHints !== null &&
+            this.getEditorDocumentUri(vscode.window.activeTextEditor) ===
+                documentUri
+        ) {
             const newDecorations = newHints.map(hint => ({
                 range: hint.range,
                 renderOptions: { after: { contentText: `: ${hint.label}` } }
             }));
-
-            this.drawnDecorations.set(documentUri, newDecorations);
-
-            if (
-                this.getEditorDocumentUri(vscode.window.activeTextEditor) ===
-                documentUri
-            ) {
-                return editor.setDecorations(
-                    typeHintDecorationType,
-                    newDecorations
-                );
-            }
+            this.decorationsSinceLastChange.set(
+                documentUri.toString(),
+                newDecorations
+            );
+            return editor.setDecorations(
+                typeHintDecorationType,
+                newDecorations
+            );
         }
     }
 
