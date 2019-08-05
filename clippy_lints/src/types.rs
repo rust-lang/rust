@@ -25,7 +25,7 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro_or_desugar, int_bits, last_path_segment,
     match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
-    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
+    snippet_with_macro_callsite, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -467,15 +467,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
                 if higher::is_from_for_desugar(local) {
                     return;
                 }
-                span_lint(
-                    cx,
-                    LET_UNIT_VALUE,
-                    stmt.span,
-                    &format!(
-                        "this let-binding has unit value. Consider omitting `let {} =`",
-                        snippet(cx, local.pat.span, "..")
-                    ),
-                );
+                span_lint_and_then(cx, LET_UNIT_VALUE, stmt.span, "this let-binding has unit value", |db| {
+                    if let Some(expr) = &local.init {
+                        let snip = snippet_with_macro_callsite(cx, expr.span, "()");
+                        db.span_suggestion(
+                            stmt.span,
+                            "omit the `let` binding",
+                            format!("{};", snip),
+                            Applicability::MachineApplicable, // snippet
+                        );
+                    }
+                });
             }
         }
     }

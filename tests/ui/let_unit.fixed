@@ -11,11 +11,11 @@ macro_rules! let_and_return {
 }
 
 fn main() {
-    let _x = println!("x");
+    println!("x");
     let _y = 1; // this is fine
     let _z = ((), 1); // this as well
     if true {
-        let _a = ();
+        ();
     }
 
     consume_units_with_for_loop(); // should be fine as well
@@ -50,7 +50,7 @@ fn consume_units_with_for_loop() {
 fn multiline_sugg() {
     let v: Vec<u8> = vec![2];
 
-    let _ = v
+    v
         .into_iter()
         .map(|i| i * 2)
         .filter(|i| i % 2 == 0)
