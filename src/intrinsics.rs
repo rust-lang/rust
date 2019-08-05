@@ -953,6 +953,18 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             }
         };
 
+        simd_extract, (c v, o idx) {
+            let idx_const = crate::constant::mir_operand_get_const_val(fx, idx).expect("simd_extract* idx not const");
+            let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
+            let (_lane_type, lane_count) = lane_type_and_count(fx, v.layout(), intrinsic);
+            if idx >= lane_count.into() {
+                fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count));
+            }
+
+            let ret_lane = v.value_field(fx, mir::Field::new(idx.try_into().unwrap()));
+            ret.write_cvalue(fx, ret_lane);
+        };
+
         simd_add, (c x, c y) {
             simd_int_flt_binop!(fx, intrinsic, iadd|fadd(x, y) -> ret);
         };
