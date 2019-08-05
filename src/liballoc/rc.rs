@@ -441,6 +441,8 @@ impl<T> Rc<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
         let data_layout = Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
+        // This relies on `value` being the last field of `RcBox` in memory,
+        // so that the layout of `RcBox<T>` is the same as that of `RcBox<()>` followed by `T`.
         let (layout, offset) = Layout::new::<RcBox<()>>().extend(data_layout).unwrap();
         unsafe {
             let allocated_ptr = Global.alloc(layout)
