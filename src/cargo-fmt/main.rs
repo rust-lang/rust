@@ -340,7 +340,7 @@ fn get_targets_recursive(
             let dependency_package = metadata_with_deps
                 .packages
                 .iter()
-                .find(|p| p.name == dependency.name);
+                .find(|p| p.name == dependency.name && p.source.is_none());
             let manifest_path = if dependency_package.is_some() {
                 PathBuf::from(&dependency_package.unwrap().manifest_path)
             } else {
