@@ -73,6 +73,9 @@ struct NodeHeader<K, V, K2 = ()> {
     /// `parent_idx` into the same 32-bit word, reducing space overhead.
     len: u16,
 
+    /// Whether this node is an `EMPTY_ROOT_NODE`.
+    shared_root: bool,
+
     /// See `into_key_slice`.
     keys_start: [K2; 0],
 }
@@ -93,6 +96,9 @@ struct LeafNode<K, V> {
     /// `parent_idx` into the same 32-bit word, reducing space overhead.
     len: u16,
 
+    /// Whether this node is an `EMPTY_ROOT_NODE`.
+    shared_root: bool,
+
     /// The arrays storing the actual data of the node. Only the first `len` elements of each
     /// array are initialized and valid.
     keys: [MaybeUninit<K>; CAPACITY],
@@ -110,14 +116,18 @@ impl<K, V> LeafNode<K, V> {
             vals: uninit_array![_; CAPACITY],
             parent: ptr::null(),
             parent_idx: MaybeUninit::uninit(),
-            len: 0
+            len: 0,
+            shared_root: false,
         }
     }
 }
 
 impl<K, V> NodeHeader<K, V> {
     fn is_shared_root(&self) -> bool {
-        ptr::eq(self, &EMPTY_ROOT_NODE as *const _ as *const _)
+        // This was previously implemented using pointer identity, but `EMPTY_ROOT_NODE`
+        // can have multiple addresses if multiple copies of `liballoc` are used together,
+        // i.e. when interoperating with a dynamic library.
+        self.shared_root
     }
 }
 
@@ -131,6 +141,7 @@ static EMPTY_ROOT_NODE: NodeHeader<(), ()> = NodeHeader {
     parent: ptr::null(),
     parent_idx: MaybeUninit::uninit(),
     len: 0,
+    shared_root: true,
     keys_start: [],
 };
 
