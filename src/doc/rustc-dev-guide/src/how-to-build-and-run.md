@@ -434,7 +434,7 @@ whether the compiler builds is not enough. A common example is that
 you need to add a `debug!` statement to inspect the value of some
 state or better understand the problem. In that case, you really need
 a full build.  By leveraging incremental, though, you can often get
-these builds to complete very fast (e.g., around 30 seconds): the only
+these builds to complete very fast (e.g., around 30 seconds). The only
 catch is this requires a bit of fudging and may produce compilers that
 don't work (but that is easily detected and fixed).
 
