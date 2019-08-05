@@ -30,7 +30,7 @@ error[E0412]: cannot find type `isizee` in this scope
   --> $DIR/issue-62895.rs:5:15
    |
 LL | pub fn g() -> isizee {
-   |               ^^^^^^ help: a builtin type with a similar name exists: `isize`
+   |               ^^^^^^ help: a primitive type with a similar name exists: `isize`
 
 error[E0308]: mismatched types
   --> $DIR/issue-62895.rs:3:11
