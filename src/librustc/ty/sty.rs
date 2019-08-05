@@ -2305,8 +2305,7 @@ impl<'tcx> Const<'tcx> {
             // because it tries to relate an `Infer` to a `Param`.
             ConstValue::Unevaluated(did, substs) => {
                 // if `substs` has no unresolved components, use and empty param_env
-                let pem_and_substs = param_env.with_reveal_all().and(substs);
-                let (param_env, substs) = tcx.lift_to_global(&pem_and_substs).unwrap().into_parts();
+                let (param_env, substs) = param_env.with_reveal_all().and(substs).into_parts();
                 // try to resolve e.g. associated constants to their definition on an impl
                 let instance = ty::Instance::resolve(tcx, param_env, did, substs)?;
                 let gid = GlobalId {
