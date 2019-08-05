@@ -21,7 +21,10 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
 
 export class HintsUpdater {
     private displayHints = true;
-    private drawnDecorations = new Map<string, vscode.DecorationOptions[]>();
+    private drawnDecorations = new WeakMap<
+        vscode.Uri,
+        vscode.DecorationOptions[]
+    >();
 
     public async loadHints(editor?: vscode.TextEditor): Promise<void> {
         if (this.displayHints) {
@@ -48,7 +51,7 @@ export class HintsUpdater {
     public async toggleHintsDisplay(displayHints: boolean): Promise<void> {
         if (this.displayHints !== displayHints) {
             this.displayHints = displayHints;
-            this.drawnDecorations.clear();
+            this.drawnDecorations = new WeakMap();
 
             if (displayHints) {
                 return this.updateHints();
@@ -77,10 +80,7 @@ export class HintsUpdater {
             return;
         }
 
-        return await this.updateDecorationsFromServer(
-            document.uri.toString(),
-            editor
-        );
+        return await this.updateDecorationsFromServer(document.uri, editor);
     }
 
     private isRustDocument(document: vscode.TextDocument): boolean {
@@ -88,10 +88,10 @@ export class HintsUpdater {
     }
 
     private async updateDecorationsFromServer(
-        documentUri: string,
+        documentUri: vscode.Uri,
         editor: TextEditor
     ): Promise<void> {
-        const newHints = await this.queryHints(documentUri);
+        const newHints = await this.queryHints(documentUri.toString());
         if (newHints != null) {
             const newDecorations = newHints.map(hint => ({
                 range: hint.range,
@@ -127,9 +127,11 @@ export class HintsUpdater {
             );
     }
 
-    private getEditorDocumentUri(editor?: vscode.TextEditor): string | null {
+    private getEditorDocumentUri(
+        editor?: vscode.TextEditor
+    ): vscode.Uri | null {
         if (editor && this.isRustDocument(editor.document)) {
-            return editor.document.uri.toString();
+            return editor.document.uri;
         }
         return null;
     }
