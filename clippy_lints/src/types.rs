@@ -1354,7 +1354,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         match item.node {
-            ImplItemKind::Const(ref ty, _) | ImplItemKind::Type(ref ty) => self.check_type(cx, ty),
+            ImplItemKind::Const(ref ty, _) | ImplItemKind::TyAlias(ref ty) => self.check_type(cx, ty),
             // methods are covered by check_fn
             _ => (),
         }
