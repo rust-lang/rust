@@ -3,7 +3,7 @@
 This guide is meant to help document how rustc – the Rust compiler –
 works, as well as to help new contributors get involved in rustc
 development. It is not meant to replace code documentation – each
-chapter gives only high-level details – the kinds of things that
+chapter gives only high-level details, the kinds of things that
 (ideally) don't change frequently.
 
 There are three parts to this guide. Part 1 contains information that should
