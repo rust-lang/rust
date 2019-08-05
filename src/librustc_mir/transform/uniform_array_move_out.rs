@@ -75,7 +75,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                             self.uniform(
                                 location,
                                 dst_place,
-                                &src_place.base,
+                                PlaceRef {
+                                    base: &src_place.base,
+                                    projection: &proj.base,
+                                },
                                 proj,
                                 item_ty,
                                 size as u32,
@@ -94,7 +97,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
     fn uniform(&mut self,
                location: Location,
                dst_place: &Place<'tcx>,
-               base: &PlaceBase<'tcx>,
+               place: PlaceRef<'_, 'tcx>,
                proj: &Projection<'tcx>,
                item_ty: &'tcx ty::TyS<'tcx>,
                size: u32) {
@@ -110,9 +113,9 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                                           Rvalue::Use(
                                               Operand::Move(
                                                   Place {
-                                                      base: base.clone(),
+                                                      base: place.base.clone(),
                                                       projection: Some(box Projection {
-                                                          base: proj.base.clone(),
+                                                          base: place.projection.clone(),
                                                           elem: ProjectionElem::ConstantIndex {
                                                               offset: i,
                                                               min_length: size,
@@ -147,9 +150,9 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                                       Rvalue::Use(
                                           Operand::Move(
                                               Place {
-                                                  base: base.clone(),
+                                                  base: place.base.clone(),
                                                   projection: Some(box Projection {
-                                                      base: proj.base.clone(),
+                                                      base: place.projection.clone(),
                                                       elem: ProjectionElem::ConstantIndex {
                                                           offset: size - offset,
                                                           min_length: size,
