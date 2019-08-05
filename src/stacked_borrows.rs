@@ -273,14 +273,14 @@ impl<'tcx> Stack {
         if let Some(call) = item.protector {
             if global.is_active(call) {
                 if let Some(tag) = tag {
-                    throw_ub_format!(
+                    throw_ub!(UbExperimental(format!(
                         "not granting access to tag {:?} because incompatible item is protected: {:?}",
                         tag, item
-                    );
+                    )));
                 } else {
-                    throw_ub_format!(
+                    throw_ub!(UbExperimental(format!(
                         "deallocating while item is protected: {:?}", item
-                    );
+                    )));
                 }
             }
         }
@@ -299,7 +299,7 @@ impl<'tcx> Stack {
 
         // Step 1: Find granting item.
         let granting_idx = self.find_granting(access, tag)
-            .ok_or_else(|| err_ub!(Ub(format!(
+            .ok_or_else(|| err_ub!(UbExperimental(format!(
                 "no item granting {} to tag {:?} found in borrow stack",
                 access, tag,
             ))))?;
@@ -346,7 +346,7 @@ impl<'tcx> Stack {
     ) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
         self.find_granting(AccessKind::Write, tag)
-            .ok_or_else(|| err_ub!(Ub(format!(
+            .ok_or_else(|| err_ub!(UbExperimental(format!(
                 "no item granting write access for deallocation to tag {:?} found in borrow stack",
                 tag,
             ))))?;
@@ -378,7 +378,7 @@ impl<'tcx> Stack {
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
         let granting_idx = self.find_granting(access, derived_from)
-            .ok_or_else(|| err_ub!(Ub(format!(
+            .ok_or_else(|| err_ub!(UbExperimental(format!(
                 "trying to reborrow for {:?}, but parent tag {:?} does not have an appropriate item in the borrow stack", new.perm, derived_from,
             ))))?;
 
