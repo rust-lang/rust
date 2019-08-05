@@ -402,6 +402,13 @@ impl<T> MaybeUninit<T> {
     ///
     /// [inv]: #initialization-invariant
     ///
+    /// On top of that, remember that most types have additional invariants beyond merely
+    /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
+    /// is considered initialized because the only requirement the compiler knows about it
+    /// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
+    /// *immediate* undefined behavior, but will cause undefined behavior with most
+    /// safe operations (including dropping it).
+    ///
     /// # Examples
     ///
     /// Correct usage of this method:
