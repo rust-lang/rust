@@ -71,6 +71,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns == ValueNS)
                 })
             });
+            let result = match result {
+                Ok((_, Res::Err)) => Err(()),
+                _ => result,
+            };
 
             if let Ok((_, res)) = result {
                 let res = res.map_id(|_| panic!("unexpected node_id"));
@@ -134,6 +138,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             let (_, ty_res) = cx.enter_resolver(|resolver| resolver.with_scope(node_id, |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP, &path, false)
             }))?;
+            if let Res::Err = ty_res {
+                return Err(());
+            }
             let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
             match ty_res {
                 Res::Def(DefKind::Struct, did)

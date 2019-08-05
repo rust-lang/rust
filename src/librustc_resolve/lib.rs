@@ -1858,16 +1858,8 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        match self.resolve_ast_path_inner(&path, is_value) {
-            Ok(res) => {
-                if res == Res::Err {
-                    Err(())
-                } else {
-                    Ok((path, res))
-                }
-            }
-            Err(_) => Err(()),
-        }
+        let res = self.resolve_ast_path_inner(&path, is_value).map_err(|_| ())?;
+        Ok((path, res))
     }
 
     /// Like `resolve_ast_path`, but takes a callback in case there was an error.
