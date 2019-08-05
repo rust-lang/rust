@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 309] = [
+pub const ALL_LINTS: [Lint; 310] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
