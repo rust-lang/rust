@@ -62,6 +62,10 @@ matrix:
     - name: "aarch64-unknown-linux-gnu"
       env: TARGET=aarch64-unknown-linux-gnu CROSS=1
 
+    # Ensure that we successfully build without libstd
+    - name: "thumbv6m-none-eabi"
+      env: TARGET=thumbv6m-none-eabi CROSS=1 NO_STD=1
+
 install: travis_retry rustup target add "${TARGET}"
 script: sh ci/run.sh
 

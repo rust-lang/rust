@@ -4,7 +4,14 @@ set -ex
 
 : "${TARGET?The TARGET environment variable must be set.}"
 
-FEATURES="rayon,serde,rustc-internal-api"
+if [ "${NO_STD}" = "1" ]; then
+    # Unfortunately serde currently doesn't work without std due to a cargo bug.
+    FEATURES="rustc-internal-api"
+    OP="build"
+else
+    FEATURES="rustc-internal-api,serde,rayon"
+    OP="test"
+fi
 if [ "${TRAVIS_RUST_VERSION}" = "nightly" ]; then
     FEATURES="${FEATURES},nightly"
     export RUSTFLAGS="$RUSTFLAGS -D warnings"
@@ -19,18 +26,17 @@ if [ "${CROSS}" = "1" ]; then
     CARGO=cross
 fi
 
-export RUSTFLAGS="$RUSTFLAGS --cfg hashbrown_deny_warnings"
-
 # Make sure we can compile without the default hasher
-"${CARGO}" -vv check --target="${TARGET}" --no-default-features
+"${CARGO}" -vv build --target="${TARGET}" --no-default-features
+"${CARGO}" -vv build --target="${TARGET}" --release --no-default-features
 
-"${CARGO}" -vv test --target="${TARGET}"
-"${CARGO}" -vv test --target="${TARGET}" --features "${FEATURES}"
+"${CARGO}" -vv ${OP} --target="${TARGET}"
+"${CARGO}" -vv ${OP} --target="${TARGET}" --features "${FEATURES}"
 
-"${CARGO}" -vv test --target="${TARGET}" --release
-"${CARGO}" -vv test --target="${TARGET}" --release --features "${FEATURES}"
+"${CARGO}" -vv ${OP} --target="${TARGET}" --release
+"${CARGO}" -vv ${OP} --target="${TARGET}" --release --features "${FEATURES}"
 
-if [ "${TRAVIS_RUST_VERSION}" = "nightly" ]; then
+if [ "${TRAVIS_RUST_VERSION}" = "nightly" ] && [ "${NO_STD}" != 1 ]; then
     # Run benchmark on native targets, build them on non-native ones:
     NO_RUN=""
     if [ "${CROSS}" = "1" ]; then
