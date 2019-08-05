@@ -40,6 +40,7 @@ declare_clippy_lint! {
     /// * False-positive if there is a borrow preventing the value from moving out.
     ///
     /// ```rust
+    /// # fn foo(x: String) {}
     /// let x = String::new();
     ///
     /// let y = &x;
@@ -49,15 +50,22 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # use std::path::Path;
+    /// # #[derive(Clone)]
+    /// # struct Foo;
+    /// # impl Foo {
+    /// #     fn new() -> Self { Foo {} }
+    /// # }
+    /// # fn call(x: Foo) {}
     /// {
     ///     let x = Foo::new();
     ///     call(x.clone());
     ///     call(x.clone()); // this can just pass `x`
     /// }
     ///
-    /// ["lorem", "ipsum"].join(" ").to_string()
+    /// ["lorem", "ipsum"].join(" ").to_string();
     ///
-    /// Path::new("/a/b").join("c").to_path_buf()
+    /// Path::new("/a/b").join("c").to_path_buf();
     /// ```
     pub REDUNDANT_CLONE,
     nursery,
