@@ -942,6 +942,62 @@ impl<'a> IoSliceMut<'a> {
     pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         IoSliceMut(sys::io::IoSliceMut::new(buf))
     }
+
+    /// Advance the internal cursor of the slice.
+    ///
+    /// # Notes
+    ///
+    /// Elements in the slice may be modified if the cursor is not advanced to
+    /// the end of the slice. For example if we have a slice of buffers with 2
+    /// `IoSliceMut`s, both of length 8, and we advance the cursor by 10 bytes
+    /// the first `IoSliceMut` will be untouched however the second will be
+    /// modified to remove the first 2 bytes (10 - 8).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSliceMut;
+    /// use std::mem;
+    /// use std::ops::Deref;
+    ///
+    /// let mut buf1 = [1; 8];
+    /// let mut buf2 = [2; 16];
+    /// let mut buf3 = [3; 8];
+    /// let mut bufs = &mut [
+    ///     IoSliceMut::new(&mut buf1),
+    ///     IoSliceMut::new(&mut buf2),
+    ///     IoSliceMut::new(&mut buf3),
+    /// ][..];
+    ///
+    /// // Mark 10 bytes as read.
+    /// bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 10);
+    /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
+    /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+    /// ```
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance<'b>(bufs: &'b mut [IoSliceMut<'a>], n: usize) -> &'b mut [IoSliceMut<'a>] {
+        // Number of buffers to remove.
+        let mut remove = 0;
+        // Total length of all the to be removed buffers.
+        let mut accumulated_len = 0;
+        for buf in bufs.iter() {
+            if accumulated_len + buf.len() > n {
+                break;
+            } else {
+                accumulated_len += buf.len();
+                remove += 1;
+            }
+        }
+
+        let bufs = &mut bufs[remove..];
+        if !bufs.is_empty() {
+            bufs[0].0.advance(n - accumulated_len)
+        }
+        bufs
+    }
 }
 
 #[stable(feature = "iovec", since = "1.36.0")]
@@ -988,6 +1044,61 @@ impl<'a> IoSlice<'a> {
     #[inline]
     pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
         IoSlice(sys::io::IoSlice::new(buf))
+    }
+
+    /// Advance the internal cursor of the slice.
+    ///
+    /// # Notes
+    ///
+    /// Elements in the slice may be modified if the cursor is not advanced to
+    /// the end of the slice. For example if we have a slice of buffers with 2
+    /// `IoSlice`s, both of length 8, and we advance the cursor by 10 bytes the
+    /// first `IoSlice` will be untouched however the second will be modified to
+    /// remove the first 2 bytes (10 - 8).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSlice;
+    /// use std::mem;
+    /// use std::ops::Deref;
+    ///
+    /// let mut buf1 = [1; 8];
+    /// let mut buf2 = [2; 16];
+    /// let mut buf3 = [3; 8];
+    /// let mut bufs = &mut [
+    ///     IoSlice::new(&mut buf1),
+    ///     IoSlice::new(&mut buf2),
+    ///     IoSlice::new(&mut buf3),
+    /// ][..];
+    ///
+    /// // Mark 10 bytes as written.
+    /// bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 10);
+    /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
+    /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance<'b>(bufs: &'b mut [IoSlice<'a>], n: usize) -> &'b mut [IoSlice<'a>] {
+        // Number of buffers to remove.
+        let mut remove = 0;
+        // Total length of all the to be removed buffers.
+        let mut accumulated_len = 0;
+        for buf in bufs.iter() {
+            if accumulated_len + buf.len() > n {
+                break;
+            } else {
+                accumulated_len += buf.len();
+                remove += 1;
+            }
+        }
+
+        let bufs = &mut bufs[remove..];
+        if !bufs.is_empty() {
+            bufs[0].0.advance(n - accumulated_len)
+        }
+        bufs
     }
 }
 
@@ -2268,8 +2379,10 @@ impl<B: BufRead> Iterator for Lines<B> {
 #[cfg(test)]
 mod tests {
     use crate::io::prelude::*;
-    use crate::io;
     use super::{Cursor, SeekFrom, repeat};
+    use crate::io::{self, IoSlice, IoSliceMut};
+    use crate::mem;
+    use crate::ops::Deref;
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
@@ -2536,5 +2649,90 @@ mod tests {
         assert_eq!(c.stream_position()?, 8);
 
         Ok(())
+    }
+
+    #[test]
+    fn io_slice_mut_advance() {
+        let mut buf1 = [1; 8];
+        let mut buf2 = [2; 16];
+        let mut buf3 = [3; 8];
+        let mut bufs = &mut [
+            IoSliceMut::new(&mut buf1),
+            IoSliceMut::new(&mut buf2),
+            IoSliceMut::new(&mut buf3),
+        ][..];
+
+        // Only in a single buffer..
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 1);
+        assert_eq!(bufs[0].deref(), [1; 7].as_ref());
+        assert_eq!(bufs[1].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[2].deref(), [3; 8].as_ref());
+
+        // Removing a buffer, leaving others as is.
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 7);
+        assert_eq!(bufs[0].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+
+        // Removing a buffer and removing from the next buffer.
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 18);
+        assert_eq!(bufs[0].deref(), [3; 6].as_ref());
+    }
+
+    #[test]
+    fn io_slice_mut_advance_empty_slice() {
+        let mut empty_bufs = &mut [][..];
+        // Shouldn't panic.
+        IoSliceMut::advance(&mut empty_bufs, 1);
+    }
+
+    #[test]
+    fn io_slice_mut_advance_beyond_total_length() {
+        let mut buf1 = [1; 8];
+        let mut bufs = &mut [IoSliceMut::new(&mut buf1)][..];
+
+        // Going beyond the total length should be ok.
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 9);
+        assert!(bufs.is_empty());
+    }
+
+    #[test]
+    fn io_slice_advance() {
+        let mut buf1 = [1; 8];
+        let mut buf2 = [2; 16];
+        let mut buf3 = [3; 8];
+        let mut bufs =
+            &mut [IoSlice::new(&mut buf1), IoSlice::new(&mut buf2), IoSlice::new(&mut buf3)][..];
+
+        // Only in a single buffer..
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 1);
+        assert_eq!(bufs[0].deref(), [1; 7].as_ref());
+        assert_eq!(bufs[1].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[2].deref(), [3; 8].as_ref());
+
+        // Removing a buffer, leaving others as is.
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 7);
+        assert_eq!(bufs[0].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+
+        // Removing a buffer and removing from the next buffer.
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 18);
+        assert_eq!(bufs[0].deref(), [3; 6].as_ref());
+    }
+
+    #[test]
+    fn io_slice_advance_empty_slice() {
+        let mut empty_bufs = &mut [][..];
+        // Shouldn't panic.
+        IoSlice::advance(&mut empty_bufs, 1);
+    }
+
+    #[test]
+    fn io_slice_advance_beyond_total_length() {
+        let mut buf1 = [1; 8];
+        let mut bufs = &mut [IoSlice::new(&mut buf1)][..];
+
+        // Going beyond the total length should be ok.
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 9);
+        assert!(bufs.is_empty());
     }
 }
