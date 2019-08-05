@@ -1141,9 +1141,11 @@ impl<T: ?Sized> *const T {
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
     ///
-    /// Consider using `wrapping_offset` instead if these constraints are
+    /// Consider using [`wrapping_offset`] instead if these constraints are
     /// difficult to satisfy. The only advantage of this method is that it
     /// enables more aggressive compiler optimizations.
+    ///
+    /// [`wrapping_offset`]: #method.wrapping_offset
     ///
     /// # Examples
     ///
@@ -1173,15 +1175,26 @@ impl<T: ?Sized> *const T {
     ///
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
-    /// In particular, the resulting pointer may *not* be used to access a
-    /// different allocated object than the one `self` points to. In other
-    /// words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
+    ///
+    /// In particular, the resulting pointer remains attached to the same allocated
+    /// object that `self` points to. It may *not* be used to access a
+    /// different allocated object. Note that in Rust,
+    /// every (stack-allocated) variable is considered a separate allocated object.
+    ///
+    /// In other words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
     /// *not* the same as `y`, and dereferencing it is undefined behavior
     /// unless `x` and `y` point into the same allocated object.
     ///
-    /// Always use `.offset(count)` instead when possible, because `offset`
-    /// allows the compiler to optimize better. If you need to cross object
-    /// boundaries, cast the pointer to an integer and do the arithmetic there.
+    /// Compared to [`offset`], this method basically delays the requirement of staying
+    /// within the same allocated object: [`offset`] is immediate Undefined Behavior when
+    /// crossing object boundaries; `wrapping_offset` produces a pointer but still leads
+    /// to Undefined Behavior if that pointer is dereferenced. [`offset`] can be optimized
+    /// better and is thus preferrable in performance-sensitive code.
+    ///
+    /// If you need to cross object boundaries, cast the pointer to an integer and
+    /// do the arithmetic there.
+    ///
+    /// [`offset`]: #method.offset
     ///
     /// # Examples
     ///
@@ -1361,9 +1374,11 @@ impl<T: ?Sized> *const T {
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
     ///
-    /// Consider using `wrapping_offset` instead if these constraints are
+    /// Consider using [`wrapping_add`] instead if these constraints are
     /// difficult to satisfy. The only advantage of this method is that it
     /// enables more aggressive compiler optimizations.
+    ///
+    /// [`wrapping_add`]: #method.wrapping_add
     ///
     /// # Examples
     ///
@@ -1419,9 +1434,11 @@ impl<T: ?Sized> *const T {
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
     ///
-    /// Consider using `wrapping_offset` instead if these constraints are
+    /// Consider using [`wrapping_sub`] instead if these constraints are
     /// difficult to satisfy. The only advantage of this method is that it
     /// enables more aggressive compiler optimizations.
+    ///
+    /// [`wrapping_sub`]: #method.wrapping_sub
     ///
     /// # Examples
     ///
@@ -1455,8 +1472,21 @@ impl<T: ?Sized> *const T {
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
     ///
-    /// Always use `.add(count)` instead when possible, because `add`
-    /// allows the compiler to optimize better.
+    /// In particular, the resulting pointer remains attached to the same allocated
+    /// object that `self` points to. It may *not* be used to access a
+    /// different allocated object. Note that in Rust,
+    /// every (stack-allocated) variable is considered a separate allocated object.
+    ///
+    /// Compared to [`add`], this method basically delays the requirement of staying
+    /// within the same allocated object: [`add`] is immediate Undefined Behavior when
+    /// crossing object boundaries; `wrapping_add` produces a pointer but still leads
+    /// to Undefined Behavior if that pointer is dereferenced. [`add`] can be optimized
+    /// better and is thus preferrable in performance-sensitive code.
+    ///
+    /// If you need to cross object boundaries, cast the pointer to an integer and
+    /// do the arithmetic there.
+    ///
+    /// [`add`]: #method.add
     ///
     /// # Examples
     ///
@@ -1496,8 +1526,21 @@ impl<T: ?Sized> *const T {
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
     ///
-    /// Always use `.sub(count)` instead when possible, because `sub`
-    /// allows the compiler to optimize better.
+    /// In particular, the resulting pointer remains attached to the same allocated
+    /// object that `self` points to. It may *not* be used to access a
+    /// different allocated object. Note that in Rust,
+    /// every (stack-allocated) variable is considered a separate allocated object.
+    ///
+    /// Compared to [`sub`], this method basically delays the requirement of staying
+    /// within the same allocated object: [`sub`] is immediate Undefined Behavior when
+    /// crossing object boundaries; `wrapping_sub` produces a pointer but still leads
+    /// to Undefined Behavior if that pointer is dereferenced. [`sub`] can be optimized
+    /// better and is thus preferrable in performance-sensitive code.
+    ///
+    /// If you need to cross object boundaries, cast the pointer to an integer and
+    /// do the arithmetic there.
+    ///
+    /// [`sub`]: #method.sub
     ///
     /// # Examples
     ///
@@ -1780,9 +1823,11 @@ impl<T: ?Sized> *mut T {
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
     ///
-    /// Consider using `wrapping_offset` instead if these constraints are
+    /// Consider using [`wrapping_offset`] instead if these constraints are
     /// difficult to satisfy. The only advantage of this method is that it
     /// enables more aggressive compiler optimizations.
+    ///
+    /// [`wrapping_offset`]: #method.wrapping_offset
     ///
     /// # Examples
     ///
@@ -1811,15 +1856,26 @@ impl<T: ?Sized> *mut T {
     ///
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
-    /// In particular, the resulting pointer may *not* be used to access a
-    /// different allocated object than the one `self` points to. In other
-    /// words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
+    ///
+    /// In particular, the resulting pointer remains attached to the same allocated
+    /// object that `self` points to. It may *not* be used to access a
+    /// different allocated object. Note that in Rust,
+    /// every (stack-allocated) variable is considered a separate allocated object.
+    ///
+    /// In other words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
     /// *not* the same as `y`, and dereferencing it is undefined behavior
     /// unless `x` and `y` point into the same allocated object.
     ///
-    /// Always use `.offset(count)` instead when possible, because `offset`
-    /// allows the compiler to optimize better. If you need to cross object
-    /// boundaries, cast the pointer to an integer and do the arithmetic there.
+    /// Compared to [`offset`], this method basically delays the requirement of staying
+    /// within the same allocated object: [`offset`] is immediate Undefined Behavior when
+    /// crossing object boundaries; `wrapping_offset` produces a pointer but still leads
+    /// to Undefined Behavior if that pointer is dereferenced. [`offset`] can be optimized
+    /// better and is thus preferrable in performance-sensitive code.
+    ///
+    /// If you need to cross object boundaries, cast the pointer to an integer and
+    /// do the arithmetic there.
+    ///
+    /// [`offset`]: #method.offset
     ///
     /// # Examples
     ///
@@ -2032,9 +2088,11 @@ impl<T: ?Sized> *mut T {
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
     ///
-    /// Consider using `wrapping_offset` instead if these constraints are
+    /// Consider using [`wrapping_add`] instead if these constraints are
     /// difficult to satisfy. The only advantage of this method is that it
     /// enables more aggressive compiler optimizations.
+    ///
+    /// [`wrapping_add`]: #method.wrapping_add
     ///
     /// # Examples
     ///
@@ -2090,9 +2148,11 @@ impl<T: ?Sized> *mut T {
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
     ///
-    /// Consider using `wrapping_offset` instead if these constraints are
+    /// Consider using [`wrapping_sub`] instead if these constraints are
     /// difficult to satisfy. The only advantage of this method is that it
     /// enables more aggressive compiler optimizations.
+    ///
+    /// [`wrapping_sub`]: #method.wrapping_sub
     ///
     /// # Examples
     ///
@@ -2126,8 +2186,21 @@ impl<T: ?Sized> *mut T {
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
     ///
-    /// Always use `.add(count)` instead when possible, because `add`
-    /// allows the compiler to optimize better.
+    /// In particular, the resulting pointer remains attached to the same allocated
+    /// object that `self` points to. It may *not* be used to access a
+    /// different allocated object. Note that in Rust,
+    /// every (stack-allocated) variable is considered a separate allocated object.
+    ///
+    /// Compared to [`add`], this method basically delays the requirement of staying
+    /// within the same allocated object: [`add`] is immediate Undefined Behavior when
+    /// crossing object boundaries; `wrapping_add` produces a pointer but still leads
+    /// to Undefined Behavior if that pointer is dereferenced. [`add`] can be optimized
+    /// better and is thus preferrable in performance-sensitive code.
+    ///
+    /// If you need to cross object boundaries, cast the pointer to an integer and
+    /// do the arithmetic there.
+    ///
+    /// [`add`]: #method.add
     ///
     /// # Examples
     ///
@@ -2167,8 +2240,21 @@ impl<T: ?Sized> *mut T {
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
     ///
-    /// Always use `.sub(count)` instead when possible, because `sub`
-    /// allows the compiler to optimize better.
+    /// In particular, the resulting pointer remains attached to the same allocated
+    /// object that `self` points to. It may *not* be used to access a
+    /// different allocated object. Note that in Rust,
+    /// every (stack-allocated) variable is considered a separate allocated object.
+    ///
+    /// Compared to [`sub`], this method basically delays the requirement of staying
+    /// within the same allocated object: [`sub`] is immediate Undefined Behavior when
+    /// crossing object boundaries; `wrapping_sub` produces a pointer but still leads
+    /// to Undefined Behavior if that pointer is dereferenced. [`sub`] can be optimized
+    /// better and is thus preferrable in performance-sensitive code.
+    ///
+    /// If you need to cross object boundaries, cast the pointer to an integer and
+    /// do the arithmetic there.
+    ///
+    /// [`sub`]: #method.sub
     ///
     /// # Examples
     ///
