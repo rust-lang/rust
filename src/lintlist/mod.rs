@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 309] = [
+pub const ALL_LINTS: [Lint; 310] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -916,6 +916,13 @@ pub const ALL_LINTS: [Lint; 309] = [
         desc: "boolean expressions that contain terminals which can be eliminated",
         deprecation: None,
         module: "booleans",
+    },
+    Lint {
+        name: "main_recursion",
+        group: "style",
+        desc: "recursion using the entrypoint",
+        deprecation: None,
+        module: "main_recursion",
     },
     Lint {
         name: "manual_memcpy",

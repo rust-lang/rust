@@ -208,6 +208,7 @@ pub mod let_if_seq;
 pub mod lifetimes;
 pub mod literal_representation;
 pub mod loops;
+pub mod main_recursion;
 pub mod map_clone;
 pub mod map_unit_fn;
 pub mod matches;
@@ -473,6 +474,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box types::LetUnitValue);
     reg.register_late_lint_pass(box types::UnitCmp);
     reg.register_late_lint_pass(box loops::Loops);
+    reg.register_late_lint_pass(box main_recursion::MainRecursion::default());
     reg.register_late_lint_pass(box lifetimes::Lifetimes);
     reg.register_late_lint_pass(box entry::HashMapPass);
     reg.register_late_lint_pass(box ranges::Ranges);
@@ -760,6 +762,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         loops::WHILE_IMMUTABLE_CONDITION,
         loops::WHILE_LET_LOOP,
         loops::WHILE_LET_ON_ITERATOR,
+        main_recursion::MAIN_RECURSION,
         map_clone::MAP_CLONE,
         map_unit_fn::OPTION_MAP_UNIT_FN,
         map_unit_fn::RESULT_MAP_UNIT_FN,
@@ -933,6 +936,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         loops::FOR_KV_MAP,
         loops::NEEDLESS_RANGE_LOOP,
         loops::WHILE_LET_ON_ITERATOR,
+        main_recursion::MAIN_RECURSION,
         map_clone::MAP_CLONE,
         matches::MATCH_BOOL,
         matches::MATCH_OVERLAPPING_ARM,
