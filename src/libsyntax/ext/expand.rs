@@ -1272,7 +1272,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                             ];
 
                             let include_ident = Ident::with_empty_ctxt(sym::include);
-                            let item = attr::mk_list_item(DUMMY_SP, include_ident, include_info);
+                            let item = attr::mk_list_item(include_ident, include_info);
                             items.push(ast::NestedMetaItem::MetaItem(item));
                         }
                         Err(e) => {
@@ -1333,7 +1333,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 }
             }
 
-            let meta = attr::mk_list_item(DUMMY_SP, Ident::with_empty_ctxt(sym::doc), items);
+            let meta = attr::mk_list_item(Ident::with_empty_ctxt(sym::doc), items);
             *at = attr::Attribute {
                 span: at.span,
                 id: at.id,

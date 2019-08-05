@@ -347,16 +347,17 @@ impl Attribute {
 
 pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem {
     let lit_kind = LitKind::Str(value.node, ast::StrStyle::Cooked);
-    mk_name_value_item(ident.span.to(value.span), ident, lit_kind, value.span)
+    mk_name_value_item(ident, lit_kind, value.span)
 }
 
-pub fn mk_name_value_item(span: Span, ident: Ident, lit_kind: LitKind, lit_span: Span) -> MetaItem {
+pub fn mk_name_value_item(ident: Ident, lit_kind: LitKind, lit_span: Span) -> MetaItem {
     let lit = Lit::from_lit_kind(lit_kind, lit_span);
+    let span = ident.span.to(lit_span);
     MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::NameValue(lit) }
 }
 
-pub fn mk_list_item(span: Span, ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
-    MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::List(items) }
+pub fn mk_list_item(ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
+    MetaItem { path: Path::from_ident(ident), span: ident.span, node: MetaItemKind::List(items) }
 }
 
 pub fn mk_word_item(ident: Ident) -> MetaItem {
@@ -367,7 +368,7 @@ pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
     NestedMetaItem::MetaItem(mk_word_item(ident))
 }
 
-pub fn mk_attr_id() -> AttrId {
+crate fn mk_attr_id() -> AttrId {
     use std::sync::atomic::AtomicUsize;
     use std::sync::atomic::Ordering;
 
