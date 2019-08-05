@@ -13,7 +13,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// #[derive(Copy, Clone)]
     /// struct Countdown(u8);
     ///

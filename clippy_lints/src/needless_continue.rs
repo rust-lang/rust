@@ -57,6 +57,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # fn condition() -> bool { false }
+    /// # fn update_condition() {}
+    /// # let x = false;
     /// while condition() {
     ///     update_condition();
     ///     if x {
@@ -71,6 +74,9 @@ declare_clippy_lint! {
     /// Could be rewritten as
     ///
     /// ```rust
+    /// # fn condition() -> bool { false }
+    /// # fn update_condition() {}
+    /// # let x = false;
     /// while condition() {
     ///     update_condition();
     ///     if x {
@@ -83,22 +89,26 @@ declare_clippy_lint! {
     /// As another example, the following code
     ///
     /// ```rust
+    /// # fn waiting() -> bool { false }
     /// loop {
     ///     if waiting() {
     ///         continue;
     ///     } else {
     ///         // Do something useful
     ///     }
+    ///     # break;
     /// }
     /// ```
     /// Could be rewritten as
     ///
     /// ```rust
+    /// # fn waiting() -> bool { false }
     /// loop {
     ///     if waiting() {
     ///         continue;
     ///     }
     ///     // Do something useful
+    ///     # break;
     /// }
     /// ```
     pub NEEDLESS_CONTINUE,

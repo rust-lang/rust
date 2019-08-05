@@ -27,6 +27,8 @@ declare_clippy_lint! {
     /// Could be written:
     ///
     /// ```rust
+    /// # use std::convert::TryFrom;
+    /// # let foo = 1;
     /// # let _ =
     /// i32::try_from(foo).is_ok()
     /// # ;

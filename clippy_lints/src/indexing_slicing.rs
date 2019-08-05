@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// **Known problems:** Hopefully none.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,no_run
     /// // Vector
     /// let x = vec![0; 5];
     ///

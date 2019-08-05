@@ -40,17 +40,27 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// # struct Foo {
+    /// #     random_number: usize,
+    /// # }
+    /// # impl Foo {
     /// fn new() -> Self {
     ///     Self { random_number: 42 }
     /// }
+    /// # }
     /// ```
     ///
     /// Could be a const fn:
     ///
     /// ```rust
+    /// # struct Foo {
+    /// #     random_number: usize,
+    /// # }
+    /// # impl Foo {
     /// const fn new() -> Self {
     ///     Self { random_number: 42 }
     /// }
+    /// # }
     /// ```
     pub MISSING_CONST_FOR_FN,
     nursery,

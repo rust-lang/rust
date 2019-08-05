@@ -40,8 +40,19 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
+    ///
+    /// Using unwrap on an `Option`:
+    ///
     /// ```rust
-    /// x.unwrap()
+    /// let opt = Some(1);
+    /// opt.unwrap();
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// let opt = Some(1);
+    /// opt.expect("more helpful message");
     /// ```
     pub OPTION_UNWRAP_USED,
     restriction,
@@ -62,8 +73,18 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
+    /// Using unwrap on an `Option`:
+    ///
     /// ```rust
-    /// x.unwrap()
+    /// let res: Result<usize, ()> = Ok(1);
+    /// res.unwrap();
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// let res: Result<usize, ()> = Ok(1);
+    /// res.expect("more helpful message");
     /// ```
     pub RESULT_UNWRAP_USED,
     restriction,
@@ -141,9 +162,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// impl X {
-    ///     pub fn as_str(self) -> &str {
-    ///         ..
+    /// # struct X;
+    /// impl<'a> X {
+    ///     pub fn as_str(self) -> &'a str {
+    ///         "foo"
     ///     }
     /// }
     /// ```
@@ -179,7 +201,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.map(|a| a + 1).unwrap_or(0)
+    /// # let x = Some(1);
+    /// x.map(|a| a + 1).unwrap_or(0);
     /// ```
     pub OPTION_MAP_UNWRAP_OR,
     pedantic,
@@ -196,7 +219,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.map(|a| a + 1).unwrap_or_else(some_function)
+    /// # let x = Some(1);
+    /// # fn some_function() -> usize { 1 }
+    /// x.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     pub OPTION_MAP_UNWRAP_OR_ELSE,
     pedantic,
@@ -213,7 +238,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.map(|a| a + 1).unwrap_or_else(some_function)
+    /// # let x: Result<usize, ()> = Ok(1);
+    /// # fn some_function(foo: ()) -> usize { 1 }
+    /// x.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     pub RESULT_MAP_UNWRAP_OR_ELSE,
     pedantic,
@@ -265,7 +292,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.map(|x| x.iter()).flatten()
+    /// let vec = vec![vec![1]];
+    /// vec.iter().map(|x| x.iter()).flatten();
     /// ```
     pub MAP_FLATTEN,
     pedantic,
@@ -284,7 +312,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.filter(|x| x == 0).map(|x| x * 2)
+    /// let vec = vec![1];
+    /// vec.iter().filter(|x| **x == 0).map(|x| *x * 2);
     /// ```
     pub FILTER_MAP,
     pedantic,
@@ -324,7 +353,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    ///  (0..3).find(|x| x == 2).map(|x| x * 2);
+    ///  (0..3).find(|x| *x == 2).map(|x| x * 2);
     /// ```
     /// Can be written as
     /// ```rust
@@ -467,7 +496,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.clone()
+    /// # use std::rc::Rc;
+    /// let x = Rc::new(1);
+    /// x.clone();
     /// ```
     pub CLONE_ON_REF_PTR,
     restriction,

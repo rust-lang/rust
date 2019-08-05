@@ -133,7 +133,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x = LinkedList::new();
+    /// # use std::collections::LinkedList;
+    /// let x: LinkedList<usize> = LinkedList::new();
     /// ```
     pub LINKEDLIST,
     pedantic,
@@ -662,8 +663,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x = u64::MAX;
-    /// x as f64
+    /// let x = std::u64::MAX;
+    /// x as f64;
     /// ```
     pub CAST_PRECISION_LOSS,
     pedantic,
@@ -684,7 +685,7 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let y: i8 = -1;
-    /// y as u128 // will return 18446744073709551615
+    /// y as u128; // will return 18446744073709551615
     /// ```
     pub CAST_SIGN_LOSS,
     pedantic,
@@ -729,7 +730,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// u32::MAX as i32 // will yield a value of `-1`
+    /// std::u32::MAX as i32; // will yield a value of `-1`
     /// ```
     pub CAST_POSSIBLE_WRAP,
     pedantic,
@@ -1691,7 +1692,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x : u8 = ...; (x as u32) > 300
+    /// let x: u8 = 1;
+    /// (x as u32) > 300;
     /// ```
     pub INVALID_UPCAST_COMPARISONS,
     pedantic,

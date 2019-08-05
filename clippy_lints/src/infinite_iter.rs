@@ -34,7 +34,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// [0..].iter().zip(infinite_iter.take_while(|x| x > 5))
+    /// let infinite_iter = 0..;
+    /// [0..].iter().zip(infinite_iter.take_while(|x| *x > 5));
     /// ```
     pub MAYBE_INFINITE_ITER,
     pedantic,

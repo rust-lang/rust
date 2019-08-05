@@ -113,19 +113,19 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// // Bad
-    /// #[inline(always)]
-    ///
-    /// fn not_quite_good_code(..) { ... }
-    ///
     /// // Good (as inner attribute)
     /// #![inline(always)]
     ///
-    /// fn this_is_fine(..) { ... }
+    /// fn this_is_fine() { }
+    ///
+    /// // Bad
+    /// #[inline(always)]
+    ///
+    /// fn not_quite_good_code() { }
     ///
     /// // Good (as outer attribute)
     /// #[inline(always)]
-    /// fn this_is_fine_too(..) { ... }
+    /// fn this_is_fine_too() { }
     /// ```
     pub EMPTY_LINE_AFTER_OUTER_ATTR,
     nursery,

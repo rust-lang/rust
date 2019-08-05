@@ -48,7 +48,7 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// let x = "Hello".to_owned();
-    /// x + ", World"
+    /// x + ", World";
     /// ```
     pub STRING_ADD,
     restriction,
