@@ -1,3 +1,6 @@
+// ignore-macos
+// ignore-windows
+
 #![feature(lang_items, link_args, start, libc)]
 #![link_args = "-nostartfiles"]
 #![no_std]
