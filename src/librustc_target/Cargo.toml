@@ -11,6 +11,7 @@ path = "lib.rs"
 [dependencies]
 bitflags = "1.0"
 log = "0.4"
+cc = "1.0.1"
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax_pos = { path = "../libsyntax_pos" }

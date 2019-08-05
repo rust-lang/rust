@@ -1,5 +1,5 @@
 use crate::spec::{LinkerFlavor, Target, TargetResult, PanicStrategy};
-use std::env;
+use cc::windows_registry;
 
 pub fn target() -> TargetResult {
     let mut base = super::windows_uwp_msvc_base::opts();
@@ -9,8 +9,11 @@ pub fn target() -> TargetResult {
     // FIXME: this shouldn't be panic=abort, it should be panic=unwind
     base.panic_strategy = PanicStrategy::Abort;
 
-    let lib_root_path = env::var("VCToolsInstallDir")
-        .expect("VCToolsInstallDir not found in env");
+    let link_tool = windows_registry::find_tool("x86_64-pc-windows-msvc", "link.exe")
+        .expect("no path found for link.exe");
+
+    let original_path = link_tool.path();
+    let lib_root_path = original_path.ancestors().skip(4).next().unwrap().display();
 
     base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap()
         .push(format!("{}{}{}",
