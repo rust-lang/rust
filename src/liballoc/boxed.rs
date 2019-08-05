@@ -141,7 +141,7 @@ impl<T> Box<T> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[unstable(feature = "new_uninit", issue = "0")]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
         let ptr = unsafe {
@@ -181,7 +181,7 @@ impl<T> Box<[T]> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[unstable(feature = "new_uninit", issue = "0")]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
         let ptr = unsafe { alloc::alloc(layout) };
@@ -220,7 +220,7 @@ impl<T> Box<mem::MaybeUninit<T>> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[unstable(feature = "new_uninit", issue = "0")]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<T> {
         Box(Box::into_unique(self).cast())
@@ -258,7 +258,7 @@ impl<T> Box<[mem::MaybeUninit<T>]> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[unstable(feature = "new_uninit", issue = "0")]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<[T]> {
         Box(Unique::new_unchecked(Box::into_raw(self) as _))

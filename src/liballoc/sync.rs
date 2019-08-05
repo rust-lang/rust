@@ -332,7 +332,7 @@ impl<T> Arc<T> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[unstable(feature = "new_uninit", issue = "0")]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         let layout = Layout::new::<ArcInner<mem::MaybeUninit<T>>>();
         unsafe {
@@ -422,7 +422,7 @@ impl<T> Arc<[T]> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[unstable(feature = "new_uninit", issue = "0")]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         let data_layout = Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
         let (layout, offset) = Layout::new::<ArcInner<()>>().extend(data_layout).unwrap();
@@ -476,7 +476,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[unstable(feature = "new_uninit", issue = "0")]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<T> {
         Arc {
@@ -520,7 +520,7 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[unstable(feature = "new_uninit", issue = "0")]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<[T]> {
         Arc {
@@ -1147,7 +1147,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert_eq!(*x, "foo");
     /// ```
     #[inline]
-    #[unstable(feature = "get_mut_unchecked", issue = "0")]
+    #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
         &mut this.ptr.as_mut().data
     }
