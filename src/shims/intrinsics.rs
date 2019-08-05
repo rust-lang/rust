@@ -44,7 +44,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "assume" => {
                 let cond = this.read_scalar(args[0])?.to_bool()?;
                 if !cond {
-                    throw_unsup!(AssumptionNotHeld);
+                    throw_ub_format!("`assume` intrinsic called with `false`");
                 }
             }
 
@@ -316,9 +316,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // Check if `b` is -1, which is the "min_value / -1" case.
                     let minus1 = Scalar::from_int(-1, dest.layout.size);
                     return Err(if b.to_scalar().unwrap() == minus1 {
-                        err_ub!(Ub(format!("exact_div: result of dividing MIN by -1 cannot be represented")))
+                        err_ub_format!("exact_div: result of dividing MIN by -1 cannot be represented")
                     } else {
-                        err_ub!(Ub(format!("exact_div: {:?} cannot be divided by {:?} without remainder", *a, *b)))
+                        err_ub_format!("exact_div: {:?} cannot be divided by {:?} without remainder", *a, *b)
                     }.into());
                 }
                 this.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;

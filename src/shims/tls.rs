@@ -158,7 +158,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 StackPopCleanup::None { cleanup: true },
             )?;
             let arg_local = this.frame().body.args_iter().next().ok_or_else(
-                || err_ub!(Ub(format!("TLS dtor does not take enough arguments."))),
+                || err_ub_format!("TLS dtor does not take enough arguments."),
             )?;
             let dest = this.local_place(arg_local)?;
             this.write_scalar(ptr, dest)?;

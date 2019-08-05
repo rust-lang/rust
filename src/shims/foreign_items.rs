@@ -655,9 +655,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // This is `libc::pthread_key_t`.
                 let key_type = args[0].layout.ty
                     .builtin_deref(true)
-                    .ok_or_else(|| err_ub!(Ub(format!(
+                    .ok_or_else(|| err_ub_format!(
                         "wrong signature used for `pthread_key_create`: first argument must be a raw pointer."
-                    ))))?
+                    ))?
                     .ty;
                 let key_layout = this.layout_of(key_type)?;
 
