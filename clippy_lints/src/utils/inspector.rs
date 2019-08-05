@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
                 print_expr(cx, &cx.tcx.hir().body(body_id).value, 1);
             },
             hir::ImplItemKind::Method(..) => println!("method"),
-            hir::ImplItemKind::Type(_) => println!("associated type"),
+            hir::ImplItemKind::TyAlias(_) => println!("associated type"),
             hir::ImplItemKind::OpaqueTy(_) => println!("existential type"),
         }
     }
@@ -360,7 +360,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
         hir::ItemKind::Mod(..) => println!("module"),
         hir::ItemKind::ForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
         hir::ItemKind::GlobalAsm(ref asm) => println!("global asm: {:?}", asm),
-        hir::ItemKind::Ty(..) => {
+        hir::ItemKind::TyAlias(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));
         },
         hir::ItemKind::OpaqueTy(..) => {
