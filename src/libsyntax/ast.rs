@@ -1284,15 +1284,6 @@ pub enum Movability {
     Movable,
 }
 
-/// Whether an `await` comes from `await!` or `.await` syntax.
-/// FIXME: this should be removed when support for legacy `await!` is removed.
-/// https://github.com/rust-lang/rust/issues/60610
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
-pub enum AwaitOrigin {
-    FieldLike,
-    MacroLike,
-}
-
 pub type Mac = Spanned<Mac_>;
 
 /// Represents a macro invocation. The `Path` indicates which macro
