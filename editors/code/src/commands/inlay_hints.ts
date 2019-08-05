@@ -21,67 +21,57 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
 
 export class HintsUpdater {
     private displayHints = true;
-    private decorationsSinceLastChange = new Map<
-        string,
-        vscode.DecorationOptions[]
-    >();
-
-    public async loadHints(editor?: vscode.TextEditor): Promise<void> {
-        if (this.displayHints) {
-            const documentUri = this.getEditorDocumentUri(editor);
-            if (documentUri !== null) {
-                const latestDecorations = this.decorationsSinceLastChange.get(
-                    documentUri.toString()
-                );
-                if (latestDecorations === undefined) {
-                    await this.updateDecorationsFromServer(
-                        documentUri,
-                        editor!
-                    );
-                } else {
-                    await editor!.setDecorations(
-                        typeHintDecorationType,
-                        latestDecorations
-                    );
-                }
-            }
-        }
-    }
 
     public async toggleHintsDisplay(displayHints: boolean): Promise<void> {
         if (this.displayHints !== displayHints) {
             this.displayHints = displayHints;
-            this.decorationsSinceLastChange.clear();
-
-            if (displayHints) {
-                return this.updateHints();
-            } else {
-                const currentEditor = vscode.window.activeTextEditor;
-                if (this.getEditorDocumentUri(currentEditor) !== null) {
-                    return currentEditor!.setDecorations(
-                        typeHintDecorationType,
-                        []
-                    );
-                }
-            }
+            return this.refreshVisibleEditorsHints(
+                displayHints ? undefined : []
+            );
         }
     }
 
-    public async updateHints(cause?: TextDocumentChangeEvent): Promise<void> {
+    public async refreshHintsForVisibleEditors(
+        cause?: TextDocumentChangeEvent
+    ): Promise<void> {
         if (!this.displayHints) {
             return;
         }
-        const editor = vscode.window.activeTextEditor;
-        if (editor === undefined) {
+        if (
+            cause !== undefined &&
+            (cause.contentChanges.length === 0 ||
+                !this.isRustDocument(cause.document))
+        ) {
             return;
         }
-        const document = cause === undefined ? editor.document : cause.document;
-        if (!this.isRustDocument(document)) {
-            return;
+        return this.refreshVisibleEditorsHints();
+    }
+
+    private async refreshVisibleEditorsHints(
+        newDecorations?: vscode.DecorationOptions[]
+    ) {
+        const promises: Array<Promise<void>> = [];
+
+        for (const rustEditor of vscode.window.visibleTextEditors.filter(
+            editor => this.isRustDocument(editor.document)
+        )) {
+            if (newDecorations !== undefined) {
+                promises.push(
+                    Promise.resolve(
+                        rustEditor.setDecorations(
+                            typeHintDecorationType,
+                            newDecorations
+                        )
+                    )
+                );
+            } else {
+                promises.push(this.updateDecorationsFromServer(rustEditor));
+            }
         }
 
-        this.decorationsSinceLastChange.clear();
-        return await this.updateDecorationsFromServer(document.uri, editor);
+        for (const promise of promises) {
+            await promise;
+        }
     }
 
     private isRustDocument(document: vscode.TextDocument): boolean {
@@ -89,23 +79,14 @@ export class HintsUpdater {
     }
 
     private async updateDecorationsFromServer(
-        documentUri: vscode.Uri,
         editor: TextEditor
     ): Promise<void> {
-        const newHints = await this.queryHints(documentUri.toString());
-        if (
-            newHints !== null &&
-            this.getEditorDocumentUri(vscode.window.activeTextEditor) ===
-                documentUri
-        ) {
+        const newHints = await this.queryHints(editor.document.uri.toString());
+        if (newHints !== null) {
             const newDecorations = newHints.map(hint => ({
                 range: hint.range,
                 renderOptions: { after: { contentText: `: ${hint.label}` } }
             }));
-            this.decorationsSinceLastChange.set(
-                documentUri.toString(),
-                newDecorations
-            );
             return editor.setDecorations(
                 typeHintDecorationType,
                 newDecorations
@@ -126,14 +107,5 @@ export class HintsUpdater {
                     request
                 )
             );
-    }
-
-    private getEditorDocumentUri(
-        editor?: vscode.TextEditor
-    ): vscode.Uri | null {
-        if (editor && this.isRustDocument(editor.document)) {
-            return editor.document.uri;
-        }
-        return null;
     }
 }
