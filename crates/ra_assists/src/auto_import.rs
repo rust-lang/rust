@@ -71,6 +71,7 @@ fn compare_path_segment(a: &SmolStr, b: &ast::PathSegment) -> bool {
             ast::PathSegmentKind::SelfKw => a == "self",
             ast::PathSegmentKind::SuperKw => a == "super",
             ast::PathSegmentKind::CrateKw => a == "crate",
+            ast::PathSegmentKind::Type { .. } => false, // not allowed in imports
         }
     } else {
         false
