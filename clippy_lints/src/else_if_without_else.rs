@@ -16,6 +16,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # fn a() {}
+    /// # fn b() {}
+    /// # let x: i32 = 1;
     /// if x.is_positive() {
     ///     a();
     /// } else if x.is_negative() {
@@ -26,6 +29,9 @@ declare_clippy_lint! {
     /// Could be written:
     ///
     /// ```rust
+    /// # fn a() {}
+    /// # fn b() {}
+    /// # let x: i32 = 1;
     /// if x.is_positive() {
     ///     a();
     /// } else if x.is_negative() {

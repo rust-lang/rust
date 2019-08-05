@@ -226,8 +226,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// const ONE = 1.00f64;
-    /// x == ONE  // where both are floats
+    /// let x: f64 = 1.0;
+    /// const ONE: f64 = 1.00;
+    /// x == ONE;  // where both are floats
     /// ```
     pub FLOAT_CMP_CONST,
     restriction,

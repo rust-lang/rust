@@ -16,7 +16,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// a + 1
+    /// # let a = 0;
+    /// a + 1;
     /// ```
     pub INTEGER_ARITHMETIC,
     restriction,
@@ -33,7 +34,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// a + 1.0
+    /// # let a = 0.0;
+    /// a + 1.0;
     /// ```
     pub FLOAT_ARITHMETIC,
     restriction,
