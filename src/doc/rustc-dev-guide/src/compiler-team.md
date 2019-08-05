@@ -5,7 +5,7 @@ this team collectively work to track regressions and implement new features.
 Members of the Rust compiler team are people who have made significant
 contributions to rustc and its design.
 
-[team]: https://www.rust-lang.org/governance/teams/language-and-compiler
+[team]: https://www.rust-lang.org/governance/teams/compiler
 
 ## Discussion
 
