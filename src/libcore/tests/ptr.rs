@@ -163,7 +163,7 @@ fn test_as_mut() {
         // Pointers to unsized types -- slices
         let s: &mut [u8] = &mut [1, 2, 3];
         let ms: *mut [u8] = s;
-        assert_eq!(ms.as_mut(), Some(&mut [1, 2, 3]));
+        assert_eq!(ms.as_mut(), Some(&mut [1, 2, 3][..]));
 
         let mz: *mut [u8] = &mut [];
         assert_eq!(mz.as_mut(), Some(&mut [][..]));
