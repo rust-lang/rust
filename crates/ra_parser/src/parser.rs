@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     ParseError,
     SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
-    TokenSet, TokenSource, T,
+    Token, TokenSet, TokenSource, T,
 };
 
 /// `Parser` struct provides the low-level API for
@@ -87,8 +87,9 @@ impl<'t> Parser<'t> {
         let mut i = 0;
 
         loop {
-            let mut kind = self.token_source.lookahead_nth(i).kind;
-            if let Some((composited, step)) = self.is_composite(kind, i) {
+            let token = self.token_source.lookahead_nth(i);
+            let mut kind = token.kind;
+            if let Some((composited, step)) = self.is_composite(token, i) {
                 kind = composited;
                 i += step;
             } else {
@@ -250,32 +251,47 @@ impl<'t> Parser<'t> {
     }
 
     /// helper function for check if it is composite.
-    fn is_composite(&self, kind: SyntaxKind, n: usize) -> Option<(SyntaxKind, usize)> {
+    fn is_composite(&self, first: Token, n: usize) -> Option<(SyntaxKind, usize)> {
         // We assume the dollars will not occuried between
         // mult-byte tokens
 
-        let first = self.token_source.lookahead_nth(n);
+        let jn1 = first.is_jointed_to_next;
+        if !jn1 && first.kind != T![-] {
+            return None;
+        }
+
         let second = self.token_source.lookahead_nth(n + 1);
+        if first.kind == T![-] && second.kind == T![>] {
+            return Some((T![->], 2));
+        }
+        if !jn1 {
+            return None;
+        }
+
+        match (first.kind, second.kind) {
+            (T![:], T![:]) => return Some((T![::], 2)),
+            (T![=], T![=]) => return Some((T![==], 2)),
+            (T![=], T![>]) => return Some((T![=>], 2)),
+            (T![!], T![=]) => return Some((T![!=], 2)),
+            _ => {}
+        }
+
+        if first.kind != T![.] || second.kind != T![.] {
+            return None;
+        }
+
         let third = self.token_source.lookahead_nth(n + 2);
 
-        let jn1 = first.is_jointed_to_next;
-        let la2 = second.kind;
         let jn2 = second.is_jointed_to_next;
         let la3 = third.kind;
 
-        match kind {
-            T![.] if jn1 && la2 == T![.] && jn2 && la3 == T![.] => Some((T![...], 3)),
-            T![.] if jn1 && la2 == T![.] && la3 == T![=] => Some((T![..=], 3)),
-            T![.] if jn1 && la2 == T![.] => Some((T![..], 2)),
-
-            T![:] if jn1 && la2 == T![:] => Some((T![::], 2)),
-            T![=] if jn1 && la2 == T![=] => Some((T![==], 2)),
-            T![=] if jn1 && la2 == T![>] => Some((T![=>], 2)),
-
-            T![!] if jn1 && la2 == T![=] => Some((T![!=], 2)),
-            T![-] if la2 == T![>] => Some((T![->], 2)),
-            _ => None,
+        if jn2 && la3 == T![.] {
+            return Some((T![...], 3));
         }
+        if la3 == T![=] {
+            return Some((T![..=], 3));
+        }
+        return Some((T![..], 2));
     }
 
     fn eat_dollars(&mut self) {

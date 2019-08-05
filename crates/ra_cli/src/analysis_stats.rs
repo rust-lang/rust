@@ -52,6 +52,9 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
     println!("Total modules found: {}", visited_modules.len());
     println!("Total declarations: {}", num_decls);
     println!("Total functions: {}", funcs.len());
+    println!("Item Collection: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
+
+    let inference_time = Instant::now();
     let bar = indicatif::ProgressBar::with_draw_target(
         funcs.len() as u64,
         indicatif::ProgressDrawTarget::stderr_nohz(),
@@ -112,7 +115,8 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
         num_exprs_partially_unknown,
         (num_exprs_partially_unknown * 100 / num_exprs)
     );
-    println!("Analysis: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
+    println!("Inference: {:?}, {}", inference_time.elapsed(), ra_prof::memory_usage());
+    println!("Total: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 
     if memory_usage {
         drop(db);
