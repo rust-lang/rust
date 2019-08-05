@@ -838,6 +838,10 @@ impl TypeAlias {
         self.id.module(db)
     }
 
+    pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
+        self.module(db).krate(db)
+    }
+
     /// The containing impl block, if this is a method.
     pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));

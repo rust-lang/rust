@@ -50,6 +50,19 @@ impl ToChalk for Ty {
                 let parameters = apply_ty.parameters.to_chalk(db);
                 chalk_ir::ApplicationTy { name, parameters }.cast()
             }
+            Ty::Projection(proj_ty) => {
+                let associated_ty_id = proj_ty.associated_ty.to_chalk(db);
+                let parameters = proj_ty.parameters.to_chalk(db);
+                chalk_ir::ProjectionTy { associated_ty_id, parameters }.cast()
+            }
+            Ty::UnselectedProjection(proj_ty) => {
+                let type_name = lalrpop_intern::intern(&proj_ty.type_name.to_string());
+                let parameters = proj_ty.parameters.to_chalk(db);
+                chalk_ir::Ty::UnselectedProjection(chalk_ir::UnselectedProjectionTy {
+                    type_name,
+                    parameters,
+                })
+            }
             Ty::Param { idx, .. } => {
                 PlaceholderIndex { ui: UniverseIndex::ROOT, idx: idx as usize }.to_ty()
             }
@@ -527,6 +540,16 @@ pub(crate) fn struct_datum_query(
                 generic_params.count_params_including_parent(),
                 where_clauses,
                 adt.krate(db) != Some(krate),
+            )
+        }
+        TypeCtor::AssociatedType(type_alias) => {
+            let generic_params = type_alias.generic_params(db);
+            let bound_vars = Substs::bound_vars(&generic_params);
+            let where_clauses = convert_where_clauses(db, type_alias.into(), &bound_vars);
+            (
+                generic_params.count_params_including_parent(),
+                where_clauses,
+                type_alias.krate(db) != Some(krate),
             )
         }
     };
