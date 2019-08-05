@@ -52,7 +52,7 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
     println!("Total modules found: {}", visited_modules.len());
     println!("Total declarations: {}", num_decls);
     println!("Total functions: {}", funcs.len());
-    println!("Parsing: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
+    println!("Item Collection: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 
     let inference_time = Instant::now();
     let bar = indicatif::ProgressBar::with_draw_target(
