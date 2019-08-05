@@ -14,7 +14,7 @@ use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, Ident, ItemKind};
 use syntax::attr::{self, StabilityLevel};
 use syntax::edition::Edition;
-use syntax::ext::base::{self, Indeterminate};
+use syntax::ext::base::{self, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, ExpnId, ExpnInfo, ExpnKind};
@@ -203,8 +203,28 @@ impl<'a> base::Resolver for Resolver<'a> {
                 (&mac.node.path, MacroKind::Bang, Vec::new(), false),
             InvocationKind::Derive { ref path, .. } =>
                 (path, MacroKind::Derive, Vec::new(), false),
-            InvocationKind::DeriveContainer { .. } =>
-                return Ok(None),
+            InvocationKind::DeriveContainer { ref derives, .. } => {
+                // Block expansion of derives in the container until we know whether one of them
+                // is a built-in `Copy`. Skip the resolution if there's only one derive - either
+                // it's not a `Copy` and we don't need to do anything, or it's a `Copy` and it
+                // will automatically knows about itself.
+                let mut result = Ok(None);
+                if derives.len() > 1 {
+                    let parent_scope = self.invoc_parent_scope(invoc_id, Vec::new());
+                    for path in derives {
+                        match self.resolve_macro_path(path, Some(MacroKind::Derive),
+                                                      &parent_scope, true, force) {
+                            Ok((Some(ref ext), _)) if ext.is_derive_copy => {
+                                self.add_derives(invoc.expansion_data.id, SpecialDerives::COPY);
+                                return Ok(None);
+                            }
+                            Err(Determinacy::Undetermined) => result = Err(Indeterminate),
+                            _ => {}
+                        }
+                    }
+                }
+                return result;
+            }
         };
 
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
@@ -233,6 +253,14 @@ impl<'a> base::Resolver for Resolver<'a> {
                 lint::builtin::UNUSED_MACROS, node_id, span, "unused macro definition"
             );
         }
+    }
+
+    fn has_derives(&self, expn_id: ExpnId, derives: SpecialDerives) -> bool {
+        self.has_derives(expn_id, derives)
+    }
+
+    fn add_derives(&mut self, expn_id: ExpnId, derives: SpecialDerives) {
+        *self.special_derives.entry(expn_id).or_default() |= derives;
     }
 }
 

@@ -595,6 +595,8 @@ pub struct SyntaxExtension {
     /// Built-in macros have a couple of special properties (meaning of `$crate`,
     /// availability in `#[no_implicit_prelude]` modules), so we have to keep this flag.
     pub is_builtin: bool,
+    /// We have to identify macros providing a `Copy` impl early for compatibility reasons.
+    pub is_derive_copy: bool,
 }
 
 impl SyntaxExtensionKind {
@@ -640,6 +642,7 @@ impl SyntaxExtension {
             helper_attrs: Vec::new(),
             edition,
             is_builtin: false,
+            is_derive_copy: false,
             kind,
         }
     }
@@ -683,6 +686,16 @@ pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
+bitflags::bitflags! {
+    /// Built-in derives that need some extra tracking beyond the usual macro functionality.
+    #[derive(Default)]
+    pub struct SpecialDerives: u8 {
+        const PARTIAL_EQ = 1 << 0;
+        const EQ         = 1 << 1;
+        const COPY       = 1 << 2;
+    }
+}
+
 pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
 
@@ -699,6 +712,9 @@ pub trait Resolver {
                                 -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate>;
 
     fn check_unused_macros(&self);
+
+    fn has_derives(&self, expn_id: ExpnId, derives: SpecialDerives) -> bool;
+    fn add_derives(&mut self, expn_id: ExpnId, derives: SpecialDerives);
 }
 
 #[derive(Clone)]
@@ -726,7 +742,6 @@ pub struct ExtCtxt<'a> {
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
-    pub allow_derive_markers: Lrc<[Symbol]>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -747,7 +762,6 @@ impl<'a> ExtCtxt<'a> {
                 prior_type_ascription: None,
             },
             expansions: FxHashMap::default(),
-            allow_derive_markers: [sym::rustc_attrs, sym::structural_match][..].into(),
         }
     }
 

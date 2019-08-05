@@ -430,6 +430,8 @@ pub fn compile(
         }
     }
 
+    let is_builtin = attr::contains_name(&def.attrs, sym::rustc_builtin_macro);
+
     SyntaxExtension {
         kind: SyntaxExtensionKind::LegacyBang(expander),
         span: def.span,
@@ -441,7 +443,8 @@ pub fn compile(
         deprecation: attr::find_deprecation(&sess, &def.attrs, def.span),
         helper_attrs: Vec::new(),
         edition,
-        is_builtin: attr::contains_name(&def.attrs, sym::rustc_builtin_macro),
+        is_builtin,
+        is_derive_copy: is_builtin && def.ident.name == sym::Copy,
     }
 }
 

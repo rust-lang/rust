@@ -4,7 +4,7 @@ use crate::attr::{self, HasAttrs};
 use crate::source_map::{dummy_spanned, respan};
 use crate::config::StripUnconfigured;
 use crate::ext::base::*;
-use crate::ext::proc_macro::{add_derived_markers, collect_derives};
+use crate::ext::proc_macro::collect_derives;
 use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnInfo, ExpnKind};
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
@@ -209,7 +209,6 @@ pub enum InvocationKind {
     Derive {
         path: Path,
         item: Annotatable,
-        item_with_markers: Annotatable,
     },
     /// "Invocation" that contains all derives from an item,
     /// broken into multiple `Derive` invocations when expanded.
@@ -360,8 +359,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                 let mut item = self.fully_configure(item);
                 item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
-                let mut item_with_markers = item.clone();
-                add_derived_markers(&mut self.cx, item.span(), &traits, &mut item_with_markers);
                 let derives = derives.entry(invoc.expansion_data.id).or_default();
 
                 derives.reserve(traits.len());
@@ -370,11 +367,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let expn_id = ExpnId::fresh(self.cx.current_expansion.id, None);
                     derives.push(expn_id);
                     invocations.push(Invocation {
-                        kind: InvocationKind::Derive {
-                            path,
-                            item: item.clone(),
-                            item_with_markers: item_with_markers.clone(),
-                        },
+                        kind: InvocationKind::Derive { path, item: item.clone() },
                         fragment_kind: invoc.fragment_kind,
                         expansion_data: ExpansionData {
                             id: expn_id,
@@ -383,7 +376,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     });
                 }
                 let fragment = invoc.fragment_kind
-                    .expect_from_annotatables(::std::iter::once(item_with_markers));
+                    .expect_from_annotatables(::std::iter::once(item));
                 self.collect_invocations(fragment, derives)
             } else {
                 unreachable!()
@@ -574,13 +567,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!()
             }
-            InvocationKind::Derive { path, item, item_with_markers } => match ext {
+            InvocationKind::Derive { path, item } => match ext {
                 SyntaxExtensionKind::Derive(expander) |
                 SyntaxExtensionKind::LegacyDerive(expander) => {
-                    let (path, item) = match ext {
-                        SyntaxExtensionKind::LegacyDerive(..) => (path, item_with_markers),
-                        _ => (path, item),
-                    };
                     if !item.derive_allowed() {
                         return fragment_kind.dummy(span);
                     }

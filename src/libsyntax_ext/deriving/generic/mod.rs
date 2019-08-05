@@ -186,7 +186,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
-use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::source_map::{self, respan};
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
@@ -425,8 +425,9 @@ impl<'a> TraitDef<'a> {
                         return;
                     }
                 };
+                let container_id = cx.current_expansion.id.parent();
                 let is_always_copy =
-                    attr::contains_name(&item.attrs, sym::rustc_copy_clone_marker) &&
+                    cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                     has_no_type_params;
                 let use_temporaries = is_packed && is_always_copy;
 

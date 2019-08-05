@@ -3,8 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{self, Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
-use syntax::attr;
-use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
@@ -36,7 +35,8 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
             match annitem.node {
                 ItemKind::Struct(_, Generics { ref params, .. }) |
                 ItemKind::Enum(_, Generics { ref params, .. }) => {
-                    if attr::contains_name(&annitem.attrs, sym::rustc_copy_clone_marker) &&
+                    let container_id = cx.current_expansion.id.parent();
+                    if cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                         !params.iter().any(|param| match param.kind {
                             ast::GenericParamKind::Type { .. } => true,
                             _ => false,

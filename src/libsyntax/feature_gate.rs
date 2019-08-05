@@ -1329,11 +1329,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                                 /*opt*/ attributes(name1, name2, ...)"),
                                     Ungated),
 
-    (sym::rustc_copy_clone_marker, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                sym::rustc_attrs,
-                                                "internal implementation detail",
-                                                cfg_fn!(rustc_attrs))),
-
     (sym::rustc_allocator, Whitelisted, template!(Word), Gated(Stability::Unstable,
                                                 sym::rustc_attrs,
                                                 "internal implementation detail",

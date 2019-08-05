@@ -3,7 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{BinOpKind, Expr, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::ptr::P;
 use syntax::symbol::sym;
 use syntax_pos::Span;
@@ -13,6 +13,8 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
                                   mitem: &MetaItem,
                                   item: &Annotatable,
                                   push: &mut dyn FnMut(Annotatable)) {
+    cx.resolver.add_derives(cx.current_expansion.id.parent(), SpecialDerives::PARTIAL_EQ);
+
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_op(cx: &mut ExtCtxt<'_>,
