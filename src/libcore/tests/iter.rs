@@ -188,6 +188,19 @@ fn test_iterator_step_by() {
     assert_eq!(it.next(), Some(6));
     assert_eq!(it.next(), Some(9));
     assert_eq!(it.next(), None);
+
+    let mut it = (0..3).step_by(1);
+    assert_eq!(it.next_back(), Some(2));
+    assert_eq!(it.next_back(), Some(1));
+    assert_eq!(it.next_back(), Some(0));
+    assert_eq!(it.next_back(), None);
+
+    let mut it = (0..11).step_by(3);
+    assert_eq!(it.next_back(), Some(9));
+    assert_eq!(it.next_back(), Some(6));
+    assert_eq!(it.next_back(), Some(3));
+    assert_eq!(it.next_back(), Some(0));
+    assert_eq!(it.next_back(), None);
 }
 
 #[test]
@@ -250,6 +263,31 @@ fn test_iterator_step_by_nth_overflow() {
     let mut it = Test(0);
     (&mut it).step_by(1).nth(usize::MAX);
     assert_eq!(it.0, (usize::MAX as Bigger) * 1);
+}
+
+#[test]
+fn test_iterator_step_by_nth_back() {
+    let mut it = (0..16).step_by(5);
+    assert_eq!(it.nth_back(0), Some(15));
+    assert_eq!(it.nth_back(0), Some(10));
+    assert_eq!(it.nth_back(0), Some(5));
+    assert_eq!(it.nth_back(0), Some(0));
+    assert_eq!(it.nth_back(0), None);
+
+    let mut it = (0..16).step_by(5);
+    assert_eq!(it.next(), Some(0)); // to set `first_take` to `false`
+    assert_eq!(it.nth_back(0), Some(15));
+    assert_eq!(it.nth_back(0), Some(10));
+    assert_eq!(it.nth_back(0), Some(5));
+    assert_eq!(it.nth_back(0), None);
+
+    let it = || (0..18).step_by(5);
+    assert_eq!(it().nth_back(0), Some(15));
+    assert_eq!(it().nth_back(1), Some(10));
+    assert_eq!(it().nth_back(2), Some(5));
+    assert_eq!(it().nth_back(3), Some(0));
+    assert_eq!(it().nth_back(4), None);
+    assert_eq!(it().nth_back(42), None);
 }
 
 #[test]
@@ -465,8 +503,8 @@ fn test_iterator_filter_fold() {
 #[test]
 fn test_iterator_peekable() {
     let xs = vec![0, 1, 2, 3, 4, 5];
-    let mut it = xs.iter().cloned().peekable();
 
+    let mut it = xs.iter().cloned().peekable();
     assert_eq!(it.len(), 6);
     assert_eq!(it.peek().unwrap(), &0);
     assert_eq!(it.len(), 6);
@@ -491,6 +529,33 @@ fn test_iterator_peekable() {
     assert!(it.peek().is_none());
     assert_eq!(it.len(), 0);
     assert!(it.next().is_none());
+    assert_eq!(it.len(), 0);
+
+    let mut it = xs.iter().cloned().peekable();
+    assert_eq!(it.len(), 6);
+    assert_eq!(it.peek().unwrap(), &0);
+    assert_eq!(it.len(), 6);
+    assert_eq!(it.next_back().unwrap(), 5);
+    assert_eq!(it.len(), 5);
+    assert_eq!(it.next_back().unwrap(), 4);
+    assert_eq!(it.len(), 4);
+    assert_eq!(it.next_back().unwrap(), 3);
+    assert_eq!(it.len(), 3);
+    assert_eq!(it.peek().unwrap(), &0);
+    assert_eq!(it.len(), 3);
+    assert_eq!(it.peek().unwrap(), &0);
+    assert_eq!(it.len(), 3);
+    assert_eq!(it.next_back().unwrap(), 2);
+    assert_eq!(it.len(), 2);
+    assert_eq!(it.next_back().unwrap(), 1);
+    assert_eq!(it.len(), 1);
+    assert_eq!(it.peek().unwrap(), &0);
+    assert_eq!(it.len(), 1);
+    assert_eq!(it.next_back().unwrap(), 0);
+    assert_eq!(it.len(), 0);
+    assert!(it.peek().is_none());
+    assert_eq!(it.len(), 0);
+    assert!(it.next_back().is_none());
     assert_eq!(it.len(), 0);
 }
 
@@ -559,6 +624,18 @@ fn test_iterator_peekable_fold() {
     assert_eq!(it.peek(), Some(&&0));
     let i = it.fold(0, |i, &x| {
         assert_eq!(x, xs[i]);
+        i + 1
+    });
+    assert_eq!(i, xs.len());
+}
+
+#[test]
+fn test_iterator_peekable_rfold() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let mut it = xs.iter().peekable();
+    assert_eq!(it.peek(), Some(&&0));
+    let i = it.rfold(0, |i, &x| {
+        assert_eq!(x, xs[xs.len() - 1 - i]);
         i + 1
     });
     assert_eq!(i, xs.len());
@@ -812,13 +889,25 @@ fn test_iterator_skip_fold() {
 fn test_iterator_take() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
     let ys = [0, 1, 2, 3, 5];
-    let mut it = xs.iter().take(5);
+
+    let mut it = xs.iter().take(ys.len());
     let mut i = 0;
-    assert_eq!(it.len(), 5);
+    assert_eq!(it.len(), ys.len());
     while let Some(&x) = it.next() {
         assert_eq!(x, ys[i]);
         i += 1;
-        assert_eq!(it.len(), 5-i);
+        assert_eq!(it.len(), ys.len() - i);
+    }
+    assert_eq!(i, ys.len());
+    assert_eq!(it.len(), 0);
+
+    let mut it = xs.iter().take(ys.len());
+    let mut i = 0;
+    assert_eq!(it.len(), ys.len());
+    while let Some(&x) = it.next_back() {
+        i += 1;
+        assert_eq!(x, ys[ys.len() - i]);
+        assert_eq!(it.len(), ys.len() - i);
     }
     assert_eq!(i, ys.len());
     assert_eq!(it.len(), 0);
@@ -849,18 +938,50 @@ fn test_iterator_take_nth() {
 }
 
 #[test]
+fn test_iterator_take_nth_back() {
+    let xs = [0, 1, 2, 4, 5];
+    let mut it = xs.iter();
+    {
+        let mut take = it.by_ref().take(3);
+        let mut i = 0;
+        while let Some(&x) = take.nth_back(0) {
+            i += 1;
+            assert_eq!(x, 3 - i);
+        }
+    }
+    assert_eq!(it.nth_back(0), None);
+
+    let xs = [0, 1, 2, 3, 4];
+    let mut it = xs.iter().take(7);
+    assert_eq!(it.nth_back(1), Some(&3));
+    assert_eq!(it.nth_back(1), Some(&1));
+    assert_eq!(it.nth_back(1), None);
+}
+
+#[test]
 fn test_iterator_take_short() {
     let xs = [0, 1, 2, 3];
-    let ys = [0, 1, 2, 3];
+
     let mut it = xs.iter().take(5);
     let mut i = 0;
-    assert_eq!(it.len(), 4);
+    assert_eq!(it.len(), xs.len());
     while let Some(&x) = it.next() {
-        assert_eq!(x, ys[i]);
+        assert_eq!(x, xs[i]);
         i += 1;
-        assert_eq!(it.len(), 4-i);
+        assert_eq!(it.len(), xs.len() - i);
     }
-    assert_eq!(i, ys.len());
+    assert_eq!(i, xs.len());
+    assert_eq!(it.len(), 0);
+
+    let mut it = xs.iter().take(5);
+    let mut i = 0;
+    assert_eq!(it.len(), xs.len());
+    while let Some(&x) = it.next_back() {
+        i += 1;
+        assert_eq!(x, xs[xs.len() - i]);
+        assert_eq!(it.len(), xs.len() - i);
+    }
+    assert_eq!(i, xs.len());
     assert_eq!(it.len(), 0);
 }
 
@@ -2278,17 +2399,50 @@ fn test_enumerate_try_folds() {
 }
 
 #[test]
-fn test_peek_try_fold() {
+fn test_peek_try_folds() {
     let f = &|acc, x| i32::checked_add(2*acc, x);
+
     assert_eq!((1..20).peekable().try_fold(7, f), (1..20).try_fold(7, f));
+    assert_eq!((1..20).peekable().try_rfold(7, f), (1..20).try_rfold(7, f));
+
     let mut iter = (1..20).peekable();
     assert_eq!(iter.peek(), Some(&1));
     assert_eq!(iter.try_fold(7, f), (1..20).try_fold(7, f));
+
+    let mut iter = (1..20).peekable();
+    assert_eq!(iter.peek(), Some(&1));
+    assert_eq!(iter.try_rfold(7, f), (1..20).try_rfold(7, f));
 
     let mut iter = [100, 20, 30, 40, 50, 60, 70].iter().cloned().peekable();
     assert_eq!(iter.peek(), Some(&100));
     assert_eq!(iter.try_fold(0, i8::checked_add), None);
     assert_eq!(iter.peek(), Some(&40));
+
+    let mut iter = [100, 20, 30, 40, 50, 60, 70].iter().cloned().peekable();
+    assert_eq!(iter.peek(), Some(&100));
+    assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    assert_eq!(iter.peek(), Some(&100));
+    assert_eq!(iter.next_back(), Some(50));
+
+    let mut iter = (2..5).peekable();
+    assert_eq!(iter.peek(), Some(&2));
+    assert_eq!(iter.try_for_each(Err), Err(2));
+    assert_eq!(iter.peek(), Some(&3));
+    assert_eq!(iter.try_for_each(Err), Err(3));
+    assert_eq!(iter.peek(), Some(&4));
+    assert_eq!(iter.try_for_each(Err), Err(4));
+    assert_eq!(iter.peek(), None);
+    assert_eq!(iter.try_for_each(Err), Ok(()));
+
+    let mut iter = (2..5).peekable();
+    assert_eq!(iter.peek(), Some(&2));
+    assert_eq!(iter.try_rfold((), |(), x| Err(x)), Err(4));
+    assert_eq!(iter.peek(), Some(&2));
+    assert_eq!(iter.try_rfold((), |(), x| Err(x)), Err(3));
+    assert_eq!(iter.peek(), Some(&2));
+    assert_eq!(iter.try_rfold((), |(), x| Err(x)), Err(2));
+    assert_eq!(iter.peek(), None);
+    assert_eq!(iter.try_rfold((), |(), x| Err(x)), Ok(()));
 }
 
 #[test]
@@ -2371,13 +2525,25 @@ fn test_skip_nth_back() {
 fn test_take_try_folds() {
     let f = &|acc, x| i32::checked_add(2*acc, x);
     assert_eq!((10..30).take(10).try_fold(7, f), (10..20).try_fold(7, f));
-    //assert_eq!((10..30).take(10).try_rfold(7, f), (10..20).try_rfold(7, f));
+    assert_eq!((10..30).take(10).try_rfold(7, f), (10..20).try_rfold(7, f));
 
     let mut iter = (10..30).take(20);
     assert_eq!(iter.try_fold(0, i8::checked_add), None);
     assert_eq!(iter.next(), Some(20));
-    //assert_eq!(iter.try_rfold(0, i8::checked_add), None);
-    //assert_eq!(iter.next_back(), Some(24));
+    assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    assert_eq!(iter.next_back(), Some(24));
+
+    let mut iter = (2..20).take(3);
+    assert_eq!(iter.try_for_each(Err), Err(2));
+    assert_eq!(iter.try_for_each(Err), Err(3));
+    assert_eq!(iter.try_for_each(Err), Err(4));
+    assert_eq!(iter.try_for_each(Err), Ok(()));
+
+    let mut iter = (2..20).take(3).rev();
+    assert_eq!(iter.try_for_each(Err), Err(4));
+    assert_eq!(iter.try_for_each(Err), Err(3));
+    assert_eq!(iter.try_for_each(Err), Err(2));
+    assert_eq!(iter.try_for_each(Err), Ok(()));
 }
 
 #[test]
