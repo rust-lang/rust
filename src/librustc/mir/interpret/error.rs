@@ -342,8 +342,10 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UndefinedBehaviorInfo {
-    /// Handle cases which for which we do not have a fixed variant.
+    /// Free-form case. Only for errors that are never caught!
     Ub(String),
+    /// Free-form case for experimental UB. Only for errors that are never caught!
+    UbExperimental(String),
     /// Unreachable code was executed.
     Unreachable,
 }
@@ -352,7 +354,7 @@ impl fmt::Debug for UndefinedBehaviorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UndefinedBehaviorInfo::*;
         match self {
-            Ub(ref msg) =>
+            Ub(msg) | UbExperimental(msg) =>
                 write!(f, "{}", msg),
             Unreachable =>
                 write!(f, "entered unreachable code"),
@@ -362,7 +364,7 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsupportedOpInfo<'tcx> {
-    /// Handle cases which for which we do not have a fixed variant.
+    /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
 
     // -- Everything below is not classified yet --
@@ -406,7 +408,6 @@ pub enum UnsupportedOpInfo<'tcx> {
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
     ModifiedStatic,
-    AssumptionNotHeld,
     TypeNotPrimitive(Ty<'tcx>),
     ReallocatedWrongMemoryKind(String, String),
     DeallocatedWrongMemoryKind(String, String),
@@ -505,8 +506,6 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             ModifiedStatic =>
                 write!(f, "tried to modify a static's initial value from another static's \
                     initializer"),
-            AssumptionNotHeld =>
-                write!(f, "`assume` argument was false"),
             ReallocateNonBasePtr =>
                 write!(f, "tried to reallocate with a pointer not to the beginning of an \
                     existing object"),
