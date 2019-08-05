@@ -141,6 +141,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Static);
 
+    const CHECK_ALIGN: bool = true;
+
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         ecx.memory().extra.validate
