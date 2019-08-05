@@ -179,7 +179,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.map(|a| a + 1).unwrap_or(0)
+    /// # let x = Some(1);
+    /// x.map(|a| a + 1).unwrap_or(0);
     /// ```
     pub OPTION_MAP_UNWRAP_OR,
     pedantic,
@@ -196,7 +197,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.map(|a| a + 1).unwrap_or_else(some_function)
+    /// # let x = Some(1);
+    /// # fn some_function() -> usize { 1 }
+    /// x.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     pub OPTION_MAP_UNWRAP_OR_ELSE,
     pedantic,
@@ -213,7 +216,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.map(|a| a + 1).unwrap_or_else(some_function)
+    /// # let x: Result<usize, ()> = Ok(1);
+    /// # fn some_function(foo: ()) -> usize { 1 }
+    /// x.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     pub RESULT_MAP_UNWRAP_OR_ELSE,
     pedantic,
@@ -265,7 +270,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.map(|x| x.iter()).flatten()
+    /// let vec = vec![vec![1]];
+    /// vec.iter().map(|x| x.iter()).flatten();
     /// ```
     pub MAP_FLATTEN,
     pedantic,
@@ -284,7 +290,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.filter(|x| x == 0).map(|x| x * 2)
+    /// let vec = vec![1];
+    /// vec.iter().filter(|x| **x == 0).map(|x| *x * 2);
     /// ```
     pub FILTER_MAP,
     pedantic,
@@ -324,7 +331,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    ///  (0..3).find(|x| x == 2).map(|x| x * 2);
+    ///  (0..3).find(|x| *x == 2).map(|x| x * 2);
     /// ```
     /// Can be written as
     /// ```rust
