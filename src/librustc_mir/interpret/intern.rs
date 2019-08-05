@@ -176,7 +176,8 @@ for
                     (InternMode::ConstBase, hir::Mutability::MutMutable) |
                     (InternMode::Const, hir::Mutability::MutMutable) => {
                         match referenced_ty.sty {
-                            ty::Array(_, n) if n.unwrap_usize(self.ecx.tcx.tcx) == 0 => {}
+                            ty::Array(_, n)
+                                if n.eval_usize(self.ecx.tcx.tcx, self.param_env) == 0 => {}
                             ty::Slice(_)
                                 if value.to_meta().unwrap().unwrap().to_usize(self.ecx)? == 0 => {}
                             _ => bug!("const qualif failed to prevent mutable references"),

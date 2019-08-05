@@ -89,7 +89,7 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Array(inner_type, len) => {
             output.push('[');
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);
-            output.push_str(&format!("; {}", len.unwrap_usize(tcx)));
+            output.push_str(&format!("; {}", len.eval_usize(tcx, ty::ParamEnv::reveal_all())));
             output.push(']');
         },
         ty::Slice(inner_type) => {

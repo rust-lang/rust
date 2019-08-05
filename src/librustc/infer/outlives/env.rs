@@ -27,7 +27,7 @@ use crate::ty::{self, Ty};
 /// interested in the `OutlivesEnvironment`. -nmatsakis
 #[derive(Clone)]
 pub struct OutlivesEnvironment<'tcx> {
-    param_env: ty::ParamEnv<'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
     free_region_map: FreeRegionMap<'tcx>,
 
     // Contains, for each body B that we are checking (that is, the fn

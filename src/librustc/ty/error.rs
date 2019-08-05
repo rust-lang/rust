@@ -194,7 +194,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::Array(_, n) => {
                 let n = tcx.lift_to_global(&n).unwrap();
-                match n.assert_usize(tcx) {
+                match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                     Some(n) => format!("array of {} elements", n).into(),
                     None => "array".into(),
                 }

@@ -253,7 +253,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // u64 cast is from usize to u64, which is always good
                 let val = Immediate::new_slice(
                     ptr,
-                    length.unwrap_usize(self.tcx.tcx),
+                    length.eval_usize(self.tcx.tcx, self.param_env),
                     self,
                 );
                 self.write_immediate(val, dest)

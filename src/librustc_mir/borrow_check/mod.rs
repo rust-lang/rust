@@ -206,7 +206,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         def_id,
         &attributes,
         &dead_unwinds,
-        Borrows::new(tcx, body, regioncx.clone(), &borrow_set),
+        Borrows::new(tcx, body, param_env, regioncx.clone(), &borrow_set),
         |rs, i| DebugFormatted::new(&rs.location(i)),
     ));
     let flow_uninits = FlowAtLocation::new(do_dataflow(
@@ -242,6 +242,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         infcx,
         body,
         mir_def_id: def_id,
+        param_env,
         move_data: &mdpe.move_data,
         location_table,
         movable_generator,
@@ -424,6 +425,7 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     crate infcx: &'cx InferCtxt<'cx, 'tcx>,
     body: &'cx Body<'tcx>,
     mir_def_id: DefId,
+    param_env: ty::ParamEnv<'tcx>,
     move_data: &'cx MoveData<'tcx>,
 
     /// Map from MIR `Location` to `LocationIndex`; created
@@ -1004,11 +1006,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut error_reported = false;
         let tcx = self.infcx.tcx;
         let body = self.body;
+        let param_env = self.param_env;
         let location_table = self.location_table.start_index(location);
         let borrow_set = self.borrow_set.clone();
         each_borrow_involving_path(
             self,
             tcx,
+            param_env,
             body,
             location,
             (sd, place_span.0),
@@ -1480,6 +1484,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         if places_conflict::borrow_conflicts_with_place(
             self.infcx.tcx,
+            self.param_env,
             self.body,
             place,
             borrow.kind,

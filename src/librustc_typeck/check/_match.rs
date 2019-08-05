@@ -423,7 +423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 let (inner_ty, slice_ty) = match expected_ty.sty {
                     ty::Array(inner_ty, size) => {
-                        if let Some(size) = size.assert_usize(tcx) {
+                        if let Some(size) = size.try_eval_usize(tcx, self.param_env) {
                             let min_len = before.len() as u64 + after.len() as u64;
                             if slice.is_none() {
                                 if min_len != size {

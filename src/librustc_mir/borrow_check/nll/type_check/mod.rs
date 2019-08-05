@@ -669,7 +669,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             ProjectionElem::Subslice { from, to } => PlaceTy::from_ty(
                 match base_ty.sty {
                     ty::Array(inner, size) => {
-                        let size = size.unwrap_usize(tcx);
+                        let size = size.eval_usize(tcx, self.cx.param_env);
                         let min_size = (from as u64) + (to as u64);
                         if let Some(rest_size) = size.checked_sub(min_size) {
                             tcx.mk_array(inner, rest_size)
@@ -1214,10 +1214,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         for proj in &user_ty.projs {
-            let projected_ty = curr_projected_ty.projection_ty_core(tcx, proj, |this, field, &()| {
-                let ty = this.field_ty(tcx, field);
-                self.normalize(ty, locations)
-            });
+            let projected_ty = curr_projected_ty.projection_ty_core(
+                tcx,
+                self.param_env,
+                proj,
+                |this, field, &()| {
+                    let ty = this.field_ty(tcx, field);
+                    self.normalize(ty, locations)
+                },
+            );
             curr_projected_ty = projected_ty;
         }
         debug!("user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",

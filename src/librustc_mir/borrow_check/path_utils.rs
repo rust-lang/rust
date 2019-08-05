@@ -4,7 +4,7 @@ use crate::borrow_check::AccessDepth;
 use crate::dataflow::indexes::BorrowIndex;
 use rustc::mir::{BasicBlock, Location, Body, Place, PlaceBase};
 use rustc::mir::{ProjectionElem, BorrowKind};
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::graph::dominators::Dominators;
 
 /// Returns `true` if the borrow represented by `kind` is
@@ -25,6 +25,7 @@ pub(super) enum Control {
 pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
     s: &mut S,
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     _location: Location,
     access_place: (AccessDepth, &Place<'tcx>),
@@ -47,6 +48,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
 
         if places_conflict::borrow_conflicts_with_place(
             tcx,
+            param_env,
             body,
             &borrowed.borrowed_place,
             borrowed.kind,

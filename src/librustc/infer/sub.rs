@@ -35,6 +35,9 @@ impl<'combine, 'infcx, 'tcx> Sub<'combine, 'infcx, 'tcx> {
 impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
     fn tcx(&self) -> TyCtxt<'tcx> { self.fields.infcx.tcx }
+
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.fields.param_env }
+
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R

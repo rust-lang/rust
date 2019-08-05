@@ -41,7 +41,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .map(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
                 let fields = match c.ty.sty {
-                    ty::Array(_, n) => n.unwrap_usize(bx.tcx()),
+                    ty::Array(_, n) => n.eval_usize(bx.tcx(), ty::ParamEnv::reveal_all()),
                     _ => bug!("invalid simd shuffle type: {}", c.ty),
                 };
                 let values: Vec<_> = (0..fields).map(|field| {

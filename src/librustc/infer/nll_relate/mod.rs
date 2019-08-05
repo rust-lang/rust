@@ -502,6 +502,9 @@ where
         self.infcx.tcx
     }
 
+    // FIXME(oli-obk): not sure how to get the correct ParamEnv
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { ty::ParamEnv::empty() }
+
     fn tag(&self) -> &'static str {
         "nll::subtype"
     }
@@ -830,6 +833,9 @@ where
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+
+    // FIXME(oli-obk): not sure how to get the correct ParamEnv
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { ty::ParamEnv::empty() }
 
     fn tag(&self) -> &'static str {
         "nll::generalizer"

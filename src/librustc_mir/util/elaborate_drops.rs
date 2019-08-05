@@ -821,7 +821,7 @@ where
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
             ty::Array(ety, size) => {
-                let size = size.assert_usize(self.tcx());
+                let size = size.try_eval_usize(self.tcx(), self.elaborator.param_env());
                 self.open_drop_for_array(ety, size)
             },
             ty::Slice(ety) => self.open_drop_for_array(ety, None),

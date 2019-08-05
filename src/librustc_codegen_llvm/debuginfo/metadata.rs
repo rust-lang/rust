@@ -341,7 +341,7 @@ fn fixed_vec_metadata(
     let (size, align) = cx.size_and_align_of(array_or_slice_type);
 
     let upper_bound = match array_or_slice_type.sty {
-        ty::Array(_, len) => len.unwrap_usize(cx.tcx) as c_longlong,
+        ty::Array(_, len) => len.eval_usize(cx.tcx, ty::ParamEnv::reveal_all()) as c_longlong,
         _ => -1
     };
 

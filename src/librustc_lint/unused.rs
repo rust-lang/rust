@@ -208,7 +208,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     }
                     has_emitted
                 }
-                ty::Array(ty, len) => match len.assert_usize(cx.tcx) {
+                ty::Array(ty, len) => match len.try_eval_usize(cx.tcx, cx.param_env) {
                     // If the array is definitely non-empty, we can do `#[must_use]` checking.
                     Some(n) if n != 0 => {
                         let descr_pre = &format!(

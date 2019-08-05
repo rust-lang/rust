@@ -696,7 +696,12 @@ pub trait PrettyPrinter<'tcx>:
             },
             ty::Array(ty, sz) => {
                 p!(write("["), print(ty), write("; "));
-                if let Some(n) = sz.assert_usize(self.tcx()) {
+                if let ConstValue::Unevaluated(..) = sz.val {
+                    // do not try to evalute unevaluated constants. If we are const evaluating an
+                    // array length anon const, rustc will (with debug assertions) print the
+                    // constant's path. Which will end up here again.
+                    p!(write("_"));
+                } else if let Some(n) = sz.try_eval_usize(self.tcx(), ty::ParamEnv::empty()) {
                     p!(write("{}", n));
                 } else {
                     p!(write("_"));
@@ -915,7 +920,7 @@ pub trait PrettyPrinter<'tcx>:
         if let ty::Ref(_, ref_ty, _) = ct.ty.sty {
             let byte_str = match (ct.val, &ref_ty.sty) {
                 (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
-                    let n = n.unwrap_usize(self.tcx());
+                    let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
                     Some(self.tcx()
                         .alloc_map.lock()
                         .unwrap_memory(ptr.alloc_id)

@@ -15,7 +15,7 @@ use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFolda
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
-use crate::mir::interpret::{Scalar, Pointer};
+use crate::mir::interpret::{Scalar, GlobalId};
 
 use smallvec::SmallVec;
 use std::borrow::Cow;
@@ -1726,7 +1726,7 @@ impl<'tcx> TyS<'tcx> {
                 ty.expect_ty().conservative_is_privately_uninhabited(tcx)
             }),
             ty::Array(ty, len) => {
-                match len.assert_usize(tcx) {
+                match len.try_eval_usize(tcx, ParamEnv::empty()) {
                     // If the array is definitely non-empty, it's uninhabited if
                     // the type of its elements is uninhabited.
                     Some(n) if n != 0 => ty.conservative_is_privately_uninhabited(tcx),
@@ -2291,29 +2291,38 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn to_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
-        if self.ty != ty.value {
-            return None;
+    pub fn try_eval_bits(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        assert_eq!(self.ty, ty);
+        // if `ty` does not depend on generic parameters, use an empty param_env
+        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
+        match self.val {
+            // FIXME(const_generics): this doesn't work right now,
+            // because it tries to relate an `Infer` to a `Param`.
+            ConstValue::Unevaluated(did, substs) => {
+                // if `substs` has no unresolved components, use and empty param_env
+                let (param_env, substs) = param_env.with_reveal_all().and(substs).into_parts();
+                // try to resolve e.g. associated constants to their definition on an impl
+                let instance = ty::Instance::resolve(tcx, param_env, did, substs)?;
+                let gid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                let evaluated = tcx.const_eval(param_env.and(gid)).ok()?;
+                evaluated.val.try_to_bits(size)
+            },
+            // otherwise just extract a `ConstValue`'s bits if possible
+            _ => self.val.try_to_bits(size),
         }
-        let size = tcx.layout_of(ty).ok()?.size;
-        self.val.try_to_bits(size)
     }
 
     #[inline]
-    pub fn to_ptr(&self) -> Option<Pointer> {
-        self.val.try_to_ptr()
-    }
-
-    #[inline]
-    pub fn assert_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
-        assert_eq!(self.ty, ty.value);
-        let size = tcx.layout_of(ty).ok()?.size;
-        self.val.try_to_bits(size)
-    }
-
-    #[inline]
-    pub fn assert_bool(&self, tcx: TyCtxt<'tcx>) -> Option<bool> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.bool)).and_then(|v| match v {
+    pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
+        self.try_eval_bits(tcx, param_env, tcx.types.bool).and_then(|v| match v {
             0 => Some(false),
             1 => Some(true),
             _ => None,
@@ -2321,20 +2330,19 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn assert_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.usize)).map(|v| v as u64)
+    pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
+        self.try_eval_bits(tcx, param_env, tcx.types.usize).map(|v| v as u64)
     }
 
     #[inline]
-    pub fn unwrap_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> u128 {
-        self.assert_bits(tcx, ty).unwrap_or_else(||
-            bug!("expected bits of {}, got {:#?}", ty.value, self))
+    pub fn eval_bits(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
+        self.try_eval_bits(tcx, param_env, ty).unwrap_or_else(||
+            bug!("expected bits of {:#?}, got {:#?}", ty, self))
     }
 
     #[inline]
-    pub fn unwrap_usize(&self, tcx: TyCtxt<'tcx>) -> u64 {
-        self.assert_usize(tcx).unwrap_or_else(||
-            bug!("expected constant usize, got {:#?}", self))
+    pub fn eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
+        self.eval_bits(tcx, param_env, tcx.types.usize) as u64
     }
 }
 

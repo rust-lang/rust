@@ -2357,7 +2357,7 @@ impl<'tcx> AdtDef {
 
     #[inline]
     pub fn eval_explicit_discr(&self, tcx: TyCtxt<'tcx>, expr_did: DefId) -> Option<Discr<'tcx>> {
-        let param_env = ParamEnv::empty();
+        let param_env = tcx.param_env(expr_did);
         let repr_type = self.repr.discr_type();
         let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), expr_did);
         let instance = ty::Instance::new(expr_did, substs);
@@ -2368,7 +2368,7 @@ impl<'tcx> AdtDef {
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => {
                 // FIXME: Find the right type and use it instead of `val.ty` here
-                if let Some(b) = val.assert_bits(tcx.global_tcx(), param_env.and(val.ty)) {
+                if let Some(b) = val.try_eval_bits(tcx.global_tcx(), param_env, val.ty) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
                     Some(Discr {
                         val: b,

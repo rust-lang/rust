@@ -512,7 +512,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         }
         self = ct.ty.print(self)?;
 
-        if let Some(bits) = ct.assert_bits(self.tcx, ty::ParamEnv::empty().and(ct.ty)) {
+        if let Some(bits) = ct.try_eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty) {
             let _ = write!(self.out, "{:x}_", bits);
         } else {
             // NOTE(eddyb) despite having the path, we need to
