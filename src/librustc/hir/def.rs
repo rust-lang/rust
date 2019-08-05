@@ -1,4 +1,4 @@
-use crate::hir::def_id::DefId;
+use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::util::nodemap::DefIdMap;
 use syntax::ast;
 use syntax::ext::base::MacroKind;
@@ -81,9 +81,11 @@ pub enum DefKind {
 }
 
 impl DefKind {
-    pub fn descr(self) -> &'static str {
+    pub fn descr(self, def_id: DefId) -> &'static str {
         match self {
             DefKind::Fn => "function",
+            DefKind::Mod if def_id.index == CRATE_DEF_INDEX && def_id.krate != LOCAL_CRATE =>
+                "crate",
             DefKind::Mod => "module",
             DefKind::Static => "static",
             DefKind::Enum => "enum",
@@ -366,7 +368,7 @@ impl<Id> Res<Id> {
     /// A human readable name for the res kind ("function", "module", etc.).
     pub fn descr(&self) -> &'static str {
         match *self {
-            Res::Def(kind, _) => kind.descr(),
+            Res::Def(kind, def_id) => kind.descr(def_id),
             Res::SelfCtor(..) => "self constructor",
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",
