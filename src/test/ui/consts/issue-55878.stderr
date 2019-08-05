@@ -1,10 +1,10 @@
-error[E0080]: the type `[u8; 18446744073709551615]` is too big for the current architecture
+error[E0080]: the type `[u8; SIZE]` is too big for the current architecture
   --> $SRC_DIR/libcore/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    | 
-  ::: $DIR/issue-55878.rs:3:26
+  ::: $DIR/issue-55878.rs:6:26
    |
 LL |     println!("Size: {}", std::mem::size_of::<[u8; std::u64::MAX as usize]>());
    |                          ---------------------------------------------------
