@@ -398,7 +398,9 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // alignment and size determined by the layout (size will be 0,
                     // alignment should take attributes into account).
                     .unwrap_or_else(|| (layout.size, layout.align.abi));
-                let ptr: Option<_> = match self.ecx.memory.check_ptr_access(ptr, size, align) {
+                let ptr: Option<_> = match
+                    self.ecx.memory.check_ptr_access_align(ptr, size, Some(align))
+                {
                     Ok(ptr) => ptr,
                     Err(err) => {
                         info!(

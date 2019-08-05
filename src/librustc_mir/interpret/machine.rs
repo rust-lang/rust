@@ -109,6 +109,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// that is added to the memory so that the work is not done twice.
     const STATIC_KIND: Option<Self::MemoryKinds>;
 
+    /// Whether memory accesses should be alignment-checked.
+    const CHECK_ALIGN: bool;
+
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 

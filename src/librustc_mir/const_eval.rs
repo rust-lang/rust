@@ -98,7 +98,7 @@ fn op_to_const<'tcx>(
         Ok(mplace) => {
             let ptr = mplace.ptr.to_ptr().unwrap();
             let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-            ConstValue::ByRef { offset: ptr.offset, align: mplace.align, alloc }
+            ConstValue::ByRef { alloc, offset: ptr.offset }
         },
         // see comment on `let try_as_immediate` above
         Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
@@ -112,7 +112,7 @@ fn op_to_const<'tcx>(
                 let mplace = op.assert_mem_place();
                 let ptr = mplace.ptr.to_ptr().unwrap();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                ConstValue::ByRef { offset: ptr.offset, align: mplace.align, alloc }
+                ConstValue::ByRef { alloc, offset: ptr.offset }
             },
         },
         Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
@@ -325,6 +325,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
     const STATIC_KIND: Option<!> = None; // no copying of statics allowed
+
+    // We do not check for alignment to avoid having to carry an `Align`
+    // in `ConstValue::ByRef`.
+    const CHECK_ALIGN: bool = false;
 
     #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
@@ -561,9 +565,8 @@ fn validate_and_turn_into_const<'tcx>(
             let ptr = mplace.ptr.to_ptr()?;
             Ok(tcx.mk_const(ty::Const {
                 val: ConstValue::ByRef {
-                    offset: ptr.offset,
-                    align: mplace.align,
                     alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                    offset: ptr.offset,
                 },
                 ty: mplace.layout.ty,
             }))

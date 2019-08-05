@@ -306,11 +306,24 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ///
     /// Most of the time you should use `check_mplace_access`, but when you just have a pointer,
     /// this method is still appropriate.
+    #[inline(always)]
     pub fn check_ptr_access(
         &self,
         sptr: Scalar<M::PointerTag>,
         size: Size,
         align: Align,
+    ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
+        let align = if M::CHECK_ALIGN { Some(align) } else { None };
+        self.check_ptr_access_align(sptr, size, align)
+    }
+
+    /// Like `check_ptr_access`, but *definitely* checks alignment when `align`
+    /// is `Some` (overriding `M::CHECK_ALIGN`).
+    pub(super) fn check_ptr_access_align(
+        &self,
+        sptr: Scalar<M::PointerTag>,
+        size: Size,
+        align: Option<Align>,
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
         fn check_offset_align(offset: u64, align: Align) -> InterpResult<'static> {
             if offset % align.bytes() == 0 {
@@ -338,11 +351,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Ok(bits) => {
                 let bits = bits as u64; // it's ptr-sized
                 assert!(size.bytes() == 0);
-                // Must be non-NULL and aligned.
+                // Must be non-NULL.
                 if bits == 0 {
                     throw_unsup!(InvalidNullPointerUsage)
                 }
-                check_offset_align(bits, align)?;
+                // Must be aligned.
+                if let Some(align) = align {
+                    check_offset_align(bits, align)?;
+                }
                 None
             }
             Err(ptr) => {
@@ -355,18 +371,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 end_ptr.check_in_alloc(allocation_size, CheckInAllocMsg::MemoryAccessTest)?;
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
-                if alloc_align.bytes() < align.bytes() {
-                    // The allocation itself is not aligned enough.
-                    // FIXME: Alignment check is too strict, depending on the base address that
-                    // got picked we might be aligned even if this check fails.
-                    // We instead have to fall back to converting to an integer and checking
-                    // the "real" alignment.
-                    throw_unsup!(AlignmentCheckFailed {
-                        has: alloc_align,
-                        required: align,
-                    })
+                if let Some(align) = align {
+                    if alloc_align.bytes() < align.bytes() {
+                        // The allocation itself is not aligned enough.
+                        // FIXME: Alignment check is too strict, depending on the base address that
+                        // got picked we might be aligned even if this check fails.
+                        // We instead have to fall back to converting to an integer and checking
+                        // the "real" alignment.
+                        throw_unsup!(AlignmentCheckFailed {
+                            has: alloc_align,
+                            required: align,
+                        });
+                    }
+                    check_offset_align(ptr.offset.bytes(), align)?;
                 }
-                check_offset_align(ptr.offset.bytes(), align)?;
 
                 // We can still be zero-sized in this branch, in which case we have to
                 // return `None`.
