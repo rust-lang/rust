@@ -270,10 +270,6 @@ pub fn check_crate(resolver: &mut Resolver<'_>, krate: &ast::Crate) {
         }
     }
 
-    for (id, span) in resolver.unused_labels.iter() {
-        resolver.session.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
-    }
-
     let mut visitor = UnusedImportCheckVisitor {
         resolver,
         unused_imports: Default::default(),

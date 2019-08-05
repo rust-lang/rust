@@ -167,11 +167,12 @@ impl<'a> Resolver<'a> {
         module: ModuleOrUniformRoot<'a>,
         ident: Ident,
         ns: Namespace,
+        parent_scope: &ParentScope<'a>,
         record_used: bool,
         path_span: Span,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         self.resolve_ident_in_module_unadjusted_ext(
-            module, ident, ns, None, false, record_used, path_span
+            module, ident, ns, parent_scope, false, record_used, path_span
         ).map_err(|(determinacy, _)| determinacy)
     }
 
@@ -182,7 +183,7 @@ impl<'a> Resolver<'a> {
         module: ModuleOrUniformRoot<'a>,
         ident: Ident,
         ns: Namespace,
-        parent_scope: Option<&ParentScope<'a>>,
+        parent_scope: &ParentScope<'a>,
         restricted_shadowing: bool,
         record_used: bool,
         path_span: Span,
@@ -191,9 +192,8 @@ impl<'a> Resolver<'a> {
             ModuleOrUniformRoot::Module(module) => module,
             ModuleOrUniformRoot::CrateRootAndExternPrelude => {
                 assert!(!restricted_shadowing);
-                let parent_scope = self.dummy_parent_scope();
                 let binding = self.early_resolve_ident_in_lexical_scope(
-                    ident, ScopeSet::AbsolutePath(ns), &parent_scope,
+                    ident, ScopeSet::AbsolutePath(ns), parent_scope,
                     record_used, record_used, path_span,
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
@@ -213,9 +213,6 @@ impl<'a> Resolver<'a> {
             }
             ModuleOrUniformRoot::CurrentScope => {
                 assert!(!restricted_shadowing);
-                let parent_scope =
-                    parent_scope.expect("no parent scope for a single-segment import");
-
                 if ns == TypeNS {
                     if ident.name == kw::Crate ||
                         ident.name == kw::DollarCrate {
@@ -261,7 +258,8 @@ impl<'a> Resolver<'a> {
             }
             // `extern crate` are always usable for backwards compatibility, see issue #37020,
             // remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`.
-            let usable = this.is_accessible(binding.vis) || binding.is_extern_crate();
+            let usable = this.is_accessible_from(binding.vis, parent_scope.module) ||
+                         binding.is_extern_crate();
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };
 
@@ -299,7 +297,7 @@ impl<'a> Resolver<'a> {
                         }
                     }
 
-                    if !self.is_accessible(binding.vis) &&
+                    if !self.is_accessible_from(binding.vis, parent_scope.module) &&
                        // Remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
                        !(self.last_import_segment && binding.is_extern_crate()) {
                         self.privacy_errors.push(PrivacyError(path_span, ident, binding));
@@ -322,7 +320,7 @@ impl<'a> Resolver<'a> {
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
         for single_import in &resolution.single_imports {
-            if !self.is_accessible(single_import.vis.get()) {
+            if !self.is_accessible_from(single_import.vis.get(), parent_scope.module) {
                 continue;
             }
             let module = unwrap_or!(single_import.imported_module.get(),
@@ -331,7 +329,7 @@ impl<'a> Resolver<'a> {
                 SingleImport { source, .. } => source,
                 _ => unreachable!(),
             };
-            match self.resolve_ident_in_module(module, ident, ns, Some(&single_import.parent_scope),
+            match self.resolve_ident_in_module(module, ident, ns, &single_import.parent_scope,
                                                false, path_span) {
                 Err(Determined) => continue,
                 Ok(binding) if !self.is_accessible_from(
@@ -379,7 +377,7 @@ impl<'a> Resolver<'a> {
         // Check if one of glob imports can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
         for glob_import in module.globs.borrow().iter() {
-            if !self.is_accessible(glob_import.vis.get()) {
+            if !self.is_accessible_from(glob_import.vis.get(), parent_scope.module) {
                 continue
             }
             let module = match glob_import.imported_module.get() {
@@ -387,9 +385,14 @@ impl<'a> Resolver<'a> {
                 Some(_) => continue,
                 None => return Err((Undetermined, Weak::Yes)),
             };
-            let (orig_current_module, mut ident) = (self.current_module, ident.modern());
+            let tmp_parent_scope;
+            let (mut adjusted_parent_scope, mut ident) = (parent_scope, ident.modern());
             match ident.span.glob_adjust(module.expansion, glob_import.span) {
-                Some(Some(def)) => self.current_module = self.macro_def_scope(def),
+                Some(Some(def)) => {
+                    tmp_parent_scope =
+                        ParentScope { module: self.macro_def_scope(def), ..parent_scope.clone() };
+                    adjusted_parent_scope = &tmp_parent_scope;
+                }
                 Some(None) => {}
                 None => continue,
             };
@@ -397,10 +400,10 @@ impl<'a> Resolver<'a> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
+                adjusted_parent_scope,
                 false,
                 path_span,
             );
-            self.current_module = orig_current_module;
 
             match result {
                 Err(Determined) => continue,
@@ -798,11 +801,11 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// Attempts to resolve the given import, returning true if its resolution is determined.
     /// If successful, the resolved bindings are written into the module.
     fn resolve_import(&mut self, directive: &'b ImportDirective<'b>) -> bool {
-        debug!("(resolving import for module) resolving import `{}::...` in `{}`",
-               Segment::names_to_string(&directive.module_path),
-               module_to_string(self.current_module).unwrap_or_else(|| "???".to_string()));
-
-        self.current_module = directive.parent_scope.module;
+        debug!(
+            "(resolving import for module) resolving import `{}::...` in `{}`",
+            Segment::names_to_string(&directive.module_path),
+            module_to_string(directive.parent_scope.module).unwrap_or_else(|| "???".to_string()),
+        );
 
         let module = if let Some(module) = directive.imported_module.get() {
             module
@@ -847,7 +850,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 // not define any names while resolving its module path.
                 let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
                 let binding = this.resolve_ident_in_module(
-                    module, source, ns, Some(&directive.parent_scope), false, directive.span
+                    module, source, ns, &directive.parent_scope, false, directive.span
                 );
                 directive.vis.set(orig_vis);
 
@@ -892,8 +895,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         directive: &'b ImportDirective<'b>
     ) -> Option<UnresolvedImportError> {
-        self.current_module = directive.parent_scope.module;
-
         let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
         let prev_ambiguity_errors_len = self.ambiguity_errors.len();
         let path_res = self.resolve_path(&directive.module_path, None, &directive.parent_scope,
@@ -1019,7 +1020,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 mem::replace(&mut this.blacklisted_binding, target_bindings[ns].get());
             let orig_last_import_segment = mem::replace(&mut this.last_import_segment, true);
             let binding = this.resolve_ident_in_module(
-                module, ident, ns, Some(&directive.parent_scope), true, directive.span
+                module, ident, ns, &directive.parent_scope, true, directive.span
             );
             this.last_import_segment = orig_last_import_segment;
             this.blacklisted_binding = orig_blacklisted_binding;
@@ -1070,7 +1071,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
                 let binding = this.resolve_ident_in_module(
-                    module, ident, ns, Some(&directive.parent_scope), true, directive.span
+                    module, ident, ns, &directive.parent_scope, true, directive.span
                 );
                 if binding.is_ok() {
                     all_ns_failed = false;
@@ -1340,7 +1341,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         for ((mut ident, ns), binding) in bindings {
             let scope = match ident.span.reverse_glob_adjust(module.expansion, directive.span) {
                 Some(Some(def)) => self.macro_def_scope(def),
-                Some(None) => self.current_module,
+                Some(None) => directive.parent_scope.module,
                 None => continue,
             };
             if self.is_accessible_from(binding.pseudo_vis(), scope) {

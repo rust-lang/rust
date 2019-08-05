@@ -59,6 +59,7 @@ use log::debug;
 
 use std::cell::{Cell, RefCell};
 use std::{cmp, fmt, iter, mem, ptr};
+use std::ops::{Deref, DerefMut};
 use std::collections::BTreeSet;
 use std::mem::replace;
 use rustc_data_structures::ptr_key::PtrKey;
@@ -537,26 +538,14 @@ enum PathSource<'a> {
     TupleStruct,
     // `m::A::B` in `<T as m::A>::B::C`.
     TraitItem(Namespace),
-    // Path in `pub(path)`
-    Visibility,
 }
 
 impl<'a> PathSource<'a> {
     fn namespace(self) -> Namespace {
         match self {
-            PathSource::Type | PathSource::Trait(_) | PathSource::Struct |
-            PathSource::Visibility => TypeNS,
+            PathSource::Type | PathSource::Trait(_) | PathSource::Struct => TypeNS,
             PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct => ValueNS,
             PathSource::TraitItem(ns) => ns,
-        }
-    }
-
-    fn global_by_default(self) -> bool {
-        match self {
-            PathSource::Visibility => true,
-            PathSource::Type | PathSource::Expr(..) | PathSource::Pat |
-            PathSource::Struct | PathSource::TupleStruct |
-            PathSource::Trait(_) | PathSource::TraitItem(..) => false,
         }
     }
 
@@ -564,8 +553,7 @@ impl<'a> PathSource<'a> {
         match self {
             PathSource::Type | PathSource::Expr(..) | PathSource::Pat |
             PathSource::Struct | PathSource::TupleStruct => true,
-            PathSource::Trait(_) | PathSource::TraitItem(..) |
-            PathSource::Visibility => false,
+            PathSource::Trait(_) | PathSource::TraitItem(..) => false,
         }
     }
 
@@ -576,7 +564,6 @@ impl<'a> PathSource<'a> {
             PathSource::Pat => "unit struct/variant or constant",
             PathSource::Struct => "struct, variant or union type",
             PathSource::TupleStruct => "tuple struct/variant",
-            PathSource::Visibility => "module",
             PathSource::TraitItem(ns) => match ns {
                 TypeNS => "associated type",
                 ValueNS => "method or associated constant",
@@ -655,10 +642,6 @@ impl<'a> PathSource<'a> {
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
                 _ => false,
             },
-            PathSource::Visibility => match res {
-                Res::Def(DefKind::Mod, _) => true,
-                _ => false,
-            },
         }
     }
 
@@ -675,8 +658,6 @@ impl<'a> PathSource<'a> {
         __diagnostic_used!(E0574);
         __diagnostic_used!(E0575);
         __diagnostic_used!(E0576);
-        __diagnostic_used!(E0577);
-        __diagnostic_used!(E0578);
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => "E0404",
             (PathSource::Trait(_), false) => "E0405",
@@ -690,8 +671,6 @@ impl<'a> PathSource<'a> {
             (PathSource::Pat, false) | (PathSource::TupleStruct, false) => "E0531",
             (PathSource::TraitItem(..), true) => "E0575",
             (PathSource::TraitItem(..), false) => "E0576",
-            (PathSource::Visibility, true) => "E0577",
-            (PathSource::Visibility, false) => "E0578",
         }
     }
 }
@@ -801,8 +780,80 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     }
 }
 
+struct LateResolutionVisitor<'a, 'b> {
+    resolver: &'b mut Resolver<'a>,
+
+    /// The module that represents the current item scope.
+    current_module: Module<'a>,
+
+    /// The current set of local scopes for types and values.
+    /// FIXME #4948: Reuse ribs to avoid allocation.
+    ribs: PerNS<Vec<Rib<'a>>>,
+
+    /// The current set of local scopes, for labels.
+    label_ribs: Vec<Rib<'a, NodeId>>,
+
+    /// The trait that the current context can refer to.
+    current_trait_ref: Option<(Module<'a>, TraitRef)>,
+
+    /// The current trait's associated types' ident, used for diagnostic suggestions.
+    current_trait_assoc_types: Vec<Ident>,
+
+    /// The current self type if inside an impl (used for better errors).
+    current_self_type: Option<Ty>,
+
+    /// The current self item if inside an ADT (used for better errors).
+    current_self_item: Option<NodeId>,
+
+    /// A list of labels as of yet unused. Labels will be removed from this map when
+    /// they are used (in a `break` or `continue` statement)
+    unused_labels: FxHashMap<NodeId, Span>,
+
+    /// Only used for better errors on `fn(): fn()`.
+    current_type_ascription: Vec<Span>,
+}
+
+impl<'a, 'b> LateResolutionVisitor<'a, '_> {
+    fn new(resolver: &'b mut Resolver<'a>) -> LateResolutionVisitor<'a, 'b> {
+        let graph_root = resolver.graph_root;
+        LateResolutionVisitor {
+            resolver,
+            current_module: graph_root,
+            ribs: PerNS {
+                value_ns: vec![Rib::new(ModuleRibKind(graph_root))],
+                type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
+                macro_ns: vec![Rib::new(ModuleRibKind(graph_root))],
+            },
+            label_ribs: Vec::new(),
+            current_trait_ref: None,
+            current_trait_assoc_types: Vec::new(),
+            current_self_type: None,
+            current_self_item: None,
+            unused_labels: Default::default(),
+            current_type_ascription: Vec::new(),
+        }
+    }
+
+    fn parent_scope(&self) -> ParentScope<'a> {
+        ParentScope { module: self.current_module, ..self.dummy_parent_scope() }
+    }
+}
+
+impl<'a> Deref for LateResolutionVisitor<'a, '_> {
+    type Target = Resolver<'a>;
+    fn deref(&self) -> &Self::Target {
+        self.resolver
+    }
+}
+
+impl<'a> DerefMut for LateResolutionVisitor<'a, '_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.resolver
+    }
+}
+
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
-impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
+impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
     fn visit_item(&mut self, item: &'tcx Item) {
         self.resolve_item(item);
     }
@@ -1587,28 +1638,6 @@ pub struct Resolver<'a> {
     /// All non-determined imports.
     indeterminate_imports: Vec<&'a ImportDirective<'a>>,
 
-    /// The module that represents the current item scope.
-    current_module: Module<'a>,
-
-    /// The current set of local scopes for types and values.
-    /// FIXME #4948: Reuse ribs to avoid allocation.
-    ribs: PerNS<Vec<Rib<'a>>>,
-
-    /// The current set of local scopes, for labels.
-    label_ribs: Vec<Rib<'a, NodeId>>,
-
-    /// The trait that the current context can refer to.
-    current_trait_ref: Option<(Module<'a>, TraitRef)>,
-
-    /// The current trait's associated types' ident, used for diagnostic suggestions.
-    current_trait_assoc_types: Vec<Ident>,
-
-    /// The current self type if inside an impl (used for better errors).
-    current_self_type: Option<Ty>,
-
-    /// The current self item if inside an ADT (used for better errors).
-    current_self_item: Option<NodeId>,
-
     /// FIXME: Refactor things so that these fields are passed through arguments and not resolver.
     /// We are resolving a last import segment during import validation.
     last_import_segment: bool,
@@ -1655,10 +1684,6 @@ pub struct Resolver<'a> {
     pub maybe_unused_trait_imports: NodeSet,
     pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
-    /// A list of labels as of yet unused. Labels will be removed from this map when
-    /// they are used (in a `break` or `continue` statement)
-    pub unused_labels: FxHashMap<NodeId, Span>,
-
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
     /// Ambiguity errors are delayed for deduplication.
@@ -1702,9 +1727,6 @@ pub struct Resolver<'a> {
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     struct_constructors: DefIdMap<(Res, ty::Visibility)>,
-
-    /// Only used for better errors on `fn(): fn()`.
-    current_type_ascription: Vec<Span>,
 
     injected_crate: Option<Module<'a>>,
 
@@ -1872,8 +1894,8 @@ impl<'a> Resolver<'a> {
         let span = path.span;
         let path = Segment::from_path(&path);
         // FIXME(Manishearth): intra-doc links won't get warned of epoch changes.
-        match self.resolve_path_without_parent_scope(&path, Some(namespace), true,
-                                                               span, CrateLint::No) {
+        let parent_scope = &self.dummy_parent_scope();
+        match self.resolve_path(&path, Some(namespace), parent_scope, true, span, CrateLint::No) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                 Ok(module.res().unwrap()),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
@@ -1969,18 +1991,6 @@ impl<'a> Resolver<'a> {
             determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),
 
-            current_module: graph_root,
-            ribs: PerNS {
-                value_ns: vec![Rib::new(ModuleRibKind(graph_root))],
-                type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
-                macro_ns: vec![Rib::new(ModuleRibKind(graph_root))],
-            },
-            label_ribs: Vec::new(),
-
-            current_trait_ref: None,
-            current_trait_assoc_types: Vec::new(),
-            current_self_type: None,
-            current_self_item: None,
             last_import_segment: false,
             blacklisted_binding: None,
 
@@ -2001,8 +2011,6 @@ impl<'a> Resolver<'a> {
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
             maybe_unused_extern_crates: Vec::new(),
-
-            unused_labels: FxHashMap::default(),
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
@@ -2036,7 +2044,6 @@ impl<'a> Resolver<'a> {
             unused_macros: Default::default(),
             proc_macro_stubs: Default::default(),
             special_derives: Default::default(),
-            current_type_ascription: Vec::new(),
             injected_crate: None,
             active_features:
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
@@ -2089,10 +2096,13 @@ impl<'a> Resolver<'a> {
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
         ImportResolver { resolver: self }.finalize_imports();
-        self.current_module = self.graph_root;
-        self.finalize_current_module_macro_resolutions();
 
-        visit::walk_crate(self, krate);
+        self.finalize_current_module_macro_resolutions(self.graph_root);
+        let mut late_resolution_visitor = LateResolutionVisitor::new(self);
+        visit::walk_crate(&mut late_resolution_visitor, krate);
+        for (id, span) in late_resolution_visitor.unused_labels.iter() {
+            self.session.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
+        }
 
         check_unused::check_crate(self, krate);
         self.report_errors(krate);
@@ -2287,7 +2297,9 @@ impl<'a> Resolver<'a> {
 
         None
     }
+}
 
+impl<'a> Resolver<'a> {
     /// This resolves the identifier `ident` in the namespace `ns` in the current lexical scope.
     /// More specifically, we proceed up the hierarchy of scopes and return the binding for
     /// `ident` in the first scope that defines it (or None if no scopes define it).
@@ -2308,8 +2320,10 @@ impl<'a> Resolver<'a> {
     fn resolve_ident_in_lexical_scope(&mut self,
                                       mut ident: Ident,
                                       ns: Namespace,
+                                      parent_scope: &ParentScope<'a>,
                                       record_used_id: Option<NodeId>,
-                                      path_span: Span)
+                                      path_span: Span,
+                                      ribs: &[Rib<'a>])
                                       -> Option<LexicalScopeBinding<'a>> {
         assert!(ns == TypeNS || ns == ValueNS);
         if ident.name == kw::Invalid {
@@ -2331,23 +2345,23 @@ impl<'a> Resolver<'a> {
         // Walk backwards up the ribs in scope.
         let record_used = record_used_id.is_some();
         let mut module = self.graph_root;
-        for i in (0 .. self.ribs[ns].len()).rev() {
-            debug!("walk rib\n{:?}", self.ribs[ns][i].bindings);
+        for i in (0 .. ribs.len()).rev() {
+            debug!("walk rib\n{:?}", ribs[i].bindings);
             // Use the rib kind to determine whether we are resolving parameters
             // (modern hygiene) or local variables (legacy hygiene).
-            let rib_ident = if let AssocItemRibKind | ItemRibKind = self.ribs[ns][i].kind {
+            let rib_ident = if let AssocItemRibKind | ItemRibKind = ribs[i].kind {
                 modern_ident
             } else {
                 ident
             };
-            if let Some(res) = self.ribs[ns][i].bindings.get(&rib_ident).cloned() {
+            if let Some(res) = ribs[i].bindings.get(&rib_ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Res(
-                    self.validate_res_from_ribs(ns, i, res, record_used, path_span),
+                    self.validate_res_from_ribs(i, res, record_used, path_span, ribs),
                 ));
             }
 
-            module = match self.ribs[ns][i].kind {
+            module = match ribs[i].kind {
                 ModuleRibKind(module) => module,
                 MacroDefinition(def) if def == self.macro_def(ident.span.ctxt()) => {
                     // If an invocation of this macro created `ident`, give up on `ident`
@@ -2358,10 +2372,12 @@ impl<'a> Resolver<'a> {
                 _ => continue,
             };
 
+
             let item = self.resolve_ident_in_module_unadjusted(
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
+                parent_scope,
                 record_used,
                 path_span,
             );
@@ -2386,16 +2402,15 @@ impl<'a> Resolver<'a> {
                 self.hygienic_lexical_parent(module, &mut ident.span)
             };
             module = unwrap_or!(opt_module, break);
-            let orig_current_module = self.current_module;
-            self.current_module = module; // Lexical resolutions can never be a privacy error.
+            let adjusted_parent_scope = &ParentScope { module, ..parent_scope.clone() };
             let result = self.resolve_ident_in_module_unadjusted(
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
+                adjusted_parent_scope,
                 record_used,
                 path_span,
             );
-            self.current_module = orig_current_module;
 
             match result {
                 Ok(binding) => {
@@ -2433,6 +2448,7 @@ impl<'a> Resolver<'a> {
                     ModuleOrUniformRoot::Module(prelude),
                     ident,
                     ns,
+                    parent_scope,
                     false,
                     path_span,
                 ) {
@@ -2498,7 +2514,7 @@ impl<'a> Resolver<'a> {
         module: ModuleOrUniformRoot<'a>,
         ident: Ident,
         ns: Namespace,
-        parent_scope: Option<&ParentScope<'a>>,
+        parent_scope: &ParentScope<'a>,
         record_used: bool,
         path_span: Span
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
@@ -2512,15 +2528,18 @@ impl<'a> Resolver<'a> {
         module: ModuleOrUniformRoot<'a>,
         mut ident: Ident,
         ns: Namespace,
-        parent_scope: Option<&ParentScope<'a>>,
+        parent_scope: &ParentScope<'a>,
         record_used: bool,
         path_span: Span
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
-        let orig_current_module = self.current_module;
+        let tmp_parent_scope;
+        let mut adjusted_parent_scope = parent_scope;
         match module {
-            ModuleOrUniformRoot::Module(module) => {
-                if let Some(def) = ident.span.modernize_and_adjust(module.expansion) {
-                    self.current_module = self.macro_def_scope(def);
+            ModuleOrUniformRoot::Module(m) => {
+                if let Some(def) = ident.span.modernize_and_adjust(m.expansion) {
+                    tmp_parent_scope =
+                        ParentScope { module: self.macro_def_scope(def), ..parent_scope.clone() };
+                    adjusted_parent_scope = &tmp_parent_scope;
                 }
             }
             ModuleOrUniformRoot::ExternPrelude => {
@@ -2532,9 +2551,8 @@ impl<'a> Resolver<'a> {
             }
         }
         let result = self.resolve_ident_in_module_unadjusted_ext(
-            module, ident, ns, parent_scope, false, record_used, path_span,
+            module, ident, ns, adjusted_parent_scope, false, record_used, path_span,
         );
-        self.current_module = orig_current_module;
         result
     }
 
@@ -2587,7 +2605,9 @@ impl<'a> Resolver<'a> {
         }
         module
     }
+}
 
+impl<'a> LateResolutionVisitor<'a, '_> {
     // AST resolution
     //
     // We maintain a list of value ribs and type ribs.
@@ -2606,8 +2626,32 @@ impl<'a> Resolver<'a> {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
+    fn resolve_ident_in_lexical_scope(&mut self,
+                                      ident: Ident,
+                                      ns: Namespace,
+                                      record_used_id: Option<NodeId>,
+                                      path_span: Span)
+                                      -> Option<LexicalScopeBinding<'a>> {
+        self.resolver.resolve_ident_in_lexical_scope(
+            ident, ns, &self.parent_scope(), record_used_id, path_span, &self.ribs[ns]
+        )
+    }
+
+    fn resolve_path(
+        &mut self,
+        path: &[Segment],
+        opt_ns: Option<Namespace>, // `None` indicates a module path in import
+        record_used: bool,
+        path_span: Span,
+        crate_lint: CrateLint,
+    ) -> PathResult<'a> {
+        self.resolver.resolve_path_with_ribs(
+            path, opt_ns, &self.parent_scope(), record_used, path_span, crate_lint, &self.ribs
+        )
+    }
+
     pub fn with_scope<F, T>(&mut self, id: NodeId, f: F) -> T
-        where F: FnOnce(&mut Resolver<'_>) -> T
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
     {
         let id = self.definitions.local_def_id(id);
         let module = self.module_map.get(&id).cloned(); // clones a reference
@@ -2617,7 +2661,7 @@ impl<'a> Resolver<'a> {
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
 
-            self.finalize_current_module_macro_resolutions();
+            self.resolver.finalize_current_module_macro_resolutions(self.current_module);
             let ret = f(self);
 
             self.current_module = orig_module;
@@ -2827,7 +2871,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_generic_param_rib<'b, F>(&'b mut self, generic_params: GenericParameters<'a, 'b>, f: F)
-        where F: FnOnce(&mut Resolver<'_>)
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
     {
         debug!("with_generic_param_rib");
         match generic_params {
@@ -2901,7 +2945,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_label_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut Resolver<'_>)
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
     {
         self.label_ribs.push(Rib::new(NormalRibKind));
         f(self);
@@ -2909,7 +2953,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_item_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut Resolver<'_>)
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
     {
         self.ribs[ValueNS].push(Rib::new(ItemRibKind));
         self.ribs[TypeNS].push(Rib::new(ItemRibKind));
@@ -2919,7 +2963,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_constant_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut Resolver<'_>)
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
     {
         debug!("with_constant_rib");
         self.ribs[ValueNS].push(Rib::new(ConstantItemRibKind));
@@ -2930,7 +2974,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T
-        where F: FnOnce(&mut Resolver<'_>) -> T
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
     {
         // Handle nested impls (inside fn bodies)
         let previous_value = replace(&mut self.current_self_type, Some(self_type.clone()));
@@ -2940,7 +2984,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_current_self_item<T, F>(&mut self, self_item: &Item, f: F) -> T
-        where F: FnOnce(&mut Resolver<'_>) -> T
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
     {
         let previous_value = replace(&mut self.current_self_item, Some(self_item.id));
         let result = f(self);
@@ -2950,7 +2994,7 @@ impl<'a> Resolver<'a> {
 
     /// When evaluating a `trait` use its associated types' idents for suggestionsa in E0412.
     fn with_trait_items<T, F>(&mut self, trait_items: &Vec<TraitItem>, f: F) -> T
-        where F: FnOnce(&mut Resolver<'_>) -> T
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
     {
         let trait_assoc_types = replace(
             &mut self.current_trait_assoc_types,
@@ -2966,7 +3010,7 @@ impl<'a> Resolver<'a> {
 
     /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`).
     fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
-        where F: FnOnce(&mut Resolver<'_>, Option<DefId>) -> T
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>, Option<DefId>) -> T
     {
         let mut new_val = None;
         let mut new_id = None;
@@ -2984,7 +3028,7 @@ impl<'a> Resolver<'a> {
                 new_id = Some(res.def_id());
                 let span = trait_ref.path.span;
                 if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                    self.resolve_path_without_parent_scope(
+                    self.resolve_path(
                         &path,
                         Some(TypeNS),
                         false,
@@ -3003,7 +3047,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_self_rib<F>(&mut self, self_res: Res, f: F)
-        where F: FnOnce(&mut Resolver<'_>)
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
     {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
@@ -3015,7 +3059,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_self_struct_ctor_rib<F>(&mut self, impl_id: DefId, f: F)
-        where F: FnOnce(&mut Resolver<'_>)
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
     {
         let self_res = Res::SelfCtor(impl_id);
         let mut self_type_rib = Rib::new(NormalRibKind);
@@ -3053,8 +3097,9 @@ impl<'a> Resolver<'a> {
                             this.with_self_struct_ctor_rib(item_def_id, |this| {
                                 debug!("resolve_implementation with_self_struct_ctor_rib");
                                 for impl_item in impl_items {
-                                    this.resolve_visibility(&impl_item.vis);
-
+                                    this.resolver.resolve_visibility(
+                                        &impl_item.vis, &this.parent_scope()
+                                    );
                                     // We also need a new scope for the impl item type parameters.
                                     let generic_params = HasGenericParams(&impl_item.generics,
                                                                           AssocItemRibKind);
@@ -3129,11 +3174,12 @@ impl<'a> Resolver<'a> {
         // If there is a TraitRef in scope for an impl, then the method must be in the
         // trait.
         if let Some((module, _)) = self.current_trait_ref {
+            let parent_scope = &self.parent_scope();
             if self.resolve_ident_in_module(
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                None,
+                parent_scope,
                 false,
                 span,
             ).is_err() {
@@ -3282,7 +3328,7 @@ impl<'a> Resolver<'a> {
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.current_module = anonymous_module;
-            self.finalize_current_module_macro_resolutions();
+            self.resolver.finalize_current_module_macro_resolutions(self.current_module);
         } else {
             self.ribs[ValueNS].push(Rib::new(NormalRibKind));
         }
@@ -3497,7 +3543,6 @@ impl<'a> Resolver<'a> {
             ns,
             span,
             source.defer_to_typeck(),
-            source.global_by_default(),
             crate_lint,
         ) {
             Some(partial_res) if partial_res.unresolved_segments() == 0 => {
@@ -3510,7 +3555,8 @@ impl<'a> Resolver<'a> {
                     if let Res::Def(DefKind::Struct, def_id) = partial_res.base_res() {
                         if let Some((ctor_res, ctor_vis))
                                 = self.struct_constructors.get(&def_id).cloned() {
-                            if is_expected(ctor_res) && self.is_accessible(ctor_vis) {
+                            if is_expected(ctor_res) &&
+                               self.is_accessible_from(ctor_vis, self.current_module) {
                                 let lint = lint::builtin::LEGACY_CONSTRUCTOR_VISIBILITY;
                                 self.session.buffer_lint(lint, id, span,
                                     "private struct constructors are not usable through \
@@ -3540,8 +3586,7 @@ impl<'a> Resolver<'a> {
                     let cl = CrateLint::No;
                     let ns = Some(ns);
                     if let PathResult::Module(_) | PathResult::NonModule(_) =
-                        self.resolve_path_without_parent_scope(&std_path, ns, false, span, cl)
-                    {
+                            self.resolve_path(&std_path, ns, false, span, cl) {
                         // check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
                         let item_span = path.iter().last().map(|segment| segment.ident.span)
                             .unwrap_or(span);
@@ -3678,13 +3723,12 @@ impl<'a> Resolver<'a> {
         primary_ns: Namespace,
         span: Span,
         defer_to_typeck: bool,
-        global_by_default: bool,
         crate_lint: CrateLint,
     ) -> Option<PartialRes> {
         let mut fin_res = None;
         for (i, ns) in [primary_ns, TypeNS, ValueNS].iter().cloned().enumerate() {
             if i == 0 || ns != primary_ns {
-                match self.resolve_qpath(id, qself, path, ns, span, global_by_default, crate_lint) {
+                match self.resolve_qpath(id, qself, path, ns, span, crate_lint) {
                     // If defer_to_typeck, then resolution > no resolution,
                     // otherwise full resolution > partial resolution > no resolution.
                     Some(partial_res) if partial_res.unresolved_segments() == 0 ||
@@ -3700,10 +3744,9 @@ impl<'a> Resolver<'a> {
         if qself.is_none() {
             let path_seg = |seg: &Segment| ast::PathSegment::from_ident(seg.ident);
             let path = Path { segments: path.iter().map(path_seg).collect(), span };
-            let parent_scope =
-                ParentScope { module: self.current_module, ..self.dummy_parent_scope() };
+            let parent_scope = &self.parent_scope();
             if let Ok((_, res)) =
-                    self.resolve_macro_path(&path, None, &parent_scope, false, false) {
+                    self.resolve_macro_path(&path, None, parent_scope, false, false) {
                 return Some(PartialRes::new(res));
             }
         }
@@ -3719,18 +3762,15 @@ impl<'a> Resolver<'a> {
         path: &[Segment],
         ns: Namespace,
         span: Span,
-        global_by_default: bool,
         crate_lint: CrateLint,
     ) -> Option<PartialRes> {
         debug!(
-            "resolve_qpath(id={:?}, qself={:?}, path={:?}, \
-             ns={:?}, span={:?}, global_by_default={:?})",
+            "resolve_qpath(id={:?}, qself={:?}, path={:?}, ns={:?}, span={:?})",
             id,
             qself,
             path,
             ns,
             span,
-            global_by_default,
         );
 
         if let Some(qself) = qself {
@@ -3779,13 +3819,7 @@ impl<'a> Resolver<'a> {
             ));
         }
 
-        let result = match self.resolve_path_without_parent_scope(
-            &path,
-            Some(ns),
-            true,
-            span,
-            crate_lint,
-        ) {
+        let result = match self.resolve_path(&path, Some(ns), true, span, crate_lint) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
                 PartialRes::new(module.res().unwrap())
@@ -3820,11 +3854,11 @@ impl<'a> Resolver<'a> {
             PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
         };
 
-        if path.len() > 1 && !global_by_default && result.base_res() != Res::Err &&
+        if path.len() > 1 && result.base_res() != Res::Err &&
            path[0].ident.name != kw::PathRoot &&
            path[0].ident.name != kw::DollarCrate {
             let unqualified_result = {
-                match self.resolve_path_without_parent_scope(
+                match self.resolve_path(
                     &[*path.last().unwrap()],
                     Some(ns),
                     false,
@@ -3845,22 +3879,9 @@ impl<'a> Resolver<'a> {
 
         Some(result)
     }
+}
 
-    fn resolve_path_without_parent_scope(
-        &mut self,
-        path: &[Segment],
-        opt_ns: Option<Namespace>, // `None` indicates a module path in import
-        record_used: bool,
-        path_span: Span,
-        crate_lint: CrateLint,
-    ) -> PathResult<'a> {
-        // Macro and import paths must have full parent scope available during resolution,
-        // other paths will do okay with parent module alone.
-        assert!(opt_ns != None && opt_ns != Some(MacroNS));
-        let parent_scope = ParentScope { module: self.current_module, ..self.dummy_parent_scope() };
-        self.resolve_path(path, opt_ns, &parent_scope, record_used, path_span, crate_lint)
-    }
-
+impl<'a> Resolver<'a> {
     fn resolve_path(
         &mut self,
         path: &[Segment],
@@ -3870,10 +3891,24 @@ impl<'a> Resolver<'a> {
         path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
+        self.resolve_path_with_ribs(
+            path, opt_ns, parent_scope, record_used, path_span, crate_lint, &Default::default()
+        )
+    }
+
+    fn resolve_path_with_ribs(
+        &mut self,
+        path: &[Segment],
+        opt_ns: Option<Namespace>, // `None` indicates a module path in import
+        parent_scope: &ParentScope<'a>,
+        record_used: bool,
+        path_span: Span,
+        crate_lint: CrateLint,
+        ribs: &PerNS<Vec<Rib<'a>>>,
+    ) -> PathResult<'a> {
         let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;
-        self.current_module = parent_scope.module;
 
         debug!(
             "resolve_path(path={:?}, opt_ns={:?}, record_used={:?}, \
@@ -3910,7 +3945,7 @@ impl<'a> Resolver<'a> {
                 if allow_super && name == kw::Super {
                     let mut ctxt = ident.span.ctxt().modern();
                     let self_module = match i {
-                        0 => Some(self.resolve_self(&mut ctxt, self.current_module)),
+                        0 => Some(self.resolve_self(&mut ctxt, parent_scope.module)),
                         _ => match module {
                             Some(ModuleOrUniformRoot::Module(module)) => Some(module),
                             _ => None,
@@ -3935,7 +3970,7 @@ impl<'a> Resolver<'a> {
                     if name == kw::SelfLower {
                         let mut ctxt = ident.span.ctxt().modern();
                         module = Some(ModuleOrUniformRoot::Module(
-                            self.resolve_self(&mut ctxt, self.current_module)));
+                            self.resolve_self(&mut ctxt, parent_scope.module)));
                         continue;
                     }
                     if name == kw::PathRoot && ident.span.rust_2018() {
@@ -3980,7 +4015,9 @@ impl<'a> Resolver<'a> {
             }
 
             let binding = if let Some(module) = module {
-                self.resolve_ident_in_module(module, ident, ns, None, record_used, path_span)
+                self.resolve_ident_in_module(
+                    module, ident, ns, parent_scope, record_used, path_span
+                )
             } else if opt_ns.is_none() || opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
                 let scopes = if opt_ns.is_none() { ScopeSet::Import(ns) } else { ScopeSet::Module };
@@ -3989,7 +4026,9 @@ impl<'a> Resolver<'a> {
             } else {
                 let record_used_id =
                     if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };
-                match self.resolve_ident_in_lexical_scope(ident, ns, record_used_id, path_span) {
+                match self.resolve_ident_in_lexical_scope(
+                    ident, ns, parent_scope, record_used_id, path_span, &ribs[ns]
+                ) {
                     // we found a locally-imported or available item/module
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
                     // we found a local variable or type param
@@ -4176,17 +4215,17 @@ impl<'a> Resolver<'a> {
     // Validate a local resolution (from ribs).
     fn validate_res_from_ribs(
         &mut self,
-        ns: Namespace,
         rib_index: usize,
         res: Res,
         record_used: bool,
         span: Span,
+        all_ribs: &[Rib<'a>],
     ) -> Res {
         debug!("validate_res_from_ribs({:?})", res);
-        let ribs = &self.ribs[ns][rib_index + 1..];
+        let ribs = &all_ribs[rib_index + 1..];
 
         // An invalid forward use of a type parameter from a previous default.
-        if let ForwardTyParamBanRibKind = self.ribs[ns][rib_index].kind {
+        if let ForwardTyParamBanRibKind = all_ribs[rib_index].kind {
             if record_used {
                 resolve_error(self, span, ResolutionError::ForwardDeclaredTyParam);
             }
@@ -4195,7 +4234,7 @@ impl<'a> Resolver<'a> {
         }
 
         // An invalid use of a type parameter as the type of a const parameter.
-        if let TyParamAsConstParamTy = self.ribs[ns][rib_index].kind {
+        if let TyParamAsConstParamTy = all_ribs[rib_index].kind {
             if record_used {
                 resolve_error(self, span, ResolutionError::ConstParamDependentOnTypeParam);
             }
@@ -4288,9 +4327,11 @@ impl<'a> Resolver<'a> {
         }
         res
     }
+}
 
+impl<'a> LateResolutionVisitor<'a, '_> {
     fn with_resolved_label<F>(&mut self, label: Option<Label>, id: NodeId, f: F)
-        where F: FnOnce(&mut Resolver<'_>)
+        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
     {
         if let Some(label) = label {
             self.unused_labels.insert(id, label.ident.span);
@@ -4486,11 +4527,12 @@ impl<'a> Resolver<'a> {
         let mut found_traits = Vec::new();
         // Look for the current trait.
         if let Some((module, _)) = self.current_trait_ref {
+            let parent_scope = &self.parent_scope();
             if self.resolve_ident_in_module(
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                None,
+                parent_scope,
                 false,
                 module.span,
             ).is_ok() {
@@ -4547,10 +4589,12 @@ impl<'a> Resolver<'a> {
                 ).is_none() {
                     continue
                 }
+                let parent_scope = &self.parent_scope();
                 if self.resolve_ident_in_module_unadjusted(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     ns,
+                    parent_scope,
                     false,
                     module.span,
                 ).is_ok() {
@@ -4581,7 +4625,9 @@ impl<'a> Resolver<'a> {
         };
         import_ids
     }
+}
 
+impl<'a> Resolver<'a> {
     fn record_partial_res(&mut self, node_id: NodeId, resolution: PartialRes) {
         debug!("(recording res) recording {:?} for {}", resolution, node_id);
         if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
@@ -4589,14 +4635,16 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_visibility(&mut self, vis: &ast::Visibility) -> ty::Visibility {
+    fn resolve_visibility(
+        &mut self, vis: &ast::Visibility, parent_scope: &ParentScope<'a>
+    ) -> ty::Visibility {
         match vis.node {
             ast::VisibilityKind::Public => ty::Visibility::Public,
             ast::VisibilityKind::Crate(..) => {
                 ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
             }
             ast::VisibilityKind::Inherited => {
-                ty::Visibility::Restricted(self.current_module.normal_ancestor_id)
+                ty::Visibility::Restricted(parent_scope.module.normal_ancestor_id)
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
                 // For visibilities we are not ready to provide correct implementation of "uniform
@@ -4626,32 +4674,63 @@ impl<'a> Resolver<'a> {
 
                 let segments = crate_root.into_iter()
                     .chain(path.segments.iter().map(|seg| seg.into())).collect::<Vec<_>>();
-                let res = self.smart_resolve_path_fragment(
-                    id,
-                    None,
+                let expected_found_error = |this: &Self, res: Res| {
+                    let path_str = Segment::names_to_string(&segments);
+                    struct_span_err!(this.session, path.span, E0577,
+                                     "expected module, found {} `{}`", res.descr(), path_str)
+                        .span_label(path.span, "not a module").emit();
+                };
+                match self.resolve_path(
                     &segments,
+                    Some(TypeNS),
+                    parent_scope,
+                    true,
                     path.span,
-                    PathSource::Visibility,
                     CrateLint::SimplePath(id),
-                ).base_res();
-                if res == Res::Err {
-                    ty::Visibility::Public
-                } else {
-                    let vis = ty::Visibility::Restricted(res.def_id());
-                    if self.is_accessible(vis) {
-                        vis
-                    } else {
-                        self.session.span_err(path.span, "visibilities can only be restricted \
-                                                          to ancestor modules");
+                ) {
+                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                        let res = module.res().expect("visibility resolved to unnamed block");
+                        self.record_partial_res(id, PartialRes::new(res));
+                        if module.is_normal() {
+                            if res == Res::Err {
+                                ty::Visibility::Public
+                            } else {
+                                let vis = ty::Visibility::Restricted(res.def_id());
+                                if self.is_accessible_from(vis, parent_scope.module) {
+                                    vis
+                                } else {
+                                    let msg =
+                                        "visibilities can only be restricted to ancestor modules";
+                                    self.session.span_err(path.span, msg);
+                                    ty::Visibility::Public
+                                }
+                            }
+                        } else {
+                            expected_found_error(self, res);
+                            ty::Visibility::Public
+                        }
+                    }
+                    PathResult::Module(..) => {
+                        self.session.span_err(path.span, "visibility must resolve to a module");
+                        ty::Visibility::Public
+                    }
+                    PathResult::NonModule(partial_res) => {
+                        expected_found_error(self, partial_res.base_res());
+                        ty::Visibility::Public
+                    }
+                    PathResult::Failed { span, label, suggestion, .. } => {
+                        let err = ResolutionError::FailedToResolve { label, suggestion };
+                        resolve_error(self, span, err);
+                        ty::Visibility::Public
+                    }
+                    PathResult::Indeterminate => {
+                        span_err!(self.session, path.span, E0578,
+                                  "cannot determine resolution for the visibility");
                         ty::Visibility::Public
                     }
                 }
             }
         }
-    }
-
-    fn is_accessible(&self, vis: ty::Visibility) -> bool {
-        vis.is_accessible_from(self.current_module.normal_ancestor_id, self)
     }
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {

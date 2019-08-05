@@ -18,7 +18,7 @@ use syntax_pos::{BytePos, Span};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::{is_self_type, is_self_value, path_names_to_string, KNOWN_TOOLS};
-use crate::{CrateLint, LegacyScope, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{CrateLint, LateResolutionVisitor, LegacyScope, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, ParentScope, Resolver, RibKind, Scope, ScopeSet, Segment};
 
 type Res = def::Res<ast::NodeId>;
@@ -78,7 +78,7 @@ fn add_module_candidates(
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'a> LateResolutionVisitor<'a, '_> {
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
     pub(crate) fn smart_resolve_report_errors(
@@ -112,7 +112,7 @@ impl<'a> Resolver<'a> {
                 (String::new(), "the crate root".to_string())
             } else {
                 let mod_path = &path[..path.len() - 1];
-                let mod_prefix = match self.resolve_path_without_parent_scope(
+                let mod_prefix = match self.resolve_path(
                     mod_path, Some(TypeNS), false, span, CrateLint::No
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
@@ -288,7 +288,9 @@ impl<'a> Resolver<'a> {
         }
         (err, candidates)
     }
+}
 
+impl<'a> Resolver<'a> {
     fn followed_by_brace(&self, span: Span) -> (bool, Option<(Span, String)>) {
         // HACK(estebank): find a better way to figure out that this was a
         // parser issue where a struct literal is being used on an expression
@@ -338,7 +340,9 @@ impl<'a> Resolver<'a> {
         }
         return (followed_by_brace, closing_brace)
     }
+}
 
+impl<'a> LateResolutionVisitor<'a, '_> {
     /// Provides context-dependent help for errors reported by the `smart_resolve_path_fragment`
     /// function.
     /// Returns `true` if able to provide context-dependent help.
@@ -457,7 +461,7 @@ impl<'a> Resolver<'a> {
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
                 if let Some((ctor_def, ctor_vis))
                         = self.struct_constructors.get(&def_id).cloned() {
-                    let accessible_ctor = self.is_accessible(ctor_vis);
+                    let accessible_ctor = self.is_accessible_from(ctor_vis, self.current_module);
                     if is_expected(ctor_def) && !accessible_ctor {
                         err.span_label(
                             span,
@@ -532,11 +536,12 @@ impl<'a> Resolver<'a> {
 
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref {
+            let parent_scope = &self.parent_scope();
             if let Ok(binding) = self.resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     ns,
-                    None,
+                    parent_scope,
                     false,
                     module.span,
                 ) {
@@ -553,7 +558,9 @@ impl<'a> Resolver<'a> {
 
         None
     }
+}
 
+impl<'a> Resolver<'a> {
     /// Lookup typo candidate in scope for a macro or import.
     fn early_lookup_typo_candidate(
         &mut self,
@@ -569,9 +576,10 @@ impl<'a> Resolver<'a> {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                     if filter_fn(res) {
                         for derive in &parent_scope.derives {
-                            let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
+                            let parent_scope =
+                                &ParentScope { derives: Vec::new(), ..*parent_scope };
                             if let Ok((Some(ext), _)) = this.resolve_macro_path(
-                                derive, Some(MacroKind::Derive), &parent_scope, false, false
+                                derive, Some(MacroKind::Derive), parent_scope, false, false
                             ) {
                                 suggestions.extend(ext.helper_attrs.iter().map(|name| {
                                     TypoSuggestion::from_res(*name, res)
@@ -682,7 +690,9 @@ impl<'a> Resolver<'a> {
             _ => None,
         }
     }
+}
 
+impl<'a> LateResolutionVisitor<'a, '_> {
     fn lookup_typo_candidate(
         &mut self,
         path: &[Segment],
@@ -750,7 +760,7 @@ impl<'a> Resolver<'a> {
         } else {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
-            if let PathResult::Module(module) = self.resolve_path_without_parent_scope(
+            if let PathResult::Module(module) = self.resolve_path(
                 mod_path, Some(TypeNS), false, span, CrateLint::No
             ) {
                 if let ModuleOrUniformRoot::Module(module) = module {
@@ -774,7 +784,9 @@ impl<'a> Resolver<'a> {
             _ => None,
         }
     }
+}
 
+impl<'a> Resolver<'a> {
     fn lookup_import_candidates_from_module<FilterFn>(&mut self,
                                           lookup_ident: Ident,
                                           namespace: Namespace,
@@ -969,7 +981,7 @@ impl<'a> Resolver<'a> {
     ) {
         let is_expected = &|res: Res| res.macro_kind() == Some(macro_kind);
         let suggestion = self.early_lookup_typo_candidate(
-            ScopeSet::Macro(macro_kind), &parent_scope, ident, is_expected
+            ScopeSet::Macro(macro_kind), parent_scope, ident, is_expected
         );
         add_typo_suggestion(err, suggestion, ident.span);
 
