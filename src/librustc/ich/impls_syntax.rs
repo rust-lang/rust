@@ -363,7 +363,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
             }
 
             token::DocComment(val) |
-            token::Shebang(val) => val.hash_stable(hcx, hasher),
+            token::Shebang(val) |
+            token::Unknown(val) => val.hash_stable(hcx, hasher),
         }
     }
 }
