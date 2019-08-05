@@ -9,6 +9,7 @@ use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 use rustc_data_structures::newtype_index;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use syntax_pos::symbol::{sym, Symbol};
+use syntax_pos::Span;
 
 pub mod call;
 
@@ -1012,6 +1013,9 @@ pub trait LayoutOf {
     type TyLayout;
 
     fn layout_of(&self, ty: Self::Ty) -> Self::TyLayout;
+    fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyLayout {
+        self.layout_of(ty)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]

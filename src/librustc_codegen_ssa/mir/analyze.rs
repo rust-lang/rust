@@ -9,6 +9,7 @@ use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUs
 use rustc::mir::traversal;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};
+use syntax_pos::DUMMY_SP;
 use super::FunctionCx;
 use crate::traits::*;
 
@@ -20,10 +21,13 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     analyzer.visit_body(mir);
 
-    for (index, ty) in mir.local_decls.iter().map(|l| l.ty).enumerate() {
+    for (index, (ty, span)) in mir.local_decls.iter()
+        .map(|l| (l.ty, l.source_info.span))
+        .enumerate()
+    {
         let ty = fx.monomorphize(&ty);
         debug!("local {} has type {:?}", index, ty);
-        let layout = fx.cx.layout_of(ty);
+        let layout = fx.cx.spanned_layout_of(ty, span);
         if fx.cx.is_backend_immediate(layout) {
             // These sorts of types are immediates that we can store
             // in an Value without an alloca.
@@ -93,10 +97,12 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
         }
     }
 
-    fn process_place(&mut self,
-                     place_ref: &mir::PlaceRef<'_, 'tcx>,
-                     context: PlaceContext,
-                     location: Location) {
+    fn process_place(
+        &mut self,
+        place_ref: &mir::PlaceRef<'_, 'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
         let cx = self.fx.cx;
 
         if let Some(proj) = place_ref.projection {
@@ -116,12 +122,17 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                     .projection_ty(cx.tcx(), &proj.elem)
                     .ty;
                 let elem_ty = self.fx.monomorphize(&elem_ty);
-                if cx.layout_of(elem_ty).is_zst() {
+                let span = if let mir::PlaceBase::Local(index) = place_ref.base {
+                    self.fx.mir.local_decls[*index].source_info.span
+                } else {
+                    DUMMY_SP
+                };
+                if cx.spanned_layout_of(elem_ty, span).is_zst() {
                     return;
                 }
 
                 if let mir::ProjectionElem::Field(..) = proj.elem {
-                    let layout = cx.layout_of(base_ty.ty);
+                    let layout = cx.spanned_layout_of(base_ty.ty, span);
                     if cx.is_backend_immediate(layout) || cx.is_backend_scalar_pair(layout) {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
@@ -188,7 +199,8 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             projection: None,
         } = *place {
             self.assign(index, location);
-            if !self.fx.rvalue_creates_operand(rvalue) {
+            let decl_span = self.fx.mir.local_decls[index].source_info.span;
+            if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
                 self.not_ssa(index);
             }
         } else {
