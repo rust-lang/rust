@@ -2848,7 +2848,6 @@ dependencies = [
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "memmap 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_llvm 0.0.0",
  "tempfile 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

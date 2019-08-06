@@ -25,6 +25,7 @@
 use back::write::{create_target_machine, create_informational_target_machine};
 use syntax_pos::symbol::Symbol;
 
+extern crate rustc_demangle;
 extern crate flate2;
 #[macro_use] extern crate bitflags;
 extern crate libc;
