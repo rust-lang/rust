@@ -182,16 +182,17 @@ trait Qualif {
 
     fn in_projection_structurally(
         cx: &ConstCx<'_, 'tcx>,
-        base: &PlaceBase<'tcx>,
-        proj: &Projection<'tcx>,
+        place: PlaceRef<'_, 'tcx>,
     ) -> bool {
+        let proj = place.projection.as_ref().unwrap();
+
         let base_qualif = Self::in_place(cx, PlaceRef {
-            base,
+            base: place.base,
             projection: &proj.base,
         });
         let qualif = base_qualif && Self::mask_for_ty(
             cx,
-            Place::ty_from(&base, &proj.base, cx.body, cx.tcx)
+            Place::ty_from(place.base, &proj.base, cx.body, cx.tcx)
                 .projection_ty(cx.tcx, &proj.elem)
                 .ty,
         );
@@ -208,10 +209,9 @@ trait Qualif {
 
     fn in_projection(
         cx: &ConstCx<'_, 'tcx>,
-        base: &PlaceBase<'tcx>,
-        proj: &Projection<'tcx>,
+        place: PlaceRef<'_, 'tcx>,
     ) -> bool {
-        Self::in_projection_structurally(cx, base, proj)
+        Self::in_projection_structurally(cx, place)
     }
 
     fn in_place(cx: &ConstCx<'_, 'tcx>, place: PlaceRef<'_, 'tcx>) -> bool {
@@ -234,9 +234,9 @@ trait Qualif {
                 Self::in_static(cx, static_)
             },
             PlaceRef {
-                base,
-                projection: Some(proj),
-            } => Self::in_projection(cx, base, proj),
+                base: _,
+                projection: Some(_),
+            } => Self::in_projection(cx, place),
         }
     }
 
@@ -448,9 +448,10 @@ impl Qualif for IsNotPromotable {
 
     fn in_projection(
         cx: &ConstCx<'_, 'tcx>,
-        base: &PlaceBase<'tcx>,
-        proj: &Projection<'tcx>,
+        place: PlaceRef<'_, 'tcx>,
     ) -> bool {
+        let proj = place.projection.as_ref().unwrap();
+
         match proj.elem {
             ProjectionElem::Deref |
             ProjectionElem::Downcast(..) => return true,
@@ -461,7 +462,7 @@ impl Qualif for IsNotPromotable {
 
             ProjectionElem::Field(..) => {
                 if cx.mode == Mode::NonConstFn {
-                    let base_ty = Place::ty_from(base, &proj.base, cx.body, cx.tcx).ty;
+                    let base_ty = Place::ty_from(place.base, &proj.base, cx.body, cx.tcx).ty;
                     if let Some(def) = base_ty.ty_adt_def() {
                         // No promotion of union field accesses.
                         if def.is_union() {
@@ -472,7 +473,7 @@ impl Qualif for IsNotPromotable {
             }
         }
 
-        Self::in_projection_structurally(cx, base, proj)
+        Self::in_projection_structurally(cx, place)
     }
 
     fn in_rvalue(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
