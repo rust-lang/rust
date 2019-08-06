@@ -217,7 +217,7 @@ impl<'a> TokenTreesReader<'a> {
         loop {
             let token = self.string_reader.next_token();
             match token.kind {
-                token::Whitespace | token::Comment | token::Shebang(_) => {
+                token::Whitespace | token::Comment | token::Shebang(_) | token::Unknown(_) => {
                     self.joint_to_prev = NonJoint;
                 }
                 _ => {

@@ -13,27 +13,19 @@ LL |     a + b
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-warning[E0381]: use of possibly uninitialized variable: `a`
+error[E0381]: use of possibly uninitialized variable: `a`
   --> $DIR/const_let_refutable.rs:4:5
    |
 LL |     a + b
    |     ^ use of possibly uninitialized `a`
-   |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
 
-warning[E0381]: use of possibly uninitialized variable: `b`
+error[E0381]: use of possibly uninitialized variable: `b`
   --> $DIR/const_let_refutable.rs:4:9
    |
 LL |     a + b
    |         ^ use of possibly uninitialized `b`
-   |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0005, E0381, E0723.
 For more information about an error, try `rustc --explain E0005`.

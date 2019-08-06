@@ -255,6 +255,8 @@ pub enum TokenKind {
     /// A comment.
     Comment,
     Shebang(ast::Name),
+    /// A completely invalid token which should be skipped.
+    Unknown(ast::Name),
 
     Eof,
 }
@@ -603,7 +605,7 @@ impl Token {
             DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
             Question | OpenDelim(..) | CloseDelim(..) |
             Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
-            Whitespace | Comment | Shebang(..) | Eof => return None,
+            Whitespace | Comment | Shebang(..) | Unknown(..) | Eof => return None,
         };
 
         Some(Token::new(kind, self.span.to(joint.span)))

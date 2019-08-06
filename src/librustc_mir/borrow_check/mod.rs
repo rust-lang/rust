@@ -253,6 +253,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: Default::default(),
         errors_buffer,
+        disable_error_downgrading: false,
         nonlexical_regioncx: regioncx,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
@@ -364,7 +365,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     if !mbcx.errors_buffer.is_empty() {
         mbcx.errors_buffer.sort_by_key(|diag| diag.span.primary_span());
 
-        if tcx.migrate_borrowck() {
+        if !mbcx.disable_error_downgrading && tcx.migrate_borrowck() {
             // When borrowck=migrate, check if AST-borrowck would
             // error on the given code.
 
@@ -481,6 +482,9 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     uninitialized_error_reported: FxHashSet<PlaceRef<'cx, 'tcx>>,
     /// Errors to be reported buffer
     errors_buffer: Vec<Diagnostic>,
+    /// If there are no errors reported by the HIR borrow checker, we downgrade
+    /// all NLL errors to warnings. Setting this flag disables downgrading.
+    disable_error_downgrading: bool,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
     used_mut: FxHashSet<Local>,
@@ -921,6 +925,12 @@ impl InitializationRequiringAction {
 }
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
+    /// If there are no errors reported by the HIR borrow checker, we downgrade
+    /// all NLL errors to warnings. Calling this disables downgrading.
+    crate fn disable_error_downgrading(&mut self)  {
+        self.disable_error_downgrading = true;
+    }
+
     /// Checks an access to the given place to see if it is allowed. Examines the set of borrows
     /// that are in scope, as well as which paths have been initialized, to ensure that (a) the
     /// place is initialized and (b) it is not borrowed in some way that would prevent this

@@ -879,13 +879,12 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn meta_list(&self, sp: Span, name: ast::Name, mis: Vec<ast::NestedMetaItem>)
                  -> ast::MetaItem {
-        attr::mk_list_item(sp, Ident::new(name, sp), mis)
+        attr::mk_list_item(Ident::new(name, sp), mis)
     }
 
     pub fn meta_name_value(&self, span: Span, name: ast::Name, lit_kind: ast::LitKind)
                        -> ast::MetaItem {
-        attr::mk_name_value_item(span, Ident::new(name, span),
-                                 lit_kind, span)
+        attr::mk_name_value_item(Ident::new(name, span), lit_kind, span)
     }
 
     pub fn item_use(&self, sp: Span,

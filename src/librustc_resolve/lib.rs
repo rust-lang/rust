@@ -171,7 +171,7 @@ enum ResolutionError<'a> {
     GenericParamsFromOuterFunction(Res),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
-    NameAlreadyUsedInParameterList(Name, &'a Span),
+    NameAlreadyUsedInParameterList(Name, Span),
     /// Error E0407: method is not a member of trait.
     MethodNotMemberOfTrait(Name, &'a str),
     /// Error E0437: type is not a member of trait.
@@ -297,7 +297,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                                             parameter in this list of generic parameters",
                                             name);
              err.span_label(span, "already used");
-             err.span_label(first_use_span.clone(), format!("first use of `{}`", name));
+             err.span_label(first_use_span, format!("first use of `{}`", name));
              err
         }
         ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
@@ -2853,7 +2853,7 @@ impl<'a> Resolver<'a> {
                                 let span = seen_bindings.get(&ident).unwrap();
                                 let err = ResolutionError::NameAlreadyUsedInParameterList(
                                     ident.name,
-                                    span,
+                                    *span,
                                 );
                                 resolve_error(self, param.ident.span, err);
                             }
@@ -2875,7 +2875,7 @@ impl<'a> Resolver<'a> {
                                 let span = seen_bindings.get(&ident).unwrap();
                                 let err = ResolutionError::NameAlreadyUsedInParameterList(
                                     ident.name,
-                                    span,
+                                    *span,
                                 );
                                 resolve_error(self, param.ident.span, err);
                             }
