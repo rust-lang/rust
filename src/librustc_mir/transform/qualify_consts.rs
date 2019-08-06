@@ -223,7 +223,7 @@ trait Qualif {
             } => Self::in_local(cx, *local),
             PlaceRef {
                 base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(_),
+                    kind: StaticKind::Promoted(..),
                     ..
                 }),
                 projection: None,
@@ -434,13 +434,13 @@ impl Qualif for IsNotPromotable {
 
     fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
         match static_.kind {
-            StaticKind::Promoted(_) => unreachable!(),
-            StaticKind::Static(def_id) => {
+            StaticKind::Promoted(_, _) => unreachable!(),
+            StaticKind::Static => {
                 // Only allow statics (not consts) to refer to other statics.
                 let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
 
                 !allowed ||
-                    cx.tcx.get_attrs(def_id).iter().any(
+                    cx.tcx.get_attrs(static_.def_id).iter().any(
                         |attr| attr.check_name(sym::thread_local)
                     )
             }
@@ -873,7 +873,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     dest_projection = &proj.base;
                 },
                 (&PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(_),
+                    kind: StaticKind::Promoted(..),
                     ..
                 }), None) => bug!("promoteds don't exist yet during promotion"),
                 (&PlaceBase::Static(box Static{ kind: _, .. }), None) => {
@@ -1028,10 +1028,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         self.super_place_base(place_base, context, location);
         match place_base {
             PlaceBase::Local(_) => {}
-            PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. }) => {
+            PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_, _), .. }) => {
                 unreachable!()
             }
-            PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. }) => {
+            PlaceBase::Static(box Static{ kind: StaticKind::Static, def_id, .. }) => {
                 if self.tcx
                         .get_attrs(*def_id)
                         .iter()
@@ -1661,7 +1661,7 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
 
             // Do the actual promotion, now that we know what's viable.
             self.promoted.set(
-                Some(promote_consts::promote_candidates(body, tcx, temps, candidates))
+                Some(promote_consts::promote_candidates(def_id, body, tcx, temps, candidates))
             );
         } else {
             if !body.control_flow_destroyed.is_empty() {

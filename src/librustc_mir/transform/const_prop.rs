@@ -285,7 +285,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         place.iterate(|place_base, place_projection| {
             let mut eval = match place_base {
                 PlaceBase::Local(loc) => self.get_const(*loc).clone()?,
-                PlaceBase::Static(box Static {kind: StaticKind::Promoted(promoted), ..}) => {
+                PlaceBase::Static(box Static {kind: StaticKind::Promoted(promoted, _), ..}) => {
                     let generics = self.tcx.generics_of(self.source.def_id());
                     if generics.requires_monomorphization(self.tcx) {
                         // FIXME: can't handle code with generics

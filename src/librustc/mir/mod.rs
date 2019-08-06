@@ -1732,20 +1732,22 @@ pub enum PlaceBase<'tcx> {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Static<'tcx> {
     pub ty: Ty<'tcx>,
-    pub kind: StaticKind,
+    pub kind: StaticKind<'tcx>,
+    pub def_id: DefId,
 }
 
 #[derive(
     Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, RustcEncodable, RustcDecodable,
 )]
-pub enum StaticKind {
-    Promoted(Promoted),
-    Static(DefId),
+pub enum StaticKind<'tcx> {
+    Promoted(Promoted, SubstsRef<'tcx>),
+    Static,
 }
 
 impl_stable_hash_for!(struct Static<'tcx> {
     ty,
-    kind
+    kind,
+    def_id
 });
 
 /// The `Projection` data structure defines things of the form `base.x`, `*b` or `b[index]`.
@@ -2106,10 +2108,12 @@ impl Debug for PlaceBase<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match *self {
             PlaceBase::Local(id) => write!(fmt, "{:?}", id),
-            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static(def_id) }) => {
+            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static, def_id }) => {
                 write!(fmt, "({}: {:?})", ty::tls::with(|tcx| tcx.def_path_str(def_id)), ty)
             }
-            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Promoted(promoted) }) => {
+            PlaceBase::Static(box self::Static {
+                ty, kind: StaticKind::Promoted(promoted, _), def_id: _
+            }) => {
                 write!(fmt, "({:?}: {:?})", promoted, ty)
             }
         }

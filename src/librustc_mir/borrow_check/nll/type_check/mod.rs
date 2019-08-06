@@ -421,7 +421,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             let mut place_ty = match place_base {
                 PlaceBase::Local(index) =>
                     PlaceTy::from_ty(self.body.local_decls[*index].ty),
-                PlaceBase::Static(box Static { kind, ty: sty }) => {
+                PlaceBase::Static(box Static { kind, ty: sty, def_id }) => {
                     let sty = self.sanitize_type(place, sty);
                     let check_err =
                         |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
@@ -445,7 +445,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                             };
                         };
                     match kind {
-                        StaticKind::Promoted(promoted) => {
+                        StaticKind::Promoted(promoted, _) => {
                             if !self.errors_reported {
                                 let promoted_body = &self.promoted[*promoted];
                                 self.sanitize_promoted(promoted_body, location);
@@ -454,7 +454,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                                 check_err(self, place, promoted_ty, sty);
                             }
                         }
-                        StaticKind::Static(def_id) => {
+                        StaticKind::Static => {
                             let ty = self.tcx().type_of(*def_id);
                             let ty = self.cx.normalize(ty, location);
 
@@ -471,7 +471,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     let is_promoted = match place {
                         Place {
                             base: PlaceBase::Static(box Static {
-                                kind: StaticKind::Promoted(_),
+                                kind: StaticKind::Promoted(..),
                                 ..
                             }),
                             projection: None,

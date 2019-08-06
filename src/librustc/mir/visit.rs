@@ -708,7 +708,7 @@ macro_rules! make_mir_visitor {
                     PlaceBase::Local(local) => {
                         self.visit_local(local, context, location);
                     }
-                    PlaceBase::Static(box Static { kind: _, ty }) => {
+                    PlaceBase::Static(box Static { kind: _, ty, def_id: _ }) => {
                         self.visit_ty(& $($mutability)? *ty, TyContext::Location(location));
                     }
                 }

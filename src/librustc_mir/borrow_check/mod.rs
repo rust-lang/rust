@@ -1467,13 +1467,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         assert!(root_place.projection.is_none());
         let (might_be_alive, will_be_dropped) = match root_place.base {
             PlaceBase::Static(box Static {
-                kind: StaticKind::Promoted(_),
+                kind: StaticKind::Promoted(..),
                 ..
             }) => {
                 (true, false)
             }
             PlaceBase::Static(box Static {
-                kind: StaticKind::Static(_),
+                kind: StaticKind::Static,
                 ..
             }) => {
                 // Thread-locals might be dropped after the function exits, but
@@ -2155,7 +2155,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // `Place::Promoted` if the promotion weren't 100% legal. So we just forward this
             PlaceRef {
                 base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(_),
+                    kind: StaticKind::Promoted(..),
                     ..
                 }),
                 projection: None,
@@ -2167,7 +2167,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }),
             PlaceRef {
                 base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Static(def_id),
+                    kind: StaticKind::Static,
+                    def_id,
                     ..
                 }),
                 projection: None,

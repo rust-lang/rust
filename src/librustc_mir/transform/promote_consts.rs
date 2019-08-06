@@ -12,9 +12,11 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
+use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, MutatingUseContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
+use rustc::ty::subst::InternalSubsts;
 use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
@@ -293,17 +295,18 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         new_temp
     }
 
-    fn promote_candidate(mut self, candidate: Candidate, next_promoted_id: usize) -> Option<Body<'tcx>> {
+    fn promote_candidate(mut self, def_id: DefId, candidate: Candidate, next_promoted_id: usize) -> Option<Body<'tcx>> {
         let mut operand = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
-            let mut promoted_place = |ty, span| {
+            let mut promoted_place = |ty, substs, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new_return_place(ty, span);
                 Place {
                     base: PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(promoted_id),
-                        ty
+                        kind: StaticKind::Promoted(promoted_id, substs),
+                        ty,
+                        def_id,
                     }),
                     projection: None,
                 }
@@ -319,7 +322,14 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             let span = statement.source_info.span;
 
                             Operand::Move(Place {
-                                base: mem::replace(&mut place.base, promoted_place(ty, span).base),
+                                base: mem::replace(
+                                    &mut place.base,
+                                    promoted_place(
+                                        ty,
+                                        InternalSubsts::identity_for_item(self.tcx, def_id),
+                                        span,
+                                    ).base
+                                ),
                                 projection: None,
                             })
                         }
@@ -332,7 +342,16 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         StatementKind::Assign(_, box Rvalue::Repeat(ref mut operand, _)) => {
                             let ty = operand.ty(local_decls, self.tcx);
                             let span = statement.source_info.span;
-                            mem::replace(operand, Operand::Copy(promoted_place(ty, span)))
+                            mem::replace(
+                                operand,
+                                Operand::Copy(
+                                    promoted_place(
+                                        ty,
+                                        InternalSubsts::identity_for_item(self.tcx, def_id),
+                                        span,
+                                    )
+                                )
+                            )
                         }
                         _ => bug!()
                     }
@@ -343,7 +362,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         TerminatorKind::Call { ref mut args, .. } => {
                             let ty = args[index].ty(local_decls, self.tcx);
                             let span = terminator.source_info.span;
-                            let operand = Operand::Copy(promoted_place(ty, span));
+                            let operand =
+                                Operand::Copy(
+                                    promoted_place(
+                                        ty,
+                                        InternalSubsts::identity_for_item(self.tcx, def_id),
+                                        span));
                             mem::replace(&mut args[index], operand)
                         }
                         // We expected a `TerminatorKind::Call` for which we'd like to promote an
@@ -385,6 +409,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 }
 
 pub fn promote_candidates<'tcx>(
+    def_id: DefId,
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
@@ -442,7 +467,7 @@ pub fn promote_candidates<'tcx>(
             keep_original: false
         };
 
-        if let Some(promoted) = promoter.promote_candidate(candidate, promotions.len()) {
+        if let Some(promoted) = promoter.promote_candidate(def_id, candidate, promotions.len()) {
             promotions.push(promoted);
         }
     }

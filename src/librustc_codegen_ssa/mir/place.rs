@@ -1,4 +1,5 @@
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Instance, Ty};
+use rustc::ty::subst::Subst;
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
@@ -454,16 +455,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::PlaceRef {
                 base: mir::PlaceBase::Static(box mir::Static {
                     ty,
-                    kind: mir::StaticKind::Promoted(promoted),
+                    kind: mir::StaticKind::Promoted(promoted, substs),
+                    def_id,
                 }),
                 projection: None,
             } => {
+                debug!("promoted={:?}, def_id={:?}, substs={:?}, self_substs={:?}", promoted, def_id, substs, self.instance.substs);
                 let param_env = ty::ParamEnv::reveal_all();
+                let instance = Instance::new(*def_id, substs.subst(bx.tcx(), self.instance.substs));
+                debug!("instance: {:?}", instance);
                 let cid = mir::interpret::GlobalId {
-                    instance: self.instance,
+                    instance: instance,
                     promoted: Some(*promoted),
                 };
-                let layout = cx.layout_of(self.monomorphize(&ty));
+                let mono_ty = tcx.subst_and_normalize_erasing_regions(
+                    instance.substs,
+                    param_env,
+                    ty,
+                );
+                let layout = cx.layout_of(mono_ty);
                 match bx.tcx().const_eval(param_env.and(cid)) {
                     Ok(val) => match val.val {
                         mir::interpret::ConstValue::ByRef { alloc, offset } => {
@@ -487,7 +497,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::PlaceRef {
                 base: mir::PlaceBase::Static(box mir::Static {
                     ty,
-                    kind: mir::StaticKind::Static(def_id),
+                    kind: mir::StaticKind::Static,
+                    def_id,
                 }),
                 projection: None,
             } => {
