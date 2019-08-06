@@ -231,7 +231,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
-use crate::iter::{FromIterator, FusedIterator, TrustedLen, ResultShunt};
+use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::ops::{self, Deref, DerefMut};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
@@ -1343,7 +1343,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
-        ResultShunt::process(iter.into_iter(), |i| i.collect())
+        iter::process_results(iter.into_iter(), |i| i.collect())
     }
 }
 

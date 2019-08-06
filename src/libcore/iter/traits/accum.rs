@@ -1,6 +1,6 @@
 use crate::ops::{Mul, Add};
 use crate::num::Wrapping;
-use crate::iter::adapters::{OptionShunt, ResultShunt};
+use crate::iter;
 
 /// Trait to represent types that can be created by summing up an iterator.
 ///
@@ -139,7 +139,7 @@ impl<T, U, E> Sum<Result<U, E>> for Result<T, E>
     fn sum<I>(iter: I) -> Result<T, E>
         where I: Iterator<Item = Result<U, E>>,
     {
-        ResultShunt::process(iter, |i| i.sum())
+        iter::process_results(iter, |i| i.sum())
     }
 }
 
@@ -153,7 +153,7 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
     fn product<I>(iter: I) -> Result<T, E>
         where I: Iterator<Item = Result<U, E>>,
     {
-        ResultShunt::process(iter, |i| i.product())
+        iter::process_results(iter, |i| i.product())
     }
 }
 
@@ -180,7 +180,7 @@ where
     where
         I: Iterator<Item = Option<U>>,
     {
-        OptionShunt::process(iter, |i| i.sum())
+        iter.map(|x| x.ok_or(())).sum::<Result<_, _>>().ok()
     }
 }
 
@@ -196,6 +196,6 @@ where
     where
         I: Iterator<Item = Option<U>>,
     {
-        OptionShunt::process(iter, |i| i.product())
+        iter.map(|x| x.ok_or(())).product::<Result<_, _>>().ok()
     }
 }
