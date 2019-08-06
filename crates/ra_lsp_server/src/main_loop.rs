@@ -56,6 +56,7 @@ pub fn main_loop(
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
+    log::debug!("server_config: {:?}", config);
     // FIXME: support dynamic workspace loading.
     let workspaces = {
         let ws_worker = workspace_loader();
@@ -77,11 +78,16 @@ pub fn main_loop(
         }
         loaded_workspaces
     };
-
+    let globs = config
+        .exclude_globs
+        .iter()
+        .map(|glob| ra_vfs_glob::Glob::new(glob))
+        .collect::<std::result::Result<Vec<_>, _>>()?;
     let mut state = WorldState::new(
         ws_roots,
         workspaces,
         config.lru_capacity,
+        &globs,
         Options {
             publish_decorations: config.publish_decorations,
             show_workspace_loaded: config.show_workspace_loaded,

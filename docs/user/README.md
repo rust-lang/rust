@@ -71,6 +71,9 @@ See https://github.com/microsoft/vscode/issues/72308[microsoft/vscode#72308] for
 * `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
   watch` for live error highlighting (note, this **does not** use rust-analyzer)
+* `rust-analyzer.excludeGlobs`: a list of glob-patterns for exclusion (see globset [docs](https://docs.rs/globset) for syntax).
+  Note: glob patterns are applied to all Cargo packages and a rooted at a package root.
+  This is not very intuitive and a limitation of a current implementation.
 * `rust-analyzer.cargo-watch.check-arguments`: cargo-watch check arguments.
   (e.g: `--features="shumway,pdf"` will run as `cargo watch -x "check --features="shumway,pdf""` )
 * `rust-analyzer.trace.server`: enables internal logging

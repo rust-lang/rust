@@ -1,7 +1,7 @@
 use serde::{Deserialize, Deserializer};
 
 /// Client provided initialization options
-#[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ServerConfig {
     /// Whether the client supports our custom highlighting publishing decorations.
@@ -18,12 +18,19 @@ pub struct ServerConfig {
     #[serde(deserialize_with = "nullable_bool_true")]
     pub show_workspace_loaded: bool,
 
+    pub exclude_globs: Vec<String>,
+
     pub lru_capacity: Option<usize>,
 }
 
 impl Default for ServerConfig {
     fn default() -> ServerConfig {
-        ServerConfig { publish_decorations: false, show_workspace_loaded: true, lru_capacity: None }
+        ServerConfig {
+            publish_decorations: false,
+            show_workspace_loaded: true,
+            exclude_globs: Vec::new(),
+            lru_capacity: None,
+        }
     }
 }
 
