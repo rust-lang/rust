@@ -34,20 +34,20 @@ pub enum ProjectWorkspace {
     Json { project: JsonProject },
 }
 
-/// `ProjectRoot` describes a workspace root folder.
+/// `PackageRoot` describes a package root folder.
 /// Which may be an external dependency, or a member of
 /// the current workspace.
 #[derive(Clone)]
-pub struct ProjectRoot {
+pub struct PackageRoot {
     /// Path to the root folder
     path: PathBuf,
     /// Is a member of the current workspace
     is_member: bool,
 }
 
-impl ProjectRoot {
-    pub fn new(path: PathBuf, is_member: bool) -> ProjectRoot {
-        ProjectRoot { path, is_member }
+impl PackageRoot {
+    pub fn new(path: PathBuf, is_member: bool) -> PackageRoot {
+        PackageRoot { path, is_member }
     }
 
     pub fn path(&self) -> &PathBuf {
@@ -99,15 +99,15 @@ impl ProjectWorkspace {
         }
     }
 
-    /// Returns the roots for the current ProjectWorkspace
+    /// Returns the roots for the current `ProjectWorkspace`
     /// The return type contains the path and whether or not
     /// the root is a member of the current workspace
-    pub fn to_roots(&self) -> Vec<ProjectRoot> {
+    pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
             ProjectWorkspace::Json { project } => {
                 let mut roots = Vec::with_capacity(project.roots.len());
                 for root in &project.roots {
-                    roots.push(ProjectRoot::new(root.path.clone(), true));
+                    roots.push(PackageRoot::new(root.path.clone(), true));
                 }
                 roots
             }
@@ -117,10 +117,10 @@ impl ProjectWorkspace {
                 for pkg in cargo.packages() {
                     let root = pkg.root(&cargo).to_path_buf();
                     let member = pkg.is_member(&cargo);
-                    roots.push(ProjectRoot::new(root, member));
+                    roots.push(PackageRoot::new(root, member));
                 }
                 for krate in sysroot.crates() {
-                    roots.push(ProjectRoot::new(krate.root_dir(&sysroot).to_path_buf(), false))
+                    roots.push(PackageRoot::new(krate.root_dir(&sysroot).to_path_buf(), false))
                 }
                 roots
             }
