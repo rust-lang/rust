@@ -27,7 +27,7 @@ use crate::interpret::{
     ImmTy, MemoryKind, StackPopCleanup, LocalValue, LocalState,
 };
 use crate::const_eval::{
-    CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_eval_cx,
+    CompileTimeInterpreter, error_to_const_error, mk_eval_cx,
 };
 use crate::transform::{MirPass, MirSource};
 
@@ -297,11 +297,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         instance,
                         promoted: Some(*promoted),
                     };
-                    // cannot use `const_eval` here, because that would require having the MIR
-                    // for the current function available, but we're producing said MIR right now
                     let res = self.use_ecx(source_info, |this| {
-                        let body = &this.tcx.promoted_mir(this.source.def_id())[*promoted];
-                        eval_promoted(this.tcx, cid, body, this.param_env)
+                        this.ecx.const_eval_raw(cid)
                     })?;
                     trace!("evaluated promoted {:?} to {:?}", promoted, res);
                     res.into()
