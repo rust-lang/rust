@@ -5,8 +5,10 @@
 //!
 //! It's also possible to add custom exclusion globs.
 
-use globset::{Glob, GlobSet, GlobSetBuilder};
+use globset::{GlobSet, GlobSetBuilder};
 use ra_vfs::{Filter, RelativePath};
+
+pub use globset::{Glob, GlobBuilder};
 
 const ALWAYS_IGNORED: &[&str] = &["target/**", "**/node_modules/**", "**/.git/**"];
 const IGNORED_FOR_NON_MEMBERS: &[&str] = &["examples/**", "tests/**", "benches/**"];
@@ -27,9 +29,9 @@ impl RustPackageFilterBuilder {
         self.is_member = is_member;
         self
     }
-    pub fn exclude(mut self, glob: &str) -> Result<RustPackageFilterBuilder, globset::Error> {
-        self.exclude.add(Glob::new(glob)?);
-        Ok(self)
+    pub fn exclude(mut self, glob: Glob) -> RustPackageFilterBuilder {
+        self.exclude.add(glob);
+        self
     }
     pub fn into_vfs_filter(self) -> Box<dyn Filter> {
         let RustPackageFilterBuilder { is_member, mut exclude } = self;
@@ -85,8 +87,7 @@ fn test_globs() {
 
     let filter = RustPackageFilterBuilder::default()
         .set_member(true)
-        .exclude("src/llvm-project/**")
-        .unwrap()
+        .exclude(Glob::new("src/llvm-project/**").unwrap())
         .into_vfs_filter();
 
     assert!(!filter.include_dir(RelativePath::new("src/llvm-project/clang")));
