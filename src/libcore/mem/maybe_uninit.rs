@@ -209,6 +209,8 @@ use crate::mem::ManuallyDrop;
 /// guarantee may evolve.
 #[allow(missing_debug_implementations)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
+// Lang item so we can wrap other types in it. This is useful for generators.
+#[cfg_attr(not(bootstrap), lang = "maybe_uninit")]
 #[derive(Copy)]
 #[repr(transparent)]
 pub union MaybeUninit<T> {
