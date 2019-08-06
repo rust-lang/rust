@@ -268,7 +268,7 @@ fn setup(ask_user: bool) {
         let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
         if !src.exists() {
             if ask_user {
-                ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src`. Proceed?");
+                ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src` for the selected toolchain. Proceed?");
             } else {
                 println!("Installing rust-src component: `rustup component add rust-src`");
             }
