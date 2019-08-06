@@ -10,7 +10,7 @@ impl<'a> StringReader<'a> {
     crate fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
         let mut tt_reader = TokenTreesReader {
             string_reader: self,
-            token: Token::dummy(),
+            token: None,
             joint_to_prev: Joint,
             open_braces: Vec::new(),
             unmatched_braces: Vec::new(),
@@ -24,7 +24,7 @@ impl<'a> StringReader<'a> {
 
 struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
-    token: Token,
+    token: Option<Token>,
     joint_to_prev: IsJoint,
     /// Stack of open delimiters and their spans. Used for error message.
     open_braces: Vec<(token::DelimToken, Span)>,
@@ -42,7 +42,7 @@ impl<'a> TokenTreesReader<'a> {
         let mut tts = Vec::new();
 
         self.real_token();
-        while self.token != token::Eof {
+        while self.token.is_some() {
             tts.push(self.parse_token_tree()?);
         }
 
@@ -53,7 +53,7 @@ impl<'a> TokenTreesReader<'a> {
     fn parse_token_trees_until_close_delim(&mut self) -> TokenStream {
         let mut tts = vec![];
         loop {
-            if let token::CloseDelim(..) = self.token.kind {
+            if let Some( Token { kind: token::CloseDelim(..), .. }) = self.token {
                 return TokenStream::new(tts);
             }
 
@@ -69,11 +69,12 @@ impl<'a> TokenTreesReader<'a> {
 
     fn parse_token_tree(&mut self) -> PResult<'a, TreeAndJoint> {
         let sm = self.string_reader.sess.source_map();
-        match self.token.kind {
-            token::Eof => {
+        match self.token {
+            None => {
                 let msg = "this file contains an un-closed delimiter";
+                let span = self.string_reader.mk_sp(self.string_reader.pos, self.string_reader.pos);
                 let mut err = self.string_reader.sess.span_diagnostic
-                    .struct_span_err(self.token.span, msg);
+                    .struct_span_err(span, msg);
                 for &(_, sp) in &self.open_braces {
                     err.span_label(sp, "un-closed delimiter");
                 }
@@ -101,12 +102,9 @@ impl<'a> TokenTreesReader<'a> {
                 }
                 Err(err)
             },
-            token::OpenDelim(delim) => {
-                // The span for beginning of the delimited section
-                let pre_span = self.token.span;
-
+            Some(Token { kind: token::OpenDelim(delim), span: pre_span }) => {
                 // Parse the open delimiter.
-                self.open_braces.push((delim, self.token.span));
+                self.open_braces.push((delim, pre_span));
                 self.real_token();
 
                 // Parse the token trees within the delimiters.
@@ -115,11 +113,15 @@ impl<'a> TokenTreesReader<'a> {
                 let tts = self.parse_token_trees_until_close_delim();
 
                 // Expand to cover the entire delimited token tree
-                let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
+                let post_pan = self.token.as_ref().map_or_else(
+                    || self.string_reader.mk_sp(self.string_reader.pos, self.string_reader.pos),
+                    |it| it.span,
+                );
+                let delim_span = DelimSpan::from_pair(pre_span, post_pan);
 
-                match self.token.kind {
+                match self.token {
                     // Correct delimiter.
-                    token::CloseDelim(d) if d == delim => {
+                    Some(Token { kind: token::CloseDelim(d), span }) if d == delim => {
                         let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
                         if self.open_braces.len() == 0 {
                             // Clear up these spans to avoid suggesting them as we've found
@@ -127,26 +129,26 @@ impl<'a> TokenTreesReader<'a> {
                             self.matching_delim_spans.clear();
                         } else {
                             self.matching_delim_spans.push(
-                                (open_brace, open_brace_span, self.token.span),
+                                (open_brace, open_brace_span, span),
                             );
                         }
                         // Parse the close delimiter.
                         self.real_token();
                     }
                     // Incorrect delimiter.
-                    token::CloseDelim(other) => {
+                    Some(Token { kind: token::CloseDelim(other), span }) => {
                         let mut unclosed_delimiter = None;
                         let mut candidate = None;
-                        if self.last_unclosed_found_span != Some(self.token.span) {
+                        if self.last_unclosed_found_span != Some(span) {
                             // do not complain about the same unclosed delimiter multiple times
-                            self.last_unclosed_found_span = Some(self.token.span);
+                            self.last_unclosed_found_span = Some(span);
                             // This is a conservative error: only report the last unclosed
                             // delimiter. The previous unclosed delimiters could actually be
                             // closed! The parser just hasn't gotten to them yet.
                             if let Some(&(_, sp)) = self.open_braces.last() {
                                 unclosed_delimiter = Some(sp);
                             };
-                            if let Some(current_padding) = sm.span_to_margin(self.token.span) {
+                            if let Some(current_padding) = sm.span_to_margin(span) {
                                 for (brace, brace_span) in &self.open_braces {
                                     if let Some(padding) = sm.span_to_margin(*brace_span) {
                                         // high likelihood of these two corresponding
@@ -160,7 +162,7 @@ impl<'a> TokenTreesReader<'a> {
                             self.unmatched_braces.push(UnmatchedBrace {
                                 expected_delim: tok,
                                 found_delim: other,
-                                found_span: self.token.span,
+                                found_span: span,
                                 unclosed_span: unclosed_delimiter,
                                 candidate_span: candidate,
                             });
@@ -179,12 +181,12 @@ impl<'a> TokenTreesReader<'a> {
                             self.real_token();
                         }
                     }
-                    token::Eof => {
+                    Some(_) => {}
+                    None => {
                         // Silently recover, the EOF token will be seen again
                         // and an error emitted then. Thus we don't pop from
                         // self.open_braces here.
                     },
-                    _ => {}
                 }
 
                 Ok(TokenTree::Delimited(
@@ -193,20 +195,21 @@ impl<'a> TokenTreesReader<'a> {
                     tts.into()
                 ).into())
             },
-            token::CloseDelim(_) => {
+            Some(Token { kind: token::CloseDelim(_), span }) => {
                 // An unexpected closing delimiter (i.e., there is no
                 // matching opening delimiter).
-                let token_str = token_to_string(&self.token);
+                let token_str = self.token.as_ref().map(token_to_string).unwrap_or("<eof>".into());
                 let msg = format!("unexpected close delimiter: `{}`", token_str);
                 let mut err = self.string_reader.sess.span_diagnostic
-                    .struct_span_err(self.token.span, &msg);
-                err.span_label(self.token.span, "unexpected close delimiter");
+                    .struct_span_err(span, &msg);
+                err.span_label(span, "unexpected close delimiter");
                 Err(err)
             },
-            _ => {
-                let tt = TokenTree::Token(self.token.take());
+            Some(_) => {
+                let tt = TokenTree::Token(self.token.take().unwrap());
                 self.real_token();
-                let is_joint = self.joint_to_prev == Joint && self.token.is_op();
+                let is_joint = self.joint_to_prev == Joint
+                    && self.token.as_ref().map(|it| it.is_op()) == Some(true);
                 Ok((tt, if is_joint { Joint } else { NonJoint }))
             }
         }
@@ -215,16 +218,17 @@ impl<'a> TokenTreesReader<'a> {
     fn real_token(&mut self) {
         self.joint_to_prev = Joint;
         loop {
-            let token = self.string_reader.next_token();
-            match token.kind {
-                token::Whitespace | token::Comment | token::Shebang(_) | token::Unknown(_) => {
-                    self.joint_to_prev = NonJoint;
+            self.token = self.string_reader.next();
+            if let Some(token) = &self.token {
+                match token.kind {
+                    token::Whitespace | token::Comment | token::Shebang(_) | token::Unknown(_) => {
+                        self.joint_to_prev = NonJoint;
+                        continue;
+                    }
+                    _ => (),
                 }
-                _ => {
-                    self.token = token;
-                    return;
-                },
             }
+            break;
         }
     }
 }

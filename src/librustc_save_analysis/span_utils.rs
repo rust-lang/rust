@@ -3,7 +3,7 @@ use rustc::session::Session;
 use crate::generated_code;
 
 use syntax::parse::lexer::{self, StringReader};
-use syntax::parse::token::{self, TokenKind};
+use syntax::parse::token::TokenKind;
 use syntax_pos::*;
 
 #[derive(Clone)]
@@ -51,16 +51,9 @@ impl<'a> SpanUtils<'a> {
     }
 
     pub fn sub_span_of_token(&self, span: Span, tok: TokenKind) -> Option<Span> {
-        let mut toks = self.retokenise_span(span);
-        loop {
-            let next = toks.next_token();
-            if next == token::Eof {
-                return None;
-            }
-            if next == tok {
-                return Some(next.span);
-            }
-        }
+        let token = self.retokenise_span(span)
+            .find(|it| it.kind == tok)?;
+        Some(token.span)
     }
 
     // // Return the name for a macro definition (identifier after first `!`)

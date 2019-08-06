@@ -87,50 +87,6 @@ impl<'a> StringReader<'a> {
         self.override_span.unwrap_or_else(|| Span::new(lo, hi, NO_EXPANSION))
     }
 
-    /// Returns the next token, including trivia like whitespace or comments.
-    ///
-    /// `Err(())` means that some errors were encountered, which can be
-    /// retrieved using `buffer_fatal_errors`.
-    pub fn next_token(&mut self) -> Token {
-        let start_src_index = self.src_index(self.pos);
-        let text: &str = &self.src[start_src_index..self.end_src_index];
-
-        if text.is_empty() {
-            let span = self.mk_sp(self.pos, self.pos);
-            return Token::new(token::Eof, span);
-        }
-
-        {
-            let is_beginning_of_file = self.pos == self.start_pos;
-            if is_beginning_of_file {
-                if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
-                    let start = self.pos;
-                    self.pos = self.pos + BytePos::from_usize(shebang_len);
-
-                    let sym = self.symbol_from(start + BytePos::from_usize("#!".len()));
-                    let kind = token::Shebang(sym);
-
-                    let span = self.mk_sp(start, self.pos);
-                    return Token::new(kind, span);
-                }
-            }
-        }
-
-        let token = rustc_lexer::first_token(text);
-
-        let start = self.pos;
-        self.pos = self.pos + BytePos::from_usize(token.len);
-
-        debug!("try_next_token: {:?}({:?})", token.kind, self.str_from(start));
-
-        // This could use `?`, but that makes code significantly (10-20%) slower.
-        // https://github.com/rust-lang/rust/issues/37939
-        let kind = self.cook_lexer_token(token.kind, start);
-
-        let span = self.mk_sp(start, self.pos);
-        Token::new(kind, span)
-    }
-
     /// Report a fatal lexical error with a given span.
     fn fatal_span(&self, sp: Span, m: &str) -> FatalError {
         self.sess.span_diagnostic.span_fatal(sp, m)
@@ -716,6 +672,50 @@ impl<'a> StringReader<'a> {
 
             }
         }
+    }
+}
+
+impl Iterator for StringReader<'_> {
+    type Item = Token;
+
+    /// Returns the next token, including trivia like whitespace or comments.
+    fn next(&mut self) -> Option<Token> {
+        let start_src_index = self.src_index(self.pos);
+        let text: &str = &self.src[start_src_index..self.end_src_index];
+
+        if text.is_empty() {
+            return None;
+        }
+
+        {
+            let is_beginning_of_file = self.pos == self.start_pos;
+            if is_beginning_of_file {
+                if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
+                    let start = self.pos;
+                    self.pos = self.pos + BytePos::from_usize(shebang_len);
+
+                    let sym = self.symbol_from(start + BytePos::from_usize("#!".len()));
+                    let kind = token::Shebang(sym);
+
+                    let span = self.mk_sp(start, self.pos);
+                    return Some(Token::new(kind, span));
+                }
+            }
+        }
+
+        let token = rustc_lexer::first_token(text);
+
+        let start = self.pos;
+        self.pos = self.pos + BytePos::from_usize(token.len);
+
+        debug!("try_next_token: {:?}({:?})", token.kind, self.str_from(start));
+
+        // This could use `?`, but that makes code significantly (10-20%) slower.
+        // https://github.com/rust-lang/rust/issues/37939
+        let kind = self.cook_lexer_token(token.kind, start);
+
+        let span = self.mk_sp(start, self.pos);
+        Some(Token::new(kind, span))
     }
 }
 
