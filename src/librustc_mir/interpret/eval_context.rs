@@ -506,7 +506,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn push_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
-        span: source_map::Span,
+        span: Span,
         body: &'mir mir::Body<'tcx>,
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,

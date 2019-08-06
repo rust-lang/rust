@@ -1,0 +1,8 @@
+error: the type `[usize; 18446744073709551615]` is too big for the current architecture
+  --> $DIR/issue-15919-64.rs:8:9
+   |
+LL |     let x = [0usize; 0xffff_ffff_ffff_ffff];
+   |         ^
+
+error: aborting due to previous error
+

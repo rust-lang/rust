@@ -17,6 +17,8 @@ impl TooBigArray {
 }
 
 static MY_TOO_BIG_ARRAY_1: TooBigArray = TooBigArray::new();
+//~^ ERROR the type `[u8; 2305843009213693951]` is too big for the current architecture
 static MY_TOO_BIG_ARRAY_2: [u8; HUGE_SIZE] = [0x00; HUGE_SIZE];
+//~^ ERROR the type `[u8; 2305843009213693951]` is too big for the current architecture
 
 fn main() { }
