@@ -157,6 +157,9 @@ Several `-Z` flags are relevant for Miri:
   is enforced by default.  This is mostly useful for debugging; it means Miri
   will miss bugs in your program.  However, this can also help to make Miri run
   faster.
+* `-Zmiri-enable-communication` enables communication between the host
+  environment and Miri, i.e., all the host environment variables are available
+  during Miri runtime.
 * `-Zmir-opt-level` controls how many MIR optimizations are performed.  Miri
   overrides the default to be `0`; be advised that using any higher level can
   make Miri miss bugs in your program because they got optimized away.
