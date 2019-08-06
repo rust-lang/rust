@@ -4,17 +4,13 @@ error[E0005]: refutable pattern in local binding: `Err(_)` not covered
 LL |     let Ok(x) = res;
    |         ^^^^^ pattern `Err(_)` not covered
 
-warning[E0381]: use of possibly uninitialized variable: `x`
+error[E0381]: use of possibly uninitialized variable: `x`
   --> $DIR/recursive-types-are-not-uninhabited.rs:8:5
    |
 LL |     x
    |     ^ use of possibly uninitialized `x`
-   |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0005, E0381.
 For more information about an error, try `rustc --explain E0005`.
