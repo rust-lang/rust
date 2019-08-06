@@ -44,7 +44,7 @@ pub fn render_with_highlighting(
 
         let mut highlighted_source = vec![];
         if classifier.write_source(&mut highlighted_source).is_err() {
-            Err(classifier.lexer.buffer_fatal_errors())
+            Err(())
         } else {
             Ok(String::from_utf8_lossy(&highlighted_source).into_owned())
         }
@@ -59,14 +59,9 @@ pub fn render_with_highlighting(
             }
             write_footer(&mut out).unwrap();
         }
-        Err(errors) => {
-            // If errors are encountered while trying to highlight, cancel the errors and just emit
-            // the unhighlighted source. The errors will have already been reported in the
-            // `check-code-block-syntax` pass.
-            for mut error in errors {
-                error.cancel();
-            }
-
+        Err(()) => {
+            // If errors are encountered while trying to highlight, just emit
+            // the unhighlighted source.
             write!(out, "<pre><code>{}</code></pre>", src).unwrap();
         }
     }
@@ -192,14 +187,20 @@ impl<'a> Classifier<'a> {
         if let Some(token) = self.peek_token.take() {
             return Ok(token);
         }
-        self.lexer.try_next_token().map_err(|()| HighlightError::LexError)
+        let token = self.lexer.next_token();
+        if let token::Unknown(..) = &token.kind {
+            return Err(HighlightError::LexError);
+        }
+        Ok(token)
     }
 
     fn peek(&mut self) -> Result<&Token, HighlightError> {
         if self.peek_token.is_none() {
-            self.peek_token = Some(
-                self.lexer.try_next_token().map_err(|()| HighlightError::LexError)?
-            );
+            let token = self.lexer.next_token();
+            if let token::Unknown(..) = &token.kind {
+                return Err(HighlightError::LexError);
+            }
+            self.peek_token = Some(token);
         }
         Ok(self.peek_token.as_ref().unwrap())
     }
@@ -237,7 +238,7 @@ impl<'a> Classifier<'a> {
                 return Ok(());
             },
 
-            token::Whitespace => Class::None,
+            token::Whitespace | token::Unknown(..) => Class::None,
             token::Comment => Class::Comment,
             token::DocComment(..) => Class::DocComment,
 

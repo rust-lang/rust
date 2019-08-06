@@ -3,7 +3,7 @@ use crate::parse::token::{self, Token, TokenKind};
 use crate::symbol::{sym, Symbol};
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
-use errors::{FatalError, Diagnostic, DiagnosticBuilder};
+use errors::{FatalError, DiagnosticBuilder};
 use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
 use rustc_lexer::Base;
 use rustc_lexer::unescape;
@@ -39,7 +39,6 @@ pub struct StringReader<'a> {
     pos: BytePos,
     /// Stop reading src at this index.
     end_src_index: usize,
-    fatal_errs: Vec<DiagnosticBuilder<'a>>,
     /// Source text to tokenize.
     src: Lrc<String>,
     override_span: Option<Span>,
@@ -62,7 +61,6 @@ impl<'a> StringReader<'a> {
             pos: source_file.start_pos,
             end_src_index: src.len(),
             src,
-            fatal_errs: Vec::new(),
             override_span,
         }
     }
@@ -89,29 +87,17 @@ impl<'a> StringReader<'a> {
         self.override_span.unwrap_or_else(|| Span::new(lo, hi, NO_EXPANSION))
     }
 
-    fn unwrap_or_abort(&mut self, res: Result<Token, ()>) -> Token {
-        match res {
-            Ok(tok) => tok,
-            Err(_) => {
-                self.emit_fatal_errors();
-                FatalError.raise();
-            }
-        }
-    }
-
     /// Returns the next token, including trivia like whitespace or comments.
     ///
     /// `Err(())` means that some errors were encountered, which can be
     /// retrieved using `buffer_fatal_errors`.
-    pub fn try_next_token(&mut self) -> Result<Token, ()> {
-        assert!(self.fatal_errs.is_empty());
-
+    pub fn next_token(&mut self) -> Token {
         let start_src_index = self.src_index(self.pos);
         let text: &str = &self.src[start_src_index..self.end_src_index];
 
         if text.is_empty() {
             let span = self.mk_sp(self.pos, self.pos);
-            return Ok(Token::new(token::Eof, span));
+            return Token::new(token::Eof, span);
         }
 
         {
@@ -125,7 +111,7 @@ impl<'a> StringReader<'a> {
                     let kind = token::Shebang(sym);
 
                     let span = self.mk_sp(start, self.pos);
-                    return Ok(Token::new(kind, span));
+                    return Token::new(kind, span);
                 }
             }
         }
@@ -139,39 +125,10 @@ impl<'a> StringReader<'a> {
 
         // This could use `?`, but that makes code significantly (10-20%) slower.
         // https://github.com/rust-lang/rust/issues/37939
-        let kind = match self.cook_lexer_token(token.kind, start) {
-            Ok(it) => it,
-            Err(err) => return Err(self.fatal_errs.push(err)),
-        };
+        let kind = self.cook_lexer_token(token.kind, start);
 
         let span = self.mk_sp(start, self.pos);
-        Ok(Token::new(kind, span))
-    }
-
-    /// Returns the next token, including trivia like whitespace or comments.
-    ///
-    /// Aborts in case of an error.
-    pub fn next_token(&mut self) -> Token {
-        let res = self.try_next_token();
-        self.unwrap_or_abort(res)
-    }
-
-    fn emit_fatal_errors(&mut self) {
-        for err in &mut self.fatal_errs {
-            err.emit();
-        }
-
-        self.fatal_errs.clear();
-    }
-
-    pub fn buffer_fatal_errors(&mut self) -> Vec<Diagnostic> {
-        let mut buffer = Vec::new();
-
-        for err in self.fatal_errs.drain(..) {
-            err.buffer(&mut buffer);
-        }
-
-        buffer
+        Token::new(kind, span)
     }
 
     /// Report a fatal lexical error with a given span.
@@ -218,8 +175,8 @@ impl<'a> StringReader<'a> {
         &self,
         token: rustc_lexer::TokenKind,
         start: BytePos,
-    ) -> Result<TokenKind, DiagnosticBuilder<'a>> {
-        let kind = match token {
+    ) -> TokenKind {
+        match token {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
                 // comments with only more "/"s are not doc comments
@@ -396,16 +353,12 @@ impl<'a> StringReader<'a> {
                 // this should be inside `rustc_lexer`. However, we should first remove compound
                 // tokens like `<<` from `rustc_lexer`, and then add fancier error recovery to it,
                 // as there will be less overall work to do this way.
-                return match unicode_chars::check_for_substitution(self, start, c, &mut err) {
-                    Some(token) => {
-                        err.emit();
-                        Ok(token)
-                    }
-                    None => Err(err),
-                }
+                let token = unicode_chars::check_for_substitution(self, start, c, &mut err)
+                    .unwrap_or_else(|| token::Unknown(self.symbol_from(start)));
+                err.emit();
+                token
             }
-        };
-        Ok(kind)
+        }
     }
 
     fn cook_lexer_literal(
