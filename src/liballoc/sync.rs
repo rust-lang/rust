@@ -7,6 +7,7 @@
 //! [arc]: struct.Arc.html
 
 use core::any::Any;
+use core::array::LengthAtMost32;
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
@@ -21,7 +22,7 @@ use core::ptr::{self, NonNull};
 use core::marker::{Unpin, Unsize, PhantomData};
 use core::hash::{Hash, Hasher};
 use core::{isize, usize};
-use core::convert::From;
+use core::convert::{From, TryFrom};
 use core::slice::{self, from_raw_parts_mut};
 
 use crate::alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
@@ -1822,6 +1823,22 @@ impl<T> From<Vec<T>> for Arc<[T]> {
             v.set_len(0);
 
             arc
+        }
+    }
+}
+
+#[unstable(feature = "boxed_slice_try_from", issue = "0")]
+impl<T, const N: usize> TryFrom<Arc<[T]>> for Arc<[T; N]>
+where
+    [T; N]: LengthAtMost32,
+{
+    type Error = Arc<[T]>;
+
+    fn try_from(boxed_slice: Arc<[T]>) -> Result<Self, Self::Error> {
+        if boxed_slice.len() == N {
+            Ok(unsafe { Arc::from_raw(Arc::into_raw(boxed_slice) as *mut [T; N]) })
+        } else {
+            Err(boxed_slice)
         }
     }
 }

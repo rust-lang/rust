@@ -9,7 +9,7 @@ use std::option::Option::{self, None, Some};
 use std::sync::atomic::{self, Ordering::{Acquire, SeqCst}};
 use std::thread;
 use std::sync::Mutex;
-use std::convert::From;
+use std::convert::{From, TryInto};
 
 use crate::vec::Vec;
 
@@ -477,4 +477,16 @@ fn test_downcast() {
     let r2str = r2.downcast::<&'static str>();
     assert!(r2str.is_ok());
     assert_eq!(r2str.unwrap(), Arc::new("abc"));
+}
+
+#[test]
+fn test_array_from_slice() {
+    let v = vec![1, 2, 3];
+    let r: Arc<[u32]> = Arc::from(v);
+
+    let a: Result<Arc<[u32; 3]>, _> = r.clone().try_into();
+    assert!(a.is_ok());
+
+    let a: Result<Arc<[u32; 2]>, _> = r.clone().try_into();
+    assert!(a.is_err());
 }

@@ -76,9 +76,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::any::Any;
+use core::array::LengthAtMost32;
 use core::borrow;
 use core::cmp::Ordering;
-use core::convert::From;
+use core::convert::{From, TryFrom};
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
@@ -609,6 +610,22 @@ impl From<Box<str>> for Box<[u8]> {
     #[inline]
     fn from(s: Box<str>) -> Self {
         unsafe { Box::from_raw(Box::into_raw(s) as *mut [u8]) }
+    }
+}
+
+#[unstable(feature = "boxed_slice_try_from", issue = "0")]
+impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]>
+where
+    [T; N]: LengthAtMost32,
+{
+    type Error = Box<[T]>;
+
+    fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
+        if boxed_slice.len() == N {
+            Ok(unsafe { Box::from_raw(Box::into_raw(boxed_slice) as *mut [T; N]) })
+        } else {
+            Err(boxed_slice)
+        }
     }
 }
 

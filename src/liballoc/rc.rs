@@ -232,6 +232,7 @@ use crate::boxed::Box;
 use std::boxed::Box;
 
 use core::any::Any;
+use core::array::LengthAtMost32;
 use core::borrow;
 use core::cell::Cell;
 use core::cmp::Ordering;
@@ -245,7 +246,7 @@ use core::ops::{Deref, Receiver, CoerceUnsized, DispatchFromDyn};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::{self, from_raw_parts_mut};
-use core::convert::From;
+use core::convert::{From, TryFrom};
 use core::usize;
 
 use crate::alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
@@ -1253,6 +1254,22 @@ impl<T> From<Vec<T>> for Rc<[T]> {
             v.set_len(0);
 
             rc
+        }
+    }
+}
+
+#[unstable(feature = "boxed_slice_try_from", issue = "0")]
+impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]>
+where
+    [T; N]: LengthAtMost32,
+{
+    type Error = Rc<[T]>;
+
+    fn try_from(boxed_slice: Rc<[T]>) -> Result<Self, Self::Error> {
+        if boxed_slice.len() == N {
+            Ok(unsafe { Rc::from_raw(Rc::into_raw(boxed_slice) as *mut [T; N]) })
+        } else {
+            Err(boxed_slice)
         }
     }
 }

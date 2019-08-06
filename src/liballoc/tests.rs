@@ -1,6 +1,7 @@
 //! Test for `boxed` mod.
 
 use core::any::Any;
+use core::convert::TryInto;
 use core::ops::Deref;
 use core::result::Result::{Err, Ok};
 use core::clone::Clone;
@@ -137,4 +138,16 @@ fn boxed_slice_from_iter() {
     let boxed: Box<[u32]> = iter.collect();
     assert_eq!(boxed.len(), 100);
     assert_eq!(boxed[7], 7);
+}
+
+#[test]
+fn test_array_from_slice() {
+    let v = vec![1, 2, 3];
+    let r: Box<[u32]> = v.into_boxed_slice();
+
+    let a: Result<Box<[u32; 3]>, _> = r.clone().try_into();
+    assert!(a.is_ok());
+
+    let a: Result<Box<[u32; 2]>, _> = r.clone().try_into();
+    assert!(a.is_err());
 }
