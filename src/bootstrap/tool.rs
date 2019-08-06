@@ -9,7 +9,7 @@ use build_helper::t;
 use crate::Mode;
 use crate::Compiler;
 use crate::builder::{Step, RunConfig, ShouldRun, Builder};
-use crate::util::{exe, add_lib_path};
+use crate::util::{exe, add_lib_path, CiEnv};
 use crate::compile;
 use crate::channel::GitInfo;
 use crate::channel;
@@ -279,11 +279,26 @@ pub fn prepare_tool_cargo(
     cargo
 }
 
+fn rustbook_features() -> Vec<String> {
+    let mut features = Vec::new();
+
+    // Due to CI budged and risk of spurious failures we want to limit jobs running this check.
+    // At same time local builds should run it regardless of the platform.
+    // `CiEnv::None` means it's local build and `CHECK_LINKS` is defined in x86_64-gnu-tools to
+    // explicitly enable it on single job
+    if CiEnv::current() == CiEnv::None || env::var("CHECK_LINKS").is_ok() {
+        features.push("linkcheck".to_string());
+    }
+
+    features
+}
+
 macro_rules! bootstrap_tool {
     ($(
         $name:ident, $path:expr, $tool_name:expr
         $(,llvm_tools = $llvm:expr)*
         $(,is_external_tool = $external:expr)*
+        $(,features = $features:expr)*
         ;
     )+) => {
         #[derive(Copy, PartialEq, Eq, Clone)]
@@ -350,7 +365,12 @@ macro_rules! bootstrap_tool {
                     } else {
                         SourceType::InTree
                     },
-                    extra_features: Vec::new(),
+                    extra_features: {
+                        // FIXME(#60643): avoid this lint by using `_`
+                        let mut _tmp = Vec::new();
+                        $(_tmp.extend($features);)*
+                        _tmp
+                    },
                 }).expect("expected to build -- essential tool")
             }
         }
@@ -359,7 +379,7 @@ macro_rules! bootstrap_tool {
 }
 
 bootstrap_tool!(
-    Rustbook, "src/tools/rustbook", "rustbook";
+    Rustbook, "src/tools/rustbook", "rustbook", features = rustbook_features();
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen";
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
