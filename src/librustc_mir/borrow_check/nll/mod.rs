@@ -73,10 +73,10 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
 // This function populates an AllFacts instance with base facts related to
 // MovePaths and needed for the move analysis.
 fn populate_polonius_move_facts(all_facts: &mut AllFacts, move_data: &MoveData<'_>, location_table: &LocationTable, body: &Body<'_>) {
-    all_facts.var_starts_path.extend(move_data.rev_lookup.iter_locals_enumerated().map(|(v, &m)| (v, m)));
+    all_facts.path_belongs_to_var.extend(move_data.rev_lookup.iter_locals_enumerated().map(|(v, &m)| (m, v)));
 
-    for (idx, move_path) in move_data.move_paths.iter_enumerated() {
-        all_facts.parent.extend(move_path.parents(&move_data.move_paths).iter().map(|&parent| (parent, idx)));
+    for (child, move_path) in move_data.move_paths.iter_enumerated() {
+        all_facts.child.extend(move_path.parents(&move_data.move_paths).iter().map(|&parent| (child, parent)));
     }
 
     // initialized_at

@@ -65,9 +65,8 @@ impl AllFactsExt for AllFacts {
                 var_drop_used,
                 var_uses_region,
                 var_drops_region,
-                var_maybe_initialized_on_exit,
-                parent,
-                var_starts_path,
+                child,
+                path_belongs_to_var,
                 initialized_at,
                 moved_out_at,
             ])
