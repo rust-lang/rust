@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 
 use ra_db::{CrateGraph, FileId, SourceRootId};
 use ra_ide_api::{AnalysisChange, AnalysisHost};
-use ra_project_model::{ProjectRoot, ProjectWorkspace};
+use ra_project_model::{PackageRoot, ProjectWorkspace};
 use ra_vfs::{Vfs, VfsChange};
 use vfs_filter::IncludeRustFiles;
 
@@ -19,7 +19,7 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
     SourceRootId(r.0)
 }
 
-pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, ProjectRoot>)> {
+pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, PackageRoot>)> {
     let root = std::env::current_dir()?.join(root);
     let ws = ProjectWorkspace::discover(root.as_ref())?;
     let project_roots = ws.to_roots();
@@ -48,7 +48,7 @@ pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, 
 }
 
 pub fn load(
-    source_roots: &FxHashMap<SourceRootId, ProjectRoot>,
+    source_roots: &FxHashMap<SourceRootId, PackageRoot>,
     crate_graph: CrateGraph,
     vfs: &mut Vfs,
 ) -> AnalysisHost {

@@ -1,32 +1,32 @@
-use ra_project_model::ProjectRoot;
+use ra_project_model::PackageRoot;
 use ra_vfs::{Filter, RelativePath, RootEntry};
 use std::path::PathBuf;
 
 /// `IncludeRustFiles` is used to convert
-/// from `ProjectRoot` to `RootEntry` for VFS
+/// from `PackageRoot` to `RootEntry` for VFS
 pub struct IncludeRustFiles {
-    root: ProjectRoot,
+    root: PackageRoot,
 }
 
 impl IncludeRustFiles {
     pub fn from_roots<R>(roots: R) -> impl Iterator<Item = RootEntry>
     where
-        R: IntoIterator<Item = ProjectRoot>,
+        R: IntoIterator<Item = PackageRoot>,
     {
         roots.into_iter().map(IncludeRustFiles::from_root)
     }
 
-    pub fn from_root(root: ProjectRoot) -> RootEntry {
+    pub fn from_root(root: PackageRoot) -> RootEntry {
         IncludeRustFiles::from(root).into()
     }
 
     #[allow(unused)]
     pub fn external(path: PathBuf) -> RootEntry {
-        IncludeRustFiles::from_root(ProjectRoot::new(path, false))
+        IncludeRustFiles::from_root(PackageRoot::new(path, false))
     }
 
     pub fn member(path: PathBuf) -> RootEntry {
-        IncludeRustFiles::from_root(ProjectRoot::new(path, true))
+        IncludeRustFiles::from_root(PackageRoot::new(path, true))
     }
 }
 
@@ -40,8 +40,8 @@ impl Filter for IncludeRustFiles {
     }
 }
 
-impl std::convert::From<ProjectRoot> for IncludeRustFiles {
-    fn from(v: ProjectRoot) -> IncludeRustFiles {
+impl std::convert::From<PackageRoot> for IncludeRustFiles {
+    fn from(v: PackageRoot) -> IncludeRustFiles {
         IncludeRustFiles { root: v }
     }
 }

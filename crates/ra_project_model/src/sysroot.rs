@@ -28,7 +28,7 @@ impl Sysroot {
         self.by_name("std")
     }
 
-    pub fn crates<'a>(&'a self) -> impl Iterator<Item = SysrootCrate> + 'a {
+    pub fn crates<'a>(&'a self) -> impl Iterator<Item = SysrootCrate> + ExactSizeIterator + 'a {
         self.crates.iter().map(|(id, _data)| id)
     }
 
