@@ -4,7 +4,7 @@
 
 ## [1.4.4] 2019-08-06
 
-## Fixed
+### Fixed
 
 - Fix `cargo fmt` incorrectly formatting crates that is not part of the workspace or the path dependencies.
 - Fix removing a trailing comma from a tuple pattern.
