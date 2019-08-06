@@ -211,7 +211,6 @@ fn test_parse_ok() {
 fn test_parse_err() {
     with_default_globals(|| {
         let mi = attr::mk_name_value_item(
-            DUMMY_SP,
             Ident::from_str("foo"),
             LitKind::Bool(false),
             DUMMY_SP,
