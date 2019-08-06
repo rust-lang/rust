@@ -1,5 +1,6 @@
 // compile-flags: --error-format pretty-json -Zunstable-options
 // build-pass
+// run-rustfix
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested
@@ -8,6 +9,7 @@
 // test of the JSON error format.
 
 #![warn(unused_parens)]
+#![allow(unreachable_code)]
 
 fn main() {
 
@@ -40,12 +42,12 @@ fn f() -> bool {
     }
 
     while(true && false) {
-        for i in (0 .. 3){
+        for _ in (0 .. 3){
             println!("e~")
         }
     }
 
-    for i in (0 .. 3) {
+    for _ in (0 .. 3) {
         while (true && false) {
             println!("e~")
         }
