@@ -2501,7 +2501,7 @@ dependencies = [
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-workspace-hack 1.0.0",
  "rustc_tools_util 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustfmt-nightly 1.4.3",
+ "rustfmt-nightly 1.4.4",
  "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.81 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_ignored 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3286,7 +3286,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.3"
+version = "1.4.4"
 dependencies = [
  "annotate-snippets 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
