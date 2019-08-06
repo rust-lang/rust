@@ -1,0 +1,9 @@
+[package]
+edition = "2018"
+name = "ra_vfs_glob"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+
+[dependencies]
+ra_vfs = "0.2.0"
+globset = "0.4.4"

@@ -10,7 +10,6 @@ use std::{
 };
 
 use ra_db::{CrateGraph, Edition, FileId};
-use relative_path::RelativePath;
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -53,28 +52,6 @@ impl PackageRoot {
 
     pub fn is_member(&self) -> bool {
         self.is_member
-    }
-
-    pub fn include_dir(&self, dir_path: &RelativePath) -> bool {
-        const COMMON_IGNORED_DIRS: &[&str] = &["node_modules", "target", ".git"];
-        const EXTERNAL_IGNORED_DIRS: &[&str] = &["examples", "tests", "benches"];
-
-        let is_ignored = if self.is_member {
-            dir_path.components().any(|c| COMMON_IGNORED_DIRS.contains(&c.as_str()))
-        } else {
-            dir_path.components().any(|c| {
-                let path = c.as_str();
-                COMMON_IGNORED_DIRS.contains(&path) || EXTERNAL_IGNORED_DIRS.contains(&path)
-            })
-        };
-
-        let hidden = dir_path.components().any(|c| c.as_str().starts_with('.'));
-
-        !is_ignored && !hidden
-    }
-
-    pub fn include_file(&self, file_path: &RelativePath) -> bool {
-        file_path.extension() == Some("rs")
     }
 }
 

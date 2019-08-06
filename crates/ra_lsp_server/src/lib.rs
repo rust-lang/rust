@@ -4,7 +4,6 @@ mod conv;
 mod main_loop;
 mod markdown;
 mod project_model;
-mod vfs_filter;
 pub mod req;
 pub mod init;
 mod world;
