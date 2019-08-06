@@ -1,0 +1,44 @@
+error: the type `!` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:15:23
+   |
+LL |         let _val: ! = mem::zeroed();
+   |                       ^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/uninitialized-zeroed.rs:7:9
+   |
+LL | #![deny(invalid_value)]
+   |         ^^^^^^^^^^^^^
+
+error: the type `!` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:16:23
+   |
+LL |         let _val: ! = mem::uninitialized();
+   |                       ^^^^^^^^^^^^^^^^^^^^
+
+error: the type `&'static i32` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:21:34
+   |
+LL |         let _val: &'static i32 = mem::zeroed();
+   |                                  ^^^^^^^^^^^^^
+
+error: the type `&'static i32` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:22:34
+   |
+LL |         let _val: &'static i32 = mem::uninitialized();
+   |                                  ^^^^^^^^^^^^^^^^^^^^
+
+error: the type `fn()` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:24:26
+   |
+LL |         let _val: fn() = mem::zeroed();
+   |                          ^^^^^^^^^^^^^
+
+error: the type `fn()` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:25:26
+   |
+LL |         let _val: fn() = mem::uninitialized();
+   |                          ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
