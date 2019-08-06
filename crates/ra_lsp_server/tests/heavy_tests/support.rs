@@ -22,7 +22,7 @@ use tempfile::TempDir;
 use test_utils::{find_mismatch, parse_fixture};
 use thread_worker::Worker;
 
-use ra_lsp_server::{main_loop, req, InitializationOptions};
+use ra_lsp_server::{main_loop, req, ServerConfig};
 
 pub struct Project<'a> {
     fixture: &'a str,
@@ -107,7 +107,7 @@ impl Server {
                         window: None,
                         experimental: None,
                     },
-                    InitializationOptions::default(),
+                    ServerConfig::default(),
                     &msg_receiver,
                     &msg_sender,
                 )

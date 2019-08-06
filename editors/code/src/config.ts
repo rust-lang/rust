@@ -22,6 +22,7 @@ export class Config {
     public showWorkspaceLoadedNotification = true;
     public lruCapacity: null | number = null;
     public displayInlayHints = true;
+    public excludeGlobs = [];
     public cargoWatchOptions: CargoWatchOptions = {
         enableOnStartup: 'ask',
         trace: 'off',
@@ -127,6 +128,9 @@ export class Config {
 
         if (config.has('displayInlayHints')) {
             this.displayInlayHints = config.get('displayInlayHints') as boolean;
+        }
+        if (config.has('excludeGlobs')) {
+            this.excludeGlobs = config.get('excludeGlobs') || [];
         }
     }
 }

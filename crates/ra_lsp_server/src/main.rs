@@ -2,7 +2,7 @@ use flexi_logger::{Duplicate, Logger};
 use gen_lsp_server::{run_server, stdio_transport};
 use serde::Deserialize;
 
-use ra_lsp_server::{InitializationOptions, Result};
+use ra_lsp_server::{Result, ServerConfig};
 use ra_prof;
 
 fn main() -> Result<()> {
@@ -48,7 +48,7 @@ fn main_inner() -> Result<()> {
 
         let opts = params
             .initialization_options
-            .and_then(|v| InitializationOptions::deserialize(v).ok())
+            .and_then(|v| ServerConfig::deserialize(v).ok())
             .unwrap_or_default();
 
         ra_lsp_server::main_loop(workspace_roots, params.capabilities, opts, r, s)

@@ -23,7 +23,7 @@ use crate::{
     project_model::workspace_loader,
     req,
     world::{Options, WorldSnapshot, WorldState},
-    InitializationOptions, Result,
+    Result, ServerConfig,
 };
 
 const THREADPOOL_SIZE: usize = 8;
@@ -52,10 +52,11 @@ impl Error for LspError {}
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
     client_caps: ClientCapabilities,
-    options: InitializationOptions,
+    config: ServerConfig,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
+    log::debug!("server_config: {:?}", config);
     // FIXME: support dynamic workspace loading.
     let workspaces = {
         let ws_worker = workspace_loader();
@@ -77,14 +78,19 @@ pub fn main_loop(
         }
         loaded_workspaces
     };
-
+    let globs = config
+        .exclude_globs
+        .iter()
+        .map(|glob| ra_vfs_glob::Glob::new(glob))
+        .collect::<std::result::Result<Vec<_>, _>>()?;
     let mut state = WorldState::new(
         ws_roots,
         workspaces,
-        options.lru_capacity,
+        config.lru_capacity,
+        &globs,
         Options {
-            publish_decorations: options.publish_decorations,
-            show_workspace_loaded: options.show_workspace_loaded,
+            publish_decorations: config.publish_decorations,
+            show_workspace_loaded: config.show_workspace_loaded,
             supports_location_link: client_caps
                 .text_document
                 .and_then(|it| it.definition)

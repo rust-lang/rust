@@ -7,7 +7,6 @@ authors = ["rust-analyzer developers"]
 [dependencies]
 log = "0.4.5"
 rustc-hash = "1.0"
-relative-path = "0.4.0"
 
 cargo_metadata = "0.8.0"
 

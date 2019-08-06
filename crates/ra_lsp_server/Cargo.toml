@@ -25,6 +25,7 @@ ra_ide_api = { path = "../ra_ide_api" }
 gen_lsp_server = { path = "../gen_lsp_server" }
 ra_project_model = { path = "../ra_project_model" }
 ra_prof = { path = "../ra_prof" }
+ra_vfs_glob = { path = "../ra_vfs_glob" }
 
 [dev-dependencies]
 tempfile = "3"

@@ -9,13 +9,13 @@ use parking_lot::RwLock;
 use ra_ide_api::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
-use ra_vfs::{Vfs, VfsChange, VfsFile, VfsRoot};
+use ra_vfs::{RootEntry, Vfs, VfsChange, VfsFile, VfsRoot};
+use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
 use relative_path::RelativePathBuf;
 
 use crate::{
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     project_model::ProjectWorkspace,
-    vfs_filter::IncludeRustFiles,
     LspError, Result,
 };
 
@@ -56,14 +56,28 @@ impl WorldState {
         folder_roots: Vec<PathBuf>,
         workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
+        exclude_globs: &[Glob],
         options: Options,
     ) -> WorldState {
         let mut change = AnalysisChange::new();
 
         let mut roots = Vec::new();
-        roots.extend(folder_roots.iter().cloned().map(IncludeRustFiles::member));
+        roots.extend(folder_roots.iter().map(|path| {
+            let mut filter = RustPackageFilterBuilder::default().set_member(true);
+            for glob in exclude_globs.iter() {
+                filter = filter.exclude(glob.clone());
+            }
+            RootEntry::new(path.clone(), filter.into_vfs_filter())
+        }));
         for ws in workspaces.iter() {
-            roots.extend(IncludeRustFiles::from_roots(ws.to_roots()));
+            roots.extend(ws.to_roots().into_iter().map(|pkg_root| {
+                let mut filter =
+                    RustPackageFilterBuilder::default().set_member(pkg_root.is_member());
+                for glob in exclude_globs.iter() {
+                    filter = filter.exclude(glob.clone());
+                }
+                RootEntry::new(pkg_root.path().clone(), filter.into_vfs_filter())
+            }));
         }
 
         let (mut vfs, vfs_roots) = Vfs::new(roots);
