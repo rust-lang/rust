@@ -91,3 +91,8 @@ fn slice_patterns() {
         _ => {}
     }
 }
+
+fn issue3728() {
+    let foo = |(c,)| c;
+    foo((1,));
+}

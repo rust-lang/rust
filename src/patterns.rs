@@ -272,6 +272,18 @@ impl<'a> Spanned for TuplePatField<'a> {
     }
 }
 
+impl<'a> TuplePatField<'a> {
+    fn is_dotdot(&self) -> bool {
+        match self {
+            TuplePatField::Pat(pat) => match pat.node {
+                ast::PatKind::Rest => true,
+                _ => false,
+            },
+            TuplePatField::Dotdot(_) => true,
+        }
+    }
+}
+
 pub(crate) fn can_be_overflowed_pat(
     context: &RewriteContext<'_>,
     pat: &TuplePatField<'_>,
@@ -321,7 +333,10 @@ fn rewrite_tuple_pat(
         (&pat_vec[..], span)
     };
 
+    let is_last_pat_dotdot = pat_vec.last().map_or(false, |p| p.is_dotdot());
+    let add_comma = path_str.is_none() && pat_vec.len() == 1 && !is_last_pat_dotdot;
     let path_str = path_str.unwrap_or_default();
+
     overflow::rewrite_with_parens(
         &context,
         &path_str,
@@ -329,7 +344,11 @@ fn rewrite_tuple_pat(
         shape,
         span,
         context.config.max_width(),
-        None,
+        if add_comma {
+            Some(SeparatorTactic::Always)
+        } else {
+            None
+        },
     )
 }
 
