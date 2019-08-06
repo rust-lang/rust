@@ -14,7 +14,6 @@ test = false
 cc = "1.0.1" # Used to locate MSVC
 num_cpus = "1.0"
 tempfile = "3.0"
-rustc-demangle = "0.1.15"
 rustc_llvm = { path = "../librustc_llvm" }
 memmap = "0.6"
 

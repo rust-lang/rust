@@ -877,15 +877,23 @@ fn write_shared(
 r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
 
+function showThemeButtonState() {{
+    themes.style.display = "none";
+    themePicker.style.borderBottomRightRadius = "3px";
+    themePicker.style.borderBottomLeftRadius = "3px";
+}}
+
+function hideThemeButtonState() {{
+    themes.style.display = "block";
+    themePicker.style.borderBottomRightRadius = "0";
+    themePicker.style.borderBottomLeftRadius = "0";
+}}
+
 function switchThemeButtonState() {{
     if (themes.style.display === "block") {{
-        themes.style.display = "none";
-        themePicker.style.borderBottomRightRadius = "3px";
-        themePicker.style.borderBottomLeftRadius = "3px";
+        showThemeButtonState();
     }} else {{
-        themes.style.display = "block";
-        themePicker.style.borderBottomRightRadius = "0";
-        themePicker.style.borderBottomLeftRadius = "0";
+        hideThemeButtonState();
     }}
 }};
 
@@ -898,7 +906,7 @@ function handleThemeButtonsBlur(e) {{
         (!related ||
          (related.id !== "themePicker" &&
           (!related.parentNode || related.parentNode.id !== "theme-choices")))) {{
-        switchThemeButtonState();
+        hideThemeButtonState();
     }}
 }}
 
@@ -4579,12 +4587,13 @@ fn get_methods(
     i: &clean::Impl,
     for_deref: bool,
     used_links: &mut FxHashSet<String>,
+    deref_mut: bool,
 ) -> Vec<String> {
     i.items.iter().filter_map(|item| {
         match item.name {
             // Maybe check with clean::Visibility::Public as well?
             Some(ref name) if !name.is_empty() && item.visibility.is_some() && item.is_method() => {
-                if !for_deref || should_render_item(item, false) {
+                if !for_deref || should_render_item(item, deref_mut) {
                     Some(format!("<a href=\"#{}\">{}</a>",
                                  get_next_url(used_links, format!("method.{}", name)),
                                  name))
@@ -4625,7 +4634,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                            .filter(|i| i.inner_impl().trait_.is_none())
                            .flat_map(move |i| get_methods(i.inner_impl(),
                                                           false,
-                                                          &mut used_links_bor.borrow_mut()))
+                                                          &mut used_links_bor.borrow_mut(), false))
                            .collect::<Vec<_>>();
             // We want links' order to be reproducible so we don't use unstable sort.
             ret.sort();
@@ -4659,7 +4668,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                                            .filter(|i| i.inner_impl().trait_.is_none())
                                            .flat_map(|i| get_methods(i.inner_impl(),
                                                                      true,
-                                                                     &mut used_links))
+                                                                     &mut used_links,
+                                                                     true))
                                            .collect::<Vec<_>>();
                         // We want links' order to be reproducible so we don't use unstable sort.
                         ret.sort();
