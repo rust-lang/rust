@@ -13,6 +13,7 @@ use crate::{
     Scalar, Tag, Pointer, FnVal,
     MemoryExtra, MiriMemoryKind, Evaluator, TlsEvalContextExt, HelpersEvalContextExt,
 };
+use crate::shims::env::alloc_env_value;
 
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
@@ -162,6 +163,13 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     }
 
     assert!(args.next().is_none(), "start lang item has more arguments than expected");
+
+    if config.communicate {
+        for (name, value) in std::env::vars() {
+            let value = alloc_env_value(value.as_bytes(), ecx.memory_mut(), &tcx);
+            ecx.machine.env_vars.insert(name.into_bytes(), value);
+        }
+    }
 
     Ok(ecx)
 }

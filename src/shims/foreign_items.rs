@@ -5,6 +5,7 @@ use syntax::attr;
 use syntax::symbol::sym;
 
 use crate::*;
+use crate::shims::env::alloc_env_value;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -465,26 +466,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     }
                 }
                 if let Some((name, value)) = new {
-                    // `+1` for the null terminator.
-                    let value_copy = this.memory_mut().allocate(
-                        Size::from_bytes((value.len() + 1) as u64),
-                        Align::from_bytes(1).unwrap(),
-                        MiriMemoryKind::Env.into(),
-                    );
-                    // We just allocated these, so the write cannot fail.
-                    let alloc = this.memory_mut().get_mut(value_copy.alloc_id).unwrap();
-                    alloc.write_bytes(tcx, value_copy, &value).unwrap();
-                    let trailing_zero_ptr = value_copy.offset(
-                        Size::from_bytes(value.len() as u64),
-                        tcx,
-                    ).unwrap();
-                    alloc.write_bytes(tcx, trailing_zero_ptr, &[0]).unwrap();
-
-                    if let Some(var) = this.machine.env_vars.insert(
-                        name.to_owned(),
-                        value_copy,
-                    )
-                    {
+                    let value_copy = alloc_env_value(&value, this.memory_mut(), tcx);
+                    if let Some(var) = this.machine.env_vars.insert(name.to_owned(), value_copy) {
                         this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
                     }
                     this.write_null(dest)?;
