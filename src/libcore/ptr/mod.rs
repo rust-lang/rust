@@ -1606,10 +1606,12 @@ impl<T: ?Sized> *const T {
     /// `align`.
     ///
     /// If it is not possible to align the pointer, the implementation returns
-    /// `usize::max_value()`.
+    /// `usize::max_value()`. It is permissible for the implementation to *always*
+    /// return `usize::max_value()`. Only your algorithm's performance can depend
+    /// on getting a usable offset here, not its correctness.
     ///
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
-    /// used with the `add` method.
+    /// used with the `wrapping_add` method.
     ///
     /// There are no guarantees whatsoever that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
@@ -2407,10 +2409,12 @@ impl<T: ?Sized> *mut T {
     /// `align`.
     ///
     /// If it is not possible to align the pointer, the implementation returns
-    /// `usize::max_value()`.
+    /// `usize::max_value()`. It is permissible for the implementation to *always*
+    /// return `usize::max_value()`. Only your algorithm's performance can depend
+    /// on getting a usable offset here, not its correctness.
     ///
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
-    /// used with the `add` method.
+    /// used with the `wrapping_add` method.
     ///
     /// There are no guarantees whatsoever that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
