@@ -213,12 +213,7 @@ pub struct InlayHintsParams {
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum InlayKind {
-    LetBindingType,
-    ClosureParameterType,
-    ForExpressionBindingType,
-    IfExpressionType,
-    WhileLetExpressionType,
-    MatchArmType,
+    TypeHint,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

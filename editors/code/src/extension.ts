@@ -151,15 +151,27 @@ export function activate(context: vscode.ExtensionContext) {
 
     if (Server.config.displayInlayHints) {
         const hintsUpdater = new HintsUpdater();
-        hintsUpdater.loadHints(vscode.window.activeTextEditor).then(() => {
+        hintsUpdater.refreshHintsForVisibleEditors().then(() => {
+            // vscode may ignore top level hintsUpdater.refreshHintsForVisibleEditors()
+            // so update the hints once when the focus changes to guarantee their presence
+            let editorChangeDisposable: vscode.Disposable | null = null;
+            editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
+                _ => {
+                    if (editorChangeDisposable !== null) {
+                        editorChangeDisposable.dispose();
+                    }
+                    return hintsUpdater.refreshHintsForVisibleEditors();
+                }
+            );
+
             disposeOnDeactivation(
-                vscode.window.onDidChangeActiveTextEditor(editor =>
-                    hintsUpdater.loadHints(editor)
+                vscode.window.onDidChangeVisibleTextEditors(_ =>
+                    hintsUpdater.refreshHintsForVisibleEditors()
                 )
             );
             disposeOnDeactivation(
                 vscode.workspace.onDidChangeTextDocument(e =>
-                    hintsUpdater.updateHints(e)
+                    hintsUpdater.refreshHintsForVisibleEditors(e)
                 )
             );
             disposeOnDeactivation(
