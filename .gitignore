@@ -52,7 +52,6 @@ config.mk
 config.stamp
 keywords.md
 lexer.ml
-mir_dump
 Session.vim
 src/etc/dl
 tmp.*.rs
