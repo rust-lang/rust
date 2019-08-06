@@ -4,5 +4,5 @@
 extern crate empty_struct;
 
 fn main() {
-    empty_struct::XEmpty1; //~ ERROR cannot find value `XEmpty1` in module `empty_struct`
+    empty_struct::XEmpty1; //~ ERROR cannot find value `XEmpty1` in crate `empty_struct`
 }
