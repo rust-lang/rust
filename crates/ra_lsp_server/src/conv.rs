@@ -1,13 +1,13 @@
 use lsp_types::{
-    self, CreateFile, DocumentChangeOperation, DocumentChanges, Documentation, Location,
-    LocationLink, MarkupContent, MarkupKind, Position, Range, RenameFile, ResourceOp, SymbolKind,
-    TextDocumentEdit, TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams, Url,
-    VersionedTextDocumentIdentifier, WorkspaceEdit,
+    self, CreateFile, DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, Documentation,
+    Location, LocationLink, MarkupContent, MarkupKind, Position, Range, RenameFile, ResourceOp,
+    SymbolKind, TextDocumentEdit, TextDocumentIdentifier, TextDocumentItem,
+    TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, WorkspaceEdit,
 };
 use ra_ide_api::{
     translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
     FileRange, FileSystemEdit, InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo,
-    SourceChange, SourceFileEdit,
+    Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
@@ -75,6 +75,16 @@ impl Conv for CompletionItemKind {
             CompletionItemKind::Method => Method,
             CompletionItemKind::TypeParam => TypeParameter,
             CompletionItemKind::Macro => Method,
+        }
+    }
+}
+
+impl Conv for Severity {
+    type Output = DiagnosticSeverity;
+    fn conv(self) -> DiagnosticSeverity {
+        match self {
+            Severity::Error => DiagnosticSeverity::Error,
+            Severity::WeakWarning => DiagnosticSeverity::Hint,
         }
     }
 }
