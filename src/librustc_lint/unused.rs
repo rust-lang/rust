@@ -15,7 +15,7 @@ use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
 use syntax::symbol::Symbol;
 use syntax::util::parser;
-use syntax_pos::Span;
+use syntax_pos::{Span, BytePos};
 
 use rustc::hir;
 
@@ -353,31 +353,46 @@ declare_lint! {
 declare_lint_pass!(UnusedParens => [UNUSED_PARENS]);
 
 impl UnusedParens {
+
+    fn is_expr_parens_necessary(inner: &ast::Expr, followed_by_block: bool) -> bool {
+        followed_by_block && match inner.node {
+            ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
+            _ => parser::contains_exterior_struct_lit(&inner),
+        }
+    }
+
     fn check_unused_parens_expr(&self,
-                                cx: &EarlyContext<'_>,
-                                value: &ast::Expr,
-                                msg: &str,
-                                followed_by_block: bool) {
+                                     cx: &EarlyContext<'_>,
+                                     value: &ast::Expr,
+                                     msg: &str,
+                                     followed_by_block: bool,
+                                     left_pos: Option<BytePos>,
+                                     right_pos: Option<BytePos>) {
         match value.node {
             ast::ExprKind::Paren(ref inner) => {
-                let necessary = followed_by_block && match inner.node {
-                    ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
-                    _ => parser::contains_exterior_struct_lit(&inner),
-                };
-                if !necessary {
+                if !Self::is_expr_parens_necessary(inner, followed_by_block) {
                     let expr_text = if let Ok(snippet) = cx.sess().source_map()
                         .span_to_snippet(value.span) {
                             snippet
                         } else {
                             pprust::expr_to_string(value)
                         };
-                    Self::remove_outer_parens(cx, value.span, &expr_text, msg);
+                    let keep_space = (
+                        left_pos.map(|s| s >= value.span.lo()).unwrap_or(false),
+                        right_pos.map(|s| s <= value.span.hi()).unwrap_or(false),
+                    );
+                    Self::remove_outer_parens(cx, value.span, &expr_text, msg, keep_space);
                 }
             }
             ast::ExprKind::Let(_, ref expr) => {
                 // FIXME(#60336): Properly handle `let true = (false && true)`
                 // actually needing the parenthesis.
-                self.check_unused_parens_expr(cx, expr, "`let` head expression", followed_by_block);
+                self.check_unused_parens_expr(
+                    cx, expr,
+                    "`let` head expression",
+                    followed_by_block,
+                    None, None
+                );
             }
             _ => {}
         }
@@ -394,11 +409,15 @@ impl UnusedParens {
                 } else {
                     pprust::pat_to_string(value)
                 };
-            Self::remove_outer_parens(cx, value.span, &pattern_text, msg);
+            Self::remove_outer_parens(cx, value.span, &pattern_text, msg, (false, false));
         }
     }
 
-    fn remove_outer_parens(cx: &EarlyContext<'_>, span: Span, pattern: &str, msg: &str) {
+    fn remove_outer_parens(cx: &EarlyContext<'_>,
+                           span: Span,
+                           pattern: &str,
+                           msg: &str,
+                           keep_space: (bool, bool)) {
         let span_msg = format!("unnecessary parentheses around {}", msg);
         let mut err = cx.struct_span_lint(UNUSED_PARENS, span, &span_msg);
         let mut ate_left_paren = false;
@@ -424,11 +443,27 @@ impl UnusedParens {
                     },
                     _ => false,
                 }
-            }).to_owned();
+            });
+
+        let replace = {
+            let mut replace = if keep_space.0 {
+                let mut s = String::from(" ");
+                s.push_str(parens_removed);
+                s
+            } else {
+                String::from(parens_removed)
+            };
+
+            if keep_space.1 {
+                replace.push(' ');
+            }
+            replace
+        };
+
         err.span_suggestion_short(
             span,
             "remove these parentheses",
-            parens_removed,
+            replace,
             Applicability::MachineApplicable,
         );
         err.emit();
@@ -438,14 +473,35 @@ impl UnusedParens {
 impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         use syntax::ast::ExprKind::*;
-        let (value, msg, followed_by_block) = match e.node {
-            If(ref cond, ..) => (cond, "`if` condition", true),
-            While(ref cond, ..) => (cond, "`while` condition", true),
-            ForLoop(_, ref cond, ..) => (cond, "`for` head expression", true),
-            Match(ref head, _) => (head, "`match` head expression", true),
-            Ret(Some(ref value)) => (value, "`return` value", false),
-            Assign(_, ref value) => (value, "assigned value", false),
-            AssignOp(.., ref value) => (value, "assigned value", false),
+        let (value, msg, followed_by_block, left_pos, right_pos) = match e.node {
+            If(ref cond, ref block, ..) => {
+                let left = e.span.lo() + syntax_pos::BytePos(2);
+                let right = block.span.lo();
+                (cond, "`if` condition", true, Some(left), Some(right))
+            }
+
+            While(ref cond, ref block, ..) => {
+                let left = e.span.lo() + syntax_pos::BytePos(5);
+                let right = block.span.lo();
+                (cond, "`while` condition", true, Some(left), Some(right))
+            },
+
+            ForLoop(_, ref cond, ref block, ..) => {
+                (cond, "`for` head expression", true, None, Some(block.span.lo()))
+            }
+
+            Match(ref head, _) => {
+                let left = e.span.lo() + syntax_pos::BytePos(5);
+                (head, "`match` head expression", true, Some(left), None)
+            }
+
+            Ret(Some(ref value)) => {
+                let left = e.span.lo() + syntax_pos::BytePos(3);
+                (value, "`return` value", false, Some(left), None)
+            }
+
+            Assign(_, ref value) => (value, "assigned value", false, None, None),
+            AssignOp(.., ref value) => (value, "assigned value", false, None, None),
             // either function/method call, or something this lint doesn't care about
             ref call_or_other => {
                 let (args_to_check, call_kind) = match *call_or_other {
@@ -467,12 +523,12 @@ impl EarlyLintPass for UnusedParens {
                 }
                 let msg = format!("{} argument", call_kind);
                 for arg in args_to_check {
-                    self.check_unused_parens_expr(cx, arg, &msg, false);
+                    self.check_unused_parens_expr(cx, arg, &msg, false, None, None);
                 }
                 return;
             }
         };
-        self.check_unused_parens_expr(cx, &value, msg, followed_by_block);
+        self.check_unused_parens_expr(cx, &value, msg, followed_by_block, left_pos, right_pos);
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
@@ -492,7 +548,7 @@ impl EarlyLintPass for UnusedParens {
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         if let ast::StmtKind::Local(ref local) = s.node {
             if let Some(ref value) = local.init {
-                self.check_unused_parens_expr(cx, &value, "assigned value", false);
+                self.check_unused_parens_expr(cx, &value, "assigned value", false, None, None);
             }
         }
     }

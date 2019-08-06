@@ -1,5 +1,5 @@
 // compile-flags: --error-format pretty-json -Zunstable-options
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 // run-rustfix
 
 // The output for humans should just highlight the whole span without showing
@@ -12,13 +12,48 @@
 #![allow(unreachable_code)]
 
 fn main() {
-    // We want to suggest the properly-balanced expression `1 / (2 + 3)`, not
-    // the malformed `1 / (2 + 3`
-    let _a = (1 / (2 + 3));
+
+    let _b = false;
+
+    if (_b) {
+        println!("hello");
+    }
+
     f();
+
 }
 
 fn f() -> bool {
+    let c = false;
+
+    if(c) {
+        println!("next");
+    }
+
+    if (c){
+        println!("prev");
+    }
+
+    while (false && true){
+        if (c) {
+            println!("norm");
+        }
+
+    }
+
+    while(true && false) {
+        for _ in (0 .. 3){
+            println!("e~")
+        }
+    }
+
+    for _ in (0 .. 3) {
+        while (true && false) {
+            println!("e~")
+        }
+    }
+
+
     loop {
         if (break { return true }) {
         }
