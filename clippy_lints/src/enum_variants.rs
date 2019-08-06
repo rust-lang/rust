@@ -160,6 +160,7 @@ fn check_variant(
         let name = var2str(var);
         if partial_match(item_name, &name) == item_name_chars
             && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
+            && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
         {
             span_lint(cx, lint, var.span, "Variant name starts with the enum's name");
         }
@@ -178,6 +179,9 @@ fn check_variant(
         let pre_camel = camel_case::until(pre);
         pre = &pre[..pre_camel];
         while let Some((next, last)) = name[pre.len()..].chars().zip(pre.chars().rev()).next() {
+            if next.is_numeric() {
+                return;
+            }
             if next.is_lowercase() {
                 let last = pre.len() - last.len_utf8();
                 let last_camel = camel_case::until(&pre[..last]);
