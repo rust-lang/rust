@@ -51,7 +51,7 @@ use crate::mem::ManuallyDrop;
 ///
 /// On top of that, remember that most types have additional invariants beyond merely
 /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
-/// is considered initialized (under the current implementation, this does not constitute
+/// is considered initialized (under the current implementation; this does not constitute
 /// a stable guarantee) because the only requirement the compiler knows about it
 /// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
 /// *immediate* undefined behavior, but will cause undefined behavior with most
@@ -405,7 +405,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// On top of that, remember that most types have additional invariants beyond merely
     /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
-    /// is considered initialized (under the current implementation, this does not constitute
+    /// is considered initialized (under the current implementation; this does not constitute
     /// a stable guarantee) because the only requirement the compiler knows about it
     /// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
     /// *immediate* undefined behavior, but will cause undefined behavior with most
