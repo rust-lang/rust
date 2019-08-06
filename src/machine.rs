@@ -93,10 +93,13 @@ pub struct Evaluator<'tcx> {
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
+
+    /// If enabled, the `env_vars` field is populated with the host env vars during initialization.
+    pub(crate) communicate: bool,
 }
 
 impl<'tcx> Evaluator<'tcx> {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(communicate: bool) -> Self {
         Evaluator {
             env_vars: HashMap::default(),
             argc: None,
@@ -104,6 +107,7 @@ impl<'tcx> Evaluator<'tcx> {
             cmd_line: None,
             last_error: 0,
             tls: TlsData::default(),
+            communicate,
         }
     }
 }

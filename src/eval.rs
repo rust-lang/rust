@@ -18,10 +18,11 @@ use crate::{
 #[derive(Clone)]
 pub struct MiriConfig {
     pub validate: bool,
+    /// Determines if communication with the host environment is enabled.
     pub communicate: bool,
     pub args: Vec<String>,
 
-    // The seed to use when non-determinism is required (e.g. getrandom())
+    /// The seed to use when non-determinism is required (e.g. getrandom())
     pub seed: Option<u64>,
 }
 
@@ -34,7 +35,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let mut ecx = InterpCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
-        Evaluator::new(),
+        Evaluator::new(config.communicate),
         MemoryExtra::new(StdRng::seed_from_u64(config.seed.unwrap_or(0)), config.validate),
     );
 
