@@ -130,6 +130,7 @@ fn main() {
 
     // Parse our arguments and split them across `rustc` and `miri`.
     let mut validate = true;
+    let mut communicate = false;
     let mut seed: Option<u64> = None;
     let mut rustc_args = vec![];
     let mut miri_args = vec![];
@@ -146,6 +147,9 @@ fn main() {
             match arg.as_str() {
                 "-Zmiri-disable-validation" => {
                     validate = false;
+                },
+                "-Zmiri-enable-communication" => {
+                    communicate = true;
                 },
                 "--" => {
                     after_dashdash = true;
@@ -196,7 +200,7 @@ fn main() {
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("miri arguments: {:?}", miri_args);
-    let miri_config = miri::MiriConfig { validate, args: miri_args, seed };
+    let miri_config = miri::MiriConfig { validate, communicate, args: miri_args, seed };
     let result = rustc_driver::report_ices_to_stderr_if_any(move || {
         rustc_driver::run_compiler(&rustc_args, &mut MiriCompilerCalls { miri_config }, None, None)
     }).and_then(|result| result);

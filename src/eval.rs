@@ -18,10 +18,11 @@ use crate::{
 #[derive(Clone)]
 pub struct MiriConfig {
     pub validate: bool,
+    pub communicate: bool,
     pub args: Vec<String>,
 
     // The seed to use when non-determinism is required (e.g. getrandom())
-    pub seed: Option<u64>
+    pub seed: Option<u64>,
 }
 
 // Used by priroda.
@@ -158,7 +159,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             cur_ptr = cur_ptr.offset(char_size, tcx)?;
         }
     }
- 
+
     assert!(args.next().is_none(), "start lang item has more arguments than expected");
 
     Ok(ecx)
