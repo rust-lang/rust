@@ -3,7 +3,7 @@ use serde::{Deserialize, Deserializer};
 /// Client provided initialization options
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
-pub struct InitializationOptions {
+pub struct ServerConfig {
     /// Whether the client supports our custom highlighting publishing decorations.
     /// This is different to the highlightingOn setting, which is whether the user
     /// wants our custom highlighting to be used.
@@ -21,13 +21,9 @@ pub struct InitializationOptions {
     pub lru_capacity: Option<usize>,
 }
 
-impl Default for InitializationOptions {
-    fn default() -> InitializationOptions {
-        InitializationOptions {
-            publish_decorations: false,
-            show_workspace_loaded: true,
-            lru_capacity: None,
-        }
+impl Default for ServerConfig {
+    fn default() -> ServerConfig {
+        ServerConfig { publish_decorations: false, show_workspace_loaded: true, lru_capacity: None }
     }
 }
 
@@ -56,7 +52,7 @@ mod test {
     #[test]
     fn deserialize_init_options_defaults() {
         // check that null == default for both fields
-        let default = InitializationOptions::default();
+        let default = ServerConfig::default();
         assert_eq!(default, serde_json::from_str(r#"{}"#).unwrap());
         assert_eq!(
             default,

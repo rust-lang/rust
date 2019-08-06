@@ -23,7 +23,7 @@ use crate::{
     project_model::workspace_loader,
     req,
     world::{Options, WorldSnapshot, WorldState},
-    InitializationOptions, Result,
+    Result, ServerConfig,
 };
 
 const THREADPOOL_SIZE: usize = 8;
@@ -52,7 +52,7 @@ impl Error for LspError {}
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
     client_caps: ClientCapabilities,
-    options: InitializationOptions,
+    config: ServerConfig,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
@@ -81,10 +81,10 @@ pub fn main_loop(
     let mut state = WorldState::new(
         ws_roots,
         workspaces,
-        options.lru_capacity,
+        config.lru_capacity,
         Options {
-            publish_decorations: options.publish_decorations,
-            show_workspace_loaded: options.show_workspace_loaded,
+            publish_decorations: config.publish_decorations,
+            show_workspace_loaded: config.show_workspace_loaded,
             supports_location_link: client_caps
                 .text_document
                 .and_then(|it| it.definition)
