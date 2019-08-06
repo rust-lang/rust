@@ -145,7 +145,6 @@ fn test_as_ref() {
 }
 
 #[test]
-#[cfg(not(miri))] // This test is UB according to Stacked Borrows
 fn test_as_mut() {
     unsafe {
         let p: *mut isize = null_mut();
@@ -164,7 +163,7 @@ fn test_as_mut() {
         // Pointers to unsized types -- slices
         let s: &mut [u8] = &mut [1, 2, 3];
         let ms: *mut [u8] = s;
-        assert_eq!(ms.as_mut(), Some(s));
+        assert_eq!(ms.as_mut(), Some(&mut [1, 2, 3][..]));
 
         let mz: *mut [u8] = &mut [];
         assert_eq!(mz.as_mut(), Some(&mut [][..]));
