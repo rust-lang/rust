@@ -230,7 +230,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).sty {
-                    ty::Array(_, n) => n.assert_usize(self.lcx.tcx).expect("array length"),
+                    ty::Array(_, n) => n.eval_usize(self.lcx.tcx, self.lcx.param_env),
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
