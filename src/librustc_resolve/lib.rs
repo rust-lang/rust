@@ -1771,8 +1771,13 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         path: &ast::Path,
         is_value: bool,
     ) -> Res {
-        self.resolve_ast_path_cb(path, is_value,
-                                 |resolver, span, error| resolve_error(resolver, span, error))
+        match self.resolve_ast_path_inner(path, is_value) {
+            Ok(r) => r,
+            Err((span, error)) => {
+                resolve_error(self, span, error);
+                Res::Err
+            }
+        }
     }
 
     fn resolve_str_path(
@@ -1833,8 +1838,6 @@ impl<'a> Resolver<'a> {
     /// just that an error occurred.
     pub fn resolve_str_path_error(&mut self, span: Span, path_str: &str, is_value: bool)
         -> Result<(ast::Path, Res), ()> {
-        let mut errored = false;
-
         let path = if path_str.starts_with("::") {
             ast::Path {
                 span,
@@ -1855,24 +1858,16 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        let res = self.resolve_ast_path_cb(&path, is_value, |_, _, _| errored = true);
-        if errored || res == def::Res::Err {
-            Err(())
-        } else {
-            Ok((path, res))
-        }
+        let res = self.resolve_ast_path_inner(&path, is_value).map_err(|_| ())?;
+        Ok((path, res))
     }
 
     /// Like `resolve_ast_path`, but takes a callback in case there was an error.
-    // FIXME(eddyb) use `Result` or something instead of callbacks.
-    fn resolve_ast_path_cb<F>(
+    fn resolve_ast_path_inner(
         &mut self,
         path: &ast::Path,
         is_value: bool,
-        error_callback: F,
-    ) -> Res
-        where F: for<'c, 'b> FnOnce(&'c mut Resolver<'_>, Span, ResolutionError<'b>)
-    {
+    ) -> Result<Res, (Span, ResolutionError<'a>)> {
         let namespace = if is_value { ValueNS } else { TypeNS };
         let span = path.span;
         let path = Segment::from_path(&path);
@@ -1880,23 +1875,21 @@ impl<'a> Resolver<'a> {
         match self.resolve_path_without_parent_scope(&path, Some(namespace), true,
                                                                span, CrateLint::No) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
-                module.res().unwrap(),
+                Ok(module.res().unwrap()),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
-                path_res.base_res(),
+                Ok(path_res.base_res()),
             PathResult::NonModule(..) => {
-                error_callback(self, span, ResolutionError::FailedToResolve {
+                Err((span, ResolutionError::FailedToResolve {
                     label: String::from("type-relative paths are not supported in this context"),
                     suggestion: None,
-                });
-                Res::Err
+                }))
             }
             PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
             PathResult::Failed { span, label, suggestion, .. } => {
-                error_callback(self, span, ResolutionError::FailedToResolve {
+                Err((span, ResolutionError::FailedToResolve {
                     label,
                     suggestion,
-                });
-                Res::Err
+                }))
             }
         }
     }
