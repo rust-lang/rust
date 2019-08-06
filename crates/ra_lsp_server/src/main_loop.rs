@@ -269,7 +269,7 @@ fn main_loop_inner(
             && pending_libraries.is_empty()
             && in_flight_libraries == 0
         {
-            let n_packages: usize = state.workspaces.iter().map(|it| it.count()).sum();
+            let n_packages: usize = state.workspaces.iter().map(|it| it.n_packages()).sum();
             if state.options.show_workspace_loaded {
                 let msg = format!("workspace loaded, {} rust packages", n_packages);
                 show_message(req::MessageType::Info, msg, msg_sender);

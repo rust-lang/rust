@@ -112,8 +112,7 @@ impl ProjectWorkspace {
                 roots
             }
             ProjectWorkspace::Cargo { cargo, sysroot } => {
-                let mut roots =
-                    Vec::with_capacity(cargo.packages().count() + sysroot.crates().count());
+                let mut roots = Vec::with_capacity(cargo.packages().len() + sysroot.crates().len());
                 for pkg in cargo.packages() {
                     let root = pkg.root(&cargo).to_path_buf();
                     let member = pkg.is_member(&cargo);
@@ -127,10 +126,12 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn count(&self) -> usize {
+    pub fn n_packages(&self) -> usize {
         match self {
             ProjectWorkspace::Json { project } => project.crates.len(),
-            ProjectWorkspace::Cargo { cargo, .. } => cargo.packages().count(),
+            ProjectWorkspace::Cargo { cargo, sysroot } => {
+                cargo.packages().len() + sysroot.crates().len()
+            }
         }
     }
 

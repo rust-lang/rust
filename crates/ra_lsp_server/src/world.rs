@@ -211,7 +211,7 @@ impl WorldSnapshot {
         } else {
             res.push_str("workspaces:\n");
             for w in self.workspaces.iter() {
-                res += &format!("{} packages loaded\n", w.count());
+                res += &format!("{} packages loaded\n", w.n_packages());
             }
         }
         res.push_str("\nanalysis:\n");
