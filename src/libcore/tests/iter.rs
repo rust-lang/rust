@@ -1203,6 +1203,23 @@ fn test_iterator_sum_result() {
     assert_eq!(v.iter().cloned().sum::<Result<i32, _>>(), Ok(10));
     let v: &[Result<i32, ()>] = &[Ok(1), Err(()), Ok(3), Ok(4)];
     assert_eq!(v.iter().cloned().sum::<Result<i32, _>>(), Err(()));
+
+    #[derive(PartialEq, Debug)]
+    struct S(Result<i32, ()>);
+
+    impl Sum<Result<i32, ()>> for S {
+        fn sum<I: Iterator<Item = Result<i32, ()>>>(mut iter: I) -> Self {
+            // takes the sum by repeatedly calling `next` on `iter`,
+            // thus testing that repeated calls to `ResultShunt::try_fold`
+            // produce the expected results
+            Self(iter.by_ref().sum())
+        }
+    }
+
+    let v: &[Result<i32, ()>] = &[Ok(1), Ok(2), Ok(3), Ok(4)];
+    assert_eq!(v.iter().cloned().sum::<S>(), S(Ok(10)));
+    let v: &[Result<i32, ()>] = &[Ok(1), Err(()), Ok(3), Ok(4)];
+    assert_eq!(v.iter().cloned().sum::<S>(), S(Err(())));
 }
 
 #[test]

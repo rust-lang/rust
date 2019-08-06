@@ -135,7 +135,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::iter::{FromIterator, FusedIterator, TrustedLen, OptionShunt};
+use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::{convert, fmt, hint, mem, ops::{self, Deref, DerefMut}};
 use crate::pin::Pin;
 
@@ -1499,7 +1499,10 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
-        OptionShunt::process(iter.into_iter(), |i| i.collect())
+        iter.into_iter()
+            .map(|x| x.ok_or(()))
+            .collect::<Result<_, _>>()
+            .ok()
     }
 }
 

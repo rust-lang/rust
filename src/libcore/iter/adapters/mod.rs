@@ -2181,136 +2181,64 @@ impl<I: FusedIterator, F> FusedIterator for Inspect<I, F>
     where F: FnMut(&I::Item) {}
 
 /// An iterator adapter that produces output as long as the underlying
-/// iterator produces `Option::Some` values.
-pub(crate) struct OptionShunt<I> {
-    iter: I,
-    exited_early: bool,
-}
-
-impl<I, T> OptionShunt<I>
-where
-    I: Iterator<Item = Option<T>>,
-{
-    /// Process the given iterator as if it yielded a `T` instead of a
-    /// `Option<T>`. Any `None` value will stop the inner iterator and
-    /// the overall result will be a `None`.
-    pub fn process<F, U>(iter: I, mut f: F) -> Option<U>
-    where
-        F: FnMut(&mut Self) -> U,
-    {
-        let mut shunt = OptionShunt::new(iter);
-        let value = f(shunt.by_ref());
-        shunt.reconstruct(value)
-    }
-
-    fn new(iter: I) -> Self {
-        OptionShunt {
-            iter,
-            exited_early: false,
-        }
-    }
-
-    /// Consume the adapter and rebuild a `Option` value.
-    fn reconstruct<U>(self, val: U) -> Option<U> {
-        if self.exited_early {
-            None
-        } else {
-            Some(val)
-        }
-    }
-}
-
-impl<I, T> Iterator for OptionShunt<I>
-where
-    I: Iterator<Item = Option<T>>,
-{
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some(Some(v)) => Some(v),
-            Some(None) => {
-                self.exited_early = true;
-                None
-            }
-            None => None,
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.exited_early {
-            (0, Some(0))
-        } else {
-            let (_, upper) = self.iter.size_hint();
-            (0, upper)
-        }
-    }
-}
-
-/// An iterator adapter that produces output as long as the underlying
 /// iterator produces `Result::Ok` values.
 ///
 /// If an error is encountered, the iterator stops and the error is
-/// stored. The error may be recovered later via `reconstruct`.
-pub(crate) struct ResultShunt<I, E> {
+/// stored.
+pub(crate) struct ResultShunt<'a, I, E> {
     iter: I,
-    error: Option<E>,
+    error: &'a mut Result<(), E>,
 }
 
-impl<I, T, E> ResultShunt<I, E>
-    where I: Iterator<Item = Result<T, E>>
+/// Process the given iterator as if it yielded a `T` instead of a
+/// `Result<T, _>`. Any errors will stop the inner iterator and
+/// the overall result will be an error.
+pub(crate) fn process_results<I, T, E, F, U>(iter: I, mut f: F) -> Result<U, E>
+where
+    I: Iterator<Item = Result<T, E>>,
+    for<'a> F: FnMut(ResultShunt<'a, I, E>) -> U,
 {
-    /// Process the given iterator as if it yielded a `T` instead of a
-    /// `Result<T, _>`. Any errors will stop the inner iterator and
-    /// the overall result will be an error.
-    pub fn process<F, U>(iter: I, mut f: F) -> Result<U, E>
-        where F: FnMut(&mut Self) -> U
-    {
-        let mut shunt = ResultShunt::new(iter);
-        let value = f(shunt.by_ref());
-        shunt.reconstruct(value)
-    }
-
-    fn new(iter: I) -> Self {
-        ResultShunt {
-            iter,
-            error: None,
-        }
-    }
-
-    /// Consume the adapter and rebuild a `Result` value. This should
-    /// *always* be called, otherwise any potential error would be
-    /// lost.
-    fn reconstruct<U>(self, val: U) -> Result<U, E> {
-        match self.error {
-            None => Ok(val),
-            Some(e) => Err(e),
-        }
-    }
+    let mut error = Ok(());
+    let shunt = ResultShunt {
+        iter,
+        error: &mut error,
+    };
+    let value = f(shunt);
+    error.map(|()| value)
 }
 
-impl<I, T, E> Iterator for ResultShunt<I, E>
+impl<I, T, E> Iterator for ResultShunt<'_, I, E>
     where I: Iterator<Item = Result<T, E>>
 {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some(Ok(v)) => Some(v),
-            Some(Err(e)) => {
-                self.error = Some(e);
-                None
-            }
-            None => None,
-        }
+        self.find(|_| true)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.error.is_some() {
+        if self.error.is_err() {
             (0, Some(0))
         } else {
             let (_, upper) = self.iter.size_hint();
             (0, upper)
         }
+    }
+
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        let error = &mut *self.error;
+        self.iter
+            .try_fold(init, |acc, x| match x {
+                Ok(x) => LoopState::from_try(f(acc, x)),
+                Err(e) => {
+                    *error = Err(e);
+                    LoopState::Break(Try::from_ok(acc))
+                }
+            })
+            .into_try()
     }
 }
