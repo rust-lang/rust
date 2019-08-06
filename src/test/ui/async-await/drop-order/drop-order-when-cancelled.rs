@@ -199,7 +199,7 @@ fn assert_drop_order_after_cancel<Fut: Future<Output = ()>>(
 
     // Parameters are never dropped until the future completes.
     assert_eq!(*actual_order.borrow(), vec![DropOrder::Function]);
-    
+
     drop(fut);
 
     let expected_order = Rc::new(RefCell::new(Vec::new()));
