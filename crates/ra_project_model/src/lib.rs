@@ -9,13 +9,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rustc_hash::FxHashMap;
-
 use ra_db::{CrateGraph, Edition, FileId};
-
-use serde_json::from_reader;
-
 use relative_path::RelativePath;
+use rustc_hash::FxHashMap;
+use serde_json::from_reader;
 
 pub use crate::{
     cargo_workspace::{CargoWorkspace, Package, Target, TargetKind},
