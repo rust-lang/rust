@@ -157,8 +157,7 @@ impl MutVisitor for EntryPointCleaner {
                 item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
                     let allow_ident = Ident::with_empty_ctxt(sym::allow);
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
-                    let allow_dead_code_item = attr::mk_list_item(DUMMY_SP, allow_ident,
-                                                                  vec![dc_nested]);
+                    let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
 
                     ast::Item {

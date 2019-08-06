@@ -15,7 +15,7 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 
 use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{self, BytePos};
-use syntax_pos::{DUMMY_SP, FileName, Span};
+use syntax_pos::{FileName, Span};
 
 use std::borrow::Cow;
 
@@ -124,8 +124,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
 
         // #![feature(prelude_import)]
         let pi_nested = attr::mk_nested_word_item(ast::Ident::with_empty_ctxt(sym::prelude_import));
-        let list = attr::mk_list_item(
-            DUMMY_SP, ast::Ident::with_empty_ctxt(sym::feature), vec![pi_nested]);
+        let list = attr::mk_list_item(ast::Ident::with_empty_ctxt(sym::feature), vec![pi_nested]);
         let fake_attr = attr::mk_attr_inner(list);
         s.print_attribute(&fake_attr);
 
