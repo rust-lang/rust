@@ -1903,14 +1903,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                         _ => true, // Conservative fallback for multi-variant enum.
                     }
                 }
-                Tuple(substs) => {
+                Tuple(..) => {
                     // Proceed recursively, check all fields.
-                    substs.iter().all(|field| {
-                        ty_maybe_allows_zero_init(
-                            tcx,
-                            field.expect_ty(),
-                        )
-                    })
+                    ty.tuple_fields().all(|field| ty_maybe_allows_zero_init(tcx, field))
                 }
                 // FIXME: Would be nice to also warn for `NonNull`/`NonZero*`.
                 // Conservative fallback.
