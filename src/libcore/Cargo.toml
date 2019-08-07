@@ -21,7 +21,7 @@ name = "corebenches"
 path = "../libcore/benches/lib.rs"
 
 [dev-dependencies]
-rand = "0.6"
+rand = "0.7"
 
 [features]
 # Make panics and failed asserts immediately abort without formatting any message
