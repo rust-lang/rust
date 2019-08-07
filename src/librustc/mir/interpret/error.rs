@@ -137,17 +137,17 @@ impl<'tcx> ConstEvalErr<'tcx> {
         message: &str,
         lint_root: Option<hir::HirId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
-        match self.error {
+        let must_error = match self.error {
             err_inval!(Layout(LayoutError::Unknown(_))) |
             err_inval!(TooGeneric) =>
                 return Err(ErrorHandled::TooGeneric),
-            err_inval!(Layout(LayoutError::SizeOverflow(_))) |
             err_inval!(TypeckError) =>
                 return Err(ErrorHandled::Reported),
-            _ => {},
-        }
+            err_inval!(Layout(LayoutError::SizeOverflow(_))) => true,
+            _ => false,
+        };
         trace!("reporting const eval failure at {:?}", self.span);
-        let mut err = if let Some(lint_root) = lint_root {
+        let mut err = if let (Some(lint_root), false) = (lint_root, must_error) {
             let hir_id = self.stacktrace
                 .iter()
                 .rev()
@@ -160,10 +160,14 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 tcx.span,
                 message,
             )
+        } else if must_error {
+            struct_error(tcx, &self.error.to_string())
         } else {
             struct_error(tcx, message)
         };
-        err.span_label(self.span, self.error.to_string());
+        if !must_error {
+            err.span_label(self.span, self.error.to_string());
+        }
         // Skip the last, which is just the environment of the constant.  The stacktrace
         // is sometimes empty because we create "fake" eval contexts in CTFE to do work
         // on constant values.
@@ -335,7 +339,7 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
             TypeckError =>
                 write!(f, "encountered constants with type errors, stopping evaluation"),
             Layout(ref err) =>
-                write!(f, "rustc layout computation failed: {:?}", err),
+                write!(f, "{}", err),
         }
     }
 }
