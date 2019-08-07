@@ -755,6 +755,15 @@ pub enum FatLTOInput<B: WriteBackendMethods> {
     InMemory(ModuleCodegen<B::Module>),
 }
 
+impl<B: WriteBackendMethods> FatLTOInput<B> {
+    fn name(&'a self) -> &'a String {
+        match self {
+            FatLTOInput::Serialized { name, buffer: _ } => &name,
+            FatLTOInput::InMemory(module) => &module.name,
+        }
+    }
+}
+
 fn execute_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     work_item: WorkItem<B>,
@@ -1345,9 +1354,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!started_lto);
                     started_lto = true;
 
-                    let needs_fat_lto = mem::take(&mut needs_fat_lto);
+                    let mut needs_fat_lto: Vec<FatLTOInput<B>> = mem::take(&mut needs_fat_lto);
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
+
+                    // Regardless of what order these modules completed in, report them to
+                    // the backend in the same order every time to ensure that we're handing
+                    // out deterministic results.
+                    needs_fat_lto.sort_by(|m1, m2| m1.name().cmp(m2.name()));
 
                     for (work, cost) in generate_lto_work(&cgcx, needs_fat_lto,
                                                           needs_thin_lto, import_only_modules) {
