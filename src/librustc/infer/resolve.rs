@@ -4,7 +4,6 @@ use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Ty, Const, TyCtxt, TypeFoldable, InferConst, TypeFlags};
 use crate::ty::fold::{TypeFolder, TypeVisitor};
 
-///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC VAR RESOLVER
 
 /// The opportunistic resolver can be used at any time. It simply replaces
@@ -94,7 +93,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticTypeAndRegionResolver<'a, 'tcx>
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // UNRESOLVED TYPE FINDER
 
 /// The unresolved type **finder** walks a type searching for
@@ -151,7 +149,6 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
 }
 
 
-///////////////////////////////////////////////////////////////////////////
 // FULL TYPE RESOLUTION
 
 /// Full type resolution replaces all type and region variables with

@@ -284,7 +284,6 @@ impl fmt::Debug for ty::Predicate<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Atomic structs
 //
 // For things that don't carry any arena-allocated data (and are
@@ -332,7 +331,6 @@ CloneTypeFoldableAndLiftImpls! {
     ::syntax_pos::Span,
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
 // FIXME(eddyb) replace all the uses of `Option::map` with `?`.
@@ -797,7 +795,6 @@ BraceStructLiftImpl! {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
 //
 // Ideally, each type should invoke `folder.fold_foo(self)` and

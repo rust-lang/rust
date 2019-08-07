@@ -441,7 +441,6 @@ impl<'tcx> fmt::Display for traits::Clause<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
 impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
@@ -750,7 +749,6 @@ where
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
 
 impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {

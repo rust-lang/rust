@@ -253,9 +253,7 @@ impl<T> Packet<T> {
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////
     // select implementation
-    ////////////////////////////////////////////////////////////////////////////
 
     // Remove a previous selecting thread from this port. This ensures that the
     // blocked thread will no longer be visible to any other threads.

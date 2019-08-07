@@ -86,9 +86,7 @@ use crate::ffi::{OsStr, OsString};
 
 use crate::sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 
-////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
-////////////////////////////////////////////////////////////////////////////////
 //
 // Parsing in this module is done by directly transmuting OsStr to [u8] slices,
 // taking advantage of the fact that OsStr always encodes ASCII characters
@@ -96,9 +94,7 @@ use crate::sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix}
 // OsStr APIs for parsing, but it will take a while for those to become
 // available.
 
-////////////////////////////////////////////////////////////////////////////////
 // Windows Prefixes
-////////////////////////////////////////////////////////////////////////////////
 
 /// Windows path prefixes, e.g., `C:` or `\\server\share`.
 ///
@@ -257,9 +253,7 @@ impl<'a> Prefix<'a> {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 // Exposed parsing helpers
-////////////////////////////////////////////////////////////////////////////////
 
 /// Determines whether the character is one of the permitted path
 /// separators for the current platform.
@@ -283,9 +277,7 @@ pub fn is_separator(c: char) -> bool {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAIN_SEPARATOR: char = crate::sys::path::MAIN_SEP;
 
-////////////////////////////////////////////////////////////////////////////////
 // Misc helpers
-////////////////////////////////////////////////////////////////////////////////
 
 // Iterate through `iter` while it matches `prefix`; return `None` if `prefix`
 // is not a prefix of `iter`, otherwise return `Some(iter_after_prefix)` giving
@@ -320,9 +312,7 @@ fn has_redox_scheme(s: &[u8]) -> bool {
     cfg!(target_os = "redox") && s.contains(&b':')
 }
 
-////////////////////////////////////////////////////////////////////////////////
 // Cross-platform, iterator-independent parsing
-////////////////////////////////////////////////////////////////////////////////
 
 /// Says whether the first byte after the prefix is a separator.
 fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
@@ -358,9 +348,7 @@ fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 // The core iterators
-////////////////////////////////////////////////////////////////////////////////
 
 /// Component parsing works by a double-ended state machine; the cursors at the
 /// front and back of the path each keep track of what parts of the path have
@@ -1066,9 +1054,7 @@ impl<'a> Iterator for Ancestors<'a> {
 #[stable(feature = "path_ancestors", since = "1.28.0")]
 impl FusedIterator for Ancestors<'_> {}
 
-////////////////////////////////////////////////////////////////////////////////
 // Basic types and traits
-////////////////////////////////////////////////////////////////////////////////
 
 /// An owned, mutable path (akin to [`String`]).
 ///

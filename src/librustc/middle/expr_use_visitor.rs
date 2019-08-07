@@ -22,7 +22,6 @@ use std::rc::Rc;
 use syntax_pos::Span;
 use crate::util::nodemap::ItemLocalSet;
 
-///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
 
 /// This trait defines the callbacks you can expect to receive when
@@ -225,7 +224,6 @@ impl OverloadedCallType {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // The ExprUseVisitor type
 //
 // This is the code that actually walks the tree.

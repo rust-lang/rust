@@ -126,7 +126,6 @@ pub enum DefUse {
 
 pub fn categorize(context: PlaceContext) -> Option<DefUse> {
     match context {
-        ///////////////////////////////////////////////////////////////////////////
         // DEFS
 
         PlaceContext::MutatingUse(MutatingUseContext::Store) |
@@ -147,7 +146,6 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::NonUse(NonUseContext::StorageLive) |
         PlaceContext::NonUse(NonUseContext::StorageDead) => Some(DefUse::Def),
 
-        ///////////////////////////////////////////////////////////////////////////
         // REGULAR USES
         //
         // These are uses that occur *outside* of a drop. For the
@@ -173,7 +171,6 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::MutatingUse(MutatingUseContext::Retag) =>
             Some(DefUse::Use),
 
-        ///////////////////////////////////////////////////////////////////////////
         // DROP USES
         //
         // These are uses that occur in a DROP (a MIR drop, not a

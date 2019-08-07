@@ -49,9 +49,7 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 /// A stack frame.
 #[derive(Clone)]
 pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
-    ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
-    ////////////////////////////////////////////////////////////////////////////////
     /// The MIR for the function called on this frame.
     pub body: &'mir mir::Body<'tcx>,
 
@@ -61,9 +59,7 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     /// The span of the call site.
     pub span: source_map::Span,
 
-    ////////////////////////////////////////////////////////////////////////////////
     // Return place and locals
-    ////////////////////////////////////////////////////////////////////////////////
     /// Work to perform when returning from this function.
     pub return_to_block: StackPopCleanup,
 
@@ -78,9 +74,7 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     pub locals: IndexVec<mir::Local, LocalState<'tcx, Tag>>,
 
-    ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
-    ////////////////////////////////////////////////////////////////////////////////
     /// The block that is currently executed (or will be executed after the above call stacks
     /// return).
     pub block: mir::BasicBlock,

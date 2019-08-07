@@ -2963,9 +2963,7 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 // Common traits
-////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for &[T] {
@@ -2979,9 +2977,7 @@ impl<T> Default for &mut [T] {
     fn default() -> Self { &mut [] }
 }
 
-//
 // Iterators
-//
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a [T] {

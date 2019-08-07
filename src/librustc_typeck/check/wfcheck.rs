@@ -1062,7 +1062,6 @@ impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // ADT
 
 struct AdtVariant<'tcx> {

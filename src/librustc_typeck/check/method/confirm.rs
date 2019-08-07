@@ -138,7 +138,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         ConfirmResult { callee, illegal_sized_bound }
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // ADJUSTMENTS
 
     fn adjust_self_ty(&mut self,
@@ -425,7 +424,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.register_wf_obligation(fty, self.span, traits::MiscObligation);
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // RECONCILIATION
 
     /// When we select a method with a mutable autoref, we have to go convert any
@@ -572,7 +570,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
 
     fn predicates_require_illegal_sized_bound(&self,

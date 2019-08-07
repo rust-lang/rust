@@ -50,7 +50,6 @@ use errors::{Applicability, DiagnosticId};
 
 struct OnlySelfBounds(bool);
 
-///////////////////////////////////////////////////////////////////////////
 // Main entry point
 
 fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {
@@ -82,8 +81,6 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-///////////////////////////////////////////////////////////////////////////
-
 /// Context specific to some particular item. This is what implements
 /// `AstConv`. It has information about the predicates that are defined
 /// on the trait. Unfortunately, this predicate information is
@@ -97,8 +94,6 @@ pub struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: DefId,
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 struct CollectItemTypesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -154,7 +149,6 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Utility types and common code for the above passes.
 
 fn bad_placeholder_type(tcx: TyCtxt<'tcx>, span: Span) -> errors::DiagnosticBuilder<'tcx> {

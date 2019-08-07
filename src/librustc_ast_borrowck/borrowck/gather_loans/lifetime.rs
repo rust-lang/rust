@@ -26,7 +26,6 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     ctxt.check(cmt, None)
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Private
 
 struct GuaranteeLifetimeContext<'a, 'tcx> {

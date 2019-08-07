@@ -600,7 +600,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // Selection
     //
     // The selection phase tries to identify *how* an obligation will
@@ -653,7 +652,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // EVALUATION
     //
     // Tests whether an obligation can be selected or whether an impl
@@ -1256,7 +1254,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(())
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // CANDIDATE ASSEMBLY
     //
     // The selection process begins by examining all in-scope impls,
@@ -2363,7 +2360,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(())
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // WINNOW
     //
     // Winnowing is the process of attempting to resolve ambiguity by
@@ -2494,7 +2490,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // BUILTIN BOUNDS
     //
     // These cover the traits that are built-in to the language
@@ -2810,7 +2805,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .collect()
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // CONFIRMATION
     //
     // Confirmation unifies the output type parameters of the trait
@@ -3648,7 +3642,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(VtableBuiltinData { nested })
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // Matching
     //
     // Matching is a common path used for both evaluation and
@@ -3792,7 +3785,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .map_err(|_| ())
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // Miscellany
 
     fn match_fresh_trait_refs(

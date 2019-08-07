@@ -104,7 +104,6 @@ macro_rules! ignore_err {
     };
 }
 
-///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -188,7 +187,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // INTERNALS
 
 pub struct RegionCtxt<'a, 'tcx> {

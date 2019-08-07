@@ -232,7 +232,6 @@ impl<'a, 'tcx: 'a> BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Loans and loan paths
 
 /// Record of a loan that was issued.
@@ -421,7 +420,6 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt_<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
     opt_loan_path_is_field(cmt).0
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Misc
 
 impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {

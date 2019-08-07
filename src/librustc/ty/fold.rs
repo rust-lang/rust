@@ -195,7 +195,6 @@ pub trait TypeVisitor<'tcx> : Sized {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
 pub struct BottomUpFolder<'tcx, F, G, H>
@@ -236,7 +235,6 @@ where
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Region folder
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -426,7 +424,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Bound vars replacer
 
 /// Replaces the escaping bound vars (late bound regions or bound types) in a type.
@@ -709,7 +706,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Shifter
 //
 // Shifts the De Bruijn indices on all escaping bound vars by a

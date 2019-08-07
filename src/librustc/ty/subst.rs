@@ -401,7 +401,6 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for SubstsRef<'tcx> {}
 
-///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
 //
 // Just call `foo.subst(tcx, substs)` to perform a substitution across
@@ -428,7 +427,6 @@ impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for T {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // The actual substitution engine itself is a type folder.
 
 struct SubstFolder<'a, 'tcx> {

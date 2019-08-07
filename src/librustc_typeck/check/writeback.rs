@@ -17,7 +17,6 @@ use std::mem;
 use syntax::symbol::sym;
 use syntax_pos::Span;
 
-///////////////////////////////////////////////////////////////////////////
 // Entry point
 
 // During type inference, partially inferred types are
@@ -86,7 +85,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // The Writeback context. This visitor walks the AST, checking the
 // fn-specific tables to find references to types or regions. It
 // resolves those regions to remove inference variables and writes the
@@ -223,7 +221,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Impl of Visitor for Resolver
 //
 // This is the master code which walks the AST. It delegates most of
@@ -660,7 +657,6 @@ impl Locatable for hir::HirId {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // The Resolver. This is the type folding engine that detects
 // unresolved types and so forth.
 
@@ -735,7 +731,6 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // During type check, we store promises with the result of trait
 // lookup rather than the actual results (because the results are not
 // necessarily available immediately). These routines unwind the

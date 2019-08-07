@@ -25,7 +25,6 @@ pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     ctxt.restrict(cmt)
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Private
 
 struct RestrictionsContext<'a, 'tcx> {

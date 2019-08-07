@@ -140,7 +140,6 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v> : Sized {
-    ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
     /// The default versions of the `visit_nested_XXX` routines invoke
@@ -233,8 +232,6 @@ pub trait Visitor<'v> : Sized {
     fn as_deep_visitor<'s>(&'s mut self) -> DeepVisitor<'s, Self> {
         DeepVisitor::new(self)
     }
-
-    ///////////////////////////////////////////////////////////////////////////
 
     fn visit_id(&mut self, _hir_id: HirId) {
         // Nothing to do.

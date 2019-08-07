@@ -321,7 +321,6 @@ impl<'tcx> ExprRef<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // The Mirror trait
 
 /// "Mirroring" is the process of converting from a HIR type into one

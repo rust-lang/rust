@@ -97,10 +97,8 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     });
 
     let layout = cx.layout_of(ty);
-    // /////////////////////////////////////////////////////////////////////////////////////////////
     // If you touch this code, be sure to also make the corresponding changes to
     // `get_vtable` in rust_mir/interpret/traits.rs
-    // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
         cx.get_fn(Instance::resolve_drop_in_place(cx.tcx(), ty)),
         cx.const_usize(layout.size.bytes()),

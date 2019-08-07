@@ -503,7 +503,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.private_candidate = None;
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // CANDIDATE ASSEMBLY
 
     fn push_candidate(&mut self,
@@ -958,7 +957,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         names
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // THE ACTUAL SEARCH
 
     fn pick(mut self) -> PickResult<'tcx> {
@@ -1478,7 +1476,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         })
     }
 
-    ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
     fn has_applicable_self(&self, item: &ty::AssocItem) -> bool {
         // "Fast track" -- check for usage of sugar when in method call

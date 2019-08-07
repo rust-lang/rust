@@ -327,9 +327,7 @@ impl<T> Packet<T> {
         // details in the sending methods that see DISCONNECTED
     }
 
-    ////////////////////////////////////////////////////////////////////////////
     // select implementation
-    ////////////////////////////////////////////////////////////////////////////
 
     // increment the count on the channel (used for selection)
     fn bump(&self, amt: isize) -> isize {

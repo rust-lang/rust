@@ -479,7 +479,6 @@ pub struct SourceInfo {
     pub scope: SourceScope,
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Mutability and borrow kinds
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
@@ -579,7 +578,6 @@ impl BorrowKind {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
 newtype_index! {
@@ -996,7 +994,6 @@ pub struct UpvarDebuginfo {
     pub by_ref: bool,
 }
 
-///////////////////////////////////////////////////////////////////////////
 // BasicBlock
 
 newtype_index! {
@@ -1013,7 +1010,6 @@ impl BasicBlock {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -1542,7 +1538,6 @@ impl<'tcx> TerminatorKind<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Statements
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
@@ -1710,7 +1705,6 @@ impl<'tcx> Debug for Statement<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Places
 
 /// A path to a value; something that can be evaluated without
@@ -2124,7 +2118,6 @@ impl Debug for PlaceBase<'_> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Scopes
 
 newtype_index! {
@@ -2149,7 +2142,6 @@ pub struct SourceScopeLocalData {
     pub safety: Safety,
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Operands
 
 /// These are values that can appear inside an rvalue. They are intentionally
@@ -2210,7 +2202,6 @@ impl<'tcx> Operand<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 /// Rvalues
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
@@ -2465,7 +2456,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 /// Constants
 ///
 /// Two constants are equal if they are the same constant. Note that

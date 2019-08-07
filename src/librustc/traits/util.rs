@@ -76,9 +76,7 @@ impl<T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // `Elaboration` iterator
-///////////////////////////////////////////////////////////////////////////
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently this basically means
@@ -245,9 +243,7 @@ impl Iterator for Elaborator<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Supertrait iterator
-///////////////////////////////////////////////////////////////////////////
 
 pub type Supertraits<'tcx> = FilterToTraits<Elaborator<'tcx>>;
 
@@ -265,9 +261,7 @@ pub fn transitive_bounds<'tcx>(
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
 }
 
-///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator
-///////////////////////////////////////////////////////////////////////////
 
 /// "Trait alias expansion" is the process of expanding a sequence of trait
 /// references into another sequence by transitively following all trait
@@ -407,9 +401,7 @@ impl<'tcx> Iterator for TraitAliasExpander<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Iterator over def-IDs of supertraits
-///////////////////////////////////////////////////////////////////////////
 
 pub struct SupertraitDefIds<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -442,9 +434,7 @@ impl Iterator for SupertraitDefIds<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Other
-///////////////////////////////////////////////////////////////////////////
 
 /// A filter around an iterator of predicates that makes it yield up
 /// just trait references.
@@ -476,9 +466,7 @@ impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Other
-///////////////////////////////////////////////////////////////////////////
 
 /// Instantiate all bound parameters of the impl with the given substs,
 /// returning the resulting trait ref and all obligations that arise.

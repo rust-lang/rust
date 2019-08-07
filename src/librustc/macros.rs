@@ -183,7 +183,6 @@ macro_rules! impl_stable_hash_for_spanned {
     );
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Lift and TypeFoldable macros
 //
 // When possible, use one of these (relatively) convenient macros to write

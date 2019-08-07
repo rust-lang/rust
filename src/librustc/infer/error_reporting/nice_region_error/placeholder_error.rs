@@ -18,13 +18,11 @@ impl NiceRegionError<'me, 'tcx> {
     /// an anonymous region, emit a descriptive diagnostic error.
     pub(super) fn try_report_placeholder_conflict(&self) -> Option<DiagnosticBuilder<'me>> {
         match &self.error {
-            ///////////////////////////////////////////////////////////////////////////
             // NB. The ordering of cases in this match is very
             // sensitive, because we are often matching against
             // specific cases and then using an `_` to match all
             // others.
 
-            ///////////////////////////////////////////////////////////////////////////
             // Check for errors from comparing trait failures -- first
             // with two placeholders, then with one.
             Some(RegionResolutionError::SubSupConflict(

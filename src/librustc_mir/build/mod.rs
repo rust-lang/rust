@@ -168,7 +168,6 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
     })
 }
 
-///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
 fn liberated_closure_env_ty(
@@ -442,7 +441,6 @@ newtype_index! {
     pub struct ScopeId { .. }
 }
 
-///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a
 /// produced value (sometimes just unit, of course). The `unpack!`
 /// macro (and methods below) makes working with `BlockAnd` much more
@@ -508,7 +506,6 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
 struct ArgInfo<'tcx>(Ty<'tcx>, Option<Span>, Option<&'tcx hir::Arg>, Option<ImplicitSelfKind>);
@@ -924,7 +921,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Builder methods are broken up into modules, depending on what kind
 // of thing is being lowered. Note that they use the `unpack` macro
 // above extensively.

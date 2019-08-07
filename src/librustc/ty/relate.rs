@@ -103,7 +103,6 @@ pub trait Relate<'tcx>: TypeFoldable<'tcx> {
     ) -> RelateResult<'tcx, Self>;
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Relate impls
 
 impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
@@ -1010,7 +1009,6 @@ where
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Error handling
 
 pub fn expected_found<R, T>(relation: &mut R, a: &T, b: &T) -> ExpectedFound<T>
