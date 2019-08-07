@@ -1949,7 +1949,7 @@ pub struct FieldDef {
 pub struct AdtDef {
     /// `DefId` of the struct, enum or union item.
     pub did: DefId,
-    /// Variants of the ADT. If this is a struct or enum, then there will be a single variant.
+    /// Variants of the ADT. If this is a struct or union, then there will be a single variant.
     pub variants: IndexVec<self::layout::VariantIdx, VariantDef>,
     /// Flags of the ADT (e.g. is this a struct? is this non-exhaustive?)
     flags: AdtFlags,
