@@ -1843,6 +1843,7 @@ pub struct VariantDef {
     /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
     /// Recovered?
+    // FIXME: Needs proper doc. Recovered whom from what?
     pub recovered: bool,
 }
 
