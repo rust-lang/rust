@@ -80,7 +80,7 @@ Now you can run Clippy by invoking the following command:
 cargo clippy
 ```
 
-#### Automatically applying clippy suggestions
+#### Automatically applying Clippy suggestions
 
 Some Clippy lint suggestions can be automatically applied by `cargo fix`.
 Note that this is still experimental and only supported on the nightly channel:
