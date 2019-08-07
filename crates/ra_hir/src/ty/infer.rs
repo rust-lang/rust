@@ -245,7 +245,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             &self.resolver,
             type_ref,
         );
-        self.insert_type_vars(ty)
+        let ty = self.insert_type_vars(ty);
+        self.normalize_associated_types_in(ty)
     }
 
     fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs, depth: usize) -> bool {
@@ -409,6 +410,25 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
         log::error!("Inference variable still not resolved: {:?}", ty);
         ty
+    }
+
+    fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
+        ty.fold(&mut |ty| match ty {
+            Ty::Projection(proj_ty) => self.normalize_projection_ty(proj_ty),
+            Ty::UnselectedProjection(proj_ty) => {
+                // FIXME
+                Ty::UnselectedProjection(proj_ty)
+            }
+            _ => ty,
+        })
+    }
+
+    fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
+        let var = self.new_type_var();
+        let predicate = ProjectionPredicate { projection_ty: proj_ty.clone(), ty: var.clone() };
+        let obligation = Obligation::Projection(predicate);
+        self.obligations.push(obligation);
+        var
     }
 
     /// Resolves the type completely; type variables without known type are

@@ -117,11 +117,6 @@ impl Ty {
                                 return Ty::Unknown;
                             }
                         };
-                    eprintln!(
-                        "assoc ty: {:?}, parameters: {:?}",
-                        associated_ty.name(db),
-                        trait_ref.substs
-                    );
                     // FIXME handle type parameters on the segment
                     Ty::Projection(ProjectionTy { associated_ty, parameters: trait_ref.substs })
                 } else {

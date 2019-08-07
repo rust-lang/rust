@@ -402,11 +402,12 @@ where
         &self,
         projection: &'p chalk_ir::ProjectionTy,
     ) -> (Arc<AssociatedTyDatum>, &'p [Parameter], &'p [Parameter]) {
-        debug!("split_projection {:?}", projection);
-        unimplemented!()
+        let proj_ty: ProjectionTy = from_chalk(self.db, projection.clone());
+        debug!("split_projection {:?} = {}", projection, proj_ty.display(self.db));
+        // we don't support GATs, so I think this should always be correct currently
+        (self.db.associated_ty_data(projection.associated_ty_id), &projection.parameters, &[])
     }
     fn custom_clauses(&self) -> Vec<chalk_ir::ProgramClause> {
-        debug!("custom_clauses");
         vec![]
     }
     fn all_structs(&self) -> Vec<chalk_ir::StructId> {
