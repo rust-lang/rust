@@ -1,5 +1,5 @@
 #![feature(non_ascii_idents)]
-#![warn(clippy::all, clippy::pub_enum_variant_names)]
+#![warn(clippy::enum_variant_names, clippy::pub_enum_variant_names)]
 #![allow(non_camel_case_types)]
 
 enum FakeCallType {
@@ -118,6 +118,19 @@ enum N {
     Pos,
     Neg,
     Float,
+}
+
+// should not lint
+enum Peek {
+    Peek1,
+    Peek2,
+    Peek3,
+}
+
+// should not lint
+pub enum NetworkLayer {
+    Layer2,
+    Layer3,
 }
 
 fn main() {}
