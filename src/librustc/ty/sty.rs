@@ -171,6 +171,7 @@ pub enum TyKind<'tcx> {
     Never,
 
     /// A tuple type. For example, `(i32, bool)`.
+    /// Use `TyS::tuple_fields` to iterate over the field types.
     Tuple(SubstsRef<'tcx>),
 
     /// The projection of an associated type. For example,
@@ -1722,8 +1723,8 @@ impl<'tcx> TyS<'tcx> {
                     })
                 })
             }
-            ty::Tuple(tys) => tys.iter().any(|ty| {
-                ty.expect_ty().conservative_is_privately_uninhabited(tcx)
+            ty::Tuple(..) => self.tuple_fields().any(|ty| {
+                ty.conservative_is_privately_uninhabited(tcx)
             }),
             ty::Array(ty, len) => {
                 match len.try_eval_usize(tcx, ParamEnv::empty()) {
@@ -2099,6 +2100,15 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             Adt(adt, _) => Some(adt),
             _ => None,
+        }
+    }
+
+    /// Iterates over tuple fields.
+    /// Panics when called on anything but a tuple.
+    pub fn tuple_fields(&self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> {
+        match self.sty {
+            Tuple(substs) => substs.iter().map(|field| field.expect_ty()),
+            _ => bug!("tuple_fields called on non-tuple"),
         }
     }
 
