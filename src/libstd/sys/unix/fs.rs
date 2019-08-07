@@ -1,5 +1,6 @@
 use crate::os::unix::prelude::*;
 
+use crate::convert::TryInto;
 use crate::ffi::{CString, CStr, OsString, OsStr};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind, SeekFrom, IoSlice, IoSliceMut};
@@ -554,9 +555,14 @@ impl File {
         return crate::sys::android::ftruncate64(self.0.raw(), size);
 
         #[cfg(not(target_os = "android"))]
-        return cvt_r(|| unsafe {
-            ftruncate64(self.0.raw(), size as off64_t)
-        }).map(|_| ());
+        {
+            let size: off64_t = size
+                .try_into()
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            cvt_r(|| unsafe {
+                ftruncate64(self.0.raw(), size)
+            }).map(|_| ())
+        }
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
