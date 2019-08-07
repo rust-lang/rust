@@ -68,6 +68,7 @@ impl AllFactsExt for AllFacts {
                 path_belongs_to_var,
                 initialized_at,
                 moved_out_at,
+                path_accessed_at,
             ])
         }
         Ok(())
