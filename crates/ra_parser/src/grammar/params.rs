@@ -50,6 +50,10 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     while !p.at(EOF) && !p.at(ket) && !(flavor.type_required() && p.at(T![...])) {
         attributes::outer_attributes(p);
 
+        if p.at(T![...]) {
+            break;
+        }
+
         if !p.at_ts(VALUE_PARAMETER_FIRST) {
             p.error("expected value parameter");
             break;
