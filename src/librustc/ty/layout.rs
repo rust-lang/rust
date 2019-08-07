@@ -1368,6 +1368,27 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
         }
 
+        // Count the number of variants in use. If only one of them, then it is
+        // impossible to overlap any locals in our layout. In this case it's
+        // always better to make the remaining locals ineligible, so we can
+        // lay them out with the other locals in the prefix and eliminate
+        // unnecessary padding bytes.
+        {
+            let mut used_variants = BitSet::new_empty(info.variant_fields.len());
+            for assignment in &assignments {
+                match assignment {
+                    Assigned(idx) => { used_variants.insert(*idx); }
+                    _ => {}
+                }
+            }
+            if used_variants.count() < 2 {
+                for assignment in assignments.iter_mut() {
+                    *assignment = Ineligible(None);
+                }
+                ineligible_locals.insert_all();
+            }
+        }
+
         // Write down the order of our locals that will be promoted to the prefix.
         {
             let mut idx = 0u32;
@@ -1406,24 +1427,21 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             Abi::Scalar(s) => s.clone(),
             _ => bug!(),
         };
-        // FIXME(eddyb) wrap each promoted type in `MaybeUninit` so that they
-        // don't poison the `largest_niche` or `abi` fields of `prefix`.
         let promoted_layouts = ineligible_locals.iter()
             .map(|local| subst_field(info.field_tys[local]))
+            .map(|ty| tcx.mk_maybe_uninit(ty))
             .map(|ty| self.layout_of(ty));
         let prefix_layouts = substs.prefix_tys(def_id, tcx)
             .map(|ty| self.layout_of(ty))
             .chain(iter::once(Ok(discr_layout)))
             .chain(promoted_layouts)
             .collect::<Result<Vec<_>, _>>()?;
-        let mut prefix = self.univariant_uninterned(
+        let prefix = self.univariant_uninterned(
             ty,
             &prefix_layouts,
             &ReprOptions::default(),
             StructKind::AlwaysSized,
         )?;
-        // FIXME(eddyb) need `MaybeUninit` around promoted types (see above).
-        prefix.largest_niche = None;
 
         let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 

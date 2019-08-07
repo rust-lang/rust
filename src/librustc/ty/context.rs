@@ -2347,10 +2347,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Foreign(def_id))
     }
 
-    pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
-        let adt_def = self.adt_def(def_id);
-        let substs = InternalSubsts::for_item(self, def_id, |param, substs| {
+    fn mk_generic_adt(self, wrapper_def_id: DefId, ty_param: Ty<'tcx>) -> Ty<'tcx> {
+        let adt_def = self.adt_def(wrapper_def_id);
+        let substs = InternalSubsts::for_item(self, wrapper_def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime |
                 GenericParamDefKind::Const => {
@@ -2358,7 +2357,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
                 GenericParamDefKind::Type { has_default, .. } => {
                     if param.index == 0 {
-                        ty.into()
+                        ty_param.into()
                     } else {
                         assert!(has_default);
                         self.type_of(param.def_id).subst(self, substs).into()
@@ -2367,6 +2366,18 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         });
         self.mk_ty(Adt(adt_def, substs))
+    }
+
+    #[inline]
+    pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
+        self.mk_generic_adt(def_id, ty)
+    }
+
+    #[inline]
+    pub fn mk_maybe_uninit(self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let def_id = self.require_lang_item(lang_items::MaybeUninitLangItem);
+        self.mk_generic_adt(def_id, ty)
     }
 
     #[inline]
