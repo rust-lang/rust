@@ -435,6 +435,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         "clippy::invalid_ref",
         "superseded by rustc lint `invalid_value`",
     );
+    store.register_removed(
+        "clippy::unused_collect",
+        "`collect` has been marked as #[must_use] in rustc and that covers all cases of this lint",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde_api::SerdeAPI);
@@ -761,7 +765,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         loops::NEEDLESS_RANGE_LOOP,
         loops::NEVER_LOOP,
         loops::REVERSE_RANGE_LOOP,
-        loops::UNUSED_COLLECT,
         loops::WHILE_IMMUTABLE_CONDITION,
         loops::WHILE_LET_LOOP,
         loops::WHILE_LET_ON_ITERATOR,
@@ -1142,7 +1145,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         large_enum_variant::LARGE_ENUM_VARIANT,
         loops::MANUAL_MEMCPY,
         loops::NEEDLESS_COLLECT,
-        loops::UNUSED_COLLECT,
         methods::EXPECT_FUN_CALL,
         methods::ITER_NTH,
         methods::OR_FUN_CALL,

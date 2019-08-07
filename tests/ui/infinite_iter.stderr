@@ -1,11 +1,3 @@
-error: you are collect()ing an iterator and throwing away the result. Consider using an explicit for loop to exhaust the iterator
-  --> $DIR/infinite_iter.rs:10:5
-   |
-LL |     repeat(0_u8).collect::<Vec<_>>(); // infinite iter
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::unused-collect` implied by `-D warnings`
-
 error: infinite iteration detected
   --> $DIR/infinite_iter.rs:10:5
    |
@@ -113,5 +105,5 @@ LL |         let _: HashSet<i32> = (0..).collect(); // Infinite iter
    |
    = note: `#[deny(clippy::infinite_iter)]` on by default
 
-error: aborting due to 15 previous errors
+error: aborting due to 14 previous errors
 

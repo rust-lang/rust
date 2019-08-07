@@ -30,17 +30,11 @@ error: lint `misaligned_transmute` has been removed: `this lint has been split i
 LL | #[warn(misaligned_transmute)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
-error: lint name `unused_collect` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
-  --> $DIR/deprecated_old.rs:6:8
-   |
-LL | #[warn(unused_collect)]
-   |        ^^^^^^^^^^^^^^ help: change it to: `clippy::unused_collect`
-
 error: lint `str_to_string` has been removed: `using `str::to_string` is common even today and specialization will likely happen soon`
   --> $DIR/deprecated_old.rs:1:8
    |
 LL | #[warn(str_to_string)]
    |        ^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 

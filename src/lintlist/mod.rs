@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 310] = [
+pub const ALL_LINTS: [Lint; 309] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1966,13 +1966,6 @@ pub const ALL_LINTS: [Lint; 310] = [
         desc: "literals whose suffix is not separated by an underscore",
         deprecation: None,
         module: "misc_early",
-    },
-    Lint {
-        name: "unused_collect",
-        group: "perf",
-        desc: "`collect()`ing an iterator without using the result; this is usually better written as a for loop",
-        deprecation: None,
-        module: "loops",
     },
     Lint {
         name: "unused_io_amount",

@@ -243,24 +243,6 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for using `collect()` on an iterator without using
-    /// the result.
-    ///
-    /// **Why is this bad?** It is more idiomatic to use a `for` loop over the
-    /// iterator instead.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```ignore
-    /// vec.iter().map(|x| /* some operation returning () */).collect::<Vec<_>>();
-    /// ```
-    pub UNUSED_COLLECT,
-    perf,
-    "`collect()`ing an iterator without using the result; this is usually better written as a for loop"
-}
-
-declare_clippy_lint! {
     /// **What it does:** Checks for functions collecting an iterator when collect
     /// is not needed.
     ///
@@ -467,7 +449,6 @@ declare_lint_pass!(Loops => [
     FOR_LOOP_OVER_RESULT,
     FOR_LOOP_OVER_OPTION,
     WHILE_LET_LOOP,
-    UNUSED_COLLECT,
     NEEDLESS_COLLECT,
     REVERSE_RANGE_LOOP,
     EXPLICIT_COUNTER_LOOP,
@@ -601,25 +582,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
         }
 
         check_needless_collect(expr, cx);
-    }
-
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
-        if let StmtKind::Semi(ref expr) = stmt.node {
-            if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1
-                    && method.ident.name == sym!(collect)
-                    && match_trait_method(cx, expr, &paths::ITERATOR)
-                {
-                    span_lint(
-                        cx,
-                        UNUSED_COLLECT,
-                        expr.span,
-                        "you are collect()ing an iterator and throwing away the result. \
-                         Consider using an explicit for loop to exhaust the iterator",
-                    );
-                }
-            }
-        }
     }
 }
 
