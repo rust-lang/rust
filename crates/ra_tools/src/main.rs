@@ -63,11 +63,11 @@ fn install(opts: InstallOpt) -> Result<()> {
     if cfg!(target_os = "macos") {
         fix_path_for_mac()?
     }
-    if let Some(client) = opts.client {
-        install_client(client)?;
-    }
     if let Some(server) = opts.server {
         install_server(server)?;
+    }
+    if let Some(client) = opts.client {
+        install_client(client)?;
     }
     Ok(())
 }
