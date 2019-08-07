@@ -80,6 +80,15 @@ Now you can run Clippy by invoking the following command:
 cargo clippy
 ```
 
+#### Automatically applying clippy suggestions
+
+Some Clippy lint suggestions can be automatically applied by `cargo fix`.
+Note that this is still experimental and only supported on the nightly channel:
+
+```terminal
+cargo fix -Z unstable-options --clippy
+```
+
 ### Running Clippy from the command line without installing it
 
 To have cargo compile your crate with Clippy without Clippy installation
