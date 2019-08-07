@@ -20,7 +20,10 @@ pub fn unsized_info<'a, 'tcx: 'a>(
         (&ty::Array(_, len), &ty::Slice(_)) => fx
             .bcx
             .ins()
-            .iconst(fx.pointer_type, len.unwrap_usize(fx.tcx) as i64),
+            .iconst(
+                fx.pointer_type,
+                len.eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64,
+            ),
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual

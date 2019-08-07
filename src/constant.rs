@@ -264,7 +264,7 @@ fn define_all_allocs(
                 let const_ = tcx.const_eval(ParamEnv::reveal_all().and(cid)).unwrap();
 
                 let alloc = match const_.val {
-                    ConstValue::ByRef { align: _, offset, alloc } if offset.bytes() == 0 => alloc,
+                    ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => alloc,
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
@@ -342,6 +342,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
     type FrameExtra = ();
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
 
+    const CHECK_ALIGN: bool = true;
     const STATIC_KIND: Option<!> = None;
 
     fn enforce_validity(_: &InterpCx<'mir, 'tcx, Self>) -> bool {

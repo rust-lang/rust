@@ -920,7 +920,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 let idx_const = crate::constant::mir_operand_get_const_val(fx, idx).expect("simd_shuffle* idx not const");
 
                 let idx_bytes = match idx_const.val {
-                    ConstValue::ByRef { align: _, offset, alloc } => {
+                    ConstValue::ByRef { alloc, offset } => {
                         let ptr = Pointer::new(AllocId(0 /* dummy */), offset);
                         let size = Size::from_bytes(4 * u64::from(ret_lane_count) /* size_of([u32; ret_lane_count]) */);
                         alloc.get_bytes(fx, ptr, size).unwrap()

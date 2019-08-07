@@ -612,7 +612,8 @@ fn codegen_array_len<'a, 'tcx: 'a>(
 ) -> Value {
     match place.layout().ty.sty {
         ty::Array(_elem_ty, len) => {
-            let len = crate::constant::force_eval_const(fx, len).unwrap_usize(fx.tcx) as i64;
+            let len = crate::constant::force_eval_const(fx, len)
+                .eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
         ty::Slice(_elem_ty) => place
@@ -1162,7 +1163,8 @@ pub fn trans_place_projection<'a, 'tcx: 'a>(
                 ty::Array(elem_ty, len) => {
                     let elem_layout = fx.layout_of(elem_ty);
                     let ptr = base.to_addr(fx);
-                    let len = crate::constant::force_eval_const(fx, len).unwrap_usize(fx.tcx);
+                    let len = crate::constant::force_eval_const(fx, len)
+                        .eval_usize(fx.tcx, ParamEnv::reveal_all());
                     CPlace::for_addr(
                         fx.bcx.ins().iadd_imm(ptr, elem_layout.size.bytes() as i64 * from as i64),
                         fx.layout_of(fx.tcx.mk_array(elem_ty, len - from as u64 - to as u64)),
