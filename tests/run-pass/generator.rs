@@ -17,7 +17,11 @@ fn finish<T>(mut amt: usize, mut t: T) -> T::Return
             }
         }
     }
+}
 
+enum Never {}
+fn never() -> Never {
+    panic!()
 }
 
 fn main() {
@@ -67,4 +71,13 @@ fn main() {
         }),
         10
     );
+    let b = true;
+    finish(1, || {
+        yield 1;
+        if b { return; }
+        #[allow(unused)]
+        let x = never();
+        yield 2;
+        drop(x);
+    });
 }
