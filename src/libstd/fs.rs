@@ -114,6 +114,11 @@ pub struct Metadata(fs_imp::FileAttr);
 /// information like the entry's path and possibly other metadata can be
 /// learned.
 ///
+/// #### Note: Iteration Order is Implementation-Defined
+///
+/// The order in which this iterator returns entries is platform and filesystem
+/// dependent.
+///
 /// # Errors
 ///
 /// This [`io::Result`] will be an [`Err`] if there's some sort of intermittent
@@ -1959,6 +1964,11 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
+/// #### Note: Iteration Order is Implementation-Defined
+///
+/// The order in which this iterator returns entries is platform and filesystem
+/// dependent.
+///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
@@ -1988,6 +1998,28 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///             }
 ///         }
 ///     }
+///     Ok(())
+/// }
+/// ```
+///
+/// ```rust,no_run
+/// use std::{fs, io};
+///
+/// fn main() -> io::Result<()> {
+///     // The order read_dir returns entries is not guaranteed. If reproducible
+///     // ordering is required the entries should be explicitly sorted.
+///     let mut entries = fs::read_dir(".")?
+///         .map(|res| res.map(|e| e.path()))
+///         .collect::<Result<Vec<_>, io::Error>>()?;
+///
+///     println!(
+///         "Entries before sorting (may or may not be sorted already): {:?}",
+///         entries
+///     );
+///
+///     entries.sort();
+///
+///     println!("Entries after sorting: {:?}", entries);
 ///     Ok(())
 /// }
 /// ```
