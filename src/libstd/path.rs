@@ -9,7 +9,7 @@
 //!
 //! Paths can be parsed into [`Component`]s by iterating over the structure
 //! returned by the [`components`] method on [`Path`]. [`Component`]s roughly
-//! correspond to the substrings between path separators (`/` or `\`). You can
+//! correspond to the substrings between path separators (`/` or `\\`). You can
 //! reconstruct an equivalent path from components with the [`push`] method on
 //! [`PathBuf`]; note that the paths may differ syntactically by the
 //! normalization described in the documentation for the [`components`] method.
