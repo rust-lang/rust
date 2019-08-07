@@ -23,7 +23,7 @@
 
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, layout::VariantIdx};
 use rustc::{lint, util};
 use hir::Node;
 use util::nodemap::HirIdSet;
@@ -1879,11 +1879,40 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
 
         /// Return `false` only if we are sure this type does *not*
         /// allow zero initialization.
-        fn ty_maybe_allows_zero_init(ty: Ty<'_>) -> bool {
+        fn ty_maybe_allows_zero_init<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
             use rustc::ty::TyKind::*;
             match ty.sty {
                 // Primitive types that don't like 0 as a value.
                 Ref(..) | FnPtr(..) | Never => false,
+                Adt(..) if ty.is_box() => false,
+                // Recurse for some compound types.
+                Adt(adt_def, substs) if !adt_def.is_union() => {
+                    match adt_def.variants.len() {
+                        0 => false, // Uninhabited enum!
+                        1 => {
+                            // Struct, or enum with exactly one variant.
+                            // Proceed recursively, check all fields.
+                            let variant = &adt_def.variants[VariantIdx::from_u32(0)];
+                            variant.fields.iter().all(|field| {
+                                ty_maybe_allows_zero_init(
+                                    tcx,
+                                    field.ty(tcx, substs),
+                                )
+                            })
+                        }
+                        _ => true, // Conservative fallback for multi-variant enum.
+                    }
+                }
+                Tuple(substs) => {
+                    // Proceed recursively, check all fields.
+                    substs.iter().all(|field| {
+                        ty_maybe_allows_zero_init(
+                            tcx,
+                            field.expect_ty(),
+                        )
+                    })
+                }
+                // FIXME: Would be nice to also warn for `NonNull`/`NonZero*`.
                 // Conservative fallback.
                 _ => true,
             }
@@ -1900,8 +1929,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                         // We are extremely conservative with what we warn about.
                         let conjured_ty = cx.tables.expr_ty(expr);
 
-                        if !ty_maybe_allows_zero_init(conjured_ty) {
-                            cx.span_lint(
+                        if !ty_maybe_allows_zero_init(cx.tcx, conjured_ty) {
+                            cx.struct_span_lint(
                                 INVALID_VALUE,
                                 expr.span,
                                 &format!(
@@ -1913,7 +1942,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                                         "being left uninitialized"
                                     }
                                 ),
-                            );
+                            )
+                            .note("this means that this code causes undefined behavior \
+                                when executed")
+                            .help("use `MaybeUninit` instead")
+                            .emit();
                         }
                     }
                 }
