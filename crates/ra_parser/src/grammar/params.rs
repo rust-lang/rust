@@ -61,7 +61,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     }
     // test param_list_vararg
     // extern "C" { fn printf(format: *const i8, ...) -> i32; }
-    // extern "C" { fn printf(#[attr] format: *const i8, ...) -> i32; }
+    // extern "C" { fn printf(format: *const i8, #[attr] ...) -> i32; }
     if flavor.type_required() {
         p.eat(T![...]);
     }

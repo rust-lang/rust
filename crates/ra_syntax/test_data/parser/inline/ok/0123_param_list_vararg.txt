@@ -63,29 +63,29 @@ SOURCE_FILE@[0; 122)
           IDENT@[73; 79) "printf"
         PARAM_LIST@[79; 111)
           L_PAREN@[79; 80) "("
-          ATTR@[80; 87)
-            POUND@[80; 81) "#"
-            TOKEN_TREE@[81; 87)
-              L_BRACK@[81; 82) "["
-              IDENT@[82; 86) "attr"
-              R_BRACK@[86; 87) "]"
-          WHITESPACE@[87; 88) " "
-          PARAM@[88; 105)
-            BIND_PAT@[88; 94)
-              NAME@[88; 94)
-                IDENT@[88; 94) "format"
-            COLON@[94; 95) ":"
-            WHITESPACE@[95; 96) " "
-            POINTER_TYPE@[96; 105)
-              STAR@[96; 97) "*"
-              CONST_KW@[97; 102) "const"
-              WHITESPACE@[102; 103) " "
-              PATH_TYPE@[103; 105)
-                PATH@[103; 105)
-                  PATH_SEGMENT@[103; 105)
-                    NAME_REF@[103; 105)
-                      IDENT@[103; 105) "i8"
-          COMMA@[105; 106) ","
+          PARAM@[80; 97)
+            BIND_PAT@[80; 86)
+              NAME@[80; 86)
+                IDENT@[80; 86) "format"
+            COLON@[86; 87) ":"
+            WHITESPACE@[87; 88) " "
+            POINTER_TYPE@[88; 97)
+              STAR@[88; 89) "*"
+              CONST_KW@[89; 94) "const"
+              WHITESPACE@[94; 95) " "
+              PATH_TYPE@[95; 97)
+                PATH@[95; 97)
+                  PATH_SEGMENT@[95; 97)
+                    NAME_REF@[95; 97)
+                      IDENT@[95; 97) "i8"
+          COMMA@[97; 98) ","
+          WHITESPACE@[98; 99) " "
+          ATTR@[99; 106)
+            POUND@[99; 100) "#"
+            TOKEN_TREE@[100; 106)
+              L_BRACK@[100; 101) "["
+              IDENT@[101; 105) "attr"
+              R_BRACK@[105; 106) "]"
           WHITESPACE@[106; 107) " "
           DOTDOTDOT@[107; 110) "..."
           R_PAREN@[110; 111) ")"
