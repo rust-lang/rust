@@ -559,6 +559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::Char => "'a'",
                             ty::Int(_) | ty::Uint(_) => "42",
                             ty::Float(_) => "3.14159",
+                            ty::Error | ty::Never => return,
                             _ => "value",
                         });
                         err.span_suggestion(expr.span, msg, sugg, Applicability::HasPlaceholders);
