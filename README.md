@@ -36,6 +36,7 @@ Table of contents:
 
 *   [Usage instructions](#usage)
 *   [Configuration](#configuration)
+*   [Contributing](#contributing)
 *   [License](#license)
 
 ## Usage
@@ -52,7 +53,7 @@ subcommand.
 
 #### Step 1: Install rustup
 
-You can install [rustup](http://rustup.rs/) on supported platforms. This will help
+You can install [rustup](https://rustup.rs/) on supported platforms. This will help
 us install Clippy and its dependencies.
 
 If you already have rustup installed, update to ensure you have the latest
@@ -88,8 +89,7 @@ in your code, you can use:
 cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
 ```
 
-*[Note](https://github.com/rust-lang/rust-clippy/wiki#a-word-of-warning):*
-Be sure that Clippy was compiled with the same version of rustc that cargo invokes here!
+*Note:* Be sure that Clippy was compiled with the same version of rustc that cargo invokes here!
 
 ### Travis CI
 
@@ -113,7 +113,7 @@ script:
 ```
 
 If you are on nightly, It might happen that Clippy is not available for a certain nightly release.
-In this case you can try to conditionally install Clippy from the git repo.
+In this case you can try to conditionally install Clippy from the Git repo.
 
 ```yaml
 language: rust
@@ -121,12 +121,12 @@ rust:
   - nightly
 before_script:
    - rustup component add clippy --toolchain=nightly || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
-   # etc
+   # etc.
 ```
 
 Note that adding `-D warnings` will cause your build to fail if **any** warnings are found in your code.
 That includes warnings found by rustc (e.g. `dead_code`, etc.). If you want to avoid this and only cause
-an error for clippy warnings, use `#![deny(clippy::all)]` in your code or `-D clippy::all` on the command
+an error for Clippy warnings, use `#![deny(clippy::all)]` in your code or `-D clippy::all` on the command
 line. (You can swap `clippy::all` with the specific lint category you are targeting.)
 
 ## Configuration
@@ -154,9 +154,9 @@ You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
     `#![deny(clippy::pedantic)]`). Note that `clippy::pedantic` contains some very aggressive
     lints prone to false positives.
 
-*   only some lints (`#![deny(clippy::single_match, clippy::box_vec)]`, etc)
+*   only some lints (`#![deny(clippy::single_match, clippy::box_vec)]`, etc.)
 
-*   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
+*   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc.
 
 Note: `deny` produces errors instead of warnings.
 
@@ -171,7 +171,7 @@ If you want to contribute to Clippy, you can find more information in [CONTRIBUT
 Copyright 2014-2019 The Rust Project Developers
 
 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)> or the MIT license
-<LICENSE-MIT or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT)>, at your
+[https://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)> or the MIT license
+<LICENSE-MIT or [https://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT)>, at your
 option. All files in the project carrying such notice may not be
 copied, modified, or distributed except according to those terms.
