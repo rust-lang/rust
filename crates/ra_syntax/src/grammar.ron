@@ -642,12 +642,14 @@ Grammar(
         "SelfParam": (
             traits: [
                 "TypeAscriptionOwner",
+				"AttrsOwner",
             ]
         ),
         "Param": (
             options: [ "Pat" ],
             traits: [
                 "TypeAscriptionOwner",
+				"AttrsOwner",
             ]
         ),
         "UseItem": (

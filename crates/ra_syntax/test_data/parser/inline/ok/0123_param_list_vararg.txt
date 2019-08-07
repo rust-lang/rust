@@ -1,4 +1,4 @@
-SOURCE_FILE@[0; 57)
+SOURCE_FILE@[0; 122)
   EXTERN_BLOCK@[0; 56)
     ABI@[0; 10)
       EXTERN_KW@[0; 6) "extern"
@@ -47,3 +47,58 @@ SOURCE_FILE@[0; 57)
       WHITESPACE@[54; 55) " "
       R_CURLY@[55; 56) "}"
   WHITESPACE@[56; 57) "\n"
+  EXTERN_BLOCK@[57; 121)
+    ABI@[57; 67)
+      EXTERN_KW@[57; 63) "extern"
+      WHITESPACE@[63; 64) " "
+      STRING@[64; 67) "\"C\""
+    WHITESPACE@[67; 68) " "
+    EXTERN_ITEM_LIST@[68; 121)
+      L_CURLY@[68; 69) "{"
+      WHITESPACE@[69; 70) " "
+      FN_DEF@[70; 119)
+        FN_KW@[70; 72) "fn"
+        WHITESPACE@[72; 73) " "
+        NAME@[73; 79)
+          IDENT@[73; 79) "printf"
+        PARAM_LIST@[79; 111)
+          L_PAREN@[79; 80) "("
+          ATTR@[80; 87)
+            POUND@[80; 81) "#"
+            TOKEN_TREE@[81; 87)
+              L_BRACK@[81; 82) "["
+              IDENT@[82; 86) "attr"
+              R_BRACK@[86; 87) "]"
+          WHITESPACE@[87; 88) " "
+          PARAM@[88; 105)
+            BIND_PAT@[88; 94)
+              NAME@[88; 94)
+                IDENT@[88; 94) "format"
+            COLON@[94; 95) ":"
+            WHITESPACE@[95; 96) " "
+            POINTER_TYPE@[96; 105)
+              STAR@[96; 97) "*"
+              CONST_KW@[97; 102) "const"
+              WHITESPACE@[102; 103) " "
+              PATH_TYPE@[103; 105)
+                PATH@[103; 105)
+                  PATH_SEGMENT@[103; 105)
+                    NAME_REF@[103; 105)
+                      IDENT@[103; 105) "i8"
+          COMMA@[105; 106) ","
+          WHITESPACE@[106; 107) " "
+          DOTDOTDOT@[107; 110) "..."
+          R_PAREN@[110; 111) ")"
+        WHITESPACE@[111; 112) " "
+        RET_TYPE@[112; 118)
+          THIN_ARROW@[112; 114) "->"
+          WHITESPACE@[114; 115) " "
+          PATH_TYPE@[115; 118)
+            PATH@[115; 118)
+              PATH_SEGMENT@[115; 118)
+                NAME_REF@[115; 118)
+                  IDENT@[115; 118) "i32"
+        SEMI@[118; 119) ";"
+      WHITESPACE@[119; 120) " "
+      R_CURLY@[120; 121) "}"
+  WHITESPACE@[121; 122) "\n"

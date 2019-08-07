@@ -2013,6 +2013,7 @@ impl AstNode for Param {
 
 
 impl ast::TypeAscriptionOwner for Param {}
+impl ast::AttrsOwner for Param {}
 impl Param {
     pub fn pat(&self) -> Option<Pat> {
         super::child_opt(self)
@@ -2667,6 +2668,7 @@ impl AstNode for SelfParam {
 
 
 impl ast::TypeAscriptionOwner for SelfParam {}
+impl ast::AttrsOwner for SelfParam {}
 impl SelfParam {}
 
 // SlicePat

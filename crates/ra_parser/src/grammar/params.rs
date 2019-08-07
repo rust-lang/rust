@@ -5,12 +5,15 @@ use super::*;
 // fn b(x: i32) {}
 // fn c(x: i32, ) {}
 // fn d(x: i32, y: ()) {}
+// fn g1(#[attr1] #[attr2] pat: Type) {}
+// fn g2(#[attr1] x: u8) {}
 pub(super) fn param_list(p: &mut Parser) {
     list_(p, Flavor::Normal)
 }
 
 // test param_list_opt_patterns
 // fn foo<F: FnMut(&mut Foo<'a>)>(){}
+// fn foo<F: FnMut(#[attr] &mut Foo<'a>)>(){}
 pub(super) fn param_list_opt_patterns(p: &mut Parser) {
     list_(p, Flavor::OptionalPattern)
 }
@@ -41,9 +44,12 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     let m = p.start();
     p.bump();
     if flavor.type_required() {
+        attributes::outer_attributes(p);
         opt_self_param(p);
     }
     while !p.at(EOF) && !p.at(ket) && !(flavor.type_required() && p.at(T![...])) {
+        attributes::outer_attributes(p);
+
         if !p.at_ts(VALUE_PARAMETER_FIRST) {
             p.error("expected value parameter");
             break;
@@ -55,6 +61,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     }
     // test param_list_vararg
     // extern "C" { fn printf(format: *const i8, ...) -> i32; }
+    // extern "C" { fn printf(#[attr] format: *const i8, ...) -> i32; }
     if flavor.type_required() {
         p.eat(T![...]);
     }
@@ -84,6 +91,7 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
             // test trait_fn_placeholder_parameter
             // trait Foo {
             //     fn bar(_: u64, mut x: i32);
+            //     fn bar(#[attr] _: u64, #[attr] mut x: i32);
             // }
             if (la0 == IDENT || la0 == T![_]) && la1 == T![:]
                 || la0 == T![mut] && la1 == IDENT && la2 == T![:]
@@ -107,6 +115,12 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
 //     fn c(&'a self,) {}
 //     fn d(&'a mut self, x: i32) {}
 //     fn e(mut self) {}
+//     fn f(#[must_use] self) {}
+//     fn g1(#[attr] self) {}
+//     fn g2(#[attr] &self) {}
+//     fn g3<'a>(#[attr] &mut self) {}
+//     fn g4<'a>(#[attr] &'a self) {}
+//     fn g5<'a>(#[attr] &'a mut self) {}
 // }
 fn opt_self_param(p: &mut Parser) {
     let m;
@@ -118,6 +132,8 @@ fn opt_self_param(p: &mut Parser) {
         // impl S {
         //     fn a(self: &Self) {}
         //     fn b(mut self: Box<Self>) {}
+        //     fn c(#[attr] self: Self) {}
+        //     fn d(#[attr] self: Rc<Self>) {}
         // }
         if p.at(T![:]) {
             types::ascription(p);
