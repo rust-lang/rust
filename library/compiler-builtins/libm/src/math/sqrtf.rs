@@ -13,8 +13,6 @@
  * ====================================================
  */
 
-const TINY: f32 = 1.0e-30;
-
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sqrtf(x: f32) -> f32 {
     // On wasm32 we know that LLVM's intrinsic will compile to an optimized
@@ -46,6 +44,8 @@ pub fn sqrtf(x: f32) -> f32 {
     }
     #[cfg(not(target_feature = "sse"))]
     {
+        const TINY: f32 = 1.0e-30;
+
         let mut z: f32;
         let sign: i32 = 0x80000000u32 as i32;
         let mut ix: i32;

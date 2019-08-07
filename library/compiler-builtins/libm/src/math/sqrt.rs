@@ -77,9 +77,6 @@
  */
 
 use core::f64;
-use core::num::Wrapping;
-
-const TINY: f64 = 1.0e-300;
 
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sqrt(x: f64) -> f64 {
@@ -112,6 +109,10 @@ pub fn sqrt(x: f64) -> f64 {
     }
     #[cfg(not(target_feature = "sse2"))]
     {
+        use core::num::Wrapping;
+
+        const TINY: f64 = 1.0e-300;
+
         let mut z: f64;
         let sign: Wrapping<u32> = Wrapping(0x80000000);
         let mut ix0: i32;
