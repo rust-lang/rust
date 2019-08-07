@@ -22,7 +22,7 @@ compiler_builtins = "0.1.0"
 cfg-if = "0.1.8"
 
 [build-dependencies]
-cc = { optional = true, version = "1.0.1" }
+cc = { version = "1.0.1" }
 
 [features]
-llvm-libunwind = ["cc"]
+llvm-libunwind = []
