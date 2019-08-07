@@ -25,7 +25,7 @@ use libc::{c_int, c_char, c_void};
 
 const TMPBUF_SZ: usize = 128;
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(target_os = "redox")] {
         const PATH_SEPARATOR: u8 = b';';
     } else {

@@ -12,7 +12,7 @@ use crate::collections::BTreeMap;
 
 use libc::{c_int, gid_t, uid_t, c_char, EXIT_SUCCESS, EXIT_FAILURE};
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(target_os = "redox")] {
         const DEV_NULL: &'static str = "null:\0";
     } else {
