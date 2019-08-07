@@ -34,9 +34,9 @@ table implementation in the Rust standard library.
 
 ## Performance
 
-Compared to the previous implementation of `std::collections::HashMap` (Rust 1.35).
+Compared to the previous HashDoS-resistant implementation of `std::collections::HashMap` (Rust 1.35).
 
-With the hashbrown default AHash hasher:
+With the hashbrown default AHash hasher (not HashDoS-resistant):
 
 ```text
  name                       oldstdhash ns/iter  hashbrown ns/iter  diff ns/iter   diff %  speedup 
@@ -57,7 +57,7 @@ With the hashbrown default AHash hasher:
  lookup_fail_ahash_serial     4,902               3,240                    -1,662  -33.90%   x 1.51 
 ```
 
-With the libstd default SipHash hasher:
+With the libstd default SipHash hasher (HashDoS-resistant):
 
 ```text
  name                       oldstdhash ns/iter  hashbrown ns/iter  diff ns/iter   diff %  speedup 
