@@ -37,6 +37,9 @@ fn run_tests(mode: &str, path: &str, target: &str, mut flags: Vec<String>) {
         flags.push(format!("--sysroot {}", sysroot));
     }
 
+    // Add a test env var to do evironment communication tests
+    std::env::set_var("MIRI_ENV_VAR_TEST", "0");
+
     // The rest of the configuration.
     let mut config = compiletest::Config::default().tempdir();
     config.mode = mode.parse().expect("Invalid mode");
