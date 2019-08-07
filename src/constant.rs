@@ -281,7 +281,12 @@ fn define_all_allocs(
 
         let mut data_ctx = DataContext::new();
 
-        data_ctx.define(alloc.bytes.to_vec().into_boxed_slice());
+        let mut bytes = alloc.bytes.to_vec();
+        // The machO backend of faerie doesn't align data objects correctly unless we do this.
+        while bytes.len() as u64 % 16 != 0 {
+            bytes.push(0xde);
+        }
+        data_ctx.define(bytes.into_boxed_slice());
 
         for &(offset, (_tag, reloc)) in alloc.relocations.iter() {
             let addend = {
