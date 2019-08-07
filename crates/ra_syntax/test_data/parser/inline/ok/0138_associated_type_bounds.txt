@@ -1,0 +1,55 @@
+SOURCE_FILE@[0; 59)
+  FN_DEF@[0; 58)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 12)
+      IDENT@[3; 12) "print_all"
+    TYPE_PARAM_LIST@[12; 40)
+      L_ANGLE@[12; 13) "<"
+      TYPE_PARAM@[13; 39)
+        NAME@[13; 14)
+          IDENT@[13; 14) "T"
+        COLON@[14; 15) ":"
+        WHITESPACE@[15; 16) " "
+        TYPE_BOUND_LIST@[16; 39)
+          TYPE_BOUND@[16; 39)
+            PATH_TYPE@[16; 39)
+              PATH@[16; 39)
+                PATH_SEGMENT@[16; 39)
+                  NAME_REF@[16; 24)
+                    IDENT@[16; 24) "Iterator"
+                  TYPE_ARG_LIST@[24; 39)
+                    L_ANGLE@[24; 25) "<"
+                    ASSOC_TYPE_ARG@[25; 38)
+                      NAME_REF@[25; 29)
+                        IDENT@[25; 29) "Item"
+                      COLON@[29; 30) ":"
+                      WHITESPACE@[30; 31) " "
+                      TYPE_BOUND_LIST@[31; 38)
+                        TYPE_BOUND@[31; 38)
+                          PATH_TYPE@[31; 38)
+                            PATH@[31; 38)
+                              PATH_SEGMENT@[31; 38)
+                                NAME_REF@[31; 38)
+                                  IDENT@[31; 38) "Display"
+                    R_ANGLE@[38; 39) ">"
+      R_ANGLE@[39; 40) ">"
+    PARAM_LIST@[40; 55)
+      L_PAREN@[40; 41) "("
+      PARAM@[41; 54)
+        BIND_PAT@[41; 51)
+          NAME@[41; 51)
+            IDENT@[41; 51) "printables"
+        COLON@[51; 52) ":"
+        WHITESPACE@[52; 53) " "
+        PATH_TYPE@[53; 54)
+          PATH@[53; 54)
+            PATH_SEGMENT@[53; 54)
+              NAME_REF@[53; 54)
+                IDENT@[53; 54) "T"
+      R_PAREN@[54; 55) ")"
+    WHITESPACE@[55; 56) " "
+    BLOCK@[56; 58)
+      L_CURLY@[56; 57) "{"
+      R_CURLY@[57; 58) "}"
+  WHITESPACE@[58; 59) "\n"

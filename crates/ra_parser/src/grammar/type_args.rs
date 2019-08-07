@@ -35,6 +35,13 @@ fn type_arg(p: &mut Parser) {
             p.bump();
             m.complete(p, LIFETIME_ARG);
         }
+        // test associated_type_bounds
+        // fn print_all<T: Iterator<Item: Display>>(printables: T) {}
+        IDENT if p.nth(1) == T![:] => {
+            name_ref(p);
+            type_params::bounds(p);
+            m.complete(p, ASSOC_TYPE_ARG);
+        }
         IDENT if p.nth(1) == T![=] => {
             name_ref(p);
             p.bump();
