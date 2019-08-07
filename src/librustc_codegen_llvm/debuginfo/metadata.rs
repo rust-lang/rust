@@ -450,11 +450,11 @@ fn subroutine_type_metadata(
         false);
 }
 
-// FIXME(1563) This is all a bit of a hack because 'trait pointer' is an ill-
-// defined concept. For the case of an actual trait pointer (i.e., Box<Trait>,
-// &Trait), trait_object_type should be the whole thing (e.g, Box<Trait>) and
-// trait_type should be the actual trait (e.g., Trait). Where the trait is part
-// of a DST struct, there is no trait_object_type and the results of this
+// FIXME(1563): This is all a bit of a hack because 'trait pointer' is an ill-
+// defined concept. For the case of an actual trait pointer (i.e., `Box<Trait>`,
+// `&Trait`), `trait_object_type` should be the whole thing (e.g, `Box<Trait>`) and
+// `trait_type` should be the actual trait (e.g., `Trait`). Where the trait is part
+// of a DST struct, there is no `trait_object_type` and the results of this
 // function will be a little bit weird.
 fn trait_pointer_metadata(
     cx: &CodegenCx<'ll, 'tcx>,
@@ -464,13 +464,13 @@ fn trait_pointer_metadata(
 ) -> &'ll DIType {
     // The implementation provided here is a stub. It makes sure that the trait
     // type is assigned the correct name, size, namespace, and source location.
-    // But it does not describe the trait's methods.
+    // However, it does not describe the trait's methods.
 
     let containing_scope = match trait_type.sty {
         ty::Dynamic(ref data, ..) =>
             data.principal_def_id().map(|did| get_namespace_for_item(cx, did)),
         _ => {
-            bug!("debuginfo: Unexpected trait-object type in \
+            bug!("debuginfo: unexpected trait-object type in \
                   trait_pointer_metadata(): {:?}",
                  trait_type);
         }

@@ -904,7 +904,7 @@ pub struct Generics {
     pub parent_count: usize,
     pub params: Vec<GenericParamDef>,
 
-    /// Reverse map to the `index` field of each `GenericParamDef`
+    /// Reverse map to the `index` field of each `GenericParamDef`.
     #[stable_hasher(ignore)]
     pub param_def_id_to_index: FxHashMap<DefId, u32>,
 
@@ -1252,7 +1252,7 @@ impl<'tcx> TraitPredicate<'tcx> {
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(&self) -> DefId {
-        // Ok to skip binder since trait def-ID does not care about regions.
+        // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
     }
 }
@@ -1319,7 +1319,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     /// Note that this is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
     pub fn projection_def_id(&self) -> DefId {
-        // Ok to skip binder since trait def-ID does not care about regions.
+        // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_ty.item_def_id
     }
 }
@@ -1646,9 +1646,9 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 /// particular point.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub struct ParamEnv<'tcx> {
-    /// Obligations that the caller must satisfy. This is basically
+    /// `Obligation`s that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
-    /// into Obligations, and elaborated and normalized.
+    /// into `Obligation`s, and elaborated and normalized.
     pub caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
 
     /// Typically, this is `Reveal::UserFacing`, but during codegen we
@@ -2796,7 +2796,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 _ => false,
             }
         } else {
-            match self.def_kind(def_id).expect("no def for def-id") {
+            match self.def_kind(def_id).expect("no def for `DefId`") {
                 DefKind::AssocConst
                 | DefKind::Method
                 | DefKind::AssocTy => true,

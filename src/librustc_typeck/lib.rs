@@ -108,7 +108,7 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc::util;
-use syntax_pos::Span;
+use syntax_pos::{DUMMY_SP, Span};
 use util::common::time;
 
 use std::iter;
@@ -375,7 +375,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
 pub fn hir_trait_to_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_trait: &hir::TraitRef,
-) -> (ty::PolyTraitRef<'tcx>, Bounds<'tcx>) {
+) -> Bounds<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
@@ -383,11 +383,11 @@ pub fn hir_trait_to_predicates<'tcx>(
     let env_def_id = tcx.hir().local_def_id(env_hir_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
     let mut bounds = Bounds::default();
-    let (principal, _) = AstConv::instantiate_poly_trait_ref_inner(
-        &item_cx, hir_trait, tcx.types.err, &mut bounds, true
+    let _ = AstConv::instantiate_poly_trait_ref_inner(
+        &item_cx, hir_trait, DUMMY_SP, tcx.types.err, &mut bounds, true
     );
 
-    (principal, bounds)
+    bounds
 }
 
 __build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }
