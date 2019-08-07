@@ -1842,8 +1842,8 @@ pub struct VariantDef {
     pub ctor_kind: CtorKind,
     /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
-    /// Recovered?
-    // FIXME: Needs proper doc. Recovered whom from what?
+    /// Variant is obtained as part of recovering from a syntactic error.
+    /// May be incomplete or bogus.
     pub recovered: bool,
 }
 
