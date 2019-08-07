@@ -1908,6 +1908,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     ty.tuple_fields().all(|field| ty_maybe_allows_zero_init(tcx, field))
                 }
                 // FIXME: Would be nice to also warn for `NonNull`/`NonZero*`.
+                // FIXME: *Only for `mem::uninitialized`*, we could also warn for `bool`,
+                //        `char`, and any multivariant enum.
                 // Conservative fallback.
                 _ => true,
             }
