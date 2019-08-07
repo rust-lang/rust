@@ -3,7 +3,11 @@ use rustc_mir::interpret::Memory;
 
 use crate::*;
 
-pub(crate) fn alloc_env_value<'mir, 'tcx>(bytes: &[u8], memory: &mut Memory<'mir, 'tcx, Evaluator<'tcx>>, tcx: &TyCtxt<'tcx>) -> Pointer<Tag> {
+pub(crate) fn alloc_env_value<'mir, 'tcx>(
+    bytes: &[u8],
+    memory: &mut Memory<'mir, 'tcx, Evaluator<'tcx>>,
+    tcx: &TyCtxt<'tcx>,
+) -> Pointer<Tag> {
     let length = bytes.len() as u64;
     // `+1` for the null terminator.
     let ptr = memory.allocate(
