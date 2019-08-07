@@ -33,7 +33,8 @@ use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off_t as off64_t,
               target_os = "emscripten",
               target_os = "solaris",
               target_os = "l4re",
-              target_os = "fuchsia")))]
+              target_os = "fuchsia",
+              target_os = "redox")))]
 use libc::{readdir_r as readdir64_r};
 
 pub use crate::sys_common::fs::remove_dir_all;
@@ -69,7 +70,7 @@ pub struct DirEntry {
     // on Solaris and Fuchsia because a) it uses a zero-length
     // array to store the name, b) its lifetime between readdir
     // calls is not guaranteed.
-    #[cfg(any(target_os = "solaris", target_os = "fuchsia"))]
+    #[cfg(any(target_os = "solaris", target_os = "fuchsia", target_os = "redox"))]
     name: Box<[u8]>
 }
 
@@ -216,7 +217,7 @@ impl fmt::Debug for ReadDir {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
-    #[cfg(any(target_os = "solaris", target_os = "fuchsia"))]
+    #[cfg(any(target_os = "solaris", target_os = "fuchsia", target_os = "redox"))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         use crate::slice;
 
@@ -253,7 +254,7 @@ impl Iterator for ReadDir {
         }
     }
 
-    #[cfg(not(any(target_os = "solaris", target_os = "fuchsia")))]
+    #[cfg(not(any(target_os = "solaris", target_os = "fuchsia", target_os = "redox")))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
             return None;
@@ -346,7 +347,8 @@ impl DirEntry {
               target_os = "haiku",
               target_os = "l4re",
               target_os = "fuchsia",
-              target_os = "hermit"))]
+              target_os = "hermit",
+              target_os = "redox"))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
     }
@@ -384,7 +386,8 @@ impl DirEntry {
         }
     }
     #[cfg(any(target_os = "solaris",
-              target_os = "fuchsia"))]
+              target_os = "fuchsia",
+              target_os = "redox"))]
     fn name_bytes(&self) -> &[u8] {
         &*self.name
     }

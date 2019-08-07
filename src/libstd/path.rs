@@ -317,7 +317,7 @@ unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
 
 // Detect scheme on Redox
 fn has_redox_scheme(s: &[u8]) -> bool {
-    cfg!(target_os = "redox") && s.split(|b| *b == b'/').next().unwrap_or(b"").contains(&b':')
+    cfg!(target_os = "redox") && s.contains(&b':')
 }
 
 ////////////////////////////////////////////////////////////////////////////////

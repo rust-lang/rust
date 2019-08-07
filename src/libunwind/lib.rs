@@ -24,3 +24,8 @@ cfg_if::cfg_if! {
 #[link(name = "unwind", kind = "static", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern {}
+
+#[cfg(target_os = "redox")]
+#[link(name = "gcc_eh", kind = "static-nobundle", cfg(target_feature = "crt-static"))]
+#[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
+extern {}
