@@ -1027,6 +1027,20 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
     let t = &sess.target.target;
 
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
+
+    if t.linker_flavor == LinkerFlavor::Msvc && t.target_vendor == "uwp" {
+        let link_tool = windows_registry::find_tool("x86_64-pc-windows-msvc", "link.exe")
+            .expect("no path found for link.exe");
+
+        let original_path = link_tool.path();
+        let root_lib_path = original_path.ancestors().skip(4).next().unwrap();
+        if t.arch == "aarch64".to_string() {
+            cmd.include_path(&root_lib_path.join(format!("lib\\arm64\\store")));
+        } else {
+            cmd.include_path(&root_lib_path.join(format!("lib\\{}\\store", t.arch)));
+        }
+    }
+    
     for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
         cmd.add_object(obj);
     }
