@@ -83,11 +83,11 @@ Rust syntax tree structure and parser. See
   visiting the nodes (this is double plus cool, if you understand how
   `Visitor` works, you understand the design of syntax trees).
 
-Tests for ra_syntax are mostly data-driven: `tests/data/parser` contains a bunch of `.rs`
+Tests for ra_syntax are mostly data-driven: `test_data/parser` contains subdirectories with a bunch of `.rs`
 (test vectors) and `.txt` files with corresponding syntax trees. During testing, we check
 `.rs` against `.txt`. If the `.txt` file is missing, it is created (this is how you update
 tests). Additionally, running `cargo gen-tests` will walk the grammar module and collect
-all `//test test_name` comments into files inside `tests/data` directory.
+all `// test test_name` comments into files inside `test_data/parser/inline` directory.
 
 See [#93](https://github.com/rust-analyzer/rust-analyzer/pull/93) for an example PR which
 fixes a bug in the grammar.
