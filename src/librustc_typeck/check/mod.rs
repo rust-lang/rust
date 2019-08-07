@@ -3819,6 +3819,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pointing_at_return_type
     }
 
+    fn suggest_fn_call(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expr: &hir::Expr,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) -> bool {
+        if let ty::FnDef(..) | ty::FnPtr(_) = &found.sty {
+            let sig = found.fn_sig(self.tcx);
+            let sig = self
+                .replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, &sig)
+                .0;
+            let sig = self.normalize_associated_types_in(expr.span, &sig);
+            if let Ok(_) = self.try_coerce(expr, sig.output(), expected, AllowTwoPhase::No) {
+                if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
+                    err.span_suggestion(expr.span, "use parentheses to call this function", format!(
+                        "{}({})",
+                        code,
+                        if sig.inputs().len() > 0 {
+                            "..."
+                        } else {
+                            ""
+                        }), if sig.inputs().len() > 0 {
+                            Applicability::MachineApplicable
+                        } else {
+                            Applicability::HasPlaceholders
+                        }
+                    );
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     pub fn suggest_ref_or_into(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -3833,6 +3868,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggestion,
                 Applicability::MachineApplicable,
             );
+        } else if let (ty::FnDef(def_id, ..), true) = (
+            &found.sty,
+            self.suggest_fn_call(err, expr, expected, found),
+        ) {
+            if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
+                let sp = self.sess().source_map().def_span(sp);
+                err.span_label(sp, &format!("{} defined here", found));
+            }
         } else if !self.check_for_cast(err, expr, found, expected) {
             let is_struct_pat_shorthand_field = self.is_hir_id_from_struct_pattern_shorthand_field(
                 expr.hir_id,
