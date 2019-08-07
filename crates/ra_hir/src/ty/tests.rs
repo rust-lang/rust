@@ -145,6 +145,26 @@ mod collections {
 }
 
 #[test]
+fn infer_while_let() {
+    covers!(infer_while_let);
+    let (db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+enum Option<T> { Some(T), None }
+
+fn test() {
+    let foo: Option<f32> = None;
+    while let Option::Some(x) = foo {
+        <|>x
+    }
+}
+
+"#,
+    );
+    assert_eq!("f32", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_basics() {
     assert_snapshot_matches!(
         infer(r#"

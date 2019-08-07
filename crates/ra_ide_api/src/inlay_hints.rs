@@ -414,13 +414,35 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
-    InlayHint {
-        range: [166; 170),
-        kind: TypeHint,
-        label: "CustomOption<Test>",
-    },
-]"#
+        assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r###"
+       ⋮[
+       ⋮    InlayHint {
+       ⋮        range: [166; 170),
+       ⋮        kind: TypeHint,
+       ⋮        label: "CustomOption<Test>",
+       ⋮    },
+       ⋮    InlayHint {
+       ⋮        range: [343; 347),
+       ⋮        kind: TypeHint,
+       ⋮        label: "&Test",
+       ⋮    },
+       ⋮    InlayHint {
+       ⋮        range: [401; 402),
+       ⋮        kind: TypeHint,
+       ⋮        label: "&CustomOption<u32>",
+       ⋮    },
+       ⋮    InlayHint {
+       ⋮        range: [404; 405),
+       ⋮        kind: TypeHint,
+       ⋮        label: "&u8",
+       ⋮    },
+       ⋮    InlayHint {
+       ⋮        range: [549; 550),
+       ⋮        kind: TypeHint,
+       ⋮        label: "&u32",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
