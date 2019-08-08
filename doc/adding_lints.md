@@ -368,10 +368,12 @@ output in the `stdout` part.
 
 Before submitting your PR make sure you followed all of the basic requirements:
 
+<!-- Sync this with `.github/PULL_REQUEST_TEMPLATE` -->
+
 - [ ] Followed [lint naming conventions][lint_naming]
 - [ ] Added passing UI tests (including committed `.stderr` file)
 - [ ] `cargo test` passes locally
-- [ ] Executed `util/dev update_lints`
+- [ ] Executed `./util/dev update_lints`
 - [ ] Added lint documentation
 - [ ] Run `./util/dev fmt`
 

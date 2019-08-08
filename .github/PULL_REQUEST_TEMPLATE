@@ -16,9 +16,11 @@ checked during review or continuous integration.
 - [ ] Followed [lint naming conventions][lint_naming]
 - [ ] Added passing UI tests (including committed `.stderr` file)
 - [ ] `cargo test` passes locally
-- [ ] Executed `util/dev update_lints`
+- [ ] Executed `./util/dev update_lints`
 - [ ] Added lint documentation
-- [ ] Run `cargo fmt`
+- [ ] Run `./util/dev fmt`
+
+[lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
 
 Note that you can skip the above if you are just opening a WIP PR in
 order to get feedback.
