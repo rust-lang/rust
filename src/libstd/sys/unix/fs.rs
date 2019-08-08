@@ -1,6 +1,5 @@
 use crate::os::unix::prelude::*;
 
-use crate::convert::TryInto;
 use crate::ffi::{CString, CStr, OsString, OsStr};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind, SeekFrom, IoSlice, IoSliceMut};
@@ -556,6 +555,7 @@ impl File {
 
         #[cfg(not(target_os = "android"))]
         {
+            use crate::convert::TryInto;
             let size: off64_t = size
                 .try_into()
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
