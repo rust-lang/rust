@@ -47,8 +47,4 @@ config.stamp
 Session.vim
 src/etc/dl
 .cargo
-!src/vendor/**
-/src/target/
-
 no_llvm_build
-
