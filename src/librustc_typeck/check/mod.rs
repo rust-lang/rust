@@ -3839,6 +3839,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::FnDef(..) | ty::FnPtr(_) => {}
             _ => return false,
         }
+        let hir = self.tcx.hir();
 
         let sig = found.fn_sig(self.tcx);
         let sig = self
@@ -3849,25 +3850,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (mut sugg_call, applicability) = if sig.inputs().is_empty() {
                 (String::new(), Applicability::MachineApplicable)
             } else {
-                ("...".to_owned(), Applicability::HasPlaceholders)
+                ("...".to_string(), Applicability::HasPlaceholders)
             };
             let mut msg = "call this function";
             if let ty::FnDef(def_id, ..) = found.sty {
-                match self.tcx.hir().get_if_local(def_id) {
+                match hir.get_if_local(def_id) {
                     Some(Node::Item(hir::Item {
                         node: ItemKind::Fn(.., body_id),
                         ..
                     })) => {
-                        let body = self.tcx.hir().body(*body_id);
+                        let body = hir.body(*body_id);
                         sugg_call = body.arguments.iter()
-                            .map(|arg| hir::print::to_string(
-                                hir::print::NO_ANN,
-                                |s| s.print_pat(&arg.pat),
-                            )).collect::<Vec<_>>().join(", ");
+                            .map(|arg| match &arg.pat.node {
+                                hir::PatKind::Binding(_, _, ident, None) => ident.to_string(),
+                                _ => "_".to_string(),
+                            }).collect::<Vec<_>>().join(", ");
                     }
-                    Some(Node::Ctor(hir::VariantData::Tuple(field, _))) => {
-                        sugg_call = field.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                        msg = "instatiate this tuple struct";
+                    Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
+                        sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
+                        match hir.as_local_hir_id(def_id).and_then(|hir_id| hir.def_kind(hir_id)) {
+                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
+                                msg = "instatiate this tuple variant";
+                            }
+                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, _)) => {
+                                msg = "instatiate this tuple struct";
+                            }
+                            _ => {}
+                        }
                     }
                     _ => {}
                 }
