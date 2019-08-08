@@ -8,7 +8,6 @@ use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyErro
 use crate::{Resolver, ResolutionError, Segment};
 use crate::{names_to_string, module_to_string};
 use crate::ModuleKind;
-use crate::build_reduced_graph::BuildReducedGraphVisitor;
 use crate::diagnostics::Suggestion;
 
 use errors::Applicability;
@@ -27,7 +26,7 @@ use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
 
-use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
+use syntax::ast::{Ident, Name, NodeId, CRATE_NODE_ID};
 use syntax::ext::hygiene::ExpnId;
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -153,10 +152,14 @@ impl<'a> NameResolution<'a> {
                self.single_imports.is_empty() { Some(binding) } else { None }
         })
     }
+
+    crate fn add_single_import(&mut self, directive: &'a ImportDirective<'a>) {
+        self.single_imports.insert(PtrKey(directive));
+    }
 }
 
 impl<'a> Resolver<'a> {
-    fn resolution(&self, module: Module<'a>, ident: Ident, ns: Namespace)
+    crate fn resolution(&self, module: Module<'a>, ident: Ident, ns: Namespace)
                   -> &'a RefCell<NameResolution<'a>> {
         *module.resolutions.borrow_mut().entry((ident.modern(), ns))
                .or_insert_with(|| self.arenas.alloc_name_resolution())
@@ -417,57 +420,7 @@ impl<'a> Resolver<'a> {
         // No resolution and no one else can define the name - determinate error.
         Err((Determined, Weak::No))
     }
-}
 
-impl<'a> BuildReducedGraphVisitor<'_, 'a> {
-    // Add an import directive to the current module.
-    pub fn add_import_directive(&mut self,
-                                module_path: Vec<Segment>,
-                                subclass: ImportDirectiveSubclass<'a>,
-                                span: Span,
-                                id: NodeId,
-                                item: &ast::Item,
-                                root_span: Span,
-                                root_id: NodeId,
-                                vis: ty::Visibility,
-                                parent_scope: ParentScope<'a>) {
-        let current_module = parent_scope.module;
-        let directive = self.r.arenas.alloc_import_directive(ImportDirective {
-            parent_scope,
-            module_path,
-            imported_module: Cell::new(None),
-            subclass,
-            span,
-            id,
-            use_span: item.span,
-            use_span_with_attributes: item.span_with_attributes(),
-            has_attributes: !item.attrs.is_empty(),
-            root_span,
-            root_id,
-            vis: Cell::new(vis),
-            used: Cell::new(false),
-        });
-
-        debug!("add_import_directive({:?})", directive);
-
-        self.r.indeterminate_imports.push(directive);
-        match directive.subclass {
-            SingleImport { target, type_ns_only, .. } => {
-                self.r.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-                    let mut resolution = this.resolution(current_module, target, ns).borrow_mut();
-                    resolution.single_imports.insert(PtrKey(directive));
-                });
-            }
-            // We don't add prelude imports to the globs since they only affect lexical scopes,
-            // which are not relevant to import resolution.
-            GlobImport { is_prelude: true, .. } => {}
-            GlobImport { .. } => current_module.globs.borrow_mut().push(directive),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl<'a> Resolver<'a> {
     // Given a binding and an import directive that resolves to it,
     // return the corresponding binding defined by the import directive.
     crate fn import(&self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)

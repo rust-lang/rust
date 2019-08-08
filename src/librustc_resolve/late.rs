@@ -1,9 +1,9 @@
 use GenericParameters::*;
+use RibKind::*;
 
-use crate::{path_names_to_string, AliasPossibility, BindingError, CrateLint, LexicalScopeBinding};
+use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult};
-use crate::{PathSource, ResolutionError, Resolver, Rib, RibKind, Segment, UseError};
-use crate::RibKind::*;
+use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use log::debug;
 use rustc::{bug, lint, span_bug};
@@ -62,6 +62,230 @@ impl PatternSource {
             PatternSource::Let => "let binding",
             PatternSource::For => "for binding",
             PatternSource::FnParam => "function parameter",
+        }
+    }
+}
+
+/// The rib kind restricts certain accesses,
+/// e.g. to a `Res::Local` of an outer item.
+#[derive(Copy, Clone, Debug)]
+crate enum RibKind<'a> {
+    /// No restriction needs to be applied.
+    NormalRibKind,
+
+    /// We passed through an impl or trait and are now in one of its
+    /// methods or associated types. Allow references to ty params that impl or trait
+    /// binds. Disallow any other upvars (including other ty params that are
+    /// upvars).
+    AssocItemRibKind,
+
+    /// We passed through a function definition. Disallow upvars.
+    /// Permit only those const parameters that are specified in the function's generics.
+    FnItemRibKind,
+
+    /// We passed through an item scope. Disallow upvars.
+    ItemRibKind,
+
+    /// We're in a constant item. Can't refer to dynamic stuff.
+    ConstantItemRibKind,
+
+    /// We passed through a module.
+    ModuleRibKind(Module<'a>),
+
+    /// We passed through a `macro_rules!` statement
+    MacroDefinition(DefId),
+
+    /// All bindings in this rib are type parameters that can't be used
+    /// from the default of a type parameter because they're not declared
+    /// before said type parameter. Also see the `visit_generics` override.
+    ForwardTyParamBanRibKind,
+
+    /// We forbid the use of type parameters as the types of const parameters.
+    TyParamAsConstParamTy,
+}
+
+/// A single local scope.
+///
+/// A rib represents a scope names can live in. Note that these appear in many places, not just
+/// around braces. At any place where the list of accessible names (of the given namespace)
+/// changes or a new restrictions on the name accessibility are introduced, a new rib is put onto a
+/// stack. This may be, for example, a `let` statement (because it introduces variables), a macro,
+/// etc.
+///
+/// Different [rib kinds](enum.RibKind) are transparent for different names.
+///
+/// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
+/// resolving, the name is looked up from inside out.
+#[derive(Debug)]
+crate struct Rib<'a, R = Res> {
+    pub bindings: FxHashMap<Ident, R>,
+    pub kind: RibKind<'a>,
+}
+
+impl<'a, R> Rib<'a, R> {
+    fn new(kind: RibKind<'a>) -> Rib<'a, R> {
+        Rib {
+            bindings: Default::default(),
+            kind,
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+crate enum AliasPossibility {
+    No,
+    Maybe,
+}
+
+#[derive(Copy, Clone, Debug)]
+crate enum PathSource<'a> {
+    // Type paths `Path`.
+    Type,
+    // Trait paths in bounds or impls.
+    Trait(AliasPossibility),
+    // Expression paths `path`, with optional parent context.
+    Expr(Option<&'a Expr>),
+    // Paths in path patterns `Path`.
+    Pat,
+    // Paths in struct expressions and patterns `Path { .. }`.
+    Struct,
+    // Paths in tuple struct patterns `Path(..)`.
+    TupleStruct,
+    // `m::A::B` in `<T as m::A>::B::C`.
+    TraitItem(Namespace),
+}
+
+impl<'a> PathSource<'a> {
+    fn namespace(self) -> Namespace {
+        match self {
+            PathSource::Type | PathSource::Trait(_) | PathSource::Struct => TypeNS,
+            PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct => ValueNS,
+            PathSource::TraitItem(ns) => ns,
+        }
+    }
+
+    fn defer_to_typeck(self) -> bool {
+        match self {
+            PathSource::Type | PathSource::Expr(..) | PathSource::Pat |
+            PathSource::Struct | PathSource::TupleStruct => true,
+            PathSource::Trait(_) | PathSource::TraitItem(..) => false,
+        }
+    }
+
+    fn descr_expected(self) -> &'static str {
+        match self {
+            PathSource::Type => "type",
+            PathSource::Trait(_) => "trait",
+            PathSource::Pat => "unit struct/variant or constant",
+            PathSource::Struct => "struct, variant or union type",
+            PathSource::TupleStruct => "tuple struct/variant",
+            PathSource::TraitItem(ns) => match ns {
+                TypeNS => "associated type",
+                ValueNS => "method or associated constant",
+                MacroNS => bug!("associated macro"),
+            },
+            PathSource::Expr(parent) => match parent.map(|p| &p.node) {
+                // "function" here means "anything callable" rather than `DefKind::Fn`,
+                // this is not precise but usually more helpful than just "value".
+                Some(&ExprKind::Call(..)) => "function",
+                _ => "value",
+            },
+        }
+    }
+
+    crate fn is_expected(self, res: Res) -> bool {
+        match self {
+            PathSource::Type => match res {
+                Res::Def(DefKind::Struct, _)
+                | Res::Def(DefKind::Union, _)
+                | Res::Def(DefKind::Enum, _)
+                | Res::Def(DefKind::Trait, _)
+                | Res::Def(DefKind::TraitAlias, _)
+                | Res::Def(DefKind::TyAlias, _)
+                | Res::Def(DefKind::AssocTy, _)
+                | Res::PrimTy(..)
+                | Res::Def(DefKind::TyParam, _)
+                | Res::SelfTy(..)
+                | Res::Def(DefKind::OpaqueTy, _)
+                | Res::Def(DefKind::ForeignTy, _) => true,
+                _ => false,
+            },
+            PathSource::Trait(AliasPossibility::No) => match res {
+                Res::Def(DefKind::Trait, _) => true,
+                _ => false,
+            },
+            PathSource::Trait(AliasPossibility::Maybe) => match res {
+                Res::Def(DefKind::Trait, _) => true,
+                Res::Def(DefKind::TraitAlias, _) => true,
+                _ => false,
+            },
+            PathSource::Expr(..) => match res {
+                Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
+                | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
+                | Res::Def(DefKind::Const, _)
+                | Res::Def(DefKind::Static, _)
+                | Res::Local(..)
+                | Res::Def(DefKind::Fn, _)
+                | Res::Def(DefKind::Method, _)
+                | Res::Def(DefKind::AssocConst, _)
+                | Res::SelfCtor(..)
+                | Res::Def(DefKind::ConstParam, _) => true,
+                _ => false,
+            },
+            PathSource::Pat => match res {
+                Res::Def(DefKind::Ctor(_, CtorKind::Const), _) |
+                Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) |
+                Res::SelfCtor(..) => true,
+                _ => false,
+            },
+            PathSource::TupleStruct => match res {
+                Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..) => true,
+                _ => false,
+            },
+            PathSource::Struct => match res {
+                Res::Def(DefKind::Struct, _)
+                | Res::Def(DefKind::Union, _)
+                | Res::Def(DefKind::Variant, _)
+                | Res::Def(DefKind::TyAlias, _)
+                | Res::Def(DefKind::AssocTy, _)
+                | Res::SelfTy(..) => true,
+                _ => false,
+            },
+            PathSource::TraitItem(ns) => match res {
+                Res::Def(DefKind::AssocConst, _)
+                | Res::Def(DefKind::Method, _) if ns == ValueNS => true,
+                Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
+                _ => false,
+            },
+        }
+    }
+
+    fn error_code(self, has_unexpected_resolution: bool) -> &'static str {
+        __diagnostic_used!(E0404);
+        __diagnostic_used!(E0405);
+        __diagnostic_used!(E0412);
+        __diagnostic_used!(E0422);
+        __diagnostic_used!(E0423);
+        __diagnostic_used!(E0425);
+        __diagnostic_used!(E0531);
+        __diagnostic_used!(E0532);
+        __diagnostic_used!(E0573);
+        __diagnostic_used!(E0574);
+        __diagnostic_used!(E0575);
+        __diagnostic_used!(E0576);
+        match (self, has_unexpected_resolution) {
+            (PathSource::Trait(_), true) => "E0404",
+            (PathSource::Trait(_), false) => "E0405",
+            (PathSource::Type, true) => "E0573",
+            (PathSource::Type, false) => "E0412",
+            (PathSource::Struct, true) => "E0574",
+            (PathSource::Struct, false) => "E0422",
+            (PathSource::Expr(..), true) => "E0423",
+            (PathSource::Expr(..), false) => "E0425",
+            (PathSource::Pat, true) | (PathSource::TupleStruct, true) => "E0532",
+            (PathSource::Pat, false) | (PathSource::TupleStruct, false) => "E0531",
+            (PathSource::TraitItem(..), true) => "E0575",
+            (PathSource::TraitItem(..), false) => "E0576",
         }
     }
 }
@@ -786,9 +1010,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                             this.with_self_struct_ctor_rib(item_def_id, |this| {
                                 debug!("resolve_implementation with_self_struct_ctor_rib");
                                 for impl_item in impl_items {
-                                    this.r.resolve_visibility(
-                                        &impl_item.vis, &this.parent_scope
-                                    );
                                     // We also need a new scope for the impl item type parameters.
                                     let generic_params = HasGenericParams(&impl_item.generics,
                                                                           AssocItemRibKind);

@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(crate_visibility_modifier)]
@@ -13,22 +11,19 @@
 pub use rustc::hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
-use RibKind::*;
 
 use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::lint;
-use rustc::hir::def::{
-    self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrKind, ExportMap
-};
+use rustc::hir::def::{self, DefKind, PartialRes, CtorOf, NonMacroAttrKind, ExportMap};
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::{TraitMap, GlobMap};
 use rustc::ty;
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
-use rustc::{bug, span_bug};
+use rustc::span_bug;
 
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
@@ -40,7 +35,7 @@ use syntax::symbol::{Symbol, kw, sym};
 
 use syntax::visit::{self, Visitor};
 use syntax::attr;
-use syntax::ast::{CRATE_NODE_ID, Crate, Expr, ExprKind};
+use syntax::ast::{CRATE_NODE_ID, Crate};
 use syntax::ast::{ItemKind, Path};
 use syntax::{span_err, struct_span_err, unwrap_or};
 
@@ -57,6 +52,7 @@ use rustc_data_structures::sync::Lrc;
 
 use diagnostics::{Suggestion, ImportSuggestion};
 use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
+use late::{PathSource, Rib, RibKind::*};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{InvocationData, LegacyBinding, LegacyScope};
 
@@ -199,165 +195,6 @@ enum ResolutionError<'a> {
     ConstParamDependentOnTypeParam,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum AliasPossibility {
-    No,
-    Maybe,
-}
-
-#[derive(Copy, Clone, Debug)]
-enum PathSource<'a> {
-    // Type paths `Path`.
-    Type,
-    // Trait paths in bounds or impls.
-    Trait(AliasPossibility),
-    // Expression paths `path`, with optional parent context.
-    Expr(Option<&'a Expr>),
-    // Paths in path patterns `Path`.
-    Pat,
-    // Paths in struct expressions and patterns `Path { .. }`.
-    Struct,
-    // Paths in tuple struct patterns `Path(..)`.
-    TupleStruct,
-    // `m::A::B` in `<T as m::A>::B::C`.
-    TraitItem(Namespace),
-}
-
-impl<'a> PathSource<'a> {
-    fn namespace(self) -> Namespace {
-        match self {
-            PathSource::Type | PathSource::Trait(_) | PathSource::Struct => TypeNS,
-            PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct => ValueNS,
-            PathSource::TraitItem(ns) => ns,
-        }
-    }
-
-    fn defer_to_typeck(self) -> bool {
-        match self {
-            PathSource::Type | PathSource::Expr(..) | PathSource::Pat |
-            PathSource::Struct | PathSource::TupleStruct => true,
-            PathSource::Trait(_) | PathSource::TraitItem(..) => false,
-        }
-    }
-
-    fn descr_expected(self) -> &'static str {
-        match self {
-            PathSource::Type => "type",
-            PathSource::Trait(_) => "trait",
-            PathSource::Pat => "unit struct/variant or constant",
-            PathSource::Struct => "struct, variant or union type",
-            PathSource::TupleStruct => "tuple struct/variant",
-            PathSource::TraitItem(ns) => match ns {
-                TypeNS => "associated type",
-                ValueNS => "method or associated constant",
-                MacroNS => bug!("associated macro"),
-            },
-            PathSource::Expr(parent) => match parent.map(|p| &p.node) {
-                // "function" here means "anything callable" rather than `DefKind::Fn`,
-                // this is not precise but usually more helpful than just "value".
-                Some(&ExprKind::Call(..)) => "function",
-                _ => "value",
-            },
-        }
-    }
-
-    fn is_expected(self, res: Res) -> bool {
-        match self {
-            PathSource::Type => match res {
-                Res::Def(DefKind::Struct, _)
-                | Res::Def(DefKind::Union, _)
-                | Res::Def(DefKind::Enum, _)
-                | Res::Def(DefKind::Trait, _)
-                | Res::Def(DefKind::TraitAlias, _)
-                | Res::Def(DefKind::TyAlias, _)
-                | Res::Def(DefKind::AssocTy, _)
-                | Res::PrimTy(..)
-                | Res::Def(DefKind::TyParam, _)
-                | Res::SelfTy(..)
-                | Res::Def(DefKind::OpaqueTy, _)
-                | Res::Def(DefKind::ForeignTy, _) => true,
-                _ => false,
-            },
-            PathSource::Trait(AliasPossibility::No) => match res {
-                Res::Def(DefKind::Trait, _) => true,
-                _ => false,
-            },
-            PathSource::Trait(AliasPossibility::Maybe) => match res {
-                Res::Def(DefKind::Trait, _) => true,
-                Res::Def(DefKind::TraitAlias, _) => true,
-                _ => false,
-            },
-            PathSource::Expr(..) => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
-                | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
-                | Res::Def(DefKind::Const, _)
-                | Res::Def(DefKind::Static, _)
-                | Res::Local(..)
-                | Res::Def(DefKind::Fn, _)
-                | Res::Def(DefKind::Method, _)
-                | Res::Def(DefKind::AssocConst, _)
-                | Res::SelfCtor(..)
-                | Res::Def(DefKind::ConstParam, _) => true,
-                _ => false,
-            },
-            PathSource::Pat => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Const), _) |
-                Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) |
-                Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::TupleStruct => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::Struct => match res {
-                Res::Def(DefKind::Struct, _)
-                | Res::Def(DefKind::Union, _)
-                | Res::Def(DefKind::Variant, _)
-                | Res::Def(DefKind::TyAlias, _)
-                | Res::Def(DefKind::AssocTy, _)
-                | Res::SelfTy(..) => true,
-                _ => false,
-            },
-            PathSource::TraitItem(ns) => match res {
-                Res::Def(DefKind::AssocConst, _)
-                | Res::Def(DefKind::Method, _) if ns == ValueNS => true,
-                Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
-                _ => false,
-            },
-        }
-    }
-
-    fn error_code(self, has_unexpected_resolution: bool) -> &'static str {
-        __diagnostic_used!(E0404);
-        __diagnostic_used!(E0405);
-        __diagnostic_used!(E0412);
-        __diagnostic_used!(E0422);
-        __diagnostic_used!(E0423);
-        __diagnostic_used!(E0425);
-        __diagnostic_used!(E0531);
-        __diagnostic_used!(E0532);
-        __diagnostic_used!(E0573);
-        __diagnostic_used!(E0574);
-        __diagnostic_used!(E0575);
-        __diagnostic_used!(E0576);
-        match (self, has_unexpected_resolution) {
-            (PathSource::Trait(_), true) => "E0404",
-            (PathSource::Trait(_), false) => "E0405",
-            (PathSource::Type, true) => "E0573",
-            (PathSource::Type, false) => "E0412",
-            (PathSource::Struct, true) => "E0574",
-            (PathSource::Struct, false) => "E0422",
-            (PathSource::Expr(..), true) => "E0423",
-            (PathSource::Expr(..), false) => "E0425",
-            (PathSource::Pat, true) | (PathSource::TupleStruct, true) => "E0532",
-            (PathSource::Pat, false) | (PathSource::TupleStruct, false) => "E0531",
-            (PathSource::TraitItem(..), true) => "E0575",
-            (PathSource::TraitItem(..), false) => "E0576",
-        }
-    }
-}
-
 // A minimal representation of a path segment. We use this in resolve because
 // we synthesize 'path segments' which don't have the rest of an AST or HIR
 // `PathSegment`.
@@ -459,71 +296,6 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     }
                 },
             }
-        }
-    }
-}
-
-/// The rib kind restricts certain accesses,
-/// e.g. to a `Res::Local` of an outer item.
-#[derive(Copy, Clone, Debug)]
-enum RibKind<'a> {
-    /// No restriction needs to be applied.
-    NormalRibKind,
-
-    /// We passed through an impl or trait and are now in one of its
-    /// methods or associated types. Allow references to ty params that impl or trait
-    /// binds. Disallow any other upvars (including other ty params that are
-    /// upvars).
-    AssocItemRibKind,
-
-    /// We passed through a function definition. Disallow upvars.
-    /// Permit only those const parameters that are specified in the function's generics.
-    FnItemRibKind,
-
-    /// We passed through an item scope. Disallow upvars.
-    ItemRibKind,
-
-    /// We're in a constant item. Can't refer to dynamic stuff.
-    ConstantItemRibKind,
-
-    /// We passed through a module.
-    ModuleRibKind(Module<'a>),
-
-    /// We passed through a `macro_rules!` statement
-    MacroDefinition(DefId),
-
-    /// All bindings in this rib are type parameters that can't be used
-    /// from the default of a type parameter because they're not declared
-    /// before said type parameter. Also see the `visit_generics` override.
-    ForwardTyParamBanRibKind,
-
-    /// We forbid the use of type parameters as the types of const parameters.
-    TyParamAsConstParamTy,
-}
-
-/// A single local scope.
-///
-/// A rib represents a scope names can live in. Note that these appear in many places, not just
-/// around braces. At any place where the list of accessible names (of the given namespace)
-/// changes or a new restrictions on the name accessibility are introduced, a new rib is put onto a
-/// stack. This may be, for example, a `let` statement (because it introduces variables), a macro,
-/// etc.
-///
-/// Different [rib kinds](enum.RibKind) are transparent for different names.
-///
-/// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
-/// resolving, the name is looked up from inside out.
-#[derive(Debug)]
-struct Rib<'a, R = Res> {
-    bindings: FxHashMap<Ident, R>,
-    kind: RibKind<'a>,
-}
-
-impl<'a, R> Rib<'a, R> {
-    fn new(kind: RibKind<'a>) -> Rib<'a, R> {
-        Rib {
-            bindings: Default::default(),
-            kind,
         }
     }
 }
@@ -2402,105 +2174,6 @@ impl<'a> Resolver<'a> {
         debug!("(recording res) recording {:?} for {}", resolution, node_id);
         if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
-        }
-    }
-
-    fn resolve_visibility(
-        &mut self, vis: &ast::Visibility, parent_scope: &ParentScope<'a>
-    ) -> ty::Visibility {
-        match vis.node {
-            ast::VisibilityKind::Public => ty::Visibility::Public,
-            ast::VisibilityKind::Crate(..) => {
-                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
-            }
-            ast::VisibilityKind::Inherited => {
-                ty::Visibility::Restricted(parent_scope.module.normal_ancestor_id)
-            }
-            ast::VisibilityKind::Restricted { ref path, id, .. } => {
-                // For visibilities we are not ready to provide correct implementation of "uniform
-                // paths" right now, so on 2018 edition we only allow module-relative paths for now.
-                // On 2015 edition visibilities are resolved as crate-relative by default,
-                // so we are prepending a root segment if necessary.
-                let ident = path.segments.get(0).expect("empty path in visibility").ident;
-                let crate_root = if ident.is_path_segment_keyword() {
-                    None
-                } else if ident.span.rust_2018() {
-                    let msg = "relative paths are not supported in visibilities on 2018 edition";
-                    self.session.struct_span_err(ident.span, msg)
-                        .span_suggestion(
-                            path.span,
-                            "try",
-                            format!("crate::{}", path),
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
-                    return ty::Visibility::Public;
-                } else {
-                    let ctxt = ident.span.ctxt();
-                    Some(Segment::from_ident(Ident::new(
-                        kw::PathRoot, path.span.shrink_to_lo().with_ctxt(ctxt)
-                    )))
-                };
-
-                let segments = crate_root.into_iter()
-                    .chain(path.segments.iter().map(|seg| seg.into())).collect::<Vec<_>>();
-                let expected_found_error = |this: &Self, res: Res| {
-                    let path_str = Segment::names_to_string(&segments);
-                    struct_span_err!(this.session, path.span, E0577,
-                                     "expected module, found {} `{}`", res.descr(), path_str)
-                        .span_label(path.span, "not a module").emit();
-                };
-                match self.resolve_path(
-                    &segments,
-                    Some(TypeNS),
-                    parent_scope,
-                    true,
-                    path.span,
-                    CrateLint::SimplePath(id),
-                ) {
-                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
-                        let res = module.res().expect("visibility resolved to unnamed block");
-                        self.record_partial_res(id, PartialRes::new(res));
-                        if module.is_normal() {
-                            if res == Res::Err {
-                                ty::Visibility::Public
-                            } else {
-                                let vis = ty::Visibility::Restricted(res.def_id());
-                                if self.is_accessible_from(vis, parent_scope.module) {
-                                    vis
-                                } else {
-                                    let msg =
-                                        "visibilities can only be restricted to ancestor modules";
-                                    self.session.span_err(path.span, msg);
-                                    ty::Visibility::Public
-                                }
-                            }
-                        } else {
-                            expected_found_error(self, res);
-                            ty::Visibility::Public
-                        }
-                    }
-                    PathResult::Module(..) => {
-                        self.session.span_err(path.span, "visibility must resolve to a module");
-                        ty::Visibility::Public
-                    }
-                    PathResult::NonModule(partial_res) => {
-                        expected_found_error(self, partial_res.base_res());
-                        ty::Visibility::Public
-                    }
-                    PathResult::Failed { span, label, suggestion, .. } => {
-                        self.report_error(
-                            span, ResolutionError::FailedToResolve { label, suggestion }
-                        );
-                        ty::Visibility::Public
-                    }
-                    PathResult::Indeterminate => {
-                        span_err!(self.session, path.span, E0578,
-                                  "cannot determine resolution for the visibility");
-                        ty::Visibility::Public
-                    }
-                }
-            }
         }
     }
 

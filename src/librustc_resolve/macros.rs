@@ -3,15 +3,14 @@ use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, 
 use crate::{Module, ModuleKind, NameBinding, PathResult, Segment, ToNameBinding};
 use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
 use crate::Namespace::*;
-use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
+use crate::build_reduced_graph::BuildReducedGraphVisitor;
 use crate::resolve_imports::ImportResolver;
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::DefCollector;
 use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
-use syntax::ast::{self, Ident, ItemKind};
-use syntax::attr::{self, StabilityLevel};
+use syntax::ast::{self, Ident};
+use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
 use syntax::ext::base::{self, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
@@ -113,21 +112,6 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
         }
         Symbol::intern(&path_str)
     }
-}
-
-fn proc_macro_stub(item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
-    if attr::contains_name(&item.attrs, sym::proc_macro) {
-        return Some((MacroKind::Bang, item.ident, item.span));
-    } else if attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
-        return Some((MacroKind::Attr, item.ident, item.span));
-    } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
-        if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
-            if let Some(ident) = nested_meta.ident() {
-                return Some((MacroKind::Derive, ident, ident.span));
-            }
-        }
-    }
-    None
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
@@ -886,63 +870,5 @@ impl<'a> Resolver<'a> {
         }
 
         Lrc::new(result)
-    }
-
-    pub fn define_macro(
-        &mut self, item: &ast::Item, parent_scope: &ParentScope<'a>,
-    ) -> LegacyScope<'a> {
-        let expansion = parent_scope.expansion;
-        let (ext, ident, span, is_legacy) = match &item.node {
-            ItemKind::MacroDef(def) => {
-                let ext = self.compile_macro(item, self.session.edition());
-                (ext, item.ident, item.span, def.legacy)
-            }
-            ItemKind::Fn(..) => match proc_macro_stub(item) {
-                Some((macro_kind, ident, span)) => {
-                    self.proc_macro_stubs.insert(item.id);
-                    (self.dummy_ext(macro_kind), ident, span, false)
-                }
-                None => return parent_scope.legacy,
-            }
-            _ => unreachable!(),
-        };
-
-        let def_id = self.definitions.local_def_id(item.id);
-        let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id);
-        self.macro_map.insert(def_id, ext);
-        self.local_macro_def_scopes.insert(item.id, parent_scope.module);
-
-        if is_legacy {
-            let ident = ident.modern();
-            self.macro_names.insert(ident);
-            let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
-            let vis = if is_macro_export {
-                ty::Visibility::Public
-            } else {
-                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
-            };
-            let binding = (res, vis, span, expansion).to_name_binding(self.arenas);
-            self.set_binding_parent_module(binding, parent_scope.module);
-            self.all_macros.insert(ident.name, res);
-            if is_macro_export {
-                let module = self.graph_root;
-                self.define(module, ident, MacroNS,
-                            (res, vis, span, expansion, IsMacroExport));
-            } else {
-                self.check_reserved_macro_name(ident, res);
-                self.unused_macros.insert(item.id, span);
-            }
-            LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
-                parent_legacy_scope: parent_scope.legacy, binding, ident
-            }))
-        } else {
-            let module = parent_scope.module;
-            let vis = self.resolve_visibility(&item.vis, parent_scope);
-            if vis != ty::Visibility::Public {
-                self.unused_macros.insert(item.id, span);
-            }
-            self.define(module, ident, MacroNS, (res, vis, span, expansion));
-            parent_scope.legacy
-        }
     }
 }

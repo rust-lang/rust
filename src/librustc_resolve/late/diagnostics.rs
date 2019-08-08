@@ -1,9 +1,9 @@
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{PathResult, PathSource, RibKind, Segment};
+use crate::{PathResult, PathSource, Segment};
 use crate::path_names_to_string;
 use crate::diagnostics::{add_typo_suggestion, add_module_candidates};
 use crate::diagnostics::{ImportSuggestion, TypoSuggestion};
-use crate::late::LateResolutionVisitor;
+use crate::late::{LateResolutionVisitor, RibKind};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;

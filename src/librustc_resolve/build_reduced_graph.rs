@@ -3,13 +3,13 @@
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
-use crate::macros::{InvocationData, LegacyScope};
+use crate::macros::{InvocationData, LegacyBinding, LegacyScope};
 use crate::resolve_imports::ImportDirective;
 use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 use crate::{ModuleOrUniformRoot, ParentScope, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
 use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
-use crate::{ResolutionError, Determinacy};
+use crate::{ResolutionError, Determinacy, PathResult, CrateLint};
 
 use rustc::bug;
 use rustc::hir::def::{self, *};
@@ -29,11 +29,11 @@ use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
-use syntax::ext::base::SyntaxExtension;
+use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::hygiene::ExpnId;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
-use syntax::span_err;
+use syntax::{span_err, struct_span_err};
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 
@@ -93,20 +93,249 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Name>) {
-        if !field_names.is_empty() {
-            self.field_names.insert(def_id, field_names);
+    pub fn get_module(&mut self, def_id: DefId) -> Module<'a> {
+        if def_id.krate == LOCAL_CRATE {
+            return self.module_map[&def_id]
         }
+
+        let macros_only = self.cstore.dep_kind_untracked(def_id.krate).macros_only();
+        if let Some(&module) = self.extern_module_map.get(&(def_id, macros_only)) {
+            return module;
+        }
+
+        let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
+            (self.cstore.crate_name_untracked(def_id.krate).as_interned_str(), None)
+        } else {
+            let def_key = self.cstore.def_key(def_id);
+            (def_key.disambiguated_data.data.get_opt_name().unwrap(),
+             Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })))
+        };
+
+        let kind = ModuleKind::Def(DefKind::Mod, def_id, name.as_symbol());
+        let module = self.arenas.alloc_module(ModuleData::new(
+            parent, kind, def_id, ExpnId::root(), DUMMY_SP
+        ));
+        self.extern_module_map.insert((def_id, macros_only), module);
+        module
+    }
+
+    pub fn macro_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
+        let def_id = match self.macro_defs.get(&expn_id) {
+            Some(def_id) => *def_id,
+            None => return self.graph_root,
+        };
+        if let Some(id) = self.definitions.as_local_node_id(def_id) {
+            self.local_macro_def_scopes[&id]
+        } else if self.is_builtin_macro(Some(def_id)) {
+            self.injected_crate.unwrap_or(self.graph_root)
+        } else {
+            let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
+            self.get_module(module_def_id)
+        }
+    }
+
+    crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
+        match res {
+            Res::Def(DefKind::Macro(..), def_id) => self.get_macro_by_def_id(def_id),
+            Res::NonMacroAttr(attr_kind) =>
+                Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),
+            _ => None,
+        }
+    }
+
+    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
+        if let Some(ext) = self.macro_map.get(&def_id) {
+            return Some(ext.clone());
+        }
+
+        let macro_def = match self.cstore.load_macro_untracked(def_id, &self.session) {
+            LoadedMacro::MacroDef(macro_def) => macro_def,
+            LoadedMacro::ProcMacro(ext) => return Some(ext),
+        };
+
+        let ext = self.compile_macro(&macro_def, self.cstore.crate_edition_untracked(def_id.krate));
+        self.macro_map.insert(def_id, ext.clone());
+        Some(ext)
+    }
+
+    /// Ensures that the reduced graph rooted at the given external module
+    /// is built, building it if it is not.
+    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
+        if module.populated.get() { return }
+        let def_id = module.def_id().unwrap();
+        for child in self.cstore.item_children_untracked(def_id, self.session) {
+            let child = child.map_id(|_| panic!("unexpected id"));
+            BuildReducedGraphVisitor { parent_scope: self.dummy_parent_scope(), r: self }
+                .build_reduced_graph_for_external_crate_res(module, child);
+        }
+        module.populated.set(true)
     }
 }
 
-impl<'a> BuildReducedGraphVisitor<'_, 'a> {
+pub struct BuildReducedGraphVisitor<'a, 'b> {
+    pub r: &'b mut Resolver<'a>,
+    pub parent_scope: ParentScope<'a>,
+}
+
+impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
+    fn resolve_visibility(&mut self, vis: &ast::Visibility) -> ty::Visibility {
+        let parent_scope = &self.parent_scope;
+        match vis.node {
+            ast::VisibilityKind::Public => ty::Visibility::Public,
+            ast::VisibilityKind::Crate(..) => {
+                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+            }
+            ast::VisibilityKind::Inherited => {
+                ty::Visibility::Restricted(parent_scope.module.normal_ancestor_id)
+            }
+            ast::VisibilityKind::Restricted { ref path, id, .. } => {
+                // For visibilities we are not ready to provide correct implementation of "uniform
+                // paths" right now, so on 2018 edition we only allow module-relative paths for now.
+                // On 2015 edition visibilities are resolved as crate-relative by default,
+                // so we are prepending a root segment if necessary.
+                let ident = path.segments.get(0).expect("empty path in visibility").ident;
+                let crate_root = if ident.is_path_segment_keyword() {
+                    None
+                } else if ident.span.rust_2018() {
+                    let msg = "relative paths are not supported in visibilities on 2018 edition";
+                    self.r.session.struct_span_err(ident.span, msg)
+                        .span_suggestion(
+                            path.span,
+                            "try",
+                            format!("crate::{}", path),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
+                    return ty::Visibility::Public;
+                } else {
+                    let ctxt = ident.span.ctxt();
+                    Some(Segment::from_ident(Ident::new(
+                        kw::PathRoot, path.span.shrink_to_lo().with_ctxt(ctxt)
+                    )))
+                };
+
+                let segments = crate_root.into_iter()
+                    .chain(path.segments.iter().map(|seg| seg.into())).collect::<Vec<_>>();
+                let expected_found_error = |this: &Self, res: Res| {
+                    let path_str = Segment::names_to_string(&segments);
+                    struct_span_err!(this.r.session, path.span, E0577,
+                                     "expected module, found {} `{}`", res.descr(), path_str)
+                        .span_label(path.span, "not a module").emit();
+                };
+                match self.r.resolve_path(
+                    &segments,
+                    Some(TypeNS),
+                    parent_scope,
+                    true,
+                    path.span,
+                    CrateLint::SimplePath(id),
+                ) {
+                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                        let res = module.res().expect("visibility resolved to unnamed block");
+                        self.r.record_partial_res(id, PartialRes::new(res));
+                        if module.is_normal() {
+                            if res == Res::Err {
+                                ty::Visibility::Public
+                            } else {
+                                let vis = ty::Visibility::Restricted(res.def_id());
+                                if self.r.is_accessible_from(vis, parent_scope.module) {
+                                    vis
+                                } else {
+                                    let msg =
+                                        "visibilities can only be restricted to ancestor modules";
+                                    self.r.session.span_err(path.span, msg);
+                                    ty::Visibility::Public
+                                }
+                            }
+                        } else {
+                            expected_found_error(self, res);
+                            ty::Visibility::Public
+                        }
+                    }
+                    PathResult::Module(..) => {
+                        self.r.session.span_err(path.span, "visibility must resolve to a module");
+                        ty::Visibility::Public
+                    }
+                    PathResult::NonModule(partial_res) => {
+                        expected_found_error(self, partial_res.base_res());
+                        ty::Visibility::Public
+                    }
+                    PathResult::Failed { span, label, suggestion, .. } => {
+                        self.r.report_error(
+                            span, ResolutionError::FailedToResolve { label, suggestion }
+                        );
+                        ty::Visibility::Public
+                    }
+                    PathResult::Indeterminate => {
+                        span_err!(self.r.session, path.span, E0578,
+                                  "cannot determine resolution for the visibility");
+                        ty::Visibility::Public
+                    }
+                }
+            }
+        }
+    }
+
+    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Name>) {
+        if !field_names.is_empty() {
+            self.r.field_names.insert(def_id, field_names);
+        }
+    }
+
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
         // If any statements are items, we need to create an anonymous module
         block.stmts.iter().any(|statement| match statement.node {
             StmtKind::Item(_) | StmtKind::Mac(_) => true,
             _ => false,
         })
+    }
+
+    // Add an import directive to the current module.
+    fn add_import_directive(
+        &mut self,
+        module_path: Vec<Segment>,
+        subclass: ImportDirectiveSubclass<'a>,
+        span: Span,
+        id: NodeId,
+        item: &ast::Item,
+        root_span: Span,
+        root_id: NodeId,
+        vis: ty::Visibility,
+    ) {
+        let parent_scope = &self.parent_scope;
+        let current_module = parent_scope.module;
+        let directive = self.r.arenas.alloc_import_directive(ImportDirective {
+            parent_scope: parent_scope.clone(),
+            module_path,
+            imported_module: Cell::new(None),
+            subclass,
+            span,
+            id,
+            use_span: item.span,
+            use_span_with_attributes: item.span_with_attributes(),
+            has_attributes: !item.attrs.is_empty(),
+            root_span,
+            root_id,
+            vis: Cell::new(vis),
+            used: Cell::new(false),
+        });
+
+        debug!("add_import_directive({:?})", directive);
+
+        self.r.indeterminate_imports.push(directive);
+        match directive.subclass {
+            SingleImport { target, type_ns_only, .. } => {
+                self.r.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
+                    let mut resolution = this.resolution(current_module, target, ns).borrow_mut();
+                    resolution.add_single_import(directive);
+                });
+            }
+            // We don't add prelude imports to the globs since they only affect lexical scopes,
+            // which are not relevant to import resolution.
+            GlobImport { is_prelude: true, .. } => {}
+            GlobImport { .. } => current_module.globs.borrow_mut().push(directive),
+            _ => unreachable!(),
+        }
     }
 
     fn build_reduced_graph_for_use_tree(
@@ -117,7 +346,6 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
         parent_prefix: &[Segment],
         nested: bool,
         // The whole `use` item
-        parent_scope: &ParentScope<'a>,
         item: &Item,
         vis: ty::Visibility,
         root_span: Span,
@@ -250,7 +478,6 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                     root_span,
                     item.id,
                     vis,
-                    parent_scope.clone(),
                 );
             }
             ast::UseTreeKind::Glob => {
@@ -267,7 +494,6 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                     root_span,
                     item.id,
                     vis,
-                    parent_scope.clone(),
                 );
             }
             ast::UseTreeKind::Nested(ref items) => {
@@ -298,7 +524,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                         // This particular use tree
                         tree, id, &prefix, true,
                         // The whole `use` item
-                        parent_scope, item, vis, root_span,
+                        item, vis, root_span,
                     );
                 }
 
@@ -322,7 +548,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                         // This particular use tree
                         &tree, id, &prefix, true,
                         // The whole `use` item
-                        parent_scope, item, ty::Visibility::Invisible, root_span,
+                        item, ty::Visibility::Invisible, root_span,
                     );
                 }
             }
@@ -331,12 +557,12 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item) {
-        let parent_scope = &self.parent_scope.clone();
+        let parent_scope = &self.parent_scope;
         let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
         let ident = item.ident.gensym_if_underscore();
         let sp = item.span;
-        let vis = self.r.resolve_visibility(&item.vis, parent_scope);
+        let vis = self.resolve_visibility(&item.vis);
 
         match item.node {
             ItemKind::Use(ref use_tree) => {
@@ -344,7 +570,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                     // This particular use tree
                     use_tree, item.id, &[], false,
                     // The whole `use` item
-                    parent_scope, item, vis, use_tree.span,
+                    item, vis, use_tree.span,
                 );
             }
 
@@ -376,13 +602,13 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                     }
                 }
 
-                let used = self.process_legacy_macro_imports(item, module, parent_scope);
+                let used = self.process_legacy_macro_imports(item, module);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
                 let directive = self.r.arenas.alloc_import_directive(ImportDirective {
                     root_id: item.id,
                     id: item.id,
-                    parent_scope: parent_scope.clone(),
+                    parent_scope: self.parent_scope.clone(),
                     imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
                     subclass: ImportDirectiveSubclass::ExternCrate {
                         source: orig_name,
@@ -459,7 +685,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
 
                 // Functions introducing procedural macros reserve a slot
                 // in the macro namespace as well (see #52225).
-                self.r.define_macro(item, parent_scope);
+                self.define_macro(item);
             }
 
             // These items live in the type namespace.
@@ -515,14 +741,14 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
 
                 // Record field names for error reporting.
                 let field_names = struct_def.fields().iter().filter_map(|field| {
-                    let field_vis = self.r.resolve_visibility(&field.vis, parent_scope);
+                    let field_vis = self.resolve_visibility(&field.vis);
                     if ctor_vis.is_at_least(field_vis, &*self.r) {
                         ctor_vis = field_vis;
                     }
                     field.ident.map(|ident| ident.name)
                 }).collect();
                 let item_def_id = self.r.definitions.local_def_id(item.id);
-                self.r.insert_field_names(item_def_id, field_names);
+                self.insert_field_names(item_def_id, field_names);
 
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
@@ -542,14 +768,18 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
 
                 // Record field names for error reporting.
                 let field_names = vdata.fields().iter().filter_map(|field| {
-                    self.r.resolve_visibility(&field.vis, parent_scope);
+                    self.resolve_visibility(&field.vis);
                     field.ident.map(|ident| ident.name)
                 }).collect();
                 let item_def_id = self.r.definitions.local_def_id(item.id);
-                self.r.insert_field_names(item_def_id, field_names);
+                self.insert_field_names(item_def_id, field_names);
             }
 
-            ItemKind::Impl(..) => {}
+            ItemKind::Impl(.., ref impl_items) => {
+                for impl_item in impl_items {
+                    self.resolve_visibility(&impl_item.vis);
+                }
+            }
 
             ItemKind::Trait(..) => {
                 let def_id = self.r.definitions.local_def_id(item.id);
@@ -619,7 +849,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
         };
         let parent = self.parent_scope.module;
         let expansion = self.parent_scope.expansion;
-        let vis = self.r.resolve_visibility(&item.vis, &self.parent_scope);
+        let vis = self.resolve_visibility(&item.vis);
         self.r.define(parent, item.ident, ns, (res, vis, item.span, expansion));
     }
 
@@ -636,9 +866,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
             self.parent_scope.module = module; // Descend into the block.
         }
     }
-}
 
-impl<'a> Resolver<'a> {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_res(
         &mut self,
@@ -654,12 +882,12 @@ impl<'a> Resolver<'a> {
         match res {
             Res::Def(kind @ DefKind::Mod, def_id)
             | Res::Def(kind @ DefKind::Enum, def_id) => {
-                let module = self.new_module(parent,
+                let module = self.r.new_module(parent,
                                              ModuleKind::Def(kind, def_id, ident.name),
                                              def_id,
                                              expansion,
                                              span);
-                self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
+                self.r.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
             }
             Res::Def(DefKind::Variant, _)
             | Res::Def(DefKind::TyAlias, _)
@@ -668,140 +896,61 @@ impl<'a> Resolver<'a> {
             | Res::Def(DefKind::TraitAlias, _)
             | Res::PrimTy(..)
             | Res::ToolMod => {
-                self.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
+                self.r.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
             }
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::Static, _)
             | Res::Def(DefKind::Const, _)
             | Res::Def(DefKind::Ctor(CtorOf::Variant, ..), _) => {
-                self.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
+                self.r.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
             }
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
-                self.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
+                self.r.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
 
                 if let Some(struct_def_id) =
-                        self.cstore.def_key(def_id).parent
+                        self.r.cstore.def_key(def_id).parent
                             .map(|index| DefId { krate: def_id.krate, index: index }) {
-                    self.struct_constructors.insert(struct_def_id, (res, vis));
+                    self.r.struct_constructors.insert(struct_def_id, (res, vis));
                 }
             }
             Res::Def(DefKind::Trait, def_id) => {
                 let module_kind = ModuleKind::Def(DefKind::Trait, def_id, ident.name);
-                let module = self.new_module(parent,
+                let module = self.r.new_module(parent,
                                              module_kind,
                                              parent.normal_ancestor_id,
                                              expansion,
                                              span);
-                self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
+                self.r.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
 
-                for child in self.cstore.item_children_untracked(def_id, self.session) {
+                for child in self.r.cstore.item_children_untracked(def_id, self.r.session) {
                     let res = child.res.map_id(|_| panic!("unexpected id"));
                     let ns = if let Res::Def(DefKind::AssocTy, _) = res {
                         TypeNS
                     } else { ValueNS };
-                    self.define(module, child.ident, ns,
+                    self.r.define(module, child.ident, ns,
                                 (res, ty::Visibility::Public, DUMMY_SP, expansion));
 
-                    if self.cstore.associated_item_cloned_untracked(child.res.def_id())
+                    if self.r.cstore.associated_item_cloned_untracked(child.res.def_id())
                            .method_has_self_argument {
-                        self.has_self.insert(res.def_id());
+                        self.r.has_self.insert(res.def_id());
                     }
                 }
                 module.populated.set(true);
             }
             Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
-                self.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
+                self.r.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
 
                 // Record field names for error reporting.
-                let field_names = self.cstore.struct_field_names_untracked(def_id);
+                let field_names = self.r.cstore.struct_field_names_untracked(def_id);
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
-                self.define(parent, ident, MacroNS, (res, vis, DUMMY_SP, expansion));
+                self.r.define(parent, ident, MacroNS, (res, vis, DUMMY_SP, expansion));
             }
             _ => bug!("unexpected resolution: {:?}", res)
         }
     }
 
-    pub fn get_module(&mut self, def_id: DefId) -> Module<'a> {
-        if def_id.krate == LOCAL_CRATE {
-            return self.module_map[&def_id]
-        }
-
-        let macros_only = self.cstore.dep_kind_untracked(def_id.krate).macros_only();
-        if let Some(&module) = self.extern_module_map.get(&(def_id, macros_only)) {
-            return module;
-        }
-
-        let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
-            (self.cstore.crate_name_untracked(def_id.krate).as_interned_str(), None)
-        } else {
-            let def_key = self.cstore.def_key(def_id);
-            (def_key.disambiguated_data.data.get_opt_name().unwrap(),
-             Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })))
-        };
-
-        let kind = ModuleKind::Def(DefKind::Mod, def_id, name.as_symbol());
-        let module = self.arenas.alloc_module(ModuleData::new(
-            parent, kind, def_id, ExpnId::root(), DUMMY_SP
-        ));
-        self.extern_module_map.insert((def_id, macros_only), module);
-        module
-    }
-
-    pub fn macro_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
-        let def_id = match self.macro_defs.get(&expn_id) {
-            Some(def_id) => *def_id,
-            None => return self.graph_root,
-        };
-        if let Some(id) = self.definitions.as_local_node_id(def_id) {
-            self.local_macro_def_scopes[&id]
-        } else if self.is_builtin_macro(Some(def_id)) {
-            self.injected_crate.unwrap_or(self.graph_root)
-        } else {
-            let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
-            self.get_module(module_def_id)
-        }
-    }
-
-    crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
-        match res {
-            Res::Def(DefKind::Macro(..), def_id) => self.get_macro_by_def_id(def_id),
-            Res::NonMacroAttr(attr_kind) =>
-                Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),
-            _ => None,
-        }
-    }
-
-    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
-        if let Some(ext) = self.macro_map.get(&def_id) {
-            return Some(ext.clone());
-        }
-
-        let macro_def = match self.cstore.load_macro_untracked(def_id, &self.session) {
-            LoadedMacro::MacroDef(macro_def) => macro_def,
-            LoadedMacro::ProcMacro(ext) => return Some(ext),
-        };
-
-        let ext = self.compile_macro(&macro_def, self.cstore.crate_edition_untracked(def_id.krate));
-        self.macro_map.insert(def_id, ext.clone());
-        Some(ext)
-    }
-
-    /// Ensures that the reduced graph rooted at the given external module
-    /// is built, building it if it is not.
-    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
-        if module.populated.get() { return }
-        let def_id = module.def_id().unwrap();
-        for child in self.cstore.item_children_untracked(def_id, self.session) {
-            let child = child.map_id(|_| panic!("unexpected id"));
-            self.build_reduced_graph_for_external_crate_res(module, child);
-        }
-        module.populated.set(true)
-    }
-}
-
-impl<'a> BuildReducedGraphVisitor<'_, 'a> {
     fn legacy_import_macro(&mut self,
                            name: Name,
                            binding: &'a NameBinding<'a>,
@@ -816,8 +965,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
     }
 
     /// Returns `true` if we should consider the underlying `extern crate` to be used.
-    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>,
-                                    parent_scope: &ParentScope<'a>) -> bool {
+    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>) -> bool {
         let mut import_all = None;
         let mut single_imports = Vec::new();
         for attr in &item.attrs {
@@ -852,11 +1000,11 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
             }
         }
 
-        let arenas = self.r.arenas;
-        let macro_use_directive = |span| arenas.alloc_import_directive(ImportDirective {
+        let macro_use_directive =
+                |this: &Self, span| this.r.arenas.alloc_import_directive(ImportDirective {
             root_id: item.id,
             id: item.id,
-            parent_scope: parent_scope.clone(),
+            parent_scope: this.parent_scope.clone(),
             imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
             subclass: ImportDirectiveSubclass::MacroUse,
             use_span_with_attributes: item.span_with_attributes(),
@@ -869,9 +1017,9 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
             used: Cell::new(false),
         });
 
-        let allow_shadowing = parent_scope.expansion == ExpnId::root();
+        let allow_shadowing = self.parent_scope.expansion == ExpnId::root();
         if let Some(span) = import_all {
-            let directive = macro_use_directive(span);
+            let directive = macro_use_directive(self, span);
             self.r.potentially_unused_imports.push(directive);
             module.for_each_child(|ident, ns, binding| if ns == MacroNS {
                 let imported_binding = self.r.import(binding, directive);
@@ -883,12 +1031,12 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     MacroNS,
-                    parent_scope,
+                    &self.parent_scope,
                     false,
                     ident.span,
                 );
                 if let Ok(binding) = result {
-                    let directive = macro_use_directive(ident.span);
+                    let directive = macro_use_directive(self, ident.span);
                     self.r.potentially_unused_imports.push(directive);
                     let imported_binding = self.r.import(binding, directive);
                     self.legacy_import_macro(ident.name, imported_binding,
@@ -924,15 +1072,8 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
 
         false
     }
-}
 
-pub struct BuildReducedGraphVisitor<'a, 'b> {
-    pub r: &'a mut Resolver<'b>,
-    pub parent_scope: ParentScope<'b>,
-}
-
-impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
-    fn visit_invoc(&mut self, id: ast::NodeId) -> &'b InvocationData<'b> {
+    fn visit_invoc(&mut self, id: ast::NodeId) -> &'a InvocationData<'a> {
         let invoc_id = id.placeholder_to_expn_id();
 
         self.parent_scope.module.unresolved_invocations.borrow_mut().insert(invoc_id);
@@ -947,11 +1088,83 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
         invocation_data
     }
+
+    fn proc_macro_stub(item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
+        if attr::contains_name(&item.attrs, sym::proc_macro) {
+            return Some((MacroKind::Bang, item.ident, item.span));
+        } else if attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
+            return Some((MacroKind::Attr, item.ident, item.span));
+        } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
+            if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
+                if let Some(ident) = nested_meta.ident() {
+                    return Some((MacroKind::Derive, ident, ident.span));
+                }
+            }
+        }
+        None
+    }
+
+    fn define_macro(&mut self, item: &ast::Item) -> LegacyScope<'a> {
+        let parent_scope = &self.parent_scope;
+        let expansion = parent_scope.expansion;
+        let (ext, ident, span, is_legacy) = match &item.node {
+            ItemKind::MacroDef(def) => {
+                let ext = self.r.compile_macro(item, self.r.session.edition());
+                (ext, item.ident, item.span, def.legacy)
+            }
+            ItemKind::Fn(..) => match Self::proc_macro_stub(item) {
+                Some((macro_kind, ident, span)) => {
+                    self.r.proc_macro_stubs.insert(item.id);
+                    (self.r.dummy_ext(macro_kind), ident, span, false)
+                }
+                None => return parent_scope.legacy,
+            }
+            _ => unreachable!(),
+        };
+
+        let def_id = self.r.definitions.local_def_id(item.id);
+        let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id);
+        self.r.macro_map.insert(def_id, ext);
+        self.r.local_macro_def_scopes.insert(item.id, parent_scope.module);
+
+        if is_legacy {
+            let ident = ident.modern();
+            self.r.macro_names.insert(ident);
+            let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
+            let vis = if is_macro_export {
+                ty::Visibility::Public
+            } else {
+                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+            };
+            let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
+            self.r.set_binding_parent_module(binding, parent_scope.module);
+            self.r.all_macros.insert(ident.name, res);
+            if is_macro_export {
+                let module = self.r.graph_root;
+                self.r.define(module, ident, MacroNS,
+                            (res, vis, span, expansion, IsMacroExport));
+            } else {
+                self.r.check_reserved_macro_name(ident, res);
+                self.r.unused_macros.insert(item.id, span);
+            }
+            LegacyScope::Binding(self.r.arenas.alloc_legacy_binding(LegacyBinding {
+                parent_legacy_scope: parent_scope.legacy, binding, ident
+            }))
+        } else {
+            let module = parent_scope.module;
+            let vis = self.resolve_visibility(&item.vis);
+            if vis != ty::Visibility::Public {
+                self.r.unused_macros.insert(item.id, span);
+            }
+            self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
+            self.parent_scope.legacy
+        }
+    }
 }
 
 macro_rules! method {
     ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
-        fn $visit(&mut self, node: &'a $ty) {
+        fn $visit(&mut self, node: &'b $ty) {
             if let $invoc(..) = node.node {
                 self.visit_invoc(node.id);
             } else {
@@ -961,16 +1174,16 @@ macro_rules! method {
     }
 }
 
-impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item);
     method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr);
     method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat);
     method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
 
-    fn visit_item(&mut self, item: &'a Item) {
+    fn visit_item(&mut self, item: &'b Item) {
         let macro_use = match item.node {
             ItemKind::MacroDef(..) => {
-                self.parent_scope.legacy = self.r.define_macro(item, &self.parent_scope);
+                self.parent_scope.legacy = self.define_macro(item);
                 return
             }
             ItemKind::Mac(..) => {
@@ -991,7 +1204,7 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
+    fn visit_stmt(&mut self, stmt: &'b ast::Stmt) {
         if let ast::StmtKind::Mac(..) = stmt.node {
             self.parent_scope.legacy = LegacyScope::Invocation(self.visit_invoc(stmt.id));
         } else {
@@ -999,7 +1212,7 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &'b ForeignItem) {
         if let ForeignItemKind::Macro(_) = foreign_item.node {
             self.visit_invoc(foreign_item.id);
             return;
@@ -1009,7 +1222,7 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         visit::walk_foreign_item(self, foreign_item);
     }
 
-    fn visit_block(&mut self, block: &'a Block) {
+    fn visit_block(&mut self, block: &'b Block) {
         let orig_current_module = self.parent_scope.module;
         let orig_current_legacy_scope = self.parent_scope.legacy;
         self.build_reduced_graph_for_block(block);
@@ -1018,7 +1231,7 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         self.parent_scope.legacy = orig_current_legacy_scope;
     }
 
-    fn visit_trait_item(&mut self, item: &'a TraitItem) {
+    fn visit_trait_item(&mut self, item: &'b TraitItem) {
         let parent = self.parent_scope.module;
 
         if let TraitItemKind::Macro(_) = item.node {
@@ -1059,7 +1272,7 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'b ast::Attribute) {
         if !attr.is_sugared_doc && is_builtin_attr(attr) {
             self.parent_scope.module.builtin_attrs.borrow_mut().push((
                 attr.path.segments[0].ident, self.parent_scope.clone()
