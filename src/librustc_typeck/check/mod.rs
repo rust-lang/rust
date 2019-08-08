@@ -3833,19 +3833,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .0;
             let sig = self.normalize_associated_types_in(expr.span, &sig);
             if let Ok(_) = self.try_coerce(expr, sig.output(), expected, AllowTwoPhase::No) {
-                if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
-                    err.span_suggestion(expr.span, "use parentheses to call this function", format!(
-                        "{}({})",
-                        code,
-                        if sig.inputs().len() > 0 {
-                            "..."
-                        } else {
-                            ""
-                        }), if sig.inputs().len() > 0 {
-                            Applicability::MachineApplicable
-                        } else {
-                            Applicability::HasPlaceholders
+                let (mut sugg_call, applicability) = if sig.inputs().is_empty() {
+                    (String::new(), Applicability::MachineApplicable)
+                } else {
+                    ("...".to_owned(), Applicability::HasPlaceholders)
+                };
+                let mut msg = "call this function";
+                if let ty::FnDef(def_id, ..) = found.sty {
+                    match self.tcx.hir().get_if_local(def_id) {
+                        Some(Node::Item(hir::Item {
+                            node: ItemKind::Fn(.., body_id),
+                            ..
+                        })) => {
+                            let body = self.tcx.hir().body(*body_id);
+                            sugg_call = body.arguments.iter()
+                                .map(|arg| hir::print::to_string(
+                                    hir::print::NO_ANN,
+                                    |s| s.print_pat(&arg.pat),
+                                )).collect::<Vec<_>>().join(", ");
                         }
+                        Some(Node::Ctor(hir::VariantData::Tuple(field, _))) => {
+                            sugg_call = field.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
+                            msg = "instatiate this tuple struct";
+                        }
+                        _ => {}
+                    }
+                };
+                if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
+                    err.span_suggestion(
+                        expr.span,
+                        &format!("use parentheses to {}", msg),
+                        format!("{}({})", code, sugg_call),
+                        applicability,
                     );
                     return true;
                 }
