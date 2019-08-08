@@ -1,0 +1,32 @@
+version: 2
+jobs:
+  "build-1804":
+    resource_class: xlarge
+    docker:
+      - image: wsmoses/enzyme:1804
+
+    steps:
+      - checkout
+      - run:
+          name: cmake
+          command: |
+            mkdir build
+            cd build
+            cmake ../llvm -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TESTS=ON -DLLVM_ENABLE_ASSERTIONS=ON -DLLVM_ENABLE_LTO=OFF -DLLVM_USE_LINKER=gold -DLLVM_PARALLEL_COMPILE_JOBS=2 -DLLVM_PARALLEL_LINK_JOBS=1 -DLLVM_BINUTILS_INCDIR=/usr/include -DLLVM_LIT_ARGS="-sv -j 2" -DLLVM_ENABLE_PROJECTS=clang
+      - run:
+          name: make
+          command: |
+            cd build
+            make -j2
+      - run:
+          name: test
+          no_output_timeout: 1200
+          command: |
+            cd build
+            ls lib
+            make check-all -j2
+workflows:
+  version: 2
+  build:
+    jobs:
+      - "build-1804"
