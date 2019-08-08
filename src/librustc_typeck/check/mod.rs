@@ -3711,8 +3711,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(fn_span) = fn_span {
                             err.span_label(
                                 fn_span,
-                                "this function implicitly returns `()` as its body has no tail \
-                                 or `return` expression",
+                                "implicitly returns `()` as its body has no tail or `return` \
+                                 expression",
                             );
                         }
                     }, false);
@@ -3880,10 +3880,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
                         match hir.as_local_hir_id(def_id).and_then(|hir_id| hir.def_kind(hir_id)) {
                             Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
-                                msg = "instatiate this tuple variant";
+                                msg = "instantiate this tuple variant";
                             }
                             Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, _)) => {
-                                msg = "instatiate this tuple struct";
+                                msg = "instantiate this tuple struct";
                             }
                             _ => {}
                         }
