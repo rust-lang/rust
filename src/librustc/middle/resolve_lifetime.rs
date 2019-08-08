@@ -5,6 +5,8 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
+// ignore-tidy-filelength
+
 use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::Map;
@@ -591,6 +593,14 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 }
                 match lifetime.name {
                     LifetimeName::Implicit => {
+                        // For types like `dyn Foo`, we should
+                        // generate a special form of elided.
+                        span_bug!(
+                            ty.span,
+                            "object-lifetime-default expected, not implict",
+                        );
+                    }
+                    LifetimeName::ImplicitObjectLifetimeDefault => {
                         // If the user does not write *anything*, we
                         // use the object lifetime defaulting
                         // rules. So e.g., `Box<dyn Debug>` becomes
@@ -2642,6 +2652,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         }
                         hir::LifetimeName::Param(_) | hir::LifetimeName::Implicit => {
                             self.resolve_lifetime_ref(lt);
+                        }
+                        hir::LifetimeName::ImplicitObjectLifetimeDefault => {
+                            self.tcx.sess.delay_span_bug(
+                                lt.span,
+                                "lowering generated `ImplicitObjectLifetimeDefault` \
+                                 outside of an object type",
+                            )
                         }
                         hir::LifetimeName::Error => {
                             // No need to do anything, error already reported.

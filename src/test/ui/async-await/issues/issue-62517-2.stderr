@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `(): Alpha<(dyn Object + 'static)>` is not satisfied
+  --> $DIR/issue-62517-2.rs:13:32
+   |
+LL | async fn foo<'a>(_: &'a ()) -> impl Alpha<dyn Object> {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^^ the trait `Alpha<(dyn Object + 'static)>` is not implemented for `()`
+   |
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1560,6 +1560,11 @@ impl<'a> LoweringContext<'a> {
                         }
                     }
                     hir::LifetimeName::Param(_) => lifetime.name,
+
+                    // Refers to some other lifetime that is "in
+                    // scope" within the type.
+                    hir::LifetimeName::ImplicitObjectLifetimeDefault => return,
+
                     hir::LifetimeName::Error | hir::LifetimeName::Static => return,
                 };
 
@@ -2550,6 +2555,12 @@ impl<'a> LoweringContext<'a> {
                     hir::LifetimeName::Implicit
                         | hir::LifetimeName::Underscore
                         | hir::LifetimeName::Static => hir::ParamName::Plain(lt.name.ident()),
+                    hir::LifetimeName::ImplicitObjectLifetimeDefault => {
+                        span_bug!(
+                            param.ident.span,
+                            "object-lifetime-default should not occur here",
+                        );
+                    }
                     hir::LifetimeName::Error => ParamName::Error,
                 };
 
@@ -3293,7 +3304,13 @@ impl<'a> LoweringContext<'a> {
             AnonymousLifetimeMode::PassThrough => {}
         }
 
-        self.new_implicit_lifetime(span)
+        let r = hir::Lifetime {
+            hir_id: self.next_id(),
+            span,
+            name: hir::LifetimeName::ImplicitObjectLifetimeDefault,
+        };
+        debug!("elided_dyn_bound: r={:?}", r);
+        r
     }
 
     fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
