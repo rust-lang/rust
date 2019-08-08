@@ -2052,9 +2052,23 @@ impl<'a> Parser<'a> {
                 while self.token != token::CloseDelim(token::Paren) {
                     es.push(match self.parse_expr() {
                         Ok(es) => es,
-                        Err(err) => {
+                        Err(mut err) => {
                             // recover from parse error in tuple list
-                            return Ok(self.recover_seq_parse_error(token::Paren, lo, Err(err)));
+                            match self.token.kind {
+                                token::Ident(name, false)
+                                if name == kw::Underscore && self.look_ahead(1, |t| {
+                                    t == &token::Comma
+                                }) => {
+                                    // Special-case handling of `Foo<(_, _, _)>`
+                                    err.emit();
+                                    let sp = self.token.span;
+                                    self.bump();
+                                    self.mk_expr(sp, ExprKind::Err, ThinVec::new())
+                                }
+                                _ => return Ok(
+                                    self.recover_seq_parse_error(token::Paren, lo, Err(err)),
+                                ),
+                            }
                         }
                     });
                     recovered = self.expect_one_of(
@@ -2456,9 +2470,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.
-    fn parse_dot_or_call_expr(&mut self,
-                                  already_parsed_attrs: Option<ThinVec<Attribute>>)
-                                  -> PResult<'a, P<Expr>> {
+    fn parse_dot_or_call_expr(
+        &mut self,
+        already_parsed_attrs: Option<ThinVec<Attribute>>,
+    ) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
 
         let b = self.parse_bottom_expr();
@@ -2466,16 +2481,16 @@ impl<'a> Parser<'a> {
         self.parse_dot_or_call_expr_with(b, span, attrs)
     }
 
-    fn parse_dot_or_call_expr_with(&mut self,
-                                       e0: P<Expr>,
-                                       lo: Span,
-                                       mut attrs: ThinVec<Attribute>)
-                                       -> PResult<'a, P<Expr>> {
+    fn parse_dot_or_call_expr_with(
+        &mut self,
+        e0: P<Expr>,
+        lo: Span,
+        mut attrs: ThinVec<Attribute>,
+    ) -> PResult<'a, P<Expr>> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
         // structure
-        self.parse_dot_or_call_expr_with_(e0, lo)
-        .map(|expr|
+        self.parse_dot_or_call_expr_with_(e0, lo).map(|expr|
             expr.map(|mut expr| {
                 attrs.extend::<Vec<_>>(expr.attrs.into());
                 expr.attrs = attrs;
@@ -2483,10 +2498,7 @@ impl<'a> Parser<'a> {
                     ExprKind::If(..) if !expr.attrs.is_empty() => {
                         // Just point to the first attribute in there...
                         let span = expr.attrs[0].span;
-
-                        self.span_err(span,
-                            "attributes are not yet allowed on `if` \
-                            expressions");
+                        self.span_err(span, "attributes are not yet allowed on `if` expressions");
                     }
                     _ => {}
                 }
@@ -2624,7 +2636,24 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
-        self.parse_paren_comma_seq(|p| p.parse_expr()).map(|(r, _)| r)
+        self.parse_paren_comma_seq(|p| {
+            match p.parse_expr() {
+                Ok(expr) => Ok(expr),
+                Err(mut err) => match p.token.kind {
+                    token::Ident(name, false)
+                    if name == kw::Underscore && p.look_ahead(1, |t| {
+                        t == &token::Comma
+                    }) => {
+                        // Special-case handling of `foo(_, _, _)`
+                        err.emit();
+                        let sp = p.token.span;
+                        p.bump();
+                        Ok(p.mk_expr(sp, ExprKind::Err, ThinVec::new()))
+                    }
+                    _ => Err(err),
+                },
+            }
+        }).map(|(r, _)| r)
     }
 
     crate fn process_potential_macro_variable(&mut self) {
@@ -2806,9 +2835,10 @@ impl<'a> Parser<'a> {
     /// This parses an expression accounting for associativity and precedence of the operators in
     /// the expression.
     #[inline]
-    fn parse_assoc_expr(&mut self,
-                            already_parsed_attrs: Option<ThinVec<Attribute>>)
-                            -> PResult<'a, P<Expr>> {
+    fn parse_assoc_expr(
+        &mut self,
+        already_parsed_attrs: Option<ThinVec<Attribute>>,
+    ) -> PResult<'a, P<Expr>> {
         self.parse_assoc_expr_with(0, already_parsed_attrs.into())
     }
 
