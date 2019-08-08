@@ -680,7 +680,7 @@ pub(crate) mod builtin {
     ///
     /// This macro should be used when a crate uses a conditional compilation strategy to provide
     /// better error messages for erroneous conditions. It's the compiler-level form of [`panic!`],
-    /// which emits an error at *runtime*, rather than during compilation.
+    /// but emits an error during *compilation* rather than at *runtime*.
     ///
     /// # Examples
     ///
