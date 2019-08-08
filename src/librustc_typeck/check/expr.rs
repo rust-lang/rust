@@ -550,18 +550,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     assert!(e_ty.is_unit());
                     let ty = coerce.expected_ty();
                     coerce.coerce_forced_unit(self, &cause, &mut |err| {
-                        let msg = "give it a value of the expected type";
-                        let label = destination.label
-                            .map(|l| format!(" {}", l.ident))
-                            .unwrap_or_else(String::new);
-                        let sugg = format!("break{} {}", label, match ty.sty {
+                        let val = match ty.sty {
                             ty::Bool => "true",
                             ty::Char => "'a'",
                             ty::Int(_) | ty::Uint(_) => "42",
                             ty::Float(_) => "3.14159",
                             ty::Error | ty::Never => return,
                             _ => "value",
-                        });
+                        };
+                        let msg = "give it a value of the expected type";
+                        let label = destination.label
+                            .map(|l| format!(" {}", l.ident))
+                            .unwrap_or_else(String::new);
+                        let sugg = format!("break{} {}", label, val);
                         err.span_suggestion(expr.span, msg, sugg, Applicability::HasPlaceholders);
                     }, false);
                 }
