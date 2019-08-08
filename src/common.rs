@@ -116,6 +116,74 @@ pub fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
     }
 }
 
+pub fn type_min_max_value<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (i64, i64) {
+    use syntax::ast::UintTy::*;
+    use syntax::ast::IntTy::*;
+
+    let uint_usize_cvt = |uint| {
+        match uint {
+            UintTy::Usize => match pointer_ty(tcx) {
+                types::I16 => UintTy::U16,
+                types::I32 => UintTy::U32,
+                types::I64 => UintTy::U64,
+                ty => unreachable!("{:?}", ty),
+            }
+            _ => uint,
+        }
+    };
+
+    let int_isize_cvt = |int| {
+        match int {
+            IntTy::Isize => match pointer_ty(tcx) {
+                types::I16 => IntTy::I16,
+                types::I32 => IntTy::I32,
+                types::I64 => IntTy::I64,
+                ty => unreachable!("{:?}", ty),
+            }
+            _ => int,
+        }
+    };
+
+    let min = match ty.sty {
+        ty::Uint(uint) => match uint_usize_cvt(uint) {
+            U8 | U16 | U32 | U64 => 0i64,
+            U128 => unimplemented!(),
+            Usize => unreachable!(),
+        }
+        ty::Int(int) => match int_isize_cvt(int) {
+            I8 => i8::min_value() as i64,
+            I16 => i16::min_value() as i64,
+            I32 => i32::min_value() as i64,
+            I64 => i64::min_value(),
+            I128 => unimplemented!(),
+            Isize => unreachable!(),
+        }
+        _ => unreachable!(),
+    };
+
+    let max = match ty.sty {
+        ty::Uint(uint) => match uint_usize_cvt(uint) {
+            U8 => u8::max_value() as i64,
+            U16 => u16::max_value() as i64,
+            U32 => u32::max_value() as i64,
+            U64 => u64::max_value() as i64,
+            U128 => unimplemented!(),
+            Usize => unreachable!(),
+        }
+        ty::Int(int) => match int_isize_cvt(int) {
+            I8 => i8::max_value() as i64,
+            I16 => i16::max_value() as i64,
+            I32 => i32::max_value() as i64,
+            I64 => i64::max_value(),
+            I128 => unimplemented!(),
+            Isize => unreachable!(),
+        }
+        _ => unreachable!(),
+    };
+
+    (min, max)
+}
+
 pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
     // FIXME use a reference to `CodegenCx` instead of `tcx`, `module` and `constants` and `caches`
     pub tcx: TyCtxt<'tcx>,
