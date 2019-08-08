@@ -541,7 +541,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
         self.r.resolve_path_with_ribs(
-            path, opt_ns, &self.parent_scope, record_used, path_span, crate_lint, &self.ribs
+            path, opt_ns, &self.parent_scope, record_used, path_span, crate_lint, Some(&self.ribs)
         )
     }
 

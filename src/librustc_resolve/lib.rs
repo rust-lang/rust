@@ -987,26 +987,12 @@ impl<'a, 'b> ty::DefIdTree for &'a Resolver<'b> {
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
-    fn resolve_ast_path(
-        &mut self,
-        path: &ast::Path,
-        is_value: bool,
-    ) -> Res {
-        match self.resolve_ast_path_inner(path, is_value) {
-            Ok(r) => r,
-            Err((span, error)) => {
-                self.report_error(span, error);
-                Res::Err
-            }
-        }
-    }
-
     fn resolve_str_path(
         &mut self,
         span: Span,
         crate_root: Option<Symbol>,
         components: &[Symbol],
-        is_value: bool
+        ns: Namespace,
     ) -> (ast::Path, Res) {
         let root = if crate_root.is_some() {
             kw::PathRoot
@@ -1025,7 +1011,14 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
             segments,
         };
 
-        let res = self.resolve_ast_path(&path, is_value);
+        let parent_scope = &self.dummy_parent_scope();
+        let res = match self.resolve_ast_path(&path, ns, parent_scope) {
+            Ok(res) => res,
+            Err((span, error)) => {
+                self.report_error(span, error);
+                Res::Err
+            }
+        };
         (path, res)
     }
 
@@ -1738,7 +1731,7 @@ impl<'a> Resolver<'a> {
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
         self.resolve_path_with_ribs(
-            path, opt_ns, parent_scope, record_used, path_span, crate_lint, &Default::default()
+            path, opt_ns, parent_scope, record_used, path_span, crate_lint, None
         )
     }
 
@@ -1750,7 +1743,7 @@ impl<'a> Resolver<'a> {
         record_used: bool,
         path_span: Span,
         crate_lint: CrateLint,
-        ribs: &PerNS<Vec<Rib<'a>>>,
+        ribs: Option<&PerNS<Vec<Rib<'a>>>>,
     ) -> PathResult<'a> {
         let mut module = None;
         let mut allow_super = true;
@@ -1864,16 +1857,17 @@ impl<'a> Resolver<'a> {
                 self.resolve_ident_in_module(
                     module, ident, ns, parent_scope, record_used, path_span
                 )
-            } else if opt_ns.is_none() || opt_ns == Some(MacroNS) {
-                assert!(ns == TypeNS);
-                let scopes = if opt_ns.is_none() { ScopeSet::Import(ns) } else { ScopeSet::Module };
+            } else if ribs.is_none() || opt_ns.is_none() || opt_ns == Some(MacroNS) {
+                // FIXME: Decouple the import property from `ScopeSet`.
+                let is_import = opt_ns.is_none() || ns != TypeNS;
+                let scopes = if is_import { ScopeSet::Import(ns) } else { ScopeSet::Module };
                 self.early_resolve_ident_in_lexical_scope(ident, scopes, parent_scope, record_used,
                                                           record_used, path_span)
             } else {
                 let record_used_id =
                     if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };
                 match self.resolve_ident_in_lexical_scope(
-                    ident, ns, parent_scope, record_used_id, path_span, &ribs[ns]
+                    ident, ns, parent_scope, record_used_id, path_span, &ribs.unwrap()[ns]
                 ) {
                     // we found a locally-imported or available item/module
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
@@ -2639,8 +2633,10 @@ impl<'a> Resolver<'a> {
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occurred.
-    pub fn resolve_str_path_error(&mut self, span: Span, path_str: &str, is_value: bool)
-        -> Result<(ast::Path, Res), ()> {
+    // FIXME(Manishearth): intra-doc links won't get warned of epoch changes.
+    pub fn resolve_str_path_error(
+        &mut self, span: Span, path_str: &str, ns: Namespace, module_id: NodeId
+    ) -> Result<(ast::Path, Res), ()> {
         let path = if path_str.starts_with("::") {
             ast::Path {
                 span,
@@ -2661,28 +2657,31 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        let res = self.resolve_ast_path_inner(&path, is_value).map_err(|_| ())?;
+        let module = self.block_map.get(&module_id).copied().unwrap_or_else(|| {
+            let def_id = self.definitions.local_def_id(module_id);
+            self.module_map.get(&def_id).copied().unwrap_or(self.graph_root)
+        });
+        let parent_scope = &ParentScope { module, ..self.dummy_parent_scope() };
+        let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
         Ok((path, res))
     }
 
-    /// Like `resolve_ast_path`, but takes a callback in case there was an error.
-    fn resolve_ast_path_inner(
+    // Resolve a path passed from rustdoc or HIR lowering.
+    fn resolve_ast_path(
         &mut self,
         path: &ast::Path,
-        is_value: bool,
+        ns: Namespace,
+        parent_scope: &ParentScope<'a>,
     ) -> Result<Res, (Span, ResolutionError<'a>)> {
-        let namespace = if is_value { ValueNS } else { TypeNS };
-        let span = path.span;
-        let path = Segment::from_path(&path);
-        // FIXME(Manishearth): intra-doc links won't get warned of epoch changes.
-        let parent_scope = &self.dummy_parent_scope();
-        match self.resolve_path(&path, Some(namespace), parent_scope, true, span, CrateLint::No) {
+        match self.resolve_path(
+            &Segment::from_path(path), Some(ns), parent_scope, true, path.span, CrateLint::No
+        ) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                 Ok(module.res().unwrap()),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
                 Ok(path_res.base_res()),
             PathResult::NonModule(..) => {
-                Err((span, ResolutionError::FailedToResolve {
+                Err((path.span, ResolutionError::FailedToResolve {
                     label: String::from("type-relative paths are not supported in this context"),
                     suggestion: None,
                 }))
