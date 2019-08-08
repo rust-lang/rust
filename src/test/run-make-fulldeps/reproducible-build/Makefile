@@ -10,7 +10,8 @@ all:  \
 	link_paths \
 	remap_paths \
 	different_source_dirs \
-	extern_flags
+	extern_flags \
+	fat_lto
 
 smoke:
 	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
@@ -76,3 +77,11 @@ extern_flags:
 		--extern reproducible_build_aux=$(TMPDIR)/libbar.rlib \
 		--crate-type rlib
 	cmp "$(TMPDIR)/libreproducible_build.rlib" "$(TMPDIR)/libfoo.rlib" || exit 1
+
+fat_lto:
+	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
+	$(RUSTC) reproducible-build-aux.rs
+	$(RUSTC) reproducible-build.rs -C lto=fat
+	cp $(TMPDIR)/reproducible-build $(TMPDIR)/reproducible-build-a
+	$(RUSTC) reproducible-build.rs -C lto=fat
+	cmp "$(TMPDIR)/reproducible-build-a" "$(TMPDIR)/reproducible-build" || exit 1
