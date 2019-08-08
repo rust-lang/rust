@@ -51,4 +51,30 @@ fn main() {
         Some(_) => false,
         None => true,
     };
+
+    let _ = match None::<()> {
+        Some(_) => false,
+        None => true,
+    };
+
+    let _ = if let Ok(_) = Ok::<usize, ()>(4) { true } else { false };
+
+    let _ = does_something();
+    let _ = returns_unit();
+}
+
+fn does_something() -> bool {
+    if let Ok(_) = Ok::<i32, i32>(4) {
+        true
+    } else {
+        false
+    }
+}
+
+fn returns_unit() {
+    if let Ok(_) = Ok::<i32, i32>(4) {
+        true
+    } else {
+        false
+    };
 }
