@@ -594,8 +594,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let x = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
                 let exp = this.read_scalar(args[1])?.to_i32()?;
-                // FIXME: We should use cmath if there are any imprecisions.
-                let n = x * 2.0f64.powi(exp);
+                extern {
+                    fn ldexp(x: f64, n: i32) -> f64;
+                }
+                let n = unsafe { ldexp(x, exp) };
                 this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
             }
 
