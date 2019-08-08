@@ -41,9 +41,20 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     let m = p.start();
     p.bump();
     if flavor.type_required() {
+        // test self_param_outer_attr
+        // fn f(#[must_use] self) {}
+        attributes::outer_attributes(p);
         opt_self_param(p);
     }
-    while !p.at(EOF) && !p.at(ket) && !(flavor.type_required() && p.at(T![...])) {
+    while !p.at(EOF) && !p.at(ket) {
+        // test param_outer_arg
+        // fn f(#[attr1] pat: Type) {}
+        attributes::outer_attributes(p);
+
+        if flavor.type_required() && p.at(T![...]) {
+            break;
+        }
+
         if !p.at_ts(VALUE_PARAMETER_FIRST) {
             p.error("expected value parameter");
             break;

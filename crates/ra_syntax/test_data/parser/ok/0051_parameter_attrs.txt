@@ -1,0 +1,477 @@
+SOURCE_FILE@[0; 519)
+  FN_DEF@[0; 37)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 5)
+      IDENT@[3; 5) "g1"
+    PARAM_LIST@[5; 34)
+      L_PAREN@[5; 6) "("
+      ATTR@[6; 14)
+        POUND@[6; 7) "#"
+        TOKEN_TREE@[7; 14)
+          L_BRACK@[7; 8) "["
+          IDENT@[8; 13) "attr1"
+          R_BRACK@[13; 14) "]"
+      WHITESPACE@[14; 15) " "
+      ATTR@[15; 23)
+        POUND@[15; 16) "#"
+        TOKEN_TREE@[16; 23)
+          L_BRACK@[16; 17) "["
+          IDENT@[17; 22) "attr2"
+          R_BRACK@[22; 23) "]"
+      WHITESPACE@[23; 24) " "
+      PARAM@[24; 33)
+        BIND_PAT@[24; 27)
+          NAME@[24; 27)
+            IDENT@[24; 27) "pat"
+        COLON@[27; 28) ":"
+        WHITESPACE@[28; 29) " "
+        PATH_TYPE@[29; 33)
+          PATH@[29; 33)
+            PATH_SEGMENT@[29; 33)
+              NAME_REF@[29; 33)
+                IDENT@[29; 33) "Type"
+      R_PAREN@[33; 34) ")"
+    WHITESPACE@[34; 35) " "
+    BLOCK@[35; 37)
+      L_CURLY@[35; 36) "{"
+      R_CURLY@[36; 37) "}"
+  WHITESPACE@[37; 38) "\n"
+  FN_DEF@[38; 62)
+    FN_KW@[38; 40) "fn"
+    WHITESPACE@[40; 41) " "
+    NAME@[41; 43)
+      IDENT@[41; 43) "g2"
+    PARAM_LIST@[43; 59)
+      L_PAREN@[43; 44) "("
+      ATTR@[44; 52)
+        POUND@[44; 45) "#"
+        TOKEN_TREE@[45; 52)
+          L_BRACK@[45; 46) "["
+          IDENT@[46; 51) "attr1"
+          R_BRACK@[51; 52) "]"
+      WHITESPACE@[52; 53) " "
+      PARAM@[53; 58)
+        BIND_PAT@[53; 54)
+          NAME@[53; 54)
+            IDENT@[53; 54) "x"
+        COLON@[54; 55) ":"
+        WHITESPACE@[55; 56) " "
+        PATH_TYPE@[56; 58)
+          PATH@[56; 58)
+            PATH_SEGMENT@[56; 58)
+              NAME_REF@[56; 58)
+                IDENT@[56; 58) "u8"
+      R_PAREN@[58; 59) ")"
+    WHITESPACE@[59; 60) " "
+    BLOCK@[60; 62)
+      L_CURLY@[60; 61) "{"
+      R_CURLY@[61; 62) "}"
+  WHITESPACE@[62; 64) "\n\n"
+  EXTERN_BLOCK@[64; 128)
+    ABI@[64; 74)
+      EXTERN_KW@[64; 70) "extern"
+      WHITESPACE@[70; 71) " "
+      STRING@[71; 74) "\"C\""
+    WHITESPACE@[74; 75) " "
+    EXTERN_ITEM_LIST@[75; 128)
+      L_CURLY@[75; 76) "{"
+      WHITESPACE@[76; 77) " "
+      FN_DEF@[77; 126)
+        FN_KW@[77; 79) "fn"
+        WHITESPACE@[79; 80) " "
+        NAME@[80; 86)
+          IDENT@[80; 86) "printf"
+        PARAM_LIST@[86; 118)
+          L_PAREN@[86; 87) "("
+          PARAM@[87; 104)
+            BIND_PAT@[87; 93)
+              NAME@[87; 93)
+                IDENT@[87; 93) "format"
+            COLON@[93; 94) ":"
+            WHITESPACE@[94; 95) " "
+            POINTER_TYPE@[95; 104)
+              STAR@[95; 96) "*"
+              CONST_KW@[96; 101) "const"
+              WHITESPACE@[101; 102) " "
+              PATH_TYPE@[102; 104)
+                PATH@[102; 104)
+                  PATH_SEGMENT@[102; 104)
+                    NAME_REF@[102; 104)
+                      IDENT@[102; 104) "i8"
+          COMMA@[104; 105) ","
+          WHITESPACE@[105; 106) " "
+          ATTR@[106; 113)
+            POUND@[106; 107) "#"
+            TOKEN_TREE@[107; 113)
+              L_BRACK@[107; 108) "["
+              IDENT@[108; 112) "attr"
+              R_BRACK@[112; 113) "]"
+          WHITESPACE@[113; 114) " "
+          DOTDOTDOT@[114; 117) "..."
+          R_PAREN@[117; 118) ")"
+        WHITESPACE@[118; 119) " "
+        RET_TYPE@[119; 125)
+          THIN_ARROW@[119; 121) "->"
+          WHITESPACE@[121; 122) " "
+          PATH_TYPE@[122; 125)
+            PATH@[122; 125)
+              PATH_SEGMENT@[122; 125)
+                NAME_REF@[122; 125)
+                  IDENT@[122; 125) "i32"
+        SEMI@[125; 126) ";"
+      WHITESPACE@[126; 127) " "
+      R_CURLY@[127; 128) "}"
+  WHITESPACE@[128; 130) "\n\n"
+  FN_DEF@[130; 172)
+    FN_KW@[130; 132) "fn"
+    WHITESPACE@[132; 133) " "
+    NAME@[133; 136)
+      IDENT@[133; 136) "foo"
+    TYPE_PARAM_LIST@[136; 168)
+      L_ANGLE@[136; 137) "<"
+      TYPE_PARAM@[137; 167)
+        NAME@[137; 138)
+          IDENT@[137; 138) "F"
+        COLON@[138; 139) ":"
+        WHITESPACE@[139; 140) " "
+        TYPE_BOUND_LIST@[140; 167)
+          TYPE_BOUND@[140; 167)
+            PATH_TYPE@[140; 167)
+              PATH@[140; 167)
+                PATH_SEGMENT@[140; 167)
+                  NAME_REF@[140; 145)
+                    IDENT@[140; 145) "FnMut"
+                  PARAM_LIST@[145; 167)
+                    L_PAREN@[145; 146) "("
+                    ATTR@[146; 153)
+                      POUND@[146; 147) "#"
+                      TOKEN_TREE@[147; 153)
+                        L_BRACK@[147; 148) "["
+                        IDENT@[148; 152) "attr"
+                        R_BRACK@[152; 153) "]"
+                    WHITESPACE@[153; 154) " "
+                    PARAM@[154; 166)
+                      REFERENCE_TYPE@[154; 166)
+                        AMP@[154; 155) "&"
+                        MUT_KW@[155; 158) "mut"
+                        WHITESPACE@[158; 159) " "
+                        PATH_TYPE@[159; 166)
+                          PATH@[159; 166)
+                            PATH_SEGMENT@[159; 166)
+                              NAME_REF@[159; 162)
+                                IDENT@[159; 162) "Foo"
+                              TYPE_ARG_LIST@[162; 166)
+                                L_ANGLE@[162; 163) "<"
+                                LIFETIME_ARG@[163; 165)
+                                  LIFETIME@[163; 165) "\'a"
+                                R_ANGLE@[165; 166) ">"
+                    R_PAREN@[166; 167) ")"
+      R_ANGLE@[167; 168) ">"
+    PARAM_LIST@[168; 170)
+      L_PAREN@[168; 169) "("
+      R_PAREN@[169; 170) ")"
+    BLOCK@[170; 172)
+      L_CURLY@[170; 171) "{"
+      R_CURLY@[171; 172) "}"
+  WHITESPACE@[172; 174) "\n\n"
+  TRAIT_DEF@[174; 236)
+    TRAIT_KW@[174; 179) "trait"
+    WHITESPACE@[179; 180) " "
+    NAME@[180; 183)
+      IDENT@[180; 183) "Foo"
+    WHITESPACE@[183; 184) " "
+    ITEM_LIST@[184; 236)
+      L_CURLY@[184; 185) "{"
+      WHITESPACE@[185; 190) "\n    "
+      FN_DEF@[190; 234)
+        FN_KW@[190; 192) "fn"
+        WHITESPACE@[192; 193) " "
+        NAME@[193; 196)
+          IDENT@[193; 196) "bar"
+        PARAM_LIST@[196; 233)
+          L_PAREN@[196; 197) "("
+          ATTR@[197; 204)
+            POUND@[197; 198) "#"
+            TOKEN_TREE@[198; 204)
+              L_BRACK@[198; 199) "["
+              IDENT@[199; 203) "attr"
+              R_BRACK@[203; 204) "]"
+          WHITESPACE@[204; 205) " "
+          PARAM@[205; 211)
+            PLACEHOLDER_PAT@[205; 206)
+              UNDERSCORE@[205; 206) "_"
+            COLON@[206; 207) ":"
+            WHITESPACE@[207; 208) " "
+            PATH_TYPE@[208; 211)
+              PATH@[208; 211)
+                PATH_SEGMENT@[208; 211)
+                  NAME_REF@[208; 211)
+                    IDENT@[208; 211) "u64"
+          COMMA@[211; 212) ","
+          WHITESPACE@[212; 213) " "
+          ATTR@[213; 221)
+            POUND@[213; 214) "#"
+            WHITESPACE@[214; 215) " "
+            TOKEN_TREE@[215; 221)
+              L_BRACK@[215; 216) "["
+              IDENT@[216; 220) "attr"
+              R_BRACK@[220; 221) "]"
+          WHITESPACE@[221; 222) " "
+          PARAM@[222; 232)
+            BIND_PAT@[222; 227)
+              MUT_KW@[222; 225) "mut"
+              WHITESPACE@[225; 226) " "
+              NAME@[226; 227)
+                IDENT@[226; 227) "x"
+            COLON@[227; 228) ":"
+            WHITESPACE@[228; 229) " "
+            PATH_TYPE@[229; 232)
+              PATH@[229; 232)
+                PATH_SEGMENT@[229; 232)
+                  NAME_REF@[229; 232)
+                    IDENT@[229; 232) "i32"
+          R_PAREN@[232; 233) ")"
+        SEMI@[233; 234) ";"
+      WHITESPACE@[234; 235) "\n"
+      R_CURLY@[235; 236) "}"
+  WHITESPACE@[236; 238) "\n\n"
+  IMPL_BLOCK@[238; 519)
+    IMPL_KW@[238; 242) "impl"
+    WHITESPACE@[242; 243) " "
+    PATH_TYPE@[243; 244)
+      PATH@[243; 244)
+        PATH_SEGMENT@[243; 244)
+          NAME_REF@[243; 244)
+            IDENT@[243; 244) "S"
+    WHITESPACE@[244; 245) " "
+    ITEM_LIST@[245; 519)
+      L_CURLY@[245; 246) "{"
+      WHITESPACE@[246; 252) "\n     "
+      FN_DEF@[252; 277)
+        FN_KW@[252; 254) "fn"
+        WHITESPACE@[254; 255) " "
+        NAME@[255; 256)
+          IDENT@[255; 256) "f"
+        PARAM_LIST@[256; 274)
+          L_PAREN@[256; 257) "("
+          ATTR@[257; 268)
+            POUND@[257; 258) "#"
+            TOKEN_TREE@[258; 268)
+              L_BRACK@[258; 259) "["
+              IDENT@[259; 267) "must_use"
+              R_BRACK@[267; 268) "]"
+          WHITESPACE@[268; 269) " "
+          SELF_PARAM@[269; 273)
+            SELF_KW@[269; 273) "self"
+          R_PAREN@[273; 274) ")"
+        WHITESPACE@[274; 275) " "
+        BLOCK@[275; 277)
+          L_CURLY@[275; 276) "{"
+          R_CURLY@[276; 277) "}"
+      WHITESPACE@[277; 283) "\n     "
+      FN_DEF@[283; 305)
+        FN_KW@[283; 285) "fn"
+        WHITESPACE@[285; 286) " "
+        NAME@[286; 288)
+          IDENT@[286; 288) "g1"
+        PARAM_LIST@[288; 302)
+          L_PAREN@[288; 289) "("
+          ATTR@[289; 296)
+            POUND@[289; 290) "#"
+            TOKEN_TREE@[290; 296)
+              L_BRACK@[290; 291) "["
+              IDENT@[291; 295) "attr"
+              R_BRACK@[295; 296) "]"
+          WHITESPACE@[296; 297) " "
+          SELF_PARAM@[297; 301)
+            SELF_KW@[297; 301) "self"
+          R_PAREN@[301; 302) ")"
+        WHITESPACE@[302; 303) " "
+        BLOCK@[303; 305)
+          L_CURLY@[303; 304) "{"
+          R_CURLY@[304; 305) "}"
+      WHITESPACE@[305; 311) "\n     "
+      FN_DEF@[311; 334)
+        FN_KW@[311; 313) "fn"
+        WHITESPACE@[313; 314) " "
+        NAME@[314; 316)
+          IDENT@[314; 316) "g2"
+        PARAM_LIST@[316; 331)
+          L_PAREN@[316; 317) "("
+          ATTR@[317; 324)
+            POUND@[317; 318) "#"
+            TOKEN_TREE@[318; 324)
+              L_BRACK@[318; 319) "["
+              IDENT@[319; 323) "attr"
+              R_BRACK@[323; 324) "]"
+          WHITESPACE@[324; 325) " "
+          SELF_PARAM@[325; 330)
+            AMP@[325; 326) "&"
+            SELF_KW@[326; 330) "self"
+          R_PAREN@[330; 331) ")"
+        WHITESPACE@[331; 332) " "
+        BLOCK@[332; 334)
+          L_CURLY@[332; 333) "{"
+          R_CURLY@[333; 334) "}"
+      WHITESPACE@[334; 340) "\n     "
+      FN_DEF@[340; 371)
+        FN_KW@[340; 342) "fn"
+        WHITESPACE@[342; 343) " "
+        NAME@[343; 345)
+          IDENT@[343; 345) "g3"
+        TYPE_PARAM_LIST@[345; 349)
+          L_ANGLE@[345; 346) "<"
+          LIFETIME_PARAM@[346; 348)
+            LIFETIME@[346; 348) "\'a"
+          R_ANGLE@[348; 349) ">"
+        PARAM_LIST@[349; 368)
+          L_PAREN@[349; 350) "("
+          ATTR@[350; 357)
+            POUND@[350; 351) "#"
+            TOKEN_TREE@[351; 357)
+              L_BRACK@[351; 352) "["
+              IDENT@[352; 356) "attr"
+              R_BRACK@[356; 357) "]"
+          WHITESPACE@[357; 358) " "
+          SELF_PARAM@[358; 367)
+            AMP@[358; 359) "&"
+            MUT_KW@[359; 362) "mut"
+            WHITESPACE@[362; 363) " "
+            SELF_KW@[363; 367) "self"
+          R_PAREN@[367; 368) ")"
+        WHITESPACE@[368; 369) " "
+        BLOCK@[369; 371)
+          L_CURLY@[369; 370) "{"
+          R_CURLY@[370; 371) "}"
+      WHITESPACE@[371; 377) "\n     "
+      FN_DEF@[377; 407)
+        FN_KW@[377; 379) "fn"
+        WHITESPACE@[379; 380) " "
+        NAME@[380; 382)
+          IDENT@[380; 382) "g4"
+        TYPE_PARAM_LIST@[382; 386)
+          L_ANGLE@[382; 383) "<"
+          LIFETIME_PARAM@[383; 385)
+            LIFETIME@[383; 385) "\'a"
+          R_ANGLE@[385; 386) ">"
+        PARAM_LIST@[386; 404)
+          L_PAREN@[386; 387) "("
+          ATTR@[387; 394)
+            POUND@[387; 388) "#"
+            TOKEN_TREE@[388; 394)
+              L_BRACK@[388; 389) "["
+              IDENT@[389; 393) "attr"
+              R_BRACK@[393; 394) "]"
+          WHITESPACE@[394; 395) " "
+          SELF_PARAM@[395; 403)
+            AMP@[395; 396) "&"
+            LIFETIME@[396; 398) "\'a"
+            WHITESPACE@[398; 399) " "
+            SELF_KW@[399; 403) "self"
+          R_PAREN@[403; 404) ")"
+        WHITESPACE@[404; 405) " "
+        BLOCK@[405; 407)
+          L_CURLY@[405; 406) "{"
+          R_CURLY@[406; 407) "}"
+      WHITESPACE@[407; 413) "\n     "
+      FN_DEF@[413; 447)
+        FN_KW@[413; 415) "fn"
+        WHITESPACE@[415; 416) " "
+        NAME@[416; 418)
+          IDENT@[416; 418) "g5"
+        TYPE_PARAM_LIST@[418; 422)
+          L_ANGLE@[418; 419) "<"
+          LIFETIME_PARAM@[419; 421)
+            LIFETIME@[419; 421) "\'a"
+          R_ANGLE@[421; 422) ">"
+        PARAM_LIST@[422; 444)
+          L_PAREN@[422; 423) "("
+          ATTR@[423; 430)
+            POUND@[423; 424) "#"
+            TOKEN_TREE@[424; 430)
+              L_BRACK@[424; 425) "["
+              IDENT@[425; 429) "attr"
+              R_BRACK@[429; 430) "]"
+          WHITESPACE@[430; 431) " "
+          SELF_PARAM@[431; 443)
+            AMP@[431; 432) "&"
+            LIFETIME@[432; 434) "\'a"
+            WHITESPACE@[434; 435) " "
+            MUT_KW@[435; 438) "mut"
+            WHITESPACE@[438; 439) " "
+            SELF_KW@[439; 443) "self"
+          R_PAREN@[443; 444) ")"
+        WHITESPACE@[444; 445) " "
+        BLOCK@[445; 447)
+          L_CURLY@[445; 446) "{"
+          R_CURLY@[446; 447) "}"
+      WHITESPACE@[447; 453) "\n     "
+      FN_DEF@[453; 480)
+        FN_KW@[453; 455) "fn"
+        WHITESPACE@[455; 456) " "
+        NAME@[456; 457)
+          IDENT@[456; 457) "c"
+        PARAM_LIST@[457; 477)
+          L_PAREN@[457; 458) "("
+          ATTR@[458; 465)
+            POUND@[458; 459) "#"
+            TOKEN_TREE@[459; 465)
+              L_BRACK@[459; 460) "["
+              IDENT@[460; 464) "attr"
+              R_BRACK@[464; 465) "]"
+          WHITESPACE@[465; 466) " "
+          SELF_PARAM@[466; 476)
+            SELF_KW@[466; 470) "self"
+            COLON@[470; 471) ":"
+            WHITESPACE@[471; 472) " "
+            PATH_TYPE@[472; 476)
+              PATH@[472; 476)
+                PATH_SEGMENT@[472; 476)
+                  NAME_REF@[472; 476)
+                    IDENT@[472; 476) "Self"
+          R_PAREN@[476; 477) ")"
+        WHITESPACE@[477; 478) " "
+        BLOCK@[478; 480)
+          L_CURLY@[478; 479) "{"
+          R_CURLY@[479; 480) "}"
+      WHITESPACE@[480; 486) "\n     "
+      FN_DEF@[486; 517)
+        FN_KW@[486; 488) "fn"
+        WHITESPACE@[488; 489) " "
+        NAME@[489; 490)
+          IDENT@[489; 490) "d"
+        PARAM_LIST@[490; 514)
+          L_PAREN@[490; 491) "("
+          ATTR@[491; 498)
+            POUND@[491; 492) "#"
+            TOKEN_TREE@[492; 498)
+              L_BRACK@[492; 493) "["
+              IDENT@[493; 497) "attr"
+              R_BRACK@[497; 498) "]"
+          WHITESPACE@[498; 499) " "
+          SELF_PARAM@[499; 513)
+            SELF_KW@[499; 503) "self"
+            COLON@[503; 504) ":"
+            WHITESPACE@[504; 505) " "
+            PATH_TYPE@[505; 513)
+              PATH@[505; 513)
+                PATH_SEGMENT@[505; 513)
+                  NAME_REF@[505; 507)
+                    IDENT@[505; 507) "Rc"
+                  TYPE_ARG_LIST@[507; 513)
+                    L_ANGLE@[507; 508) "<"
+                    TYPE_ARG@[508; 512)
+                      PATH_TYPE@[508; 512)
+                        PATH@[508; 512)
+                          PATH_SEGMENT@[508; 512)
+                            NAME_REF@[508; 512)
+                              IDENT@[508; 512) "Self"
+                    R_ANGLE@[512; 513) ">"
+          R_PAREN@[513; 514) ")"
+        WHITESPACE@[514; 515) " "
+        BLOCK@[515; 517)
+          L_CURLY@[515; 516) "{"
+          R_CURLY@[516; 517) "}"
+      WHITESPACE@[517; 518) "\n"
+      R_CURLY@[518; 519) "}"

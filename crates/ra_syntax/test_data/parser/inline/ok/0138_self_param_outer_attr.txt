@@ -1,0 +1,23 @@
+SOURCE_FILE@[0; 26)
+  FN_DEF@[0; 25)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 4)
+      IDENT@[3; 4) "f"
+    PARAM_LIST@[4; 22)
+      L_PAREN@[4; 5) "("
+      ATTR@[5; 16)
+        POUND@[5; 6) "#"
+        TOKEN_TREE@[6; 16)
+          L_BRACK@[6; 7) "["
+          IDENT@[7; 15) "must_use"
+          R_BRACK@[15; 16) "]"
+      WHITESPACE@[16; 17) " "
+      SELF_PARAM@[17; 21)
+        SELF_KW@[17; 21) "self"
+      R_PAREN@[21; 22) ")"
+    WHITESPACE@[22; 23) " "
+    BLOCK@[23; 25)
+      L_CURLY@[23; 24) "{"
+      R_CURLY@[24; 25) "}"
+  WHITESPACE@[25; 26) "\n"
