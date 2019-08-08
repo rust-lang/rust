@@ -18,8 +18,6 @@ __pycache__/
 .valgrindrc
 .vscode
 .favorites.json
-/*-*-*-*/
-/*-*-*/
 /Makefile
 /build
 /config.toml
@@ -29,9 +27,6 @@ __pycache__/
 /inst/
 /llvm/
 /mingw-build/
-/nd/
-/obj/
-/rt/
 /rustllvm/
 /src/libcore/unicode/DerivedCoreProperties.txt
 /src/libcore/unicode/DerivedNormalizationProps.txt
@@ -41,11 +36,6 @@ __pycache__/
 /src/libcore/unicode/SpecialCasing.txt
 /src/libcore/unicode/UnicodeData.txt
 /src/libcore/unicode/downloaded
-/stage[0-9]+/
-/target
-target/
-/test/
-/tmp/
 tags
 tags.*
 TAGS
@@ -54,14 +44,8 @@ TAGS.*
 \#*\#
 config.mk
 config.stamp
-keywords.md
-lexer.ml
 Session.vim
 src/etc/dl
-tmp.*.rs
-version.md
-version.ml
-version.texi
 .cargo
 !src/vendor/**
 /src/target/
