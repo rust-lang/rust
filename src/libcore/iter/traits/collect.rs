@@ -194,6 +194,8 @@ pub trait FromIterator<A>: Sized {
 /// `Item`:
 ///
 /// ```rust
+/// #![feature(associated_type_bounds)]
+///
 /// fn collect_as_strings<T>(collection: T) -> Vec<String>
 /// where
 ///     T: IntoIterator<Item: std::fmt::Debug>,
