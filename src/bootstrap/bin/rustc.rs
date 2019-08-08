@@ -143,8 +143,11 @@ fn main() {
 
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
-        // actually downloaded, so we just always pass the `--sysroot` option.
-        cmd.arg("--sysroot").arg(&sysroot);
+        // actually downloaded, so we just always pass the `--sysroot` option,
+        // unless one is already set.
+        if !args.iter().any(|arg| arg == "--sysroot") {
+            cmd.arg("--sysroot").arg(&sysroot);
+        }
 
         cmd.arg("-Zexternal-macro-backtrace");
 
@@ -282,20 +285,6 @@ fn main() {
             }
             if s == "false" {
                 cmd.arg("-C").arg("target-feature=-crt-static");
-            }
-        }
-
-        // When running miri tests, we need to generate MIR for all libraries
-        if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
-            // The flags here should be kept in sync with `add_miri_default_args`
-            // in miri's `src/lib.rs`.
-            cmd.arg("-Zalways-encode-mir");
-            cmd.arg("--cfg=miri");
-            // These options are preferred by miri, to be able to perform better validation,
-            // but the bootstrap compiler might not understand them.
-            if stage != "0" {
-                cmd.arg("-Zmir-emit-retag");
-                cmd.arg("-Zmir-opt-level=0");
             }
         }
 

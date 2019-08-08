@@ -128,7 +128,6 @@ pub struct Config {
     pub low_priority: bool,
     pub channel: String,
     pub verbose_tests: bool,
-    pub test_miri: bool,
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
     pub missing_tools: bool,
@@ -315,7 +314,6 @@ struct Rust {
     debug: Option<bool>,
     dist_src: Option<bool>,
     verbose_tests: Option<bool>,
-    test_miri: Option<bool>,
     incremental: Option<bool>,
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
@@ -375,7 +373,6 @@ impl Config {
         config.codegen_tests = true;
         config.ignore_git = false;
         config.rust_dist_src = true;
-        config.test_miri = false;
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.rust_codegen_backends_dir = "codegen-backends".to_owned();
         config.deny_warnings = true;
@@ -557,7 +554,6 @@ impl Config {
             set(&mut config.channel, rust.channel.clone());
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.verbose_tests, rust.verbose_tests);
-            set(&mut config.test_miri, rust.test_miri);
             // in the case "false" is set explicitly, do not overwrite the command line args
             if let Some(true) = rust.incremental {
                 config.incremental = true;
