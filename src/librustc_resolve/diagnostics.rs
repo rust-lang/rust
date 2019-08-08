@@ -396,7 +396,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
-        let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
+        let result = self.r.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((path, Vec::new()))
@@ -420,7 +420,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
-        let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
+        let result = self.r.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((
@@ -451,7 +451,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
-        let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
+        let result = self.r.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((path, Vec::new()))
@@ -484,13 +484,13 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         // 1) some consistent ordering for emitted dignostics, and
         // 2) `std` suggestions before `core` suggestions.
         let mut extern_crate_names =
-            self.resolver.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();
+            self.r.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();
         extern_crate_names.sort_by_key(|name| Reverse(name.as_str()));
 
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.
             path[0].ident.name = name;
-            let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
+            let result = self.r.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
             debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                     name, path, result);
             if let PathResult::Module(..) = result {
@@ -556,7 +556,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 //   ie. `use a::b::{c, d, e};`
                 //                      ^^^
                 let (found_closing_brace, binding_span) = find_span_of_binding_until_next_binding(
-                    self.resolver.session, directive.span, directive.use_span,
+                    self.r.session, directive.span, directive.use_span,
                 );
                 debug!("check_for_module_export_macro: found_closing_brace={:?} binding_span={:?}",
                        found_closing_brace, binding_span);
@@ -571,7 +571,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     //   ie. `use a::b::{c, d};`
                     //                    ^^^
                     if let Some(previous_span) = extend_span_to_previous_binding(
-                        self.resolver.session, binding_span,
+                        self.r.session, binding_span,
                     ) {
                         debug!("check_for_module_export_macro: previous_span={:?}", previous_span);
                         removal_span = removal_span.with_lo(previous_span.lo());
@@ -589,12 +589,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 //   or  `use a::{b, c, d}};`
                 //               ^^^^^^^^^^^
                 let (has_nested, after_crate_name) = find_span_immediately_after_crate_name(
-                    self.resolver.session, module_name, directive.use_span,
+                    self.r.session, module_name, directive.use_span,
                 );
                 debug!("check_for_module_export_macro: has_nested={:?} after_crate_name={:?}",
                        has_nested, after_crate_name);
 
-                let source_map = self.resolver.session.source_map();
+                let source_map = self.r.session.source_map();
 
                 // Add the import to the start, with a `{` if required.
                 let start_point = source_map.start_point(after_crate_name);

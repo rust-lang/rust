@@ -100,7 +100,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         };
 
         let code = DiagnosticId::Error(code.into());
-        let mut err = self.session.struct_span_err_with_code(base_span, &base_msg, code);
+        let mut err = self.r.session.struct_span_err_with_code(base_span, &base_msg, code);
 
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
         if ["this", "my"].contains(&&*item_str.as_str())
@@ -143,7 +143,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         // Try to lookup name in more relaxed fashion for better error reporting.
         let ident = path.last().unwrap().ident;
-        let candidates = self.lookup_import_candidates(ident, ns, is_expected)
+        let candidates = self.r.lookup_import_candidates(ident, ns, is_expected)
             .drain(..)
             .filter(|ImportSuggestion { did, .. }| {
                 match (did, res.and_then(|res| res.opt_def_id())) {
@@ -155,7 +155,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         let crate_def_id = DefId::local(CRATE_DEF_INDEX);
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
             let enum_candidates =
-                self.lookup_import_candidates(ident, ns, is_enum_variant);
+                self.r.lookup_import_candidates(ident, ns, is_enum_variant);
             let mut enum_candidates = enum_candidates.iter()
                 .map(|suggestion| {
                     import_candidate_to_enum_paths(&suggestion)
@@ -267,7 +267,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         // parser issue where a struct literal is being used on an expression
         // where a brace being opened means a block is being started. Look
         // ahead for the next text to see if `span` is followed by a `{`.
-        let sm = self.session.source_map();
+        let sm = self.r.session.source_map();
         let mut sp = span;
         loop {
             sp = sm.next_point(sp);
@@ -429,9 +429,9 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             },
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
                 if let Some((ctor_def, ctor_vis))
-                        = self.struct_constructors.get(&def_id).cloned() {
+                        = self.r.struct_constructors.get(&def_id).cloned() {
                     let accessible_ctor =
-                        self.is_accessible_from(ctor_vis, self.parent_scope.module);
+                        self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
                     if is_expected(ctor_def) && !accessible_ctor {
                         err.span_label(
                             span,
@@ -482,11 +482,11 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         if filter_fn(Res::Local(ast::DUMMY_NODE_ID)) {
             if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
                 // Look for a field with the same name in the current self_type.
-                if let Some(resolution) = self.partial_res_map.get(&node_id) {
+                if let Some(resolution) = self.r.partial_res_map.get(&node_id) {
                     match resolution.base_res() {
                         Res::Def(DefKind::Struct, did) | Res::Def(DefKind::Union, did)
                                 if resolution.unresolved_segments() == 0 => {
-                            if let Some(field_names) = self.field_names.get(&did) {
+                            if let Some(field_names) = self.r.field_names.get(&did) {
                                 if field_names.iter().any(|&field_name| ident.name == field_name) {
                                     return Some(AssocSuggestion::Field);
                                 }
@@ -506,7 +506,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref {
-            if let Ok(binding) = self.resolver.resolve_ident_in_module(
+            if let Ok(binding) = self.r.resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     ns,
@@ -516,7 +516,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 ) {
                 let res = binding.res();
                 if filter_fn(res) {
-                    return Some(if self.has_self.contains(&res.def_id()) {
+                    return Some(if self.r.has_self.contains(&res.def_id()) {
                         AssocSuggestion::MethodWithSelf
                     } else {
                         AssocSuggestion::AssocItem
@@ -556,8 +556,9 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                     } else {
                         // Items from the prelude
                         if !module.no_implicit_prelude {
-                            names.extend(self.extern_prelude.clone().iter().flat_map(|(ident, _)| {
-                                self.crate_loader
+                            let extern_prelude = self.r.extern_prelude.clone();
+                            names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
+                                self.r.crate_loader
                                     .maybe_process_path_extern(ident.name, ident.span)
                                     .and_then(|crate_id| {
                                         let crate_mod = Res::Def(
@@ -576,7 +577,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                                     })
                             }));
 
-                            if let Some(prelude) = self.prelude {
+                            if let Some(prelude) = self.r.prelude {
                                 add_module_candidates(prelude, &mut names, &filter_fn);
                             }
                         }
@@ -587,7 +588,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             // Add primitive types to the mix
             if filter_fn(Res::PrimTy(PrimTy::Bool)) {
                 names.extend(
-                    self.primitive_type_table.primitive_types.iter().map(|(name, prim_ty)| {
+                    self.r.primitive_type_table.primitive_types.iter().map(|(name, prim_ty)| {
                         TypoSuggestion::from_res(*name, Res::PrimTy(*prim_ty))
                     })
                 )
@@ -622,7 +623,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
     /// Only used in a specific case of type ascription suggestions
     fn get_colon_suggestion_span(&self, start: Span) -> Span {
-        let cm = self.session.source_map();
+        let cm = self.r.session.source_map();
         start.to(cm.next_point(start))
     }
 
@@ -632,7 +633,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         base_span: Span,
     ) {
         debug!("type_ascription_suggetion {:?}", base_span);
-        let cm = self.session.source_map();
+        let cm = self.r.session.source_map();
         let base_snippet = cm.span_to_snippet(base_span);
         debug!("self.current_type_ascription {:?}", self.current_type_ascription);
         if let Some(sp) = self.current_type_ascription.last() {
@@ -711,13 +712,13 @@ impl<'a> LateResolutionVisitor<'a, '_> {
     fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
         let mut result = None;
         let mut seen_modules = FxHashSet::default();
-        let mut worklist = vec![(self.graph_root, Vec::new())];
+        let mut worklist = vec![(self.r.graph_root, Vec::new())];
 
         while let Some((in_module, path_segments)) = worklist.pop() {
             // abort if the module is already found
             if result.is_some() { break; }
 
-            self.populate_module_if_necessary(in_module);
+            self.r.populate_module_if_necessary(in_module);
 
             in_module.for_each_child_stable(|ident, _, name_binding| {
                 // abort if the module is already found or if name_binding is private external
@@ -750,7 +751,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
     fn collect_enum_variants(&mut self, def_id: DefId) -> Option<Vec<Path>> {
         self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
-            self.populate_module_if_necessary(enum_module);
+            self.r.populate_module_if_necessary(enum_module);
 
             let mut variants = Vec::new();
             enum_module.for_each_child_stable(|ident, _, name_binding| {

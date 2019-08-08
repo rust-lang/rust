@@ -1732,7 +1732,7 @@ impl<'a> Resolver<'a> {
 
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
-        ImportResolver { resolver: self }.finalize_imports();
+        ImportResolver { r: self }.finalize_imports();
 
         self.late_resolve_crate(krate);
 

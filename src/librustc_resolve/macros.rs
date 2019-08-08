@@ -174,7 +174,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
         self.invocations.extend(derives.iter().map(|&derive| (derive, invocation)));
         let mut visitor = BuildReducedGraphVisitor {
-            resolver: self,
+            r: self,
             parent_scope: ParentScope {
                 module: invocation.module,
                 expansion: expn_id,
@@ -194,7 +194,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn resolve_imports(&mut self) {
-        ImportResolver { resolver: self }.resolve_imports()
+        ImportResolver { r: self }.resolve_imports()
     }
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
