@@ -543,15 +543,6 @@ impl<'a> Builder<'a> {
             parent: Cell::new(None),
         };
 
-        if kind == Kind::Dist {
-            assert!(
-                !builder.config.test_miri,
-                "Do not distribute with miri enabled.\n\
-                The distributed libraries would include all MIR (increasing binary size).
-                The distributed MIR would include validation statements."
-            );
-        }
-
         builder
     }
 
@@ -981,7 +972,6 @@ impl<'a> Builder<'a> {
                     PathBuf::from("/path/to/nowhere/rustdoc/not/required")
                 },
             )
-            .env("TEST_MIRI", self.config.test_miri.to_string())
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
 
         if let Some(host_linker) = self.linker(compiler.host) {

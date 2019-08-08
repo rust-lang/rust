@@ -540,9 +540,7 @@ impl Build {
             Mode::Rustc => "-rustc",
             Mode::Codegen => "-codegen",
             Mode::ToolBootstrap => "-bootstrap-tools",
-            Mode::ToolStd => "-tools",
-            Mode::ToolTest => "-tools",
-            Mode::ToolRustc => "-tools",
+            Mode::ToolStd | Mode::ToolTest | Mode::ToolRustc => "-tools",
         };
         self.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))
