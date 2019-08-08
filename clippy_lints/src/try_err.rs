@@ -1,10 +1,11 @@
-use crate::utils::{match_qpath, paths, snippet, span_lint_and_sugg};
+use crate::utils::{in_macro_or_desugar, match_qpath, paths, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::Ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usages of `Err(x)?`.
@@ -67,10 +68,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
 
             then {
                 let err_type = cx.tables.expr_ty(err_arg);
-                let suggestion = if err_type == return_type {
-                    format!("return Err({})", snippet(cx, err_arg.span, "_"))
+                let span = if in_macro_or_desugar(err_arg.span) {
+                    span_to_outer_expn(err_arg.span)
                 } else {
-                    format!("return Err({}.into())", snippet(cx, err_arg.span, "_"))
+                    err_arg.span
+                };
+                let suggestion = if err_type == return_type {
+                    format!("return Err({})", snippet(cx, span, "_"))
+                } else {
+                    format!("return Err({}.into())", snippet(cx, span, "_"))
                 };
 
                 span_lint_and_sugg(
@@ -85,6 +91,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
             }
         }
     }
+}
+
+fn span_to_outer_expn(span: Span) -> Span {
+    let mut span = span;
+    while let Some(expr) = span.ctxt().outer_expn_info() {
+        span = expr.call_site;
+    }
+    span
 }
 
 // In order to determine whether to suggest `.into()` or not, we need to find the error type the

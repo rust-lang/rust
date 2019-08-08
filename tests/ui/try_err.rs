@@ -78,3 +78,22 @@ fn main() {
     closure_matches_test().unwrap();
     closure_into_test().unwrap();
 }
+
+macro_rules! bar {
+    () => {
+        String::from("aasdfasdfasdfa")
+    };
+}
+
+macro_rules! foo {
+    () => {
+        bar!()
+    };
+}
+
+pub fn macro_inside(fail: bool) -> Result<i32, String> {
+    if fail {
+        Err(foo!())?;
+    }
+    Ok(0)
+}
