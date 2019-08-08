@@ -1,0 +1,32 @@
+SOURCE_FILE@[0; 28)
+  FN_DEF@[0; 27)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 4)
+      IDENT@[3; 4) "f"
+    PARAM_LIST@[4; 24)
+      L_PAREN@[4; 5) "("
+      ATTR@[5; 13)
+        POUND@[5; 6) "#"
+        TOKEN_TREE@[6; 13)
+          L_BRACK@[6; 7) "["
+          IDENT@[7; 12) "attr1"
+          R_BRACK@[12; 13) "]"
+      WHITESPACE@[13; 14) " "
+      PARAM@[14; 23)
+        BIND_PAT@[14; 17)
+          NAME@[14; 17)
+            IDENT@[14; 17) "pat"
+        COLON@[17; 18) ":"
+        WHITESPACE@[18; 19) " "
+        PATH_TYPE@[19; 23)
+          PATH@[19; 23)
+            PATH_SEGMENT@[19; 23)
+              NAME_REF@[19; 23)
+                IDENT@[19; 23) "Type"
+      R_PAREN@[23; 24) ")"
+    WHITESPACE@[24; 25) " "
+    BLOCK@[25; 27)
+      L_CURLY@[25; 26) "{"
+      R_CURLY@[26; 27) "}"
+  WHITESPACE@[27; 28) "\n"

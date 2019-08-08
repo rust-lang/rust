@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 137)
-  IMPL_BLOCK@[0; 136)
+SOURCE_FILE@[0; 69)
+  IMPL_BLOCK@[0; 68)
     IMPL_KW@[0; 4) "impl"
     WHITESPACE@[4; 5) " "
     PATH_TYPE@[5; 6)
@@ -8,7 +8,7 @@ SOURCE_FILE@[0; 137)
           NAME_REF@[5; 6)
             IDENT@[5; 6) "S"
     WHITESPACE@[6; 7) " "
-    ITEM_LIST@[7; 136)
+    ITEM_LIST@[7; 68)
       L_CURLY@[7; 8) "{"
       WHITESPACE@[8; 13) "\n    "
       FN_DEF@[13; 33)
@@ -67,73 +67,6 @@ SOURCE_FILE@[0; 137)
         BLOCK@[64; 66)
           L_CURLY@[64; 65) "{"
           R_CURLY@[65; 66) "}"
-      WHITESPACE@[66; 71) "\n    "
-      FN_DEF@[71; 98)
-        FN_KW@[71; 73) "fn"
-        WHITESPACE@[73; 74) " "
-        NAME@[74; 75)
-          IDENT@[74; 75) "c"
-        PARAM_LIST@[75; 95)
-          L_PAREN@[75; 76) "("
-          ATTR@[76; 83)
-            POUND@[76; 77) "#"
-            TOKEN_TREE@[77; 83)
-              L_BRACK@[77; 78) "["
-              IDENT@[78; 82) "attr"
-              R_BRACK@[82; 83) "]"
-          WHITESPACE@[83; 84) " "
-          SELF_PARAM@[84; 94)
-            SELF_KW@[84; 88) "self"
-            COLON@[88; 89) ":"
-            WHITESPACE@[89; 90) " "
-            PATH_TYPE@[90; 94)
-              PATH@[90; 94)
-                PATH_SEGMENT@[90; 94)
-                  NAME_REF@[90; 94)
-                    IDENT@[90; 94) "Self"
-          R_PAREN@[94; 95) ")"
-        WHITESPACE@[95; 96) " "
-        BLOCK@[96; 98)
-          L_CURLY@[96; 97) "{"
-          R_CURLY@[97; 98) "}"
-      WHITESPACE@[98; 103) "\n    "
-      FN_DEF@[103; 134)
-        FN_KW@[103; 105) "fn"
-        WHITESPACE@[105; 106) " "
-        NAME@[106; 107)
-          IDENT@[106; 107) "d"
-        PARAM_LIST@[107; 131)
-          L_PAREN@[107; 108) "("
-          ATTR@[108; 115)
-            POUND@[108; 109) "#"
-            TOKEN_TREE@[109; 115)
-              L_BRACK@[109; 110) "["
-              IDENT@[110; 114) "attr"
-              R_BRACK@[114; 115) "]"
-          WHITESPACE@[115; 116) " "
-          SELF_PARAM@[116; 130)
-            SELF_KW@[116; 120) "self"
-            COLON@[120; 121) ":"
-            WHITESPACE@[121; 122) " "
-            PATH_TYPE@[122; 130)
-              PATH@[122; 130)
-                PATH_SEGMENT@[122; 130)
-                  NAME_REF@[122; 124)
-                    IDENT@[122; 124) "Rc"
-                  TYPE_ARG_LIST@[124; 130)
-                    L_ANGLE@[124; 125) "<"
-                    TYPE_ARG@[125; 129)
-                      PATH_TYPE@[125; 129)
-                        PATH@[125; 129)
-                          PATH_SEGMENT@[125; 129)
-                            NAME_REF@[125; 129)
-                              IDENT@[125; 129) "Self"
-                    R_ANGLE@[129; 130) ">"
-          R_PAREN@[130; 131) ")"
-        WHITESPACE@[131; 132) " "
-        BLOCK@[132; 134)
-          L_CURLY@[132; 133) "{"
-          R_CURLY@[133; 134) "}"
-      WHITESPACE@[134; 135) "\n"
-      R_CURLY@[135; 136) "}"
-  WHITESPACE@[136; 137) "\n"
+      WHITESPACE@[66; 67) "\n"
+      R_CURLY@[67; 68) "}"
+  WHITESPACE@[68; 69) "\n"

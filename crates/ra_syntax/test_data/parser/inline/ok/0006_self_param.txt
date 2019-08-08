@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 323)
-  IMPL_BLOCK@[0; 322)
+SOURCE_FILE@[0; 128)
+  IMPL_BLOCK@[0; 127)
     IMPL_KW@[0; 4) "impl"
     WHITESPACE@[4; 5) " "
     PATH_TYPE@[5; 6)
@@ -8,7 +8,7 @@ SOURCE_FILE@[0; 323)
           NAME_REF@[5; 6)
             IDENT@[5; 6) "S"
     WHITESPACE@[6; 7) " "
-    ITEM_LIST@[7; 322)
+    ITEM_LIST@[7; 127)
       L_CURLY@[7; 8) "{"
       WHITESPACE@[8; 13) "\n    "
       FN_DEF@[13; 26)
@@ -111,165 +111,6 @@ SOURCE_FILE@[0; 323)
         BLOCK@[123; 125)
           L_CURLY@[123; 124) "{"
           R_CURLY@[124; 125) "}"
-      WHITESPACE@[125; 130) "\n    "
-      FN_DEF@[130; 155)
-        FN_KW@[130; 132) "fn"
-        WHITESPACE@[132; 133) " "
-        NAME@[133; 134)
-          IDENT@[133; 134) "f"
-        PARAM_LIST@[134; 152)
-          L_PAREN@[134; 135) "("
-          ATTR@[135; 146)
-            POUND@[135; 136) "#"
-            TOKEN_TREE@[136; 146)
-              L_BRACK@[136; 137) "["
-              IDENT@[137; 145) "must_use"
-              R_BRACK@[145; 146) "]"
-          WHITESPACE@[146; 147) " "
-          SELF_PARAM@[147; 151)
-            SELF_KW@[147; 151) "self"
-          R_PAREN@[151; 152) ")"
-        WHITESPACE@[152; 153) " "
-        BLOCK@[153; 155)
-          L_CURLY@[153; 154) "{"
-          R_CURLY@[154; 155) "}"
-      WHITESPACE@[155; 160) "\n    "
-      FN_DEF@[160; 182)
-        FN_KW@[160; 162) "fn"
-        WHITESPACE@[162; 163) " "
-        NAME@[163; 165)
-          IDENT@[163; 165) "g1"
-        PARAM_LIST@[165; 179)
-          L_PAREN@[165; 166) "("
-          ATTR@[166; 173)
-            POUND@[166; 167) "#"
-            TOKEN_TREE@[167; 173)
-              L_BRACK@[167; 168) "["
-              IDENT@[168; 172) "attr"
-              R_BRACK@[172; 173) "]"
-          WHITESPACE@[173; 174) " "
-          SELF_PARAM@[174; 178)
-            SELF_KW@[174; 178) "self"
-          R_PAREN@[178; 179) ")"
-        WHITESPACE@[179; 180) " "
-        BLOCK@[180; 182)
-          L_CURLY@[180; 181) "{"
-          R_CURLY@[181; 182) "}"
-      WHITESPACE@[182; 187) "\n    "
-      FN_DEF@[187; 210)
-        FN_KW@[187; 189) "fn"
-        WHITESPACE@[189; 190) " "
-        NAME@[190; 192)
-          IDENT@[190; 192) "g2"
-        PARAM_LIST@[192; 207)
-          L_PAREN@[192; 193) "("
-          ATTR@[193; 200)
-            POUND@[193; 194) "#"
-            TOKEN_TREE@[194; 200)
-              L_BRACK@[194; 195) "["
-              IDENT@[195; 199) "attr"
-              R_BRACK@[199; 200) "]"
-          WHITESPACE@[200; 201) " "
-          SELF_PARAM@[201; 206)
-            AMP@[201; 202) "&"
-            SELF_KW@[202; 206) "self"
-          R_PAREN@[206; 207) ")"
-        WHITESPACE@[207; 208) " "
-        BLOCK@[208; 210)
-          L_CURLY@[208; 209) "{"
-          R_CURLY@[209; 210) "}"
-      WHITESPACE@[210; 215) "\n    "
-      FN_DEF@[215; 246)
-        FN_KW@[215; 217) "fn"
-        WHITESPACE@[217; 218) " "
-        NAME@[218; 220)
-          IDENT@[218; 220) "g3"
-        TYPE_PARAM_LIST@[220; 224)
-          L_ANGLE@[220; 221) "<"
-          LIFETIME_PARAM@[221; 223)
-            LIFETIME@[221; 223) "\'a"
-          R_ANGLE@[223; 224) ">"
-        PARAM_LIST@[224; 243)
-          L_PAREN@[224; 225) "("
-          ATTR@[225; 232)
-            POUND@[225; 226) "#"
-            TOKEN_TREE@[226; 232)
-              L_BRACK@[226; 227) "["
-              IDENT@[227; 231) "attr"
-              R_BRACK@[231; 232) "]"
-          WHITESPACE@[232; 233) " "
-          SELF_PARAM@[233; 242)
-            AMP@[233; 234) "&"
-            MUT_KW@[234; 237) "mut"
-            WHITESPACE@[237; 238) " "
-            SELF_KW@[238; 242) "self"
-          R_PAREN@[242; 243) ")"
-        WHITESPACE@[243; 244) " "
-        BLOCK@[244; 246)
-          L_CURLY@[244; 245) "{"
-          R_CURLY@[245; 246) "}"
-      WHITESPACE@[246; 251) "\n    "
-      FN_DEF@[251; 281)
-        FN_KW@[251; 253) "fn"
-        WHITESPACE@[253; 254) " "
-        NAME@[254; 256)
-          IDENT@[254; 256) "g4"
-        TYPE_PARAM_LIST@[256; 260)
-          L_ANGLE@[256; 257) "<"
-          LIFETIME_PARAM@[257; 259)
-            LIFETIME@[257; 259) "\'a"
-          R_ANGLE@[259; 260) ">"
-        PARAM_LIST@[260; 278)
-          L_PAREN@[260; 261) "("
-          ATTR@[261; 268)
-            POUND@[261; 262) "#"
-            TOKEN_TREE@[262; 268)
-              L_BRACK@[262; 263) "["
-              IDENT@[263; 267) "attr"
-              R_BRACK@[267; 268) "]"
-          WHITESPACE@[268; 269) " "
-          SELF_PARAM@[269; 277)
-            AMP@[269; 270) "&"
-            LIFETIME@[270; 272) "\'a"
-            WHITESPACE@[272; 273) " "
-            SELF_KW@[273; 277) "self"
-          R_PAREN@[277; 278) ")"
-        WHITESPACE@[278; 279) " "
-        BLOCK@[279; 281)
-          L_CURLY@[279; 280) "{"
-          R_CURLY@[280; 281) "}"
-      WHITESPACE@[281; 286) "\n    "
-      FN_DEF@[286; 320)
-        FN_KW@[286; 288) "fn"
-        WHITESPACE@[288; 289) " "
-        NAME@[289; 291)
-          IDENT@[289; 291) "g5"
-        TYPE_PARAM_LIST@[291; 295)
-          L_ANGLE@[291; 292) "<"
-          LIFETIME_PARAM@[292; 294)
-            LIFETIME@[292; 294) "\'a"
-          R_ANGLE@[294; 295) ">"
-        PARAM_LIST@[295; 317)
-          L_PAREN@[295; 296) "("
-          ATTR@[296; 303)
-            POUND@[296; 297) "#"
-            TOKEN_TREE@[297; 303)
-              L_BRACK@[297; 298) "["
-              IDENT@[298; 302) "attr"
-              R_BRACK@[302; 303) "]"
-          WHITESPACE@[303; 304) " "
-          SELF_PARAM@[304; 316)
-            AMP@[304; 305) "&"
-            LIFETIME@[305; 307) "\'a"
-            WHITESPACE@[307; 308) " "
-            MUT_KW@[308; 311) "mut"
-            WHITESPACE@[311; 312) " "
-            SELF_KW@[312; 316) "self"
-          R_PAREN@[316; 317) ")"
-        WHITESPACE@[317; 318) " "
-        BLOCK@[318; 320)
-          L_CURLY@[318; 319) "{"
-          R_CURLY@[319; 320) "}"
-      WHITESPACE@[320; 321) "\n"
-      R_CURLY@[321; 322) "}"
-  WHITESPACE@[322; 323) "\n"
+      WHITESPACE@[125; 126) "\n"
+      R_CURLY@[126; 127) "}"
+  WHITESPACE@[127; 128) "\n"

@@ -1,4 +1,4 @@
-SOURCE_FILE@[0; 78)
+SOURCE_FILE@[0; 35)
   FN_DEF@[0; 34)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
@@ -44,55 +44,3 @@ SOURCE_FILE@[0; 78)
       L_CURLY@[32; 33) "{"
       R_CURLY@[33; 34) "}"
   WHITESPACE@[34; 35) "\n"
-  FN_DEF@[35; 77)
-    FN_KW@[35; 37) "fn"
-    WHITESPACE@[37; 38) " "
-    NAME@[38; 41)
-      IDENT@[38; 41) "foo"
-    TYPE_PARAM_LIST@[41; 73)
-      L_ANGLE@[41; 42) "<"
-      TYPE_PARAM@[42; 72)
-        NAME@[42; 43)
-          IDENT@[42; 43) "F"
-        COLON@[43; 44) ":"
-        WHITESPACE@[44; 45) " "
-        TYPE_BOUND_LIST@[45; 72)
-          TYPE_BOUND@[45; 72)
-            PATH_TYPE@[45; 72)
-              PATH@[45; 72)
-                PATH_SEGMENT@[45; 72)
-                  NAME_REF@[45; 50)
-                    IDENT@[45; 50) "FnMut"
-                  PARAM_LIST@[50; 72)
-                    L_PAREN@[50; 51) "("
-                    ATTR@[51; 58)
-                      POUND@[51; 52) "#"
-                      TOKEN_TREE@[52; 58)
-                        L_BRACK@[52; 53) "["
-                        IDENT@[53; 57) "attr"
-                        R_BRACK@[57; 58) "]"
-                    WHITESPACE@[58; 59) " "
-                    PARAM@[59; 71)
-                      REFERENCE_TYPE@[59; 71)
-                        AMP@[59; 60) "&"
-                        MUT_KW@[60; 63) "mut"
-                        WHITESPACE@[63; 64) " "
-                        PATH_TYPE@[64; 71)
-                          PATH@[64; 71)
-                            PATH_SEGMENT@[64; 71)
-                              NAME_REF@[64; 67)
-                                IDENT@[64; 67) "Foo"
-                              TYPE_ARG_LIST@[67; 71)
-                                L_ANGLE@[67; 68) "<"
-                                LIFETIME_ARG@[68; 70)
-                                  LIFETIME@[68; 70) "\'a"
-                                R_ANGLE@[70; 71) ">"
-                    R_PAREN@[71; 72) ")"
-      R_ANGLE@[72; 73) ">"
-    PARAM_LIST@[73; 75)
-      L_PAREN@[73; 74) "("
-      R_PAREN@[74; 75) ")"
-    BLOCK@[75; 77)
-      L_CURLY@[75; 76) "{"
-      R_CURLY@[76; 77) "}"
-  WHITESPACE@[77; 78) "\n"

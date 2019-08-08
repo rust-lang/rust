@@ -1,11 +1,11 @@
-SOURCE_FILE@[0; 94)
-  TRAIT_DEF@[0; 93)
+SOURCE_FILE@[0; 46)
+  TRAIT_DEF@[0; 45)
     TRAIT_KW@[0; 5) "trait"
     WHITESPACE@[5; 6) " "
     NAME@[6; 9)
       IDENT@[6; 9) "Foo"
     WHITESPACE@[9; 10) " "
-    ITEM_LIST@[10; 93)
+    ITEM_LIST@[10; 45)
       L_CURLY@[10; 11) "{"
       WHITESPACE@[11; 16) "\n    "
       FN_DEF@[16; 43)
@@ -42,55 +42,6 @@ SOURCE_FILE@[0; 94)
                     IDENT@[38; 41) "i32"
           R_PAREN@[41; 42) ")"
         SEMI@[42; 43) ";"
-      WHITESPACE@[43; 48) "\n    "
-      FN_DEF@[48; 91)
-        FN_KW@[48; 50) "fn"
-        WHITESPACE@[50; 51) " "
-        NAME@[51; 54)
-          IDENT@[51; 54) "bar"
-        PARAM_LIST@[54; 90)
-          L_PAREN@[54; 55) "("
-          ATTR@[55; 62)
-            POUND@[55; 56) "#"
-            TOKEN_TREE@[56; 62)
-              L_BRACK@[56; 57) "["
-              IDENT@[57; 61) "attr"
-              R_BRACK@[61; 62) "]"
-          WHITESPACE@[62; 63) " "
-          PARAM@[63; 69)
-            PLACEHOLDER_PAT@[63; 64)
-              UNDERSCORE@[63; 64) "_"
-            COLON@[64; 65) ":"
-            WHITESPACE@[65; 66) " "
-            PATH_TYPE@[66; 69)
-              PATH@[66; 69)
-                PATH_SEGMENT@[66; 69)
-                  NAME_REF@[66; 69)
-                    IDENT@[66; 69) "u64"
-          COMMA@[69; 70) ","
-          WHITESPACE@[70; 71) " "
-          ATTR@[71; 78)
-            POUND@[71; 72) "#"
-            TOKEN_TREE@[72; 78)
-              L_BRACK@[72; 73) "["
-              IDENT@[73; 77) "attr"
-              R_BRACK@[77; 78) "]"
-          WHITESPACE@[78; 79) " "
-          PARAM@[79; 89)
-            BIND_PAT@[79; 84)
-              MUT_KW@[79; 82) "mut"
-              WHITESPACE@[82; 83) " "
-              NAME@[83; 84)
-                IDENT@[83; 84) "x"
-            COLON@[84; 85) ":"
-            WHITESPACE@[85; 86) " "
-            PATH_TYPE@[86; 89)
-              PATH@[86; 89)
-                PATH_SEGMENT@[86; 89)
-                  NAME_REF@[86; 89)
-                    IDENT@[86; 89) "i32"
-          R_PAREN@[89; 90) ")"
-        SEMI@[90; 91) ";"
-      WHITESPACE@[91; 92) "\n"
-      R_CURLY@[92; 93) "}"
-  WHITESPACE@[93; 94) "\n"
+      WHITESPACE@[43; 44) "\n"
+      R_CURLY@[44; 45) "}"
+  WHITESPACE@[45; 46) "\n"
