@@ -8,7 +8,7 @@ LL | fn test() -> Foo { Foo }
    |              ---   ^^^
    |              |     |
    |              |     expected struct `Foo`, found fn item
-   |              |     help: use parentheses to call this function: `Foo(...)`
+   |              |     help: use parentheses to instatiate this tuple struct: `Foo(_)`
    |              expected `Foo` because of return type
    |
    = note: expected type `Foo`
