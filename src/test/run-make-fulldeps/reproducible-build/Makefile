@@ -81,7 +81,7 @@ extern_flags:
 fat_lto:
 	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
 	$(RUSTC) reproducible-build-aux.rs
-	$(RUSTC) reproducible-build.rs -C lto=fat
+	$(RUSTC) reproducible-build.rs -C lto=fat -C opt-level=1
 	cp $(TMPDIR)/reproducible-build $(TMPDIR)/reproducible-build-a
-	$(RUSTC) reproducible-build.rs -C lto=fat
+	$(RUSTC) reproducible-build.rs -C lto=fat -C opt-level=1
 	cmp "$(TMPDIR)/reproducible-build-a" "$(TMPDIR)/reproducible-build" || exit 1
