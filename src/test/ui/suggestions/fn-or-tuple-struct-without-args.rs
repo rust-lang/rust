@@ -11,7 +11,18 @@ struct V();
 
 trait T {
     fn baz(x: usize, y: usize) -> usize { x }
-    fn bat() -> usize { 42 }
+    fn bat(x: usize) -> usize { 42 }
+    fn bax(x: usize) -> usize { 42 }
+    fn bach(x: usize) -> usize;
+    fn ban(&self) -> usize { 42 }
+    fn bal(&self) -> usize;
+}
+
+struct X;
+
+impl T for X {
+    fn bach(x: usize) -> usize { 42 }
+    fn bal(&self) -> usize { 42 }
 }
 
 fn main() {
@@ -23,4 +34,12 @@ fn main() {
     let _: usize = T::bat; //~ ERROR mismatched types
     let _: E = E::A; //~ ERROR mismatched types
     let _: E = E::B; //~ ERROR expected value, found struct variant `E::B`
+    let _: usize = X::baz; //~ ERROR mismatched types
+    let _: usize = X::bat; //~ ERROR mismatched types
+    let _: usize = X::bax; //~ ERROR mismatched types
+    let _: usize = X::bach; //~ ERROR mismatched types
+    let _: usize = X::ban; //~ ERROR mismatched types
+    let _: usize = X::bal; //~ ERROR mismatched types
+    let _: usize = X.ban; //~ ERROR attempted to take value of method
+    let _: usize = X.bal; //~ ERROR attempted to take value of method
 }

@@ -3858,11 +3858,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(Node::Item(hir::Item {
                         node: ItemKind::Fn(.., body_id),
                         ..
+                    })) |
+                    Some(Node::ImplItem(hir::ImplItem {
+                        node: hir::ImplItemKind::Method(_, body_id),
+                        ..
+                    })) |
+                    Some(Node::TraitItem(hir::TraitItem {
+                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
+                        ..
                     })) => {
                         let body = hir.body(*body_id);
                         sugg_call = body.arguments.iter()
                             .map(|arg| match &arg.pat.node {
-                                hir::PatKind::Binding(_, _, ident, None) => ident.to_string(),
+                                hir::PatKind::Binding(_, _, ident, None)
+                                if ident.name != kw::SelfLower => ident.to_string(),
                                 _ => "_".to_string(),
                             }).collect::<Vec<_>>().join(", ");
                     }
@@ -3878,6 +3887,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => {}
                         }
                     }
+                    Some(Node::ForeignItem(hir::ForeignItem {
+                        node: hir::ForeignItemKind::Fn(_, idents, _),
+                        ..
+                    })) |
+                    Some(Node::TraitItem(hir::TraitItem {
+                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
+                        ..
+                    })) => sugg_call = idents.iter()
+                            .map(|ident| if ident.name != kw::SelfLower {
+                                ident.to_string()
+                            } else {
+                                "_".to_string()
+                            }).collect::<Vec<_>>()
+                            .join(", "),
                     _ => {}
                 }
             };
