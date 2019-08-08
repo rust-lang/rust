@@ -4084,7 +4084,7 @@ impl<'a> Resolver<'a> {
                                 )),
                             )
                         } else if !ident.is_reserved() {
-                            (format!("maybe a missing `extern crate {};`?", ident), None)
+                            (format!("maybe a missing crate `{}`?", ident), None)
                         } else {
                             // the parser will already have complained about the keyword being used
                             return PathResult::NonModule(PartialRes::new(Res::Err));

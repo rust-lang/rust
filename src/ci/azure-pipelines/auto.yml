@@ -254,7 +254,7 @@ jobs:
       x86_64-msvc-tools:
         MSYS_BITS: 64
         SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json --enable-test-miri
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json
 
       # 32/64-bit MinGW builds.
       #

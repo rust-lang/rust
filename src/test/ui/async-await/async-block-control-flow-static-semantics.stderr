@@ -1,0 +1,79 @@
+error[E0267]: `break` inside of a closure
+  --> $DIR/async-block-control-flow-static-semantics.rs:35:9
+   |
+LL |         break 0u8;
+   |         ^^^^^^^^^ cannot break inside of a closure
+
+error[E0267]: `break` inside of a closure
+  --> $DIR/async-block-control-flow-static-semantics.rs:43:13
+   |
+LL |             break 0u8;
+   |             ^^^^^^^^^ cannot break inside of a closure
+
+error[E0308]: mismatched types
+  --> $DIR/async-block-control-flow-static-semantics.rs:15:43
+   |
+LL | fn return_targets_async_block_not_fn() -> u8 {
+   |    ---------------------------------      ^^ expected u8, found ()
+   |    |
+   |    this function's body doesn't return
+   |
+   = note: expected type `u8`
+              found type `()`
+
+error[E0271]: type mismatch resolving `<impl std::future::Future as std::future::Future>::Output == ()`
+  --> $DIR/async-block-control-flow-static-semantics.rs:20:39
+   |
+LL |     let _: &dyn Future<Output = ()> = &block;
+   |                                       ^^^^^^ expected u8, found ()
+   |
+   = note: expected type `u8`
+              found type `()`
+   = note: required for the cast to the object type `dyn std::future::Future<Output = ()>`
+
+error[E0271]: type mismatch resolving `<impl std::future::Future as std::future::Future>::Output == ()`
+  --> $DIR/async-block-control-flow-static-semantics.rs:29:39
+   |
+LL |     let _: &dyn Future<Output = ()> = &block;
+   |                                       ^^^^^^ expected u8, found ()
+   |
+   = note: expected type `u8`
+              found type `()`
+   = note: required for the cast to the object type `dyn std::future::Future<Output = ()>`
+
+error[E0271]: type mismatch resolving `<impl std::future::Future as std::future::Future>::Output == u8`
+  --> $DIR/async-block-control-flow-static-semantics.rs:24:55
+   |
+LL | async fn return_targets_async_block_not_async_fn() -> u8 {
+   |                                                       ^^ expected (), found u8
+   |
+   = note: expected type `()`
+              found type `u8`
+   = note: the return type of a function must have a statically known size
+
+error[E0308]: mismatched types
+  --> $DIR/async-block-control-flow-static-semantics.rs:51:44
+   |
+LL | fn rethrow_targets_async_block_not_fn() -> Result<u8, MyErr> {
+   |    ----------------------------------      ^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found ()
+   |    |
+   |    this function's body doesn't return
+   |
+   = note: expected type `std::result::Result<u8, MyErr>`
+              found type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/async-block-control-flow-static-semantics.rs:60:50
+   |
+LL | fn rethrow_targets_async_block_not_async_fn() -> Result<u8, MyErr> {
+   |    ----------------------------------------      ^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found ()
+   |    |
+   |    this function's body doesn't return
+   |
+   = note: expected type `std::result::Result<u8, MyErr>`
+              found type `()`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0267, E0271, E0308.
+For more information about an error, try `rustc --explain E0267`.

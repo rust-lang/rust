@@ -188,7 +188,8 @@
 //! you do not accidentally use `self`/`this` in a way that is in conflict with pinning.
 //!
 //! Moreover, if your type is `#[repr(packed)]`, the compiler will automatically
-//! move fields around to be able to drop them. As a consequence, you cannot use
+//! move fields around to be able to drop them. It might even do
+//! that for fields that happen to be sufficiently aligned. As a consequence, you cannot use
 //! pinning with a `#[repr(packed)]` type.
 //!
 //! # Projections and Structural Pinning
