@@ -3819,6 +3819,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pointing_at_return_type
     }
 
+    /// When encountering an fn-like ctor that needs to unify with a value, check whether calling
+    /// the ctor would successfully solve the type mismatch and if so, suggest it:
+    /// ```
+    /// fn foo(x: usize) -> usize { x }
+    /// let x: usize = foo;  // suggest calling the `foo` function: `foo(42)`
+    /// ```
     fn suggest_fn_call(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -3826,48 +3832,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        if let ty::FnDef(..) | ty::FnPtr(_) = &found.sty {
-            let sig = found.fn_sig(self.tcx);
-            let sig = self
-                .replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, &sig)
-                .0;
-            let sig = self.normalize_associated_types_in(expr.span, &sig);
-            if let Ok(_) = self.try_coerce(expr, sig.output(), expected, AllowTwoPhase::No) {
-                let (mut sugg_call, applicability) = if sig.inputs().is_empty() {
-                    (String::new(), Applicability::MachineApplicable)
-                } else {
-                    ("...".to_owned(), Applicability::HasPlaceholders)
-                };
-                let mut msg = "call this function";
-                if let ty::FnDef(def_id, ..) = found.sty {
-                    match self.tcx.hir().get_if_local(def_id) {
-                        Some(Node::Item(hir::Item {
-                            node: ItemKind::Fn(.., body_id),
-                            ..
-                        })) => {
-                            let body = self.tcx.hir().body(*body_id);
-                            sugg_call = body.arguments.iter()
-                                .map(|arg| hir::print::to_string(
-                                    hir::print::NO_ANN,
-                                    |s| s.print_pat(&arg.pat),
-                                )).collect::<Vec<_>>().join(", ");
-                        }
-                        Some(Node::Ctor(hir::VariantData::Tuple(field, _))) => {
-                            sugg_call = field.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                            msg = "instatiate this tuple struct";
-                        }
-                        _ => {}
+        match found.sty {
+            ty::FnDef(..) | ty::FnPtr(_) => {}
+            _ => return false,
+        }
+
+        let sig = found.fn_sig(self.tcx);
+        let sig = self
+            .replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, &sig)
+            .0;
+        let sig = self.normalize_associated_types_in(expr.span, &sig);
+        if let Ok(_) = self.try_coerce(expr, sig.output(), expected, AllowTwoPhase::No) {
+            let (mut sugg_call, applicability) = if sig.inputs().is_empty() {
+                (String::new(), Applicability::MachineApplicable)
+            } else {
+                ("...".to_owned(), Applicability::HasPlaceholders)
+            };
+            let mut msg = "call this function";
+            if let ty::FnDef(def_id, ..) = found.sty {
+                match self.tcx.hir().get_if_local(def_id) {
+                    Some(Node::Item(hir::Item {
+                        node: ItemKind::Fn(.., body_id),
+                        ..
+                    })) => {
+                        let body = self.tcx.hir().body(*body_id);
+                        sugg_call = body.arguments.iter()
+                            .map(|arg| hir::print::to_string(
+                                hir::print::NO_ANN,
+                                |s| s.print_pat(&arg.pat),
+                            )).collect::<Vec<_>>().join(", ");
                     }
-                };
-                if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
-                    err.span_suggestion(
-                        expr.span,
-                        &format!("use parentheses to {}", msg),
-                        format!("{}({})", code, sugg_call),
-                        applicability,
-                    );
-                    return true;
+                    Some(Node::Ctor(hir::VariantData::Tuple(field, _))) => {
+                        sugg_call = field.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
+                        msg = "instatiate this tuple struct";
+                    }
+                    _ => {}
                 }
+            };
+            if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
+                err.span_suggestion(
+                    expr.span,
+                    &format!("use parentheses to {}", msg),
+                    format!("{}({})", code, sugg_call),
+                    applicability,
+                );
+                return true;
             }
         }
         false
