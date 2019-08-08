@@ -20,7 +20,6 @@ __pycache__/
 .favorites.json
 /Makefile
 /build/
-/target/
 /config.toml
 /dist/
 /dl/
@@ -38,6 +37,7 @@ __pycache__/
 /src/libcore/unicode/SpecialCasing.txt
 /src/libcore/unicode/UnicodeData.txt
 /src/libcore/unicode/downloaded
+/target/
 tags
 tags.*
 TAGS
