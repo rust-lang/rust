@@ -5,9 +5,8 @@ use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, ParentScope
 use crate::Determinacy::{self, *};
 use crate::Namespace::{self, TypeNS, MacroNS};
 use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
-use crate::{Resolver, Segment};
+use crate::{Resolver, ResolutionError, Segment};
 use crate::{names_to_string, module_to_string};
-use crate::{resolve_error, ResolutionError};
 use crate::ModuleKind;
 use crate::build_reduced_graph::BuildReducedGraphVisitor;
 use crate::diagnostics::Suggestion;
@@ -913,7 +912,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             PathResult::Failed { is_error_from_last_segment: false, span, label, suggestion } => {
                 if no_ambiguity {
                     assert!(directive.imported_module.get().is_none());
-                    resolve_error(&self.r, span, ResolutionError::FailedToResolve {
+                    self.r.report_error(span, ResolutionError::FailedToResolve {
                         label,
                         suggestion,
                     });

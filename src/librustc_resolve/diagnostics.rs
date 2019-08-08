@@ -1,7 +1,8 @@
 use std::cmp::Reverse;
 
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
+use rustc::bug;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::def::Namespace::{self, *};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
@@ -11,14 +12,16 @@ use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Ident, Path};
 use syntax::ext::base::MacroKind;
 use syntax::feature_gate::BUILTIN_ATTRIBUTES;
+use syntax::source_map::SourceMap;
+use syntax::struct_span_err;
 use syntax::symbol::{Symbol, kw};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{BytePos, Span};
+use syntax_pos::{BytePos, Span, MultiSpan};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::{path_names_to_string, KNOWN_TOOLS};
 use crate::{CrateLint, LegacyScope, Module, ModuleOrUniformRoot};
-use crate::{PathResult, ParentScope, Resolver, Scope, ScopeSet, Segment};
+use crate::{PathResult, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
 type Res = def::Res<ast::NodeId>;
 
@@ -40,6 +43,19 @@ impl TypoSuggestion {
 crate struct ImportSuggestion {
     pub did: Option<DefId>,
     pub path: Path,
+}
+
+/// Adjust the impl span so that just the `impl` keyword is taken by removing
+/// everything after `<` (`"impl<T> Iterator for A<T> {}" -> "impl"`) and
+/// everything after the first whitespace (`"impl Iterator for A" -> "impl"`).
+///
+/// *Attention*: the method used is very fragile since it essentially duplicates the work of the
+/// parser. If you need to use this function or something similar, please consider updating the
+/// `source_map` functions and this function to something more robust.
+fn reduce_impl_span_to_impl_keyword(cm: &SourceMap, impl_span: Span) -> Span {
+    let impl_span = cm.span_until_char(impl_span, '<');
+    let impl_span = cm.span_until_whitespace(impl_span);
+    impl_span
 }
 
 crate fn add_typo_suggestion(
@@ -71,6 +87,269 @@ crate fn add_module_candidates(
 }
 
 impl<'a> Resolver<'a> {
+    /// Combines an error with provided span and emits it.
+    ///
+    /// This takes the error provided, combines it with the span and any additional spans inside the
+    /// error and emits it.
+    crate fn report_error(&self, span: Span, resolution_error: ResolutionError<'_>) {
+        self.into_struct_error(span, resolution_error).emit();
+    }
+
+    crate fn into_struct_error(
+        &self, span: Span, resolution_error: ResolutionError<'_>
+    ) -> DiagnosticBuilder<'_> {
+        match resolution_error {
+            ResolutionError::GenericParamsFromOuterFunction(outer_res) => {
+                let mut err = struct_span_err!(self.session,
+                    span,
+                    E0401,
+                    "can't use generic parameters from outer function",
+                );
+                err.span_label(span, format!("use of generic parameter from outer function"));
+
+                let cm = self.session.source_map();
+                match outer_res {
+                    Res::SelfTy(maybe_trait_defid, maybe_impl_defid) => {
+                        if let Some(impl_span) = maybe_impl_defid.and_then(|def_id| {
+                            self.definitions.opt_span(def_id)
+                        }) {
+                            err.span_label(
+                                reduce_impl_span_to_impl_keyword(cm, impl_span),
+                                "`Self` type implicitly declared here, by this `impl`",
+                            );
+                        }
+                        match (maybe_trait_defid, maybe_impl_defid) {
+                            (Some(_), None) => {
+                                err.span_label(span, "can't use `Self` here");
+                            }
+                            (_, Some(_)) => {
+                                err.span_label(span, "use a type here instead");
+                            }
+                            (None, None) => bug!("`impl` without trait nor type?"),
+                        }
+                        return err;
+                    },
+                    Res::Def(DefKind::TyParam, def_id) => {
+                        if let Some(span) = self.definitions.opt_span(def_id) {
+                            err.span_label(span, "type parameter from outer function");
+                        }
+                    }
+                    Res::Def(DefKind::ConstParam, def_id) => {
+                        if let Some(span) = self.definitions.opt_span(def_id) {
+                            err.span_label(span, "const parameter from outer function");
+                        }
+                    }
+                    _ => {
+                        bug!("GenericParamsFromOuterFunction should only be used with Res::SelfTy, \
+                            DefKind::TyParam");
+                    }
+                }
+
+                // Try to retrieve the span of the function signature and generate a new message
+                // with a local type or const parameter.
+                let sugg_msg = &format!("try using a local generic parameter instead");
+                if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
+                    // Suggest the modification to the user
+                    err.span_suggestion(
+                        sugg_span,
+                        sugg_msg,
+                        new_snippet,
+                        Applicability::MachineApplicable,
+                    );
+                } else if let Some(sp) = cm.generate_fn_name_span(span) {
+                    err.span_label(sp,
+                        format!("try adding a local generic parameter in this method instead"));
+                } else {
+                    err.help(&format!("try using a local generic parameter instead"));
+                }
+
+                err
+            }
+            ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => {
+                let mut err = struct_span_err!(self.session,
+                                                span,
+                                                E0403,
+                                                "the name `{}` is already used for a generic \
+                                                parameter in this list of generic parameters",
+                                                name);
+                err.span_label(span, "already used");
+                err.span_label(first_use_span, format!("first use of `{}`", name));
+                err
+            }
+            ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
+                let mut err = struct_span_err!(self.session,
+                                            span,
+                                            E0407,
+                                            "method `{}` is not a member of trait `{}`",
+                                            method,
+                                            trait_);
+                err.span_label(span, format!("not a member of trait `{}`", trait_));
+                err
+            }
+            ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
+                let mut err = struct_span_err!(self.session,
+                                span,
+                                E0437,
+                                "type `{}` is not a member of trait `{}`",
+                                type_,
+                                trait_);
+                err.span_label(span, format!("not a member of trait `{}`", trait_));
+                err
+            }
+            ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
+                let mut err = struct_span_err!(self.session,
+                                span,
+                                E0438,
+                                "const `{}` is not a member of trait `{}`",
+                                const_,
+                                trait_);
+                err.span_label(span, format!("not a member of trait `{}`", trait_));
+                err
+            }
+            ResolutionError::VariableNotBoundInPattern(binding_error) => {
+                let target_sp = binding_error.target.iter().cloned().collect::<Vec<_>>();
+                let msp = MultiSpan::from_spans(target_sp.clone());
+                let msg = format!("variable `{}` is not bound in all patterns", binding_error.name);
+                let mut err = self.session.struct_span_err_with_code(
+                    msp,
+                    &msg,
+                    DiagnosticId::Error("E0408".into()),
+                );
+                for sp in target_sp {
+                    err.span_label(sp, format!("pattern doesn't bind `{}`", binding_error.name));
+                }
+                let origin_sp = binding_error.origin.iter().cloned();
+                for sp in origin_sp {
+                    err.span_label(sp, "variable not in all patterns");
+                }
+                err
+            }
+            ResolutionError::VariableBoundWithDifferentMode(variable_name,
+                                                            first_binding_span) => {
+                let mut err = struct_span_err!(self.session,
+                                span,
+                                E0409,
+                                "variable `{}` is bound in inconsistent \
+                                ways within the same match arm",
+                                variable_name);
+                err.span_label(span, "bound in different ways");
+                err.span_label(first_binding_span, "first binding");
+                err
+            }
+            ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
+                let mut err = struct_span_err!(self.session,
+                                span,
+                                E0415,
+                                "identifier `{}` is bound more than once in this parameter list",
+                                identifier);
+                err.span_label(span, "used as parameter more than once");
+                err
+            }
+            ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(identifier) => {
+                let mut err = struct_span_err!(self.session,
+                                span,
+                                E0416,
+                                "identifier `{}` is bound more than once in the same pattern",
+                                identifier);
+                err.span_label(span, "used in a pattern more than once");
+                err
+            }
+            ResolutionError::UndeclaredLabel(name, lev_candidate) => {
+                let mut err = struct_span_err!(self.session,
+                                            span,
+                                            E0426,
+                                            "use of undeclared label `{}`",
+                                            name);
+                if let Some(lev_candidate) = lev_candidate {
+                    err.span_suggestion(
+                        span,
+                        "a label with a similar name exists in this scope",
+                        lev_candidate.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.span_label(span, format!("undeclared label `{}`", name));
+                }
+                err
+            }
+            ResolutionError::SelfImportsOnlyAllowedWithin => {
+                struct_span_err!(self.session,
+                                span,
+                                E0429,
+                                "{}",
+                                "`self` imports are only allowed within a { } list")
+            }
+            ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
+                let mut err = struct_span_err!(self.session, span, E0430,
+                                            "`self` import can only appear once in an import list");
+                err.span_label(span, "can only appear once in an import list");
+                err
+            }
+            ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
+                let mut err = struct_span_err!(self.session, span, E0431,
+                                            "`self` import can only appear in an import list with \
+                                                a non-empty prefix");
+                err.span_label(span, "can only appear in an import list with a non-empty prefix");
+                err
+            }
+            ResolutionError::FailedToResolve { label, suggestion } => {
+                let mut err = struct_span_err!(self.session, span, E0433,
+                                            "failed to resolve: {}", &label);
+                err.span_label(span, label);
+
+                if let Some((suggestions, msg, applicability)) = suggestion {
+                    err.multipart_suggestion(&msg, suggestions, applicability);
+                }
+
+                err
+            }
+            ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
+                let mut err = struct_span_err!(self.session,
+                                            span,
+                                            E0434,
+                                            "{}",
+                                            "can't capture dynamic environment in a fn item");
+                err.help("use the `|| { ... }` closure form instead");
+                err
+            }
+            ResolutionError::AttemptToUseNonConstantValueInConstant => {
+                let mut err = struct_span_err!(self.session, span, E0435,
+                                            "attempt to use a non-constant value in a constant");
+                err.span_label(span, "non-constant value");
+                err
+            }
+            ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
+                let shadows_what = binding.descr();
+                let mut err = struct_span_err!(self.session, span, E0530, "{}s cannot shadow {}s",
+                                            what_binding, shadows_what);
+                err.span_label(span, format!("cannot be named the same as {} {}",
+                                            binding.article(), shadows_what));
+                let participle = if binding.is_import() { "imported" } else { "defined" };
+                let msg = format!("the {} `{}` is {} here", shadows_what, name, participle);
+                err.span_label(binding.span, msg);
+                err
+            }
+            ResolutionError::ForwardDeclaredTyParam => {
+                let mut err = struct_span_err!(self.session, span, E0128,
+                                            "type parameters with a default cannot use \
+                                                forward declared identifiers");
+                err.span_label(
+                    span, "defaulted type parameters cannot be forward declared".to_string());
+                err
+            }
+            ResolutionError::ConstParamDependentOnTypeParam => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0671,
+                    "const parameters cannot depend on type parameters"
+                );
+                err.span_label(span, format!("const parameter depends on type parameter"));
+                err
+            }
+        }
+    }
+
     /// Lookup typo candidate in scope for a macro or import.
     fn early_lookup_typo_candidate(
         &mut self,

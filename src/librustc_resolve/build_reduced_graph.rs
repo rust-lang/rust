@@ -9,7 +9,7 @@ use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleIm
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 use crate::{ModuleOrUniformRoot, ParentScope, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
 use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
-use crate::{resolve_error, resolve_struct_error, ResolutionError, Determinacy};
+use crate::{ResolutionError, Determinacy};
 
 use rustc::bug;
 use rustc::hir::def::{self, *};
@@ -165,8 +165,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                         type_ns_only = true;
 
                         if empty_for_self(&module_path) {
-                            resolve_error(
-                                &self.r,
+                            self.r.report_error(
                                 use_tree.span,
                                 ResolutionError::
                                 SelfImportOnlyInImportListWithNonEmptyPrefix
@@ -183,9 +182,9 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                 } else {
                     // Disallow `self`
                     if source.ident.name == kw::SelfLower {
-                        resolve_error(&self.r,
-                                      use_tree.span,
-                                      ResolutionError::SelfImportsOnlyAllowedWithin);
+                        self.r.report_error(
+                            use_tree.span, ResolutionError::SelfImportsOnlyAllowedWithin
+                        );
                     }
 
                     // Disallow `use $crate;`
@@ -283,7 +282,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                     None
                 }).collect::<Vec<_>>();
                 if self_spans.len() > 1 {
-                    let mut e = resolve_struct_error(&self.r,
+                    let mut e = self.r.into_struct_error(
                         self_spans[0],
                         ResolutionError::SelfImportCanOnlyAppearOnceInTheList);
 

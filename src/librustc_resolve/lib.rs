@@ -33,7 +33,6 @@ use rustc::{bug, span_bug};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
-use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::{ExpnId, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::{SyntaxExtension, MacroKind, SpecialDerives};
@@ -45,8 +44,8 @@ use syntax::ast::{CRATE_NODE_ID, Crate, Expr, ExprKind};
 use syntax::ast::{ItemKind, Path};
 use syntax::{span_err, struct_span_err, unwrap_or};
 
-use syntax_pos::{Span, DUMMY_SP, MultiSpan};
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use syntax_pos::{Span, DUMMY_SP};
+use errors::{Applicability, DiagnosticBuilder};
 
 use log::debug;
 
@@ -198,285 +197,6 @@ enum ResolutionError<'a> {
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// Error E0671: const parameter cannot depend on type parameter.
     ConstParamDependentOnTypeParam,
-}
-
-/// Combines an error with provided span and emits it.
-///
-/// This takes the error provided, combines it with the span and any additional spans inside the
-/// error and emits it.
-fn resolve_error(resolver: &Resolver<'_>,
-                 span: Span,
-                 resolution_error: ResolutionError<'_>) {
-    resolve_struct_error(resolver, span, resolution_error).emit();
-}
-
-fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
-                                   span: Span,
-                                   resolution_error: ResolutionError<'a>)
-                                   -> DiagnosticBuilder<'sess> {
-    match resolution_error {
-        ResolutionError::GenericParamsFromOuterFunction(outer_res) => {
-            let mut err = struct_span_err!(resolver.session,
-                span,
-                E0401,
-                "can't use generic parameters from outer function",
-            );
-            err.span_label(span, format!("use of generic parameter from outer function"));
-
-            let cm = resolver.session.source_map();
-            match outer_res {
-                Res::SelfTy(maybe_trait_defid, maybe_impl_defid) => {
-                    if let Some(impl_span) = maybe_impl_defid.and_then(|def_id| {
-                        resolver.definitions.opt_span(def_id)
-                    }) {
-                        err.span_label(
-                            reduce_impl_span_to_impl_keyword(cm, impl_span),
-                            "`Self` type implicitly declared here, by this `impl`",
-                        );
-                    }
-                    match (maybe_trait_defid, maybe_impl_defid) {
-                        (Some(_), None) => {
-                            err.span_label(span, "can't use `Self` here");
-                        }
-                        (_, Some(_)) => {
-                            err.span_label(span, "use a type here instead");
-                        }
-                        (None, None) => bug!("`impl` without trait nor type?"),
-                    }
-                    return err;
-                },
-                Res::Def(DefKind::TyParam, def_id) => {
-                    if let Some(span) = resolver.definitions.opt_span(def_id) {
-                        err.span_label(span, "type parameter from outer function");
-                    }
-                }
-                Res::Def(DefKind::ConstParam, def_id) => {
-                    if let Some(span) = resolver.definitions.opt_span(def_id) {
-                        err.span_label(span, "const parameter from outer function");
-                    }
-                }
-                _ => {
-                    bug!("GenericParamsFromOuterFunction should only be used with Res::SelfTy, \
-                         DefKind::TyParam");
-                }
-            }
-
-            // Try to retrieve the span of the function signature and generate a new message with
-            // a local type or const parameter.
-            let sugg_msg = &format!("try using a local generic parameter instead");
-            if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
-                // Suggest the modification to the user
-                err.span_suggestion(
-                    sugg_span,
-                    sugg_msg,
-                    new_snippet,
-                    Applicability::MachineApplicable,
-                );
-            } else if let Some(sp) = cm.generate_fn_name_span(span) {
-                err.span_label(sp,
-                    format!("try adding a local generic parameter in this method instead"));
-            } else {
-                err.help(&format!("try using a local generic parameter instead"));
-            }
-
-            err
-        }
-        ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => {
-             let mut err = struct_span_err!(resolver.session,
-                                            span,
-                                            E0403,
-                                            "the name `{}` is already used for a generic \
-                                            parameter in this list of generic parameters",
-                                            name);
-             err.span_label(span, "already used");
-             err.span_label(first_use_span, format!("first use of `{}`", name));
-             err
-        }
-        ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
-            let mut err = struct_span_err!(resolver.session,
-                                           span,
-                                           E0407,
-                                           "method `{}` is not a member of trait `{}`",
-                                           method,
-                                           trait_);
-            err.span_label(span, format!("not a member of trait `{}`", trait_));
-            err
-        }
-        ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
-            let mut err = struct_span_err!(resolver.session,
-                             span,
-                             E0437,
-                             "type `{}` is not a member of trait `{}`",
-                             type_,
-                             trait_);
-            err.span_label(span, format!("not a member of trait `{}`", trait_));
-            err
-        }
-        ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
-            let mut err = struct_span_err!(resolver.session,
-                             span,
-                             E0438,
-                             "const `{}` is not a member of trait `{}`",
-                             const_,
-                             trait_);
-            err.span_label(span, format!("not a member of trait `{}`", trait_));
-            err
-        }
-        ResolutionError::VariableNotBoundInPattern(binding_error) => {
-            let target_sp = binding_error.target.iter().cloned().collect::<Vec<_>>();
-            let msp = MultiSpan::from_spans(target_sp.clone());
-            let msg = format!("variable `{}` is not bound in all patterns", binding_error.name);
-            let mut err = resolver.session.struct_span_err_with_code(
-                msp,
-                &msg,
-                DiagnosticId::Error("E0408".into()),
-            );
-            for sp in target_sp {
-                err.span_label(sp, format!("pattern doesn't bind `{}`", binding_error.name));
-            }
-            let origin_sp = binding_error.origin.iter().cloned();
-            for sp in origin_sp {
-                err.span_label(sp, "variable not in all patterns");
-            }
-            err
-        }
-        ResolutionError::VariableBoundWithDifferentMode(variable_name,
-                                                        first_binding_span) => {
-            let mut err = struct_span_err!(resolver.session,
-                             span,
-                             E0409,
-                             "variable `{}` is bound in inconsistent \
-                             ways within the same match arm",
-                             variable_name);
-            err.span_label(span, "bound in different ways");
-            err.span_label(first_binding_span, "first binding");
-            err
-        }
-        ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
-            let mut err = struct_span_err!(resolver.session,
-                             span,
-                             E0415,
-                             "identifier `{}` is bound more than once in this parameter list",
-                             identifier);
-            err.span_label(span, "used as parameter more than once");
-            err
-        }
-        ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(identifier) => {
-            let mut err = struct_span_err!(resolver.session,
-                             span,
-                             E0416,
-                             "identifier `{}` is bound more than once in the same pattern",
-                             identifier);
-            err.span_label(span, "used in a pattern more than once");
-            err
-        }
-        ResolutionError::UndeclaredLabel(name, lev_candidate) => {
-            let mut err = struct_span_err!(resolver.session,
-                                           span,
-                                           E0426,
-                                           "use of undeclared label `{}`",
-                                           name);
-            if let Some(lev_candidate) = lev_candidate {
-                err.span_suggestion(
-                    span,
-                    "a label with a similar name exists in this scope",
-                    lev_candidate.to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.span_label(span, format!("undeclared label `{}`", name));
-            }
-            err
-        }
-        ResolutionError::SelfImportsOnlyAllowedWithin => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0429,
-                             "{}",
-                             "`self` imports are only allowed within a { } list")
-        }
-        ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
-            let mut err = struct_span_err!(resolver.session, span, E0430,
-                                           "`self` import can only appear once in an import list");
-            err.span_label(span, "can only appear once in an import list");
-            err
-        }
-        ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
-            let mut err = struct_span_err!(resolver.session, span, E0431,
-                                           "`self` import can only appear in an import list with \
-                                            a non-empty prefix");
-            err.span_label(span, "can only appear in an import list with a non-empty prefix");
-            err
-        }
-        ResolutionError::FailedToResolve { label, suggestion } => {
-            let mut err = struct_span_err!(resolver.session, span, E0433,
-                                           "failed to resolve: {}", &label);
-            err.span_label(span, label);
-
-            if let Some((suggestions, msg, applicability)) = suggestion {
-                err.multipart_suggestion(&msg, suggestions, applicability);
-            }
-
-            err
-        }
-        ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
-            let mut err = struct_span_err!(resolver.session,
-                                           span,
-                                           E0434,
-                                           "{}",
-                                           "can't capture dynamic environment in a fn item");
-            err.help("use the `|| { ... }` closure form instead");
-            err
-        }
-        ResolutionError::AttemptToUseNonConstantValueInConstant => {
-            let mut err = struct_span_err!(resolver.session, span, E0435,
-                                           "attempt to use a non-constant value in a constant");
-            err.span_label(span, "non-constant value");
-            err
-        }
-        ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
-            let shadows_what = binding.descr();
-            let mut err = struct_span_err!(resolver.session, span, E0530, "{}s cannot shadow {}s",
-                                           what_binding, shadows_what);
-            err.span_label(span, format!("cannot be named the same as {} {}",
-                                         binding.article(), shadows_what));
-            let participle = if binding.is_import() { "imported" } else { "defined" };
-            let msg = format!("the {} `{}` is {} here", shadows_what, name, participle);
-            err.span_label(binding.span, msg);
-            err
-        }
-        ResolutionError::ForwardDeclaredTyParam => {
-            let mut err = struct_span_err!(resolver.session, span, E0128,
-                                           "type parameters with a default cannot use \
-                                            forward declared identifiers");
-            err.span_label(
-                span, "defaulted type parameters cannot be forward declared".to_string());
-            err
-        }
-        ResolutionError::ConstParamDependentOnTypeParam => {
-            let mut err = struct_span_err!(
-                resolver.session,
-                span,
-                E0671,
-                "const parameters cannot depend on type parameters"
-            );
-            err.span_label(span, format!("const parameter depends on type parameter"));
-            err
-        }
-    }
-}
-
-/// Adjust the impl span so that just the `impl` keyword is taken by removing
-/// everything after `<` (`"impl<T> Iterator for A<T> {}" -> "impl"`) and
-/// everything after the first whitespace (`"impl Iterator for A" -> "impl"`).
-///
-/// *Attention*: the method used is very fragile since it essentially duplicates the work of the
-/// parser. If you need to use this function or something similar, please consider updating the
-/// `source_map` functions and this function to something more robust.
-fn reduce_impl_span_to_impl_keyword(cm: &SourceMap, impl_span: Span) -> Span {
-    let impl_span = cm.span_until_char(impl_span, '<');
-    let impl_span = cm.span_until_whitespace(impl_span);
-    impl_span
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -1503,7 +1223,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         match self.resolve_ast_path_inner(path, is_value) {
             Ok(r) => r,
             Err((span, error)) => {
-                resolve_error(self, span, error);
+                self.report_error(span, error);
                 Res::Err
             }
         }
@@ -1736,7 +1456,7 @@ impl<'a> Resolver<'a> {
 
         self.late_resolve_crate(krate);
 
-        check_unused::check_crate(self, krate);
+        self.check_unused(krate);
         self.report_errors(krate);
         self.crate_loader.postprocess(krate);
     }
@@ -2581,7 +2301,7 @@ impl<'a> Resolver<'a> {
         // An invalid forward use of a type parameter from a previous default.
         if let ForwardTyParamBanRibKind = all_ribs[rib_index].kind {
             if record_used {
-                resolve_error(self, span, ResolutionError::ForwardDeclaredTyParam);
+                self.report_error(span, ResolutionError::ForwardDeclaredTyParam);
             }
             assert_eq!(res, Res::Err);
             return Res::Err;
@@ -2590,7 +2310,7 @@ impl<'a> Resolver<'a> {
         // An invalid use of a type parameter as the type of a const parameter.
         if let TyParamAsConstParamTy = all_ribs[rib_index].kind {
             if record_used {
-                resolve_error(self, span, ResolutionError::ConstParamDependentOnTypeParam);
+                self.report_error(span, ResolutionError::ConstParamDependentOnTypeParam);
             }
             assert_eq!(res, Res::Err);
             return Res::Err;
@@ -2622,14 +2342,14 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind => {
                             // Still doesn't deal with upvars
                             if record_used {
-                                resolve_error(self, span, AttemptToUseNonConstantValueInConstant);
+                                self.report_error(span, AttemptToUseNonConstantValueInConstant);
                             }
                             return Res::Err;
                         }
                     }
                 }
                 if let Some(res_err) = res_err {
-                     resolve_error(self, span, res_err);
+                     self.report_error(span, res_err);
                      return Res::Err;
                 }
             }
@@ -2644,10 +2364,8 @@ impl<'a> Resolver<'a> {
                         ItemRibKind | FnItemRibKind => {
                             // This was an attempt to use a type parameter outside its scope.
                             if record_used {
-                                resolve_error(
-                                    self,
-                                    span,
-                                    ResolutionError::GenericParamsFromOuterFunction(res),
+                                self.report_error(
+                                    span, ResolutionError::GenericParamsFromOuterFunction(res)
                                 );
                             }
                             return Res::Err;
@@ -2667,10 +2385,8 @@ impl<'a> Resolver<'a> {
                     if let ItemRibKind | FnItemRibKind = rib.kind {
                         // This was an attempt to use a const parameter outside its scope.
                         if record_used {
-                            resolve_error(
-                                self,
-                                span,
-                                ResolutionError::GenericParamsFromOuterFunction(res),
+                            self.report_error(
+                                span, ResolutionError::GenericParamsFromOuterFunction(res)
                             );
                         }
                         return Res::Err;
@@ -2773,8 +2489,9 @@ impl<'a> Resolver<'a> {
                         ty::Visibility::Public
                     }
                     PathResult::Failed { span, label, suggestion, .. } => {
-                        let err = ResolutionError::FailedToResolve { label, suggestion };
-                        resolve_error(self, span, err);
+                        self.report_error(
+                            span, ResolutionError::FailedToResolve { label, suggestion }
+                        );
                         ty::Visibility::Public
                     }
                     PathResult::Indeterminate => {

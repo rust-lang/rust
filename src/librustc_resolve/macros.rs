@@ -1,8 +1,7 @@
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc, Determinacy};
 use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, Weak};
 use crate::{Module, ModuleKind, NameBinding, PathResult, Segment, ToNameBinding};
-use crate::{resolve_error, KNOWN_TOOLS};
-use crate::ModuleOrUniformRoot;
+use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
 use crate::Namespace::*;
 use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use crate::resolve_imports::ImportResolver;
@@ -768,7 +767,7 @@ impl<'a> Resolver<'a> {
                         (path_span, format!("partially resolved path in {} {}",
                                             kind.article(), kind.descr()))
                     };
-                    resolve_error(self, span, ResolutionError::FailedToResolve {
+                    self.report_error(span, ResolutionError::FailedToResolve {
                         label,
                         suggestion: None
                     });

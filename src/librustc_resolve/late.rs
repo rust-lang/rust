@@ -1,8 +1,7 @@
 use GenericParameters::*;
 
-use crate::{path_names_to_string, resolve_error};
-use crate::{AliasPossibility, BindingError, CrateLint, LexicalScopeBinding, Module};
-use crate::{ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult};
+use crate::{path_names_to_string, AliasPossibility, BindingError, CrateLint, LexicalScopeBinding};
+use crate::{Module, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult};
 use crate::{PathSource, ResolutionError, Resolver, Rib, RibKind, Segment, UseError};
 use crate::RibKind::*;
 
@@ -582,7 +581,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                     ident.name,
                                     *span,
                                 );
-                                resolve_error(&self.r, param.ident.span, err);
+                                self.r.report_error(param.ident.span, err);
                             }
                             seen_bindings.entry(ident).or_insert(param.ident.span);
 
@@ -604,7 +603,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                     ident.name,
                                     *span,
                                 );
-                                resolve_error(&self.r, param.ident.span, err);
+                                self.r.report_error(param.ident.span, err);
                             }
                             seen_bindings.entry(ident).or_insert(param.ident.span);
 
@@ -873,7 +872,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 span,
             ).is_err() {
                 let path = &self.current_trait_ref.as_ref().unwrap().1.path;
-                resolve_error(&self.r, span, err(ident.name, &path_names_to_string(path)));
+                self.r.report_error(span, err(ident.name, &path_names_to_string(path)));
             }
         }
     }
@@ -971,15 +970,14 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut missing_vars = missing_vars.iter().collect::<Vec<_>>();
         missing_vars.sort();
         for (_, v) in missing_vars {
-            resolve_error(&self.r,
-                          *v.origin.iter().next().unwrap(),
-                          ResolutionError::VariableNotBoundInPattern(v));
+            self.r.report_error(
+                *v.origin.iter().next().unwrap(), ResolutionError::VariableNotBoundInPattern(v)
+            );
         }
         let mut inconsistent_vars = inconsistent_vars.iter().collect::<Vec<_>>();
         inconsistent_vars.sort();
         for (name, v) in inconsistent_vars {
-            let err = ResolutionError::VariableBoundWithDifferentMode(*name, v.1);
-            resolve_error(&self.r, v.0, err);
+            self.r.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(*name, v.1));
         }
     }
 
@@ -1067,8 +1065,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         match bindings.get(&ident).cloned() {
             Some(id) if id == outer_pat_id => {
                 // `Variant(a, a)`, error
-                resolve_error(
-                    &self.r,
+                self.r.report_error(
                     ident.span,
                     ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
                         &ident.as_str())
@@ -1076,8 +1073,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             }
             Some(..) if pat_src == PatternSource::FnParam => {
                 // `fn f(a: u8, a: u8)`, error
-                resolve_error(
-                    &self.r,
+                self.r.report_error(
                     ident.span,
                     ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
                         &ident.as_str())
@@ -1141,8 +1137,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                 // to something unusable as a pattern (e.g., constructor function),
                                 // but we still conservatively report an error, see
                                 // issues/33118#issuecomment-233962221 for one reason why.
-                                resolve_error(
-                                    &self.r,
+                                self.r.report_error(
                                     ident.span,
                                     ResolutionError::BindingShadowsSomethingUnacceptable(
                                         pat_src.descr(), ident.name, binding.unwrap())
@@ -1448,8 +1443,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                 PartialRes::new(module.res().unwrap()),
             PathResult::Failed { is_error_from_last_segment: false, span, label, suggestion } => {
-                let err = ResolutionError::FailedToResolve { label, suggestion };
-                resolve_error(&self.r, span, err);
+                self.r.report_error(span, ResolutionError::FailedToResolve { label, suggestion });
                 PartialRes::new(Res::Err)
             }
             PathResult::Module(..) | PathResult::Failed { .. } => return None,
@@ -1539,10 +1533,10 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                             find_best_match_for_name(names, &*ident.as_str(), None)
                         });
                         self.r.record_partial_res(expr.id, PartialRes::new(Res::Err));
-                        resolve_error(&self.r,
-                                      label.ident.span,
-                                      ResolutionError::UndeclaredLabel(&label.ident.as_str(),
-                                                                       close_match));
+                        self.r.report_error(
+                            label.ident.span,
+                            ResolutionError::UndeclaredLabel(&label.ident.as_str(), close_match),
+                        );
                     }
                     Some(node_id) => {
                         // Since this res is a label, it is never read.
