@@ -47,10 +47,10 @@ fn list_(p: &mut Parser, flavor: Flavor) {
         attributes::outer_attributes(p);
         opt_self_param(p);
     }
-    while !p.at(EOF) && !p.at(ket) && !(flavor.type_required() && p.at(T![...])) {
+    while !p.at(EOF) && !p.at(ket) {
         attributes::outer_attributes(p);
 
-        if p.at(T![...]) {
+        if flavor.type_required() && p.at(T![...]) {
             break;
         }
 
