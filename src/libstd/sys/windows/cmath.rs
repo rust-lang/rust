@@ -1,6 +1,6 @@
 #![cfg(not(test))]
 
-use libc::{c_float, c_double};
+use libc::{c_float, c_double, c_int};
 
 #[link_name = "m"]
 extern {
@@ -19,6 +19,10 @@ extern {
     pub fn hypot(x: c_double, y: c_double) -> c_double;
     #[cfg_attr(target_env = "msvc", link_name = "_hypotf")]
     pub fn hypotf(x: c_float, y: c_float) -> c_float;
+    #[cfg_attr(target_env = "msvc", link_name = "_ldexp")]
+    pub fn hypot(x: c_double, y: c_int) -> c_double;
+    #[cfg_attr(target_env = "msvc", link_name = "_ldexpf")]
+    pub fn hypotf(x: c_float, y: c_int) -> c_float;
     pub fn log1p(n: c_double) -> c_double;
     pub fn log1pf(n: c_float) -> c_float;
     pub fn sinh(n: c_double) -> c_double;

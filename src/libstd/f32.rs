@@ -593,6 +593,26 @@ impl f32 {
         unsafe { cmath::hypotf(self, other) }
     }
 
+    /// Calculates the result of multiplying `x` by 2 raised to the power of `y`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::f32;
+    ///
+    /// let x = 2.0f32;
+    /// let y = 3i32;
+    ///
+    /// let abs_difference = (x.ldexp(y) - (x * 2.0f32.powi(y))).abs();
+    ///
+    /// assert!(abs_difference <= f32::EPSILON);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn ldexp(self, other: i32) -> f32 {
+        unsafe { cmath::ldexpf(self, other) }
+    }
+
     /// Computes the sine of a number (in radians).
     ///
     /// # Examples

@@ -530,6 +530,26 @@ impl f64 {
         unsafe { cmath::hypot(self, other) }
     }
 
+    /// Calculates the result of multiplying `x` by 2 raised to the power of `y`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let x = 2.0f64;
+    /// let y = 3i32;
+    ///
+    /// let abs_difference = (x.ldexp(y) - (x * 2.0f64.powi(y))).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn ldexp(self, other: i32) -> f64 {
+        unsafe { cmath::ldexp(self, other) }
+    }
+
     /// Computes the sine of a number (in radians).
     ///
     /// # Examples
