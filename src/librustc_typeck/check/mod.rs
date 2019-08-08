@@ -3711,7 +3711,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(fn_span) = fn_span {
                             err.span_label(
                                 fn_span,
-                                "this function's body doesn't `return` a value",
+                                "this function implicitly returns `()` as its body has no tail \
+                                 or `return` expression",
                             );
                         }
                     }, false);
