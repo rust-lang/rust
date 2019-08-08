@@ -114,8 +114,6 @@ pub struct Metadata(fs_imp::FileAttr);
 /// information like the entry's path and possibly other metadata can be
 /// learned.
 ///
-/// #### Note: Iteration Order is Implementation-Defined
-///
 /// The order in which this iterator returns entries is platform and filesystem
 /// dependent.
 ///
@@ -1963,8 +1961,6 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
-///
-/// #### Note: Iteration Order is Implementation-Defined
 ///
 /// The order in which this iterator returns entries is platform and filesystem
 /// dependent.
