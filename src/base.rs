@@ -334,15 +334,20 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let lhs = trans_operand(fx, lhs);
                     let rhs = trans_operand(fx, rhs);
 
-                    let res = match ty.sty {
-                        ty::Uint(_) => {
-                            trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
-                        }
-                        ty::Int(_) => {
-                            trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true)
-                        }
+                    let signed = match ty.sty {
+                        ty::Uint(_) => false,
+                        ty::Int(_) => true,
                         _ => unimplemented!("checked binop {:?} for {:?}", bin_op, ty),
                     };
+
+                    let res = if !fx.tcx.sess.overflow_checks() {
+                        let val = trans_int_binop(fx, *bin_op, lhs, rhs, lhs.layout().ty, signed).load_scalar(fx);
+                        let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
+                        CValue::by_val_pair(val, is_overflow, lval.layout())
+                    } else {
+                        trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, signed)
+                    };
+
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::UnaryOp(un_op, operand) => {
@@ -843,12 +848,6 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     out_ty: Ty<'tcx>,
     signed: bool,
 ) -> CValue<'tcx> {
-    if !fx.tcx.sess.overflow_checks() {
-        let val = trans_int_binop(fx, bin_op, in_lhs, in_rhs, in_lhs.layout().ty, signed).load_scalar(fx);
-        let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
-        return CValue::by_val_pair(val, is_overflow, fx.layout_of(out_ty));
-    }
-
     if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
         assert_eq!(
             in_lhs.layout().ty,
