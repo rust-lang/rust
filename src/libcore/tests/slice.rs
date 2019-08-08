@@ -1157,7 +1157,7 @@ fn test_rotate_right() {
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
-    use rand::{FromEntropy, Rng, rngs::SmallRng, seq::SliceRandom};
+    use rand::{SeedableRng, Rng, rngs::StdRng, seq::SliceRandom};
 
     #[cfg(not(miri))] // Miri is too slow
     let large_range = 500..510;
@@ -1171,7 +1171,7 @@ fn sort_unstable() {
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
-    let mut rng = SmallRng::from_entropy();
+    let mut rng = StdRng::from_entropy();
 
     for len in (2..25).chain(large_range) {
         let v = &mut v[0..len];
@@ -1237,11 +1237,11 @@ fn sort_unstable() {
 #[cfg(not(miri))] // Miri is too slow
 fn partition_at_index() {
     use core::cmp::Ordering::{Equal, Greater, Less};
-    use rand::rngs::SmallRng;
+    use rand::rngs::StdRng;
     use rand::seq::SliceRandom;
-    use rand::{FromEntropy, Rng};
+    use rand::{SeedableRng, Rng};
 
-    let mut rng = SmallRng::from_entropy();
+    let mut rng = StdRng::from_entropy();
 
     for len in (2..21).chain(500..501) {
         let mut orig = vec![0; len];
