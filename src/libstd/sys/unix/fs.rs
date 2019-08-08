@@ -557,9 +557,15 @@ impl File {
         return crate::sys::android::ftruncate64(self.0.raw(), size);
 
         #[cfg(not(target_os = "android"))]
-        return cvt_r(|| unsafe {
-            ftruncate64(self.0.raw(), size as off64_t)
-        }).map(|_| ());
+        {
+            use crate::convert::TryInto;
+            let size: off64_t = size
+                .try_into()
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            cvt_r(|| unsafe {
+                ftruncate64(self.0.raw(), size)
+            }).map(|_| ())
+        }
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
