@@ -2,7 +2,7 @@ error[E0432]: unresolved import `libc`
   --> $DIR/issue-37887.rs:3:9
    |
 LL |     use libc::*;
-   |         ^^^^ maybe a missing `extern crate libc;`?
+   |         ^^^^ maybe a missing crate `libc`?
 
 error[E0658]: use of unstable library feature 'rustc_private': this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
   --> $DIR/issue-37887.rs:2:5
