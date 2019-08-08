@@ -125,12 +125,12 @@ impl StableSourceFileId {
 
 #[derive(Default)]
 pub(super) struct SourceMapFiles {
-    pub(super) source_files: Vec<Lrc<SourceFile>>,
+    source_files: Vec<Lrc<SourceFile>>,
     stable_id_to_source_file: FxHashMap<StableSourceFileId, Lrc<SourceFile>>
 }
 
 pub struct SourceMap {
-    pub(super) files: Lock<SourceMapFiles>,
+    files: Lock<SourceMapFiles>,
     file_loader: Box<dyn FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
     // --remap-path-prefix to all SourceFiles allocated within this SourceMap.
