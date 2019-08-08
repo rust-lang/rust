@@ -278,6 +278,7 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
                 }
             }
         }).collect::<Vec<_>>();
+        // Sort the modules to ensure we produce deterministic results.
         new_modules.sort_by(|module1, module2| module1.1.partial_cmp(&module2.1).unwrap());
         serialized_modules.extend(new_modules);
         serialized_modules.extend(cached_modules.into_iter().map(|(buffer, wp)| {
