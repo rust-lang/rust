@@ -713,7 +713,11 @@ pub fn handle_code_lens(
                 label: Default::default(),
                 bin: "cargo".into(),
                 args,
-                env: Default::default(),
+                env: {
+                    let mut m = FxHashMap::default();
+                    m.insert("RUST_BACKTRACE".to_string(), "short".to_string());
+                    m
+                },
                 cwd: workspace_root.map(|root| root.to_string_lossy().to_string()),
             };
 
