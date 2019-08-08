@@ -332,7 +332,8 @@ impl<'a> Resolver<'a> {
 
 impl<'a> BuildReducedGraphVisitor<'_, 'a> {
     /// Constructs the reduced graph for one item.
-    fn build_reduced_graph_for_item(&mut self, item: &Item, parent_scope: &ParentScope<'a>) {
+    fn build_reduced_graph_for_item(&mut self, item: &Item) {
+        let parent_scope = &self.parent_scope.clone();
         let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
         let ident = item.ident.gensym_if_underscore();
@@ -439,7 +440,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                 self.module_map.insert(def_id, module);
 
                 // Descend into the module.
-                self.current_module = module;
+                self.parent_scope.module = module;
             }
 
             // Handled in `rustc_metadata::{native_libs,link_args}`
@@ -563,7 +564,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
                                              expansion,
                                              item.span);
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
-                self.current_module = module;
+                self.parent_scope.module = module;
             }
 
             ItemKind::MacroDef(..) | ItemKind::Mac(_) => unreachable!(),
@@ -605,7 +606,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, expn_id: ExpnId) {
+    fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem) {
         let (res, ns) = match item.node {
             ForeignItemKind::Fn(..) => {
                 (Res::Def(DefKind::Fn, self.definitions.local_def_id(item.id)), ValueNS)
@@ -618,27 +619,23 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
             }
             ForeignItemKind::Macro(_) => unreachable!(),
         };
-        let parent = self.current_module;
-        let parent_scope = &ParentScope {
-            module: self.current_module,
-            expansion: self.expansion,
-            legacy: self.current_legacy_scope,
-            derives: Vec::new(),
-        };
-        let vis = self.resolver.resolve_visibility(&item.vis, parent_scope);
-        self.define(parent, item.ident, ns, (res, vis, item.span, expn_id));
+        let parent = self.parent_scope.module;
+        let expansion = self.parent_scope.expansion;
+        let vis = self.resolver.resolve_visibility(&item.vis, &self.parent_scope);
+        self.define(parent, item.ident, ns, (res, vis, item.span, expansion));
     }
 
-    fn build_reduced_graph_for_block(&mut self, block: &Block, expn_id: ExpnId) {
-        let parent = self.current_module;
+    fn build_reduced_graph_for_block(&mut self, block: &Block) {
+        let parent = self.parent_scope.module;
+        let expansion = self.parent_scope.expansion;
         if self.block_needs_anonymous_module(block) {
             let module = self.new_module(parent,
                                          ModuleKind::Block(block.id),
                                          parent.normal_ancestor_id,
-                                         expn_id,
+                                         expansion,
                                          block.span);
             self.block_map.insert(block.id, module);
-            self.current_module = module; // Descend into the block.
+            self.parent_scope.module = module; // Descend into the block.
         }
     }
 }
@@ -827,7 +824,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
         let mut single_imports = Vec::new();
         for attr in &item.attrs {
             if attr.check_name(sym::macro_use) {
-                if self.current_module.parent.is_some() {
+                if self.parent_scope.module.parent.is_some() {
                     span_err!(self.session, item.span, E0468,
                         "an `extern crate` loading macros must be at the crate root");
                 }
@@ -933,9 +930,7 @@ impl<'a> BuildReducedGraphVisitor<'_, 'a> {
 
 pub struct BuildReducedGraphVisitor<'a, 'b> {
     pub resolver: &'a mut Resolver<'b>,
-    pub current_module: Module<'b>,
-    pub current_legacy_scope: LegacyScope<'b>,
-    pub expansion: ExpnId,
+    pub parent_scope: ParentScope<'b>,
 }
 
 impl<'b> Deref for BuildReducedGraphVisitor<'_, 'b> {
@@ -955,11 +950,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) -> &'b InvocationData<'b> {
         let invoc_id = id.placeholder_to_expn_id();
 
-        self.current_module.unresolved_invocations.borrow_mut().insert(invoc_id);
+        self.parent_scope.module.unresolved_invocations.borrow_mut().insert(invoc_id);
 
         let invocation_data = self.arenas.alloc_invocation_data(InvocationData {
-            module: self.current_module,
-            parent_legacy_scope: self.current_legacy_scope,
+            module: self.parent_scope.module,
+            parent_legacy_scope: self.parent_scope.legacy,
             output_legacy_scope: Cell::new(None),
         });
         let old_invocation_data = self.invocations.insert(invoc_id, invocation_data);
@@ -988,38 +983,32 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
     method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
 
     fn visit_item(&mut self, item: &'a Item) {
-        let parent_scope = &ParentScope {
-            module: self.current_module,
-            expansion: self.expansion,
-            legacy: self.current_legacy_scope,
-            derives: Vec::new(),
-        };
         let macro_use = match item.node {
             ItemKind::MacroDef(..) => {
-                self.current_legacy_scope = self.resolver.define_macro(item, parent_scope);
+                self.parent_scope.legacy = self.resolver.define_macro(item, &self.parent_scope);
                 return
             }
             ItemKind::Mac(..) => {
-                self.current_legacy_scope = LegacyScope::Invocation(self.visit_invoc(item.id));
+                self.parent_scope.legacy = LegacyScope::Invocation(self.visit_invoc(item.id));
                 return
             }
             ItemKind::Mod(..) => self.contains_macro_use(&item.attrs),
             _ => false,
         };
 
-        let orig_current_module = self.current_module;
-        let orig_current_legacy_scope = self.current_legacy_scope;
-        self.build_reduced_graph_for_item(item, parent_scope);
+        let orig_current_module = self.parent_scope.module;
+        let orig_current_legacy_scope = self.parent_scope.legacy;
+        self.build_reduced_graph_for_item(item);
         visit::walk_item(self, item);
-        self.current_module = orig_current_module;
+        self.parent_scope.module = orig_current_module;
         if !macro_use {
-            self.current_legacy_scope = orig_current_legacy_scope;
+            self.parent_scope.legacy = orig_current_legacy_scope;
         }
     }
 
     fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
         if let ast::StmtKind::Mac(..) = stmt.node {
-            self.current_legacy_scope = LegacyScope::Invocation(self.visit_invoc(stmt.id));
+            self.parent_scope.legacy = LegacyScope::Invocation(self.visit_invoc(stmt.id));
         } else {
             visit::walk_stmt(self, stmt);
         }
@@ -1031,21 +1020,21 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
             return;
         }
 
-        self.build_reduced_graph_for_foreign_item(foreign_item, self.expansion);
+        self.build_reduced_graph_for_foreign_item(foreign_item);
         visit::walk_foreign_item(self, foreign_item);
     }
 
     fn visit_block(&mut self, block: &'a Block) {
-        let orig_current_module = self.current_module;
-        let orig_current_legacy_scope = self.current_legacy_scope;
-        self.build_reduced_graph_for_block(block, self.expansion);
+        let orig_current_module = self.parent_scope.module;
+        let orig_current_legacy_scope = self.parent_scope.legacy;
+        self.build_reduced_graph_for_block(block);
         visit::walk_block(self, block);
-        self.current_module = orig_current_module;
-        self.current_legacy_scope = orig_current_legacy_scope;
+        self.parent_scope.module = orig_current_module;
+        self.parent_scope.legacy = orig_current_legacy_scope;
     }
 
     fn visit_trait_item(&mut self, item: &'a TraitItem) {
-        let parent = self.current_module;
+        let parent = self.parent_scope.module;
 
         if let TraitItemKind::Macro(_) = item.node {
             self.visit_invoc(item.id);
@@ -1067,11 +1056,12 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         };
 
         let vis = ty::Visibility::Public;
-        self.resolver.define(parent, item.ident, ns, (res, vis, item.span, self.expansion));
+        let expansion = self.parent_scope.expansion;
+        self.resolver.define(parent, item.ident, ns, (res, vis, item.span, expansion));
 
-        self.current_module = parent.parent.unwrap(); // nearest normal ancestor
+        self.parent_scope.module = parent.parent.unwrap(); // nearest normal ancestor
         visit::walk_trait_item(self, item);
-        self.current_module = parent;
+        self.parent_scope.module = parent;
     }
 
     fn visit_token(&mut self, t: Token) {
@@ -1086,15 +1076,8 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         if !attr.is_sugared_doc && is_builtin_attr(attr) {
-            let parent_scope = ParentScope {
-                module: self.current_module.nearest_item_scope(),
-                expansion: self.expansion,
-                legacy: self.current_legacy_scope,
-                // Let's hope discerning built-in attributes from derive helpers is not necessary
-                derives: Vec::new(),
-            };
-            parent_scope.module.builtin_attrs.borrow_mut().push((
-                attr.path.segments[0].ident, parent_scope
+            self.parent_scope.module.builtin_attrs.borrow_mut().push((
+                attr.path.segments[0].ident, self.parent_scope.clone()
             ));
         }
         visit::walk_attribute(self, attr);

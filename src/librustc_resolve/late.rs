@@ -72,7 +72,7 @@ struct LateResolutionVisitor<'a, 'b> {
     resolver: &'b mut Resolver<'a>,
 
     /// The module that represents the current item scope.
-    current_module: Module<'a>,
+    parent_scope: ParentScope<'a>,
 
     /// The current set of local scopes for types and values.
     /// FIXME #4948: Reuse ribs to avoid allocation.
@@ -290,10 +290,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
 
 impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     fn new(resolver: &'b mut Resolver<'a>) -> LateResolutionVisitor<'a, 'b> {
+        // During late resolution we only track the module component of the parent scope,
+        // although it may be useful to track other components as well for diagnostics.
+        let parent_scope = resolver.dummy_parent_scope();
         let graph_root = resolver.graph_root;
         LateResolutionVisitor {
             resolver,
-            current_module: graph_root,
+            parent_scope,
             ribs: PerNS {
                 value_ns: vec![Rib::new(ModuleRibKind(graph_root))],
                 type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
@@ -309,10 +312,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
     }
 
-    fn parent_scope(&self) -> ParentScope<'a> {
-        ParentScope { module: self.current_module, ..self.dummy_parent_scope() }
-    }
-
     fn resolve_ident_in_lexical_scope(&mut self,
                                       ident: Ident,
                                       ns: Namespace,
@@ -320,7 +319,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
         self.resolver.resolve_ident_in_lexical_scope(
-            ident, ns, &self.parent_scope(), record_used_id, path_span, &self.ribs[ns]
+            ident, ns, &self.parent_scope, record_used_id, path_span, &self.ribs[ns]
         )
     }
 
@@ -333,7 +332,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
         self.resolver.resolve_path_with_ribs(
-            path, opt_ns, &self.parent_scope(), record_used, path_span, crate_lint, &self.ribs
+            path, opt_ns, &self.parent_scope, record_used, path_span, crate_lint, &self.ribs
         )
     }
 
@@ -342,7 +341,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     // We maintain a list of value ribs and type ribs.
     //
     // Simultaneously, we keep track of the current position in the module
-    // graph in the `current_module` pointer. When we go to resolve a name in
+    // graph in the `parent_scope.module` pointer. When we go to resolve a name in
     // the value or type namespaces, we first look through all the ribs and
     // then query the module graph. When we resolve a name in the module
     // namespace, we can skip all the ribs (since nested modules are not
@@ -362,14 +361,14 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let module = self.module_map.get(&id).cloned(); // clones a reference
         if let Some(module) = module {
             // Move down in the graph.
-            let orig_module = replace(&mut self.current_module, module);
+            let orig_module = replace(&mut self.parent_scope.module, module);
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
 
             self.finalize_current_module_macro_resolutions(module);
             let ret = f(self);
 
-            self.current_module = orig_module;
+            self.parent_scope.module = orig_module;
             self.ribs[ValueNS].pop();
             self.ribs[TypeNS].pop();
             ret
@@ -803,7 +802,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                 debug!("resolve_implementation with_self_struct_ctor_rib");
                                 for impl_item in impl_items {
                                     this.resolver.resolve_visibility(
-                                        &impl_item.vis, &this.parent_scope()
+                                        &impl_item.vis, &this.parent_scope
                                     );
                                     // We also need a new scope for the impl item type parameters.
                                     let generic_params = HasGenericParams(&impl_item.generics,
@@ -879,12 +878,11 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         // If there is a TraitRef in scope for an impl, then the method must be in the
         // trait.
         if let Some((module, _)) = self.current_trait_ref {
-            let parent_scope = &self.parent_scope();
-            if self.resolve_ident_in_module(
+            if self.resolver.resolve_ident_in_module(
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                parent_scope,
+                &self.parent_scope,
                 false,
                 span,
             ).is_err() {
@@ -1024,7 +1022,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     fn resolve_block(&mut self, block: &Block) {
         debug!("(resolving block) entering block");
         // Move down in the graph, if there's an anonymous module rooted here.
-        let orig_module = self.current_module;
+        let orig_module = self.parent_scope.module;
         let anonymous_module = self.block_map.get(&block.id).cloned(); // clones a reference
 
         let mut num_macro_definition_ribs = 0;
@@ -1032,7 +1030,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             debug!("(resolving block) found anonymous module, moving down");
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
-            self.current_module = anonymous_module;
+            self.parent_scope.module = anonymous_module;
             self.finalize_current_module_macro_resolutions(anonymous_module);
         } else {
             self.ribs[ValueNS].push(Rib::new(NormalRibKind));
@@ -1053,7 +1051,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
 
         // Move back up.
-        self.current_module = orig_module;
+        self.parent_scope.module = orig_module;
         for _ in 0 .. num_macro_definition_ribs {
             self.ribs[ValueNS].pop();
             self.label_ribs.pop();
@@ -1234,7 +1232,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
         let report_errors = |this: &mut Self, res: Option<Res>| {
             let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
-            let def_id = this.current_module.normal_ancestor_id;
+            let def_id = this.parent_scope.module.normal_ancestor_id;
             let node_id = this.definitions.as_local_node_id(def_id).unwrap();
             let better = res.is_some();
             this.use_injections.push(UseError { err, candidates, node_id, better });
@@ -1261,7 +1259,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                         if let Some((ctor_res, ctor_vis))
                                 = self.struct_constructors.get(&def_id).cloned() {
                             if is_expected(ctor_res) &&
-                               self.is_accessible_from(ctor_vis, self.current_module) {
+                               self.is_accessible_from(ctor_vis, self.parent_scope.module) {
                                 let lint = lint::builtin::LEGACY_CONSTRUCTOR_VISIBILITY;
                                 self.session.buffer_lint(lint, id, span,
                                     "private struct constructors are not usable through \
@@ -1360,9 +1358,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         if qself.is_none() {
             let path_seg = |seg: &Segment| PathSegment::from_ident(seg.ident);
             let path = Path { segments: path.iter().map(path_seg).collect(), span };
-            let parent_scope = &self.parent_scope();
-            if let Ok((_, res)) =
-                    self.resolve_macro_path(&path, None, parent_scope, false, false) {
+            if let Ok((_, res)) = self.resolver.resolve_macro_path(
+                &path, None, &self.parent_scope, false, false
+            ) {
                 return Some(PartialRes::new(res));
             }
         }
@@ -1693,12 +1691,11 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut found_traits = Vec::new();
         // Look for the current trait.
         if let Some((module, _)) = self.current_trait_ref {
-            let parent_scope = &self.parent_scope();
-            if self.resolve_ident_in_module(
+            if self.resolver.resolve_ident_in_module(
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                parent_scope,
+                &self.parent_scope,
                 false,
                 module.span,
             ).is_ok() {
@@ -1708,7 +1705,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
 
         ident.span = ident.span.modern();
-        let mut search_module = self.current_module;
+        let mut search_module = self.parent_scope.module;
         loop {
             self.get_traits_in_module_containing_item(ident, ns, search_module, &mut found_traits);
             search_module = unwrap_or!(
@@ -1755,12 +1752,11 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 ).is_none() {
                     continue
                 }
-                let parent_scope = &self.parent_scope();
-                if self.resolve_ident_in_module_unadjusted(
+                if self.resolver.resolve_ident_in_module_unadjusted(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     ns,
-                    parent_scope,
+                    &self.parent_scope,
                     false,
                     module.span,
                 ).is_ok() {
@@ -1796,7 +1792,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 impl<'a> Resolver<'a> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
-        let module = late_resolution_visitor.current_module;
+        let module = late_resolution_visitor.parent_scope.module;
         late_resolution_visitor.finalize_current_module_macro_resolutions(module);
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.unused_labels.iter() {

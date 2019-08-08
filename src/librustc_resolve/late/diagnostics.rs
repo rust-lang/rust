@@ -430,7 +430,8 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
                 if let Some((ctor_def, ctor_vis))
                         = self.struct_constructors.get(&def_id).cloned() {
-                    let accessible_ctor = self.is_accessible_from(ctor_vis, self.current_module);
+                    let accessible_ctor =
+                        self.is_accessible_from(ctor_vis, self.parent_scope.module);
                     if is_expected(ctor_def) && !accessible_ctor {
                         err.span_label(
                             span,
@@ -505,12 +506,11 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref {
-            let parent_scope = &self.parent_scope();
-            if let Ok(binding) = self.resolve_ident_in_module(
+            if let Ok(binding) = self.resolver.resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     ns,
-                    parent_scope,
+                    &self.parent_scope,
                     false,
                     module.span,
                 ) {

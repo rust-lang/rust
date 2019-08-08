@@ -175,12 +175,15 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.invocations.extend(derives.iter().map(|&derive| (derive, invocation)));
         let mut visitor = BuildReducedGraphVisitor {
             resolver: self,
-            current_module: invocation.module,
-            current_legacy_scope: invocation.parent_legacy_scope,
-            expansion: expn_id,
+            parent_scope: ParentScope {
+                module: invocation.module,
+                expansion: expn_id,
+                legacy: invocation.parent_legacy_scope,
+                derives: Vec::new(),
+            },
         };
         fragment.visit_with(&mut visitor);
-        invocation.output_legacy_scope.set(Some(visitor.current_legacy_scope));
+        invocation.output_legacy_scope.set(Some(visitor.parent_scope.legacy));
     }
 
     fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension) {
