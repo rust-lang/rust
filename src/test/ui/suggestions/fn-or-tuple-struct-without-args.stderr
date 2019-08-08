@@ -32,7 +32,7 @@ LL |     let _: S = S;
    |                ^
    |                |
    |                expected struct `S`, found fn item
-   |                help: use parentheses to instatiate this tuple struct: `S(_, _)`
+   |                help: use parentheses to instantiate this tuple struct: `S(_, _)`
    |
    = note: expected type `S`
               found type `fn(usize, usize) -> S {S}`
@@ -62,7 +62,7 @@ LL |     let _: V = V;
    |                ^
    |                |
    |                expected struct `V`, found fn item
-   |                help: use parentheses to instatiate this tuple struct: `V()`
+   |                help: use parentheses to instantiate this tuple struct: `V()`
    |
    = note: expected type `V`
               found type `fn() -> V {V}`
@@ -107,7 +107,7 @@ LL |     let _: E = E::A;
    |                ^^^^
    |                |
    |                expected enum `E`, found fn item
-   |                help: use parentheses to instatiate this tuple variant: `E::A(_)`
+   |                help: use parentheses to instantiate this tuple variant: `E::A(_)`
    |
    = note: expected type `E`
               found type `fn(usize) -> E {E::A}`
