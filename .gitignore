@@ -19,14 +19,16 @@ __pycache__/
 .vscode
 .favorites.json
 /Makefile
-/build
+/build/
+/target/
 /config.toml
 /dist/
 /dl/
-/doc
+/doc/
 /inst/
 /llvm/
 /mingw-build/
+/obj/
 /rustllvm/
 /src/libcore/unicode/DerivedCoreProperties.txt
 /src/libcore/unicode/DerivedNormalizationProps.txt
@@ -45,6 +47,5 @@ TAGS.*
 config.mk
 config.stamp
 Session.vim
-src/etc/dl
 .cargo
 no_llvm_build
