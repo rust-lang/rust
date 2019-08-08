@@ -2,6 +2,7 @@ use crate::io::prelude::*;
 
 use crate::fmt;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut};
+use crate::iter::FusedIterator;
 use crate::net::{ToSocketAddrs, SocketAddr, Shutdown};
 use crate::sys_common::net as net_imp;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -905,6 +906,9 @@ impl<'a> Iterator for Incoming<'a> {
         Some(self.listener.accept().map(|p| p.0))
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> FusedIterator for Incoming<'a> {}
 
 impl AsInner<net_imp::TcpListener> for TcpListener {
     fn as_inner(&self) -> &net_imp::TcpListener { &self.0 }
