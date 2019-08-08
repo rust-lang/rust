@@ -661,7 +661,7 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
             .iter()
             .filter(|fmap| fmap.is_real_file())
             .filter(|fmap| !fmap.is_imported())
-            .map(|fmap| escape_dep_filename(&fmap.name))
+            .map(|fmap| escape_dep_filename(&fmap.unmapped_path.as_ref().unwrap_or(&fmap.name)))
             .collect();
 
         if sess.binary_dep_depinfo() {
