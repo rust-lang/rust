@@ -5,7 +5,7 @@ fn want_args(v: impl IntoIterator<Item = &'static str>) -> Vec<String> {
 }
 
 fn got_args(file: &[u8]) -> Result<Vec<String>, Error> {
-    FileArgs::new(String::new(), file.to_vec()).collect()
+    FileArgs::new(String::new(), file.to_vec()).lines().collect()
 }
 
 #[test]
@@ -78,6 +78,7 @@ fn multi_empty_end() {
     assert_eq!(got_args(file).unwrap(), want_args(vec!["foo", "bar", ""]));
 }
 
+#[test]
 fn simple_eol_crlf() {
     let file = b"foo\r\n";
 

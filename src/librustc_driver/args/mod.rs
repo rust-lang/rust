@@ -1,87 +1,38 @@
-#![allow(dead_code)]
-
 use std::env;
 use std::error;
 use std::fmt;
 use std::fs;
-use std::io;
+use std::io::{self, BufRead};
 use std::str;
 
 #[cfg(test)]
 mod tests;
 
-/// States for parsing text
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-enum State {
-    Normal, // within normal text
-    Cr,     // just saw \r
-    Lf,     // just saw \n
-}
-
 struct FileArgs {
     path: String,
     input: Vec<u8>,
-    offset: usize,
 }
 
 impl FileArgs {
-    pub fn new(path: String, input: Vec<u8>) -> Self {
-        FileArgs { path, input, offset: 0 }
+    fn new(path: String, input: Vec<u8>) -> Self {
+        FileArgs { path, input }
     }
-}
 
-impl Iterator for FileArgs {
-    type Item = Result<String, Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.offset >= self.input.len() {
-            // All done
-            return None;
-        }
-
-        use State::*;
-        let mut state = Normal;
-        let start = self.offset;
-        let mut end = start;
-
-        for (idx, b) in self.input[start..].iter().enumerate() {
-            let idx = start + idx + 1;
-
-            self.offset = idx;
-
-            match (b, state) {
-                (b'\r', Normal) => state = Cr,
-                (b'\n', Normal) => state = Lf,
-
-                (b'\r', Lf) | (b'\n', Cr) => {
-                    // Two-character line break (accept \r\n and \n\r(?)), so consume them both
-                    break;
-                }
-
-                (_, Cr) | (_, Lf) => {
-                    // Peeked at character after single-character line break, so rewind to visit it
-                    // next time around.
-                    self.offset = idx - 1;
-                    break;
-                }
-
-                (_, _) => {
-                    end = idx;
-                    state = Normal;
-                }
-            }
-        }
-
-        Some(
-            String::from_utf8(self.input[start..end].to_vec())
-                .map_err(|_| Error::Utf8Error(Some(self.path.clone()))),
-        )
+    fn lines(self) -> impl Iterator<Item = Result<String, Error>> {
+        let Self { input, path } = self;
+        io::Cursor::new(input).lines().map(move |res| {
+            let path = path.clone();
+            res.map_err(move |err| match err.kind() {
+                io::ErrorKind::InvalidData => Error::Utf8Error(Some(path)),
+                _ => Error::IOError(path, err),
+            })
+        })
     }
 }
 
 pub struct ArgsIter {
     base: env::ArgsOs,
-    file: Option<FileArgs>,
+    file: Option<Box<dyn Iterator<Item = Result<String, Error>>>>,
 }
 
 impl ArgsIter {
@@ -107,13 +58,12 @@ impl Iterator for ArgsIter {
             match arg {
                 Some(Err(err)) => return Some(Err(err)),
                 Some(Ok(ref arg)) if arg.starts_with("@") => {
-                    // can't not be utf-8 now
-                    let path = str::from_utf8(&arg.as_bytes()[1..]).unwrap();
-                    let file = match fs::read(path) {
-                        Ok(file) => file,
+                    let path = &arg[1..];
+                    let lines = match fs::read(path) {
+                        Ok(file) => FileArgs::new(path.to_string(), file).lines(),
                         Err(err) => return Some(Err(Error::IOError(path.to_string(), err))),
                     };
-                    self.file = Some(FileArgs::new(path.to_string(), file));
+                    self.file = Some(Box::new(lines));
                 }
                 Some(Ok(arg)) => return Some(Ok(arg)),
                 None => return None,
