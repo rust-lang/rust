@@ -1153,7 +1153,7 @@ fn test_rotate_right() {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri is too slow
 fn brute_force_rotate_test_0() {
     // In case of edge cases involving multiple algorithms
     let n = 300;
