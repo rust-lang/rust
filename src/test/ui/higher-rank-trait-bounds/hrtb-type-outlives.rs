@@ -14,7 +14,6 @@ fn want_foo<T>()
 {
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Expressed as a where clause
 
 struct SomeStruct<X> {
@@ -30,7 +29,6 @@ fn one() {
     want_foo::<SomeStruct<usize>>();
 }
 
-///////////////////////////////////////////////////////////////////////////
 // Expressed as shorthand
 
 struct AnotherStruct<X> {

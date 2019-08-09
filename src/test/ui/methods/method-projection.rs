@@ -2,9 +2,6 @@
 // Test that we can use method notation to call methods based on a
 // projection bound from a trait. Issue #20469.
 
-///////////////////////////////////////////////////////////////////////////
-
-
 trait MakeString {
     fn make_string(&self) -> String;
 }
@@ -21,8 +18,6 @@ impl MakeString for usize {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-
 trait Foo {
     type F: MakeString;
 
@@ -32,8 +27,6 @@ trait Foo {
 fn foo<F:Foo>(f: &F) -> String {
     f.get().make_string()
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 struct SomeStruct {
     field: isize,
@@ -46,8 +39,6 @@ impl Foo for SomeStruct {
         &self.field
     }
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 struct SomeOtherStruct {
     field: usize,
