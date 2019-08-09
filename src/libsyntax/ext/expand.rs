@@ -6,6 +6,7 @@ use crate::config::StripUnconfigured;
 use crate::ext::base::*;
 use crate::ext::proc_macro::collect_derives;
 use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnInfo, ExpnKind};
+use crate::ext::tt::macro_rules::annotate_err_with_kind;
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use crate::mut_visit::*;
@@ -701,21 +702,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             Err(mut err) => {
                 err.set_span(span);
-                match kind {
-                    AstFragmentKind::Ty => {
-                        err.span_label(
-                            span,
-                            "this macro call doesn't expand to a type",
-                        );
-                    }
-                    AstFragmentKind::Pat => {
-                        err.span_label(
-                            span,
-                            "this macro call doesn't expand to a pattern",
-                        );
-                    }
-                    _ => {}
-                };
+                annotate_err_with_kind(&mut err, kind, span);
                 err.emit();
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
