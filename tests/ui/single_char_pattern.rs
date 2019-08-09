@@ -53,4 +53,11 @@ fn main() {
     // Issue #3204
     const S: &str = "#";
     x.find(S);
+
+    // Raw string
+    x.split(r"a");
+    x.split(r#"a"#);
+    x.split(r###"a"###);
+    x.split(r###"'"###);
+    x.split(r###"#"###);
 }
