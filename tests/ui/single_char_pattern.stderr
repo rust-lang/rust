@@ -132,5 +132,17 @@ error: single-character string constant used as pattern
 LL |     x.starts_with("/x03"); // issue #2996
    |                   ^^^^^^ help: try using a char instead: `'/x03'`
 
-error: aborting due to 22 previous errors
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:58:13
+   |
+LL |     x.split(r"a");
+   |             ^^^^ help: try using a char instead: `'a'`
+
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:59:13
+   |
+LL |     x.split(r#"a"#);
+   |             ^^^^^^ help: try using a char instead: `'a'`
+
+error: aborting due to 24 previous errors
 

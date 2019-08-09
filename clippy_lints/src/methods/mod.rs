@@ -2329,13 +2329,20 @@ fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &
 fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, _expr: &'tcx hir::Expr, arg: &'tcx hir::Expr) {
     if_chain! {
         if let hir::ExprKind::Lit(lit) = &arg.node;
-        if let ast::LitKind::Str(r, _) = lit.node;
+        if let ast::LitKind::Str(r, style) = lit.node;
         if r.as_str().len() == 1;
         then {
             let mut applicability = Applicability::MachineApplicable;
             let snip = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
-            let c = &snip[1..snip.len() - 1];
-            let hint = format!("'{}'", if c == "'" { "\\'" } else { c });
+            let ch = if let ast::StrStyle::Raw(nhash) = style {
+                let nhash = nhash as usize;
+                // for raw string: r##"a"##
+                &snip[(nhash + 2)..(snip.len() - 1 - nhash)]
+            } else {
+                // for regular string: "a"
+                &snip[1..(snip.len() - 1)]
+            };
+            let hint = format!("'{}'", if ch == "'" { "\\'" } else { ch });
             span_lint_and_sugg(
                 cx,
                 SINGLE_CHAR_PATTERN,
