@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `for<'a, 'b> SomeStruct: Foo<(&'a isize, &'b isize)>` is not satisfied
-  --> $DIR/hrtb-conflate-regions.rs:28:10
+  --> $DIR/hrtb-conflate-regions.rs:27:10
    |
 LL | fn b() { want_foo2::<SomeStruct>(); }
    |          ^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a, 'b> Foo<(&'a isize, &'b isize)>` is not implemented for `SomeStruct`
