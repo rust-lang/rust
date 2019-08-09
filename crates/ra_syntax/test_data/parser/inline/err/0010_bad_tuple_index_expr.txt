@@ -30,7 +30,8 @@ SOURCE_FILE@[0; 47)
                 NAME_REF@[25; 26)
                   IDENT@[25; 26) "x"
           DOT@[26; 27) "."
-          INT_NUMBER@[27; 31) "1i32"
+          NAME_REF@[27; 31)
+            INT_NUMBER@[27; 31) "1i32"
         SEMI@[31; 32) ";"
       WHITESPACE@[32; 37) "\n    "
       EXPR_STMT@[37; 44)
@@ -41,11 +42,11 @@ SOURCE_FILE@[0; 47)
                 NAME_REF@[37; 38)
                   IDENT@[37; 38) "x"
           DOT@[38; 39) "."
-          INT_NUMBER@[39; 43) "0x01"
+          NAME_REF@[39; 43)
+            INT_NUMBER@[39; 43) "0x01"
         SEMI@[43; 44) ";"
       WHITESPACE@[44; 45) "\n"
       R_CURLY@[45; 46) "}"
   WHITESPACE@[46; 47) "\n"
-error [17; 19): Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix
 error [27; 31): Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix
 error [39; 43): Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix

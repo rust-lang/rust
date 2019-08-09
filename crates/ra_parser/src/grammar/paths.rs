@@ -71,7 +71,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
         }
         match p.current() {
             IDENT => {
-                name_ref(p, false);
+                name_ref(p);
                 opt_path_type_args(p, mode);
             }
             // test crate_path

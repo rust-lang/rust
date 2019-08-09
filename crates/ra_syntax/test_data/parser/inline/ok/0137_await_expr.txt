@@ -31,7 +31,8 @@ SOURCE_FILE@[0; 67)
                   NAME_REF@[28; 29)
                     IDENT@[28; 29) "x"
             DOT@[29; 30) "."
-            INT_NUMBER@[30; 31) "0"
+            NAME_REF@[30; 31)
+              INT_NUMBER@[30; 31) "0"
           DOT@[31; 32) "."
           AWAIT_KW@[32; 37) "await"
         SEMI@[37; 38) ";"
@@ -48,7 +49,8 @@ SOURCE_FILE@[0; 67)
                         NAME_REF@[43; 44)
                           IDENT@[43; 44) "x"
                   DOT@[44; 45) "."
-                  INT_NUMBER@[45; 46) "0"
+                  NAME_REF@[45; 46)
+                    INT_NUMBER@[45; 46) "0"
                 ARG_LIST@[46; 48)
                   L_PAREN@[46; 47) "("
                   R_PAREN@[47; 48) ")"

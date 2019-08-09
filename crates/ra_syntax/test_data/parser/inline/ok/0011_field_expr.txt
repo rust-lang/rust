@@ -32,7 +32,8 @@ SOURCE_FILE@[0; 48)
                   NAME_REF@[26; 27)
                     IDENT@[26; 27) "x"
             DOT@[27; 28) "."
-            INT_NUMBER@[28; 29) "0"
+            NAME_REF@[28; 29)
+              INT_NUMBER@[28; 29) "0"
           DOT@[29; 30) "."
           NAME_REF@[30; 33)
             IDENT@[30; 33) "bar"
@@ -47,7 +48,8 @@ SOURCE_FILE@[0; 48)
                   NAME_REF@[39; 40)
                     IDENT@[39; 40) "x"
             DOT@[40; 41) "."
-            INT_NUMBER@[41; 42) "0"
+            NAME_REF@[41; 42)
+              INT_NUMBER@[41; 42) "0"
           ARG_LIST@[42; 44)
             L_PAREN@[42; 43) "("
             R_PAREN@[43; 44) ")"

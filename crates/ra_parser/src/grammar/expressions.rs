@@ -458,7 +458,7 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth(2) == T![::]));
     let m = lhs.precede(p);
     p.bump();
-    name_ref(p, false);
+    name_ref(p);
     type_args::opt_type_arg_list(p, true);
     if p.at(T!['(']) {
         arg_list(p);
@@ -484,10 +484,8 @@ fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]));
     let m = lhs.precede(p);
     p.bump();
-    if p.at(IDENT) {
-        name_ref(p, false)
-    } else if p.at(INT_NUMBER) {
-        p.bump();
+    if p.at(IDENT) || p.at(INT_NUMBER) {
+        name_ref_or_index(p)
     } else if p.at(FLOAT_NUMBER) {
         // FIXME: How to recover and instead parse INT + T![.]?
         p.bump();
@@ -587,7 +585,7 @@ pub(crate) fn named_field_list(p: &mut Parser) {
             IDENT | INT_NUMBER | T![#] => {
                 let m = p.start();
                 attributes::outer_attributes(p);
-                name_ref(p, true);
+                name_ref_or_index(p);
                 if p.eat(T![:]) {
                     expr(p);
                 }
