@@ -12,5 +12,18 @@ help: assign the `CString` to a variable to extend its lifetime
 LL |     CString::new("foo").unwrap().as_ptr();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: you are getting the inner pointer of a temporary `CString`
+  --> $DIR/cstring.rs:8:5
+   |
+LL |     CString::new("foo").expect("dummy").as_ptr();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: that pointer will be invalid outside this expression
+help: assign the `CString` to a variable to extend its lifetime
+  --> $DIR/cstring.rs:8:5
+   |
+LL |     CString::new("foo").expect("dummy").as_ptr();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

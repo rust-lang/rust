@@ -937,7 +937,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["is_some", "position"] => lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0]),
             ["is_some", "rposition"] => lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0]),
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
-            ["as_ptr", "unwrap"] => lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0]),
+            ["as_ptr", "unwrap"] | ["as_ptr", "expect"] => {
+                lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0])
+            },
             ["nth", "iter"] => lint_iter_nth(cx, expr, arg_lists[1], false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, arg_lists[1], true),
             ["next", "skip"] => lint_iter_skip_next(cx, expr),
