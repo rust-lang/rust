@@ -1,5 +1,3 @@
-#![cfg(not(miri))] // Miri does not implement ldexp, which most tests here need
-
 use std::prelude::v1::*;
 use std::{str, i16, f32, f64, fmt};
 
@@ -257,6 +255,7 @@ pub fn f32_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     check_shortest!(f(minf32) => b"1", -44);
 }
 
+#[cfg(not(miri))] // Miri is too slow
 pub fn f32_exact_sanity_test<F>(mut f: F)
         where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
     let minf32 = ldexp_f32(1.0, -149);
@@ -362,6 +361,7 @@ pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     check_shortest!(f(minf64) => b"5", -323);
 }
 
+#[cfg(not(miri))] // Miri is too slow
 pub fn f64_exact_sanity_test<F>(mut f: F)
         where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
     let minf64 = ldexp_f64(1.0, -1074);
@@ -552,6 +552,10 @@ pub fn to_shortest_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, minf64, Minus,   0, false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, 324, false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, 325, false), format!("0.{:0>323}50", ""));
+
+    if cfg!(miri) { // Miri is too slow
+        return;
+    }
 
     // very large output
     assert_eq!(to_string(f, 1.1, Minus, 80000, false), format!("1.1{:0>79999}", ""));
@@ -807,6 +811,10 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
                "1.401298464324817070923729583289916131280261941876515771757068283\
                  8897910826858606014866381883621215820312500000000000000000000000e-45");
 
+    if cfg!(miri) { // Miri is too slow
+        return;
+    }
+
     assert_eq!(to_string(f, f64::MAX, Minus,   1, false), "2e308");
     assert_eq!(to_string(f, f64::MAX, Minus,   2, false), "1.8e308");
     assert_eq!(to_string(f, f64::MAX, Minus,   4, false), "1.798e308");
@@ -1039,6 +1047,10 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
                "340282346638528859811704183484516925440.0");
     assert_eq!(to_string(f, f32::MAX, Minus, 2, false),
                "340282346638528859811704183484516925440.00");
+
+    if cfg!(miri) { // Miri is too slow
+        return;
+    }
 
     let minf32 = ldexp_f32(1.0, -149);
     assert_eq!(to_string(f, minf32, Minus,   0, false), "0");

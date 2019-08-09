@@ -8,10 +8,9 @@ use clap::{App, ArgMatches, SubCommand, AppSettings};
 use mdbook::MDBook;
 use mdbook::errors::{Result as Result3};
 
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+#[cfg(feature = "linkcheck")]
 use mdbook::renderer::RenderContext;
-
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+#[cfg(feature = "linkcheck")]
 use mdbook_linkcheck::{self, errors::BrokenLinks};
 use failure::Error;
 
@@ -52,7 +51,7 @@ fn main() {
             if let Err(err) = linkcheck(sub_matches) {
                 eprintln!("Error: {}", err);
 
-                #[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+                #[cfg(feature = "linkcheck")]
                 {
                     if let Ok(broken_links) = err.downcast::<BrokenLinks>() {
                         for cause in broken_links.links().iter() {
@@ -68,7 +67,7 @@ fn main() {
     };
 }
 
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+#[cfg(feature = "linkcheck")]
 pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
     let book_dir = get_book_dir(args);
     let book = MDBook::load(&book_dir).unwrap();
@@ -78,9 +77,9 @@ pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
     mdbook_linkcheck::check_links(&render_ctx)
 }
 
-#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
+#[cfg(not(feature = "linkcheck"))]
 pub fn linkcheck(_args: &ArgMatches<'_>) -> Result<(), Error> {
-    println!("mdbook-linkcheck only works on x86_64 linux targets.");
+    println!("mdbook-linkcheck is disabled.");
     Ok(())
 }
 

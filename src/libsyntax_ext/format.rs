@@ -645,7 +645,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let mut heads = Vec::with_capacity(self.args.len());
 
         let names_pos: Vec<_> = (0..self.args.len())
-            .map(|i| self.ecx.ident_of(&format!("arg{}", i)).gensym())
+            .map(|i| ast::Ident::from_str_and_span(&format!("arg{}", i), self.macsp))
             .collect();
 
         // First, build up the static array which will become our precompiled
@@ -842,7 +842,7 @@ pub fn expand_preparsed_format_args(
     let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
 
     let mut macsp = ecx.call_site();
-    macsp = macsp.apply_mark(ecx.current_expansion.id);
+    macsp = macsp.with_ctxt(ecx.backtrace());
 
     let msg = "format argument must be a string literal";
     let fmt_sp = efmt.span;

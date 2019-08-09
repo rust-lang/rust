@@ -229,6 +229,13 @@ fn def_id_visibility<'tcx>(
             let vis = match tcx.hir().get(hir_id) {
                 Node::Item(item) => &item.vis,
                 Node::ForeignItem(foreign_item) => &foreign_item.vis,
+                Node::MacroDef(macro_def) => {
+                    if attr::contains_name(&macro_def.attrs, sym::macro_export) {
+                        return (ty::Visibility::Public, macro_def.span, "public");
+                    } else {
+                        &macro_def.vis
+                    }
+                },
                 Node::TraitItem(..) | Node::Variant(..) => {
                     return def_id_visibility(tcx, tcx.hir().get_parent_did(hir_id));
                 }
@@ -433,11 +440,24 @@ impl VisibilityLike for Option<AccessLevel> {
 struct EmbargoVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
-    // Accessibility levels for reachable nodes.
+    /// Accessibility levels for reachable nodes.
     access_levels: AccessLevels,
-    // Previous accessibility level; `None` means unreachable.
+    /// A set of pairs corresponding to modules, where the first module is
+    /// reachable via a macro that's defined in the second module. This cannot
+    /// be represented as reachable because it can't handle the following case:
+    ///
+    /// pub mod n {                         // Should be `Public`
+    ///     pub(crate) mod p {              // Should *not* be accessible
+    ///         pub fn f() -> i32 { 12 }    // Must be `Reachable`
+    ///     }
+    /// }
+    /// pub macro m() {
+    ///     n::p::f()
+    /// }
+    macro_reachable: FxHashSet<(hir::HirId, DefId)>,
+    /// Previous accessibility level; `None` means unreachable.
     prev_level: Option<AccessLevel>,
-    // Has something changed in the level map?
+    /// Has something changed in the level map?
     changed: bool,
 }
 
@@ -452,7 +472,7 @@ impl EmbargoVisitor<'tcx> {
         self.access_levels.map.get(&id).cloned()
     }
 
-    // Updates node level and returns the updated level.
+    /// Updates node level and returns the updated level.
     fn update(&mut self, id: hir::HirId, level: Option<AccessLevel>) -> Option<AccessLevel> {
         let old_level = self.get(id);
         // Accessibility levels can only grow.
@@ -477,6 +497,127 @@ impl EmbargoVisitor<'tcx> {
         }
     }
 
+    /// Updates the item as being reachable through a macro defined in the given
+    /// module. Returns `true` if the level has changed.
+    fn update_macro_reachable(&mut self, reachable_mod: hir::HirId, defining_mod: DefId) -> bool {
+        if self.macro_reachable.insert((reachable_mod, defining_mod)) {
+            self.update_macro_reachable_mod(reachable_mod, defining_mod);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn update_macro_reachable_mod(
+        &mut self,
+        reachable_mod: hir::HirId,
+        defining_mod: DefId,
+    ) {
+        let module_def_id = self.tcx.hir().local_def_id(reachable_mod);
+        let module = self.tcx.hir().get_module(module_def_id).0;
+        for item_id in &module.item_ids {
+            let hir_id = item_id.id;
+            let item_def_id = self.tcx.hir().local_def_id(hir_id);
+            if let Some(def_kind) = self.tcx.def_kind(item_def_id) {
+                let item = self.tcx.hir().expect_item(hir_id);
+                let vis = ty::Visibility::from_hir(&item.vis, hir_id, self.tcx);
+                self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
+            }
+        }
+
+        if let Some(exports) = self.tcx.module_exports(module_def_id) {
+            for export in exports {
+                if export.vis.is_accessible_from(defining_mod, self.tcx) {
+                    if let Res::Def(def_kind, def_id) = export.res {
+                        let vis = def_id_visibility(self.tcx, def_id).0;
+                        if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
+                            self.update_macro_reachable_def(
+                                hir_id,
+                                def_kind,
+                                vis,
+                                defining_mod,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn update_macro_reachable_def(
+        &mut self,
+        hir_id: hir::HirId,
+        def_kind: DefKind,
+        vis: ty::Visibility,
+        module: DefId,
+    ) {
+        let level = Some(AccessLevel::Reachable);
+        if let ty::Visibility::Public = vis {
+            self.update(hir_id, level);
+        }
+        match def_kind {
+            // No type privacy, so can be directly marked as reachable.
+            DefKind::Const
+            | DefKind::Macro(_)
+            | DefKind::Static
+            | DefKind::TraitAlias
+            | DefKind::TyAlias => {
+                if vis.is_accessible_from(module, self.tcx) {
+                    self.update(hir_id, level);
+                }
+            },
+
+            // We can't use a module name as the final segment of a path, except
+            // in use statements. Since re-export checking doesn't consider
+            // hygiene these don't need to be marked reachable. The contents of
+            // the module, however may be reachable.
+            DefKind::Mod => {
+                if vis.is_accessible_from(module, self.tcx) {
+                    self.update_macro_reachable(hir_id, module);
+                }
+            }
+
+            DefKind::Struct | DefKind::Union => {
+                // While structs and unions have type privacy, their fields do
+                // not.
+                if let ty::Visibility::Public = vis {
+                    let item = self.tcx.hir().expect_item(hir_id);
+                    if let hir::ItemKind::Struct(ref struct_def, _)
+                        | hir::ItemKind::Union(ref struct_def, _) = item.node
+                    {
+                        for field in struct_def.fields() {
+                            let field_vis = ty::Visibility::from_hir(
+                                &field.vis,
+                                field.hir_id,
+                                self.tcx,
+                            );
+                            if field_vis.is_accessible_from(module, self.tcx) {
+                                self.reach(field.hir_id, level).ty();
+                            }
+                        }
+                    } else {
+                        bug!("item {:?} with DefKind {:?}", item, def_kind);
+                    }
+                }
+            }
+
+            // These have type privacy, so are not reachable unless they're
+            // public
+            DefKind::AssocConst
+            | DefKind::AssocTy
+            | DefKind::AssocOpaqueTy
+            | DefKind::ConstParam
+            | DefKind::Ctor(_, _)
+            | DefKind::Enum
+            | DefKind::ForeignTy
+            | DefKind::Fn
+            | DefKind::OpaqueTy
+            | DefKind::Method
+            | DefKind::Trait
+            | DefKind::TyParam
+            | DefKind::Variant => (),
+        }
+    }
 
     /// Given the path segments of a `ItemKind::Use`, then we need
     /// to update the visibility of the intermediate use so that it isn't linted
@@ -746,40 +887,21 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             return
         }
 
-        let module_did = ty::DefIdTree::parent(
+        let macro_module_def_id = ty::DefIdTree::parent(
             self.tcx,
             self.tcx.hir().local_def_id(md.hir_id)
         ).unwrap();
-        let mut module_id = self.tcx.hir().as_local_hir_id(module_did).unwrap();
+        let mut module_id = self.tcx.hir().as_local_hir_id(macro_module_def_id).unwrap();
         let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
-        let level = self.update(md.hir_id, level);
-        if level.is_none() {
+        let new_level = self.update(md.hir_id, level);
+        if new_level.is_none() {
             return
         }
 
         loop {
-            let module = if module_id == hir::CRATE_HIR_ID {
-                &self.tcx.hir().krate().module
-            } else if let hir::ItemKind::Mod(ref module) =
-                          self.tcx.hir().expect_item(module_id).node {
-                module
-            } else {
-                unreachable!()
-            };
-            for id in &module.item_ids {
-                self.update(id.id, level);
-            }
-            let def_id = self.tcx.hir().local_def_id(module_id);
-            if let Some(exports) = self.tcx.module_exports(def_id) {
-                for export in exports.iter() {
-                    if let Some(hir_id) = self.tcx.hir().as_local_hir_id(export.res.def_id()) {
-                        self.update(hir_id, level);
-                    }
-                }
-            }
-
-            if module_id == hir::CRATE_HIR_ID {
-                break
+            let changed_reachability = self.update_macro_reachable(module_id, macro_module_def_id);
+            if changed_reachability || module_id == hir::CRATE_HIR_ID {
+                break;
             }
             module_id = self.tcx.hir().get_parent_node(module_id);
         }
@@ -826,7 +948,12 @@ impl DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> { self.ev.tcx }
     fn visit_def_id(&mut self, def_id: DefId, _kind: &str, _descr: &dyn fmt::Display) -> bool {
         if let Some(hir_id) = self.ev.tcx.hir().as_local_hir_id(def_id) {
-            self.ev.update(hir_id, self.access_level);
+            if let ((ty::Visibility::Public, ..), _)
+                | (_, Some(AccessLevel::ReachableFromImplTrait))
+                = (def_id_visibility(self.tcx(), def_id), self.access_level)
+            {
+                self.ev.update(hir_id, self.access_level);
+            }
         }
         false
     }
@@ -1865,6 +1992,7 @@ fn privacy_access_levels(tcx: TyCtxt<'_>, krate: CrateNum) -> &AccessLevels {
     let mut visitor = EmbargoVisitor {
         tcx,
         access_levels: Default::default(),
+        macro_reachable: Default::default(),
         prev_level: Some(AccessLevel::Public),
         changed: false,
     };

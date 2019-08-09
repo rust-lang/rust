@@ -14,8 +14,8 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
     micro: 0,
     _priv: (),
 };
-pub mod general_category {
-    pub const Cc_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
+pub(crate) mod general_category {
+    const Cc_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
         r1: &[
             0, 1, 0
         ],
@@ -28,7 +28,7 @@ pub mod general_category {
         Cc_table.lookup(c)
     }
 
-    pub const N_table: &super::BoolTrie = &super::BoolTrie {
+    const N_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x03ff000000000000, 0x0000000000000000, 0x720c000000000000, 0x0000000000000000,
             0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
@@ -141,8 +141,8 @@ pub mod general_category {
 
 }
 
-pub mod derived_property {
-    pub const Alphabetic_table: &super::BoolTrie = &super::BoolTrie {
+pub(crate) mod derived_property {
+    const Alphabetic_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe07fffffe, 0x0420040000000000, 0xff7fffffff7fffff,
             0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
@@ -327,7 +327,7 @@ pub mod derived_property {
         Alphabetic_table.lookup(c)
     }
 
-    pub const Case_Ignorable_table: &super::BoolTrie = &super::BoolTrie {
+    const Case_Ignorable_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0400408000000000, 0x0000000140000000, 0x0190a10000000000, 0x0000000000000000,
             0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
@@ -464,7 +464,7 @@ pub mod derived_property {
         Case_Ignorable_table.lookup(c)
     }
 
-    pub const Cased_table: &super::BoolTrie = &super::BoolTrie {
+    const Cased_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe07fffffe, 0x0420040000000000, 0xff7fffffff7fffff,
             0xffffffffffffffff, 0xffffffffffffffff, 0xf7ffffffffffffff, 0xfffffffffffffff0,
@@ -565,7 +565,7 @@ pub mod derived_property {
         Cased_table.lookup(c)
     }
 
-    pub const Grapheme_Extend_table: &super::BoolTrie = &super::BoolTrie {
+    const Grapheme_Extend_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
             0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
@@ -689,7 +689,7 @@ pub mod derived_property {
         Grapheme_Extend_table.lookup(c)
     }
 
-    pub const Lowercase_table: &super::BoolTrie = &super::BoolTrie {
+    const Lowercase_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe00000000, 0x0420040000000000, 0xff7fffff80000000,
             0x55aaaaaaaaaaaaaa, 0xd4aaaaaaaaaaab55, 0xe6512d2a4e243129, 0xaa29aaaab5555240,
@@ -789,7 +789,7 @@ pub mod derived_property {
         Lowercase_table.lookup(c)
     }
 
-    pub const Uppercase_table: &super::BoolTrie = &super::BoolTrie {
+    const Uppercase_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x0000000007fffffe, 0x0000000000000000, 0x000000007f7fffff,
             0xaa55555555555555, 0x2b555555555554aa, 0x11aed2d5b1dbced6, 0x55d255554aaaa490,
@@ -890,7 +890,7 @@ pub mod derived_property {
         Uppercase_table.lookup(c)
     }
 
-    pub const XID_Continue_table: &super::BoolTrie = &super::BoolTrie {
+    const XID_Continue_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x03ff000000000000, 0x07fffffe87fffffe, 0x04a0040000000000, 0xff7fffffff7fffff,
             0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
@@ -1068,7 +1068,7 @@ pub mod derived_property {
         XID_Continue_table.lookup(c)
     }
 
-    pub const XID_Start_table: &super::BoolTrie = &super::BoolTrie {
+    const XID_Start_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe07fffffe, 0x0420040000000000, 0xff7fffffff7fffff,
             0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
@@ -1250,8 +1250,8 @@ pub mod derived_property {
 
 }
 
-pub mod property {
-    pub const Pattern_White_Space_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
+pub(crate) mod property {
+    const Pattern_White_Space_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
         r1: &[
             0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1268,7 +1268,7 @@ pub mod property {
         Pattern_White_Space_table.lookup(c)
     }
 
-    pub const White_Space_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
+    const White_Space_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
         r1: &[
             0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1290,7 +1290,7 @@ pub mod property {
 
 }
 
-pub mod conversions {
+pub(crate) mod conversions {
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {
             None        => [c, '\0', '\0'],

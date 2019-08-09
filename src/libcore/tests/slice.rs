@@ -3,19 +3,19 @@ use core::result::Result::{Ok, Err};
 #[test]
 fn test_position() {
     let b = [1, 2, 3, 5, 5];
-    assert!(b.iter().position(|&v| v == 9) == None);
-    assert!(b.iter().position(|&v| v == 5) == Some(3));
-    assert!(b.iter().position(|&v| v == 3) == Some(2));
-    assert!(b.iter().position(|&v| v == 0) == None);
+    assert_eq!(b.iter().position(|&v| v == 9), None);
+    assert_eq!(b.iter().position(|&v| v == 5), Some(3));
+    assert_eq!(b.iter().position(|&v| v == 3), Some(2));
+    assert_eq!(b.iter().position(|&v| v == 0), None);
 }
 
 #[test]
 fn test_rposition() {
     let b = [1, 2, 3, 5, 5];
-    assert!(b.iter().rposition(|&v| v == 9) == None);
-    assert!(b.iter().rposition(|&v| v == 5) == Some(4));
-    assert!(b.iter().rposition(|&v| v == 3) == Some(2));
-    assert!(b.iter().rposition(|&v| v == 0) == None);
+    assert_eq!(b.iter().rposition(|&v| v == 9), None);
+    assert_eq!(b.iter().rposition(|&v| v == 5), Some(4));
+    assert_eq!(b.iter().rposition(|&v| v == 3), Some(2));
+    assert_eq!(b.iter().rposition(|&v| v == 0), None);
 }
 
 #[test]
@@ -1153,7 +1153,7 @@ fn test_rotate_right() {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri is too slow
 fn brute_force_rotate_test_0() {
     // In case of edge cases involving multiple algorithms
     let n = 300;

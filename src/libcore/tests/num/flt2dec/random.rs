@@ -109,8 +109,13 @@ pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
 #[test]
 fn shortest_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
-    f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, 10_000);
-    f32_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, 10_000);
+    #[cfg(not(miri))] // Miri is too slow
+    const N: usize = 10_000;
+    #[cfg(miri)]
+    const N: usize = 10;
+
+    f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, N);
+    f32_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, N);
 }
 
 #[test] #[ignore] // it is too expensive
@@ -138,17 +143,27 @@ fn shortest_f64_hard_random_equivalence_test() {
 #[test]
 fn exact_f32_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_exact as fallback;
+    #[cfg(not(miri))] // Miri is too slow
+    const N: usize = 1_000;
+    #[cfg(miri)]
+    const N: usize = 3;
+
     for k in 1..21 {
         f32_random_equivalence_test(|d, buf| format_exact_opt(d, buf, i16::MIN),
-                                             |d, buf| fallback(d, buf, i16::MIN), k, 1_000);
+                                             |d, buf| fallback(d, buf, i16::MIN), k, N);
     }
 }
 
 #[test]
 fn exact_f64_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_exact as fallback;
+    #[cfg(not(miri))] // Miri is too slow
+    const N: usize = 1_000;
+    #[cfg(miri)]
+    const N: usize = 3;
+
     for k in 1..21 {
         f64_random_equivalence_test(|d, buf| format_exact_opt(d, buf, i16::MIN),
-                                             |d, buf| fallback(d, buf, i16::MIN), k, 1_000);
+                                             |d, buf| fallback(d, buf, i16::MIN), k, N);
     }
 }
