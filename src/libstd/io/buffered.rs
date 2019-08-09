@@ -364,10 +364,10 @@ impl<R: Seek> Seek for BufReader<R> {
 /// times. It also provides no advantage when writing to a destination that is
 /// in memory, like a `Vec<u8>`.
 ///
-/// When the `BufWriter` is dropped, the contents of its buffer will be written
-/// out. However, any errors that happen in the process of flushing the buffer
-/// when the writer is dropped will be ignored. Code that wishes to handle such
-/// errors must manually call [`flush`] before the writer is dropped.
+/// It is critical to call [`flush`] before `BufWriter` is dropped. Though
+/// dropping will attempt to flush the the contents of the buffer, any errors
+/// that happen in the process will be ignored. Calling ['flush'] ensures that
+/// the buffer is empty and all errors have been observed.
 ///
 /// # Examples
 ///
@@ -398,11 +398,12 @@ impl<R: Seek> Seek for BufReader<R> {
 /// for i in 0..10 {
 ///     stream.write(&[i+1]).unwrap();
 /// }
+/// stream.flush().unwrap();
 /// ```
 ///
 /// By wrapping the stream with a `BufWriter`, these ten writes are all grouped
-/// together by the buffer, and will all be written out in one system call when
-/// the `stream` is dropped.
+/// together by the buffer and will all be written out in one system call when
+/// the `stream` is flushed.
 ///
 /// [`Write`]: ../../std/io/trait.Write.html
 /// [`TcpStream::write`]: ../../std/net/struct.TcpStream.html#method.write
