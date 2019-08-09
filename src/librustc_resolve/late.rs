@@ -1136,40 +1136,35 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     // Checks that all of the arms in an or-pattern have exactly the
     // same set of bindings, with the same binding modes for each.
     fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) {
-        if pats.len() <= 1 {
-            return;
-        }
-
         let mut missing_vars = FxHashMap::default();
         let mut inconsistent_vars = FxHashMap::default();
-        for p in pats.iter() {
-            let map_i = self.binding_mode_map(&p);
-            for q in pats.iter() {
-                if p.id == q.id {
-                    continue;
-                }
 
-                let map_j = self.binding_mode_map(&q);
-                for (&key_j, &binding_j) in map_j.iter() {
-                    match map_i.get(&key_j) {
+        for pat_outer in pats.iter() {
+            let map_outer = self.binding_mode_map(&pat_outer);
+
+            for pat_inner in pats.iter().filter(|pat| pat.id != pat_outer.id) {
+                let map_inner = self.binding_mode_map(&pat_inner);
+
+                for (&key_inner, &binding_inner) in map_inner.iter() {
+                    match map_outer.get(&key_inner) {
                         None => {  // missing binding
                             let binding_error = missing_vars
-                                .entry(key_j.name)
+                                .entry(key_inner.name)
                                 .or_insert(BindingError {
-                                    name: key_j.name,
+                                    name: key_inner.name,
                                     origin: BTreeSet::new(),
                                     target: BTreeSet::new(),
-                                    could_be_variant:
-                                        key_j.name.as_str().starts_with(char::is_uppercase)
+                                    could_be_path:
+                                        key_inner.name.as_str().starts_with(char::is_uppercase)
                                 });
-                            binding_error.origin.insert(binding_j.span);
-                            binding_error.target.insert(p.span);
+                            binding_error.origin.insert(binding_inner.span);
+                            binding_error.target.insert(pat_outer.span);
                         }
-                        Some(binding_i) => {  // check consistent binding
-                            if binding_i.binding_mode != binding_j.binding_mode {
+                        Some(binding_outer) => {  // check consistent binding
+                            if binding_outer.binding_mode != binding_inner.binding_mode {
                                 inconsistent_vars
-                                    .entry(key_j.name)
-                                    .or_insert((binding_j.span, binding_i.span));
+                                    .entry(key_inner.name)
+                                    .or_insert((binding_inner.span, binding_outer.span));
                             }
                         }
                     }
@@ -1181,12 +1176,13 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         missing_vars.sort();
         for (name, mut v) in missing_vars {
             if inconsistent_vars.contains_key(name) {
-                v.could_be_variant = false;
+                v.could_be_path = false;
             }
             self.r.report_error(
                 *v.origin.iter().next().unwrap(),
                 ResolutionError::VariableNotBoundInPattern(v));
         }
+
         let mut inconsistent_vars = inconsistent_vars.iter().collect::<Vec<_>>();
         inconsistent_vars.sort();
         for (name, v) in inconsistent_vars {
@@ -1214,7 +1210,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             self.resolve_pattern(pat, source, &mut bindings_list);
         }
         // This has to happen *after* we determine which pat_idents are variants
-        self.check_consistent_bindings(pats);
+        if pats.len() > 1 {
+            self.check_consistent_bindings(pats);
+        }
     }
 
     fn resolve_block(&mut self, block: &Block) {

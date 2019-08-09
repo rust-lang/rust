@@ -23,7 +23,7 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |          |       pattern doesn't bind `A`
    |          variable not in all patterns
    |
-help: if you meant to match on a variant or a const, consider making the path in the pattern qualified: `?::A`
+help: if you meant to match on a variant or a `const` item, consider making the path in the pattern qualified: `?::A`
   --> $DIR/resolve-inconsistent-names.rs:19:10
    |
 LL |         (A, B) | (ref B, c) | (c, A) => ()
@@ -63,7 +63,7 @@ LL |         (CONST1, _) | (_, Const2) => ()
    |          |
    |          variable not in all patterns
    |
-help: if you meant to match on a variant or a const, consider making the path in the pattern qualified: `?::CONST1`
+help: if you meant to match on a variant or a `const` item, consider making the path in the pattern qualified: `?::CONST1`
   --> $DIR/resolve-inconsistent-names.rs:30:10
    |
 LL |         (CONST1, _) | (_, Const2) => ()
@@ -77,7 +77,7 @@ LL |         (CONST1, _) | (_, Const2) => ()
    |         |
    |         pattern doesn't bind `Const2`
    |
-help: if you meant to match on a variant or a const, consider making the path in the pattern qualified: `?::Const2`
+help: if you meant to match on a variant or a `const` item, consider making the path in the pattern qualified: `?::Const2`
   --> $DIR/resolve-inconsistent-names.rs:30:27
    |
 LL |         (CONST1, _) | (_, Const2) => ()

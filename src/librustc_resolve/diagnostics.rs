@@ -207,10 +207,10 @@ impl<'a> Resolver<'a> {
                 err
             }
             ResolutionError::VariableNotBoundInPattern(binding_error) => {
-                let BindingError { name, target, origin, could_be_variant } = binding_error;
+                let BindingError { name, target, origin, could_be_path } = binding_error;
 
-                let target_sp = target.iter().cloned().collect::<Vec<_>>();
-                let origin_sp = origin.iter().cloned().collect::<Vec<_>>();
+                let target_sp = target.iter().copied().collect::<Vec<_>>();
+                let origin_sp = origin.iter().copied().collect::<Vec<_>>();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
                 let msg = format!("variable `{}` is not bound in all patterns", name);
@@ -225,10 +225,12 @@ impl<'a> Resolver<'a> {
                 for sp in origin_sp {
                     err.span_label(sp, "variable not in all patterns");
                 }
-                if *could_be_variant {
+                if *could_be_path {
                     let help_msg = format!(
-                        "if you meant to match on a variant or a const, consider \
-                         making the path in the pattern qualified: `?::{}`", name);
+                        "if you meant to match on a variant or a `const` item, consider \
+                         making the path in the pattern qualified: `?::{}`",
+                         name,
+                     );
                     err.span_help(span, &help_msg);
                 }
                 err
