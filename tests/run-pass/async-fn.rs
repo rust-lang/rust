@@ -1,4 +1,4 @@
-#![feature(async_await)]
+#![feature(async_await, never_type)]
 
 use std::{future::Future, pin::Pin, task::Poll, ptr};
 use std::task::{Waker, RawWaker, RawWakerVTable, Context};
@@ -40,6 +40,11 @@ async fn includes_never(crash: bool, x: u32) -> u32 {
     result
 }
 
+async fn partial_init(x: u32) -> u32 {
+    #[allow(unreachable_code)]
+    let _x: (String, !) = (String::new(), return async { x + x }.await);
+}
+
 fn run_fut(mut fut: impl Future<Output=u32>, output: u32) {
     fn raw_waker_clone(_this: *const ()) -> RawWaker {
         panic!("unimplemented");
@@ -71,4 +76,6 @@ fn main() {
     run_fut(build_aggregate(1, 2, 3, 4), 10);
 
     run_fut(includes_never(false, 4), 16);
+
+    run_fut(partial_init(4), 8);
 }
