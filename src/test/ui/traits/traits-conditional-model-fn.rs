@@ -14,8 +14,6 @@ use go_trait::{Go, GoMut, GoOnce, go, go_mut, go_once};
 use std::rc::Rc;
 use std::cell::Cell;
 
-///////////////////////////////////////////////////////////////////////////
-
 struct SomeGoableThing {
     counter: Rc<Cell<isize>>
 }
@@ -26,8 +24,6 @@ impl Go for SomeGoableThing {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-
 struct SomeGoOnceableThing {
     counter: Rc<Cell<isize>>
 }
@@ -37,8 +33,6 @@ impl GoOnce for SomeGoOnceableThing {
         self.counter.set(self.counter.get() + arg);
     }
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 fn main() {
     let counter = Rc::new(Cell::new(0));
