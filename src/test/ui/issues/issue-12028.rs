@@ -17,8 +17,6 @@ trait StreamHasher {
     fn stream(&self) -> Self::S;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-
 trait StreamHash<H: StreamHasher>: Hash<H> {
     fn input_stream(&self, stream: &mut H::S);
 }
