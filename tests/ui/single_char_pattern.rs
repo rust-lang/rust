@@ -57,4 +57,7 @@ fn main() {
     // Raw string
     x.split(r"a");
     x.split(r#"a"#);
+    x.split(r###"a"###);
+    x.split(r###"'"###);
+    x.split(r###"#"###);
 }
