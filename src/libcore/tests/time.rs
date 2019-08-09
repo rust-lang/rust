@@ -2,7 +2,7 @@ use core::time::Duration;
 
 #[test]
 fn creation() {
-    assert!(Duration::from_secs(1) != Duration::from_secs(0));
+    assert_ne!(Duration::from_secs(1), Duration::from_secs(0));
     assert_eq!(Duration::from_secs(1) + Duration::from_secs(2),
                Duration::from_secs(3));
     assert_eq!(Duration::from_millis(10) + Duration::from_secs(4),
@@ -107,14 +107,12 @@ fn checked_sub() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn sub_bad1() {
     let _ = Duration::new(0, 0) - Duration::new(0, 1);
 }
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn sub_bad2() {
     let _ = Duration::new(0, 0) - Duration::new(1, 0);
 }
