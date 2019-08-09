@@ -23,10 +23,13 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
+use std::future::Future;
 use std::iter::FromIterator;
 use std::ops::Mul;
+use std::pin::Pin;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
+use std::task::{Context, Poll};
 
 use option_helpers::IteratorFalsePositives;
 
@@ -135,6 +138,21 @@ struct V<T> {
 impl<T> V<T> {
     fn new() -> Option<V<T>> {
         None
+    }
+}
+
+struct AsyncNew;
+
+impl AsyncNew {
+    fn new() -> impl Future<Output = Option<Self>> {
+        struct F;
+        impl Future for F {
+            type Output = Option<AsyncNew>;
+            fn poll(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Self::Output> {
+                unimplemented!()
+            }
+        }
+        F
     }
 }
 

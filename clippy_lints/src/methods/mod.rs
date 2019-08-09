@@ -1070,11 +1070,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                         (Predicate::Projection(poly_projection_predicate), _) => {
                             let binder = poly_projection_predicate.ty();
                             let associated_type = binder.skip_binder();
-                            let associated_type_is_self_type = same_tys(cx, ty, associated_type);
 
-                            // if the associated type is self, early return and do not trigger lint
-                            if associated_type_is_self_type {
-                                return;
+                            // walk the associated type and check for Self
+                            for inner_type in associated_type.walk() {
+                                if same_tys(cx, ty, inner_type) {
+                                    return;
+                                }
                             }
                         },
                         (_, _) => {},
