@@ -21,7 +21,10 @@ use std::{
     fmt,
 };
 use syntax::symbol::Symbol;
-use syntax_pos::Span;
+use syntax_pos::{FileName, Span};
+
+use serde::ser::{SerializeSeq, SerializeStruct, Serializer};
+use serde::Serialize;
 
 /// The categories we use when analyzing changes between crate versions.
 ///
@@ -31,7 +34,7 @@ use syntax_pos::Span;
 /// exotic and/or unlikely scenarios, while we have a separate category for them.
 ///
 /// [1]: https://github.com/rust-lang/rfcs/blob/master/text/1105-api-evolution.md
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub enum ChangeCategory {
     /// A patch-level change - no change to the public API of a crate.
     Patch,
@@ -64,21 +67,77 @@ impl<'a> fmt::Display for ChangeCategory {
     }
 }
 
+pub struct RSymbol(pub Symbol);
+
+impl Serialize for RSymbol {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.0))
+    }
+}
+
+struct RSpan<'a>(&'a Session, &'a Span);
+
+impl<'a> Serialize for RSpan<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let lo = self.0.source_map().lookup_char_pos(self.1.lo());
+        let hi = self.0.source_map().lookup_char_pos(self.1.hi());
+
+        assert!(lo.file.name == hi.file.name);
+        let file_name = if let &FileName::Real(ref p) = &lo.file.name {
+            format!("{}", p.display())
+        } else {
+            "no file name".to_owned()
+        };
+
+        let mut state = serializer.serialize_struct("Span", 5)?;
+        state.serialize_field("file", &file_name)?;
+        state.serialize_field("line_lo", &lo.line)?;
+        state.serialize_field("line_hi", &hi.line)?;
+        state.serialize_field("col_lo", &lo.col.0)?;
+        state.serialize_field("col_hi", &hi.col.0)?;
+        state.end()
+    }
+}
+
 /// Different ways to refer to a changed item.
 ///
 /// Used in the header of a change description to identify an item that was subject to change.
 pub enum Name {
     /// The changed item's name.
-    Symbol(Symbol),
+    Symbol(RSymbol),
     /// A textutal description of the item, used for trait impls.
     ImplDesc(String),
 }
 
-impl<'a> fmt::Display for Name {
+impl Name {
+    pub fn symbol(symbol: Symbol) -> Self {
+        Name::Symbol(RSymbol(symbol))
+    }
+}
+
+impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Name::Symbol(name) => write!(f, "`{}`", name),
+            Name::Symbol(ref name) => write!(f, "`{}`", name.0),
             Name::ImplDesc(ref desc) => write!(f, "`{}`", desc),
+        }
+    }
+}
+
+impl Serialize for Name {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            Name::Symbol(ref name) => serializer.serialize_str(&format!("{}", name.0)),
+            Name::ImplDesc(ref desc) => serializer.serialize_str(desc),
         }
     }
 }
@@ -90,7 +149,7 @@ impl<'a> fmt::Display for Name {
 pub struct PathChange {
     /// The name of the item - this doesn't use `Name` because this change structure only gets
     /// generated for removals and additions of named items, not impls.
-    name: Symbol,
+    name: RSymbol,
     /// The definition span of the item.
     def_span: Span,
     /// The set of spans of added exports of the item.
@@ -103,7 +162,7 @@ impl PathChange {
     /// Construct a new empty path change record for an item.
     fn new(name: Symbol, def_span: Span) -> Self {
         Self {
-            name,
+            name: RSymbol(name),
             def_span,
             additions: BTreeSet::new(),
             removals: BTreeSet::new(),
@@ -142,7 +201,7 @@ impl PathChange {
             return;
         }
 
-        let msg = format!("path changes to `{}`", self.name);
+        let msg = format!("path changes to `{}`", self.name.0);
         let mut builder = if cat == Breaking {
             session.struct_span_err(self.def_span, &msg)
         } else {
@@ -186,6 +245,29 @@ impl PartialOrd for PathChange {
 impl Ord for PathChange {
     fn cmp(&self, other: &Self) -> Ordering {
         self.span().cmp(other.span())
+    }
+}
+
+struct RPathChange<'a>(&'a Session, &'a PathChange);
+
+impl<'a> Serialize for RPathChange<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("PathChange", 4)?;
+        state.serialize_field("name", &self.1.name)?;
+        state.serialize_field("def_span", &RSpan(self.0, &self.1.def_span))?;
+
+        let additions: Vec<_> = self.1.additions.iter().map(|s| RSpan(self.0, s)).collect();
+
+        state.serialize_field("additions", &additions)?;
+
+        let removals: Vec<_> = self.1.removals.iter().map(|s| RSpan(self.0, s)).collect();
+
+        state.serialize_field("removals", &removals)?;
+
+        state.end()
     }
 }
 
@@ -605,6 +687,15 @@ impl<'a> fmt::Display for ChangeType<'a> {
     }
 }
 
+impl<'tcx> Serialize for ChangeType<'tcx> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
 /// A change record of an item present in both crate versions.
 ///
 /// NB: `Eq` and `Ord` instances are constucted to only regard the *new* span of the associated
@@ -758,6 +849,30 @@ impl<'tcx> Ord for Change<'tcx> {
     }
 }
 
+struct RChange<'a, 'tcx>(&'a Session, &'a Change<'tcx>);
+
+impl<'a, 'tcx> Serialize for RChange<'a, 'tcx> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Change", 4)?;
+        state.serialize_field("name", &self.1.name)?;
+        state.serialize_field("max_category", &self.1.max)?;
+        state.serialize_field("new_span", &RSpan(self.0, &self.1.new_span))?;
+
+        let changes: Vec<_> = self
+            .1
+            .changes
+            .iter()
+            .map(|(t, s)| (t, s.as_ref().map(|s| RSpan(self.0, s))))
+            .collect();
+
+        state.serialize_field("changes", &changes)?;
+        state.end()
+    }
+}
+
 /// The total set of changes recorded for two crate versions.
 #[derive(Default)]
 pub struct ChangeSet<'tcx> {
@@ -811,7 +926,7 @@ impl<'tcx> ChangeSet<'tcx> {
         new_span: Span,
         output: bool,
     ) {
-        let change = Change::new(Name::Symbol(name), new_span, output);
+        let change = Change::new(Name::symbol(name), new_span, output);
 
         self.spans.insert(old_span, old_def_id);
         self.spans.insert(new_span, new_def_id);
@@ -874,15 +989,7 @@ impl<'tcx> ChangeSet<'tcx> {
             .map_or(false, Change::trait_item_breaking)
     }
 
-    /// Format the contents of a change set for user output.
-    pub fn output(
-        &self,
-        session: &Session,
-        version: &str,
-        verbose: bool,
-        compact: bool,
-        api_guidelines: bool,
-    ) {
+    fn get_new_version(&self, version: &str) -> Option<String> {
         if let Ok(mut new_version) = Version::parse(version) {
             if new_version.major == 0 {
                 new_version.increment_patch();
@@ -894,6 +1001,43 @@ impl<'tcx> ChangeSet<'tcx> {
                 }
             }
 
+            Some(format!("{}", new_version))
+        } else {
+            None
+        }
+    }
+
+    pub fn output_json(&self, session: &Session, version: &str) {
+        #[derive(Serialize)]
+        struct Output<'a, 'tcx> {
+            old_version: String,
+            new_version: String,
+            changes: RChangeSet<'a, 'tcx>,
+        }
+
+        let new_version = self
+            .get_new_version(version)
+            .unwrap_or_else(|| "parse error".to_owned());
+
+        let output = Output {
+            old_version: version.to_owned(),
+            new_version,
+            changes: RChangeSet(session, self),
+        };
+
+        println!("{}", serde_json::to_string(&output).unwrap());
+    }
+
+    /// Format the contents of a change set for user output.
+    pub fn output(
+        &self,
+        session: &Session,
+        version: &str,
+        verbose: bool,
+        compact: bool,
+        api_guidelines: bool,
+    ) {
+        if let Some(new_version) = self.get_new_version(version) {
             if compact {
                 println!("{}", new_version);
             } else {
@@ -929,6 +1073,54 @@ impl<'tcx> ChangeSet<'tcx> {
                 }
             }
         }
+    }
+}
+
+struct RPathChanges<'a>(&'a Session, Vec<&'a PathChange>);
+
+impl<'a> Serialize for RPathChanges<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.1.len()))?;
+
+        for e in &self.1 {
+            seq.serialize_element(&RPathChange(self.0, &e))?;
+        }
+
+        seq.end()
+    }
+}
+
+struct RChangeSet<'a, 'tcx>(&'a Session, &'a ChangeSet<'tcx>);
+
+impl<'a, 'tcx> Serialize for RChangeSet<'a, 'tcx> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("ChangeSet", 3)?;
+
+        let path_changes: Vec<_> = self.1.path_changes.values().collect();
+        state.serialize_field("path_changes", &RPathChanges(self.0, path_changes))?;
+
+        let changes: Vec<_> = self
+            .1
+            .changes
+            .values()
+            .filter_map(|c| {
+                if c.output && !c.changes.is_empty() {
+                    Some(RChange(self.0, c))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        state.serialize_field("changes", &changes)?;
+
+        state.serialize_field("max_category", &self.1.max)?;
+        state.end()
     }
 }
 
@@ -1150,7 +1342,7 @@ pub mod tests {
         changes: Vec<(ChangeType_, Option<Span_>)>,
     ) -> Change<'a> {
         let mut interner = Interner::default();
-        let mut change = Change::new(Name::Symbol(interner.intern("test")), s1, output);
+        let mut change = Change::new(Name::Symbol(RSymbol(interner.intern("test"))), s1, output);
 
         for (type_, span) in changes {
             change.insert(type_.inner(), span.map(|s| s.inner()));

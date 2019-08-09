@@ -107,6 +107,8 @@ Options:
                         Do not activate the `default` feature
         --compact       Only output the suggested version on stdout for
                         further processing
+    -j, --json          Output a JSON-formatted description of all collected
+                        data on stdout.
     -s, --stable-path PATH
                         use local path as stable/old crate
     -c, --current-path PATH
@@ -141,6 +143,92 @@ cargo semver | tee semver_out
 
 Make sure you do the above with access to a nightly toolchain. Check your CI provider's
 documentation on how to do that.
+
+### JSON output
+
+By passing the `-j` flag, all output on standard out is formatted as a machine-readable
+JSON blob. This can be useful for integration with other tools, and always generates all
+possible output (ignoring other output-related flags). The output format is defined as
+follows:
+
+The top level object contains the keys `old_version`, `new_version` and `changes`. The
+former two hold a version number in the format `major.minor.patch`, the latter an object
+describing changes between the crate versions, which contains two arrays in the keys
+`path_changes` and `changes`.
+
+The `path_changes` array contains objects describing item additions and removals, which
+have the following keys:
+
+* `name`: The name of the item.
+* `def_span`: An object describing the location of the item in one of the crates.
+* `additions`: An array of spans that describe locations where the item has been added.
+* `removals`: An array of spans that describe locations where the item has been removed.
+
+An example object might look like this:
+
+```json
+{
+  "name": "NFT_META_CGROUP",
+  "def_span": {
+    "file": "/path/to/libc-0.2.48/src/unix/notbsd/linux/other/mod.rs",
+    "line_lo": 776,
+    "line_hi": 776,
+    "col_lo": 0,
+    "col_hi": 40
+  },
+  "additions": [
+    {
+      "file": "/path/to/libc-0.2.48/src/lib.rs",
+      "line_lo": 195,
+      "line_hi": 195,
+      "col_lo": 16,
+      "col_hi": 23
+    }
+  ],
+  "removals": []
+}
+```
+
+
+The `changes` array contains objects describing all other changes, which have the
+following keys:
+
+* `name`: The name of the item
+* `max_category`: the most severe change category for this item, as a string.
+  * Possible values are `Patch`, `NonBreaking`, `TechnicallyBreaking`, and `Breaking`.
+* `new_span`: an object describing the location of the item in the new crate (see example).
+* `changes`: an array of 2-element sequences containing an error message and an optional
+  sub-span (`null` if none is present)
+
+An example object might look like this:
+
+```json
+{
+  "name": "<new::util::enumerate::Enumerate<T> as new::prelude::Stream>",
+  "max_category": "TechnicallyBreaking",
+  "new_span": {
+    "file": "/path/to/tokio-0.1.17/src/util/enumerate.rs",
+    "line_lo": 46,
+    "line_hi": 63,
+    "col_lo": 0,
+    "col_hi": 1
+  },
+  "changes": [
+    [
+      "trait impl generalized or newly added",
+      null
+    ]
+  ]
+}
+```
+
+For reference, all objects describing spans have the same keys:
+
+* `file`: A file name.
+* `line_lo`: The line the span starts on.
+* `line_hi`: The line the span ends on.
+* `col_lo`: The column the span starts on.
+* `col_hi`: The column the span ends on.
 
 ## Functionality
 

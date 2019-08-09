@@ -46,6 +46,8 @@ fn main() {
                         env::var("RUST_SEMVER_VERBOSE") == Ok("true".to_string());
                     let compact =
                         env::var("RUST_SEMVER_COMPACT") == Ok("true".to_string());
+                    let json =
+                        env::var("RUST_SEMVER_JSON") == Ok("true".to_string());
                     let api_guidelines =
                         env::var("RUST_SEMVER_API_GUIDELINES") == Ok("true".to_string());
                     let version = if let Ok(ver) = env::var("RUST_SEMVER_CRATE_VERSION") {
@@ -81,7 +83,11 @@ fn main() {
                         if let [(_, old_def_id), (_, new_def_id)] = *crates.as_slice() {
                             debug!("running semver analysis");
                             let changes = run_analysis(tcx, old_def_id, new_def_id);
-                            changes.output(tcx.sess, &version, verbose, compact, api_guidelines);
+                            if json {
+                                changes.output_json(tcx.sess, &version);
+                            } else {
+                                changes.output(tcx.sess, &version, verbose, compact, api_guidelines);
+                            }
                         } else {
                             tcx.sess.err("could not find `old` and `new` crates");
                         }
