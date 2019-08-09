@@ -61,6 +61,7 @@
 #![feature(proc_macro_hygiene)]
 #![feature(log_syntax)]
 #![feature(mem_take)]
+#![feature(associated_type_bounds)]
 
 #![recursion_limit="512"]
 
