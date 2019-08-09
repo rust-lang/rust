@@ -1,5 +1,7 @@
 // aux-build:option_helpers.rs
+// compile-flags: --edition 2018
 
+#![feature(async_await)]
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(
     clippy::blacklisted_name,
@@ -144,15 +146,8 @@ impl<T> V<T> {
 struct AsyncNew;
 
 impl AsyncNew {
-    fn new() -> impl Future<Output = Option<Self>> {
-        struct F;
-        impl Future for F {
-            type Output = Option<AsyncNew>;
-            fn poll(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Self::Output> {
-                unimplemented!()
-            }
-        }
-        F
+    async fn new() -> Option<Self> {
+        None
     }
 }
 
