@@ -1,0 +1,169 @@
+error: the type `&'static T` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:20:32
+   |
+LL |         let _val: &'static T = mem::zeroed();
+   |                                ^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/uninitialized-zeroed.rs:7:9
+   |
+LL | #![deny(invalid_value)]
+   |         ^^^^^^^^^^^^^
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `&'static T` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:21:32
+   |
+LL |         let _val: &'static T = mem::uninitialized();
+   |                                ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `Wrap<&'static T>` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:23:38
+   |
+LL |         let _val: Wrap<&'static T> = mem::zeroed();
+   |                                      ^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `Wrap<&'static T>` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:24:38
+   |
+LL |         let _val: Wrap<&'static T> = mem::uninitialized();
+   |                                      ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `!` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:30:23
+   |
+LL |         let _val: ! = mem::zeroed();
+   |                       ^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `!` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:31:23
+   |
+LL |         let _val: ! = mem::uninitialized();
+   |                       ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `(i32, !)` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:33:30
+   |
+LL |         let _val: (i32, !) = mem::zeroed();
+   |                              ^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `(i32, !)` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:34:30
+   |
+LL |         let _val: (i32, !) = mem::uninitialized();
+   |                              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `Void` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:36:26
+   |
+LL |         let _val: Void = mem::zeroed();
+   |                          ^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `Void` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:37:26
+   |
+LL |         let _val: Void = mem::uninitialized();
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `&'static i32` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:39:34
+   |
+LL |         let _val: &'static i32 = mem::zeroed();
+   |                                  ^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `&'static i32` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:40:34
+   |
+LL |         let _val: &'static i32 = mem::uninitialized();
+   |                                  ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `Ref` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:42:25
+   |
+LL |         let _val: Ref = mem::zeroed();
+   |                         ^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `Ref` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:43:25
+   |
+LL |         let _val: Ref = mem::uninitialized();
+   |                         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `fn()` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:45:26
+   |
+LL |         let _val: fn() = mem::zeroed();
+   |                          ^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `fn()` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:46:26
+   |
+LL |         let _val: fn() = mem::uninitialized();
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `Wrap<fn()>` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:48:32
+   |
+LL |         let _val: Wrap<fn()> = mem::zeroed();
+   |                                ^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: the type `Wrap<fn()>` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:49:32
+   |
+LL |         let _val: Wrap<fn()> = mem::uninitialized();
+   |                                ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this means that this code causes undefined behavior when executed
+   = help: use `MaybeUninit` instead
+
+error: aborting due to 18 previous errors
+
