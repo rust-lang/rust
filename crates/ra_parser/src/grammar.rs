@@ -273,8 +273,8 @@ fn name(p: &mut Parser) {
     name_r(p, TokenSet::empty())
 }
 
-fn name_ref(p: &mut Parser) {
-    if p.at(IDENT) || p.at(INT_NUMBER) {
+fn name_ref(p: &mut Parser, allow_numeric_names: bool) {
+    if p.at(IDENT) || (allow_numeric_names && p.at(INT_NUMBER)) {
         let m = p.start();
         p.bump();
         m.complete(p, NAME_REF);
