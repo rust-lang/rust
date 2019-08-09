@@ -686,12 +686,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         );
     }
 
-    fn parse_ast_fragment(&mut self,
-                          toks: TokenStream,
-                          kind: AstFragmentKind,
-                          path: &Path,
-                          span: Span)
-                          -> AstFragment {
+    fn parse_ast_fragment(
+        &mut self,
+        toks: TokenStream,
+        kind: AstFragmentKind,
+        path: &Path,
+        span: Span,
+    ) -> AstFragment {
         let mut parser = self.cx.new_parser_from_tts(&toks.into_trees().collect::<Vec<_>>());
         match parser.parse_ast_fragment(kind, false) {
             Ok(fragment) => {
@@ -700,6 +701,21 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             Err(mut err) => {
                 err.set_span(span);
+                match kind {
+                    AstFragmentKind::Ty => {
+                        err.span_label(
+                            span,
+                            "this macro call doesn't expand to a type",
+                        );
+                    }
+                    AstFragmentKind::Pat => {
+                        err.span_label(
+                            span,
+                            "this macro call doesn't expand to a pattern",
+                        );
+                    }
+                    _ => {}
+                };
                 err.emit();
                 self.cx.trace_macros_diag();
                 kind.dummy(span)

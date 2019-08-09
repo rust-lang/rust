@@ -70,6 +70,29 @@ impl<'a> ParserAnyMacro<'a> {
             } else if !parser.sess.source_map().span_to_filename(parser.token.span).is_real() {
                 e.span_label(site_span, "in this macro invocation");
             }
+            match kind {
+                AstFragmentKind::Ty => {
+                    e.span_label(
+                        site_span,
+                        "this macro call doesn't expand to a type",
+                    );
+                }
+                AstFragmentKind::Pat if macro_ident.name == sym::vec => {
+                    e.span_label(
+                        site_span,
+                        "use a slice pattern here instead",
+                    );
+                    e.help("for more information, see https://doc.rust-lang.org/edition-guide/\
+                              rust-2018/slice-patterns.html");
+                }
+                AstFragmentKind::Pat => {
+                    e.span_label(
+                        site_span,
+                        "this macro call doesn't expand to a pattern",
+                    );
+                }
+                _ => {}
+            };
             e
         }));
 
