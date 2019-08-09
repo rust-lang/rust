@@ -117,15 +117,15 @@ pub enum Name {
 
 impl Name {
     pub fn symbol(symbol: Symbol) -> Self {
-        Name::Symbol(RSymbol(symbol))
+        Self::Symbol(RSymbol(symbol))
     }
 }
 
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Name::Symbol(ref name) => write!(f, "`{}`", name.0),
-            Name::ImplDesc(ref desc) => write!(f, "`{}`", desc),
+            Self::Symbol(ref name) => write!(f, "`{}`", name.0),
+            Self::ImplDesc(ref desc) => write!(f, "`{}`", desc),
         }
     }
 }
@@ -136,8 +136,8 @@ impl Serialize for Name {
         S: Serializer,
     {
         match *self {
-            Name::Symbol(ref name) => serializer.serialize_str(&format!("{}", name.0)),
-            Name::ImplDesc(ref desc) => serializer.serialize_str(desc),
+            Self::Symbol(ref name) => serializer.serialize_str(&format!("{}", name.0)),
+            Self::ImplDesc(ref desc) => serializer.serialize_str(desc),
         }
     }
 }
