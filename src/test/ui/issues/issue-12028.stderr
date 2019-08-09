@@ -1,5 +1,5 @@
 error[E0284]: type annotations required: cannot resolve `<_ as StreamHasher>::S == <H as StreamHasher>::S`
-  --> $DIR/issue-12028.rs:29:14
+  --> $DIR/issue-12028.rs:27:14
    |
 LL |         self.input_stream(&mut stream);
    |              ^^^^^^^^^^^^
